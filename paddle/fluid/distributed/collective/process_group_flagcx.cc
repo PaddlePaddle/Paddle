@@ -57,27 +57,26 @@ ProcessGroupFlagcx::FlagcxTask::FlagcxTask(const Place& place,
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
       task_place_(place),
       gid_(gid) {
-  if (!use_calc_stream) {
-    comm_event_ = std::make_shared<platform::DeviceEvent>(
-        place, platform::GenerateDeviceEventFlag());
-  }
+//if (!use_calc_stream) {
+  comm_event_ = std::make_shared<platform::DeviceEvent>(place, platform::GenerateDeviceEventFlag());
+//}
 }
 
 ProcessGroupFlagcx::FlagcxTask::~FlagcxTask() = default;
 
 bool ProcessGroupFlagcx::FlagcxTask::IsCompleted() {
-  if (comm_event_) {
-    return comm_event_->Query();
-  } else {
-    return true;
-  }
+  //if (comm_event_) {
+  return comm_event_->Query();
+  //} else {
+  //  return true;
+ // }
 }
 
 void ProcessGroupFlagcx::FlagcxTask::UpdateWaitChain(
     const phi::DeviceContext& ctx) {
-  if (comm_event_) {
-    comm_event_->Record(&ctx);
-  }
+  //if (comm_event_) {
+  comm_event_->Record(&ctx);
+  //}
 }
 
 void ProcessGroupFlagcx::FlagcxTask::RemoveHolderStreamInGroup() {
@@ -92,17 +91,17 @@ void ProcessGroupFlagcx::FlagcxTask::RemoveHolderStreamInGroup() {
 // TODO(sheniang03): Add timeout for wait, now timeout unused
 bool ProcessGroupFlagcx::FlagcxTask::Wait(std::chrono::milliseconds timeout) {
   // Warning here when use calc stream but also invoke waiting explicitly.
-  if (UseCalcStream()) {
-    VLOG(5) << "Warning: The communication is on calc stream, wait here is "
-               "useless.";
-    return true;
-  }
+  //if (UseCalcStream()) {
+  //  VLOG(5) << "Warning: The communication is on calc stream, wait here is "
+  //             "useless.";
+  //  return true;
+  //}
 
   const auto* calc_ctx =
       platform::DeviceContextPool::Instance().Get(task_place_);
-  if (comm_event_) {
-    comm_event_->Wait(platform::Place2DeviceType(task_place_), calc_ctx);
-  }
+  //if (comm_event_) {
+  comm_event_->Wait(platform::Place2DeviceType(task_place_), calc_ctx);
+  //}
 
   if (FLAGS_flagcx_blocking_wait) {
     // NOTE(shenliang03): It will block host for sync
@@ -143,6 +142,15 @@ ProcessGroupFlagcx::ProcessGroupFlagcx(
 }
 ProcessGroupFlagcx::~ProcessGroupFlagcx() {
   LOG(INFO) << "ProcessGroupFlagcx destruct ";
+  for (auto it = stream_map_.begin(); it != stream_map_.end();) {
+    flagcx_handler_->devHandle->streamFree(it->second);
+    it = stream_map_.erase(it);
+  }
+  for (auto it = handler_map_.begin(); it != handler_map_.end();) {
+    phi::dynload::flagcxCommDestroy(it->second->comm);
+    phi::dynload::flagcxHandleFree(it->second);
+    it = handler_map_.erase(it);
+  }
 }
 
 void ProcessGroupFlagcx::GroupStart() {
@@ -284,10 +292,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
 
   std::vector<int64_t> out_split_sizes;
   std::vector<int64_t> in_split_sizes;
+  bool is_equal_split = false;
   if (out_size_each_rank.empty() && in_size_each_rank.empty()) {
     out_split_sizes =
         std::vector<int64_t>(size_, out_tensor->dims()[0] / size_);
     in_split_sizes = std::vector<int64_t>(size_, in_tensor.dims()[0] / size_);
+    is_equal_split = true;
   } else {
     out_split_sizes = out_size_each_rank;
     in_split_sizes = in_size_each_rank;
@@ -325,24 +335,29 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
                 << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
-        GroupStart();
-        for (auto i = 0; i < size_; i++) {
-          in_numel = in_split_sizes[i] * in_row_size;
+	if (is_equal_split) {
+          comm_context->AllToAll(out_tensor, in_tensor, stream);
+        } else {
+          GroupStart();
+          for (auto i = 0; i < size_; i++) {
+            in_numel = in_split_sizes[i] * in_row_size;
 
-          if (in_numel > 0) {
-            input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-            comm_context->Send(input_partial, in_numel, i, stream);
+            if (in_numel > 0) {
+              input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
+              comm_context->Send(input_partial, in_numel, i, stream);
+            }
+            in_offset += in_numel;
+            out_numel = out_split_sizes[i] * out_row_size;
+            if (out_numel > 0) {
+              output_partial =
+                  GetPartialTensor(*out_tensor, out_offset, out_numel);
+              comm_context->Recv(&output_partial, out_numel, i, stream);
+            }
+            out_offset += out_numel;
           }
-          in_offset += in_numel;
-          out_numel = out_split_sizes[i] * out_row_size;
-          if (out_numel > 0) {
-            output_partial =
-                GetPartialTensor(*out_tensor, out_offset, out_numel);
-            comm_context->Recv(&output_partial, out_numel, i, stream);
-          }
-          out_offset += out_numel;
+          GroupEnd();
+	  comm_context->flagcx_handler_->devHandle->streamSynchronize(stream);
         }
-        GroupEnd();
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -398,7 +413,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
                 << ", use_calc_stream: " << use_calc_stream << ", "
                 << GetGroupMessage();
 
-        GroupStart();
+        comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
           int64_t in_numel = in_tensors[i].numel();
           int64_t out_numel = (*out_tensors)[i].numel();
@@ -411,7 +426,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::AllToAll(
             comm_context->Recv(&(*out_tensors)[i], out_numel, i, stream);
           }
         }
-        GroupEnd();
+        comm_context->GroupEnd();
+	comm_context->flagcx_handler_->devHandle->streamSynchronize(stream);
       },
       in_tensors,
       CommType::ALLTOALL,
@@ -581,14 +597,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Scatter(
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
           phi::DenseTensor partial_tensor;
-          this->GroupStart();
+          comm_context->GroupStart();
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
             comm_context->Send(partial_tensor, numel, i, stream);
             offset += numel;
           }
           comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
-          this->GroupEnd();
+          comm_context->GroupEnd();
         } else {
           comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
         }
@@ -652,7 +668,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
             << ", use_calc_stream: " << use_calc_stream << ", "
             << ", " << GetGroupMessage();
 
-    this->GroupStart();
+    comm_context->GroupStart();
     // root receive from all devices
     if (rank_ == opts.root_rank) {
       for (auto i = 0; i < size_; i++) {
@@ -662,7 +678,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Gather(
     }
     // send to root
     comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
-    this->GroupEnd();
+    comm_context->GroupEnd();
   };
   return Collective(
       gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
@@ -700,6 +716,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Recv(
                 << GetGroupMessage();
 
         comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
+        comm_context->flagcx_handler_->devHandle->streamSynchronize(stream);
       },
       src_rank,
       *tensor,
@@ -741,6 +758,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Send(
                            tensor_maybe_partial.numel(),
                            rank_in_group,
                            stream);
+        comm_context->flagcx_handler_->devHandle->streamSynchronize(stream);
       },
       dst_rank,
       tensor_maybe_partial,
@@ -763,8 +781,18 @@ std::shared_ptr<ProcessGroupFlagcx::FlagcxTask> ProcessGroupFlagcx::CreateTask(
 void ProcessGroupFlagcx::GetStoreKey(const std::string& place_key,
                                      CommType comm_type,
                                      std::string* store_key) {
-  *store_key = "flagcx_ids/" + std::to_string(gid_) + "/0";
+  //bool is_batch_p2p = s_group_call_counter > 0;
+  //bool is_p2p_op = IsP2POP(comm_type, is_batch_p2p);
 
+  //if (!is_p2p_op) {
+  //  *store_key = "xccl_ids/" + std::to_string(gid_) + "/0";
+  //  *store_key = std::to_string(gid_);
+  //} else {
+  //  *store_key = "xccl_ids/" + std::to_string(gid_) + "/" + place_key;
+ // }
+
+  //*store_key = "xccl_ids/" + std::to_string(gid_) + "/0";
+  *store_key = std::to_string(gid_);
   place_to_group_key_[place_key] = *store_key;
 }
 
@@ -774,9 +802,9 @@ void ProcessGroupFlagcx::CreateFlagcxEnvCache(const Place& place,
                                               CommType comm_type,
                                               int p2p_rank) {
   // TODO(changtao): we only support one flagcx comm ctx
-  if (flagcx_comm_ != nullptr) {
-    return;
-  }
+  //if (flagcx_comm_ != nullptr) {
+  //  return;
+  //}
   VLOG(3) << "init flagcx rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", store_key: " << store_key;
@@ -788,6 +816,11 @@ void ProcessGroupFlagcx::CreateFlagcxEnvCache(const Place& place,
   auto flagcx_comm_ctx = this->GetCommContext(&store_key);
   VLOG(3) << "Get flagcx comm: " << flagcx_comm_ctx->GetFlagcxComm();
   flagcx_comm_ = flagcx_comm_ctx->GetFlagcxComm();
+  flagcx_handler_ = flagcx_comm_ctx->flagcx_handler_;
+  auto handler_key = (uintptr_t)flagcx_handler_;
+  if (handler_map_.find(handler_key) == handler_map_.end()) {
+    handler_map_[handler_key] = flagcx_handler_;
+  }
   auto comm_ctx = std::make_unique<phi::GPUContext>(place);
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
@@ -902,15 +935,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Collective(
   auto flagcx_comm_ctx = this->GetCommContext(&store_key);
 
   flagcxStream_t flagcx_stream;
-  if (use_calc_stream) {
-    auto calc_stream = calc_ctx->stream();
+  auto tmp_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
+  uintptr_t stream_key = (uintptr_t)(&tmp_stream);
+  if (stream_map_.find(stream_key) == stream_map_.end()) {
     flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
-        &flagcx_stream, reinterpret_cast<void*>(&calc_stream));
+        &flagcx_stream, reinterpret_cast<void*>(stream_key));
   } else {
-    auto comm_stream = comm_ctx->stream();
-    flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
-        &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
+    flagcx_stream = stream_map_[stream_key];
   }
+  //if (use_calc_stream) {
+  //  auto calc_stream = calc_ctx->stream();
+  //  flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+  //      &flagcx_stream, reinterpret_cast<void*>(&calc_stream));
+  //} else {
+  //  auto comm_stream = comm_ctx->stream();
+  //  flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+  //      &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
+ // }
 
   if (!FLAGS_enable_async_trace) {
     fn(flagcx_comm_ctx, flagcx_stream);
@@ -937,7 +978,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Collective(
     task->Wait();
   }
 
-  flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
+  //flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
 
   return task;
 }
@@ -970,20 +1011,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Point2Point(
   bool is_batch_p2p = s_group_call_counter > 0;
   std::string key = "";
 
-  if (is_batch_p2p) {
-    key = GetKeyFromPlace(place);
-    p2p_rank = rank_;
-    p2p_target_rank = peer;
-  } else {
-    int low_rank = rank_ < peer ? rank_ : peer;
-    int high_rank = rank_ < peer ? peer : rank_;
-    key = std::to_string(low_rank) + "->" + std::to_string(high_rank);
-    p2p_rank = rank_ < peer ? 0 : 1;
-    p2p_target_rank = 1 - p2p_rank;
-  }
+  VLOG(3) << "P2P BP1";
+
+//   if (is_batch_p2p) {
+//     VLOG(3) << "P2P BP2-1";
+//     key = GetKeyFromPlace(place);
+//     p2p_rank = rank_;
+//     p2p_target_rank = peer;
+//   } else {
+//     VLOG(3) << "P2P BP2-2";
+//     int low_rank = rank_ < peer ? rank_ : peer;
+//     int high_rank = rank_ < peer ? peer : rank_;
+//     key = std::to_string(low_rank) + "->" + std::to_string(high_rank);
+//     p2p_rank = rank_ < peer ? 0 : 1;
+//     p2p_target_rank = 1 - p2p_rank;
+//   }
+  key = GetKeyFromPlace(place);
+  p2p_rank = rank_;
+  p2p_target_rank = peer;
 
   platform::CUDADeviceGuard cuda_guard(place);
 
+  VLOG(3) << "P2P BP3";
   std::string store_key;
   GetStoreKey(key, comm_type, &store_key);
 
@@ -994,28 +1043,42 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Point2Point(
     p2p_comm_seq_[key] = 0;
   }
   p2p_comm_seq_[key]++;
+  VLOG(3) << "P2P BP4 place=" << place << ", key=" << key << ", store_key=" << store_key;
 
   if (!use_calc_stream) {
     SyncCalcStream(place, key);
   }
 
+  VLOG(3) << "P2P BP4-1!!!";
   auto task =
       CreateTask(place, rank_, comm_type, sync_op, use_calc_stream, gid_);
+  VLOG(3) << "P2P BP4-2!!!";
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
+  VLOG(3) << "P2P BP5";
 
   auto flagcx_comm_ctx = this->GetCommContext(&store_key);
+  VLOG(3) << "P2P BP6";
 
   flagcxStream_t flagcx_stream;
-  if (use_calc_stream) {
-    auto calc_stream = calc_ctx->stream();
+  auto tmp_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
+  uintptr_t stream_key = (uintptr_t)(&tmp_stream);
+  if (stream_map_.find(stream_key) == stream_map_.end()) {
     flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
-        &flagcx_stream, reinterpret_cast<void*>(&calc_stream));
+        &flagcx_stream, reinterpret_cast<void*>(stream_key));
   } else {
-    auto comm_stream = comm_ctx->stream();
-    flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
-        &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
+    flagcx_stream = stream_map_[stream_key];
   }
+  //if (use_calc_stream) {
+  //  auto calc_stream = calc_ctx->stream();
+  //  flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+  //      &flagcx_stream, reinterpret_cast<void*>(&calc_stream));
+  //} else {
+  //  auto comm_stream = comm_ctx->stream();
+  //  flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+  //      &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
+  // }
+  VLOG(3) << "P2P BP7";
 
   if (!FLAGS_enable_async_trace) {
     fn(flagcx_comm_ctx, flagcx_stream, p2p_target_rank);
@@ -1032,12 +1095,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Point2Point(
       coalescing_place_keys_.push_back(key);
     }
   }
+  VLOG(3) << "P2P BP8";
 
   if (sync_op) {
     task->Wait();
   }
 
-  flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
+  //flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
   return task;
 }
 
@@ -1111,13 +1175,20 @@ void ProcessGroupFlagcx::EndCoalescing(
     auto flagcx_comm_ctx = this->GetCommContext(&store_key_);
     auto comm_stream = comm_ctx->stream();
     flagcxStream_t flagcx_stream;
-    flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
-        &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
+    uintptr_t stream_key = (uintptr_t)(&comm_stream);
+    if (stream_map_.find(stream_key) == stream_map_.end()) {
+      flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+          &flagcx_stream, reinterpret_cast<void*>(stream_key));
+    } else {
+      flagcx_stream = stream_map_[stream_key];
+    }
+    //flagcx_comm_ctx->flagcx_handler_->devHandle->streamCopy(
+    //    &flagcx_stream, reinterpret_cast<void*>(&comm_stream));
 
     flagcx_task->UpdateWaitChain(*comm_ctx);
     allocation_stream_pairs_.emplace_back(
         tensor->Holder(), *reinterpret_cast<gpuStream_t*>(flagcx_stream));
-    flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
+    //flagcx_comm_ctx->flagcx_handler_->devHandle->streamFree(flagcx_stream);
   }
 
   is_coalescing_ = false;
