@@ -525,9 +525,9 @@ class OpsYamlBaseAPI:
         inputs = {'names': [], 'input_info': {}}
         attrs = {'names': [], 'attr_info': {}}
         args_str = args_config.strip()
-        assert args_str.startswith('(') and args_str.endswith(
-            ')'
-        ), f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
+        assert args_str.startswith('(') and args_str.endswith(')'), (
+            f"Args declaration should start with '(' and end with ')', please check the args of {api_name} in yaml."
+        )
         args_str = args_str[1:-1]
         pattern = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
         args_list = re.split(pattern, args_str.strip())
@@ -541,12 +541,12 @@ class OpsYamlBaseAPI:
             for in_type_symbol, in_type in INPUT_TYPES_MAP.items():
                 if type_and_name[0] == in_type_symbol:
                     input_name = type_and_name[1].strip()
-                    assert (
-                        len(input_name) > 0
-                    ), f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
-                    assert (
-                        len(attrs['names']) == 0
-                    ), f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
+                    assert len(input_name) > 0, (
+                        f"The input tensor name should not be empty. Please check the args of {api_name} in yaml."
+                    )
+                    assert len(attrs['names']) == 0, (
+                        f"The input Tensor should appear before attributes. please check the position of {api_name}:input({input_name}) in yaml"
+                    )
 
                     if input_name in optional_vars:
                         in_type = OPTIONAL_TYPES_TRANS[in_type_symbol]
@@ -562,9 +562,9 @@ class OpsYamlBaseAPI:
             for attr_type_symbol, attr_type in ATTR_TYPES_MAP.items():
                 if type_and_name[0] == attr_type_symbol:
                     attr_name = item[len(attr_type_symbol) :].strip()
-                    assert (
-                        len(attr_name) > 0
-                    ), f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
+                    assert len(attr_name) > 0, (
+                        f"The attribute name should not be empty. Please check the args of {api_name} in yaml."
+                    )
                     default_value = None
                     if '=' in attr_name:
                         attr_infos = attr_name.split('=')
@@ -589,14 +589,14 @@ class OpsYamlBaseAPI:
                 r"(?P<out_type>[a-zA-Z0-9_[\]]+)\s*(?P<name>\([a-zA-Z0-9_@]+\))?\s*(?P<expr>\{[^\}]+\})?",
                 output_item,
             )
-            assert (
-                result is not None
-            ), f"{api_name} : the output config parse error."
+            assert result is not None, (
+                f"{api_name} : the output config parse error."
+            )
             out_type = result.group('out_type')
-            assert (
-                out_type in OUTPUT_TYPE_MAP
-            ), f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
+            assert out_type in OUTPUT_TYPE_MAP, (
+                f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                     but now is {out_type}."
+            )
 
             out_name = (
                 'out'
