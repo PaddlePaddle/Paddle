@@ -161,6 +161,7 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const std::unordered_map<std::string, int64_t>& axis_sizes,
     const std::vector<int64_t>& mesh_shape,
     const bool merge_conflicts) {
+  // Merging Suggestions
   // A struct : { "b" -> { [0], [1, 2], [-1] }, "i" -> { ... } }
   std::unordered_map<std::string, std::vector<std::vector<int64_t>>>
       axis_to_suggestions;
@@ -191,27 +192,6 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
       }
     }
     current_sharding[axis] = merged_vec;
-  }
-
-  // Merging Suggestions
-  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
-  for (auto& pair : tensor_axes_to_dim_pairs) {
-    const std::string& einsum_str = pair.first;
-    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
-    for (size_t i = 0; i < einsum_str.length(); ++i) {
-      auto axis = pair.first.substr(i, 1);
-      for (int64_t mesh_dim : dims_mapping[i]) {
-        current_sharding[axis].insert(current_sharding[axis].end(),
-                                      dims_mapping[i].begin(),
-                                      dims_mapping[i].end());
-      }
-    }
-  }
-  for (auto& pair : current_sharding) {
-    auto& sharding_vec = pair.second;
-    std::sort(sharding_vec.begin(), sharding_vec.end());
-    sharding_vec.erase(std::unique(sharding_vec.begin(), sharding_vec.end()),
-                       sharding_vec.end());
   }
 
   // Iterative Conflict Resolution
