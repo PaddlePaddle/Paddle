@@ -732,7 +732,7 @@ def sort(
         return out
 
 
-def msort(input: Tensor, out: Tensor | None = None) -> Tensor:
+def msort(input: Tensor, *, out: Tensor | None = None) -> Tensor:
     """
 
     Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
@@ -778,7 +778,10 @@ def msort(input: Tensor, out: Tensor | None = None) -> Tensor:
               [6. 9. 2. 6.]]]
     """
 
-    return assign(sort(input, axis=0), out)
+    if out is None:
+        return sort(input, axis=0)
+    else:
+        return assign(sort(input, axis=0), out)
 
 
 def mode(
