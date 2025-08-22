@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
+#include "paddle/common/flags.h"
 
 #include "glog/logging.h"
 
-PHI_DECLARE_int64(offload_retry_times);
+COMMON_DECLARE_int64(offload_retry_times);
 
 namespace paddle::memory::allocation {
 
