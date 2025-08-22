@@ -410,8 +410,8 @@ def get_devices():
     if (
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
-        or not paddle.is_compiled_with_cuda()
-    ):
+        or not core.is_compiled_with_cuda()
+    ) and not is_custom_device():
         devices.append('cpu')
     if paddle.is_compiled_with_cuda():
         devices.append('gpu')
