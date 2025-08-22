@@ -188,15 +188,15 @@ def verify_by_md5(sd1, sd2):
     def get_tensor_md5(tensor):
         return hashlib.md5(tensor.numpy().tobytes()).hexdigest()
 
-    assert (
-        sd1.keys() == sd2.keys()
-    ), f"State dicts have different keys! Got {sd1.keys()} vs {sd2.keys()}"
+    assert sd1.keys() == sd2.keys(), (
+        f"State dicts have different keys! Got {sd1.keys()} vs {sd2.keys()}"
+    )
     for key in sd1.keys():
         md5_1 = get_tensor_md5(sd1[key])
         md5_2 = get_tensor_md5(sd2[key])
-        assert (
-            md5_1 == md5_2
-        ), f"MD5 mismatch for param '{key}': baseline={md5_1} vs roundtrip={md5_2}"
+        assert md5_1 == md5_2, (
+            f"MD5 mismatch for param '{key}': baseline={md5_1} vs roundtrip={md5_2}"
+        )
 
 
 def run_step1_save_source(args):
