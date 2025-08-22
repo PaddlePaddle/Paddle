@@ -168,12 +168,20 @@ class TestPSROIPoolOp(OpTest):
 
     def setUp(self):
         self.op_type = 'psroi_pool'
-        self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, output_channels, spatial_scale: paddle.vision.ops.psroi_pool(
-            x,
+        self.python_api = (
+            lambda x,
             boxes,
             boxes_num,
-            (pooled_height, pooled_width),
-            spatial_scale,
+            pooled_height,
+            pooled_width,
+            output_channels,
+            spatial_scale: paddle.vision.ops.psroi_pool(
+                x,
+                boxes,
+                boxes_num,
+                (pooled_height, pooled_width),
+                spatial_scale,
+            )
         )
         self.set_data()
 

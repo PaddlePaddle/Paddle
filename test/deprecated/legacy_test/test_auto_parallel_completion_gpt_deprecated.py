@@ -63,9 +63,9 @@ class MultiHeadAttention(nn.Layer):
         self.fuse = fuse
 
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         if topo is None or topo.mp_info.size == 1:
             if self.fuse:

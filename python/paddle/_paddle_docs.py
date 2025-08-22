@@ -505,6 +505,88 @@ def isnan(
 )
 
 # liuyi
+add_doc_and_signature(
+    "any",
+    """
+    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``any(input=tensor_x, dim=1)`` is equivalent to ``any(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
+            alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+            alias: ``dim``.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # type: ignore
+
+            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            >>> x = paddle.assign(x)
+            >>> x
+            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 0],
+             [1, 1]])
+            >>> x = paddle.cast(x, 'bool')
+            >>> # x is a bool Tensor with following elements:
+            >>> #    [[True, False]
+            >>> #     [True, True]]
+
+            >>> # out1 should be True
+            >>> out1 = paddle.any(x)
+            >>> out1
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+
+            >>> # out2 should be [True, True]
+            >>> out2 = paddle.any(x, axis=0)
+            >>> out2
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=False, out3 should be [True, True], out.shape should be (2,)
+            >>> out3 = paddle.any(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
+            >>> out4 = paddle.any(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True],
+             [True]])
+
+    """,
+    """
+    def any(
+        x: Tensor,
+        axis: int | Sequence[int] | None = None,
+        keepdim: bool = False,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
 
 # shenwei
 
