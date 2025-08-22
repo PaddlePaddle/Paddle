@@ -26,6 +26,7 @@ from paddle._C_ops import (  # noqa: F401
     all,
     amax,
     amin,
+    any,
     isfinite,
     isinf,
     isnan,
@@ -4975,109 +4976,6 @@ def increment(x: Tensor, value: float = 1.0, name: str | None = None) -> Tensor:
             attrs={'step': float(value)},
         )
         return x
-
-
-def any(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
-
-    Args:
-        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
-        axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
-            :attr:`None`, and all elements of :attr:`x` and return a
-            Tensor with a single element, otherwise must be in the
-            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
-            the dimension to reduce is :math:`rank + axis[i]`.
-        keepdim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result Tensor will have one fewer dimension
-            than the :attr:`x` unless :attr:`keepdim` is true, default
-            value is False.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
-            >>> x = paddle.assign(x)
-            >>> x
-            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [[1, 0],
-             [1, 1]])
-            >>> x = paddle.cast(x, 'bool')
-            >>> # x is a bool Tensor with following elements:
-            >>> #    [[True, False]
-            >>> #     [True, True]]
-
-            >>> # out1 should be True
-            >>> out1 = paddle.any(x)
-            >>> out1
-            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            True)
-
-            >>> # out2 should be [True, True]
-            >>> out2 = paddle.any(x, axis=0)
-            >>> out2
-            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True, True])
-
-            >>> # keepdim=False, out3 should be [True, True], out.shape should be (2,)
-            >>> out3 = paddle.any(x, axis=-1)
-            >>> out3
-            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [True, True])
-
-            >>> # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
-            >>> out4 = paddle.any(x, axis=1, keepdim=True)
-            >>> out4
-            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [[True],
-             [True]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.any(x, axis, keepdim)
-    else:
-        reduce_all, axis = _get_reduce_axis(axis, x)
-        attrs = {
-            'dim': axis,
-            'keep_dim': keepdim,
-            'reduce_all': reduce_all,
-        }
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'any',
-        )
-        check_type(axis, 'axis', (int, list, tuple, type(None)), 'any')
-
-        helper = LayerHelper('any', **locals())
-        out = helper.create_variable_for_type_inference(dtype=paddle.bool)
-        helper.append_op(
-            type='reduce_any',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-        return out
 
 
 def broadcast_shapes(*shapes: Sequence[int]) -> list[int]:

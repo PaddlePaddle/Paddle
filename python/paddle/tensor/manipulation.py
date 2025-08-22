@@ -4543,6 +4543,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4562,12 +4563,18 @@ def chunk(
         :alt: legend of reshape API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``chunk(input=tensor_x, dim=1)`` is equivalent to ``chunk(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+            alias: ``input``.
         chunks(int): The number of tensor to be split along the certain axis.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+            alias: ``dim``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
