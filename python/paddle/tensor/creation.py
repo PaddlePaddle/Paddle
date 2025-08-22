@@ -28,6 +28,8 @@ from paddle import _C_ops
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
     size_args_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -1143,6 +1145,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
         return out
 
 
+@param_one_alias(["x", "input"])
 def full_like(
     x: paddle.Tensor,
     fill_value: Numeric | str,
@@ -1157,8 +1160,13 @@ def full_like(
     This function creates a tensor filled with ``fill_value`` which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``full_like(input=tensor_x, ...)`` is equivalent to ``full_like(x=tensor_x, ...)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+            alias: ``input``.
         fill_value(Scalar|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
             If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
@@ -1643,6 +1651,7 @@ def zeros_like(
     )
 
 
+@param_two_alias(["num_rows", "n"], ["num_columns", "m"])
 def eye(
     num_rows: int | paddle.Tensor,
     num_columns: int | paddle.Tensor | None = None,
@@ -1657,10 +1666,16 @@ def eye(
 
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
+    .. note::
+        Alias Support: The parameter name ``n`` can be used as an alias for ``num_rows``, and ``m`` can be used as an alias for ``num_columns``.
+        For example, ``eye(n=tensor_x, m=tensor_y, ...)`` is equivalent to ``eye(num_rows=tensor_x, num_columns=tensor_y, ...)``.
+
     Args:
         num_rows(int | paddle.Tensor): the number of rows in each batch Tensor.
+            Alias: ``n``.
         num_columns(int | paddle.Tensor | None, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
+            Alias: ``m``.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
