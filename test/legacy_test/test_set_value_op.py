@@ -1222,9 +1222,7 @@ class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
-        ).astype(
-            self.dtype
-        )  # shape is (3,4)
+        ).astype(self.dtype)  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
