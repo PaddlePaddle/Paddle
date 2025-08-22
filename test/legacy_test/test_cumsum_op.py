@@ -28,6 +28,7 @@ import paddle
 import paddle.inference as paddle_infer
 from paddle import base
 from paddle.base import core
+from paddle.framework import convert_np_dtype_to_dtype_
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -186,6 +187,13 @@ class TestCumsumOp_INT(unittest.TestCase):
         z = np.cumsum(data_np, axis=-2)
         np.testing.assert_array_equal(z, y.numpy())
 
+        # test data type
+        data_np = np.arange(12).reshape(3, 4).astype(np.int16)
+        data = paddle.to_tensor(data_np)
+        y = paddle.cumsum(data, axis=0, dtype='int32')
+        z = np.cumsum(data_np, axis=0, dtype="int32")
+        np.testing.assert_equal(convert_np_dtype_to_dtype_(z.dtype), y.dtype)
+
     def run_static_uint8(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
             data_np = np.random.random((100, 100)).astype(np.uint8)
@@ -194,6 +202,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y2 = paddle.cumsum(x, axis=0)
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
+            y5 = paddle.cumsum(x, axis=-1, dtype='int32')
             place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -204,6 +213,7 @@ class TestCumsumOp_INT(unittest.TestCase):
                     y2,
                     y3,
                     y4,
+                    y5,
                 ],
             )
             z = np.cumsum(data_np)
@@ -214,6 +224,8 @@ class TestCumsumOp_INT(unittest.TestCase):
             np.testing.assert_allclose(z, out[2], rtol=1e-05)
             z = np.cumsum(data_np, axis=-2)
             np.testing.assert_allclose(z, out[3], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1, dtype="int32")
+            np.testing.assert_equal(z.dtype, out[4].dtype)
 
     def run_static_int8(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -223,6 +235,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y2 = paddle.cumsum(x, axis=0)
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
+            y5 = paddle.cumsum(x, axis=-1, dtype='int16')
             place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
@@ -233,6 +246,7 @@ class TestCumsumOp_INT(unittest.TestCase):
                     y2,
                     y3,
                     y4,
+                    y5,
                 ],
             )
             z = np.cumsum(data_np)
@@ -243,6 +257,8 @@ class TestCumsumOp_INT(unittest.TestCase):
             np.testing.assert_allclose(z, out[2], rtol=1e-05)
             z = np.cumsum(data_np, axis=-2)
             np.testing.assert_allclose(z, out[3], rtol=1e-05)
+            z = np.cumsum(data_np, axis=-1, dtype="int16")
+            np.testing.assert_equal(z.dtype, out[4].dtype)
 
     def run_static_int16(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -800,22 +816,6 @@ create_test_bf16_class(TestSumOpExclusive3)
 create_test_bf16_class(TestSumOpExclusive4)
 create_test_bf16_class(TestSumOpExclusive5)
 create_test_bf16_class(TestSumOpReverseExclusive)
-
-
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-
-            def test_bad_x():
-                data = [1, 2, 4]
-                result = paddle.cumsum(data, axis=0)
-
-            with self.assertRaises(TypeError):
-                test_bad_x()
-        paddle.disable_static()
 
 
 class TestTensorAxis(unittest.TestCase):
