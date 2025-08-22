@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# test_strategy_conversion_workflow.py
 import argparse
+import logging
 import os
 import subprocess
 import sys
@@ -253,7 +253,12 @@ if __name__ == "__main__":
     if args.list_tests:
         for case in TEST_CASES:
             module_name = os.path.splitext(os.path.basename(__file__))[0]
-            print(f"{module_name}.TestStrategyConversion.test_{case['id']}")
+            logging.basicConfig(
+                stream=sys.stdout, level=logging.INFO, format="%(message)s"
+            )
+            logging.info(
+                f"{module_name}.TestStrategyConversion.test_{case['id']}"
+            )
         sys.exit(0)
 
     unittest.main(argv=[sys.argv[0]], *unknown)
