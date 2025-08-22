@@ -154,7 +154,7 @@ set +x
 
         fi
         if [[ "$IF_KUNLUN3" == "ON" ]]; then
-            export FLAGS_enable_pir_api=0
+            export FLAGS_enable_pir_api=1
             #install paddlex
             git clone --depth 1000 https://gitee.com/paddlepaddle/PaddleX.git
             cd PaddleX
