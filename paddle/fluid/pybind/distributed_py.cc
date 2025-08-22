@@ -149,6 +149,7 @@ void BindDistributed(py::module *m) {
           .def("eager_connect_ring_exchange",
                &distributed::ProcessGroup::EagerConnectRingExchange,
                py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_NCCL
           .def("erase_stream",
                [](distributed::ProcessGroup &self,
                   const paddle::Tensor &tensor) {
@@ -160,6 +161,7 @@ void BindDistributed(py::module *m) {
                    pg_with_stream->EraseStream(*dense_tensor);
                  }
                })
+#endif
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,
