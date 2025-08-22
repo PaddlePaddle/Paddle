@@ -922,19 +922,25 @@ def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
 def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sigmoid Activation.
+
     .. math::
        out = \\frac{1}{1 + e^{-x}}
+
     Args:
         x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64, complex64 or complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor. Output of Sigmoid operator, a Tensor with shape same as input
             (integer types are autocasted into float32).
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> import paddle.nn.functional as F
+
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
             >>> out = F.sigmoid(x)
             >>> print(out)
