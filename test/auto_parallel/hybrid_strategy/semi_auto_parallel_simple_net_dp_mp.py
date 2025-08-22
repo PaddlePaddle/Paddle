@@ -75,9 +75,9 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         for k, v in state_dict.items():
             assert v.numpy().sum() == 0.0, f"state_dict {k} is not zero"
             assert k in need_load_state_dict, f"state_dict {k} is not found"
-            assert (
-                need_load_state_dict[k].numpy().sum() == 0.0
-            ), f"state_dict {k} is not zero"
+            assert need_load_state_dict[k].numpy().sum() == 0.0, (
+                f"state_dict {k} is not zero"
+            )
 
         paddle.distributed.load_state_dict(
             need_load_state_dict, self._ckpt_path
