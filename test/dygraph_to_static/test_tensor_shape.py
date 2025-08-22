@@ -18,8 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
-    test_pt_only,
 )
 
 import paddle
@@ -267,7 +265,6 @@ class TestTensorShapeBasic(Dy2StTestBase):
         )
         self._set_input_spec()
         self._set_expected_op_num()
-        self._set_pir_expected_op_num()
         self.init_test_func()
 
     def init_test_func(self):
@@ -295,33 +292,11 @@ class TestTensorShapeBasic(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
     def _set_expected_op_num(self):
-        # TODO(cleanup-legacy-ir): Remove _set_expected_op_num related code
-        self.expected_op_num = 1
+        self.expected_op_num = 3
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
 
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
-
     def _compute_op_num(self, program):
-        op_num = sum([len(block.ops) for block in program.blocks])
-        shape_op_num = 0
-        slice_op_num = 0
-
-        for block in program.blocks:
-            shape_op_num += len(
-                [
-                    op
-                    for op in block.ops
-                    if (op.type == "shape" or op.type == "shape64")
-                ]
-            )
-            slice_op_num += len([op for op in block.ops if op.type == "slice"])
-        return op_num, shape_op_num, slice_op_num
-
-    def _compute_pir_op_num(self, program):
         op_num = program.global_block().num_ops()
         shape_op_num = get_op_num_in_program(program, "pd_op.shape")
         shape_op_num += get_op_num_in_program(program, "pd_op.shape64")
@@ -329,7 +304,6 @@ class TestTensorShapeBasic(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
-    @test_pt_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -338,30 +312,15 @@ class TestTensorShapeBasic(Dy2StTestBase):
         self.assertEqual(shape_op_num, self.expected_shape_op_num)
         self.assertEqual(slice_op_num, self.expected_slice_op_num)
 
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
-        static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
-        program = static_layer.main_program
-        op_num, shape_op_num, slice_op_num = self._compute_pir_op_num(program)
-        self.assertEqual(op_num, self.pir_expected_op_num)
-        self.assertEqual(shape_op_num, self.pir_expected_shape_op_num)
-        self.assertEqual(slice_op_num, self.pir_expected_slice_op_num)
-
 
 class TestTensorShapeBasic2(TestTensorShapeBasic):
     def init_test_func(self):
         self.dygraph_func = dyfunc_tensor_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 3
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeBasic3(TestTensorShapeBasic):
@@ -369,14 +328,9 @@ class TestTensorShapeBasic3(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
+        self.expected_op_num = 4
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 4
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeBasic4(TestTensorShapeBasic):
@@ -389,14 +343,9 @@ class TestTensorShapeBasic5(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_5
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 3
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeBasic6(TestTensorShapeBasic):
@@ -404,14 +353,9 @@ class TestTensorShapeBasic6(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tensor_shape_6
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 3
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTupleShape1(TestTensorShapeBasic):
@@ -423,14 +367,9 @@ class TestTupleShape1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 11
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 11
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 2
 
 
 class TestTupleShape2(TestTensorShapeBasic):
@@ -442,14 +381,9 @@ class TestTupleShape2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 9
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 9
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 1
 
 
 class TestTupleShape3(TestTensorShapeBasic):
@@ -459,14 +393,9 @@ class TestTupleShape3(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_tuple_shape_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 11
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 2
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 11
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 2
 
 
 class TestPaddleShapeApi(TestTensorShapeBasic):
@@ -476,14 +405,9 @@ class TestPaddleShapeApi(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_paddle_shape_api
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 12
         self.expected_shape_op_num = 2
         self.expected_slice_op_num = 2
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 12
-        self.pir_expected_shape_op_num = 2
-        self.pir_expected_slice_op_num = 2
 
 
 # 2. Tests with control flow if
@@ -492,14 +416,9 @@ class TestTensorShapeInIf1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_if_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 3
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 3
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInIf2(TestTensorShapeBasic):
@@ -507,14 +426,9 @@ class TestTensorShapeInIf2(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_if_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 2
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 2
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 # 3. Tests with control flow for loop
@@ -523,14 +437,9 @@ class TestTensorShapeInFor1(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_for_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 12
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 12
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInFor2(TestTensorShapeInFor1):
@@ -538,14 +447,9 @@ class TestTensorShapeInFor2(TestTensorShapeInFor1):
         self.dygraph_func = dyfunc_with_for_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 6
+        self.expected_op_num = 12
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 12
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInFor3(TestTensorShapeInFor1):
@@ -553,14 +457,9 @@ class TestTensorShapeInFor3(TestTensorShapeInFor1):
         self.dygraph_func = dyfunc_with_for_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 2
+        self.expected_op_num = 4
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 4
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 # 4. Tests with control flow while loop
@@ -569,14 +468,9 @@ class TestTensorShapeInWhile1(TestTensorShapeInFor1):
         self.dygraph_func = dyfunc_with_while_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 3
+        self.expected_op_num = 6
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 6
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInWhile2(TestTensorShapeInFor1):
@@ -584,14 +478,9 @@ class TestTensorShapeInWhile2(TestTensorShapeInFor1):
         self.dygraph_func = dyfunc_with_while_2
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 3
+        self.expected_op_num = 6
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 6
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInWhile3(TestTensorShapeBasic):
@@ -599,14 +488,9 @@ class TestTensorShapeInWhile3(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_3
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 2
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 2
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 class TestTensorShapeInWhile4(TestTensorShapeBasic):
@@ -614,14 +498,9 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_with_while_4
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 1
+        self.expected_op_num = 2
         self.expected_shape_op_num = 0
         self.expected_slice_op_num = 0
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 2
-        self.pir_expected_shape_op_num = 0
-        self.pir_expected_slice_op_num = 0
 
 
 # 5. Test op num for negative dim
@@ -630,7 +509,6 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         self._set_input_spec()
         self._set_test_func()
         self._set_expected_op_num()
-        self._set_pir_expected_op_num()
 
     def _set_input_spec(self):
         self.input_spec = [
@@ -641,14 +519,9 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         self.dygraph_func = dyfunc_tensor_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 9
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 9
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 1
 
     def _compute_op_num(self, program):
         self.op_num = sum([len(block.ops) for block in program.blocks])
@@ -667,7 +540,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    def _compute_pir_op_num(self, program):
+    def _compute_op_num(self, program):
         op_num = program.global_block().num_ops()
         shape_op_num = get_op_num_in_program(program, "pd_op.shape")
         shape_op_num += get_op_num_in_program(program, "pd_op.shape64")
@@ -675,25 +548,13 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
         return op_num, shape_op_num, slice_op_num
 
     @test_ast_only
-    @test_pt_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
-
-        self._compute_op_num(program)
-        self.assertEqual(self.op_num, self.expected_op_num)
-        self.assertEqual(self.shape_op_num, self.expected_shape_op_num)
-        self.assertEqual(self.slice_op_num, self.expected_slice_op_num)
-
-    @test_ast_only
-    @test_pir_only
-    def test_pir_op_num(self):
-        static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
-        program = static_layer.main_program
-        op_num, shape_op_num, slice_op_num = self._compute_pir_op_num(program)
-        self.assertEqual(op_num, self.pir_expected_op_num)
-        self.assertEqual(shape_op_num, self.pir_expected_shape_op_num)
-        self.assertEqual(slice_op_num, self.pir_expected_slice_op_num)
+        op_num, shape_op_num, slice_op_num = self._compute_op_num(program)
+        self.assertEqual(op_num, self.expected_op_num)
+        self.assertEqual(shape_op_num, self.expected_shape_op_num)
+        self.assertEqual(slice_op_num, self.expected_slice_op_num)
 
 
 class TestOpNumBasicWithTensorShape4(TestOpNumBasicWithTensorShape):
@@ -701,14 +562,9 @@ class TestOpNumBasicWithTensorShape4(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tensor_shape_4
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 7
+        self.expected_op_num = 14
         self.expected_shape_op_num = 2
         self.expected_slice_op_num = 2
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 14
-        self.pir_expected_shape_op_num = 2
-        self.pir_expected_slice_op_num = 2
 
 
 class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
@@ -716,14 +572,9 @@ class TestOpNumWithTensorShapeTuple1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_tuple_shape_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 4
+        self.expected_op_num = 9
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 9
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 1
 
 
 class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
@@ -731,14 +582,9 @@ class TestOpNumWithTensorShapeInIf1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_if_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 31
+        self.expected_op_num = 39
         self.expected_shape_op_num = 4
         self.expected_slice_op_num = 4
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 39
-        self.pir_expected_shape_op_num = 4
-        self.pir_expected_slice_op_num = 4
 
 
 class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
@@ -746,14 +592,9 @@ class TestOpNumWithTensorShapeInFor1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_for_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 26
+        self.expected_op_num = 32
         self.expected_shape_op_num = 2
         self.expected_slice_op_num = 3
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 32
-        self.pir_expected_shape_op_num = 2
-        self.pir_expected_slice_op_num = 3
 
 
 class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
@@ -761,14 +602,9 @@ class TestOpNumWithTensorShapeInWhile1(TestOpNumBasicWithTensorShape):
         self.dygraph_func = dyfunc_with_while_1
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 20
+        self.expected_op_num = 25
         self.expected_shape_op_num = 3
         self.expected_slice_op_num = 3
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 25
-        self.pir_expected_shape_op_num = 3
-        self.pir_expected_slice_op_num = 3
 
 
 class TestChangeShapeAfterAssign(TestTensorShapeBasic):
@@ -780,14 +616,9 @@ class TestChangeShapeAfterAssign(TestTensorShapeBasic):
         self.dygraph_func = dyfunc_change_shape_after_assign
 
     def _set_expected_op_num(self):
-        self.expected_op_num = 5
+        self.expected_op_num = 11
         self.expected_shape_op_num = 1
         self.expected_slice_op_num = 1
-
-    def _set_pir_expected_op_num(self):
-        self.pir_expected_op_num = 11
-        self.pir_expected_shape_op_num = 1
-        self.pir_expected_slice_op_num = 1
 
 
 def dyfunc_with_static_convert_var_shape(x):

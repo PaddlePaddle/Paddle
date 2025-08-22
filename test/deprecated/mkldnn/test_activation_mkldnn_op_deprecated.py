@@ -56,7 +56,7 @@ class TestONEDNNReluDim2(TestRelu):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -66,7 +66,7 @@ class TestONEDNNRelu_ZeroDim(TestRelu_ZeroDim):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -75,7 +75,7 @@ class TestONEDNNRelu_ZeroDim(TestRelu_ZeroDim):
 class TestONEDNNRelu6Dim2(TestRelu6):
     def setUp(self):
         super().setUp()
-        self.attrs.update({"use_mkldnn": True})
+        self.attrs.update({"use_onednn": True})
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -85,7 +85,7 @@ class TestONEDNNRelu6Dim2(TestRelu6):
 class TestONEDNNRelu6_ZeroDim(TestRelu6_ZeroDim):
     def setUp(self):
         super().setUp()
-        self.attrs.update({"use_mkldnn": True})
+        self.attrs.update({"use_onednn": True})
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -96,7 +96,7 @@ class TestONEDNNLeakyReluDim2(TestLeakyRelu):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -117,7 +117,7 @@ class TestONEDNNLeakyRelu_ZeroDim(TestLeakyRelu_ZeroDim):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -135,7 +135,7 @@ class TestONEDNNGeluDim2(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -150,7 +150,7 @@ class TestONEDNNGelu_ZeroDim(TestActivation_ZeroDim):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -165,7 +165,7 @@ class TestONEDNNGeluDim2Approx(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "approximate": True}
+        self.attrs = {"use_onednn": True, "approximate": True}
         self.check_pir_onednn = False
 
 
@@ -173,7 +173,7 @@ class TestONEDNNTanhDim2(TestTanh):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -184,7 +184,7 @@ class TestONEDNNTanh_ZeroDim(TestTanh_ZeroDim):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -195,7 +195,7 @@ class TestONEDNNSqrtDim2(TestSqrt):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -206,7 +206,7 @@ class TestONEDNNSqrt_ZeroDim(TestSqrt_ZeroDim):
     def setUp(self):
         super().setUp()
 
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -216,7 +216,7 @@ class TestONEDNNSqrt_ZeroDim(TestSqrt_ZeroDim):
 class TestONEDNNAbsDim2(TestAbs):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -226,7 +226,7 @@ class TestONEDNNAbsZeroSize(TestAbs):
     def setUp(self):
         super().setUp()
         self.check_pir_onednn = True
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_shape(self):
         self.shape = [0, 12, 0]
@@ -236,7 +236,7 @@ class TestONEDNNAbsZeroSize1(TestONEDNNAbsZeroSize):
     def setUp(self):
         super().setUp()
         self.check_pir_onednn = True
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_shape(self):
         self.shape = [0, 12, 0]
@@ -245,7 +245,7 @@ class TestONEDNNAbsZeroSize1(TestONEDNNAbsZeroSize):
 class TestONEDNNAbs_ZeroDim(TestAbs_ZeroDim):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -255,7 +255,7 @@ class TestONEDNNSwishDim2(TestSwish):
     def setUp(self):
         super().setUp()
 
-        self.attrs["use_mkldnn"] = True
+        self.attrs["use_onednn"] = True
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -266,7 +266,7 @@ class TestONEDNNSwish_ZeroDim(TestSwish_ZeroDim):
     def setUp(self):
         super().setUp()
 
-        self.attrs["use_mkldnn"] = True
+        self.attrs["use_onednn"] = True
         self.check_eager = False
         self.check_pir_onednn = False
 
@@ -277,27 +277,27 @@ class TestONEDNNSwish_ZeroDim(TestSwish_ZeroDim):
 class TestONEDNNHardSwishDim2(TestHardSwish):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
 class TestONEDNNHardSwish_ZeroDim(TestHardSwish_ZeroDim):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
 class TestONEDNNSigmoidDim2(TestSigmoid):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
 
 class TestONEDNNSigmoid_ZeroDim(TestSigmoid_ZeroDim):
     def setUp(self):
         super().setUp()
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
 
 class TestONEDNNReluDim4(TestRelu):
@@ -311,7 +311,7 @@ class TestONEDNNReluDim4(TestRelu):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -328,7 +328,7 @@ class TestONEDNNLeakyReluDim4(TestLeakyRelu):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -356,7 +356,7 @@ class TestONEDNNGeluDim4(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -371,7 +371,7 @@ class TestONEDNNGeluDim4Approx(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "approximate": True}
+        self.attrs = {"use_onednn": True, "approximate": True}
         self.check_pir_onednn = False
 
 
@@ -389,7 +389,7 @@ class TestONEDNNGeluBf16Dim4(TestActivation):
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def test_check_output(self):
@@ -413,7 +413,7 @@ class TestONEDNNGeluBf16Dim4Approx(TestActivation):
 
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True, "approximate": True}
+        self.attrs = {"use_onednn": True, "approximate": True}
         self.check_pir_onednn = False
 
     def test_check_output(self):
@@ -431,7 +431,7 @@ class TestONEDNNTanhDim4(TestTanh):
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
         }
         self.outputs = {'Out': np.tanh(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -443,7 +443,7 @@ class TestONEDNNSqrtDim4(TestSqrt):
             'X': np.random.uniform(0.1, 1, [2, 4, 3, 5]).astype("float32")
         }
         self.outputs = {'Out': np.sqrt(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -456,7 +456,7 @@ class TestONEDNNAbsDim4(TestAbs):
         x[np.abs(x) < 0.005] = 0.02
         self.inputs = {'X': x}
         self.outputs = {'Out': np.abs(self.inputs['X'])}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -487,7 +487,7 @@ class TestONEDNNHardSwishDim4(TestHardSwish):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -505,7 +505,7 @@ class TestONEDNNMish(TestActivation):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -520,7 +520,7 @@ class TestONEDNNMish_ZeroDim(TestActivation_ZeroDim):
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
 
@@ -533,7 +533,7 @@ class TestONEDNNRound(TestActivation):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def test_check_output(self):
@@ -554,7 +554,7 @@ class TestONEDNNRound_ZeroDim(TestActivation_ZeroDim):
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
         self.check_pir_onednn = False
 
     def test_check_output(self):
@@ -574,7 +574,7 @@ class TestONEDNNSigmoidDim4(TestSigmoid):
         out = 1 / (1 + np.exp(-x))
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-        self.attrs = {"use_mkldnn": True}
+        self.attrs = {"use_onednn": True}
 
 
 class TestONEDNNEluDefaultAlpha(TestActivation):
@@ -586,7 +586,7 @@ class TestONEDNNEluDefaultAlpha(TestActivation):
         x = np.random.random((5, 5, 4)).astype("float32")
 
         self.inputs = {'X': x}
-        self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
+        self.attrs = {'use_onednn': True, 'alpha': self.alpha}
         self.outputs = {
             'Out': np.maximum(0, x)
             + np.minimum(0, self.alpha * (np.exp(x) - 1))
@@ -606,7 +606,7 @@ class TestONEDNNEluDefaultAlpha_ZeroDim(TestActivation_ZeroDim):
         x = np.random.random(()).astype("float32")
 
         self.inputs = {'X': x}
-        self.attrs = {'use_mkldnn': True, 'alpha': self.alpha}
+        self.attrs = {'use_onednn': True, 'alpha': self.alpha}
         self.outputs = {
             'Out': np.maximum(0, x)
             + np.minimum(0, self.alpha * (np.exp(x) - 1))
@@ -629,7 +629,7 @@ class TestONEDNNExpOp(TestActivation):
         x = np.random.random((5, 5, 4)).astype("float32")
 
         self.inputs = {'X': x}
-        self.attrs = {'use_mkldnn': True}
+        self.attrs = {'use_onednn': True}
         self.outputs = {'Out': np.exp(x)}
         self.check_pir_onednn = False
 
@@ -641,7 +641,7 @@ class TestONEDNNExpOp_ZeroDim(TestActivation_ZeroDim):
         x = np.random.random(()).astype("float32")
 
         self.inputs = {'X': x}
-        self.attrs = {'use_mkldnn': True}
+        self.attrs = {'use_onednn': True}
         self.outputs = {'Out': np.exp(x)}
         self.check_pir_onednn = False
 
@@ -674,7 +674,7 @@ class TestONEDNNAbsPrimitivesAlreadyExist(unittest.TestCase):
 class TestONEDNNSoftplusDim2(TestSoftplus):
     def setUp(self):
         super().setUp()
-        self.attrs.update({"use_mkldnn": True})
+        self.attrs.update({"use_onednn": True})
         self.check_pir_onednn = False
 
     def init_dtype(self):
@@ -684,7 +684,7 @@ class TestONEDNNSoftplusDim2(TestSoftplus):
 class TestONEDNNSoftplus_ZeroDim(TestSoftplus_ZeroDim):
     def setUp(self):
         super().setUp()
-        self.attrs.update({"use_mkldnn": True})
+        self.attrs.update({"use_onednn": True})
 
     def init_dtype(self):
         self.dtype = np.float32

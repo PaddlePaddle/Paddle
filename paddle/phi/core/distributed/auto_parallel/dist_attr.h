@@ -156,6 +156,8 @@ class TEST_API TensorDistAttr {
 
   void set_default_dynamic_dims(const std::vector<int64_t>& tensor_shape);
 
+  void set_default_dynamic_dims(int64_t tensor_shape_size);
+
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
   void set_annotated(const std::map<std::string, bool>& annotated);
@@ -231,8 +233,9 @@ class TEST_API TensorDistAttr {
   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
   class DimMapProxy final {
    public:
-    DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d)
-        : dims_mapping_2d(dims_mapping_2d) {}
+    DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d,
+                const ProcessMesh& process_mesh)
+        : dims_mapping_2d(dims_mapping_2d), process_mesh(process_mesh) {}
 
     DimMapProxy& operator=(
         const std::vector<std::vector<int64_t>>& dims_mapping);
@@ -248,6 +251,7 @@ class TEST_API TensorDistAttr {
     void sync_2d_map();
     mutable std::vector<int64_t> dims_mapping_1d;
     std::vector<std::vector<int64_t>>* dims_mapping_2d;
+    const ProcessMesh& process_mesh;
   };
 
   static std::vector<std::string> fields_;
@@ -266,7 +270,7 @@ class TEST_API TensorDistAttr {
 
   std::vector<std::vector<int64_t>> dims_mapping_;
   // for short time, backward compatible for existing spmd relus.
-  DimMapProxy dims_mapping_proxy{&dims_mapping_};
+  DimMapProxy dims_mapping_proxy{&dims_mapping_, process_mesh_};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {

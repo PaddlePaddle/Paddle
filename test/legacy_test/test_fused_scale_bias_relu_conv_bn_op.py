@@ -37,7 +37,7 @@ skip_msg = (
 )
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedScaleBiasReluConvBnOp(OpTest):
     def setUp(self):
@@ -80,14 +80,10 @@ class TestFusedScaleBiasReluConvBnOp(OpTest):
         if self.fuse_prologue:
             self.x_input_prologue *= self.scale_input.reshape(
                 (1, 1, 1, self.in_channel_num)
-            ).astype(
-                np.float32
-            )  # scale
+            ).astype(np.float32)  # scale
             self.x_input_prologue += self.bias_input.reshape(
                 (1, 1, 1, self.in_channel_num)
-            ).astype(
-                np.float32
-            )  # bias
+            ).astype(np.float32)  # bias
             self.x_input_prologue = np.maximum(self.x_input_prologue, 0)  # relu
         self.x_input_prologue = self.x_input_prologue.astype(self.dtype)
 

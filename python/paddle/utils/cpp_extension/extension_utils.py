@@ -164,8 +164,9 @@ def bootstrap_context():
 
 
 def load_op_meta_info_and_register_op(lib_filename: str) -> list[str]:
-    core.load_op_meta_info_and_register_op(lib_filename)
-    return OpProtoHolder.instance().update_op_proto()
+    new_list = core.load_op_meta_info_and_register_op(lib_filename)
+    proto_sync_ops = OpProtoHolder.instance().update_op_proto(new_list)
+    return proto_sync_ops
 
 
 def custom_write_stub(resource, pyfile):
@@ -256,9 +257,9 @@ class CustomOpInfo:
         return cls._instance
 
     def __init__(self):
-        assert not hasattr(
-            self.__class__, '_instance'
-        ), 'Please use `instance()` to get CustomOpInfo object!'
+        assert not hasattr(self.__class__, '_instance'), (
+            'Please use `instance()` to get CustomOpInfo object!'
+        )
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
@@ -521,9 +522,9 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(
-        include_dirs_file
-    ), f"File {include_dirs_file} does not exist"
+    assert os.path.isfile(include_dirs_file), (
+        f"File {include_dirs_file} does not exist"
+    )
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f if line.strip()]
 
@@ -942,6 +943,14 @@ def add_compile_flag(extra_compile_args, flags):
             args.extend(flags)
     else:
         extra_compile_args.extend(flags)
+
+
+def define_paddle_extension_name(extension):
+    # Allow user use PADDLE_EXTENSION_NAME to access shared library name
+    names = extension.name.split('.')
+    name = names[-1]
+    define = f'-DPADDLE_EXTENSION_NAME={name}'
+    add_compile_flag(extension.extra_compile_args, [define])
 
 
 def is_cuda_file(path):

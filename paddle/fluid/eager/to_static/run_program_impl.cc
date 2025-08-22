@@ -46,6 +46,7 @@
 COMMON_DECLARE_bool(enable_pir_with_pt_in_dy2st);
 COMMON_DECLARE_bool(enable_pir_in_executor);
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(specialize_device_in_dy2st);
 COMMON_DECLARE_bool(parameters_persistent_mode_in_dy2st);
 
@@ -373,11 +374,6 @@ paddle::Tensor CreateTensorFromValue(const pir::Value &value) {
   const auto &value_type = value.type();
 
   if (value_type.isa<paddle::dialect::DenseTensorType>()) {
-    const auto &ddims =
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dims();
-    const auto &dtype = paddle::dialect::TransToPhiDataType(
-        value_type.dyn_cast<paddle::dialect::DenseTensorType>().dtype());
-
     std::shared_ptr<phi::DenseTensor> dense_tensor =
         std::make_shared<phi::DenseTensor>();
 
@@ -577,7 +573,7 @@ std::vector<paddle::Tensor> RunProgramImpl(
 #endif
 
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
-        forward_program.get(), place, no_need_buffer_name_set);
+        program.get(), place, no_need_buffer_name_set);
     const auto &new_block = passed_kernel_program->block();
     passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
         std::move(passed_kernel_program), new_block, place, global_inner_scope);
@@ -673,7 +669,8 @@ std::vector<paddle::Tensor> RunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn)
+    paddle::platform::DontClearONEDNNCache(place);
 #endif
   return out;
 }
@@ -1014,7 +1011,8 @@ void LegacyRunProgramImpl(
   }
 
 #ifdef PADDLE_WITH_DNNL
-  if (FLAGS_use_mkldnn) paddle::platform::DontClearONEDNNCache(place);
+  if (FLAGS_use_mkldnn || FLAGS_use_onednn)
+    paddle::platform::DontClearONEDNNCache(place);
 #endif
 }
 
@@ -1070,7 +1068,7 @@ void LegacyRunProgramGradImpl(
   if (!cache.Has(cache_key)) {
     phi::RecordEvent record_event(
         "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
-    VLOG(2) << "No interpretercore cache, so create a new interpretercore"
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);

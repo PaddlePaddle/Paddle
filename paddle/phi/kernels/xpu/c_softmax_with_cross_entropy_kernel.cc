@@ -125,7 +125,7 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
   // int select(Context* xpu_ctx, const bool* condition, const T* x, const T* y,
   // T* z, const std::vector<int64_t>& condition_shape, const
   // std::vector<int64_t>& xshape);
-  ret = xpu::select(
+  ret = xpu::where(
       dev_ctx.x_context(),
       reinterpret_cast<const bool*>(bool_tensor_for_mask_label.data<bool>()),
       reinterpret_cast<const XPUType*>(zeros_constant.data<T>()),
@@ -133,7 +133,7 @@ void FixLossAccordingToIgnoreIndex(const phi::XPUContext& dev_ctx,
       reinterpret_cast<XPUType*>(loss->data<T>()),
       common::vectorize(predicted_logits->dims()),
       common::vectorize(predicted_logits->dims()));
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "select");
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 template <typename T>
 struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {

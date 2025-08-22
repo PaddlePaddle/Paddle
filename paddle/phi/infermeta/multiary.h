@@ -988,7 +988,8 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_min_bound,
                       MetaTensor* out,
                       MetaTensor* residual_out,
-                      MetaTensor* inv_var);
+                      MetaTensor* inv_var,
+                      MetaConfig config = MetaConfig());
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
@@ -1231,7 +1232,7 @@ void FusedConvInferMeta(const MetaTensor& input,
                         const std::vector<int>& dilations,
                         int groups,
                         const std::string& data_format,
-                        const std::string& mkldnn_data_type,
+                        const std::string& onednn_data_type,
                         const std::string& fuse_activation,
                         bool fuse_residual_conn,
                         bool force_fp32_output,
@@ -1351,4 +1352,15 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                               MetaTensor* expert_offset,
                               MetaTensor* expert_id);
 
+void MoeGateDispatchAutoInferMeta(const MetaTensor& x,
+                                  const MetaTensor& gate_logits,
+                                  const MetaTensor& corr_bias,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* y,
+                                  MetaTensor* combine_weights,
+                                  MetaTensor* scatter_index,
+                                  MetaTensor* expert_offset,
+                                  MetaTensor* expert_id);
 }  // namespace phi

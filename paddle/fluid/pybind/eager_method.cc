@@ -931,8 +931,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -995,8 +995,8 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (grad->initialized()) {
       if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
@@ -1414,10 +1414,10 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      if (self->tensor.has_allocation() &&
-              !dst_tensor->meta().is_contiguous() ||
-          !src_tensor->meta().is_contiguous()) {
-        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";
+      if (self->tensor.has_allocation() && self->tensor.initialized() &&
+          (!dst_tensor->meta().is_contiguous() ||
+           !src_tensor->meta().is_contiguous())) {
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
               "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -1450,7 +1450,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
           "value"));
     }
-
   } else if (value.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* src_tensor =
@@ -1484,7 +1483,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
         "current PaddlePaddle, please recompile and installPaddlePaddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
-
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "The `set_tensor()` method of (Dist)Tensor get a non "
@@ -1623,19 +1621,10 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_dim,
                                                         &out_is_view);
 
-  bool has_bool_index = false;
-  for (auto& index : transed_index) {
-    if (index.dtype() == phi::DataType::BOOL) {
-      has_bool_index = true;
-    }
-  }
   const int index_size = PyTuple_GET_SIZE(index_ptr);
-  const bool is_combined_bool = has_bool_index && index_size > 1;
-
   ApplyGetitem(index_size,
                pos_of_new_dim,
                rank_of_new_dim,
-               is_combined_bool,
                &transed_index,
                &tensor,
                &self->tensor,

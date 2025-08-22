@@ -379,16 +379,29 @@ class TestGridSamplerOp(OpTest):
             }
 
     def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(
+        self.check_grad_with_place(
+            core.CPUPlace(),
             ['X', 'Grid'],
             'Output',
             max_relative_error=0.01,
             numeric_grad_delta=self.numeric_grad_delta,
             check_pir=True,
         )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Grid'],
+                'Output',
+                max_relative_error=0.01,
+                numeric_grad_delta=self.numeric_grad_delta,
+                check_pir=True,
+            )
 
     def initTestCase(self):
         self.x_shape = (2, 3, 8, 8)

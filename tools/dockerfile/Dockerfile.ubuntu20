@@ -60,8 +60,7 @@ RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && ta
 ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
-  apt-get install -y python3.8 python3.8-dev python3.8-distutils \
-  python3.9 python3.9-dev python3.9-distutils \
+  apt-get install -y python3.9 python3.9-dev python3.9-distutils \
   python3.10 python3.10-dev python3.10-distutils \
   python3.11 python3.11-dev python3.11-distutils \
   python3.12 python3.12-dev \
@@ -72,8 +71,7 @@ RUN rm /usr/bin/python && ln -s /usr/bin/python3.9 /usr/bin/python && \
 
 WORKDIR /home
 RUN wget -q https://bootstrap.pypa.io/get-pip.py
-RUN python3.8 get-pip.py && \
-  python3.9 get-pip.py && \
+RUN python3.9 get-pip.py && \
   python3.10 get-pip.py && \
   python3.11 get-pip.py && \
   python3.12 get-pip.py
@@ -82,8 +80,7 @@ RUN python3.13t get-pip.py && \
   mv /usr/local/bin/pip3.13 /usr/local/bin/pip3.13t && \
   python3.13 get-pip.py
 
-RUN python3.8 -m pip install setuptools==69.5.1 && \
-  python3.9 -m pip install setuptools==69.5.1 && \
+RUN python3.9 -m pip install setuptools==69.5.1 && \
   python3.10 -m pip install setuptools==69.5.1 && \
   python3.11 -m pip install setuptools==69.5.1 && \
   python3.12 -m pip install --break-system-packages setuptools==69.5.1 && \
@@ -118,9 +115,7 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
     rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
 
-RUN pip3.8 --no-cache-dir install ipython==5.3.0 && \
-    pip3.8 --no-cache-dir install ipykernel==4.6.0 wheel && \
-    pip3.9 --no-cache-dir install ipython==5.3.0 && \
+RUN pip3.9 --no-cache-dir install ipython==5.3.0 && \
     pip3.9 --no-cache-dir install ipykernel==4.6.0 wheel && \
     pip3.10 --no-cache-dir install ipython==5.3.0 && \
     pip3.10 --no-cache-dir install ipykernel==4.6.0 wheel && \
@@ -134,17 +129,14 @@ RUN pip3.8 --no-cache-dir install ipython==5.3.0 && \
     python3.13 -m pip --no-cache-dir install ipykernel==4.6.0 wheel
 
 # For PaddleTest CE
-RUN pip3.8 --no-cache-dir install pytest && \
-    pip3.9 --no-cache-dir install pytest && \
+RUN pip3.9 --no-cache-dir install pytest && \
     pip3.10 --no-cache-dir install pytest && \
     pip3.11 --no-cache-dir install pytest && \
     pip3.12 --no-cache-dir install pytest && \
     python3.13 -m pip --no-cache-dir install pytest && \
     python3.13t -m pip --no-cache-dir install pytest
 
-RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
-    pip3.8 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
-    pip3.9 --no-cache-dir install pre-commit==2.17.0 && \
+RUN pip3.9 --no-cache-dir install pre-commit==2.17.0 && \
     pip3.9 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
     pip3.10 --no-cache-dir install pre-commit==2.17.0 && \
     pip3.10 --no-cache-dir install cpplint==1.6.0 clang-format==13.0.0 && \
@@ -155,19 +147,25 @@ RUN pip3.8 --no-cache-dir install pre-commit==2.17.0 && \
 
 COPY ./python/requirements.txt /root/
 COPY ./python/unittest_py/requirements.txt /home/
+COPY ./paddle/scripts/compile_requirements.txt /home/
 
-RUN pip3.8 --no-cache-dir install -r /root/requirements.txt && \
-    pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
+RUN pip3.9 --no-cache-dir install -r  /root/requirements.txt && \
     pip3.9 --no-cache-dir install -r  /home/requirements.txt && \
+    pip3.9 --no-cache-dir install -r /home/compile_requirements.txt && \
     pip3.10 --no-cache-dir install -r /root/requirements.txt && \
     pip3.10 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.10 --no-cache-dir install -r /home/compile_requirements.txt && \
     pip3.11 --no-cache-dir install -r /root/requirements.txt && \
     pip3.11 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.11 --no-cache-dir install -r /home/compile_requirements.txt && \
     pip3.12 --no-cache-dir install -r /root/requirements.txt && \
     pip3.12 --no-cache-dir install -r /home/requirements.txt && \
+    pip3.12 --no-cache-dir install -r /home/compile_requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /root/requirements.txt && \
     python3.13 -m pip --no-cache-dir install -r /home/requirements.txt && \
-    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt
+    python3.13 -m pip --no-cache-dir install -r /home/compile_requirements.txt && \
+    python3.13t -m pip --no-cache-dir install -r /root/requirements.txt && \
+    python3.13t -m pip --no-cache-dir install -r /home/compile_requirements.txt
     # python3.13t -m pip --no-cache-dir install -r /home/requirements.txt
 
 

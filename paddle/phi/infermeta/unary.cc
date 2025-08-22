@@ -1162,8 +1162,8 @@ void EighInferMeta(const MetaTensor& x,
       input_dim[rank - 2],
       input_dim[rank - 1],
       common::errors::InvalidArgument(
-          "Eigh op is designed for square matrix, consequently"
-          "inner-most 2 dimensions of Input(X) should be symmetric."
+          "Eigh op is designed for square matrix, consequently "
+          "inner-most 2 dimensions of Input(X) should be symmetric. "
           "But received X's shape[-2] = %d and shape[-1] = %d.",
           input_dim[rank - 2],
           input_dim[rank - 1]));
@@ -1230,8 +1230,8 @@ void EigvalshInferMeta(const MetaTensor& x,
       input_dim[rank - 2],
       input_dim[rank - 1],
       errors::InvalidArgument(
-          "Eigvalsh op is designed for square matrix, consequently"
-          "inner-most 2 dimensions of Input(X) should be symmetric."
+          "Eigvalsh op is designed for square matrix, consequently "
+          "inner-most 2 dimensions of Input(X) should be symmetric. "
           "But received X's shape[-2] = %d and shape[-1] = %d.",
           input_dim[rank - 2],
           input_dim[rank - 1]));
@@ -1395,7 +1395,7 @@ void ExpandModalityExpertIdInferMeta(const MetaTensor& expert_id,
           expert_id.dtype() == DataType::INT64,
       true,
       common::errors::InvalidArgument(
-          "The dtype of expert_id should be INT32 or INT64. But received"
+          "The dtype of expert_id should be INT32 or INT64. But received "
           "dtype=%s.",
           DataTypeToString(expert_id.dtype())));
 
@@ -1652,7 +1652,7 @@ void FlattenInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_GE(
         stop_axis,
         start_axis,
-        common::errors::InvalidArgument("The stop_axis should be greater"
+        common::errors::InvalidArgument("The stop_axis should be greater "
                                         "than or equal to start_axis."));
   }
 
@@ -1985,7 +1985,7 @@ void FoldInferMeta(const MetaTensor& x,
       in_dims[1] % (kernel_sizes[0] * kernel_sizes[1]),
       0,
       common::errors::InvalidArgument(
-          "Expected size of input's dimension 1 to be divisible by the"
+          "Expected size of input's dimension 1 to be divisible by the "
           "product of kernel_size, but got input.size(1)=%d and "
           "kernel_size=( %d"
           ", %d).",
@@ -6063,7 +6063,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(axis.empty(),
                       true,
                       common::errors::InvalidArgument(
-                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "The Input(X) with 0-D Tensor, axis must be None. "
                           "But now the axis is %d.",
                           axis[0]));
   }
@@ -6164,7 +6164,7 @@ void UniqueRawInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(axis.empty(),
                       true,
                       common::errors::InvalidArgument(
-                          "The Input(X) with 0-D Tensor, axis must be None"
+                          "The Input(X) with 0-D Tensor, axis must be None. "
                           "But now the axis is %d.",
                           axis[0]));
   }
@@ -6333,7 +6333,7 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "The x tensor of quant op must be 2D, but got[%d]", x_dims.size()));
 
-  if (algo == "w4a8") {
+  if (algo == "w4a8" || algo == "w4afp8") {
     PADDLE_ENFORCE_EQ(
         x_dims[0] % 32,
         0,
@@ -6379,10 +6379,12 @@ void WeightQuantizeInferMeta(const MetaTensor& x,
     dim_out = std::vector<int64_t>({x_dims[1] / 2, x_dims[0]});
   } else if (algo == "w4a8") {
     dim_out = vectorize(x_dims);
+  } else if (algo == "w4afp8") {
+    dim_out = vectorize(x_dims);
   } else {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8', 'w4a8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo));
   }
   out->set_dims(common::make_ddim(dim_out));

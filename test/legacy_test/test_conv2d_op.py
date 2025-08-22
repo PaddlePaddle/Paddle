@@ -483,7 +483,7 @@ class TestConv2DOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'data_format': self.data_format,
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,
@@ -726,7 +726,6 @@ class TestCUDNNExhaustiveSearch(TestConv2DOp):
 
 
 class TestConv2DOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -817,7 +816,7 @@ class TestConv2DOp_v2(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'data_format': self.data_format,
             'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
             'exhaustive_search': self.exhaustive_search,

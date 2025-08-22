@@ -17,7 +17,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import OpTest, convert_float_to_uint16, get_devices
 
 import paddle
 from paddle.base import core
@@ -1222,9 +1222,7 @@ class TestSetValueValueShape4(TestSetValueApi):
     def set_value(self):
         self.value = np.array(
             [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
-        ).astype(
-            self.dtype
-        )  # shape is (3,4)
+        ).astype(self.dtype)  # shape is (3,4)
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
@@ -1277,7 +1275,7 @@ class TestSetValueValueShape6(TestSetValueApi):
         return x
 
     def test_api(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
 
             static_out = self._run_static()

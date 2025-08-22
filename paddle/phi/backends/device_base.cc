@@ -37,7 +37,7 @@ size_t DeviceInterface::GetComputeCapability(size_t dev_id) {
 }
 
 DeviceProp& DeviceInterface::GetDeviceProperties(size_t dev_id) {
-  DeviceProp prop;
+  static DeviceProp prop;
   VLOG(10) << Type() << " get device properties " << 0;
   return prop;
 }
@@ -71,6 +71,16 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
            << 0 << "]";
   return {0, 0, 0};
+}
+
+bool DeviceInterface::IsFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is float16 supported: " << false;
+  return false;
+}
+
+bool DeviceInterface::IsBFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is bfloat16 supported: " << false;
+  return false;
 }
 
 void* DeviceInterface::InitEigenDevice(const Place& place,
@@ -448,6 +458,30 @@ void DeviceInterface::ProfilerStopTracing(phi::TraceEventCollector* collector,
 
 void DeviceInterface::ProfilerCollectTraceData(
     phi::TraceEventCollector* collector, uint64_t start_ns, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::InitBlasHandle(size_t dev_id,
+                                     void** blas_handle,
+                                     phi::stream::stream_t stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::BlasSetMathMode(size_t dev_id,
+                                      void* blas_handle,
+                                      int math_mode) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::InitBlasLtHandle(size_t dev_id, void** blaslt_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasHandle(size_t dev_id, void* blas_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
   INTERFACE_UNIMPLEMENT;
 }
 

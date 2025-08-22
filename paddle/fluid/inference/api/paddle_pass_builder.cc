@@ -326,10 +326,18 @@ void GpuPassStrategy::EnableONEDNN() {
 }
 
 void GpuPassStrategy::EnableMkldnnBfloat16() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnBfloat16);
+  EnableOnednnBfloat16();
+}
+void GpuPassStrategy::EnableOnednnBfloat16() {
   LOG(ERROR) << "GPU not support MKL-DNN bfloat16";
 }
 
 void GpuPassStrategy::EnableMkldnnInt8() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnInt8);
+  EnableOnednnInt8();
+}
+void GpuPassStrategy::EnableOnednnInt8() {
   LOG(ERROR) << "GPU not support MKL-DNN int8";
 }
 
@@ -411,6 +419,10 @@ void CpuPassStrategy::DisableONEDNN() {
 }
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnBfloat16);
+  EnableOnednnBfloat16();
+}
+void CpuPassStrategy::EnableOnednnBfloat16() {
 #ifdef PADDLE_WITH_DNNL
   if (!use_onednn_bfloat16_) {
     passes_.emplace_back("fc_onednn_pass");
@@ -427,6 +439,10 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 }
 
 void CpuPassStrategy::EnableMkldnnInt8() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EnableOnednnInt8);
+  EnableOnednnInt8();
+}
+void CpuPassStrategy::EnableOnednnInt8() {
 #ifdef PADDLE_WITH_DNNL
   if (!use_onednn_int8_) {
     passes_.clear();
@@ -498,7 +514,7 @@ void CpuPassStrategy::DisableMkldnnFcPasses() {
 void CpuPassStrategy::DisableOnednnFcPasses() {
 #ifdef PADDLE_WITH_DNNL
   if (!disable_onednn_fc_passes_) {
-    EraseFcMkldnnPasses();
+    EraseFcOnednnPasses();
   }
   disable_onednn_fc_passes_ = true;
 #else
@@ -507,6 +523,10 @@ void CpuPassStrategy::DisableOnednnFcPasses() {
 }
 
 void CpuPassStrategy::EraseFcMkldnnPasses() {
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EraseFcOnednnPasses);
+  EraseFcOnednnPasses();
+}
+void CpuPassStrategy::EraseFcOnednnPasses() {
   std::vector<std::string> fc_passes_to_erase(
       {"fc_onednn_pass", "fc_act_onednn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
@@ -656,7 +676,7 @@ const std::vector<std::string> kPirXpuPasses{
     "group_norm_silu_fuse_pass",
     "fc_xpu_fuse_pass"};
 
-const std::vector<std::string> kPirMkldnnPasses {
+const std::vector<std::string> kPirOnednnPasses {
   "add_shadow_output_after_dead_parameter_pass",
       "delete_quant_dequant_linear_op_pass",      //
       "delete_weight_dequant_linear_op_pass",     //
@@ -698,7 +718,7 @@ const std::vector<std::string> kPirMkldnnPasses {
       "onednn_placement_pass",                //
 };
 
-const std::vector<std::string> kPirMkldnnBf16Passes{
+const std::vector<std::string> kPirOnednnBf16Passes{
     "add_shadow_output_after_dead_parameter_pass",
     "cpu_bfloat16_placement_pass",
     "cpu_bfloat16_pass",

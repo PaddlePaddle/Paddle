@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -257,11 +257,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)

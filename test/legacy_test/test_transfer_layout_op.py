@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base
@@ -75,11 +75,7 @@ class TestTransferLayoutOpGpu(unittest.TestCase):
                 y = softmax_with_data_format(x, data_format='NCHW')
                 z = softmax_with_data_format(y, data_format='NHWC')
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             ret = exe.run(

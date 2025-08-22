@@ -35,7 +35,7 @@ class TestReshapeBf16Op(OpTest):
         self.inputs = {'X': self.input_data}
         self.attrs = {
             'shape': self.new_shape,
-            'use_mkldnn': self.use_onednn,
+            'use_onednn': self.use_onednn,
             'mkldnn_data_type': self.onednn_data_type,
         }
         self.outputs = {

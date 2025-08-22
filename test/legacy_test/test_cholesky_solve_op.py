@@ -106,9 +106,7 @@ class TestCholeskySolveOp(OpTest):
         self.y_shape = [15, 15]
         self.x_shape = [15, 5]
         self.upper = False
-        self.dtype = (
-            np.float64
-        )  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
+        self.dtype = np.float64  # Here cholesky_solve Op only supports float64/float32 type, please check others if Op supports more types.
 
     # get scipy result
     def set_output(self):

@@ -32,7 +32,7 @@ def set_config(op_name, input_shapes, enable_gpu=False):
         config.gpu_device_id()
     else:
         config.disable_gpu()
-        config.enable_mkldnn()
+        config.enable_onednn()
     config.switch_use_feed_fetch_ops(False)
     config.switch_specify_input_names(True)
     config.switch_ir_optim(True)

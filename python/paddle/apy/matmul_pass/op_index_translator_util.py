@@ -160,9 +160,9 @@ class CinnOpReshapeCodeGen:
         offset_expr = " + ".join(
             ap.map(lambda elts: " * ".join(elts), var_name_and_dims_list)
         )
-        assert (
-            len(self.output_properties[0].symbolic_shape) == 1
-        ), "len(self.output_properties[0]) should be 1"
+        assert len(self.output_properties[0].symbolic_shape) == 1, (
+            "len(self.output_properties[0]) should be 1"
+        )
         return [
             index_code_gen_value_util.IndexCodeGenValue([f"({offset_expr})"])
         ]

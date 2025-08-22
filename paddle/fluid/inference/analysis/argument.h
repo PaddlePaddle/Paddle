@@ -193,12 +193,12 @@ struct Argument {
   // whether to mute all logs in inference.
   DECL_ARGUMENT_FIELD(disable_logs, DisableLogs, bool);
 
-  // Pass a set of op types to enable its mkldnn kernel
-  DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types,
-                      MKLDNNEnabledOpTypes,
+  // Pass a set of op types to enable its onednn kernel
+  DECL_ARGUMENT_FIELD(onednn_enabled_op_types,
+                      ONEDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
-  // The cache capacity of different input shapes for mkldnn.
-  DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
+  // The cache capacity of different input shapes for onednn.
+  DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, OnednnCacheCapacity, int);
 
 #ifdef PADDLE_WITH_DNNL
   // A set of op types to enable their quantized kernels
@@ -219,7 +219,7 @@ struct Argument {
                       Bfloat16EnabledOpTypes,
                       std::unordered_set<std::string>);
 
-  DECL_ARGUMENT_FIELD(use_onednn_int8, UseMkldnnInt8, bool);
+  DECL_ARGUMENT_FIELD(use_onednn_int8, UseOnednnInt8, bool);
 #endif
 
   // Passed from config.

@@ -528,7 +528,6 @@ class TestResizeLinearOpUint8(OpTest):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
-
     def test_error(self):
         with (
             paddle_static_guard(),

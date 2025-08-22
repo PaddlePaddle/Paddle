@@ -44,9 +44,9 @@ def _gather_in_dygraph(
     else:
         gather_list = [tensor for _ in range(nranks)]
 
-    assert (
-        len(gather_list) == nranks
-    ), f" gather_list length {len(gather_list)} and nrankd {nranks} not equal"
+    assert len(gather_list) == nranks, (
+        f" gather_list length {len(gather_list)} and nrankd {nranks} not equal"
+    )
 
     task = group.process_group.gather(
         tensor, gather_list, dst_rank_in_group, sync_op, use_calc_stream
@@ -105,9 +105,9 @@ def gather(
             >>> # [] (2 GPUs, out for rank 1)
     """
 
-    assert (
-        framework.in_dynamic_mode()
-    ), "gather doesn't support static graph mode yet."
+    assert framework.in_dynamic_mode(), (
+        "gather doesn't support static graph mode yet."
+    )
 
     if _warn_cur_rank_not_in_group(group):
         return
@@ -127,9 +127,9 @@ def gather(
             )
         gather_list = []
     else:
-        assert (
-            gather_list is not None
-        ), "gather_list must not be none for dst rank"
+        assert gather_list is not None, (
+            "gather_list must not be none for dst rank"
+        )
 
     group = _get_global_group() if group is None else group
     dst_rank_in_group = _get_or_throw_group_rank(dst, group)

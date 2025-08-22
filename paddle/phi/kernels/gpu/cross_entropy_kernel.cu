@@ -1395,6 +1395,14 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    int axis,
                                    DenseTensor* softmax,
                                    DenseTensor* loss) {
+  const int rank = logits.dims().size();
+  const int64_t axis_v = phi::funcs::CanonicalAxis(axis, rank);
+  const int64_t d = phi::funcs::SizeFromAxis<int64_t>(axis_v, logits.dims());
+  PADDLE_ENFORCE_LE(d,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "(PreconditionNotMet) The num of"
+                        " the classes should be <= INT_MAX(2147483647)"));
   if (softmax->numel() == 0) {
     // When soft_label is False, the axis column cannot be 0. Other dimensions
     // are the same, so the numel of softmax and loss are both 0.

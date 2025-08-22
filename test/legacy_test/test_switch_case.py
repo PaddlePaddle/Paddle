@@ -16,17 +16,16 @@ import unittest
 from functools import partial
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.base.backward import append_backward
 
 paddle.enable_static()
 
 
 class TestAPISwitchCase(unittest.TestCase):
-
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -84,11 +83,7 @@ class TestAPISwitchCase(unittest.TestCase):
                 branch_fns=[(1, fn_1), (3, fn_2), (2, fn_3)],
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -171,11 +166,7 @@ class TestAPISwitchCase(unittest.TestCase):
                 branch_fns=[(1, fn_1), (3, fn_2), (2, fn_3)],
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -234,11 +225,7 @@ class TestAPISwitchCase(unittest.TestCase):
             )
             grad_list = append_backward(out)
 
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         exe = base.Executor(place)
         if paddle.framework.in_pir_mode():
             for p, g in grad_list:
@@ -370,11 +357,7 @@ class TestAPISwitchCase(unittest.TestCase):
                 index_1, ((1, fn_1), (2, fn_2)), fn_3
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
 
@@ -387,7 +370,6 @@ class TestAPISwitchCase(unittest.TestCase):
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
-
     def test_nested_switch_case(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -469,11 +451,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 branch_index=index_3, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -566,11 +544,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                 branch_index=index_3, branch_fns={1: fn_1, 2: fn_2, 3: fn_3}
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
 
             res = exe.run(
@@ -604,7 +578,6 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
 # test TypeError and ValueError of api switch_case
 class TestAPISwitchCase_Error(unittest.TestCase):
-
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(

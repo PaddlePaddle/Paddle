@@ -85,7 +85,7 @@ def set_config(args):
     # To test cpu backend, just uncomment the following 2 lines.
     # config.switch_ir_optim(True)
     # config.disable_gpu()
-    # config.enable_mkldnn()
+    # config.enable_onednn()
     return config
 
 
