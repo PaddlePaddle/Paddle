@@ -28,20 +28,17 @@ endforeach()
 
 set(GPU_ONLY_DISTRIBUTED_TESTS test_sharded_state_dict test_strategy_conversion)
 
-if(NOT
-   (WITH_DISTRIBUTE
-    AND WITH_GPU
-    AND LINUX))
-  get_property(ALL_TESTS GLOBAL PROPERTY TESTS)
-
+if(NOT (WITH_DISTRIBUTE AND WITH_GPU))
+  get_property(
+    ALL_TESTS
+    DIRECTORY
+    PROPERTY TESTS)
   foreach(CURRENT_TEST_NAME ${ALL_TESTS})
-    # Check if the current test name starts with one of our specified suite names
     foreach(SUITE_NAME ${GPU_ONLY_DISTRIBUTED_TESTS})
-      # Use string STARTSWITH for matching
-      if(CURRENT_TEST_NAME STREQUAL SUITE_NAME OR CURRENT_TEST_NAME MATCHES
-                                                  "^${SUITE_NAME}\\.")
+      if("${CURRENT_TEST_NAME}" STREQUAL "${SUITE_NAME}"
+         OR "${CURRENT_TEST_NAME}" MATCHES "^${SUITE_NAME}\\.")
         message(STATUS "Disabling GPU/Dist test: ${CURRENT_TEST_NAME}")
-        set_property(TEST ${CURRENT_TEST_NAME} PROPERTY DISABLED TRUE)
+        set_tests_properties("${CURRENT_TEST_NAME}" PROPERTIES DISABLED TRUE)
       endif()
     endforeach()
   endforeach()
