@@ -28,60 +28,180 @@ def convert_place_to_device(place):
     return place_str
 
 
+def devices_and_type():
+    devices = {paddle.CPUPlace(): 0, "cpu": 0}
+    if paddle.device.is_compiled_with_cuda():
+        # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
+        devices[paddle.CUDAPlace(0)] = 1
+        devices['gpu:0'] = 1
+    if paddle.device.is_compiled_with_xpu():
+        devices[paddle.device.XPUPlace(0)] = 3
+    if paddle.device.is_compiled_with_ipu():
+        devices[paddle.device.IPUPlace()] = 4
+    return devices
+
+
+def check_dtype_device(tensor, dtype, device):
+    if isinstance(dtype, str):
+        assert tensor.dtype == getattr(
+            paddle, dtype
+        ), f"expect {dtype}, but got {tensor.dtype}"
+    else:
+        assert tensor.dtype == dtype, f"expect {dtype}, but got {tensor.dtype}"
+
+    place = convert_place_to_device(tensor.place)
+    if not isinstance(device, str):
+        device = convert_place_to_device(device)
+    assert place == device, f"expect {device}, but got {place}"
+
+
 class Test_Conv3D(unittest.TestCase):
 
-    def check(self, tensor, dtype, device):
-        if isinstance(dtype, str):
-            assert tensor.dtype == getattr(
-                paddle, dtype
-            ), f"expect {dtype}, but got {tensor.dtype}"
-        else:
-            assert (
-                tensor.dtype == dtype
-            ), f"expect {dtype}, but got {tensor.dtype}"
-
-        place = convert_place_to_device(tensor.place)
-        if not isinstance(device, str):
-            device = convert_place_to_device(device)
-        assert place == device, f"expect {device}, but got {place}"
-
     def setUp(self):
-        self.devices = [paddle.CPUPlace(), "cpu"]
-        if paddle.device.is_compiled_with_cuda():
-            count = paddle.device.cuda.device_count()
-            self.devices.extend([f"gpu:{i}" for i in range(count)])
-            self.devices.extend([paddle.CUDAPlace(i) for i in range(count)])
-        if paddle.device.is_compiled_with_xpu():
-            self.devices.append(paddle.device.XPUPlace(0))
-        if paddle.device.is_compiled_with_ipu():
-            self.devices.append(paddle.device.IPUPlace())
-
+        self.devices = devices_and_type()
         self.dtypes = ["float32", paddle.float32, 'float64', paddle.float64]
+        self.op_name = 'pd_op.memcpy'
 
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
             x_var = paddle.randn([10, 16, 32, 32, 32], dtype=dtype).to(device)
             conv = nn.Conv3D(16, 33, 3, dtype=dtype, device=device)
-            self.check(conv.weight, dtype, device)
-            self.check(conv.bias, dtype, device)
+            check_dtype_device(conv.weight, dtype, device)
+            check_dtype_device(conv.bias, dtype, device)
 
             y_var = conv(x_var)
-            self.check(y_var, dtype, device)
+            check_dtype_device(y_var, dtype, device)
 
     def test_dygraph(self):
         for dtype in self.dtypes:
-            for device in self.devices:
+            for device, _ in self.devices.items():
                 with self.subTest(msg=f"Testing {dtype} on {device}"):
                     self.run_test_dygraph_one(dtype=dtype, device=device)
+
+    def run_test_static_one(self, dtype, device, dst_place_type):
+        with static_guard():
+            main = base.Program()
+            start = base.Program()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, start),
+            ):
+                input_shape = (-1, 16, -1, -1, -1)
+
+                x_var = paddle.static.data("input", input_shape, dtype=dtype)
+                conv = paddle.nn.Conv3D(
+                    in_channels=16,
+                    out_channels=33,
+                    kernel_size=3,
+                    dtype=dtype,
+                    device=device,
+                )
+                y_var = conv(x_var)
+            if isinstance(dtype, str):
+                dtype_str = dtype
+            else:
+                dtype_str = str(dtype).replace('paddle.', '')
+            input = np.random.randn(10, 16, 32, 32, 32).astype(dtype_str)
+
+            feed_dict = {"input": input}
+            exe = base.Executor(device)
+            exe.run(start)
+            (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+            assert y_np.dtype == dtype_str
+            for op in main.global_block().ops:
+                if op.name() == self.op_name:
+                    assert (
+                        op.attrs()['dst_place_type'] == dst_place_type
+                    ), f"expect {dst_place_type}, but got {op.attrs()['dst_place_type']}"
+
+    def test_static(self):
+        for dtype in self.dtypes:
+            for device, dst_place_type in self.devices.items():
+                with self.subTest(msg=f"Testing {dtype} on {device}"):
+                    self.run_test_static_one(
+                        dtype=dtype,
+                        device=device,
+                        dst_place_type=dst_place_type,
+                    )
+
+
+class Test_Conv3d(unittest.TestCase):
+
+    def setUp(self):
+        self.devices = devices_and_type()
+        self.dtypes = ["float32", paddle.float32, 'float64', paddle.float64]
+        self.op_name = 'pd_op.memcpy'
+
+    def run_test_dygraph_one(self, dtype, device):
+        with dygraph_guard():
+            x_var = paddle.randn([10, 16, 32, 32, 32], dtype=dtype).to(device)
+            conv = nn.Conv3d(16, 33, 3, dtype=dtype, device=device)
+            check_dtype_device(conv.weight, dtype, device)
+            check_dtype_device(conv.bias, dtype, device)
+
+            y_var = conv(x_var)
+            check_dtype_device(y_var, dtype, device)
+
+    def test_dygraph(self):
+        for dtype in self.dtypes:
+            for device, _ in self.devices.items():
+                with self.subTest(msg=f"Testing {dtype} on {device}"):
+                    self.run_test_dygraph_one(dtype=dtype, device=device)
+
+    def run_test_static_one(self, dtype, device, dst_place_type):
+        with static_guard():
+            main = base.Program()
+            start = base.Program()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, start),
+            ):
+                input_shape = (-1, 16, -1, -1, -1)
+
+                x_var = paddle.static.data("input", input_shape, dtype=dtype)
+                conv = paddle.nn.Conv3d(
+                    in_channels=16,
+                    out_channels=33,
+                    kernel_size=3,
+                    dtype=dtype,
+                    device=device,
+                )
+                y_var = conv(x_var)
+            if isinstance(dtype, str):
+                dtype_str = dtype
+            else:
+                dtype_str = str(dtype).replace('paddle.', '')
+            input = np.random.randn(10, 16, 32, 32, 32).astype(dtype_str)
+
+            feed_dict = {"input": input}
+            exe = base.Executor(device)
+            exe.run(start)
+            (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+            assert y_np.dtype == dtype_str
+            for op in main.global_block().ops:
+                if op.name() == self.op_name:
+                    assert (
+                        op.attrs()['dst_place_type'] == dst_place_type
+                    ), f"expect {dst_place_type}, but got {op.attrs()['dst_place_type']}"
+
+    def test_static(self):
+        for dtype in self.dtypes:
+            for device, dst_place_type in self.devices.items():
+                with self.subTest(msg=f"Testing {dtype} on {device}"):
+                    self.run_test_static_one(
+                        dtype=dtype,
+                        device=device,
+                        dst_place_type=dst_place_type,
+                    )
 
     def test_bias_dygraph(self):
         with dygraph_guard():
             x_var = paddle.randn([10, 16, 32, 32, 32])
-            conv = nn.Conv3D(16, 33, 3, bias=True)
+            conv = nn.Conv3d(16, 33, 3, bias=True)
             y_var = conv(x_var)
             assert isinstance(conv.bias, paddle.Tensor)
 
-            conv = nn.Conv3D(16, 33, 3, bias=False)
+            conv = nn.Conv3d(16, 33, 3, bias=False)
             y_var = conv(x_var)
             assert conv.bias is None
 
@@ -97,7 +217,7 @@ class Test_Conv3D(unittest.TestCase):
                 input_shape = (-1, 16, -1, -1, -1)
 
                 x_var = paddle.static.data("input", input_shape)
-                conv = nn.Conv3D(16, 33, 3, bias=False)
+                conv = nn.Conv3d(16, 33, 3, bias=False)
                 y_var = conv(x_var)
                 assert conv.bias is None
 

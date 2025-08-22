@@ -91,6 +91,7 @@ from .layer.conv import (
     Conv2D,
     Conv2DTranspose,
     Conv3D,
+    Conv3d,
     Conv3DTranspose,
 )
 from .layer.distance import PairwiseDistance
@@ -272,6 +273,7 @@ __all__ = [
     'Layer',
     'TransformerDecoder',
     'Conv3D',
+    'Conv3d',
     'Tanh',
     'Conv3DTranspose',
     'Flatten',
