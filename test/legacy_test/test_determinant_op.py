@@ -136,6 +136,30 @@ class TestDeterminantOpCase8(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOpCase9(TestDeterminantOp):
+    def init_data(self):
+        self.case = np.random.rand(25, 2, 2).astype('float32')
+        # set 10 singular matrices
+        for i in range(10):
+            k = np.random.rand()
+            self.case[i, 1, :] = k * self.case[i, 0, :]
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase10(TestDeterminantOp):
+    def init_data(self):
+        self.case = np.random.rand(25, 3, 3).astype('float32')
+        # set 10 singular matrices
+        for i in range(10):
+            k1, k2 = np.random.rand(2)
+            self.case[i, 2, :] = (
+                k1 * self.case[i, 0, :] + k2 * self.case[i, 1, :]
+            )
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case)
+
+
 class TestDeterminantOp_ZeroSize(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
