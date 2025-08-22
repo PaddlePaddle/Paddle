@@ -282,9 +282,9 @@ class ImperativeQuantAware:
                 >>> # fake quant logical.
                 >>> imperative_qat.quantize(model)
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
 
         if self.fuse_conv_bn:
             fuse_utils.fuse_conv_bn(model)
@@ -368,25 +368,25 @@ class ImperativeQuantizeInputs:
             lambda bits: isinstance(bits, int) and bits >= 0 and bits <= 16
         )
         assert bits_check(weight_bits), "weight_bits should be 1, 2,... or 16."
-        assert bits_check(
-            activation_bits
-        ), "activation_bits should be 1, 2,... or 16."
+        assert bits_check(activation_bits), (
+            "activation_bits should be 1, 2,... or 16."
+        )
 
         layer_check = lambda method: method is None or issubclass(
             method, paddle.nn.Layer
         )
-        assert layer_check(
-            weight_preprocess_layer
-        ), "weight_preprocess should be nn.Layer."
-        assert layer_check(
-            act_preprocess_layer
-        ), "act_preprocess should be nn.Layer."
-        assert layer_check(
-            weight_quantize_layer
-        ), "weight_quantize should be nn.Layer."
-        assert layer_check(
-            act_quantize_layer
-        ), "act_quantize should be nn.Layer."
+        assert layer_check(weight_preprocess_layer), (
+            "weight_preprocess should be nn.Layer."
+        )
+        assert layer_check(act_preprocess_layer), (
+            "act_preprocess should be nn.Layer."
+        )
+        assert layer_check(weight_quantize_layer), (
+            "weight_quantize should be nn.Layer."
+        )
+        assert layer_check(act_quantize_layer), (
+            "act_quantize should be nn.Layer."
+        )
 
         self._kwargs = {
             "weight_quantize_type": weight_quantize_type,
@@ -413,9 +413,9 @@ class ImperativeQuantizeInputs:
             None
         """
 
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
 
         for name, cur_layer in model.named_sublayers():
             if not isinstance(cur_layer, self._quantizable_layer_type) or (
@@ -438,9 +438,9 @@ class ImperativeQuantizeInputs:
             if isinstance(layer, value):
                 quant_layer_name = 'Quantized' + key
                 break
-        assert (
-            quant_layer_name is not None
-        ), f"The layer {layer.full_name()} is unsupported to be quantized."
+        assert quant_layer_name is not None, (
+            f"The layer {layer.full_name()} is unsupported to be quantized."
+        )
 
         return quant_layers.__dict__[quant_layer_name](layer, **self._kwargs)
 
@@ -476,9 +476,9 @@ class ImperativeQuantizeOutputs:
         Returns:
             None
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
 
         for cur_name, cur_layer in model.named_sublayers():
             if '_act_preprocess' in cur_name:
@@ -531,9 +531,9 @@ class ImperativeQuantizeOutputs:
         Returns:
             None
         """
-        assert isinstance(
-            model, paddle.nn.Layer
-        ), "The model must be the instance of paddle.nn.Layer."
+        assert isinstance(model, paddle.nn.Layer), (
+            "The model must be the instance of paddle.nn.Layer."
+        )
 
         if input_spec:
             paddle.jit.to_static(model, input_spec=input_spec)

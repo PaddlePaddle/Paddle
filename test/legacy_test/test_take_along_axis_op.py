@@ -462,6 +462,42 @@ class TestTakeAlongAxis_ZeroSize(OpTest):
             )
 
 
+class TestTakeAlongAxisInt16(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.int16
+        self.x_type = "int16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """int16 does not require and allow for grad check"""
+        pass
+
+
+class TestTakeAlongAxisUInt8(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.uint8
+        self.x_type = "uint8"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """uint8 does not require and allow for grad check"""
+        pass
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

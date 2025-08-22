@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,15 @@ import unittest
 import collective.test_communication_api_base as test_base
 
 
-class TestReshardRToS(test_base.CommunicationTestDistBase):
+class TestReshardE2E(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=4, timeout=120)
 
-    def test_reshard_r_to_s(self):
+    def test_co_shard(self):
         self.run_test_case("co_shard.py")
+
+    def test_reshape_co_shard(self):
+        self.run_test_case("reshape_co_shard.py")
 
 
 if __name__ == "__main__":

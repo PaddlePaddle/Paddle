@@ -687,6 +687,37 @@ class TestSiluAPI(unittest.TestCase):
             F.silu(x_fp16)
 
 
+class TestSiluAPI_Compatibility(unittest.TestCase):
+    # test paddle.nn.Silu, paddle.nn.functional.silu
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [11, 17]).astype('float32')
+        self.place = get_device_place()
+
+    def test_static_api(self):
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', [11, 17])
+                out1 = F.silu(input=x)
+                m = paddle.nn.Silu()
+                out2 = m(x)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+            out_ref = self.x_np / (1 + np.exp(-self.x_np))
+            for r in res:
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x_np)
+        out1 = F.silu(input=x)
+        m = paddle.nn.Silu()
+        out2 = m(x)
+        out_ref = self.x_np / (1 + np.exp(-self.x_np))
+        for r in [out1, out2]:
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+
 class TestLogSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "logsigmoid"
@@ -2073,6 +2104,31 @@ class TestCeil_ZeroDim(TestCeil):
         self.shape = []
 
 
+class TestCeil_UInt8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestCeil_Int8(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestCeil_Int16(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestCeil_Int32(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestCeil_Int64(TestCeil):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestFloor(TestActivation):
     def setUp(self):
         self.op_type = "floor"
@@ -2132,6 +2188,31 @@ class TestFloor(TestActivation):
 class TestFloor_ZeroDim(TestFloor):
     def init_shape(self):
         self.shape = []
+
+
+class TestFloor_UInt8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.uint8
+
+
+class TestFloor_Int8(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int8
+
+
+class TestFloor_Int16(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int16
+
+
+class TestFloor_Int32(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestFloor_Int64(TestFloor):
+    def init_dtype(self):
+        self.dtype = np.int64
 
 
 class TestCos(TestActivation):

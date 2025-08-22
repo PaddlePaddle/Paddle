@@ -210,18 +210,18 @@ class TestSemiAutoParallelShardOptimizerAPI:
             if k == "master_weights":
                 assert isinstance(v, dict), v
                 for mk, mv in v.items():
-                    assert (
-                        mv.numpy().sum() == 0.0
-                    ), f"state_dict {k} in master_weights is not zero"
-                    assert (
-                        need_load_state_dict[k][mk].numpy().sum() == 0.0
-                    ), f"state_dict {k} in master_weights is not zero"
+                    assert mv.numpy().sum() == 0.0, (
+                        f"state_dict {k} in master_weights is not zero"
+                    )
+                    assert need_load_state_dict[k][mk].numpy().sum() == 0.0, (
+                        f"state_dict {k} in master_weights is not zero"
+                    )
             else:
                 assert v.numpy().sum() == 0.0, f"state_dict {k} is not zero"
                 assert k in need_load_state_dict, f"state_dict {k} is not found"
-                assert (
-                    need_load_state_dict[k].numpy().sum() == 0.0
-                ), f"state_dict {k} is not zero"
+                assert need_load_state_dict[k].numpy().sum() == 0.0, (
+                    f"state_dict {k} is not zero"
+                )
         dist.load_state_dict(need_load_state_dict, ckpt_path)
         opt.set_state_dict(need_load_state_dict)
         new_state_dict = opt.state_dict()

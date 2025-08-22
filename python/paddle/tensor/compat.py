@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import paddle
 from paddle import _C_ops
@@ -28,7 +28,12 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import (
+        Size2,
+    )
 
+
+from paddle import nn
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = [
@@ -67,6 +72,7 @@ def split(
         To use the original split of paddle, please consider `paddle.split`
 
     Examples:
+
         .. code-block:: python
 
             >>> import paddle
@@ -154,9 +160,9 @@ def split(
 
         if isinstance(split_size_or_sections, int):
             # check whether shape is divisible
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -187,9 +193,9 @@ def split(
                 "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode."
             )
         if isinstance(split_size_or_sections, int):
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -206,9 +212,9 @@ def split(
                 )
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(split_size_or_sections) <= input_shape[dim]
-                ), 'len(split_size_or_sections) must not be more than input.shape[dim].'
+                assert len(split_size_or_sections) <= input_shape[dim], (
+                    'len(split_size_or_sections) must not be more than input.shape[dim].'
+                )
             if paddle.utils._contain_var(split_size_or_sections):
                 split_size_or_sections = paddle.utils.get_int_tensor_list(
                     split_size_or_sections
@@ -258,3 +264,184 @@ def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
     """
     sign, logdet = _C_ops.slogdet_v2(x)
     return sign, logdet
+
+
+class SortRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
+def _check_out_status(
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
+    expect_multiple: bool = False,
+):
+    if out is None:
+        return
+    if not in_dynamic_mode():
+        raise RuntimeError(
+            "Using `out` static graph CINN backend is currently not supported. Directly return the tensor tuple instead.\n"
+        )
+    if expect_multiple:
+        if not isinstance(out, (tuple, list)) or len(out) != 2:
+            raise TypeError(
+                f"Expected a list or tuple of two tensors, got {type(out)} instead."
+            )
+        if not (
+            isinstance(out[0], paddle.Tensor)
+            and isinstance(out[1], paddle.Tensor)
+        ):
+            raise TypeError(
+                f"Expected Tensor type in the tuple/list, got ({type(out[0])}, {type(out[1])}) instead."
+            )
+    else:
+        if not isinstance(out, paddle.Tensor):
+            raise TypeError(f"Expected a Tensor, got {type(out)} instead.")
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={'x', 'axis'},
+    func_name="paddle.compat.sort",
+    correct_name='paddle.sort',
+)
+def sort(
+    input: Tensor,
+    dim: int = -1,
+    descending: bool = False,
+    stable: bool = False,
+    out=None,
+) -> SortRetType:
+    """
+
+    Sorts the input along the given dimension, and returns the sorted output and indices tensor. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
+
+    Args:
+        input (Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8, float16, bfloat16
+        dim (int, optional): Dimension to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when dim<0, it works the same way
+            as dim+R. Default is -1.
+        descending (bool, optional) : Descending is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is false.
+        stable (bool, optional): Whether to use stable sorting algorithm or not.
+            When using stable sorting algorithm, the order of equivalent elements
+            will be preserved. Default is False.
+        out (tuple, optional) : the output tuple/list of (Tensor, Tensor) that
+            can be optionally given to be used as output buffers
+
+    Returns:
+        SortRetType, a named tuple which contains `values` and `indices`, can be accessed through either indexing
+        (e.g. `result[0]` for values and `result[1]` for indices), or by `result.values` & `result.indices`
+
+    Examples:
+
+    .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[5,8,9,5],
+            ...                       [0,0,1,7],
+            ...                       [6,9,2,4]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.compat.sort(input=x, dim=-1)
+            >>> out2 = paddle.compat.sort(x, 1, descending=True)
+            >>> out1
+            SortRetType(values=Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[5., 5., 8., 9.],
+                    [0., 0., 1., 7.],
+                    [2., 4., 6., 9.]]), indices=Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[0, 3, 1, 2],
+                    [0, 1, 2, 3],
+                    [2, 3, 0, 1]]))
+            >>> out2
+            SortRetType(values=Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[9., 8., 5., 5.],
+                    [7., 1., 0., 0.],
+                    [9., 6., 4., 2.]]), indices=Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [[2, 1, 0, 3],
+                    [3, 2, 0, 1],
+                    [1, 0, 3, 2]]))
+    """
+    _check_out_status(out, expect_multiple=True)
+    outputs, indices = _C_ops.argsort(input, dim, descending, stable)
+    if out is None:
+        return SortRetType(values=outputs, indices=indices)
+    paddle.assign(outputs, out[0])
+    paddle.assign(indices, out[1])
+
+
+class Unfold(nn.Unfold):
+    """
+    A compatible version of paddle.nn.Unfold:
+    - The keyword arguments are in non-plural forms, example: `kernel_size` instead of kernel_sizes
+    - `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed. To use a more
+       input-flexible version of Unfold, please refer to `paddle.nn.Unfold`.
+    - All the input parameters allow `Tensor` or `pir.Value` as inputs, and will be converted to list
+    Other aspects are the same. See ``paddle.nn.Unfold`` for more details.
+    Parameters:
+        kernel_size(int|list|tuple|Tensor): The size of convolution kernel, should be [k_h, k_w]
+            or an integer k treated as [k, k].
+        stride(int|list|tuple|Tensor, optional): The strides, should be [stride_h, stride_w]
+            or an integer stride treated as [sride, stride]. For default, strides will be [1, 1].
+        padding(int|list|tuple|Tensor, optional): The paddings of each dimension, should be
+            a single integer or [padding_h, padding_w]. If [padding_h, padding_w] was given, it will expanded to
+            [padding_h, padding_w, padding_h, padding_w]. If an integer padding was given,
+            [padding, padding, padding, padding] will be used. By default, paddings will be 0.
+        dilation(int|list|tuple|Tensor, optional): The dilations of convolution kernel, should be
+            [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
+            For default, it will be [1, 1].
+    Examples:
+        .. code-block:: python
+            >>> import paddle
+            >>> x = paddle.randn((100, 3, 224, 224))
+            >>> unfold = paddle.compat.Unfold(kernel_size=[3, 3])
+            >>> result = unfold(x)
+            >>> print(result.shape)
+            [100, 27, 49284]
+    """
+
+    kernel_sizes: Size2
+    dilations: Size2
+    paddings: Size2
+    strides: Size2
+
+    @ForbidKeywordsDecorator(
+        illegal_keys={"kernel_sizes", "dilations", "paddings", "strides"},
+        func_name="paddle.compat.Unfold",
+        correct_name="paddle.nn.Unfold",
+    )
+    def __init__(
+        self,
+        kernel_size: Size2,
+        dilation: Size2 = 1,
+        padding: Size2 = 0,
+        stride: Size2 = 1,
+    ) -> None:
+        super().__init__(kernel_size, dilation, padding, stride)
+
+    def forward(self, input: Tensor) -> Tensor:
+        def to_list_if_necessary(x, size_check=False):
+            res = x
+            if in_dynamic_mode() and isinstance(
+                x, (paddle.pir.Value, paddle.Tensor)
+            ):
+                res = x.tolist()
+            else:
+                if not isinstance(x, (list, tuple, int)):
+                    raise TypeError(
+                        "paddle.compat.Unfold does not allow paddle.Tensor or pir.Value as inputs in static graph mode."
+                    )
+            if size_check and isinstance(res, (list, tuple)) and len(res) > 2:
+                raise ValueError(
+                    f"The `padding` field of paddle.compat.Unfold can only have size 1 or 2, now len={len(res)}. \nDid you mean to use paddle.nn.Unfold() instead?"
+                )
+            return res
+
+        return nn.functional.unfold(
+            input,
+            kernel_sizes=to_list_if_necessary(self.kernel_sizes),
+            strides=to_list_if_necessary(self.strides),
+            paddings=to_list_if_necessary(self.paddings, size_check=True),
+            dilations=to_list_if_necessary(self.dilations),
+            name=self.name,
+        )

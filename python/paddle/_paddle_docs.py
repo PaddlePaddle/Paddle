@@ -16,27 +16,49 @@ import inspect
 
 import paddle
 
+from .base.dygraph.generated_tensor_methods_patch import methods_map
+
 # Add docstr for some C++ functions in paddle
 _add_docstr = paddle.base.core.eager._add_docstr
+_code_template = R"""
+from __future__ import annotations
+
+{}:
+    ...
+
+"""
 
 
-def add_doc_all(method: str, docstr: str) -> None:
+def _parse_function_signature(func_name: str, code: str) -> inspect.Signature:
+    code = _code_template.format(code.strip())
+    code_obj = compile(code, "<string>", "exec")
+    globals = {}
+    eval(code_obj, globals)
+    return inspect.signature(globals[func_name])
+
+
+# sundong
+def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
     """
     Add docstr for function (paddle.*) and method (paddle.Tensor.*) if method exists
     """
+    python_api_sig = _parse_function_signature(func_name, func_def)
     for module in [paddle, paddle.Tensor]:
-        if hasattr(module, method):
-            func = getattr(module, method)
+        if hasattr(module, func_name):
+            func = getattr(module, func_name)
             if inspect.isfunction(func):
                 func.__doc__ = docstr
             elif inspect.ismethod(func):
                 func.__self__.__doc__ = docstr
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
+    methods_dict = dict(methods_map)
+    if func_name in methods_dict.keys():
+        tensor_func = methods_dict[func_name]
+        tensor_func.__signature__ = python_api_sig
 
 
-__all__ = ['add_doc_all']
-add_doc_all(
+add_doc_and_signature(
     "amin",
     r"""
     Computes the minimum of tensor elements over the given axis
@@ -161,9 +183,17 @@ add_doc_all(
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
 """,
+    """
+def amin(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
 )
 
-add_doc_all(
+add_doc_and_signature(
     "amax",
     """
     Computes the maximum of tensor elements over the given axis.
@@ -288,4 +318,292 @@ add_doc_all(
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """,
+    """
+def amax(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+""",
 )
+
+add_doc_and_signature(
+    "all",
+    """
+    Computes the ``logical and`` of tensor elements over the given dimension.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical and`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor: Results the ``logical and`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+            >>> # x is a bool Tensor with following elements:
+            >>> #    [[True, False]
+            >>> #     [True, True]]
+            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            >>> x
+            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 0],
+             [1, 1]])
+            >>> x = paddle.cast(x, 'bool')
+
+            >>> # out1 should be False
+            >>> out1 = paddle.all(x)
+            >>> out1
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+
+            >>> # out2 should be [True, False]
+            >>> out2 = paddle.all(x, axis=0)
+            >>> out2
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+
+            >>> # keepdim=False, out3 should be [False, True], out.shape should be (2,)
+            >>> out3 = paddle.all(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True ])
+
+            >>> # keepdim=True, out4 should be [[False], [True]], out.shape should be (2, 1)
+            >>> out4 = paddle.all(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[False],
+             [True ]])
+
+    """,
+    """
+    def all(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+) -> Tensor
+    """,
+)
+
+# zhengsheng
+add_doc_and_signature(
+    "isfinite",
+    """
+    Return whether every element of input tensor is finite number or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isfinite(input=tensor_x)`` is equivalent to ``isfinite(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
+    >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isfinite(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , True , False, True , False, False])
+    """,
+    """
+def isfinite(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "isinf",
+    """
+    Return whether every element of input tensor is `+/-INF` or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isinf(input=tensor_x)`` is equivalent to ``isinf(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `+/-INF` or not.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isinf(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, False, True , False, False, False])
+    """,
+    """
+def isinf(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "isnan",
+    """
+    Return whether every element of input tensor is `NaN` or not.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``isnan(input=tensor_x)`` is equivalent to ``isnan(x=tensor_x)``.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64, int32, int64, complex64, complex128.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        `Tensor`, the bool result which shows every element of `x` whether it is `NaN` or not.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+            >>> out = paddle.isnan(x)
+            >>> out
+            Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, False, False, False, True , True ])
+    """,
+    """
+def isnan(
+    x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+# liuyi
+add_doc_and_signature(
+    "any",
+    """
+    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``any(input=tensor_x, dim=1)`` is equivalent to ``any(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
+            alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+            alias: ``dim``.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # type: ignore
+
+            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            >>> x = paddle.assign(x)
+            >>> x
+            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 0],
+             [1, 1]])
+            >>> x = paddle.cast(x, 'bool')
+            >>> # x is a bool Tensor with following elements:
+            >>> #    [[True, False]
+            >>> #     [True, True]]
+
+            >>> # out1 should be True
+            >>> out1 = paddle.any(x)
+            >>> out1
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+
+            >>> # out2 should be [True, True]
+            >>> out2 = paddle.any(x, axis=0)
+            >>> out2
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=False, out3 should be [True, True], out.shape should be (2,)
+            >>> out3 = paddle.any(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
+            >>> out4 = paddle.any(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True],
+             [True]])
+
+    """,
+    """
+    def any(
+        x: Tensor,
+        axis: int | Sequence[int] | None = None,
+        keepdim: bool = False,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
+
+# shenwei
+
+# zhouxin
+
+# hehongyu
+
+# lousiyu
+
+# zhengshijie
+
+# lihaoyang
+
+# lubingxin
+
+# chenhuangrun
+
+# zhanrongrun
+
+# other

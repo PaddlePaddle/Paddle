@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from .tensor.compat import (
+    Unfold,
     slogdet,
+    sort,
     split,
 )
 
-__all__ = [
-    'split',
-    'slogdet',
-]
+__all__ = ['split', 'sort', 'slogdet', 'Unfold']

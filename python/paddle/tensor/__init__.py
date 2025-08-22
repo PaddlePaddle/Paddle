@@ -53,6 +53,7 @@ from .creation import (  # noqa: F401
     ones,
     ones_like,
     polar,
+    range,
     resize_,
     set_,
     to_tensor,
@@ -98,6 +99,7 @@ from .linalg import (  # noqa: F401
     norm,
     ormqr,
     pca_lowrank,
+    permute,
     pinv,
     qr,
     slogdet,
@@ -195,6 +197,7 @@ from .manipulation import (  # noqa: F401
     put_along_axis,
     put_along_axis_,
     ravel,
+    repeat,
     repeat_interleave,
     reshape,
     reshape_,
@@ -203,8 +206,10 @@ from .manipulation import (  # noqa: F401
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -430,6 +435,7 @@ from .math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -474,6 +480,7 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
+from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -485,6 +492,10 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
+
+# API alias
+div = divide
+div_ = divide_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -604,6 +615,9 @@ tensor_method_func = [
     'outer',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'floor_divide',
     'floor_divide_',
     'remainder',
@@ -713,6 +727,7 @@ tensor_method_func = [
     'strided_slice',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'tan_',
@@ -726,6 +741,7 @@ tensor_method_func = [
     'unbind',
     'roll',
     'tile',
+    'repeat',
     'argmax',
     'argmin',
     'argsort',
@@ -808,7 +824,9 @@ tensor_method_func = [
     'moveaxis',
     'repeat_interleave',
     'take_along_axis',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'put_along_axis_',
     'bernoulli_',
@@ -893,6 +911,7 @@ tensor_method_func = [
     'set_',
     'resize_',
     'argwhere',
+    'softmax',
 ]
 
 mul = multiply
