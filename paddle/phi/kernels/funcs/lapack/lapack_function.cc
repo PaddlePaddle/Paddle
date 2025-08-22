@@ -121,6 +121,40 @@ void lapackLuSolve<phi::dtype::complex<double>>(char trans,
                    info);
 }
 
+// GETRF
+template <>
+void lapackGETRF<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
+  dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
+}
+
+template <>
+void lapackGETRF<double>(
+    int m, int n, double *a, int lda, int *ipiv, int *info) {
+  dynload::dgetrf_(&m, &n, a, &lda, ipiv, info);
+}
+
+template <>
+void lapackGETRF<phi::dtype::complex<float>>(int m,
+                                             int n,
+                                             phi::dtype::complex<float> *a,
+                                             int lda,
+                                             int *ipiv,
+                                             int *info) {
+  dynload::cgetrf_(
+      &m, &n, reinterpret_cast<std::complex<float> *>(a), &lda, ipiv, info);
+}
+
+template <>
+void lapackGETRF<phi::dtype::complex<double>>(int m,
+                                              int n,
+                                              phi::dtype::complex<double> *a,
+                                              int lda,
+                                              int *ipiv,
+                                              int *info) {
+  dynload::zgetrf_(
+      &m, &n, reinterpret_cast<std::complex<double> *>(a), &lda, ipiv, info);
+}
+
 // GETRI
 template <>
 void lapackGETRI<float>(int n,
@@ -176,40 +210,6 @@ void lapackGETRI<phi::dtype::complex<double>>(int n,
                    reinterpret_cast<std::complex<double> *>(work),
                    &lwork,
                    info);
-}
-
-// GETRF
-template <>
-void lapackGETRF<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
-  dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
-}
-
-template <>
-void lapackGETRF<double>(
-    int m, int n, double *a, int lda, int *ipiv, int *info) {
-  dynload::dgetrf_(&m, &n, a, &lda, ipiv, info);
-}
-
-template <>
-void lapackGETRF<phi::dtype::complex<float>>(int m,
-                                             int n,
-                                             phi::dtype::complex<float> *a,
-                                             int lda,
-                                             int *ipiv,
-                                             int *info) {
-  dynload::cgetrf_(
-      &m, &n, reinterpret_cast<std::complex<float> *>(a), &lda, ipiv, info);
-}
-
-template <>
-void lapackGETRF<phi::dtype::complex<double>>(int m,
-                                              int n,
-                                              phi::dtype::complex<double> *a,
-                                              int lda,
-                                              int *ipiv,
-                                              int *info) {
-  dynload::zgetrf_(
-      &m, &n, reinterpret_cast<std::complex<double> *>(a), &lda, ipiv, info);
 }
 
 // eigh
