@@ -6027,5 +6027,276 @@ create_test_act_bf16_class(
 )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseBaseOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_func()
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': self.x_trans,
+        }
+
+        self.inputs = {
+            'X': self.x,
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_func(self):
+        self.op_type = "cos"
+        self.numpy_api = np.cos
+        self.python_api = paddle.cos
+        self.public_python_api = paddle.cos
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output_with_place(
+            place,
+        )
+
+    def init_input_output(self):
+        self.unary_strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.numpy_api(self.x)
+        self.perm = [1, 0]
+        self.x_trans = np.transpose(self.x, self.perm)
+
+    def test_check_grad(self):
+        pass
+
+
+class TestElementwiseSinOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "sin"
+        self.numpy_api = np.sin
+        self.python_api = paddle.sin
+        self.public_python_api = paddle.sin
+
+
+class TestElementwiseTanOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "tan"
+        self.numpy_api = np.tan
+        self.python_api = paddle.tan
+        self.public_python_api = paddle.tan
+
+
+class TestElementwiseAcosOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "acos"
+        self.numpy_api = np.arccos
+        self.python_api = paddle.acos
+        self.public_python_api = paddle.acos
+
+
+class TestElementwiseAsinOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "asin"
+        self.numpy_api = np.arcsin
+        self.python_api = paddle.asin
+        self.public_python_api = paddle.asin
+
+
+class TestElementwiseAtanOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "atan"
+        self.numpy_api = np.arctan
+        self.python_api = paddle.atan
+        self.public_python_api = paddle.atan
+
+
+class TestElementwiseSinhOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "sinh"
+        self.numpy_api = np.sinh
+        self.python_api = paddle.sinh
+        self.public_python_api = paddle.sinh
+
+
+class TestElementwiseCoshOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "cosh"
+        self.numpy_api = np.cosh
+        self.python_api = paddle.cosh
+        self.public_python_api = paddle.cosh
+
+
+class TestElementwiseAsinhOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "asinh"
+        self.numpy_api = np.arcsinh
+        self.python_api = paddle.asinh
+        self.public_python_api = paddle.asinh
+
+
+class TestElementwiseAtanhOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "atanh"
+        self.numpy_api = np.arctanh
+        self.python_api = paddle.atanh
+        self.public_python_api = paddle.atanh
+
+
+def relu_ref(x):
+    x[np.abs(x) < 0.005] = 0.02
+    out = np.maximum(x, 0)
+    return out
+
+
+class TestElementwiseReluOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "relu"
+        self.numpy_api = relu_ref
+        self.python_api = paddle.nn.functional.relu
+        self.public_python_api = paddle.nn.functional.relu
+
+
+class TestElementwiseTanhOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "tanh"
+        self.numpy_api = np.tanh
+        self.python_api = paddle.tanh
+        self.public_python_api = paddle.tanh
+
+
+def silu_ref(x_np):
+    out = x_np / (1 + np.exp(-x_np))
+    return out
+
+
+class TestElementwiseSiluOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "silu"
+        self.numpy_api = silu_ref
+        self.python_api = F.silu
+        self.public_python_api = F.silu
+
+
+class TestElementwiseReciprocalOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "reciprocal"
+        self.numpy_api = np.reciprocal
+        self.python_api = paddle.reciprocal
+        self.public_python_api = paddle.reciprocal
+
+
+class TestElementwiseSquareOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "square"
+        self.numpy_api = np.square
+        self.python_api = paddle.square
+        self.public_python_api = paddle.square
+
+
+class TestElementwiseSqrtOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "sqrt"
+        self.numpy_api = np.sqrt
+        self.python_api = paddle.sqrt
+        self.public_python_api = paddle.sqrt
+
+
+class TestElementwiseSoftSignOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "softsign"
+        self.numpy_api = ref_softsign
+        self.python_api = paddle.nn.functional.softsign
+        self.public_python_api = paddle.nn.functional.softsign
+
+
+def ref_sigmoid(x):
+    out = 1 / (1 + np.exp(-x))
+    return out
+
+
+class TestElementwiseSigmoidOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "sigmoid"
+        self.numpy_api = ref_sigmoid
+        self.python_api = paddle.nn.functional.sigmoid
+        self.public_python_api = paddle.nn.functional.sigmoid
+
+
+def ref_log_sigmoid(x):
+    out = np.log(1 / (1 + np.exp(-x)))
+    return out
+
+
+class TestElementwiseLogSigmoidOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "logsigmoid"
+        self.numpy_api = ref_log_sigmoid
+        self.python_api = paddle.nn.functional.log_sigmoid
+        self.public_python_api = paddle.nn.functional.log_sigmoid
+
+
+class TestElementwiseFloorOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "floor"
+        self.numpy_api = np.floor
+        self.python_api = paddle.floor
+        self.public_python_api = paddle.floor
+
+
+class TestElementwiseCeilOp_Stride(TestElementwiseBaseOp_Stride):
+    no_need_check_grad = True
+
+    def init_func(self):
+        self.op_type = "ceil"
+        self.numpy_api = np.ceil
+        self.python_api = paddle.ceil
+        self.public_python_api = paddle.ceil
+
+
 if __name__ == "__main__":
     unittest.main()
