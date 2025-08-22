@@ -2299,9 +2299,9 @@ def flashmask_attention(
         )["FLAGS_flash_attn_version"]
 
     if fa_version == 2:
-        assert (
-            softmax_scale is None
-        ), "flashmask_attention does not support setting softmax_scale, use flashmask_attention_v2 instead"
+        assert softmax_scale is None, (
+            "flashmask_attention does not support setting softmax_scale, use flashmask_attention_v2 instead"
+        )
 
         (
             out,
@@ -2332,22 +2332,22 @@ def flashmask_attention(
             return outputs
     elif fa_version == 3:
         assert dropout == 0.0, "flashmask_attention_v2 does not support dropout"
-        assert (
-            not return_seed_offset
-        ), "flashmask_attention_v2 does not support return seed_offset"
-        assert (
-            fixed_seed_offset is None
-        ), "flashmask_attention_v2 does not support setting seed_offset"
-        assert (
-            rng_name == ""
-        ), "flashmask_attention_v2 does not support setting rng_name"
-        assert (
-            training
-        ), "flashmask_attention_v2 does not support setting training to False"
+        assert not return_seed_offset, (
+            "flashmask_attention_v2 does not support return seed_offset"
+        )
+        assert fixed_seed_offset is None, (
+            "flashmask_attention_v2 does not support setting seed_offset"
+        )
+        assert rng_name == "", (
+            "flashmask_attention_v2 does not support setting rng_name"
+        )
+        assert training, (
+            "flashmask_attention_v2 does not support setting training to False"
+        )
 
-        assert (
-            name is None
-        ), "flashmask_attention_v2 does not support setting name"
+        assert name is None, (
+            "flashmask_attention_v2 does not support setting name"
+        )
 
         if softmax_scale is None:
             softmax_scale = query.shape[-1] ** (-0.5)
