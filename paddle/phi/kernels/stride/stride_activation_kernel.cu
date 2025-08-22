@@ -14,7 +14,7 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/phi/kernels/activation_kernel.h"
+// #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -23,7 +23,7 @@
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
-#include "paddle/phi/kernels/impl/activation_impl.h"
+// #include "paddle/phi/kernels/impl/activation_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -214,10 +214,10 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
 
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Square, CudaSquareFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Floor, CudaFloorFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Ceil, CudaCeilFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Rint, CudaRintFunctor)
+// DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Square, CudaSquareFunctor)
+// DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Floor, CudaFloorFunctor)
+// DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Ceil, CudaCeilFunctor)
+// DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Rint, CudaRintFunctor)
 
 }  // namespace phi
 
@@ -225,56 +225,56 @@ using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
-PD_REGISTER_KERNEL(square,
-                   GPU,
-                   STRIDED,
-                   phi::SquareStrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+// PD_REGISTER_KERNEL(square,
+//                    GPU,
+//                    STRIDED,
+//                    phi::SquareStrideKernel,
+//                    float,
+//                    double,
+//                    int,
+//                    int64_t,
+//                    phi::dtype::float16,
+//                    phi::dtype::bfloat16,
+//                    phi::dtype::complex<float>,
+//                    phi::dtype::complex<double>) {}
 
-PD_REGISTER_KERNEL(floor,
-                   GPU,
-                   STRIDED,
-                   phi::FloorStrideKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+// PD_REGISTER_KERNEL(floor,
+//                    GPU,
+//                    STRIDED,
+//                    phi::FloorStrideKernel,
+//                    float,
+//                    double,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t,
+//                    phi::dtype::float16,
+//                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(ceil,
-                   GPU,
-                   STRIDED,
-                   phi::CeilStrideKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+// PD_REGISTER_KERNEL(ceil,
+//                    GPU,
+//                    STRIDED,
+//                    phi::CeilStrideKernel,
+//                    float,
+//                    double,
+//                    uint8_t,
+//                    int8_t,
+//                    int16_t,
+//                    int,
+//                    int64_t,
+//                    phi::dtype::float16,
+//                    phi::dtype::bfloat16) {}
 
-PD_REGISTER_KERNEL(rint,
-                   GPU,
-                   STRIDED,
-                   phi::RintStrideKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+// PD_REGISTER_KERNEL(rint,
+//                    GPU,
+//                    STRIDED,
+//                    phi::RintStrideKernel,
+//                    int,
+//                    int64_t,
+//                    float,
+//                    double,
+//                    phi::dtype::float16,
+//                    phi::dtype::bfloat16) {}
 
 #endif
