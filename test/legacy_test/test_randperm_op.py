@@ -28,9 +28,9 @@ from paddle.base.framework import in_pir_mode
 
 
 def check_randperm_out(n, data_np):
-    assert isinstance(
-        data_np, np.ndarray
-    ), "The input data_np should be np.ndarray."
+    assert isinstance(data_np, np.ndarray), (
+        "The input data_np should be np.ndarray."
+    )
     gt_sorted = np.arange(n)
     out_sorted = np.sort(data_np)
     return list(gt_sorted == out_sorted)
