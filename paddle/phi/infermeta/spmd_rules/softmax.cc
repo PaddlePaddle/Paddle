@@ -166,19 +166,19 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
   axis = axis < 0 ? out.dims().size() + axis : axis;
 
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
-                    out_grad.dist_attr().dims_mapping().size(),
+                    out_grad.dist_attr().multi_dims_mapping().size(),
                     common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] and out_grad's "
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims().size(),
-                        out_grad.dist_attr().dims_mapping().size()));
+                        out_grad.dist_attr().multi_dims_mapping().size()));
 
-  PADDLE_ENFORCE_GE(out_grad.dist_attr().dims_mapping().size(),
+  PADDLE_ENFORCE_GE(out_grad.dist_attr().multi_dims_mapping().size(),
                     axis,
                     common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] must be "
                         "greater than axis [%d].",
-                        out_grad.dist_attr().dims_mapping().size(),
+                        out_grad.dist_attr().multi_dims_mapping().size(),
                         axis));
   std::string alphabet = "abcdefghijlopqrstuvwxyz";
   std::string out_grad_axes = alphabet.substr(0, out_grad.dims().size());

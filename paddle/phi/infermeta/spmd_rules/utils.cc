@@ -168,44 +168,49 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
     for (size_t i = 0; i < einsum_str.length(); ++i) {
       auto axis = pair.first.substr(i, 1);
-      auto& target_vec = current_sharding[axis];
       for (int64_t mesh_dim : dims_mapping[i]) {
-        if (std::find(target_vec.begin(), target_vec.end(), mesh_dim) ==
-            target_vec.end()) {
-          target_vec.push_back(mesh_dim);
-        }
+        current_sharding[axis].insert(current_sharding[axis].end(),
+                                      dims_mapping[i].begin(),
+                                      dims_mapping[i].end());
       }
     }
   }
+  for (auto& pair : current_sharding) {
+    auto& sharding_vec = pair.second;
+    std::sort(sharding_vec.begin(), sharding_vec.end());
+    sharding_vec.erase(std::unique(sharding_vec.begin(), sharding_vec.end()),
+                       sharding_vec.end());
+  }
 
   // Iterative Conflict Resolution
-  bool conflicts_resolved = false;
-  while (!conflicts_resolved) {
-    conflicts_resolved = true;
-    std::string worst_conflict_axis = "";
+  bool conflicts_exist = false;
+  while (conflicts_exist) {
+    conflicts_exist = false;
+    std::string axis_to_prune = "";
     int mesh_dim_to_remove = -1;
-    int64_t max_mesh_dim_size = -1;
 
     for (auto const& [axis, sharding_vec] : current_sharding) {
       int64_t axis_size = axis_sizes.at(axis);
       int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
 
-      if (axis_size % total_shards != 0) {
-        conflicts_resolved = false;
+      if (total_shards > 1 && axis_size % total_shards != 0) {
+        conflicts_exist = true;
+        int64_t max_mesh_dim_size = -1;
+        int worst_mesh_dim = -1;
         for (int64_t mesh_dim : sharding_vec) {
-          int64_t current_mesh_dim_size = mesh_shape[mesh_dim];
           // First reduce the max mesh dim size
-          if (current_mesh_dim_size > max_mesh_dim_size) {
-            max_mesh_dim_size = current_mesh_dim_size;
-            worst_conflict_axis = axis;
-            mesh_dim_to_remove = mesh_dim;
+          if (mesh_shape[mesh_dim] > max_mesh_dim_size) {
+            max_mesh_dim_size = mesh_shape[mesh_dim];
+            worst_mesh_dim = mesh_dim;
           }
         }
+        axis_to_prune = axis;
+        mesh_dim_to_remove = worst_mesh_dim;
         break;
       }
     }
-    if (!conflicts_resolved && !worst_conflict_axis.empty()) {
-      auto& vec_to_modify = current_sharding.at(worst_conflict_axis);
+    if (conflicts_exist && !axis_to_prune.empty()) {
+      auto& vec_to_modify = current_sharding.at(axis_to_prune);
       vec_to_modify.erase(
           std::remove(
               vec_to_modify.begin(), vec_to_modify.end(), mesh_dim_to_remove),
