@@ -4162,7 +4162,7 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
-                               int output_size,
+                               int64_t output_size,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = common::vectorize(input_dim);

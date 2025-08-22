@@ -59,7 +59,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
                                            const DenseTensor& x,
                                            const DenseTensor& repeats_tensor,
                                            int dim,
-                                           int output_size,
+                                           int64_t output_size,
                                            DenseTensor* out) {
   auto input_dim = x.dims();
   if (dim < 0) {
@@ -228,7 +228,7 @@ void RepeatInterleaveKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             int repeats,
                             int dim,
-                            int output_size,
+                            int64_t output_size,
                             DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   if (out && out->numel() == 0) {

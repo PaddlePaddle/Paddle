@@ -3155,7 +3155,7 @@
   outputs :
     out : Out
   attrs :
-    {repeats : Repeats, output_size : output_size}
+    {repeats : Repeats}
 
 - op : repeat_interleave
   backward : repeat_interleave_grad, repeat_interleave_double_grad
@@ -3164,7 +3164,7 @@
   outputs :
     out : Out
   attrs :
-    {repeats : Repeats, axis : dim, output_size : output_size}
+    {repeats : Repeats, axis : dim}
 
 - op : repeat_interleave_with_tensor_index
   backward : repeat_interleave_with_tensor_index_grad, repeat_interleave_with_tensor_index_double_grad
@@ -3173,7 +3173,7 @@
   outputs:
     out : Out
   attrs:
-    {axis : dim, output_size : output_size}
+    {axis : dim}
 
 - op : requantize
   inputs :
