@@ -60,6 +60,13 @@ void IndexAddKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
     return;
   }
+  PADDLE_ENFORCE_NOT_NULL(
+      output, errors::InvalidArgument("The output tensor must not be null."));
+  PADDLE_ENFORCE_GT(
+      output->numel(),
+      0,
+      errors::InvalidArgument(
+          "The output tensor must have a positive number of elements."));
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
