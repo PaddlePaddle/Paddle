@@ -146,6 +146,17 @@ inline phi::DataType GetPromoteDtype(
     const DataType& y_dtype,
     const std::vector<int64_t>& x_shape = std::vector<int64_t>(),
     const std::vector<int64_t>& y_shape = std::vector<int64_t>()) {
+  // Cross-type operations: When performing integer and floating-point
+  // operations, t he result only needs to meet floating-point precision
+  // requirements. e. long_tensor + float_tensor → float32 (no need for
+  // float64).
+  if (is_support_int(x_dtype) && is_support_float(y_dtype)) {
+    return y_dtype;
+  }
+  if (is_support_float(x_dtype) && is_support_int(y_dtype)) {
+    return x_dtype;
+  }
+
   if (op_name == "divide" || op_name == "divide_" ||
       op_name == "elementwise_div") {
     if (is_support_int(x_dtype) && is_support_int(y_dtype)) {
@@ -222,7 +233,9 @@ inline bool NeedTypePromotion(
 #endif
 
     if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
-        (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {
+        (is_support_complex(x_dtype) || is_support_complex(y_dtype)) ||
+        (is_support_float(x_dtype) && is_support_int(y_dtype)) ||
+        (is_support_int(x_dtype) && is_support_float(y_dtype))) {
       return true;
     } else {
       PADDLE_THROW(common::errors::InvalidType(
