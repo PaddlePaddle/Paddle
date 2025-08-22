@@ -44,6 +44,11 @@ class TestTensorConstructor(unittest.TestCase):
         self.assertEqual(res.dtype, paddle.float32)
         self.assertEqual(res.shape, self.shape)
 
+    def test_error_construct(self):
+        with self.assertRaises(ValueError):
+            a = paddle.tensor([1])
+            paddle.Tensor(1, 2, 3, a)
+
 
 class TestFloatTensor(unittest.TestCase):
     def setUp(self):
@@ -85,6 +90,11 @@ class TestFloatTensor(unittest.TestCase):
         res = self.api(x)
         np.testing.assert_allclose(x, res.numpy(), rtol=1e-6, atol=1e-6)
         self.assertEqual(res.dtype, self.dtype)
+
+    def test_error_construct(self):
+        with self.assertRaises(ValueError):
+            a = paddle.tensor([1])
+            self.api(1, 2, 3, a)
 
 
 class TestDoubleTensor(TestFloatTensor):
