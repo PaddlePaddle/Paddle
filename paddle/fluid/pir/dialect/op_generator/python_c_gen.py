@@ -270,7 +270,7 @@ TYPE_TO_FUNC_MAP = {
     "paddle::Place": "CastPyArg2Place",
     "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
-    "phi::DataType": "CastPyArg2DataTypeDirectly",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 TYPE_TO_PHI_DATATYPE_MAP = {
