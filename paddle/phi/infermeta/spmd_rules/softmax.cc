@@ -213,7 +213,7 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
       {{out_axes, out_dims_mapping}, {out_grad_axes, out_grad_dims_mapping}},
       axes_size,
       mesh_shape);
-  std::vector<int64_t> out_grad_dims_mapping_dst =
+  std::vector<std::vector<int64_t>> out_grad_dims_mapping_dst =
       GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map);
   auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out.dist_attr());
   out_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
