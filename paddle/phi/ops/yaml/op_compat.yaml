@@ -3529,13 +3529,6 @@
   outputs :
     out : Out
 
-- op : slogdet_v2(slogdeterminant_v2)
-  backward : slogdet_v2_grad(slogdeterminant_v2_grad)
-  inputs :
-    x : Input
-  outputs :
-    out : Out
-
 - op : soft_relu
   backward : soft_relu_grad
   inputs :
