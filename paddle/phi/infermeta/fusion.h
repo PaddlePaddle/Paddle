@@ -95,6 +95,12 @@ void BlhaGetMaxLenInferMeta(const MetaTensor& seq_lens_encoder,
                             MetaTensor* max_enc_len_this_time,
                             MetaTensor* max_dec_len_this_time);
 
+void CrossEntropyWithSoftmaxBwdWithDowncastInferMeta(
+    const MetaTensor& label,
+    const MetaTensor& softmax,
+    const MetaTensor& loss_grad,
+    MetaTensor* logits_grad);
+
 void BlockMultiheadAttentionInferMeta(const MetaTensor& qkv,
                                       const MetaTensor& key_cache,
                                       const MetaTensor& value_cache,

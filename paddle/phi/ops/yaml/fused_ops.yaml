@@ -118,6 +118,16 @@
     func : cross_attention_xpu
     data_type : input_q
 
+- op : cross_entropy_with_softmax_bwd_w_downcast
+  args : (Tensor label, Tensor softmax, Tensor loss_grad)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxBwdWithDowncastInferMeta
+  kernel :
+    func : cross_entropy_with_softmax_bwd_w_downcast
+    data_type : softmax
+  support_dygraph_mode : true
+
 - op : dequantize_xpu
   args : (Tensor x, DataType out_dtype, float scale = 1.0f)
   output : Tensor(y)
@@ -137,6 +147,19 @@
     data_type: DataType::FLOAT32
   optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
   inplace: (param -> param_out), (grad -> grad_out)
+
+- op : embedding_grad_add_to
+  args : (Tensor token_indices, Tensor main_grad_, Tensor out_grad)
+  output : Tensor(main_grad_out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [main_grad_]
+  kernel :
+    func : embedding_grad_add_to
+    param : [token_indices, main_grad_, out_grad]
+    data_type : main_grad_
+  inplace : (main_grad_ -> main_grad_out)
+  support_dygraph_mode : true
 
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)
