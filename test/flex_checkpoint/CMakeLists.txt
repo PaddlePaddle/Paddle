@@ -28,7 +28,10 @@ endforeach()
 
 set(GPU_ONLY_DISTRIBUTED_TESTS test_sharded_state_dict test_strategy_conversion)
 
-if(NOT (WITH_DISTRIBUTE AND WITH_GPU))
+if(NOT
+   (WITH_DISTRIBUTE
+    AND WITH_GPU
+    AND LINUX))
   get_property(ALL_TESTS GLOBAL PROPERTY TESTS)
 
   foreach(CURRENT_TEST_NAME ${ALL_TESTS})
