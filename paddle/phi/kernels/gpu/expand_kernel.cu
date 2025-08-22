@@ -29,11 +29,10 @@ void ExpandKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
-  PADDLE_ENFORCE_GT(
-      expand_shape.size(),
-      0,
-      common::errors::InvalidArgument("The target shape for expand cannot be "
-                                      "empty. Please provide a valid shape."));
+  if (expand_shape.empty()) {
+    *out = x;
+    return;
+  }
   auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
   PADDLE_ENFORCE_GE(
