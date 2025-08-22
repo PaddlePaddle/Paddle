@@ -47,6 +47,7 @@ from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 __all__ = []
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def argsort(
     x: Tensor,
     axis: int = -1,
@@ -57,12 +58,18 @@ def argsort(
     """
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``argsort(input=tensor_x, dim=1)`` is equivalent to ``(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): An input N-D Tensor with type bfloat16, float16, float32, float64, int16,
             int32, int64, uint8.
+            alias: ``input``.
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is -1.
+            alias: ``dim``.
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
@@ -456,15 +463,21 @@ def index_select(
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor: ...
+def nonzero(
+    x: Tensor, as_tuple: Literal[False] = ..., *, out: Tensor | None = None
+) -> Tensor: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
+def nonzero(
+    x: Tensor, as_tuple: Literal[True] = ..., *, out: Tensor | None = None
+) -> tuple[Tensor, ...]: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
+def nonzero(
+    x: Tensor, as_tuple: bool = ..., *, out: Tensor | None = None
+) -> Tensor | tuple[Tensor, ...]: ...
 
 
 @param_one_alias(['x', 'input'])

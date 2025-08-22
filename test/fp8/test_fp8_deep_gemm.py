@@ -202,9 +202,9 @@ def test_m_grouped_gemm_masked() -> None:
                         ref_out[j, : masked_m[j].item()],
                     )
                     print("diff:", diff)
-                    assert (
-                        diff < 0.001
-                    ), f"{m=}, {k=}, {n=}, {j=}, masked_m={masked_m[j]}, {num_groups=}, {diff:.5f}"
+                    assert diff < 0.001, (
+                        f"{m=}, {k=}, {n=}, {j=}, masked_m={masked_m[j]}, {num_groups=}, {diff:.5f}"
+                    )
 
     print()
 
