@@ -31,6 +31,36 @@ class Library;
 class FunctionArgs;
 class FunctionResult;
 
+struct arg {
+  explicit arg(std::string name)
+      : name_(std::move(name)), value_(std::nullopt) {}
+
+  arg& operator=(const IValue& rhs) {
+    value_ = rhs;
+    return *this;
+  }
+
+  static IValue none() { return IValue(); }
+
+  std::string name_;
+  std::optional<IValue> value_;
+};
+
+template <class... Types>
+struct types {
+  using type = types;
+};
+
+template <class... Types>
+struct init_types {
+  using type = init_types;
+};
+
+template <class... Types>
+init_types<Types...> init() {
+  return init_types<Types...>{};
+}
+
 class FunctionArgs {
  public:
   FunctionArgs() = default;
@@ -87,6 +117,17 @@ class FunctionArgs {
     throw std::runtime_error(oss.str());
   }
 
+  // Convert to a tuple of specified types
+  template <typename... Types>
+  std::tuple<Types...> to_tuple() const {
+    if (sizeof...(Types) != args_.size()) {
+      throw std::runtime_error("Argument count mismatch: expected " +
+                               std::to_string(sizeof...(Types)) + ", got " +
+                               std::to_string(args_.size()));
+    }
+    return to_tuple_impl<Types...>(std::index_sequence_for<Types...>{});
+  }
+
   size_t size() const { return args_.size(); }
 
   bool empty() const { return args_.empty(); }
@@ -113,6 +154,10 @@ class FunctionArgs {
   }
 
  private:
+  template <typename... Types, size_t... I>
+  std::tuple<Types...> to_tuple_impl(std::index_sequence<I...>) const {
+    return std::make_tuple(get<Types>(I)...);
+  }
   std::vector<torch::IValue> args_;
 };
 
@@ -157,56 +202,142 @@ class FunctionResult {
 };
 
 template <typename T>
-struct function_traits;
+struct function_traits : public function_traits<decltype(&T::operator())> {};
 
-// 普通函数指针
-template <typename R, typename... Args>
-struct function_traits<R (*)(Args...)> {
-  using return_type = R;
-  using args_tuple = std::tuple<Args...>;
-  static constexpr size_t arity = sizeof...(Args);
-};
-
-template <typename R, typename... Args>
-struct function_traits<R (&)(Args...)> {
-  using return_type = R;
-  using args_tuple = std::tuple<Args...>;
-  static constexpr size_t arity = sizeof...(Args);
-};
-
-template <typename R, typename C, typename... Args>
-struct function_traits<R (C::*)(Args...)> {
-  using return_type = R;
-  using args_tuple = std::tuple<C*, Args...>;
-  static constexpr size_t arity = sizeof...(Args) + 1;
-};
-
-template <typename R, typename C, typename... Args>
-struct function_traits<R (C::*)(Args...) const> {
-  using return_type = R;
-  using args_tuple = std::tuple<const C*, Args...>;
-  static constexpr size_t arity = sizeof...(Args) + 1;
-};
+// For Reference and Pointer types, delegate to the underlying type
+template <typename T>
+struct function_traits<T&> : public function_traits<T> {};
 
 template <typename T>
-struct function_traits : function_traits<decltype(&T::operator())> {};
+struct function_traits<T*> : public function_traits<T> {};
 
-template <typename ArgsTuple, typename Func, size_t... I>
-auto call_with_args_impl(Func&& f,
-                         const FunctionArgs& args,
-                         std::index_sequence<I...>) {
-  if (args.size() != sizeof...(I)) {
-    std::ostringstream oss;
-    oss << "Argument count mismatch: expected " << sizeof...(I) << ", got "
-        << args.size();
-    throw std::runtime_error(oss.str());
+// Basic function type
+template <typename R, typename... Args>
+struct function_traits<R(Args...)> {
+  using return_type = R;
+  static constexpr size_t arity = sizeof...(Args);
+  using ArgsTuple = std::tuple<Args...>;
+
+  template <size_t i>
+  struct arg {
+    using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+  };
+
+  // Common function call interface
+  template <typename F>
+  static IValue call_function(F&& func, const FunctionArgs& args) {
+    if (args.size() != sizeof...(Args)) {
+      throw std::runtime_error(
+          "Function expects " + std::to_string(sizeof...(Args)) +
+          " arguments, got " + std::to_string(args.size()));
+    }
+    return call_function_impl(std::forward<F>(func),
+                              args,
+                              std::make_index_sequence<sizeof...(Args)>{});
   }
 
-  if constexpr (sizeof...(I) == 0) {
-    return f();
-  } else {
-    return f(args.get<std::tuple_element_t<I, ArgsTuple>>(I)...);
+ private:
+  template <typename F, size_t... I>
+  static IValue call_function_impl(F&& func,
+                                   const FunctionArgs& args,
+                                   std::index_sequence<I...>) {
+    if constexpr (std::is_void_v<R>) {
+      func(args.get<Args>(I)...);
+      return IValue();
+    } else {
+      auto result = func(args.get<Args>(I)...);
+      return IValue(result);
+    }
   }
+};
+
+// Function pointer specialization - inherits from basic function type
+template <typename R, typename... Args>
+struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {};
+
+// Member function pointer specialization - adjust to include 'this' as first
+// argument
+template <typename C, typename R, typename... Args>
+struct function_traits<R (C::*)(Args...)>
+    : public function_traits<R(C&, Args...)> {
+  using class_type = C;
+
+  static IValue call_method(R (C::*func)(Args...),
+                            C* instance,
+                            const FunctionArgs& args) {
+    if (args.size() != sizeof...(Args) + 1) {  // +1 for this pointer
+      throw std::runtime_error(
+          "Method expects " + std::to_string(sizeof...(Args)) +
+          " arguments (plus this), got " + std::to_string(args.size() - 1));
+    }
+    return call_method_impl(
+        func, instance, args, std::make_index_sequence<sizeof...(Args)>{});
+  }
+
+ private:
+  template <size_t... I>
+  static IValue call_method_impl(R (C::*func)(Args...),
+                                 C* instance,
+                                 const FunctionArgs& args,
+                                 std::index_sequence<I...>) {
+    if constexpr (std::is_void_v<R>) {
+      (instance->*func)(
+          args.get<Args>(I + 1)...);  // Skip args[0] which is 'this'
+      return IValue();
+    } else {
+      auto result = (instance->*func)(args.get<Args>(I + 1)...);
+      return IValue(result);
+    }
+  }
+};
+
+// Const member function pointer specialization
+template <typename C, typename R, typename... Args>
+struct function_traits<R (C::*)(Args...) const>
+    : public function_traits<R(const C&, Args...)> {
+  using class_type = C;
+
+  static IValue call_method(R (C::*func)(Args...) const,
+                            C* instance,
+                            const FunctionArgs& args) {
+    if (args.size() != sizeof...(Args) + 1) {  // +1 for this pointer
+      throw std::runtime_error(
+          "Method expects " + std::to_string(sizeof...(Args)) +
+          " arguments (plus this), got " + std::to_string(args.size() - 1));
+    }
+    return call_method_impl(
+        func, instance, args, std::make_index_sequence<sizeof...(Args)>{});
+  }
+
+ private:
+  template <size_t... I>
+  static IValue call_method_impl(R (C::*func)(Args...) const,
+                                 C* instance,
+                                 const FunctionArgs& args,
+                                 std::index_sequence<I...>) {
+    if constexpr (std::is_void_v<R>) {
+      (instance->*func)(
+          args.get<Args>(I + 1)...);  // Skip args[0] which is 'this'
+      return IValue();
+    } else {
+      auto result = (instance->*func)(args.get<Args>(I + 1)...);
+      return IValue(result);
+    }
+  }
+};
+
+template <typename Func>
+IValue invoke_function(Func&& func, const FunctionArgs& args) {
+  using traits = function_traits<std::decay_t<Func>>;
+  return traits::call_function(std::forward<Func>(func), args);
+}
+
+template <typename Func, typename Class>
+IValue invoke_member_function(Func&& func,
+                              Class* instance,
+                              const FunctionArgs& args) {
+  using traits = function_traits<std::decay_t<Func>>;
+  return traits::call_method(func, instance, args);
 }
 
 class CppFunction {
@@ -215,25 +346,74 @@ class CppFunction {
 
   CppFunction() : func_(nullptr) {}
 
-  template <typename Func>
-  explicit CppFunction(Func&& f) {
-    using FuncTraits = function_traits<std::decay_t<Func>>;
-    using ReturnType = typename FuncTraits::return_type;
-    using ArgsTuple = typename FuncTraits::args_tuple;
+  // template <typename Func>
+  // explicit CppFunction(Func&& f) {
+  //   using FuncTraits = function_traits<std::decay_t<Func>>;
+  //   using ReturnType = typename FuncTraits::return_type;
+  //   using ArgsTuple = typename FuncTraits::args_tuple;
 
-    func_ = [f = std::forward<Func>(f)](
-                const FunctionArgs& args) -> FunctionResult {
-      if constexpr (std::is_void_v<ReturnType>) {
-        call_with_args_impl<ArgsTuple>(
-            f, args, std::make_index_sequence<FuncTraits::arity>{});
-        return FunctionResult::void_result();
-      } else {
-        auto result = call_with_args_impl<ArgsTuple>(
-            f, args, std::make_index_sequence<FuncTraits::arity>{});
-        return FunctionResult(result);
-      }
-    };
-  }
+  //   func_ = [f = std::forward<Func>(f)](
+  //               const FunctionArgs& args) -> FunctionResult {
+  //     if constexpr (std::is_void_v<ReturnType>) {
+  //       call_with_args_impl<ArgsTuple>(
+  //           f, args, std::make_index_sequence<FuncTraits::arity>{});
+  //       return FunctionResult::void_result();
+  //     } else {
+  //       auto result = call_with_args_impl<ArgsTuple>(
+  //           f, args, std::make_index_sequence<FuncTraits::arity>{});
+  //       return FunctionResult(result);
+  //     }
+  //   };
+  // }
+  // Constructor for lambda or function object
+  explicit CppFunction(std::function<IValue(const FunctionArgs&)> func)
+      : func_([func](const FunctionArgs& args) -> FunctionResult {
+          try {
+            auto result = func(args);
+            return FunctionResult(result);
+          } catch (const std::exception& e) {
+            throw std::runtime_error("Constructor failed: " +
+                                     std::string(e.what()));
+          }
+        }) {}
+
+  // Common function pointer or member function pointer constructor
+  template <typename Func>
+  explicit CppFunction(
+      Func&& f,
+      typename std::enable_if_t<
+          std::is_function_v<std::remove_pointer_t<std::decay_t<Func>>> ||
+          (std::is_pointer_v<std::decay_t<Func>> &&
+           std::is_function_v<std::remove_pointer_t<std::decay_t<Func>>>)>* =
+          nullptr)
+      : func_([f](const FunctionArgs& args) -> FunctionResult {
+          try {
+            auto result = invoke_function(f, args);
+            return FunctionResult(result);
+          } catch (const std::exception& e) {
+            throw std::runtime_error("Function call failed: " +
+                                     std::string(e.what()));
+          }
+        }) {}
+
+  // Common member function pointer constructor
+  template <typename Func>
+  explicit CppFunction(
+      Func&& f,
+      typename std::enable_if_t<
+          !std::is_function_v<std::remove_pointer_t<std::decay_t<Func>>> &&
+          !std::is_pointer_v<std::decay_t<Func>> &&
+          std::is_invocable_v<Func, const FunctionArgs&>>* = nullptr)
+      : func_([f = std::forward<Func>(f)](
+                  const FunctionArgs& args) -> FunctionResult {
+          try {
+            auto result = f(args);
+            return FunctionResult(result);
+          } catch (const std::exception& e) {
+            throw std::runtime_error("Lambda execution failed: " +
+                                     std::string(e.what()));
+          }
+        }) {}
 
   CppFunction(CppFunction&& other) noexcept : func_(std::move(other.func_)) {}
 
@@ -275,6 +455,383 @@ class CppFunction {
   CallableFunction func_;
 };
 
+struct ClassRegistration {
+  std::string namespace_name;
+  std::string class_name;
+  std::string qualified_name;
+  std::vector<std::shared_ptr<CppFunction>> constructors;
+  std::unordered_map<std::string, std::shared_ptr<CppFunction>> methods;
+  std::unordered_map<std::string, std::shared_ptr<CppFunction>> static_methods;
+
+  ClassRegistration() = default;
+  ClassRegistration(const std::string& ns, const std::string& name)
+      : namespace_name(ns),
+        class_name(name),
+        qualified_name(ns + "::" + name) {}
+};
+
+// 全局类注册表
+class ClassRegistry {
+ public:
+  static ClassRegistry& instance() {
+    static ClassRegistry registry;
+    return registry;
+  }
+
+  void register_class(const std::string& namespace_name,
+                      const std::string& class_name) {
+    std::string qualified_name = namespace_name + "::" + class_name;
+    classes_[qualified_name] =
+        std::make_unique<ClassRegistration>(namespace_name, class_name);
+    std::cout << "Registered class: " << qualified_name << std::endl;
+  }
+
+  void register_constructor(const std::string& qualified_name,
+                            CppFunction&& func) {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found");
+    }
+    it->second->constructors.push_back(
+        std::make_shared<CppFunction>(std::move(func)));
+    std::cout << "Registered constructor for: " << qualified_name
+              << " (total: " << it->second->constructors.size() << ")"
+              << std::endl;
+  }
+
+  void register_method(const std::string& qualified_name,
+                       const std::string& method_name,
+                       CppFunction&& func) {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found");
+    }
+    it->second->methods[method_name] =
+        std::make_shared<CppFunction>(std::move(func));
+    std::cout << "Registered method: " << qualified_name << "::" << method_name
+              << std::endl;
+  }
+
+  void register_static_method(const std::string& qualified_name,
+                              const std::string& method_name,
+                              CppFunction&& func) {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found");
+    }
+    it->second->static_methods[method_name] =
+        std::make_shared<CppFunction>(std::move(func));
+    std::cout << "Registered static method: " << qualified_name
+              << "::" << method_name << std::endl;
+  }
+
+  bool has_class(const std::string& qualified_name) const {
+    return classes_.find(qualified_name) != classes_.end();
+  }
+
+  bool has_method(const std::string& qualified_name,
+                  const std::string& method_name) const {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) return false;
+    return it->second->methods.find(method_name) != it->second->methods.end();
+  }
+
+  bool has_static_method(const std::string& qualified_name,
+                         const std::string& method_name) const {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) return false;
+    return it->second->static_methods.find(method_name) !=
+           it->second->static_methods.end();
+  }
+
+  FunctionResult call_method_with_args(const std::string& qualified_name,
+                                       const std::string& method_name,
+                                       const FunctionArgs& args) {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found!");
+    }
+
+    auto& class_reg = it->second;
+    auto method_it = class_reg->methods.find(method_name);
+    if (method_it == class_reg->methods.end()) {
+      throw std::runtime_error("Method " + method_name + " not found in " +
+                               qualified_name + "!");
+    }
+
+    try {
+      std::cout << "Executing " << qualified_name << "::" << method_name
+                << " (instance) with " << args.size() << " args" << std::endl;
+      auto result = method_it->second->call_with_args(args);
+
+      if (result.has_value()) {
+        std::cout << "Instance method executed successfully with return value"
+                  << std::endl;
+      } else {
+        std::cout << "Instance method executed successfully (void)"
+                  << std::endl;
+      }
+      return result;
+    } catch (const std::exception& e) {
+      std::cout << "Instance method execution failed: " << e.what()
+                << std::endl;
+      throw;
+    }
+  }
+
+  FunctionResult call_constructor_with_args(const std::string& qualified_name,
+                                            const FunctionArgs& args) const {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found!");
+    }
+
+    auto& class_reg = it->second;
+    if (class_reg->constructors.empty()) {
+      throw std::runtime_error("No constructor registered for " +
+                               qualified_name);
+    }
+
+    std::cout << "Creating instance of " << qualified_name << " with "
+              << args.size() << " args" << std::endl;
+    std::cout << "Available constructors: " << class_reg->constructors.size()
+              << std::endl;
+
+    for (size_t i = 0; i < class_reg->constructors.size(); ++i) {
+      try {
+        std::cout << "Trying constructor " << (i + 1) << "..." << std::endl;
+        auto result = class_reg->constructors[i]->call_with_args(args);
+        std::cout << "Constructor " << (i + 1) << " executed successfully"
+                  << std::endl;
+        return result;
+      } catch (const std::exception& e) {
+        std::cout << "Constructor " << (i + 1) << " failed: " << e.what()
+                  << std::endl;
+      }
+    }
+
+    throw std::runtime_error("No suitable constructor found for " +
+                             qualified_name);
+  }
+
+  FunctionResult call_static_method_with_args(const std::string& qualified_name,
+                                              const std::string& method_name,
+                                              const FunctionArgs& args) const {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found!");
+    }
+
+    auto& class_reg = it->second;
+    auto method_it = class_reg->static_methods.find(method_name);
+    if (method_it == class_reg->static_methods.end()) {
+      throw std::runtime_error("Static method " + method_name +
+                               " not found in " + qualified_name + "!");
+    }
+
+    try {
+      std::cout << "Executing " << qualified_name << "::" << method_name
+                << " (static) with " << args.size() << " args" << std::endl;
+      auto result = method_it->second->call_with_args(args);
+
+      if (result.has_value()) {
+        std::cout << "Static method executed successfully with return value"
+                  << std::endl;
+      } else {
+        std::cout << "Static method executed successfully (void return)"
+                  << std::endl;
+      }
+      return result;
+    } catch (const std::exception& e) {
+      std::cout << "Error executing static method: " << e.what() << std::endl;
+      throw;
+    }
+  }
+
+  FunctionResult call_method_with_args(const std::string& qualified_name,
+                                       const std::string& method_name,
+                                       const IValue& instance,
+                                       const FunctionArgs& args) const {
+    auto it = classes_.find(qualified_name);
+    if (it == classes_.end()) {
+      throw std::runtime_error("Class " + qualified_name + " not found!");
+    }
+
+    auto& class_reg = it->second;
+    auto method_it = class_reg->methods.find(method_name);
+    if (method_it == class_reg->methods.end()) {
+      throw std::runtime_error("Instance method " + method_name +
+                               " not found in " + qualified_name + "!");
+    }
+
+    try {
+      std::cout << "Executing " << qualified_name << "::" << method_name
+                << " (instance) with " << args.size() << " args" << std::endl;
+
+      // Create a FunctionArgs object with the instance as the first argument
+      FunctionArgs method_args;
+      method_args.add_arg(instance);  // Add the instance as the first arg
+      for (size_t i = 0; i < args.size(); ++i) {
+        method_args.add_arg(args.get_value(i));
+      }
+
+      auto result = method_it->second->call_with_args(method_args);
+
+      if (result.has_value()) {
+        std::cout << "Instance method executed successfully with return value"
+                  << std::endl;
+      } else {
+        std::cout << "Instance method executed successfully (void return)"
+                  << std::endl;
+      }
+      return result;
+    } catch (const std::exception& e) {
+      std::cout << "Error executing instance method: " << e.what() << std::endl;
+      throw;
+    }
+  }
+
+  void print_all_classes() const {
+    std::cout << "\n=== Registered Classes ===" << std::endl;
+    for (const auto& [qualified_name, registration] : classes_) {
+      std::cout << "Class: " << qualified_name << std::endl;
+
+      if (!registration->constructors.empty()) {
+        std::cout << "  Constructors: " << registration->constructors.size()
+                  << " available" << std::endl;
+      }
+
+      if (!registration->methods.empty()) {
+        std::cout << "  Methods: ";
+        for (const auto& [method_name, _] : registration->methods) {
+          std::cout << method_name << " ";
+        }
+        std::cout << std::endl;
+      }
+
+      if (!registration->static_methods.empty()) {
+        std::cout << "  Static Methods: ";
+        for (const auto& [method_name, _] : registration->static_methods) {
+          std::cout << method_name << " ";
+        }
+        std::cout << std::endl;
+      }
+    }
+    std::cout << "==========================" << std::endl << std::endl;
+  }
+
+ private:
+  std::unordered_map<std::string, std::unique_ptr<ClassRegistration>> classes_;
+};
+
+// Class registration API
+template <class CurClass>
+class class_ {
+  static_assert(
+      std::is_base_of_v<torch::CustomClassHolder, CurClass>,
+      "torch::class_<T> requires T to inherit from CustomClassHolder");
+
+ public:
+  class_(const std::string& namespaceName, const std::string& className)
+      : namespace_name_(namespaceName),
+        class_name_(className),
+        qualified_name_(namespaceName + "::" + className) {
+    ClassRegistry::instance().register_class(namespaceName, className);
+  }
+
+  // Register constructor
+  template <typename... Types>
+  class_& def(torch::init_types<Types...>) {
+    std::cout << "def() called with " << sizeof...(Types)
+              << " template parameters" << std::endl;
+
+    // Create a lambda for the constructor
+    auto constructor_func = [](const FunctionArgs& args) -> torch::IValue {
+      std::cout << "Constructor lambda called with " << args.size()
+                << " arguments" << std::endl;
+      std::cout << "Expected parameter count: " << sizeof...(Types)
+                << std::endl;
+
+      if constexpr (sizeof...(Types) == 0) {
+        // Default constructor
+        if (args.size() != 0) {
+          throw std::runtime_error(
+              "Default constructor expects 0 arguments, got " +
+              std::to_string(args.size()));
+        }
+        auto instance = torch::make_intrusive<CurClass>();
+        return torch::IValue(instance);
+      } else {
+        // Parameterized constructor
+        if (args.size() != sizeof...(Types)) {
+          throw std::runtime_error(
+              "Constructor argument count mismatch: expected " +
+              std::to_string(sizeof...(Types)) + ", got " +
+              std::to_string(args.size()));
+        }
+        // Use std::apply to unpack the arguments
+        auto tuple_args = args.to_tuple<Types...>();
+        auto instance = std::apply(
+            [](Types... args) {
+              return torch::make_intrusive<CurClass>(
+                  std::forward<Types>(args)...);
+            },
+            tuple_args);
+        return torch::IValue(instance);
+      }
+    };
+
+    ClassRegistry::instance().register_constructor(
+        qualified_name_, CppFunction(constructor_func));
+    return *this;
+  }
+
+  // Register instance method
+  template <typename Func>
+  class_& def(const std::string& name, Func&& f) {
+    // Check if Func is a member function pointer
+    if constexpr (std::is_member_function_pointer_v<std::decay_t<Func>>) {
+      // Use function_traits to extract class type and method signature
+      auto method_func = [f](const FunctionArgs& args) -> torch::IValue {
+        if (args.size() < 1) {
+          throw std::runtime_error(
+              "Instance method requires at least 1 argument (this pointer)");
+        }
+
+        // Get the instance (first argument)
+        auto instance = args.get<torch::intrusive_ptr<CurClass>>(0);
+
+        // Invoke the member function
+        return invoke_member_function(f, instance.get(), args);
+      };
+
+      ClassRegistry::instance().register_method(
+          qualified_name_, name, CppFunction(method_func));
+      std::cout << "Instance method " << name << " registered successfully"
+                << std::endl;
+    } else {
+      // Handle generic callable (e.g., lambda, std::function)
+      std::cout << "Method registration for " << name
+                << " (generic callable not yet implemented)" << std::endl;
+    }
+
+    return *this;
+  }
+
+  // Register static method
+  template <typename Func>
+  class_& def_static(const std::string& name, Func&& f) {
+    ClassRegistry::instance().register_static_method(
+        qualified_name_, name, CppFunction(std::forward<Func>(f)));
+    return *this;
+  }
+
+ private:
+  std::string namespace_name_;
+  std::string class_name_;
+  std::string qualified_name_;
+};
+
 enum class DispatchKey {
   Undefined = 0,
   CPU,
@@ -292,6 +849,7 @@ inline std::string dispatch_key_to_string(DispatchKey key) {
   }
 }
 
+// Operator Registration
 struct OperatorRegistration {
   std::string qualified_name;  // namespace::op_name
   std::string schema;
@@ -517,7 +1075,12 @@ class Library {
     std::cout << std::endl;
   }
 
-  // 定义操作符 schema（用于 TORCH_LIBRARY 和 TORCH_LIBRARY_FRAGMENT）
+  Library(const std::string& ns)  // NOLINT
+      : kind_(DEF), ns_(ns), file_(nullptr), line_(0) {
+    std::cout << "Created Library: namespace=" << ns << std::endl;
+  }
+
+  // Define an operator schema (for TORCH_LIBRARY and TORCH_LIBRARY_FRAGMENT)
   Library& def(const std::string& schema) & {
     if (kind_ == IMPL) {
       std::cout
@@ -526,7 +1089,7 @@ class Library {
       return *this;
     }
 
-    // 简单的 schema 解析：假设格式为 "op_name(args) -> return_type"
+    // Simple schema extraction: if it contains '(', extract the part before '('
     auto op_name = extract_op_name(schema);
     auto qualified_name = ns_ + "::" + op_name;
 
@@ -534,19 +1097,19 @@ class Library {
     return *this;
   }
 
-  // 定义操作符并立即提供实现
+  // Define an operator implementation
   template <typename Func>
   Library& def(const std::string& name_or_schema, Func&& f) & {
     auto op_name = extract_op_name(name_or_schema);
     auto qualified_name = ns_ + "::" + op_name;
 
-    // 如果看起来像 schema，先注册 schema
+    // If name_or_schema contains '(', treat it as a schema
     if (name_or_schema.find('(') != std::string::npos) {
       OperatorRegistry::instance().register_schema(qualified_name,
                                                    name_or_schema);
     }
 
-    // 注册实现
+    // Register implementation
     auto dispatch_key = dispatch_key_.value_or(DispatchKey::CPU);
     OperatorRegistry::instance().register_implementation(
         qualified_name, dispatch_key, CppFunction(std::forward<Func>(f)));
@@ -554,7 +1117,7 @@ class Library {
     return *this;
   }
 
-  // 实现操作符（用于 TORCH_LIBRARY_IMPL）
+  // Implementation of an operator
   template <typename Func>
   Library& impl(const std::string& op_name, Func&& f) & {
     auto qualified_name = ns_ + "::" + op_name;
@@ -566,7 +1129,12 @@ class Library {
     return *this;
   }
 
-  // 打印当前库信息
+  template <class CurClass>
+  class_<CurClass> class_(const std::string& className) {
+    return ::torch::class_<CurClass>(ns_, className);
+  }
+
+  // Print current library info
   void print_info() const {
     std::cout << "Library Info: " << kind_to_string(kind_)
               << ", namespace=" << ns_;
@@ -584,7 +1152,7 @@ class Library {
   uint32_t line_;
 
   std::string extract_op_name(const std::string& name_or_schema) const {
-    // 简单的名称提取：如果包含'('，提取'('前的部分
+    // Extract the operator name from the schema string
     auto pos = name_or_schema.find('(');
     if (pos != std::string::npos) {
       return name_or_schema.substr(0, pos);
@@ -626,12 +1194,11 @@ class TorchLibraryInit {
 
 }  // namespace detail
 
-// 用于生成唯一标识符的宏
 #define TORCH_CONCAT_IMPL(x, y) x##y
 #define TORCH_CONCAT(x, y) TORCH_CONCAT_IMPL(x, y)
 #define TORCH_UNIQUE_NAME(prefix) TORCH_CONCAT(prefix, __LINE__)
 
-// TORCH_LIBRARY - 定义主库
+// TORCH_LIBRARY
 #define TORCH_LIBRARY(ns, m)                                               \
   static void TORCH_UNIQUE_NAME(torch_library_init_)(torch::Library&);     \
   static const torch::detail::TorchLibraryInit TORCH_UNIQUE_NAME(          \
@@ -643,7 +1210,7 @@ class TorchLibraryInit {
                                   __LINE__);                               \
   void TORCH_UNIQUE_NAME(torch_library_init_)(torch::Library & m)  // NOLINT
 
-// TORCH_LIBRARY_FRAGMENT - 定义库片段
+// TORCH_LIBRARY_FRAGMENT
 #define TORCH_LIBRARY_FRAGMENT(ns, m)                                   \
   static void TORCH_UNIQUE_NAME(torch_library_fragment_init_)(          \
       torch::Library&);                                                 \
@@ -658,7 +1225,7 @@ class TorchLibraryInit {
   void TORCH_UNIQUE_NAME(torch_library_fragment_init_)(torch::Library & \
                                                        m)  // NOLINT
 
-// TORCH_LIBRARY_IMPL - 定义实现
+// TORCH_LIBRARY_IMPL
 #define TORCH_LIBRARY_IMPL(ns, key, m)                                      \
   static void TORCH_UNIQUE_NAME(torch_library_impl_init_)(torch::Library&); \
   static const torch::detail::TorchLibraryInit TORCH_UNIQUE_NAME(           \

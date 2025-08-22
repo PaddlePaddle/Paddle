@@ -1,0 +1,189 @@
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <torch/api.h>
+#include <torch/library.h>
+
+#include "gtest/gtest.h"
+
+at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
+  TORCH_CHECK(a.sizes() == b.sizes());
+  TORCH_CHECK(a.dtype() == at::kFloat);
+  TORCH_CHECK(b.dtype() == at::kFloat);
+  TORCH_INTERNAL_ASSERT(a.device().type() == at::DeviceType::CPU);
+  TORCH_INTERNAL_ASSERT(b.device().type() == at::DeviceType::CPU);
+  at::Tensor a_contig = a.contiguous();
+  at::Tensor b_contig = b.contiguous();
+  at::Tensor result = torch::empty(a_contig.sizes(), a_contig.options());
+  const float* a_ptr = a_contig.data_ptr<float>();
+  const float* b_ptr = b_contig.data_ptr<float>();
+  float* result_ptr = result.data_ptr<float>();
+  for (int64_t i = 0; i < result.numel(); i++) {
+    result_ptr[i] = a_ptr[i] * b_ptr[i] + c;
+  }
+  return result;
+}
+
+class TestClass : public torch::CustomClassHolder {
+ public:
+  int value;
+  std::string name;
+
+  TestClass() : value(0), name("default") {
+    std::cout << "TestClass::TestClass() - Default constructor" << std::endl;
+  }
+
+  TestClass(int v) : value(v), name("single_param") {  // NOLINT
+    std::cout << "TestClass::TestClass(int) - Single parameter constructor"
+              << std::endl;
+  }
+
+  TestClass(int v, const std::string& n) : value(v), name(n) {
+    std::cout
+        << "TestClass::TestClass(int, string) - Double parameters constructor"
+        << std::endl;
+  }
+
+  int getValue() const {
+    std::cout << "TestClass::getValue() - getter" << std::endl;
+    return value;
+  }
+
+  const std::string& getName() const {
+    std::cout << "TestClass::getName() - getter" << std::endl;
+    return name;
+  }
+
+  void setValue(int v) {
+    std::cout << "TestClass::setValue(int) - setter (int)" << std::endl;
+    value = v;
+  }
+
+  void setName(const std::string& n) {
+    std::cout << "TestClass::setName(string) - setter (string)" << std::endl;
+    name = n;
+  }
+
+  static int getDefaultValue() {
+    std::cout << "TestClass::getDefaultValue() - static method" << std::endl;
+    return 42;
+  }
+
+  static int addValues(int a, int b) {
+    std::cout << "TestClass::addValues(int, int) - static method" << std::endl;
+    return a + b;
+  }
+};
+
+TORCH_LIBRARY(example_library, m) {
+  // Note that "float" in the schema corresponds to the C++ double type
+  // and the Python float type.
+  m.def("mymuladd(Tensor a, Tensor b, float c) -> Tensor");
+  m.class_<TestClass>("TestClass")
+      .def(torch::init<>())
+      .def(torch::init<int>())
+      .def(torch::init<int, std::string>())
+      .def("getValue", &TestClass::getValue)
+      .def("getName", &TestClass::getName)
+      .def("setValue", &TestClass::setValue)
+      .def("setName", &TestClass::setName)
+      .def_static("getDefaultValue", &TestClass::getDefaultValue)
+      .def_static("addValues", &TestClass::addValues);
+}
+
+TORCH_LIBRARY_IMPL(example_library, CPU, m) {
+  m.impl("mymuladd", &mymuladd_cpu);
+}
+
+TEST(test_torch_library, TestLibraryOperators) {
+  auto qualified_name = "example_library::mymuladd";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
+  function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
+  function_args.add_arg(torch::IValue(2.0));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_tensor());
+  auto result_tensor = result.get_value().to_tensor();
+}
+
+TEST(test_torch_library, TestLibraryClasses) {
+  auto qualified_name = "example_library::TestClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+  bool has_class = class_registry.has_class(qualified_name);
+  ASSERT_TRUE(has_class);
+  torch::FunctionArgs constructor_args;
+  constructor_args.add_arg(torch::IValue(10));
+  constructor_args.add_arg(torch::IValue("example"));
+
+  // Call constructor
+  auto instance = class_registry.call_constructor_with_args(qualified_name,
+                                                            constructor_args);
+  ASSERT_TRUE(instance.get_value().is_custom_class());
+
+  // Call getValue
+  auto get_value_result = class_registry.call_method_with_args(
+      qualified_name, "getValue", instance.get_value(), torch::FunctionArgs());
+  ASSERT_TRUE(get_value_result.get_value().is_int());
+  int value = get_value_result.get_value().to_int();
+  ASSERT_EQ(value, 10);
+
+  // Call setValue
+  torch::FunctionArgs set_value_args;
+  set_value_args.add_arg(torch::IValue(20));
+  class_registry.call_method_with_args(
+      qualified_name, "setValue", instance.get_value(), set_value_args);
+  ASSERT_EQ(instance.get_value().to_custom_class<TestClass>()->value, 20);
+  auto get_value_after_set = class_registry.call_method_with_args(
+      qualified_name, "getValue", instance.get_value(), torch::FunctionArgs());
+  ASSERT_EQ(get_value_after_set.get_value().to_int(), 20);
+
+  // Call getName
+  auto get_name_result = class_registry.call_method_with_args(
+      qualified_name, "getName", instance.get_value(), torch::FunctionArgs());
+  ASSERT_TRUE(get_name_result.get_value().is_string());
+  std::string name = get_name_result.get_value().to_string();
+  ASSERT_EQ(name, "example");
+
+  // Call setName
+  torch::FunctionArgs set_name_args;
+  set_name_args.add_arg(torch::IValue("new_example"));
+  class_registry.call_method_with_args(
+      qualified_name, "setName", instance.get_value(), set_name_args);
+  ASSERT_EQ(instance.get_value().to_custom_class<TestClass>()->name,
+            "new_example");
+  auto get_name_after_set = class_registry.call_method_with_args(
+      qualified_name, "getName", instance.get_value(), torch::FunctionArgs());
+  ASSERT_EQ(get_name_after_set.get_value().to_string(), "new_example");
+
+  // Call static method getDefaultValue
+  auto get_default_value_result = class_registry.call_static_method_with_args(
+      qualified_name, "getDefaultValue", torch::FunctionArgs());
+  ASSERT_TRUE(get_default_value_result.get_value().is_int());
+  int default_value = get_default_value_result.get_value().to_int();
+  ASSERT_EQ(default_value, 42);
+
+  // Call static method addValues
+  torch::FunctionArgs add_values_args;
+  add_values_args.add_arg(torch::IValue(5));
+  add_values_args.add_arg(torch::IValue(7));
+  auto add_values_result = class_registry.call_static_method_with_args(
+      qualified_name, "addValues", add_values_args);
+  ASSERT_TRUE(add_values_result.get_value().is_int());
+  int sum = add_values_result.get_value().to_int();
+  ASSERT_EQ(sum, 12);
+}

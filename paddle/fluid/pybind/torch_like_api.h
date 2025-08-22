@@ -38,7 +38,7 @@ class PyTorchStyleOperationInvoker {
 
   static py::object to_py_object(const torch::IValue& value);
 
-  static torch::IValue to_simple_value(py::handle obj);
+  static torch::IValue to_ivalue(py::handle obj);
 
   static py::object create_python_callable(const std::string& qualified_name);
 
@@ -119,8 +119,7 @@ inline py::object PyTorchStyleOperationInvoker::to_py_object(
   }
 }
 
-inline torch::IValue PyTorchStyleOperationInvoker::to_simple_value(
-    py::handle obj) {
+inline torch::IValue PyTorchStyleOperationInvoker::to_ivalue(py::handle obj) {
   if (obj.is_none()) {
     return torch::IValue();  // None
   } else if (py::isinstance<py::bool_>(obj)) {
@@ -162,7 +161,7 @@ PyTorchStyleOperationInvoker::convert_args_kwargs_to_function_args(
   FunctionArgs function_args;
 
   for (const auto& arg : args) {
-    torch::IValue value = to_simple_value(arg);
+    torch::IValue value = to_ivalue(arg);
     function_args.add_arg(std::move(value));
   }
 
@@ -170,7 +169,7 @@ PyTorchStyleOperationInvoker::convert_args_kwargs_to_function_args(
     py::str key = item.first.cast<py::str>();
     py::object value_obj = item.second.cast<py::object>();
 
-    torch::IValue value = to_simple_value(value_obj);
+    torch::IValue value = to_ivalue(value_obj);
     function_args.add_arg(std::move(value));
   }
 
