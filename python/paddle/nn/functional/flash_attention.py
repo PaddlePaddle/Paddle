@@ -2285,7 +2285,9 @@ def flashmask_attention(
                     f"Invalid shape of startend_row_indices, when causal is False, the last dimension should be either 2 or 4 but got {startend_row_indices.shape[-1]}"
                 )
 
-    if paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+    if "xpu" in paddle.get_device():
+        fa_version = 2
+    elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
         "FLAGS_cudnn_deterministic"
     ]:
         fa_version = 2
