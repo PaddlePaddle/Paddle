@@ -55,6 +55,19 @@ def dl_open_guard():
         sys.setdlopenflags(old_flags)
 
 
+def import_module(module: str):
+    return importlib.import_module(module)
+
+
+def load_library(path: str):
+    """
+    Load a shared library at the specified path.
+    """
+    path = os.path.realpath(path)
+    with dl_open_guard():
+        ctypes.CDLL(path)
+
+
 class OverloadedOpFunction(Generic[_InputT, _RetT]):
     def __init__(self, namespace: str, name: str):
         self.namespace = namespace
@@ -62,7 +75,9 @@ class OverloadedOpFunction(Generic[_InputT, _RetT]):
 
     @cached_property
     def callable_fn(self) -> Callable[_InputT, _RetT]:
-        return paddle.base.core.get_operation(f"{self.namespace}::{self.name}")
+        return paddle.base.core.torch_compat._get_operation(
+            f"{self.namespace}::{self.name}"
+        )
 
     def __getattr__(self, name: str) -> Callable[_InputT, _RetT]:
         if name == "default":
@@ -92,16 +107,15 @@ class PaddleOpsModule(types.ModuleType):
 
     def __getattr__(self, name: str):
         namespace = OpNameSpace(name)
+        # Insert to __dict__ to avoid repeatedly __getattr__ overhead
         setattr(self, name, namespace)
         return namespace
 
     def import_module(self, module):
-        importlib.import_module(module)
+        return import_module(module)
 
     def load_library(self, path):
-        os.path.realpath(path)
-        with dl_open_guard():
-            ctypes.CDLL(path)
+        return load_library(path)
 
 
 ops = PaddleOpsModule()

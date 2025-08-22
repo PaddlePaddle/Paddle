@@ -141,6 +141,7 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from ._classes import classes as classes
 from ._ops import ops as ops
 from .amp import (
     get_autocast_cpu_dtype,

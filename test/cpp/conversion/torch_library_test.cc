@@ -35,6 +35,11 @@ at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
   return result;
 }
 
+template <typename T>
+T generic_add(T a, T b) {
+  return a + b;
+}
+
 class TestClass : public torch::CustomClassHolder {
  public:
   int value;
@@ -104,6 +109,14 @@ TORCH_LIBRARY(example_library, m) {
 
 TORCH_LIBRARY_IMPL(example_library, CPU, m) {
   m.impl("mymuladd", &mymuladd_cpu);
+}
+
+TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
+  m.def("int_add", &generic_add<int>);
+}
+
+TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
+  m.def("string_concat", &generic_add<std::string>);
 }
 
 TEST(test_torch_library, TestLibraryOperators) {
@@ -186,4 +199,37 @@ TEST(test_torch_library, TestLibraryClasses) {
   ASSERT_TRUE(add_values_result.get_value().is_int());
   int sum = add_values_result.get_value().to_int();
   ASSERT_EQ(sum, 12);
+}
+
+TEST(test_torch_library, TestFragmentOperators) {
+  auto qualified_name_int_add = "example_library_fragment::int_add";
+  auto* op_int_add =
+      torch::OperatorRegistry::instance().find_operator(qualified_name_int_add);
+  ASSERT_NE(op_int_add, nullptr);
+  auto impl_it_int_add =
+      op_int_add->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it_int_add, op_int_add->implementations.end());
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(3));
+  function_args.add_arg(torch::IValue(4));
+  auto result = impl_it_int_add->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_int());
+  int sum = result.get_value().to_int();
+  ASSERT_EQ(sum, 7);
+
+  auto qualified_name_string_concat = "example_library_fragment::string_concat";
+  auto* op_string_concat = torch::OperatorRegistry::instance().find_operator(
+      qualified_name_string_concat);
+  ASSERT_NE(op_string_concat, nullptr);
+  auto impl_it_string_concat =
+      op_string_concat->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it_string_concat, op_string_concat->implementations.end());
+  torch::FunctionArgs string_args;
+  string_args.add_arg(torch::IValue(std::string("Hello, ")));
+  string_args.add_arg(torch::IValue(std::string("World!")));
+  auto string_result =
+      impl_it_string_concat->second.call_with_args(string_args);
+  ASSERT_TRUE(string_result.get_value().is_string());
+  std::string concatenated_string = string_result.get_value().to_string();
+  ASSERT_EQ(concatenated_string, "Hello, World!");
 }
