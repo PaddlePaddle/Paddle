@@ -1026,9 +1026,9 @@ def monkey_patch_value():
         return _C_ops.sparse_indices(self)
 
     def set_shape(self, shape):
-        assert (
-            paddle.base.dygraph.base.in_to_static_mode()
-        ), "We only support call 'set_shape' in to_static mode."
+        assert paddle.base.dygraph.base.in_to_static_mode(), (
+            "We only support call 'set_shape' in to_static mode."
+        )
 
         if self.is_dense_tensor_type() or self.is_selected_row_type():
             type = paddle.pir.create_shaped_type(self.type(), shape)
@@ -1074,9 +1074,9 @@ def monkey_patch_value():
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if dtype is None:

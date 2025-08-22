@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -155,6 +159,29 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
+def softmax_param_ignore_alias(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # Remove ignored parameters from args
+        if 2 < len(args) and isinstance(args[2], int):
+            args = args[:2] + args[2 + 1 :]
+        else:
+            # Remove ignored parameters from kwargs
+            kwargs.pop("_stacklevel", None)
+
+        # Process parameters to handle alias mapping
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
 def param_one_alias(alias_list):
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
@@ -262,7 +289,8 @@ class VariableArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-"""
+def view_decorator():
+    """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
     tensor_x.view(paddle.float32) -> paddle.view(tensor_x, paddle.float32)
@@ -270,10 +298,8 @@ class VariableArgsDecorator(DecoratorBase):
     tensor_x.view([-1, 1, 3]) -> paddle.view(tensor_x, [-1, 1, 3])
     tensor_x.view(-1, 1, 3) -> paddle.view(tensor_x, -1, 1, 3)
     tensor_x.view(size=[-1, 1, 3]) -> paddle.view(tensor_x, size=[-1, 1, 3])
-"""
+    """
 
-
-def view_decorator():
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -336,6 +362,35 @@ def reshape_decorator():
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
             if ("input" in kwargs) and ("x" not in kwargs):
                 kwargs["x"] = kwargs.pop("input")
+            elif len(args) >= 2 and type(args[1]) is int:
+                if all(type(arg) is int for arg in args[1:]):
+                    kwargs["x"] = args[0]
+                    kwargs['shape'] = list(args[1:])
+                    args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def expand_decorator():
+    """
+    Usage Example:
+    paddle.expand(x=tensor_x, shape=[3, 4], name=None)
+    tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])
+    tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)
+    tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("size" in kwargs) and ("shape" not in kwargs):
+                kwargs["shape"] = kwargs.pop("size")
             elif len(args) >= 2 and type(args[1]) is int:
                 if all(type(arg) is int for arg in args[1:]):
                     kwargs["x"] = args[0]

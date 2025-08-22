@@ -29,6 +29,10 @@ args_default_mapping = {
     "axis": ["dim"],
     "keepdims": ["keepdim"],
 }
+DISABLE_TIPS = (
+    "// This part of the function will be performed by a custom args mapper"
+)
+
 H_FILE_TEMPLATE = """
 
 #pragma once
@@ -55,7 +59,7 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/pybind/op_callstack_utils.h"
 #include "paddle/fluid/pybind/arg_pre_process.h"
-
+#include "paddle/fluid/pybind/args_mapper.h"
 {body}
 
 """
@@ -78,6 +82,8 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Check Reminding Params validity if needed
         {check_remaining_params_valid}
+        // Custom Args Mapper if need
+        {custom_args_mapper}
         // Call Pre_Process before calling dygraph function if needed
         {pre_process}
         // Call ir static api
@@ -109,6 +115,8 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Check Reminding Params validity if needed
         {check_remaining_params_valid}
+        // Custom Args Mapper if need
+        {custom_args_mapper}
         // Call Pre_Process before calling dygraph function if needed
         {pre_process}
 
@@ -136,14 +144,15 @@ INPUT_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
         auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
 
-#     PyObject* axis_obj = GetItemFromArgsOrKWArgs(args, 1, kwargs, {"axis","dim"}, nargs,&remaining_kwargs);
 
 INPUT_FROM_ARGS_KWARGS_TEMPLATE = """
         PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);
         auto {name} = {cast_func}({name}_obj, "{api_name}", {index}, {dispensable});"""
 
 CALL_PRE_PROCESS_TEMPLATE = """{pre_process};"""
-
+CALL_ARGS_MAPPER_TEMPLATE = """    {func_name}(args,kwargs{params});
+"""
+PARAMS_DECLARE_TEMPLE = """    {type} {name};\n"""
 NO_MUTABLE_ATTR_CAST_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});
         {type} {name} = {cast_func}({name}_obj, "{api_name}", {index});"""
@@ -178,6 +187,8 @@ PyObject *static_api_{api_name}(PyObject *self, PyObject *args, PyObject *kwargs
 
         // Check Reminding Params validity if needed
         {check_remaining_params_valid}
+        // Custom Args Mapper if need
+        {custom_args_mapper}
         // Call Pre_Process before calling dygraph function if needed
         {pre_process}
 
@@ -333,6 +344,8 @@ class PythonCCodeGen(CodeGen):
         return alias_vector
 
     def _gen_inputs(self, op_info, op_name, args_alias_map={}):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
         optional_list = op_info.input_optional_list
@@ -376,6 +389,8 @@ class PythonCCodeGen(CodeGen):
         return ret
 
     def _gen_attrs_without_mutable(self, op_info, op_name, args_alias_map={}):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         input_size = len(op_info.input_name_list)
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
@@ -450,6 +465,8 @@ class PythonCCodeGen(CodeGen):
         return ret
 
     def _gen_init_mutable_attrs(self, op_info):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         mutable_attr_name_list = op_info.mutable_attribute_name_list
         ret = ''
         for name in mutable_attr_name_list:
@@ -588,30 +605,82 @@ class PythonCCodeGen(CodeGen):
         return ret
 
     def _gen_check_params_count(self, max_args, need_check):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         if need_check:
             return CHECK_PARAMS_COUNT_TEMPLATE.format(max_args=max_args)
         else:
             return '// NO NEED'
 
     def _gen_check_reminding_params(self, need_check):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         if need_check:
             return CHECK_REMAINING_PARAMS_VALID_TEMPLATE
         return '// NO NEED'
 
+    def _gen_custom_args_mapper(self, op_info, args_mapper):
+        if not self.use_custom_args_mapper:
+            return "// NO NEED"
+        args_mapper_func_name = ""
+        if "static_func" in args_mapper.keys():
+            args_mapper_func_name = args_mapper["static_func"]
+        elif "func" in args_mapper.keys():
+            args_mapper_func_name = args_mapper["func"]
+        input_name_list = op_info.input_name_list
+        input_type_list = op_info.input_type_list
+        custom_args_mapper_str = ""
+        all_params_list = []
+
+        def _trans_dtype(dtype):
+            if dtype == "paddle::dialect::DenseTensorType":
+                return OP_INPUT
+            # remove const exp
+            if dtype.startswith("const"):
+                dtype = dtype.removeprefix("const")
+            if dtype.endswith("&"):
+                dtype = dtype.removesuffix("&")
+            return dtype
+
+        for name, type in zip(input_name_list, input_type_list):
+            custom_args_mapper_str += PARAMS_DECLARE_TEMPLE.format(
+                name=name, type=_trans_dtype(type)
+            )
+            all_params_list.append(name)
+        attribute_name_list = op_info.attribute_name_list
+        attribute_type_list = op_info.attribute_build_arg_type_list
+        for name, type in zip(attribute_name_list, attribute_type_list):
+            custom_args_mapper_str += PARAMS_DECLARE_TEMPLE.format(
+                name=name, type=_trans_dtype(type)
+            )
+            all_params_list.append(name)
+
+        params = ',&' + ',&'.join(all_params_list)
+        custom_args_mapper_str += CALL_ARGS_MAPPER_TEMPLATE.format(
+            func_name=args_mapper_func_name, params=params
+        )
+        return custom_args_mapper_str
+
     def _gen_pre_process(self, pre_process):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         pre_process_str = ""
         if pre_process is not None and self.need_parse_python_api_args:
             if "static_func" in pre_process.keys():
                 pre_process_str = pre_process["static_func"]
             elif "func" in pre_process.keys():
                 pre_process_str = pre_process["func"]
+            if pre_process_str != "":
 
-            def pre_process_add_ampersand(s):
-                return s.replace('(', '(&').replace(',', ',&').rstrip(')') + ')'
+                def pre_process_add_ampersand(s):
+                    return (
+                        s.replace('(', '(&').replace(',', ',&').rstrip(')')
+                        + ')'
+                    )
 
-            return CALL_PRE_PROCESS_TEMPLATE.format(
-                pre_process=pre_process_add_ampersand(pre_process_str)
-            )
+                return CALL_PRE_PROCESS_TEMPLATE.format(
+                    pre_process=pre_process_add_ampersand(pre_process_str)
+                )
         return "// NO NEED"
 
     def _gen_one_impl(self, op_info, op_name):
@@ -624,8 +693,10 @@ class PythonCCodeGen(CodeGen):
         python_api_info = op_info.python_api_info
         args_alias_map = None
         pre_process = None
+        args_mapper = None
         need_check_params_count = False
         self.need_parse_python_api_args = False
+        self.use_custom_args_mapper = False
 
         if python_api_info is not None:
             self.need_parse_python_api_args = True
@@ -634,6 +705,13 @@ class PythonCCodeGen(CodeGen):
                 need_check_params_count = True
             if "pre_process" in python_api_info.keys():
                 pre_process = python_api_info["pre_process"]
+            if "args_mapper" in python_api_info.keys():
+                args_mapper = python_api_info["args_mapper"]
+                if args_mapper is not None and (
+                    "static_func" in args_mapper.keys()
+                    or "func" in args_mapper.keys()
+                ):
+                    self.use_custom_args_mapper = True
 
         if len(output_name_list) == 0:
             ret = NO_OUTPUT_API_IMPL_TEMPLATE.format(
@@ -647,6 +725,9 @@ class PythonCCodeGen(CodeGen):
                 ),
                 check_remaining_params_valid=self._gen_check_reminding_params(
                     need_check=need_check_params_count
+                ),
+                custom_args_mapper=self._gen_custom_args_mapper(
+                    op_info=op_info, args_mapper=args_mapper
                 ),
                 pre_process=self._gen_pre_process(pre_process),
                 args=', '.join(input_name_list + attr_name_list),
@@ -673,6 +754,9 @@ class PythonCCodeGen(CodeGen):
                 check_remaining_params_valid=self._gen_check_reminding_params(
                     need_check=need_check_params_count
                 ),
+                custom_args_mapper=self._gen_custom_args_mapper(
+                    op_info, args_mapper
+                ),
                 pre_process=self._gen_pre_process(pre_process),
                 args_with_mutable_attrs=', '.join(
                     input_name_list
@@ -697,6 +781,9 @@ class PythonCCodeGen(CodeGen):
                 inputs=self._gen_inputs(op_info, op_name, args_alias_map),
                 attrs=self._gen_attrs_without_mutable(
                     op_info, op_name, args_alias_map
+                ),
+                custom_args_mapper=self._gen_custom_args_mapper(
+                    op_info, args_mapper
                 ),
                 args=', '.join(input_name_list + attr_name_list),
                 check_remaining_params_valid=self._gen_check_reminding_params(
