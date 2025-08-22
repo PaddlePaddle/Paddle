@@ -71,8 +71,11 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   }
 
   // Avoid multiple tensor axes sharded by same mesh dimension
+  const auto& axes_size = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x.dist_attr().process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-      ShardingMergeForTensorsOnePair({{x_axes, x_dims_mapping}}, false);
+      ShardingMergeForTensors(
+          {{x_axes, x_dims_mapping}}, axes_size, mesh_shape, false);
 
   // Step3: Infer Output's Dims Mapping.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -128,8 +131,11 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   out_dims_mapping[axis] = std::vector<int64_t>({});
 
   // Step2: Sharding Propagation
+  const auto& axes_size = GetAxesSizes({{out_axes, out_shape}});
+  const auto& mesh_shape = out.dist_attr().process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-      ShardingMergeForTensorsOnePair({{out_axes, out_dims_mapping}});
+      ShardingMergeForTensors(
+          {{out_axes, out_dims_mapping}}, axes_size, mesh_shape);
 
   // infer input's dims mapping.
   std::vector<std::vector<int64_t>> x_dims_mapping =
