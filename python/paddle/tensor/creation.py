@@ -28,9 +28,9 @@ from paddle import _C_ops
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
-    SizeArgsDecorator,
     param_one_alias,
     param_two_alias,
+    size_args_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1386,7 +1386,7 @@ def fill_constant(
         return out
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def ones(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -1513,7 +1513,7 @@ def ones_like(
     )
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def zeros(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -2073,13 +2073,14 @@ def arange(
     reason=(
         "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
         "Instead, use paddle.arange, which produces values in [start, end)"
-    )
+    ),
+    level=1,
 )
 def range(
     start: float | paddle.Tensor = 0,
     end: float | paddle.Tensor | None = None,
     step: float | paddle.Tensor = 1,
-    dtype=None,
+    dtype: DTypeLike = None,
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
@@ -2158,19 +2159,7 @@ def range(
         start = 0
 
     if dtype is None:
-        for val in [start, end, step]:
-            if isinstance(val, (Variable, paddle.pir.Value)):
-                if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
-            else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
+        dtype = paddle.get_default_dtype()
 
     is_value_input = (
         not isinstance(start, (Variable, paddle.pir.Value))
@@ -2951,7 +2940,7 @@ def diag(
         return out
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
