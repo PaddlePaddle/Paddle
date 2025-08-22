@@ -44,9 +44,9 @@ class SE_ResNeXt:
     def net(self, input, class_dim=1000):
         layers = self.layers
         supported_layers = [50, 101, 152]
-        assert (
-            layers in supported_layers
-        ), f"supported layers are {supported_layers} but input layer is {layers}"
+        assert layers in supported_layers, (
+            f"supported layers are {supported_layers} but input layer is {layers}"
+        )
         if layers == 50:
             cardinality = 32
             reduction_ratio = 16
