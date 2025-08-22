@@ -663,32 +663,9 @@ def median(
     ignore_nan = False
     if mode == "avg" and not x.dtype == paddle.float64:
         x = x.astype(paddle.float32)
-    if in_dynamic_or_pir_mode():
-        out, indices = _C_ops.nanmedian(x, axis, keepdim, mode, ignore_nan)
-        indices.stop_gradient = True
-    else:
-        check_variable_and_dtype(
-            x,
-            'X',
-            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
-            'nanmedian',
-        )
-        helper = LayerHelper('nanmedian', **locals())
-        attrs = {
-            'axis': axis,
-            'keepdim': keepdim,
-            'mode': mode,
-            "ignore_nan": ignore_nan,
-        }
-        out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(paddle.int64)
-        helper.append_op(
-            type='nanmedian',
-            inputs={'X': x},
-            outputs={'Out': out, 'MedianIndex': indices},
-            attrs=attrs,
-        )
-        indices.stop_gradient = True
+
+    out, indices = _C_ops.nanmedian(x, axis, keepdim, mode, ignore_nan)
+    indices.stop_gradient = True
     if is_flatten:
         if keepdim:
             out = out.reshape([1] * dims)

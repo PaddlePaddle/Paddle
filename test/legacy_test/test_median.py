@@ -200,6 +200,25 @@ class TestMedianAvg(unittest.TestCase):
             self.dygraph_single_test_median(lis_test)
             self.dygraph_single_test_median_cpu(lis_test)
 
+    def test_all_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+            ]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
+
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
         or not core.is_float16_supported(core.CUDAPlace(0)),
