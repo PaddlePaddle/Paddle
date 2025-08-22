@@ -1,14 +1,3 @@
-[tool.black]
-line-length = 80
-skip-string-normalization = true
-target-version = ["py39", "py310", "py311", "py312", "py313"]
-extend-exclude = '''
-(
-    third_party/.+      # Exclude third_party directory
-    | build/.+          # Exclude build directory
-)
-'''
-
 [tool.ruff]
 exclude = [
     "./build",
@@ -126,7 +115,7 @@ unfixable = [
     "NPY001"
 ]
 ignore = [
-    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with black
+    # Whitespace before ‘,’, ‘;’, or ‘:’, it is not compatible with ruff format
     "E203",
     # Module level import not at top of file
     "E402",

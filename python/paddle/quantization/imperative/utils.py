@@ -133,9 +133,9 @@ def find_parent_layer_and_sub_name(model, name):
     Returns:
         parent_layer, subname
     """
-    assert isinstance(
-        model, paddle.nn.Layer
-    ), "The model must be the instance of paddle.nn.Layer."
+    assert isinstance(model, paddle.nn.Layer), (
+        "The model must be the instance of paddle.nn.Layer."
+    )
     assert len(name) > 0, "The input (name) should not be empty."
 
     last_idx = 0

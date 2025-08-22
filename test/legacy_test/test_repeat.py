@@ -21,7 +21,6 @@ import paddle
 
 
 class TestRepeatBase(unittest.TestCase):
-
     def setUp(self):
         self.x = paddle.to_tensor([1, 2, 3])
         self.repeats = 3

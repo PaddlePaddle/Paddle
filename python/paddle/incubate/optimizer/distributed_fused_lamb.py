@@ -138,9 +138,9 @@ class DistributedFusedLamb(Optimizer):
         use_hierarchical_allreduce=False,
         name=None,
     ):
-        assert (
-            not paddle.in_dynamic_mode()
-        ), "DistributedFusedLamb does not support dygraph mode"
+        assert not paddle.in_dynamic_mode(), (
+            "DistributedFusedLamb does not support dygraph mode"
+        )
         super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 
         self._beta1 = beta1
@@ -150,9 +150,9 @@ class DistributedFusedLamb(Optimizer):
             lamb_weight_decay if lamb_weight_decay is not None else 0.0
         )
         if grad_clip is not None:
-            assert isinstance(
-                grad_clip, ClipGradByGlobalNorm
-            ), "Only ClipGradByGlobalNorm is supported in DistributedFusedLamb"
+            assert isinstance(grad_clip, ClipGradByGlobalNorm), (
+                "Only ClipGradByGlobalNorm is supported in DistributedFusedLamb"
+            )
             max_global_grad_norm = grad_clip.clip_norm
         else:
             max_global_grad_norm = -1.0
@@ -278,9 +278,9 @@ class DistributedFusedLamb(Optimizer):
 
     def _apply_gradients_impl(self, params_grads):
         for p, g in params_grads:
-            assert (
-                g.type == core.VarDesc.VarType.DENSE_TENSOR
-            ), "Only support dense gradient"
+            assert g.type == core.VarDesc.VarType.DENSE_TENSOR, (
+                "Only support dense gradient"
+            )
             g.persistable = True  # the gradient must be persistable for fusion
 
         fp32_fused_param = self._create_persistable_var('fp32_fused_param')
@@ -348,9 +348,9 @@ class DistributedFusedLamb(Optimizer):
             nproc_per_node = nranks
         else:
             nproc_per_node = self._nproc_per_node
-        assert (
-            nranks % nproc_per_node == 0
-        ), "nranks should be exactly divided by nproc_per_node"
+        assert nranks % nproc_per_node == 0, (
+            "nranks should be exactly divided by nproc_per_node"
+        )
 
         shard_inside_node = nranks > nproc_per_node
         local_rank = rank % nproc_per_node
@@ -452,9 +452,9 @@ class DistributedFusedLamb(Optimizer):
                 lr = self._create_param_lr(p_g)
             else:
                 new_lr = self._create_param_lr(p_g)
-                assert id(lr) == id(
-                    new_lr
-                ), "The learning rate for each parameter should be the same"
+                assert id(lr) == id(new_lr), (
+                    "The learning rate for each parameter should be the same"
+                )
         assert lr is not None
 
         lamb_op = main_block.append_op(

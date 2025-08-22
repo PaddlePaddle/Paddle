@@ -479,7 +479,7 @@ class TensorListBufferAllocator {
     bool is_available;
     std::vector<paddle::Tensor> buffer;
     TensorListBuffer() = default;
-    explicit TensorListBuffer(ssize_t len) : buffer(len), is_available(true) {}
+    explicit TensorListBuffer(ssize_t len) : is_available(true), buffer(len) {}
   };
 
   using MapType =
