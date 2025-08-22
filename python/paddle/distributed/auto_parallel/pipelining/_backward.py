@@ -81,14 +81,13 @@ def stage_backward(
                 stage_output_tensors.append(output_val)
                 output_grad_tensors.append(grad_val)
             elif isinstance(output_val, (tuple, list)):
-                if grad_val is not None:
-                    # check output_val and grad_val is match, unless grad is None for losses.
-                    assert isinstance(grad_val, (tuple, list)), (
-                        f"grad_value expected to have type {type(output_val)} but got {type(grad_val)}"
-                    )
-                    assert len(output_val) == len(grad_val)
-                for i, ov in enumerate(output_val):
-                    gv = grad_val[i] if grad_val is not None else None
+                if grad_val is None:
+                    return
+                assert isinstance(grad_val, (tuple, list)), (
+                    f"grad_value expected to have type {type(output_val)} but got {type(grad_val)}"
+                )
+                assert len(output_val) == len(grad_val)
+                for ov, gv in zip(output_val, grad_val):
                     extract_tensors_with_grads(
                         ov,
                         gv,
