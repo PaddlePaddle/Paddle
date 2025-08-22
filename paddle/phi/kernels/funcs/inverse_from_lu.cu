@@ -40,12 +40,16 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   // getri is an in-place operation, copy `lu_data` to `inverse_out`.
   dev_ctx.template Alloc<T>(inverse_out);
 
+  auto* lu_data_data = lu_data.data<T>();
+  auto* pivots_data = pivots.data<int>();
+  auto* inverse_data = inverse_out->data<T>();
+
 #ifndef PADDLE_WITH_HIP
   std::vector<const T*> a_ptr_host(batch_size);
   std::vector<T*> c_ptr_host(batch_size);
   for (int64_t i = 0; i < batch_size; ++i) {
-    a_ptr_host[i] = lu_data.data<T>() + i * matrix_size;
-    c_ptr_host[i] = inverse_out->data<T>() + i * matrix_size;
+    a_ptr_host[i] = lu_data_data + i * matrix_size;
+    c_ptr_host[i] = inverse_data + i * matrix_size;
   }
 
   // Copy pointer arrays from Host to Device
@@ -81,7 +85,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGETRI(n,
                     reinterpret_cast<const T**>(a_ptr_device->ptr()),
-                    pivots.data<int>(),
+                    pivots_data,
                     reinterpret_cast<T**>(c_ptr_device->ptr()),
                     reinterpret_cast<int*>(info_device->ptr()),
                     batch_size);
@@ -90,9 +94,9 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   T wkopt;
   int info = 0;
   phi::funcs::lapackGETRI<T>(static_cast<int>(n),
-                             inverse_cpu_data,
+                             inverse_data,
                              static_cast<int>(n),
-                             pivots_cpu_data,
+                             pivots_data,
                              &wkopt,
                              lwork,
                              &info);
@@ -111,9 +115,9 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   for (int64_t i = 0; i < batch_size; ++i) {
     info = 0;
     phi::funcs::lapackGETRI<T>(static_cast<int>(n),
-                               inverse_cpu_data + i * matrix_size,
+                               inverse_data + i * matrix_size,
                                static_cast<int>(n),
-                               pivots_cpu_data + i * n,
+                               pivots_data + i * n,
                                work_data,
                                lwork,
                                &info);

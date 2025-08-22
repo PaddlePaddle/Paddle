@@ -45,11 +45,11 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   dev_ctx.template Alloc<int>(pivots);
   dev_ctx.template Alloc<int>(infos);
 
-#ifndef PADDLE_WITH_HIP
   auto* lu_data = lu_out->data<T>();
   auto* pivots_data = pivots->data<int>();
   auto* infos_data = infos->data<int>();
 
+#ifndef PADDLE_WITH_HIP
   std::vector<T*> cpu_ptrs(batch_size);
   for (int64_t i = 0; i < batch_size; ++i) {
     cpu_ptrs[i] = lu_data + i * matrix_size;
