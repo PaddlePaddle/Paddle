@@ -504,6 +504,66 @@ def isnan(
 """,
 )
 
+add_doc_and_signature(
+    "roll",
+    """
+    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
+    roll beyond the last position are re-introduced at the first according to 'shifts'.
+    If a axis is not specified,
+    the tensor will be flattened before rolling and then restored to the original shape.
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``roll(input=tensor_x, dim=1)`` is equivalent to ``roll(x=tensor_x, axis=1)``.
+    Args:
+        x (Tensor): The x tensor as input.
+            alias: ``input``.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `x` tensor are shifted.
+        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
+            alias: ``dim``.
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name` .
+    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
+    different shapes through the roll operation.
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
+        :width: 700
+        :align: center
+        :alt: legend of roll API
+    Returns:
+        Tensor, A Tensor with same data type as `x`.
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
+            ...                       [4.0, 5.0, 6.0],
+            ...                       [7.0, 8.0, 9.0]])
+            >>> out_z1 = paddle.roll(x, shifts=1)
+            >>> print(out_z1.numpy())
+            [[9. 1. 2.]
+             [3. 4. 5.]
+             [6. 7. 8.]]
+            >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
+            >>> print(out_z2.numpy())
+            [[7. 8. 9.]
+             [1. 2. 3.]
+             [4. 5. 6.]]
+            >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
+            >>> print(out_z3.numpy())
+            [[3. 1. 2.]
+             [6. 4. 5.]
+             [9. 7. 8.]]
+    """,
+    """
+def roll(
+    x: Tensor,
+    shifts: int | Sequence[int],
+    axis: int | Sequence[int] | None = None,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
 # liuyi
 add_doc_and_signature(
     "any",
