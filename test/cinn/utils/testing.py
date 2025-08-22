@@ -23,6 +23,6 @@ def assert_llir_equal(
     if isinstance(llir1, CinnLowerLevelIrJit):
         llir1_expr = llir1.convert_to_llir().body()
         llir2_expr = llir2.convert_to_llir().body()
-    assert comparer.compare(
-        llir1_expr, llir2_expr
-    ), f'llir1: {llir1} \n llir2: {llir2}'
+    assert comparer.compare(llir1_expr, llir2_expr), (
+        f'llir1: {llir1} \n llir2: {llir2}'
+    )

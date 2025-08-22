@@ -2645,13 +2645,13 @@ def diag_embed(
             f"But received Input's dimensional: {len(input_shape)}.\n"
         )
 
-        assert np.abs(dim1) <= len(
-            input_shape
-        ), f"Dim1 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim1}).\n"
+        assert np.abs(dim1) <= len(input_shape), (
+            f"Dim1 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim1}).\n"
+        )
 
-        assert np.abs(dim2) <= len(
-            input_shape
-        ), f"Dim2 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim2}).\n"
+        assert np.abs(dim2) <= len(input_shape), (
+            f"Dim2 is out of range (expected to be in range of [{-(len(input_shape) + 1)}, {len(input_shape)}], but got {dim2}).\n"
+        )
 
         dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
         dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
@@ -4098,7 +4098,6 @@ def resize_(
 
 
 def dtype_tensor_factory(dtype):
-
     class _DtypeTensorFactory:
         def __new__(cls, *args, **kwargs):
             if len(args) == 0:

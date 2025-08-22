@@ -71,9 +71,9 @@ class MultiHeadAttention(nn.Layer):
         self.recompute_granularity = recompute_granularity
 
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
         if self.fuse:
             assert self.kdim == embed_dim
             assert self.vdim == embed_dim

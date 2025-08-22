@@ -431,9 +431,9 @@ class PassAutoScanTest(AutoScanTest):
             report_multiple_bugs=False,
         )
         settings.load_profile("ci")
-        assert (
-            passes is not None
-        ), "Parameter of passes must be defined in function run_and_statis."
+        assert passes is not None, (
+            "Parameter of passes must be defined in function run_and_statis."
+        )
         self.passes = passes
 
         self.add_ignore_pass_case()

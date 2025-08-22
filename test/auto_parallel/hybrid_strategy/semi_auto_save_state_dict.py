@@ -34,27 +34,27 @@ def check_structure_name_mapping(ckpt_path, state_dict):
     data_file_path = os.path.join(
         ckpt_path, f"{paddle.distributed.get_rank()}_0.distcp"
     )
-    assert os.path.exists(
-        metadata_file_path
-    ), f"metadata file {metadata_file_path} is not found"
-    assert os.path.exists(
-        data_file_path
-    ), f"data file {data_file_path} is not found"
+    assert os.path.exists(metadata_file_path), (
+        f"metadata file {metadata_file_path} is not found"
+    )
+    assert os.path.exists(data_file_path), (
+        f"data file {data_file_path} is not found"
+    )
     metadata = paddle.load(metadata_file_path)
     cur_rank_state_dict = paddle.load(data_file_path, keep_name_table=True)
     local_structure_name_mapping = cur_rank_state_dict.pop(
         "StructuredToParameterName@@"
     )
-    assert isinstance(
-        local_structure_name_mapping, dict
-    ), f"local_structure_name_mapping:{local_structure_name_mapping} is not dict type"
+    assert isinstance(local_structure_name_mapping, dict), (
+        f"local_structure_name_mapping:{local_structure_name_mapping} is not dict type"
+    )
     for structure_name, param_name in local_structure_name_mapping.items():
-        assert (
-            structure_name in state_dict
-        ), f"tensor key:{structure_name} is not found in state dict:{state_dict}"
-        assert (
-            param_name == state_dict[structure_name].name
-        ), f"param name:{param_name} is not equal to param name in state_dict:{state_dict[structure_name].name}"
+        assert structure_name in state_dict, (
+            f"tensor key:{structure_name} is not found in state dict:{state_dict}"
+        )
+        assert param_name == state_dict[structure_name].name, (
+            f"param name:{param_name} is not equal to param name in state_dict:{state_dict[structure_name].name}"
+        )
 
 
 class TestSaveStateDict:
