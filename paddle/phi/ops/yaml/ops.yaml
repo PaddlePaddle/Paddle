@@ -3586,7 +3586,7 @@
     func : max_with_index
     data_type : x
   backward : max_with_index_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
@@ -3706,7 +3706,7 @@
     func : min_with_index
     data_type : x
   backward : min_with_index_grad
-  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mish
   args : (Tensor x, float lambda)

@@ -352,7 +352,7 @@ bool MinMaxOpInferSymbolicShape(pir::Operation *op,
     std::vector<symbol::DimExpr> out_sym_shape;
     if (flatten) {
       if (keepdims) {
-        out_sym_shape.emplace_back(std::int64_t(rank));
+        out_sym_shape.resize(rank, std::int64_t(1));
       } else {
         out_sym_shape = {};
       }

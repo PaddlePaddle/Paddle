@@ -490,6 +490,62 @@ class TestCompatMinMaxBase(unittest.TestCase):
         self._compare_with_origin_static([3, 10, 2], 0, keepdim=True)
         self._compare_with_origin_static([17], 0)
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "core is not compiled with CUDA, skipping",
+    )
+    def test_static_unary_shape_infer_1(self):
+        # min/max with index is a GPU only op, no need for testing if there is no GPU
+
+        @paddle.jit.to_static(full_graph=True)
+        def static_func1(x):
+            y = paddle.zeros([2, 3, 4])
+            return paddle._C_ops.min_with_index(y, x.shape[0], False, False)
+
+        @paddle.jit.to_static(full_graph=True)
+        def static_func2(x):
+            y = paddle.zeros([2, 3, 4])
+            return paddle._C_ops.min_with_index(y, x.shape[0], True, False)
+
+        input_ts1 = paddle.to_tensor([1])
+        input_ts2 = paddle.to_tensor([1, 2])
+        val1, ind1 = static_func1(input_ts1)
+        val2, ind2 = static_func2(input_ts2)
+
+        self.assertEqual(val1.shape, [2, 4])
+        self.assertEqual(ind1.shape, [2, 4])
+        self.assertEqual(val2.shape, [2, 3, 1])
+        self.assertEqual(ind2.shape, [2, 3, 1])
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(),
+        "core is not compiled with CUDA, skipping",
+    )
+    def test_static_unary_shape_infer_2(self):
+        # min/max with index is a GPU only op, no need for testing if there is no GPU
+
+        @paddle.jit.to_static(full_graph=True)
+        def static_func1(x):
+            dim = paddle.arange(0, 1).shape[0]
+            y = paddle.zeros([2, 3, 4])
+            return paddle._C_ops.max_with_index(y, dim, False, True)
+
+        @paddle.jit.to_static(full_graph=True)
+        def static_func2(x):
+            dim = paddle.arange(0, 2).shape[0]
+            y = paddle.zeros([2, 3, 4])
+            return paddle._C_ops.max_with_index(y, dim, True, True)
+
+        x1 = paddle.to_tensor([1])
+        x2 = paddle.to_tensor([1, 2])
+        val1, ind1 = static_func1(x1)
+        val2, ind2 = static_func2(x2)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        self.assertEqual(val2.shape, [1, 1, 1])
+        self.assertEqual(ind2.shape, [1, 1, 1])
+
 
 class TestCompatMax(TestCompatMinMaxBase):
     def __init__(self, *args, **kwargs):

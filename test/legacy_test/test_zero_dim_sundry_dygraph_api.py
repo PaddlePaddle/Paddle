@@ -600,6 +600,43 @@ class TestSundryAPI(unittest.TestCase):
         val.backward()
         self.assertEqual(x.grad.shape, [4, 5])
 
+    def test_minmax_with_index(self):
+        # min/max_with_index is a GPU only op
+        if not paddle.is_compiled_with_cuda():
+            return
+        # 1) x is 0D
+        x = paddle.to_tensor(1)
+        val1, ind1 = paddle._C_ops.min_with_index(x, 0, False, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 1)
+        np.testing.assert_allclose(ind1, 0)
+
+        # 2) x is 1D
+        x = paddle.to_tensor([1, 1, 1])
+        val1, ind1 = paddle._C_ops.max_with_index(x, 0, False, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 1)
+        np.testing.assert_allclose(ind1, 0)
+
+        # 3) x is 2D
+        x = paddle.zeros([2, 3])
+        val1, ind1 = paddle._C_ops.min_with_index(x, 1, False, True)
+        val2, ind2 = paddle._C_ops.max_with_index(x, 1, True, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 0)
+        np.testing.assert_allclose(ind1, 0)
+
+        self.assertEqual(val2.shape, [1, 1])
+        self.assertEqual(ind2.shape, [1, 1])
+        np.testing.assert_allclose(val2, 0)
+        np.testing.assert_allclose(ind2, 0)
+
     def test_compat_min(self):
         self._make_compat_minmax_test(paddle.compat.min)
 
