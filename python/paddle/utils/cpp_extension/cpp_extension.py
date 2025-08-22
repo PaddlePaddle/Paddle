@@ -211,17 +211,17 @@ def setup(**attr: Any) -> None:
     if 'name' not in attr:
         raise ValueError(error_msg)
 
-    assert not attr['name'].endswith(
-        'module'
-    ), "Please don't use 'module' as suffix in `name` argument, "
+    assert not attr['name'].endswith('module'), (
+        "Please don't use 'module' as suffix in `name` argument, "
+    )
     "it will be stripped in setuptools.bdist_egg and cause import error."
 
     ext_modules = attr.get('ext_modules', [])
     if not isinstance(ext_modules, list):
         ext_modules = [ext_modules]
-    assert (
-        len(ext_modules) == 1
-    ), f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    assert len(ext_modules) == 1, (
+        f"Required only one Extension, but received {len(ext_modules)}. If you want to compile multi operators, you can include all necessary source files in one Extension."
+    )
     # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
@@ -458,10 +458,10 @@ class BuildExtension(build_ext):
                 # nvcc or hipcc compile CUDA source
                 if is_cuda_file(src):
                     if core.is_compiled_with_rocm():
-                        assert (
-                            ROCM_HOME is not None
-                        ), "Not found ROCM runtime, \
+                        assert ROCM_HOME is not None, (
+                            "Not found ROCM runtime, \
                             please use `export ROCM_PATH= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             hipcc_cmd = os.path.join(ROCM_HOME, 'bin', 'hipcc')
                             hipcc_cmd = f'{CCACHE_HOME} {hipcc_cmd}'
@@ -486,10 +486,10 @@ class BuildExtension(build_ext):
                         if isinstance(cflags, dict):
                             cflags = cflags['nvcc']
                     else:
-                        assert (
-                            CUDA_HOME is not None
-                        ), "Not found CUDA runtime, \
+                        assert CUDA_HOME is not None, (
+                            "Not found CUDA runtime, \
                             please use `export CUDA_HOME= XXX` to specify it."
+                        )
                         if CCACHE_HOME is not None:
                             nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                             nvcc_cmd = f'{CCACHE_HOME} {nvcc_cmd}'
@@ -646,10 +646,10 @@ class BuildExtension(build_ext):
                 src = src_list[0]
                 obj = obj_list[0]
                 if is_cuda_file(src):
-                    assert (
-                        CUDA_HOME is not None
-                    ), "Not found CUDA runtime, \
+                    assert CUDA_HOME is not None, (
+                        "Not found CUDA runtime, \
                         please use `export CUDA_HOME= XXX` to specify it."
+                    )
 
                     nvcc_cmd = os.path.join(CUDA_HOME, 'bin', 'nvcc')
                     if isinstance(self.cflags, dict):
@@ -764,9 +764,9 @@ class BuildExtension(build_ext):
         split_str = '.'
         name_items = ext_name.split(split_str)
         if self.no_python_abi_suffix:
-            assert (
-                len(name_items) > 2
-            ), f"Expected len(name_items) > 2, but received {len(name_items)}"
+            assert len(name_items) > 2, (
+                f"Expected len(name_items) > 2, but received {len(name_items)}"
+            )
             name_items.pop(-2)
             ext_name = split_str.join(name_items)
 
@@ -1034,12 +1034,12 @@ def load(
         extra_cxx_cflags = []
     if extra_cuda_cflags is None:
         extra_cuda_cflags = []
-    assert isinstance(
-        extra_cxx_cflags, list
-    ), f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
-    assert isinstance(
-        extra_cuda_cflags, list
-    ), f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    assert isinstance(extra_cxx_cflags, list), (
+        f"Required type(extra_cxx_cflags) == list[str], but received {extra_cxx_cflags}"
+    )
+    assert isinstance(extra_cuda_cflags, list), (
+        f"Required type(extra_cuda_cflags) == list[str], but received {extra_cuda_cflags}"
+    )
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(

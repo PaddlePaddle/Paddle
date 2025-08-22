@@ -489,14 +489,14 @@ class OperantsAPI(ForwardAPI):
     def get_declare_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         declare_args = self.get_input_tensor_args(inplace_flag)
-        assert (
-            len(declare_args) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(declare_args) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         first_input_type = " ".join(declare_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert (
-            first_input_type == "const Tensor&"
-        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        assert first_input_type == "const Tensor&", (
+            f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        )
         for name in self.attrs['names']:
             default_value = ''
             if self.attrs['attr_info'][name][1] is not None:
@@ -510,14 +510,14 @@ class OperantsAPI(ForwardAPI):
     def get_define_args_without_first_tensor(self, inplace_flag=False):
         func_name = self.get_api_func_name()
         define_args = self.get_input_tensor_args(inplace_flag)
-        assert (
-            len(define_args) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(define_args) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         first_input_type = " ".join(define_args[0].split(" ")[:-1])
         # NOTE(HongyuJia): Do not consider "const paddle::optional<Tensor>&"
-        assert (
-            first_input_type == "const Tensor&"
-        ), f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        assert first_input_type == "const Tensor&", (
+            f"Error! The first argument of Tensor Api {func_name} must be Tensor, but received {first_input_type}"
+        )
         for name in self.attrs['names']:
             define_args.append(self.attrs['attr_info'][name][0] + ' ' + name)
         # remove first Tensor argument
@@ -525,9 +525,9 @@ class OperantsAPI(ForwardAPI):
 
     def gene_tensor_api_implementation(self):
         func_name = self.get_api_func_name()
-        assert (
-            len(self.inputs['names']) >= 1
-        ), f"Error! Api {func_name} has no Tensor inputs"
+        assert len(self.inputs['names']) >= 1, (
+            f"Error! Api {func_name} has no Tensor inputs"
+        )
         # remove first Tensor argument
         func_args = self.inputs['names'][1:] + self.attrs['names']
         if len(func_args) > 0:

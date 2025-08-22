@@ -113,9 +113,9 @@ def prepare_data():
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
-    assert (
-        'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
-    ), err_info
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], (
+        err_info
+    )
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     dnn_input_dim = res[0]

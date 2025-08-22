@@ -328,9 +328,9 @@ def ParseYamlArgs(string):
             else None
         )
 
-        assert (
-            arg_type in yaml_types_mapping.keys()
-        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        assert arg_type in yaml_types_mapping.keys(), (
+            f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        )
         if arg_type in ["DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
         if arg_type in ["DataType"] and default_value is not None:
@@ -369,9 +369,9 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert (
-            ret_type in yaml_types_mapping.keys()
-        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        assert ret_type in yaml_types_mapping.keys(), (
+            f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        )
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type, AssertMessage("Tensor", ret_type)
@@ -481,40 +481,26 @@ class FunctionGeneratorBase:
         self.forward_api_name = ""
         self.python_api_info = {}
 
-        self.orig_forward_inputs_list = (
-            []
-        )  # [ [arg_name, arg_type, orig_position], ...]
-        self.orig_forward_attrs_list = (
-            []
-        )  # [ [attr_name, attr_type, default_value, orig_position], ...]
-        self.orig_forward_returns_list = (
-            []
-        )  # [ [ret_name, ret_type, orig_position], ...]
+        self.orig_forward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
+        self.orig_forward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]
+        self.orig_forward_returns_list = []  # [ [ret_name, ret_type, orig_position], ...]
 
         # Processed Forward Data
-        self.forward_inputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
-        self.forward_outputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
+        self.forward_inputs_position_map = {}  # { "name" : [type, fwd_position] }
+        self.forward_outputs_position_map = {}  # { "name" : [type, fwd_position] }
 
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
-        self.composite_func_info = (
-            {}
-        )  # {name: func_name, args: [input_name, ...]}
+        self.composite_func_info = {}  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
         self.args_alias_map = {}  # {arg_name: alias_vector, ...}
         self.dygraph_pre_process = (
             ""  # The pre_process function calling code for dygraph
         )
-        self.static_pre_process = (
-            ""  # The pre_process function calling code for static graph
-        )
-        self.args_parser_func_name = ""  # The custom args parser function
+
+        self.args_mapper_func_name = None  # The custom args parser function
         self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
@@ -547,20 +533,19 @@ class FunctionGeneratorBase:
             self.args_alias_map = args_alias
         if 'pre_process' in python_api_info.keys():
             pre_process = python_api_info['pre_process']
-            if 'func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['func']
-                self.static_pre_process = pre_process['func']
-                # TODO check len(pre_process) > 1
+            if pre_process is not None:
+                if 'dygraph_func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['dygraph_func']
+                elif 'func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['func']
 
-            if 'dygraph_func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['dygraph_func']
-            if 'static_func' in pre_process.keys():
-                self.static_pre_process = pre_process['static_func']
-        if (
-            'args_parser' in python_api_info.keys()
-            and 'func' in python_api_info['args_parser']
-        ):
-            self.args_parser_func_name = python_api_info['args_parser']['func']
+        if 'args_mapper' in python_api_info.keys():
+            args_mapper = python_api_info['args_mapper']
+            if args_mapper is not None:
+                if 'dygraph_func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['dygraph_func']
+                elif 'func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
@@ -611,15 +596,15 @@ class FunctionGeneratorBase:
         elif 'backward_op' in forward_api_contents.keys():
             self.forward_api_name = forward_api_contents['backward_op']
 
-        assert (
-            'args' in forward_api_contents.keys()
-        ), 'Unable to find "args" in forward_api_contents keys'
+        assert 'args' in forward_api_contents.keys(), (
+            'Unable to find "args" in forward_api_contents keys'
+        )
 
         forward_args_str = forward_api_contents['args']
 
-        assert (
-            'output' in forward_api_contents.keys()
-        ), 'Unable to find "output" in forward_api_contents keys'
+        assert 'output' in forward_api_contents.keys(), (
+            'Unable to find "output" in forward_api_contents keys'
+        )
 
         forward_returns_str = forward_api_contents['output']
         if 'python_api' in forward_api_contents.keys():

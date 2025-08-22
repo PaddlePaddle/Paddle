@@ -1200,7 +1200,9 @@ for binary_fn in BINARY_OPS:
                         "TensorVariable",
                     ),
                     partial(
-                        lambda reverse_magic_name, var, other: other.graph.call_tensor_method(
+                        lambda reverse_magic_name,
+                        var,
+                        other: other.graph.call_tensor_method(
                             reverse_magic_name, other, var
                         ),
                         magic_method.name,

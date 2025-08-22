@@ -266,6 +266,52 @@ class TestEyeBF16OP(OpTest):
         self.check_output_with_place(place, check_pir=True, check_prim_pir=True)
 
 
+class API_TestTensorEye_Compatibility(unittest.TestCase):
+    def test_static_out(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            data = paddle.eye(n=10)
+            place = base.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            data = paddle.eye(n=10, m=7, dtype="float64")
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, 7, dtype="float64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            data = paddle.eye(n=10, dtype="int64")
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="int64")
+        self.assertEqual((result == expected_result).all(), True)
+
+    def test_dynamic_out(self):
+        paddle.disable_static()
+
+        out1 = paddle.eye(n=10, dtype="int64")
+        expected_result1 = np.eye(10, dtype="int64")
+        self.assertEqual((out1.numpy() == expected_result1).all(), True)
+
+        out2 = paddle.eye(n=10, m=7, dtype="int64")
+        expected_result2 = np.eye(10, 7, dtype="int64")
+        self.assertEqual((out2.numpy() == expected_result2).all(), True)
+
+        out3_2 = paddle.empty(shape=[10, 5], dtype="int64")
+        out3_1 = paddle.eye(n=10, m=5, dtype="int64", out=out3_2)
+        expected_result3 = np.eye(10, 5, dtype="int64")
+        self.assertEqual((out3_1.numpy() == expected_result3).all(), True)
+        self.assertEqual((out3_2.numpy() == expected_result3).all(), True)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

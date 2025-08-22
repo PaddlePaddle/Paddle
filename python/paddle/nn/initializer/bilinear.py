@@ -96,7 +96,9 @@ class Bilinear(Initializer):
         """
         assert not (
             isinstance(var, framework.EagerParamBase) and var.is_dist()
-        ), "Currently, Bilinear initializer not support lazy init for dist param."
+        ), (
+            "Currently, Bilinear initializer not support lazy init for dist param."
+        )
         block = self._check_block(block)
 
         if not isinstance(var, (framework.Variable, pir.core.ParameterMeta)):

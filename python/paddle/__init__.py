@@ -210,7 +210,17 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
     MmapStorage,
+    ShortTensor,
     arange,
     assign,
     cauchy_,
@@ -232,7 +242,9 @@ from .tensor.creation import (
     ones,
     ones_like,
     polar,
+    range,
     to_tensor,
+    to_tensor as as_tensor,
     tril,
     tril_,
     tril_indices,
@@ -260,6 +272,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -355,8 +368,10 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -611,6 +626,9 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.softmax import (
+    softmax,
+)
 from .tensor.stat import (
     mean,
     median,
@@ -626,6 +644,34 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
+
+
+class _TensorMethodOrModule:
+    def __init__(self):
+        import paddle.tensor as tensor_module
+
+        from .tensor.creation import tensor as tensor_api
+
+        self.module = tensor_module
+        self.method = tensor_api
+
+    def __call__(self, *args, **kwargs):
+        return self.method(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+    def __repr__(self):
+        return repr(self.method)
+
+    def __str__(self):
+        return str(self.method)
+
+    def __dir__(self):
+        return dir(self.module)
+
+
+tensor = _TensorMethodOrModule()  # noqa: F811
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -927,6 +973,16 @@ __all__ = [
     'kron',
     'clip',
     'Tensor',
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     'crop',
     'ParamAttr',
     'stanh',
@@ -940,6 +996,7 @@ __all__ = [
     'squeeze',
     'squeeze_',
     'to_tensor',
+    'as_tensor',
     'gather_nd',
     'isin',
     'isinf',
@@ -997,6 +1054,7 @@ __all__ = [
     'pdist',
     'unbind',
     'meshgrid',
+    'range',
     'arange',
     'load',
     'numel',
@@ -1113,6 +1171,7 @@ __all__ = [
     'tanh_',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
@@ -1205,7 +1264,9 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
@@ -1271,6 +1332,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 
