@@ -27,10 +27,10 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
                                             DenseTensor* lu_out,
                                             DenseTensor* pivots,
                                             DenseTensor* infos) {
-  const auto& x_dims = x.dims();
-  const int rank = x_dims.size();
-  const int n = static_cast<int>(x_dims[rank - 1]);
-  const int64_t matrix_size = static_cast<int64_t>(n) * n;
+  const auto& dims = x.dims();
+  const int rank = dims.size();
+  const int n = static_cast<int>(dims[rank - 1]);
+  const int64_t matrix_size = dims[rank - 1] * dims[rank - 1];
   const int64_t batch_size = x.numel() / matrix_size;
 
   if (batch_size == 0) {

@@ -29,7 +29,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   const auto& dims = lu_data.dims();
   const int rank = dims.size();
   const int n = static_cast<int>(dims[rank - 1]);
-  const int64_t matrix_size = static_cast<int64_t>(n) * n;
+  const int64_t matrix_size = dims[rank - 1] * dims[rank - 1];
   const int64_t batch_size = lu_data.numel() / matrix_size;
 
   if (batch_size == 0) {

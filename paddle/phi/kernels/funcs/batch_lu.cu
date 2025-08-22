@@ -31,7 +31,8 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   const auto& dims = x.dims();
   const int rank = dims.size();
   const int64_t n = dims[rank - 1];
-  const int64_t batch_size = x.numel() / (n * n);
+  const int64_t matrix_size = n * n;
+  const int64_t batch_size = x.numel() / matrix_size;
 
   if (batch_size == 0) {
     return;
@@ -44,13 +45,14 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
   dev_ctx.template Alloc<int>(pivots);
   dev_ctx.template Alloc<int>(infos);
 
+#ifndef PADDLE_WITH_HIP
   auto* lu_data = lu_out->data<T>();
   auto* pivots_data = pivots->data<int>();
   auto* infos_data = infos->data<int>();
 
   std::vector<T*> cpu_ptrs(batch_size);
   for (int64_t i = 0; i < batch_size; ++i) {
-    cpu_ptrs[i] = lu_data + i * n * n;
+    cpu_ptrs[i] = lu_data + i * matrix_size;
   }
 
   // Copy pointer arrays from Host to Device
@@ -74,6 +76,22 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
                     pivots_data,
                     infos_data,
                     static_cast<int>(batch_size));
+#else
+  for (int64_t i = 0; i < batch_size; ++i) {
+    infos_cpu_data[i] = 0;
+
+    T* current_lu = lu_data + i * matrix_size;
+    int* current_pivots = pivots_data + i * n;
+    int* current_info = infos_data + i;
+
+    phi::funcs::lapackGETRF<T>(static_cast<int>(n),
+                               static_cast<int>(n),
+                               current_lu,
+                               static_cast<int>(n),
+                               current_pivots,
+                               current_info);
+  }
+#endif
 }
 
 template class BatchLUFunctor<float, GPUContext>;
