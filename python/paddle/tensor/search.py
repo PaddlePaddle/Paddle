@@ -34,6 +34,7 @@ from ..framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from .creation import assign
 
 if TYPE_CHECKING:
     from paddle import Tensor
@@ -731,7 +732,7 @@ def sort(
         return out
 
 
-def msort(input: Tensor) -> Tensor:
+def msort(input: Tensor, out: Tensor | None = None) -> Tensor:
     """
 
     Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
@@ -739,6 +740,7 @@ def msort(input: Tensor) -> Tensor:
     Args:
         input (Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, sorted tensor(with the same shape and data type as ``input``).
@@ -764,9 +766,19 @@ def msort(input: Tensor) -> Tensor:
              [[5. 8. 9. 5.]
               [4. 7. 7. 9.]
               [6. 9. 2. 6.]]]
+
+            >>> out2 = paddle.empty_like(x)
+            >>> paddle.msort(input=x, out=out2)
+            >>> print(out2.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
     """
 
-    return sort(input, axis=0)
+    return assign(sort(input, axis=0), out)
 
 
 def mode(
