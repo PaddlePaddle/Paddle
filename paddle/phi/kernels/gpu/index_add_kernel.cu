@@ -67,9 +67,6 @@ void IndexAddKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(output);
     return;
   }
-  PADDLE_ENFORCE_NOT_NULL(
-      output->data<T>(),
-      errors::InvalidArgument("The output tensor memory is not allocated."));
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
@@ -83,6 +80,9 @@ void IndexAddKernel(const Context& dev_ctx,
 
   auto* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(output);
+  PADDLE_ENFORCE_NOT_NULL(
+      out_data,
+      errors::InvalidArgument("The output tensor memory is not allocated."));
   auto* add_value_data = add_value.data<T>();
 
   int64_t numel = add_value.numel();
