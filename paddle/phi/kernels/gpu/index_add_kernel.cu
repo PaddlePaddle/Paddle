@@ -43,6 +43,13 @@ __global__ void index_add_cuda_kernel(const T* input,
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx =
         (index[dim_idx] < 0 ? index[dim_idx] + index_dim_size : index[dim_idx]);
+    if (src_dim_idx < 0 || src_dim_idx >= index_dim_size) {
+      printf("Index out of bounds: index[%d] = %d, index_dim_size = %d\n",
+             dim_idx,
+             src_dim_idx,
+             index_dim_size);
+      return;
+    }
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
@@ -61,12 +68,8 @@ void IndexAddKernel(const Context& dev_ctx,
     return;
   }
   PADDLE_ENFORCE_NOT_NULL(
-      output, errors::InvalidArgument("The output tensor must not be null."));
-  PADDLE_ENFORCE_GT(
-      output->numel(),
-      0,
-      errors::InvalidArgument(
-          "The output tensor must have a positive number of elements."));
+      output->data<T>(),
+      errors::InvalidArgument("The output tensor memory is not allocated."));
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   auto add_value_dim = add_value.dims();
