@@ -36,7 +36,7 @@ if(NOT
 
   foreach(CURRENT_TEST_NAME ${ALL_TESTS})
     # Check if the current test name starts with one of our specified suite names
-    foreach(SUITE_NAME ${GPU_ONLY_DISTRIBUTED_SUITES})
+    foreach(SUITE_NAME ${GPU_ONLY_DISTRIBUTED_TESTS})
       # Use string STARTSWITH for matching
       if(CURRENT_TEST_NAME STREQUAL SUITE_NAME OR CURRENT_TEST_NAME MATCHES
                                                   "^${SUITE_NAME}\\.")
