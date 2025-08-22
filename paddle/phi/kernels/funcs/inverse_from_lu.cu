@@ -36,16 +36,12 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
     return;
   }
 
-  // getri is an in-place operation, copy lu_data to the output tensor first.
+  // getri is an in-place operation, copy `lu_data` to `inverse_out`.
   dev_ctx.template Alloc<T>(inverse_out);
 
-  // cuBLAS batched operations require an array of pointers to matrices.
-  // This part is similar to the matrix_inverse GPU implementation.
   std::vector<const T*> a_ptr_host(batch_size);
   std::vector<T*> c_ptr_host(batch_size);
   for (int64_t i = 0; i < batch_size; ++i) {
-    // For in-place getri, input and output pointers point to the same
-    // locations.
     a_ptr_host[i] = lu_data.data<T>() + i * n * n;
     c_ptr_host[i] = inverse_out->data<T>() + i * n * n;
   }
@@ -79,7 +75,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
       batch_size * sizeof(int),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
 
-  // Get BLAS wrapper and call BatchedGETRI
+  // Get the BLAS handle and call BatchedGETRI
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
   blas.BatchedGETRI(n,
                     reinterpret_cast<const T**>(a_ptr_device->ptr()),

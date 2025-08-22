@@ -25,6 +25,7 @@
 #include "paddle/phi/kernels/determinant_grad_kernel.h"
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_lu.h"
 #include "paddle/phi/kernels/funcs/conjugate_transpose.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/inverse_from_lu.h"
@@ -235,8 +236,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
   lu_data.Resize(x_dims);
   pivots.Resize(common::slice_ddim(x_dims, 0, x_dims.size() - 1));
   infos.Resize({batch_count});
-  LUKernel<MPType, Context>(
-      dev_ctx, x_mp, /*pivot=*/true, &lu_data, &pivots, &infos);
+  funcs::BatchLUFunctor<MPType, Context> lu_functor;
+  lu_functor(dev_ctx, x_mp, &lu_data, &pivots, &infos);
 
   // perturb LU to avoid singularity
   DenseTensor k;

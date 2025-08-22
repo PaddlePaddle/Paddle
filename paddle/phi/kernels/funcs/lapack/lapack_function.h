@@ -38,6 +38,10 @@ template <typename T>
 void lapackGETRI(
     int n, T *a, int lda, const int *ipiv, T *work, int lwork, int *info);
 
+// GETRF
+template <typename T>
+void lapackGETRF(int m, int n, T *a, int lda, int *ipiv, int *info);
+
 // Eigh
 template <typename T, typename ValueType = T>
 void lapackEigh(char jobz,
