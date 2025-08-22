@@ -34,44 +34,9 @@
 
 namespace at {
 
-// // TensorOptions
-// using c10::TensorOptions;
-
-// // DataType
-// using c10::BFloat16;
-// using c10::Half;
-
-// // ScalarType
-// using c10::ScalarType;
-
 #define REDEFINE_CONSTANT_IN_AT(_1, _2, name) \
   constexpr ScalarType k##name = c10::k##name;
 FOREACH_PADDLE_AND_TORCH_DTYPES(REDEFINE_CONSTANT_IN_AT)
 #undef REDEFINE_CONSTANT_IN_AT
 
-// // IntArrayRef
-// using c10::IntArrayRef;
-
-// // OptionalIntArrayRef
-// using c10::OptionalIntArrayRef;
-
-// // MemoryFormat
-// using c10::MemoryFormat;
-
-// // Scalar
-// using Scalar = paddle::experimental::Scalar;
-
-// // Device
-// using c10::Device;
-// using c10::DeviceType;
-// constexpr c10::DeviceType kCPU = c10::kCPU;
-// constexpr c10::DeviceType kCUDA = c10::kCUDA;
-// constexpr c10::DeviceType kCUSTOM = c10::kCUSTOM;  // Paddle only
-
-// // CUDA namespace
-// #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-// namespace cuda {
-// using c10::cuda::CUDAGuard;
-// }
-// #endif
 }  // namespace at

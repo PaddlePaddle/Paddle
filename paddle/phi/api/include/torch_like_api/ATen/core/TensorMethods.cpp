@@ -20,13 +20,6 @@ namespace at {
 void check_type(const TensorBase& tensor,
                 ScalarType type,
                 std::string_view type_name) {
-  // PD_CHECK(tensor.scalar_type() == type ||
-  //              (isQIntType(tensor.scalar_type()) &&
-  //               toUnderlying(tensor.scalar_type()) == type),
-  //          "expected scalar type ",
-  //          type_name,
-  //          " but found ",
-  //          tensor.scalar_type());
   PD_CHECK(tensor.scalar_type() == type,
            "expected scalar type ",
            type_name,
