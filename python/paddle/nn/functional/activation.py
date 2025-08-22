@@ -1098,7 +1098,6 @@ def silu(x: Tensor, inplace: bool = False, name: str | None = None) -> Tensor:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
             alias: ``input``.
         inplace (bool, optional): Whether to use inplace operation. Default: False.
-           
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
