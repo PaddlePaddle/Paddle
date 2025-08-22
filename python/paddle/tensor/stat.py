@@ -508,6 +508,8 @@ def median(
     keepdim=False,
     mode='avg',
     name=None,
+    *,
+    out: Tensor | tuple[Tensor, Tensor] | None = None,
 ):
     """
     Compute the median along the specified axis.
@@ -534,6 +536,8 @@ def median(
             the median values when the input tensor has an even number of elements
             in the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
             When an alias replacement occurs, the default parameter for mode setting is min instead of avg.
+        out (Tensor, tuple[Tensor, Tensor], optional): If provided, the result will be written into this tensor.
+            Must be of the appropriate shape and dtype. Default is None.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -748,7 +752,15 @@ def median(
     if mode == 'min' and need_idx:
         if not keepdim:
             out_idx = out_idx.squeeze(axis)
+        if out is not None:
+            _tensor, _idx = out
+            _tensor = paddle.assign(out_tensor, output=_tensor)
+            _idx = paddle.assign(out_idx, output=_idx)
+            return _tensor, _idx
         return out_tensor, out_idx
+    if out is not None:
+        out = paddle.assign(out_tensor, output=out)
+        return out
     return out_tensor
 
 

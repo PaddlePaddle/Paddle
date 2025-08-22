@@ -476,5 +476,223 @@ class TestMedianAlias(unittest.TestCase):
             self.dygraph_single_test_median(lis_test)
 
 
+class TestMedianOutAPI(unittest.TestCase):
+    def test_out_in_dygraph(self):
+        paddle.disable_static()
+        np.random.seed(2024)
+        x = paddle.to_tensor(
+            np.random.randn(5, 7).astype('float32'), stop_gradient=False
+        )
+
+        def run_case(case_type, axis=1, mode='avg'):
+            if axis is None:
+                out_shape = []
+            else:
+                out_shape = list(x.shape)
+                out_shape[axis] = 1
+
+            out_buf = paddle.zeros(out_shape, dtype='float32')
+            out_buf.stop_gradient = False
+
+            if case_type == 'return':
+                if mode == 'min' and axis is not None:
+                    z, indices = paddle.median(x, axis=axis, mode=mode)
+                else:
+                    z = paddle.median(x, axis=axis, mode=mode)
+            elif case_type == 'input_out':
+                if mode == 'min' and axis is not None:
+                    paddle.median(x, axis=axis, mode=mode, out=(out_buf, None))
+                    z = out_buf
+                else:
+                    paddle.median(x, axis=axis, mode=mode, out=out_buf)
+                    z = out_buf
+            elif case_type == 'both_return':
+                if mode == 'min' and axis is not None:
+                    z, indices = paddle.median(
+                        x, axis=axis, mode=mode, out=(out_buf, None)
+                    )
+                else:
+                    z = paddle.median(x, axis=axis, mode=mode, out=out_buf)
+            elif case_type == 'both_input_out':
+                if mode == 'min' and axis is not None:
+                    _ = paddle.median(
+                        x, axis=axis, mode=mode, out=(out_buf, None)
+                    )
+                    z = out_buf
+                else:
+                    _ = paddle.median(x, axis=axis, mode=mode, out=out_buf)
+                    z = out_buf
+            else:
+                raise AssertionError
+
+            # Reference calculation
+            if mode == 'min' and axis is not None:
+                ref, _ = paddle.median(x, axis=axis, mode=mode)
+            else:
+                ref = paddle.median(x, axis=axis, mode=mode)
+
+            np.testing.assert_allclose(
+                z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+            loss = (z * 2).mean()
+            loss.backward()
+            return z.numpy(), x.grad.numpy()
+
+        # Test mode='avg'
+        z1, gx1 = run_case('return', axis=1, mode='avg')
+        x.clear_gradient()
+        z2, gx2 = run_case('input_out', axis=1, mode='avg')
+        x.clear_gradient()
+        z3, gx3 = run_case('both_return', axis=1, mode='avg')
+        x.clear_gradient()
+        z4, gx4 = run_case('both_input_out', axis=1, mode='avg')
+
+        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+
+        # Test mode='min'
+        x.clear_gradient()
+        z1, gx1 = run_case('return', axis=1, mode='min')
+        x.clear_gradient()
+        z2, gx2 = run_case('input_out', axis=1, mode='min')
+        x.clear_gradient()
+        z3, gx3 = run_case('both_return', axis=1, mode='min')
+        x.clear_gradient()
+        z4, gx4 = run_case('both_input_out', axis=1, mode='min')
+
+        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+
+        # Test global median (axis=None)
+        x.clear_gradient()
+        z1, gx1 = run_case('return', axis=None, mode='avg')
+        x.clear_gradient()
+        z2, gx2 = run_case('input_out', axis=None, mode='avg')
+        x.clear_gradient()
+        z3, gx3 = run_case('both_return', axis=None, mode='avg')
+        x.clear_gradient()
+        z4, gx4 = run_case('both_input_out', axis=None, mode='avg')
+
+        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+    def test_out_with_alias(self):
+        paddle.disable_static()
+        np.random.seed(2024)
+        x = paddle.to_tensor(
+            np.random.randn(5, 7).astype('float32'), stop_gradient=False
+        )
+
+        # Test with input alias
+        out_buf = paddle.zeros([5], dtype='float32')
+        out_buf.stop_gradient = False
+
+        z1 = paddle.median(x, axis=1, out=out_buf)
+        z2 = paddle.median(input=x, axis=1, out=out_buf)
+
+        np.testing.assert_allclose(z1.numpy(), z2.numpy(), rtol=1e-6, atol=1e-6)
+
+        # Test with dim alias
+        out_buf = paddle.zeros([5], dtype='float32')
+        out_buf.stop_gradient = False
+
+        z1 = paddle.median(x, axis=1, mode='min', out=out_buf)
+        z2 = paddle.median(
+            x, dim=1, out=out_buf
+        )  # mode='min' by default with dim alias
+
+        np.testing.assert_allclose(z1.numpy(), z2.numpy(), rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+    def test_out_error_cases(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+
+        # Test wrong shape
+        out_wrong_shape = paddle.zeros([2, 2], dtype='float32')
+        with self.assertRaises(ValueError):
+            paddle.median(x, axis=1, out=out_wrong_shape)
+
+        # Test wrong dtype for mode='avg'
+        out_wrong_dtype = paddle.zeros([2], dtype='int32')
+        with self.assertRaises(ValueError):
+            paddle.median(x, axis=1, mode='avg', out=out_wrong_dtype)
+
+        # Test out is not a tensor
+        with self.assertRaises(TypeError):
+            paddle.median(x, axis=1, out=[1, 2, 3])
+
+        paddle.enable_static()
+
+    def test_out_with_indices(self):
+        paddle.disable_static()
+        np.random.seed(2024)
+        x = paddle.to_tensor(
+            np.random.randn(5, 7).astype('float32'), stop_gradient=False
+        )
+
+        # Test mode='min' with indices output
+        out_tensor = paddle.zeros([5], dtype='float32')
+        out_indices = paddle.zeros([5], dtype='int64')
+        out_tensor.stop_gradient = False
+        out_indices.stop_gradient = False
+
+        # Test return mode
+        z1, idx1 = paddle.median(x, axis=1, mode='min')
+
+        # Test out mode
+        paddle.median(x, axis=1, mode='min', out=(out_tensor, out_indices))
+        z2, idx2 = out_tensor, out_indices
+
+        np.testing.assert_allclose(z1.numpy(), z2.numpy(), rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(
+            idx1.numpy(), idx2.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        # Test partial out (only tensor, no indices)
+        out_tensor = paddle.zeros([5], dtype='float32')
+        out_tensor.stop_gradient = False
+        z3, idx3 = paddle.median(x, axis=1, mode='min', out=(out_tensor, None))
+
+        np.testing.assert_allclose(z1.numpy(), z3.numpy(), rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(
+            idx1.numpy(), idx3.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        # Test error case: wrong out type for mode='min'
+        with self.assertRaises(ValueError):
+            paddle.median(
+                x, axis=1, mode='min', out=paddle.zeros([5], dtype='float32')
+            )
+
+        # Test error case: wrong out type for mode='avg'
+        with self.assertRaises(ValueError):
+            paddle.median(
+                x,
+                axis=1,
+                mode='avg',
+                out=(paddle.zeros([5], dtype='float32'), None),
+            )
+
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()
