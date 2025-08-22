@@ -161,6 +161,38 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const std::unordered_map<std::string, int64_t>& axis_sizes,
     const std::vector<int64_t>& mesh_shape,
     const bool merge_conflicts) {
+  // A struct : { "b" -> { [0], [1, 2], [-1] }, "i" -> { ... } }
+  std::unordered_map<std::string, std::vector<std::vector<int64_t>>>
+      axis_to_suggestions;
+  for (const auto& pair : tensor_axes_to_dim_pairs) {
+    const std::string& einsum_str = pair.first;
+    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
+    for (size_t i = 0; i < einsum_str.length(); ++i) {
+      auto axis = einsum_str.substr(i, 1);
+      axis_to_suggestions[axis].push_back(dims_mapping[i]);
+    }
+  }
+  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
+  for (auto& pair : axis_to_suggestions) {
+    const std::string& axis = pair.first;
+    auto& suggestions = pair.second;
+    // Sort by their parallelism in descending order
+    std::sort(suggestions.begin(),
+              suggestions.end(),
+              [](const auto& a, const auto& b) { return a.size() > b.size(); });
+
+    std::vector<int64_t> merged_vec;
+    for (const auto& suggestion : suggestions) {
+      for (const auto& dim : suggestion) {
+        if (std::find(merged_vec.begin(), merged_vec.end(), dim) ==
+            merged_vec.end()) {
+          merged_vec.push_back(dim);
+        }
+      }
+    }
+    current_sharding[axis] = merged_vec;
+  }
+
   // Merging Suggestions
   std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
   for (auto& pair : tensor_axes_to_dim_pairs) {
@@ -183,7 +215,7 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
   }
 
   // Iterative Conflict Resolution
-  bool conflicts_exist = false;
+  bool conflicts_exist = true;
   while (conflicts_exist) {
     conflicts_exist = false;
     std::string axis_to_prune = "";
@@ -195,17 +227,25 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
 
       if (total_shards > 1 && axis_size % total_shards != 0) {
         conflicts_exist = true;
-        int64_t max_mesh_dim_size = -1;
-        int worst_mesh_dim = -1;
-        for (int64_t mesh_dim : sharding_vec) {
-          // First reduce the max mesh dim size
-          if (mesh_shape[mesh_dim] > max_mesh_dim_size) {
-            max_mesh_dim_size = mesh_shape[mesh_dim];
-            worst_mesh_dim = mesh_dim;
-          }
+        // int64_t max_mesh_dim_size = -1;
+        // int worst_mesh_dim = -1;
+        // for (int64_t mesh_dim : sharding_vec) {
+        //   // First reduce the max mesh dim size
+        //   if (mesh_shape[mesh_dim] > max_mesh_dim_size) {
+        //     max_mesh_dim_size = mesh_shape[mesh_dim];
+        //     worst_mesh_dim = mesh_dim;
+        //   }
+        // }
+        // axis_to_prune = axis;
+        // mesh_dim_to_remove = worst_mesh_dim;
+
+        // Note(ooooo): remove the last mesh_dim, it can keep the shard order
+        // and has a good parallelism. In the worst case, it also can hold the
+        // first parallelism.
+        if (!sharding_vec.empty()) {
+          mesh_dim_to_remove = sharding_vec.back();
+          axis_to_prune = axis;
         }
-        axis_to_prune = axis;
-        mesh_dim_to_remove = worst_mesh_dim;
         break;
       }
     }
