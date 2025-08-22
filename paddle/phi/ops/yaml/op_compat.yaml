@@ -3155,7 +3155,7 @@
   outputs :
     out : Out
   attrs :
-    {repeats : Repeats}
+    repeats : Repeats
 
 - op : repeat_interleave
   backward : repeat_interleave_grad, repeat_interleave_double_grad
@@ -3173,7 +3173,7 @@
   outputs:
     out : Out
   attrs:
-    {axis : dim}
+    axis : dim
 
 - op : requantize
   inputs :
