@@ -373,3 +373,32 @@ def reshape_decorator():
         return wrapper
 
     return decorator
+
+
+def expand_decorator():
+    """
+    Usage Example:
+    paddle.expand(x=tensor_x, shape=[3, 4], name=None)
+    tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])
+    tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)
+    tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("size" in kwargs) and ("shape" not in kwargs):
+                kwargs["shape"] = kwargs.pop("size")
+            elif len(args) >= 2 and type(args[1]) is int:
+                if all(type(arg) is int for arg in args[1:]):
+                    kwargs["x"] = args[0]
+                    kwargs['shape'] = list(args[1:])
+                    args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator

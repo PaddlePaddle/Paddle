@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    expand_decorator,
     param_two_alias,
     reshape_decorator,
     view_decorator,
@@ -4954,6 +4955,7 @@ def broadcast_to(
     return expand(x, shape, name)
 
 
+@expand_decorator()
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
 
@@ -4969,12 +4971,23 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         :alt: legend of expand API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and ``size`` can be used as an alias for ``shape``.
+        ``shape`` can be a variable number of arguments.
+        For example:
+            ``paddle.expand(tensor_x, shape=[3, 4], name=None)``
+            ``tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])``
+            ``tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)``
+            ``tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])``
 
     Args:
         x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8, uint16, complex64 or complex128.
-        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
+            alias: ``input``
+        shape (list|tuple|Tensor|variable number of arguments): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            ``shape`` can be a variable number of arguments.
+            alias: ``size``.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:

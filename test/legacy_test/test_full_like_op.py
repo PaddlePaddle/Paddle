@@ -346,5 +346,49 @@ class TestFullLikeWithTensorValue(unittest.TestCase):
                 np.testing.assert_array_equal(res[0], expected)
 
 
+class TestFullLikeWithTensorValue_Compatibility(unittest.TestCase):
+    def test_dygraph_api(self):
+        with dygraph_guard():
+            base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+            value_np = np.array([5.0], dtype=np.float32)
+            base_tensor = paddle.to_tensor(base_np)
+            value_tensor = paddle.to_tensor(value_np)
+            result = paddle.full_like(
+                input=base_tensor, fill_value=value_tensor
+            )
+            expected = np.full_like(base_np, value_np)
+            np.testing.assert_array_equal(result.numpy(), expected)
+
+    def test_static_api(self):
+        with static_guard():
+            startup_program = paddle.static.Program()
+            train_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                base_tensor = paddle.static.data(
+                    name='base_tensor', dtype='float32', shape=[2, 2]
+                )
+                value_tensor = paddle.static.data(
+                    name='value_tensor', dtype='float32', shape=[1]
+                )
+                result = paddle.full_like(
+                    input=base_tensor, fill_value=value_tensor
+                )
+
+                place = paddle.CPUPlace()
+                exe = paddle.static.Executor(place)
+
+                base_np = np.array([[1, 2], [3, 4]], dtype=np.float32)
+                value_np = np.array([5.0], dtype=np.float32)
+
+                res = exe.run(
+                    train_program,
+                    feed={'base_tensor': base_np, 'value_tensor': value_np},
+                    fetch_list=[result],
+                )
+
+                expected = np.full_like(base_np, value_np)
+                np.testing.assert_array_equal(res[0], expected)
+
+
 if __name__ == "__main__":
     unittest.main()
