@@ -63,14 +63,13 @@ class TestLayerNormCoShard:
         ]
 
         self.test_cases = [
-            # Input is sharded on dims 0 and 1. After co-sharding with LayerNorm's
-            # replicated parameters, the input and output should both be sharded on dim 0.
-            # Shard on tensor dim 0 over mesh dim 'x', shard on tensor dim 1 over mesh dim 'y'.
-            # This becomes sharded on tensor dim 0 over the combined 'x' and 'y' mesh dims.
             LayerNormTestCase(
                 input_shape=[64, 32, 128, 128],
                 normalized_shape=[32, 128, 128],
-                input_placements=[dist.Shard(0), dist.Shard(1)],
+                input_placements=[
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
                 expected_input_placements=expected_placements,
                 expected_output_placements=expected_placements,
             )
