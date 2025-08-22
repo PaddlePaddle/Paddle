@@ -376,9 +376,9 @@ class FunctionGraph:
             guards = OrderedSet(guards)  # type: ignore
 
             for guard in guards:
-                assert isinstance(
-                    guard, StringifiedExpression
-                ), "guard must be StringifiedExpression."
+                assert isinstance(guard, StringifiedExpression), (
+                    "guard must be StringifiedExpression."
+                )
 
             return make_guard(guards)
 

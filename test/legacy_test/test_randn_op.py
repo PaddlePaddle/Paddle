@@ -75,7 +75,6 @@ class TestRandnOpForDygraph(unittest.TestCase):
 class TestRandnOpError(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):
-
             # The argument dtype of randn_op should be float32 or float64.
             self.assertRaises(TypeError, paddle.randn, [1, 2], 'int32')
 
@@ -93,7 +92,6 @@ class TestRandnOpCompatibility(unittest.TestCase):
             for place in self.places:
                 paddle.device.set_device(place)
                 for param_name in ['shape', 'size']:
-
                     tensor = paddle.randn(
                         **{param_name: self.expected_shape}, dtype=self.dtype
                     )

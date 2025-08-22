@@ -567,9 +567,9 @@ class OpcodeExecutorBase:
         Pops the call stack until the current executor.
 
         """
-        assert (
-            self in OpcodeExecutorBase.call_stack
-        ), f"{self} not in call stack"
+        assert self in OpcodeExecutorBase.call_stack, (
+            f"{self} not in call stack"
+        )
         while OpcodeExecutorBase.call_stack.pop() is not self:
             pass
 
@@ -812,9 +812,9 @@ class OpcodeExecutorBase:
         # a1 a2 a3 ... an  <- TOS
         # the stack changes to
         # an a1 a2 a3 an-1 <- TOS
-        assert (
-            len(self.stack) >= n
-        ), f"There are not enough elements on the stack. {n} is needed."
+        assert len(self.stack) >= n, (
+            f"There are not enough elements on the stack. {n} is needed."
+        )
         top = self.stack.pop()
         self.stack.insert(n - 1, top)
 
@@ -1136,9 +1136,9 @@ class OpcodeExecutorBase:
 
     def BUILD_LIST(self, instr: Instruction):
         list_size = instr.arg
-        assert list_size <= len(
-            self.stack
-        ), f"OpExecutor want BUILD_LIST with size {list_size}, but current stack do not have enough elems."
+        assert list_size <= len(self.stack), (
+            f"OpExecutor want BUILD_LIST with size {list_size}, but current stack do not have enough elems."
+        )
         val_list = self.stack.pop_n(list_size)
         self.stack.push(
             ListVariable(
@@ -1148,9 +1148,9 @@ class OpcodeExecutorBase:
 
     def BUILD_TUPLE(self, instr: Instruction):
         tuple_size = instr.arg
-        assert tuple_size <= len(
-            self.stack
-        ), f"OpExecutor want BUILD_TUPLE with size {tuple_size}, but current stack do not have enough elems."
+        assert tuple_size <= len(self.stack), (
+            f"OpExecutor want BUILD_TUPLE with size {tuple_size}, but current stack do not have enough elems."
+        )
         val_tuple = self.stack.pop_n(tuple_size)
         self.stack.push(
             TupleVariable(
@@ -1162,9 +1162,9 @@ class OpcodeExecutorBase:
 
     def BUILD_STRING(self, instr: Instruction):
         count = instr.arg
-        assert count <= len(
-            self.stack
-        ), f"OpExecutor want BUILD_STRING with size {count}, but current stack do not have enough elems."
+        assert count <= len(self.stack), (
+            f"OpExecutor want BUILD_STRING with size {count}, but current stack do not have enough elems."
+        )
         str_list = self.stack.pop_n(count)
         new_str = ''
         for s in str_list:
@@ -1209,9 +1209,9 @@ class OpcodeExecutorBase:
 
     def BUILD_MAP(self, instr: Instruction):
         map_size = instr.arg
-        assert map_size * 2 <= len(
-            self.stack
-        ), f"OpExecutor want BUILD_MAP with size {map_size} * 2, but current stack do not have enough elems."
+        assert map_size * 2 <= len(self.stack), (
+            f"OpExecutor want BUILD_MAP with size {map_size} * 2, but current stack do not have enough elems."
+        )
         val_for_dict = self.stack.pop_n(map_size * 2)
         keys = val_for_dict[::2]
         values = val_for_dict[1::2]
@@ -1219,9 +1219,9 @@ class OpcodeExecutorBase:
 
     def BUILD_CONST_KEY_MAP(self, instr: Instruction):
         map_size = instr.arg
-        assert map_size + 1 <= len(
-            self.stack
-        ), f"OpExecutor want BUILD_CONST_KEY_MAP with size {map_size} + 1, but current stack do not have enough elems."
+        assert map_size + 1 <= len(self.stack), (
+            f"OpExecutor want BUILD_CONST_KEY_MAP with size {map_size} + 1, but current stack do not have enough elems."
+        )
         keys = self.stack.pop().get_wrapped_items()
         keys = list(keys) if isinstance(keys, tuple) else keys
         assert len(keys) == map_size
@@ -1399,9 +1399,9 @@ class OpcodeExecutorBase:
 
         args_variable = self.stack.pop()
         args_iter = args_variable.get_iter()
-        assert isinstance(
-            args_iter, IterVariable
-        ), f"args_iter should be IterVariable, but got {args_iter}"
+        assert isinstance(args_iter, IterVariable), (
+            f"args_iter should be IterVariable, but got {args_iter}"
+        )
         if not isinstance(args_iter, SequenceIterVariable):
             raise BreakGraphError(
                 UnsupportedOperationBreak(
@@ -1459,9 +1459,9 @@ class OpcodeExecutorBase:
     def TO_BOOL(self, instr: Instruction):
         # we don't do anything in TO_BOOL, we simply check if the bytecode is legal
         next_instr = self._instructions[self.vframe.lasti]
-        assert (
-            next_instr.opname in NEED_TO_BOOL
-        ), f"The bytecode is illegal! The opcode following TO_BOOL must be in ['POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE', 'UNARY_NOT'], the next instruction now is {next_instr.opname}"
+        assert next_instr.opname in NEED_TO_BOOL, (
+            f"The bytecode is illegal! The opcode following TO_BOOL must be in ['POP_JUMP_IF_TRUE', 'POP_JUMP_IF_FALSE', 'UNARY_NOT'], the next instruction now is {next_instr.opname}"
+        )
 
     @call_break_graph_decorator(push_n=1)
     def IS_OP(self, instr: Instruction):
@@ -1556,7 +1556,9 @@ class OpcodeExecutorBase:
         assert isinstance(
             origin_func,
             (UserDefinedGeneratorFunctionVariable, UserDefinedFunctionVariable),
-        ), f"The object we manipulate must be a function object. But now got {type(origin_func)}"
+        ), (
+            f"The object we manipulate must be a function object. But now got {type(origin_func)}"
+        )
         origin_func_val = origin_func.get_py_value()
         related_list = [origin_func]
         closure, related_list, kw_defaults, default_args = (
@@ -1773,9 +1775,9 @@ class OpcodeExecutorBase:
             # a, b, *c, d = e
             front_nums = instr.arg & 0xFF
             back_nums = instr.arg >> 8
-            assert (
-                len(sequence) >= front_nums + back_nums
-            ), f"Want unpack {sequence} to {front_nums + back_nums}, but {len(sequence)} is smaller than {front_nums + back_nums}."
+            assert len(sequence) >= front_nums + back_nums, (
+                f"Want unpack {sequence} to {front_nums + back_nums}, but {len(sequence)} is smaller than {front_nums + back_nums}."
+            )
 
             for i in range(
                 len(sequence) - 1, len(sequence) - back_nums - 1, -1
@@ -1789,9 +1791,9 @@ class OpcodeExecutorBase:
             )
         else:
             # a, b, c, *d = e
-            assert (
-                len(sequence) >= instr.arg
-            ), f"Want unpack {sequence} to {instr.arg}, but {len(sequence)} is smaller than {instr.arg}."
+            assert len(sequence) >= instr.arg, (
+                f"Want unpack {sequence} to {instr.arg}, but {len(sequence)} is smaller than {instr.arg}."
+            )
 
             slice_obj = slice(instr.arg, None)
             slice_var = SliceVariable(
@@ -2183,9 +2185,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
             return Stop(state="BreakGraph")
 
     def RETURN_VALUE(self, instr: Instruction):
-        assert (
-            len(self.stack) == 1
-        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        assert len(self.stack) == 1, (
+            f"Stack must have one element, but get {len(self.stack)} elements."
+        )
         ret_val = self.stack.pop()
         return self.compile_return(ret_val)
 

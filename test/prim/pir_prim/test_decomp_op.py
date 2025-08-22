@@ -56,9 +56,9 @@ class TestBuildOp(unittest.TestCase):
             y_new = decompose(pir_program, y)
             core._set_prim_forward_enabled(False)
             new_shape = y_new[0].shape
-            assert (
-                orig_shape == new_shape
-            ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            assert orig_shape == new_shape, (
+                f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            )
             op_name_list = [op.name() for op in pir_program.global_block().ops]
             self.assertEqual(
                 op_name_list,
