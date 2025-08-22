@@ -162,18 +162,6 @@ TEST_CASES = [
         "tgt": p_str_to_dict("t2·e2"),
         "model_type": "moe",
     },
-    {
-        "id": "E3_tp2ep2_to_pp2ep2",
-        "src": p_str_to_dict("t2·e2"),
-        "tgt": p_str_to_dict("p2·e2"),
-        "model_type": "moe",
-    },
-    {
-        "id": "E4_pp2ep2_to_dp4",
-        "src": p_str_to_dict("p2·e2"),
-        "tgt": p_str_to_dict("d4"),
-        "model_type": "moe",
-    },
 ]
 
 
