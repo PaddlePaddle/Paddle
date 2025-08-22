@@ -19,6 +19,9 @@ from typing import TYPE_CHECKING, Literal
 import paddle
 from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import (
+    param_one_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1076,6 +1079,7 @@ def selu(
         return out
 
 
+@param_one_alias(["x", "input"])
 def silu(x: Tensor, name: str | None = None) -> Tensor:
     r"""
     silu activation
@@ -1086,8 +1090,13 @@ def silu(x: Tensor, name: str | None = None) -> Tensor:
 
     Where :math:`x` is the input Tensor.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``silu(input=tensor_x)`` is equivalent to ``silu(x=tensor_x)``.
+
     Parameters:
         x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``input``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
