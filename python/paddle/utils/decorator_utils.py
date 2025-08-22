@@ -159,7 +159,7 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def ParamIgnoreAndAliasDecorator(
+def softmax_param_ignore_alias(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
