@@ -541,6 +541,18 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                            index_flags_ptr,
                                            out_index_ptr,
                                            unique_key_ptr);
+  
+  void *out_index_temp_storage = nullptr;
+  size_t out_index_temp_storage_bytes = 0;
+  cub::DeviceRadixSort::SortKeysDescending(
+      out_index_temp_storage, out_index_temp_storage_bytes,
+      out_index_ptr, out_index_ptr, out_index->numel()
+  );
+  cudaMalloc(&out_index_temp_storage, out_index_temp_storage_bytes);
+  cub::DeviceRadixSort::SortKeysDescending(
+      out_index_temp_storage, out_index_temp_storage_bytes,
+      out_index_ptr, out_index_ptr, out_index->numel()
+  );
 
   phi::backends::gpu::GpuMemcpyAsync(d_buffer.data<int>(),
                                      counter_ptr,
@@ -634,6 +646,8 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
   }
   unique_value->ResizeAndAllocate({static_cast<int>(out_nnz * kernel_size)});
   int* unique_value_ptr = unique_value->data<int>();
+  phi::backends::gpu::GpuMemsetAsync(
+  unique_value_ptr, 0, sizeof(int) * out_nnz * kernel_size, dev_ctx.stream());
 
   GroupIndexs<<<config.block_per_grid,
                 config.thread_per_block,
@@ -644,6 +658,18 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                     rulebook_ptr + rulebook_len,
                                     out_index_ptr,
                                     unique_value_ptr);
+  void *unique_value_temp_storage = nullptr;
+  size_t unique_value_storage_bytes = 0;
+  cub::DeviceRadixSort::SortKeysDescending(
+      unique_value_temp_storage, unique_value_storage_bytes,
+      unique_value_ptr, unique_value_ptr, out_nnz * kernel_size
+  );
+  cudaMalloc(&unique_value_temp_storage, unique_value_storage_bytes);
+  cub::DeviceRadixSort::SortKeysDescending(
+      unique_value_temp_storage, unique_value_storage_bytes,
+      unique_value_ptr, unique_value_ptr, out_nnz * kernel_size
+  );
+
   return rulebook_len;
 }
 }  // namespace sparse

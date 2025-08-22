@@ -138,6 +138,7 @@ void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
   DenseTensor counter_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
   DenseTensor offsets_per_kernel = phi::Empty<int>(dev_ctx, {kernel_size});
   DenseTensor out_index = phi::Empty<int>(dev_ctx, {max_nnz});
+  phi::backends::gpu::GpuMemsetAsync(out_index.data<int>(), 0, sizeof(int) * max_nnz, dev_ctx.stream());
   DenseTensor unique_value = phi::Empty<int>(dev_ctx, {1});
 
   if (is2D) {
