@@ -164,6 +164,8 @@ class PADDLE_API TensorBase {
     return static_cast<int64_t>(SizeOf(tensor_.dtype()));
   }
 
+  bool defined() const { return tensor_.defined(); }
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 

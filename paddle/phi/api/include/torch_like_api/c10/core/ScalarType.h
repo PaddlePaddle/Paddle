@@ -79,6 +79,24 @@ struct dummy_int1_7_t {};
   _(c10::dummy_int1_7_t<6>, Int6, Int6)               /* 42 */ \
   _(c10::dummy_int1_7_t<7>, Int7, Int7)               /* 43 */
 
+// If you want to support ComplexHalf for real, add ComplexHalf
+// into this macro (and change the name).  But beware: convert()
+// doesn't work for all the conversions you need...
+#define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_EXCEPT_COMPLEX_HALF_F8NZ(_) \
+  _(uint8_t, Byte)                                                      \
+  _(int8_t, Char)                                                       \
+  _(int16_t, Short)                                                     \
+  _(int, Int)                                                           \
+  _(int64_t, Long)                                                      \
+  _(at::Half, Half)                                                     \
+  _(float, Float)                                                       \
+  _(double, Double)                                                     \
+  _(c10::complex<float>, ComplexFloat)                                  \
+  _(c10::complex<double>, ComplexDouble)                                \
+  _(bool, Bool)                                                         \
+  _(at::BFloat16, BFloat16)                                             \
+  _(at::Float8_e5m2, Float8_e5m2)
+
 #define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX(_) \
   _(uint8_t, Byte)                             \
   _(int8_t, Char)                              \
@@ -91,7 +109,7 @@ struct dummy_int1_7_t {};
   _(c10::complex<double>, ComplexDouble)       \
   _(bool, Bool)                                \
   _(at::BFloat16, BFloat16)                    \
-  _(c10::Float8_e5m2, Float8_e5m2)              \
+  _(c10::Float8_e5m2, Float8_e5m2)             \
   _(c10::Float8_e4m3fn, Float8_e4m3fn)
 
 #define AT_FORALL_QINT_TYPES(_) \
@@ -126,12 +144,101 @@ enum class PADDLE_API ScalarType : int8_t {
       Undefined,
   NumOptions
 };
+namespace impl {
+
+// These are used to map ScalarTypes to C++ types.
+
+template <c10::ScalarType N>
+struct ScalarTypeToCPPType;
+
+#define SPECIALIZE_ScalarTypeToCPPType(cpp_type, _2, scalar_type) \
+  template <>                                                     \
+  struct ScalarTypeToCPPType<c10::ScalarType::scalar_type> {      \
+    using type = cpp_type;                                        \
+                                                                  \
+    static type t;                                                \
+  };
+
+AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_ScalarTypeToCPPType)
+
+#undef SPECIALIZE_ScalarTypeToCPPType
+
+template <c10::ScalarType N>
+using ScalarTypeToCPPTypeT = typename ScalarTypeToCPPType<N>::type;
+
+}  // namespace impl
+
+template <typename T>
+struct CppTypeToScalarType;
+
+#define SPECIALIZE_CppTypeToScalarType(cpp_type, _2, scalar_type) \
+  template <>                                                     \
+  struct CppTypeToScalarType<cpp_type>                            \
+      : std::integral_constant<c10::ScalarType,                   \
+                               c10::ScalarType::scalar_type> {};
+
+AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(SPECIALIZE_CppTypeToScalarType)
+
+#undef SPECIALIZE_CppTypeToScalarType
 
 #define DEFINE_CONSTANT(_1, _2, name) \
   constexpr ScalarType k##name = ScalarType::name;
 
 AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_CONSTANT)
 #undef DEFINE_CONSTANT
+
+// create for kernels.  It is typically inappropriate to add new dtypes here,
+// instead, new types should be added to use sites on a case-by-case basis.
+// We generally are not accepting new dtypes due to binary size concerns.
+
+#define AT_FORALL_SCALAR_TYPES_AND(SCALARTYPE, _) \
+  _(uint8_t, Byte)                                \
+  _(int8_t, Char)                                 \
+  _(int16_t, Short)                               \
+  _(int, Int)                                     \
+  _(int64_t, Long)                                \
+  _(float, Float)                                 \
+  _(double, Double)                               \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<    \
+             ::c10::ScalarType::SCALARTYPE>::t),  \
+    SCALARTYPE)
+
+#define AT_FORALL_SCALAR_TYPES_AND2(SCALARTYPE1, SCALARTYPE2, _) \
+  _(uint8_t, Byte)                                               \
+  _(int8_t, Char)                                                \
+  _(int16_t, Short)                                              \
+  _(int, Int)                                                    \
+  _(int64_t, Long)                                               \
+  _(float, Float)                                                \
+  _(double, Double)                                              \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<                   \
+             ::c10::ScalarType::SCALARTYPE1>::t),                \
+    SCALARTYPE1)                                                 \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<                   \
+             ::c10::ScalarType::SCALARTYPE2>::t),                \
+    SCALARTYPE2)
+
+#define AT_FORALL_SCALAR_TYPES_AND3(SCALARTYPE1, SCALARTYPE2, SCALARTYPE3, _) \
+  _(uint8_t, Byte)                                                            \
+  _(int8_t, Char)                                                             \
+  _(int16_t, Short)                                                           \
+  _(int, Int)                                                                 \
+  _(int64_t, Long)                                                            \
+  _(float, Float)                                                             \
+  _(double, Double)                                                           \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<                                \
+             ::c10::ScalarType::SCALARTYPE1>::t),                             \
+    SCALARTYPE1)                                                              \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<                                \
+             ::c10::ScalarType::SCALARTYPE2>::t),                             \
+    SCALARTYPE2)                                                              \
+  _(decltype(::c10::impl::ScalarTypeToCPPType<                                \
+             ::c10::ScalarType::SCALARTYPE3>::t),                             \
+    SCALARTYPE3)
+
+#define AT_FORALL_COMPLEX_TYPES(_)     \
+  _(c10::complex<float>, ComplexFloat) \
+  _(c10::complex<double>, ComplexDouble)
 
 inline const char* toString(ScalarType t) {
 #define DEFINE_CASE(_1, _2, name) \
@@ -214,8 +321,17 @@ inline bool isComplexType(ScalarType t) {
 //   }
 // }
 
+inline std::ostream& operator<<(std::ostream& stream, ScalarType scalar_type) {
+  return stream << toString(scalar_type);
+}
+
 }  // namespace c10
 
+namespace at {
+using c10::CppTypeToScalarType;
+using c10::ScalarType;
+}  // namespace at
 namespace torch {
+using c10::CppTypeToScalarType;
 using c10::ScalarType;
 }  // namespace torch

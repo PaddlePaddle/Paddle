@@ -14,14 +14,10 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3fn.h"
+#include <ATen/cuda/CUDAContextLight.h>
 
-namespace c10 {
-using Float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
-}  // namespace c10
-namespace at {
-using c10::Float8_e4m3fn;
-}  // namespace at
-namespace torch {
-using c10::Float8_e4m3fn;
-}  // namespace torch
+// Preserved for BC, as many files depend on these includes
+// #include <ATen/Context.h>
+#include <ATen/cuda/Exceptions.h>
+#include <c10/cuda/CUDAStream.h>
+// #include <c10/util/Logging.h>

@@ -18,17 +18,11 @@
 #include <ATen/common.h>
 #include <ATen/core/TensorBody.h>
 #include <c10/core/ScalarType.h>
+#include <c10/util/OptionalArrayRef.h>
 
 namespace torch {
 
-using at::IntArrayRef;
-using at::OptionalIntArrayRef;
-using at::Tensor;
-using at::TensorOptions;
-
-using at::empty;
-using at::empty_like;
-using at::zeros;
+using namespace at;  // NOLINT
 
 using std::nullopt;   // NOLINT
 using std::optional;  // NOLINT
@@ -61,8 +55,5 @@ constexpr auto kI64 = kInt64;
 constexpr auto kF16 = kFloat16;
 constexpr auto kF32 = kFloat32;
 constexpr auto kF64 = kFloat64;
-
-constexpr auto kCPU = at::kCPU;
-constexpr auto kCUDA = at::kCUDA;
 
 }  // namespace torch

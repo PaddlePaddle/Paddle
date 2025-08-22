@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <torch/ivalue.h>
+#include <ATen/core/ivalue.h>
 
 #include <functional>
 #include <iostream>

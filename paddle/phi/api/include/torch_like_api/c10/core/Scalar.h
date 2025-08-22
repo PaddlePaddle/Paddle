@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/scalar.h"
 
 namespace c10 {
-using Float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
-}  // namespace c10
+using Scalar = paddle::experimental::Scalar;
+}
 namespace at {
-using c10::Float8_e4m3fn;
+using c10::Scalar;
 }  // namespace at
+
 namespace torch {
-using c10::Float8_e4m3fn;
+using c10::Scalar;
 }  // namespace torch

@@ -30,8 +30,14 @@ constexpr DeviceType kCUSTOM = DeviceType::CUSTOM;
 
 namespace at {
 using c10::DeviceType;
+using c10::kCPU;
+using c10::kCUDA;
+using c10::kCUSTOM;
 }  // namespace at
 
 namespace torch {
 using c10::DeviceType;
+using c10::kCPU;
+using c10::kCUDA;
+using c10::kCUSTOM;
 }  // namespace torch

@@ -357,15 +357,9 @@ inline std::string toString(const TensorOptions& options) {
 }  // namespace c10
 
 namespace at {
-using c10::device_or_default;
-using c10::layout_or_default;
-using c10::pinned_memory_or_default;
-using c10::TensorOptions;
+using namespace c10;  // NOLINT
 }  // namespace at
 
 namespace torch {
-using c10::device_or_default;
-using c10::layout_or_default;
-using c10::pinned_memory_or_default;
-using c10::TensorOptions;
+using namespace c10;  // NOLINT
 }  // namespace torch

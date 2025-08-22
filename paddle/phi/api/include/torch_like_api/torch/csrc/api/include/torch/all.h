@@ -14,14 +14,14 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3fn.h"
-
-namespace c10 {
-using Float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
-}  // namespace c10
-namespace at {
-using c10::Float8_e4m3fn;
-}  // namespace at
-namespace torch {
-using c10::Float8_e4m3fn;
-}  // namespace torch
+// #include <torch/autograd.h>
+#include <torch/cuda.h>
+// #include <torch/data.h>
+// #include <torch/enum.h>
+// #include <torch/nn.h>
+// #include <torch/optim.h>
+// #include <torch/serialize.h>
+#include <torch/sparse.h>
+// #include <torch/special.h>
+#include <torch/types.h>
+// #include <torch/utils.h>

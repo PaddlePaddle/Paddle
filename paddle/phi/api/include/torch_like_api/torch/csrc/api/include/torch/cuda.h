@@ -14,14 +14,19 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3fn.h"
+#include <c10/core/Device.h>
 
-namespace c10 {
-using Float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
-}  // namespace c10
-namespace at {
-using c10::Float8_e4m3fn;
-}  // namespace at
-namespace torch {
-using c10::Float8_e4m3fn;
-}  // namespace torch
+#include <cstdint>
+
+namespace torch::cuda {
+
+/// Returns the number of CUDA devices available.
+c10::DeviceIndex device_count();
+
+/// Returns true if at least one CUDA device is available.
+bool is_available();
+
+/// Waits for all kernels in all streams on a CUDA device to complete.
+void synchronize(int64_t device_index = -1);
+
+}  // namespace torch::cuda

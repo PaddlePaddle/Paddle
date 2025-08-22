@@ -221,3 +221,10 @@ inline bool operator==(const c10::IntArrayRef& a1,
 }
 
 }  // namespace c10
+namespace at {
+using c10::OptionalIntArrayRef;
+}  // namespace at
+
+namespace torch {
+using c10::OptionalIntArrayRef;
+}  // namespace torch

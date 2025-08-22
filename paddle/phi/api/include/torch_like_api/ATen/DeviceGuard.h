@@ -14,14 +14,22 @@
 
 #pragma once
 
-#include "paddle/phi/common/float8_e4m3fn.h"
+#include <ATen/core/Tensor.h>
+// #include <c10/core/DeviceGuard.h>
+#include <c10/core/ScalarType.h>
 
-namespace c10 {
-using Float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
-}  // namespace c10
 namespace at {
-using c10::Float8_e4m3fn;
+
+inline std::optional<Device> device_of(const Tensor& t) {
+  if (t.defined()) {
+    return t.device();
+  } else {
+    return std::nullopt;
+  }
+}
+
+inline std::optional<Device> device_of(const std::optional<Tensor>& t) {
+  return t.has_value() ? device_of(t.value()) : std::nullopt;
+}
+
 }  // namespace at
-namespace torch {
-using c10::Float8_e4m3fn;
-}  // namespace torch

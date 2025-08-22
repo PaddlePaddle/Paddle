@@ -15,15 +15,17 @@
 #include <ATen/Functions.h>
 #include <ATen/core/TensorBody.h>
 #include <ATen/cuda/EmptyTensor.h>
+#include <ATen/native/cuda/Resize.h>
+#include <ATen/ops/tensor.h>
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
-
+#include "ATen/ATen.h"
 #include "gtest/gtest.h"
-#include "paddle/phi/api/include/torch_compat_runtime.h"
 #include "paddle/phi/common/float16.h"
+#include "torch/all.h"
 
 TEST(TensorBaseTest, DataPtrAPIs) {
   // Test data_ptr() and const_data_ptr() APIs

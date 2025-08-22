@@ -14,6 +14,11 @@
 
 #pragma once
 
-namespace c10 {
-using SymFloat = double;
-}
+#include <ATen/Device.h>
+#include <ATen/DeviceGuard.h>
+#include <ATen/Functions.h>
+#include <ATen/Tensor.h>
+#include <ATen/core/Scalar.h>
+#include <c10/core/Layout.h>
+#include <c10/core/TensorOptions.h>
+#include <c10/util/Exception.h>

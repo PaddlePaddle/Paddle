@@ -25,7 +25,3 @@
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/zeros.h>
 #include <ATen/ops/zeros_like.h>
-
-#include "paddle/phi/api/include/api.h"
-
-namespace at {}  // namespace at

@@ -14,7 +14,10 @@
 
 #pragma once
 
-#include <ATen/Functions.h>
-#include <ATen/common.h>
-#include <torch/csrc/api/include/torch/types.h>
-#include <torch/library.h>
+#include <ATen/EmptyTensor.h>
+#include <c10/core/ScalarType.h>
+#include <c10/util/ArrayRef.h>
+#include <c10/util/Exception.h>
+#include <c10/util/accumulate.h>
+
+#include <algorithm>
