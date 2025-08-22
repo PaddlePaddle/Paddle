@@ -21,7 +21,6 @@ from paddle.compat import sort as compat_sort
 
 
 class TestCompatSort(unittest.TestCase):
-
     def _compare_with_origin(
         self, input_tensor, dtype, dim, descending, stable, use_out=False
     ):
