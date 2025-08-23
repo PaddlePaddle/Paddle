@@ -13,259 +13,80 @@
 # limitations under the License.
 
 import unittest
+from itertools import product
 
 import numpy as np
-from op_test import OpTest
+from utils import dygraph_guard
 
 import paddle
 
-paddle.enable_static()
-paddle.device.set_device("cpu")
 
+class TestSlogDet(unittest.TestCase):
+    def setUp(self) -> None:
+        self.shapes = [
+            [2, 2, 5, 5],
+            [10, 10],
+            [0, 5, 5],
+            [0, 0, 0],
+            [3, 3, 5, 5],
+            [6, 5, 5],
+            [4, 50, 50],
+        ]
+        self.dtypes = [
+            "float32",
+            "float64",
+            "complex64",
+            "complex128",
+        ]
 
-class TestSlogDeterminantOp(OpTest):
-    def setUp(self):
-        self.op_type = "slogdet_v2"
-        self.python_api = paddle.compat.slogdet
-        self.init_data()
-        self.outputs = {'Sign': self.sign, 'Logdet': self.logdet}
+    def slogdet_backward(self, x, _, grad_logabsdet):
+        x_inv_T = np.swapaxes(np.linalg.inv(x).conj(), -1, -2)
+        grad_x = grad_logabsdet * x_inv_T
+        return grad_x
 
-    def test_check_output(self):
-        self.check_output(check_pir=True)
+    def test_compat_slogdet(self):
+        with dygraph_guard():
+            for shape, dtype in product(self.shapes, self.dtypes):
+                err_msg = f"shape = {shape}, dtype = {dtype}"
 
-    def test_check_grad(self):
-        # the slog det's grad value is always huge
-        self.check_grad(
-            ['Input'],
-            ['Sign', 'Logdet'],
-            max_relative_error=0.1,
-            check_pir=True,
-        )
+                # test eager
+                x = paddle.randn(shape, dtype)
+                x.stop_gradient = False
+                sign, logdet = paddle.compat.slogdet(x)
+                logdet_grad = paddle.randn_like(logdet)
+                sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
 
-    def init_data(self):
-        np.random.seed(0)
-        self.case = np.random.rand(4, 5, 5).astype('float64')
-        self.inputs = {'Input': self.case}
-        s, l = np.linalg.slogdet(self.case)
-        self.sign = s
-        self.logdet = l
+                np.testing.assert_allclose(
+                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
+                np.testing.assert_allclose(
+                    logdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
 
+                (x_grad,) = paddle.grad(logdet, x, logdet_grad)
+                x_grad_ref = self.slogdet_backward(
+                    x.numpy(),
+                    sign.numpy(),
+                    logdet_grad.numpy()[..., None, None],
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
 
-# class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
-#     def init_data(self):
-#         np.random.seed(0)
-#         self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
-#         self.inputs = {'Input': self.case}
-#         s, l = np.linalg.slogdet(self.case)
-#         self.sign = s
-#         self.logdet = l
+                # test pir
+                st_f = paddle.jit.to_static(
+                    paddle.compat.slogdet,
+                    full_graph=True,
+                    backend=None,
+                )
+                sign, logdet = st_f(x)
 
-
-# class TestSlogDeterminantOpCase2(TestSlogDeterminantOp):
-#     def init_data(self):
-#         np.random.seed(0)
-#         self.case = np.random.rand(10, 10).astype(np.float32)
-#         self.inputs = {'Input': self.case}
-#         s, l = np.linalg.slogdet(self.case)
-#         self.sign = s
-#         self.logdet = l
-
-
-# class TestSlogDeterminantOp_ZeroSize(TestSlogDeterminantOp):
-#     def init_data(self):
-#         np.random.seed(0)
-#         self.case = np.random.rand(0, 5, 5).astype('float64')
-#         self.inputs = {'Input': self.case}
-#         s, l = np.linalg.slogdet(self.case)
-#         self.sign = s
-#         self.logdet = l
-
-
-# class TestSlogDeterminantOp_ZeroSize2(TestSlogDeterminantOp):
-#     def init_data(self):
-#         np.random.seed(0)
-#         self.case = np.random.rand(0, 0, 0).astype('float64')
-#         self.inputs = {'Input': self.case}
-#         s, l = np.linalg.slogdet(self.case)
-#         self.sign = s
-#         self.logdet = l
-
-
-# class TestSlogDeterminantAPI(unittest.TestCase):
-#     def setUp(self):
-#         np.random.seed(0)
-#         self.shape = [3, 3, 5, 5]
-#         self.x = np.random.random(self.shape).astype(np.float32)
-#         self.place = paddle.CPUPlace()
-
-#     def test_api_static(self):
-#         with static_guard():
-#             with paddle.static.program_guard(paddle.static.Program()):
-#                 x = paddle.static.data('X', self.shape)
-#                 out = paddle.compat.slogdet(x)
-#                 exe = paddle.static.Executor(self.place)
-#                 res = exe.run(feed={'X': self.x}, fetch_list=[out])
-#             sign, logabsdet = res
-#             out_ref = np.linalg.slogdet(self.x)
-#             sign_ref, logabsdet_ref = out_ref
-#             np.testing.assert_allclose(sign, sign_ref, rtol=0.001)
-#             np.testing.assert_allclose(logabsdet, logabsdet_ref, rtol=0.001)
-
-#     def test_api_dygraph(self):
-#         with dygraph_guard():
-#             x_tensor = paddle.to_tensor(self.x)
-#             out = paddle.compat.slogdet(x_tensor)
-#             out_ref = np.array(np.linalg.slogdet(self.x))
-#         np.testing.assert_allclose(out, out_ref, rtol=0.001)
-
-
-# def slogdeterminant_complex_numeric_grad_single_batch(
-#     x, n, delta=0.005, logabsdet_out_grad=np.array(1 + 0j)
-# ):
-#     # an naive implementation of numeric_grad with single batch input x
-#     # the output of logabsdet is always real, so logabsdet_out_grad
-#     # should be a+0j, where a is an arbitrary real number
-#     dx = []
-#     for i in range(n):
-#         for j in range(n):
-#             xp = x.copy()
-#             xn = x.copy()
-#             xpj = x.copy()
-#             xnj = x.copy()
-#             xp[i, j] += delta
-#             xn[i, j] -= delta
-#             xpj[i, j] += delta * 1j
-#             xnj[i, j] -= delta * 1j
-#             _, yp = np.linalg.slogdet(xp)
-#             _, yn = np.linalg.slogdet(xn)
-#             _, ypj = np.linalg.slogdet(xpj)
-#             _, ynj = np.linalg.slogdet(xnj)
-#             df_over_dr = (yp - yn) / delta / 2
-#             df_over_di = (ypj - ynj) / delta / 2
-#             dl_over_du, dl_over_dv = (
-#                 logabsdet_out_grad.real,
-#                 logabsdet_out_grad.imag,
-#             )
-#             du_over_dr, dv_over_dr = df_over_dr.real, df_over_dr.imag
-#             du_over_di, dv_over_di = df_over_di.real, df_over_di.imag
-#             dl_over_dr = np.sum(
-#                 dl_over_du * du_over_dr + dl_over_dv * dv_over_dr
-#             )
-#             dl_over_di = np.sum(
-#                 dl_over_du * du_over_di + dl_over_dv * dv_over_di
-#             )
-#             dx.append(dl_over_dr + 1j * dl_over_di)
-#     return np.array(dx).reshape([n, n])
-
-
-# class TestSlogDeterminantAPIComplex(unittest.TestCase):
-#     def setUp(self):
-#         np.random.seed(0)
-#         self.shape = [3, 3, 5, 5]
-#         self.dtype = np.complex64
-#         self.x = np.vectorize(complex)(
-#             np.random.random(self.shape), np.random.random(self.shape)
-#         ).astype(self.dtype)
-#         self.places = [paddle.CPUPlace()]
-#         if paddle.base.core.is_compiled_with_cuda():
-#             self.places.append(paddle.CUDAPlace(0))
-#         self.out_grad = (
-#             np.array([1 + 0j, 1 + 0j] * 3 * 3)
-#             .reshape(2, 3, 3)
-#             .astype(self.dtype)
-#         )
-#         self.x_grad_ref_dy = self.get_numeric_grad(
-#             self.x, self.shape, self.out_grad
-#         )
-#         self.x_grad_ref_st = self.get_numeric_grad(self.x, self.shape)
-
-#     def get_numeric_grad(self, x, shape, out_grad=None):
-#         n = shape[-1]
-#         flatten_x = x.reshape([-1, n, n])
-#         n_batch = flatten_x.shape[0]
-#         grad = []
-#         if out_grad is None:
-#             for b in range(n_batch):
-#                 grad.append(
-#                     slogdeterminant_complex_numeric_grad_single_batch(
-#                         flatten_x[b], n
-#                     )
-#                 )
-#         else:
-#             flatten_grad = out_grad.reshape([-1, 2])
-#             for b in range(n_batch):
-#                 grad.append(
-#                     slogdeterminant_complex_numeric_grad_single_batch(
-#                         flatten_x[b], n, logabsdet_out_grad=flatten_grad[b][1]
-#                     )
-#                 )
-#         return np.array(grad).reshape(shape)
-
-#     def test_api_static(self):
-#         for place in self.places:
-#             with (
-#                 static_guard(),
-#                 paddle.static.program_guard(paddle.static.Program()),
-#             ):
-#                 x = paddle.static.data('X', self.shape, self.dtype)
-#                 x.stop_gradient = False
-#                 sign, logabsdet = paddle.compat.slogdet(x)
-#                 x_grad = paddle.static.gradients(logabsdet, x)
-#                 exe = paddle.static.Executor(place)
-#                 res = exe.run(
-#                     feed={'X': self.x},
-#                     fetch_list=[sign, logabsdet, x_grad[0]],
-#                 )
-
-#             sign_ref = np.array(np.linalg.slogdet(self.x)[0])
-#             logabsdet_ref = np.array(np.linalg.slogdet(self.x)[1])
-
-#             np.testing.assert_allclose(res[0], sign_ref, rtol=0.001)
-#             np.testing.assert_allclose(res[1], logabsdet_ref, rtol=0.001)
-#             np.testing.assert_allclose(res[2], self.x_grad_ref_st, rtol=0.001)
-
-#     def test_api_dygraph(self):
-#         sign_ref, logabsdet_ref = np.linalg.slogdet(self.x)
-#         for place in self.places:
-#             with dygraph_guard():
-#                 x_tensor = paddle.to_tensor(self.x)
-#                 x_tensor.stop_gradient = False
-#                 sign, logabsdet = paddle.compat.slogdet(x_tensor)
-
-#                 logabsdet_grad_np = self.out_grad[1]
-#                 logabsdet_grad_tensor = paddle.to_tensor(
-#                     logabsdet_grad_np, dtype=logabsdet.dtype, place=place
-#                 )
-#                 logabsdet.backward(logabsdet_grad_tensor)
-
-#             np.testing.assert_allclose(
-#                 sign.numpy(), sign_ref, rtol=1e-5, atol=1e-5
-#             )
-#             np.testing.assert_allclose(
-#                 logabsdet.numpy(), logabsdet_ref, rtol=1e-5, atol=1e-5
-#             )
-
-#             np.testing.assert_allclose(
-#                 x_tensor.grad.numpy(), self.x_grad_ref_dy, rtol=1e-3, atol=1e-4
-#             )
-
-
-# class TestSlogDeterminantAPIComplex2(TestSlogDeterminantAPIComplex):
-#     def setUp(self):
-#         np.random.seed(0)
-#         self.shape = [6, 5, 5]
-#         self.dtype = np.complex128
-#         self.x = np.vectorize(complex)(
-#             np.random.random(self.shape), np.random.random(self.shape)
-#         ).astype(self.dtype)
-#         self.places = [paddle.CPUPlace()]
-#         if paddle.base.core.is_compiled_with_cuda():
-#             self.places.append(paddle.CUDAPlace(0))
-#         self.out_grad = np.array([3 + 0j, 3 + 0j] * 6).reshape(2, 6)
-#         self.x_grad_ref_dy = self.get_numeric_grad(
-#             self.x, self.shape, self.out_grad
-#         )
-#         self.x_grad_ref_st = self.get_numeric_grad(self.x, self.shape)
+                np.testing.assert_allclose(
+                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
+                np.testing.assert_allclose(
+                    logdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
 
 
 if __name__ == '__main__':
