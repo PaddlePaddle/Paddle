@@ -15,10 +15,9 @@
 #include "paddle/phi/kernels/funcs/inverse_from_lu.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-
+#include "paddle/phi/core/tensor_utils.h"
 #ifndef PADDLE_WITH_HIP
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #else
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
@@ -42,7 +41,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
     return;
   }
 
-  // getri is an in-place operation, copy `lu_data` to `inverse_out`.
+  // getri is an out-of-place operation.
   dev_ctx.template Alloc<T>(inverse_out);
 
   auto* lu_data_data = lu_data.data<T>();
@@ -95,6 +94,8 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
                     reinterpret_cast<int*>(info_device->ptr()),
                     batch_size);
 #else
+  phi::Copy(dev_ctx, lu_data, dev_ctx.GetPlace(), false, inverse_out);
+
   int lwork = -1;
   T wkopt;
   int info = 0;

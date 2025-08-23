@@ -36,7 +36,7 @@ void InverseFromLUFunctor<T, Context>::operator()(const Context& dev_ctx,
     return;
   }
 
-  // getri is an in-place operation, copy `lu_data` to `inverse_out`.
+  // lapack-getri is an in-place operation, copy `lu_data` to `inverse_out`.
   dev_ctx.template Alloc<T>(inverse_out);
   phi::Copy(dev_ctx, lu_data, dev_ctx.GetPlace(), false, inverse_out);
 

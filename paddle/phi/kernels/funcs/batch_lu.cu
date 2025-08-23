@@ -15,10 +15,9 @@
 #include "paddle/phi/kernels/funcs/batch_lu.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-
+#include "paddle/phi/core/tensor_utils.h"
 #ifndef PADDLE_WITH_HIP
 #include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #else
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
