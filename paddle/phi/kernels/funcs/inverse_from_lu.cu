@@ -15,9 +15,14 @@
 #include "paddle/phi/kernels/funcs/inverse_from_lu.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#else
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#endif
 
 namespace phi {
 namespace funcs {

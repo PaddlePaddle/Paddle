@@ -15,9 +15,14 @@
 #include "paddle/phi/kernels/funcs/batch_lu.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+
+#ifndef PADDLE_WITH_HIP
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#else
+#include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
+#endif
 
 namespace phi {
 namespace funcs {
@@ -78,7 +83,7 @@ void BatchLUFunctor<T, Context>::operator()(const Context& dev_ctx,
                     static_cast<int>(batch_size));
 #else
   for (int64_t i = 0; i < batch_size; ++i) {
-    infos_cpu_data[i] = 0;
+    infos_data[i] = 0;
 
     T* current_lu = lu_data + i * matrix_size;
     int* current_pivots = pivots_data + i * n;
