@@ -240,7 +240,6 @@ def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
 
 
 def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
-
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
         get_overlap_region(
             src_desc.global_offset,
@@ -260,9 +259,9 @@ def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
     )
 
     assert src_has or dst_has, "no overlap!"
-    assert (
-        overlap_shape == overlap_shape2
-    ), f"overlap shape mismatch: {overlap_shape} vs {overlap_shape2}"
+    assert overlap_shape == overlap_shape2, (
+        f"overlap shape mismatch: {overlap_shape} vs {overlap_shape2}"
+    )
     axes = list(range(len(overlap_shape)))
 
     src_tensor_slice = paddle.slice(

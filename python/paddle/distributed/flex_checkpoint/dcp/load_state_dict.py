@@ -794,9 +794,9 @@ def load_state_dict(
     if not use_dist:
         load_dict = {}
         for key, val in state_dict.items():
-            assert (
-                val.local_shape == val.global_shape
-            ), f"{key} is not replicated!"
+            assert val.local_shape == val.global_shape, (
+                f"{key} is not replicated!"
+            )
             load_dict[key] = val
         load_state_dict_impl(
             load_dict,
@@ -850,16 +850,16 @@ def load_state_dict_impl(
     mw_name_compatibility: bool = True,
 ) -> None:
     with paddle.base.dygraph.guard():
-        assert isinstance(
-            state_dict, dict
-        ), "The state_dict should be a dictionary."
+        assert isinstance(state_dict, dict), (
+            "The state_dict should be a dictionary."
+        )
         first_key = next(iter(state_dict), None)
         if isinstance(first_key, tuple):
             flat_state_dict = state_dict
             mapping = {}
         else:
             flat_state_dict, mapping = flatten_state_dict(state_dict)
-            
+
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
                 assert isinstance(val, (paddle.Tensor, ShardedWeight)), (
@@ -998,9 +998,9 @@ def _load_state_dict(
         idx = 0
         assert not any(
             isinstance(k, tuple) for k in copied_target_state_dict
-        ) or all(
-            isinstance(k, tuple) for k in copied_target_state_dict
-        ), "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
+        ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
+            "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
+        )
 
         for item in read_items:
             if any(isinstance(k, tuple) for k in copied_target_state_dict):
@@ -1055,9 +1055,9 @@ def _load_state_dict(
                     storage_chunk_tensor = storage_local_tensor
             # The read item rank need to be assigned
             if item.rank == paddle.distributed.get_rank():
-                assert (
-                    key in copied_target_state_dict
-                ), f"item:{item}, state_dict:{copied_target_state_dict}"
+                assert key in copied_target_state_dict, (
+                    f"item:{item}, state_dict:{copied_target_state_dict}"
+                )
 
                 cur_local_tensor = (
                     copied_target_state_dict[key]._local_value()
@@ -1107,10 +1107,12 @@ def _load_state_dict(
                         tmp_tensor, src=src_rank, group=process_group
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
-            if (
-                key in state_dict_in_cpu
-                and idx + 1 < len(read_items)
-                and read_items[idx + 1].local_tensor_index.tensor_key != key
+            if key in state_dict_in_cpu and (
+                (
+                    idx + 1 < len(read_items)
+                    and read_items[idx + 1].local_tensor_index.tensor_key != key
+                )
+                or idx + 1 == len(read_items)
             ):
                 paddle.assign(
                     copied_target_state_dict[key].cpu(), state_dict_in_cpu[key]
