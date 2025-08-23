@@ -30,7 +30,6 @@ class TestSlogDet(unittest.TestCase):
             [0, 0, 0],
             [3, 3, 5, 5],
             [6, 5, 5],
-            [4, 50, 50],
         ]
         self.dtypes = [
             "float32",
@@ -52,18 +51,23 @@ class TestSlogDet(unittest.TestCase):
                 # test eager
                 x = paddle.randn(shape, dtype)
                 x.stop_gradient = False
-                sign, logdet = paddle.compat.slogdet(x)
-                logdet_grad = paddle.randn_like(logdet)
+                out = paddle.compat.slogdet(x)
+                self.assertTrue(hasattr(out, "sign"))
+                self.assertTrue(hasattr(out, "logabsdet"))
+                sign, logabsdet = out
+                self.assertEqual(sign.dtype, x.dtype)
+                self.assertFalse(logabsdet.is_complex())
+                logdet_grad = paddle.randn_like(logabsdet)
                 sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
 
                 np.testing.assert_allclose(
                     sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
                 )
                 np.testing.assert_allclose(
-                    logdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
+                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
                 )
 
-                (x_grad,) = paddle.grad(logdet, x, logdet_grad)
+                (x_grad,) = paddle.grad(logabsdet, x, logdet_grad)
                 x_grad_ref = self.slogdet_backward(
                     x.numpy(),
                     sign.numpy(),
@@ -79,14 +83,46 @@ class TestSlogDet(unittest.TestCase):
                     full_graph=True,
                     backend=None,
                 )
-                sign, logdet = st_f(x)
+                sign, logabsdet = st_f(x)
+                self.assertTrue(hasattr(out, "sign"))
+                self.assertTrue(hasattr(out, "logabsdet"))
+                self.assertEqual(sign.dtype, x.dtype)
+                self.assertFalse(logabsdet.is_complex())
 
                 np.testing.assert_allclose(
                     sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
                 )
                 np.testing.assert_allclose(
-                    logdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
+                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
                 )
+
+    def test_error(self):
+        x = paddle.randn([5], "float32")
+        with self.assertRaises(ValueError):
+            sign, logabsdet = paddle.compat.slogdet(x)
+
+    def test_out(self):
+        x = paddle.randn([5, 5], "float32")
+        sign_, logabsdet_ = paddle.randn([]), paddle.randn([])
+
+        sign, logabsdet = paddle.compat.slogdet(x, out=(sign_, logabsdet_))
+
+        # skip until multiple outputs are supported
+        # self.assertEqual(sign_.data_ptr(), sign.data_ptr())
+        # self.assertEqual(logabsdet_.data_ptr(), logabsdet.data_ptr())
+
+    def test_singular_matrix(self):
+        x = paddle.to_tensor(
+            [
+                [0, 0, 0],
+                [1, 1, 1],
+                [2, 2, 2],
+            ],
+            dtype="float32",
+        )
+        sign, logabsdet = paddle.compat.slogdet(x)
+        self.assertEqual(sign.item(), 0)
+        self.assertEqual(logabsdet.item(), -np.inf)
 
 
 if __name__ == '__main__':

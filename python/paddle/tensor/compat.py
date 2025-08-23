@@ -222,7 +222,14 @@ def split(
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
 
 
-def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
+class SlogdetResult(NamedTuple):
+    sign: Tensor
+    logabsdet: Tensor
+
+
+def slogdet(
+    x: Tensor, out: tuple[paddle.Tensor, paddle.Tensor] | None = None
+) -> tuple[Tensor, Tensor]:
     """
 
     (PyTorch Compatible API) Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
@@ -236,12 +243,13 @@ def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
         2. For matrices with complex value, the :math:`abs(det)` is the modulus of the determinant,
         and therefore :math:`sign = det / abs(det)`.
 
-        3. The return structure of this API has been revised **from a single stacked Tensor of shape `[2, *]` (where index 0 was sign and index 1 was logdet) to a tuple of two independent Tensors `(sign, logdet)`** (see `PR #72505 <https://github.com/PaddlePaddle/Paddle/pull/72505>`_).
+        3. The return structure of this API has been revised **from a single stacked Tensor of shape `[2, *]` (where index 0 was sign and index 1 was logabsdet) to a tuple of two independent Tensors `(sign, logabsdet)`** (see `PR #72505 <https://github.com/PaddlePaddle/Paddle/pull/72505>`_).
         This modification may cause incompatibility with models previously exported for inference that relied on the old return structure.
 
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
+        out(tuple[paddle.Tensor, paddle.Tensor], optional): The output tensor.
 
     Returns:
         tuple(Tensor, Tensor): A tuple containing two Tensors: (sign, logabsdet).
@@ -262,8 +270,11 @@ def slogdet(x: Tensor) -> tuple[Tensor, Tensor]:
                   [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
                   [ 0.25681755, -0.25061053, -0.10809596]))
     """
-    sign, logdet = _C_ops.slogdet_v2(x)
-    return sign, logdet
+    sign, logabsdet = _C_ops.slogdet_v2(x, out=out)
+    if out is not None:
+        paddle.assign(sign, out[0])
+        paddle.assign(logabsdet, out[1])
+    return SlogdetResult(sign, logabsdet)
 
 
 class SortRetType(NamedTuple):
