@@ -208,6 +208,11 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
           attributes[attr.first] =
               pir::StrAttribute::get(pir::IrContext::Instance(), "bfloat16");
         }
+        if (attr.first == "onednn_data_type") {
+          VLOG(8) << "onednn_data_type set to bf16, op:" << target_op_name;
+          attributes[attr.first] =
+              pir::StrAttribute::get(pir::IrContext::Instance(), "bfloat16");
+        }
       }
 
       pir::Operation* op_item_inner = rewriter.Build(op->operands_source(),
