@@ -176,6 +176,15 @@ class TestDeterminantOp_ZeroSize2(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+def determinant_real_grad(x, det_x, det_x_grad):
+    # dL/dX = det_x_grad * det(x) * (X^-1)^T
+    x_inv_t = np.swapaxes(np.linalg.inv(x), -2, -1)
+    det_x_reshaped = np.expand_dims(np.expand_dims(det_x, -1), -1)
+    det_x_grad_reshaped = np.expand_dims(np.expand_dims(det_x_grad, -1), -1)
+    x_grad = det_x_grad_reshaped * det_x_reshaped * x_inv_t
+    return x_grad
+
+
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
@@ -188,22 +197,47 @@ class TestDeterminantAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.shape, dtype=self.dtype)
+            x.stop_gradient = False
             out_value = paddle.linalg.det(x)
-            exe = paddle.static.Executor(self.place)
-            (out_np,) = exe.run(feed={'X': self.x}, fetch_list=[out_value])
-        out_ref = np.linalg.det(self.x)
+            x_grad = paddle.static.gradients([out_value], x)
 
-        np.testing.assert_allclose(out_np, out_ref, rtol=0.001)
+            exe = paddle.static.Executor(self.place)
+            (out_np, x_grad_np) = exe.run(
+                feed={'X': self.x}, fetch_list=[out_value, x_grad]
+            )
+        out_ref = np.linalg.det(self.x)
+        np.testing.assert_allclose(out_np, out_ref, rtol=1e-3)
         self.assertEqual(out_np.shape, out_ref.shape)
         self.assertEqual(tuple(out_value.shape), out_ref.shape)
 
+        out_grad_ref = np.ones_like(out_ref)
+        x_grad_ref = determinant_real_grad(self.x, out_ref, out_grad_ref)
+        np.testing.assert_allclose(x_grad_np, x_grad_ref, rtol=1e-3)
+
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
-        x_tensor = paddle.to_tensor(self.x)
+
+        x_tensor = paddle.to_tensor(self.x, stop_gradient=False)
         out = paddle.linalg.det(x_tensor)
+
+        out_grad_np = np.random.random(out.shape).astype(self.dtype)
+        out_grad = paddle.to_tensor(out_grad_np)
+        out.backward(out_grad)
+
         out_ref = np.linalg.det(self.x)
-        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-3)
+
+        x_grad_ref = determinant_real_grad(self.x, out_ref, out_grad_np)
+        np.testing.assert_allclose(x_tensor.grad.numpy(), x_grad_ref, rtol=1e-3)
+
         paddle.enable_static()
+
+
+class TestDeterminantAPIFloat64(TestDeterminantAPI):
+    def setUp(self):
+        super().setUp()
+        self.dtype = np.float64
+        self.x = np.random.random(self.shape).astype(self.dtype)
 
 
 def determinant_complex_numeric_grad_single_batch(
