@@ -19,11 +19,11 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
+#include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
-#include "paddle/phi/kernels/impl/activation_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -34,22 +34,6 @@ COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
-
-template <typename T, typename Context, typename Functor>
-void ActivationGPUImpl(const Context &dev_ctx,
-                       const DenseTensor &x,
-                       DenseTensor *out,
-                       const Functor &functor) {
-  PADDLE_ENFORCE_NOT_NULL(out,
-                          errors::NotFound("Output Out should not be nullptr"));
-  dev_ctx.template Alloc<T>(out);
-  if (out->numel() == 0) {
-    return;
-  }
-  std::vector<const DenseTensor *> ins = {&x};
-  std::vector<DenseTensor *> outs = {out};
-  funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
-}
 
 template <typename Functor,
           typename OutT,
@@ -176,9 +160,9 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   return dense_out;
 }
 
-#define DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(name, functor_class)          \
+#define DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(name1, functor_class)           \
   template <typename T, typename Context>                                     \
-  void name##StrideKernel(                                                    \
+  void name1##StrideKernel(                                                   \
       const Context &dev_ctx, const DenseTensor &x, DenseTensor *out) {       \
     if (!FLAGS_use_stride_kernel) {                                           \
       PADDLE_THROW(common::errors::Fatal(                                     \
@@ -199,9 +183,7 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
-      funcs::functor_class<T> functor;                                        \
-      ActivationGPUImpl<T, Context, funcs::functor_class<T>>(                 \
-          dev_ctx, x_, out, functor);                                         \
+      phi::name1##Kernel<T, Context>(dev_ctx, x_, out);                       \
       return;                                                                 \
     }                                                                         \
     if (!FLAGS_use_stride_compute_kernel) {                                   \
@@ -214,29 +196,28 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
 
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Cos, CudaCosFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Sin, CudaSinFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Tan, CudaTanFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Acos, CudaAcosFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Asin, CudaAsinFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Atan, CudaAtanFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Sinh, CudaSinhFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Cosh, CudaCoshFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Asinh, CudaAsinhFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Acosh, CudaAcoshFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Atanh, CudaAtanhFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Relu, CudaReluFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Tanh, CudaTanhFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Silu, CudaSiluFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Reciprocal, CudaReciprocalFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Square, CudaSquareFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Sqrt, CudaSqrtFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Softsign, CudaSoftsignFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Sigmoid, CudaSigmoidFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(LogSigmoid, CudaLogSigmoidFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Floor, CudaFloorFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Ceil, CudaCeilFunctor)
-DEFINE_CUDA_UNARY_ELEMENTWISE_STRIDE_OP(Rint, CudaRintFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Cos, CudaCosFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Sin, CudaSinFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Tan, CudaTanFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Acos, CudaAcosFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Asin, CudaAsinFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Atan, CudaAtanFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Sinh, CudaSinhFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Cosh, CudaCoshFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Asinh, CudaAsinhFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Acosh, CudaAcoshFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Atanh, CudaAtanhFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Relu, CudaReluFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Tanh, CudaTanhFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Silu, CudaSiluFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Reciprocal, CudaReciprocalFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Square, CudaSquareFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Sqrt, CudaSqrtFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Softsign, CudaSoftsignFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Sigmoid, CudaSigmoidFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(LogSigmoid, CudaLogSigmoidFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Floor, CudaFloorFunctor)
+DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Ceil, CudaCeilFunctor)
 
 }  // namespace phi
 
@@ -245,16 +226,16 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-#define PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(name, func) \
-  PD_REGISTER_KERNEL(name,                                            \
-                     GPU,                                             \
-                     STRIDED,                                         \
-                     phi::func,                                       \
-                     float,                                           \
-                     double,                                          \
-                     phi::dtype::float16,                             \
-                     phi::dtype::bfloat16,                            \
-                     phi::dtype::complex<float>,                      \
+#define PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(name2, func) \
+  PD_REGISTER_KERNEL(name2,                                            \
+                     GPU,                                              \
+                     STRIDED,                                          \
+                     phi::func,                                        \
+                     float,                                            \
+                     double,                                           \
+                     phi::dtype::float16,                              \
+                     phi::dtype::bfloat16,                             \
+                     phi::dtype::complex<float>,                       \
                      phi::dtype::complex<double>) {}
 
 PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
@@ -315,17 +296,6 @@ PD_REGISTER_KERNEL(ceil,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(rint,
-                   GPU,
-                   STRIDED,
-                   phi::RintStrideKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
 
