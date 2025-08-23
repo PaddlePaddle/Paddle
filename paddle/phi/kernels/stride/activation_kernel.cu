@@ -221,37 +221,32 @@ DEFINE_CUDA_ACT_ELEMENTWISE_STRIDE_OP(Ceil, CudaCeilFunctor)
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
-#define PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(name2, func) \
-  PD_REGISTER_KERNEL(name2,                                            \
-                     GPU,                                              \
-                     STRIDED,                                          \
-                     phi::func,                                        \
-                     float,                                            \
-                     double,                                           \
-                     phi::dtype::float16,                              \
-                     phi::dtype::bfloat16,                             \
-                     phi::dtype::complex<float>,                       \
+#define REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, func) \
+  PD_REGISTER_KERNEL(cos,                                         \
+                     GPU,                                         \
+                     STRIDED,                                     \
+                     phi::func,                                   \
+                     float,                                       \
+                     double,                                      \
+                     phi::dtype::float16,                         \
+                     phi::dtype::bfloat16,                        \
+                     phi::dtype::complex<float>,                  \
                      phi::dtype::complex<double>) {}
 
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sin, SinStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tan, TanStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acos, AcosStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asin, AsinStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atan, AtanStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sinh, SinhStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cosh, CoshStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asinh, AsinhStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acosh, AcoshStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atanh, AtanhStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(silu, SiluStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(reciprocal,
-                                                  ReciprocalStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sin, SinStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tan, TanStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acos, AcosStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asin, AsinStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atan, AtanStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sinh, SinhStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cosh, CoshStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asinh, AsinhStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acosh, AcoshStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atanh, AtanhStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(silu, SiluStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(reciprocal,
+                                               ReciprocalStrideKernel)
 PD_REGISTER_KERNEL(square,
                    GPU,
                    STRIDED,
@@ -264,12 +259,12 @@ PD_REGISTER_KERNEL(square,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sqrt, SqrtStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(softsign,
-                                                  SoftsignStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sigmoid, SigmoidStrideKernel)
-PD_REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(logsigmoid,
-                                                  LogSigmoidStrideKernel)
+
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sqrt, SqrtStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(softsign, SoftsignStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sigmoid, SigmoidStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(logsigmoid,
+                                               LogSigmoidStrideKernel)
 
 PD_REGISTER_KERNEL(floor,
                    GPU,
