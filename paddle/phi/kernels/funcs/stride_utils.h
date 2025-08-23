@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -78,7 +79,6 @@ static inline std::vector<int64_t> compute_strides(
   const auto& original_stride = input_strides;
   int64_t element_size_in_bytes = input_elesize;
   int offset = ndim - original_shape.size();
-
   if (offset > 0)
     stride_bytes.resize(ndim, 0);
   else
@@ -123,7 +123,7 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
 
   // Update shape and strides
   *shape_ = reorder(*shape_);
-  static std::array<std::vector<int64_t>, N> temp_strides;
+  std::array<std::vector<int64_t>, N> temp_strides;
   for (int64_t i = 0; i < N; i++) {
     if ((*strides_array)[i] != nullptr) {
       std::vector<int64_t> original_data((*strides_array)[i],
@@ -339,10 +339,10 @@ static inline void CopyStride(
 
 template <int N>
 static inline void IndexPutStride(
-    const std::vector<int64_t> output_dims,  // value_tensor
+    const std::vector<int64_t> output_dims,  // input_tensor
     const std::vector<int64_t> output_strides,
     const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,  // input_tensor
+    const std::vector<int64_t> input_dims,  // value_tensor
     const std::vector<int64_t> input_strides,
     const int64_t input_elesize,
     const std::vector<int64_t> index_dims,  // index_tensor
@@ -544,36 +544,6 @@ static inline void ScatterAddStride(
     num *= (*desired_shape)[i];
   }
   *numel = num;
-}
-
-static inline common::DDim infer_size_symdimvector(common::DDim a,
-                                                   common::DDim b) {
-  auto dimsA = a.size();
-  auto dimsB = b.size();
-  auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
-
-  for (int64_t i = ndim - 1; i >= 0; --i) {
-    int64_t offset = ndim - 1 - i;
-    int64_t dimA = dimsA - 1 - offset;
-    int64_t dimB = dimsB - 1 - offset;
-    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
-    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
-
-    PADDLE_ENFORCE_EQ(
-        sizeA == sizeB || sizeA == 1 || sizeB == 1,
-        true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
-
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
-  }
-
-  return expandedSizes;
 }
 
 static inline bool hasContiguousSubspace(
