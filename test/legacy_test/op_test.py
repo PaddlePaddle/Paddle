@@ -1208,7 +1208,7 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 if self.strided_input_type == "transpose":
                     args[1] = self.transpose_api(args[1], self.perm)
                 elif self.strided_input_type == "as_stride":
@@ -1220,6 +1220,13 @@ class OpTest(unittest.TestCase):
                         f"Unsupported test type {self.strided_input_type}."
                     )
             ret_tuple = python_api(*args)
+            if hasattr(self, "test_stride_backward"):
+                if self.strided_input_type == "transpose":
+                    ret_tuple = self.transpose_api(ret_tuple, self.perm)
+                else:
+                    raise TypeError(
+                        f"Unsupported test type {self.strided_input_type}."
+                    )
             result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
@@ -1234,7 +1241,7 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             input_vars = self.inputs
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 input_vars = self.inputs_stride
             dygraph_tensor_inputs = (
                 egr_inps
