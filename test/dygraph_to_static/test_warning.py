@@ -50,9 +50,9 @@ class TestReturnNoneInIfelse(Dy2StTestBase):
             flag = False
             for warn in w:
                 if (
-                    issubclass(warn.category, UserWarning)
-                ) and "Set var to 'None' in ifelse block might lead to error." in str(
-                    warn.message
+                    (issubclass(warn.category, UserWarning))
+                    and "Set var to 'None' in ifelse block might lead to error."
+                    in str(warn.message)
                 ):
                     flag = True
                     break
