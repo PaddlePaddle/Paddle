@@ -2647,6 +2647,17 @@ void FusedLayerNormInferMeta(const MetaTensor& x,
                             x_dims_vec[i],
                             residual_dims_vec[i]));
     }
+    if (config.is_runtime && bias && normalized_dims != 0) {
+      PADDLE_ENFORCE_EQ(bias.numel(),
+                        normalized_dims,
+                        common::errors::InvalidArgument(
+                            "The numel of Input(bias) must be equal to "
+                            "the normalized_dims of Input(X), but "
+                            "received numel of Input(bias) is [%d], "
+                            "received normalized_dims of Input(X) is [%d]",
+                            bias.numel(),
+                            normalized_dims));
+    }
   }
 
   int64_t rows = 1;
