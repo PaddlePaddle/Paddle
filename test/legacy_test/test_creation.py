@@ -197,6 +197,16 @@ class TestTensorCreation(unittest.TestCase):
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
 
+                y = paddle.empty_like(x)
+                x = paddle.randn(
+                    [2],
+                    dtype=dtype,
+                    requires_grad=requires_grad,
+                    device=device,
+                    out=y,
+                )
+                self.assertEqual(x.data_ptr(), y.data_ptr())
+
     def test_full(self):
         for device, requires_grad, dtype in product(
             self.devices, self.requires_grads, self.dtypes
