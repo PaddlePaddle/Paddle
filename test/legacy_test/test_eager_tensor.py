@@ -401,7 +401,9 @@ class TestEagerTensor(unittest.TestCase):
 
         with self.assertRaises(RuntimeError) as context:
             paddle.tensor(
-                self.array, device="cpu", pin_memory=True  # no support
+                self.array,
+                device="cpu",
+                pin_memory=True,  # no support
             )
         self.assertIn(
             "Pinning memory is not supported",

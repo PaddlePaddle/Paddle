@@ -47,9 +47,9 @@ def test_main(
 
     # NOTES: the integers greater than 256 exceeds the BF16 precision limit
     rank_offset = 128
-    assert (
-        num_ranks - rank_offset < 257
-    ), 'Too many ranks (exceeding test precision limit)'
+    assert num_ranks - rank_offset < 257, (
+        'Too many ranks (exceeding test precision limit)'
+    )
 
     x = paddle.ones((num_tokens, hidden), dtype="bfloat16") * (
         rank - rank_offset
@@ -242,9 +242,9 @@ def test_loop():
     print("num_ranks: ", num_ranks, flush=True)
 
     num_tokens, hidden, num_topk, num_experts = 128, 7168, 8, 384
-    assert (
-        num_tokens <= num_max_tokens
-    ), "num_tokens must be less equal to num_max_tokens"
+    assert num_tokens <= num_max_tokens, (
+        "num_tokens must be less equal to num_max_tokens"
+    )
     num_rdma_ranks = num_ranks / 8
     num_rdma_bytes = deep_ep.Buffer.get_low_latency_rdma_size_hint(
         num_max_tokens, hidden, num_ranks, num_experts

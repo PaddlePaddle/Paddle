@@ -132,13 +132,13 @@ def append_input_output(
         if (var_name not in np_list) and var_proto.dispensable:
             continue
         if is_input:
-            assert (var_name in np_list) or (
-                var_proto.dispensable
-            ), f"Missing {var_name} as input"
+            assert (var_name in np_list) or (var_proto.dispensable), (
+                f"Missing {var_name} as input"
+            )
         if var_proto.duplicable:
-            assert isinstance(
-                np_list[var_name], list
-            ), f"Duplicable {var_name} should be set as list"
+            assert isinstance(np_list[var_name], list), (
+                f"Duplicable {var_name} should be set as list"
+            )
             var_list = []
             for name, np_value in np_list[var_name]:
                 var_list.append(
