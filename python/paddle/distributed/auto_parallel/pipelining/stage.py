@@ -43,6 +43,7 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def _restore_placements_info(args, infos, curr_mesh):
