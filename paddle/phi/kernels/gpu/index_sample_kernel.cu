@@ -48,6 +48,12 @@ __global__ void IndexSampleForward(const SampleIndexT* index,
       ElementIndexT index_idx = index_j * index_length + index_i;
       ElementIndexT in_idx = index_j * input_length + index_i;
       SampleIndexT sample_idx = index[index_idx];
+      PADDLE_ENFORCE(sample_idx >= 0 && sample_idx < input_length,
+                     "Variable value (index) of OP(index_sample) "
+                     "expected >= 0 and < %ld, but got %ld. Please check input "
+                     "value.",
+                     input_length,
+                     sample_idx);
       out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
     }
   }
