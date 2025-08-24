@@ -1241,7 +1241,7 @@ def norm(
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
-        dtype (DTypeLike | None, optional): The data type of the output tensor. Default value is None.
+        dtype (DTypeLike | None, optional): The data type of the output tensor. If specified, the input tensor is casted to `dtype` while performing the operation. Default value is None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1313,7 +1313,8 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-    dtype = getattr(x, "dtype", None) if dtype is None else dtype
+    if dtype is not None:
+        x = x.astype(dtype)
     # calculate vector norm, where axis is None, int or list with only one integer
     if p != 'nuc' and (axis is None or (isinstance(axis, int))):
         # 'fro' is used to adapt previous usage
@@ -1326,7 +1327,7 @@ def norm(
                 axis=axis,
                 keepdim=keepdim,
                 name=name,
-            ).astype(dtype)
+            )
         else:
             raise ValueError(
                 f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
@@ -1338,9 +1339,7 @@ def norm(
     if isinstance(axis, list) and len(axis) == 2:
         if p is None:
             p = 'fro'
-        return matrix_norm(
-            x=x, p=p, axis=axis, keepdim=keepdim, name=name
-        ).astype(dtype)
+        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
 
     else:
         raise ValueError(

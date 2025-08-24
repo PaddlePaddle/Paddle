@@ -766,13 +766,12 @@ class NormTestForNUCAndDtype(unittest.TestCase):
         np.testing.assert_allclose(
             res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
         )
-
-        res_numpy = np.linalg.norm(x, ord="nuc").astype("float16")
-        res_paddle = paddle.tensor(x).norm(p="nuc", dtype="float16")
+        res_numpy = np.linalg.norm(x.astype("float64"), ord="nuc")
+        res_paddle = paddle.tensor(x).norm(p="nuc", dtype="float64")
         np.testing.assert_allclose(
             res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
         )
-        self.assertEqual(res_paddle.dtype, paddle.float16)
+        self.assertEqual(res_paddle.dtype, paddle.float64)
 
 
 class API_NormTest(unittest.TestCase):
