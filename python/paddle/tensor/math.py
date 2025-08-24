@@ -4647,8 +4647,20 @@ def cumprod(
         dim = -1
         x = x.flatten(0, len(x.shape) - 1)
 
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+    if dtype is None:
         x = cast(x, dtype)
+        if x.dtype in [
+            paddle.bool,
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+        ]:
+            x = cast(x, "int64")
+    else:
+        dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
