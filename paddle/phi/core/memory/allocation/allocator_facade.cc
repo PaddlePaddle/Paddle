@@ -253,6 +253,7 @@ class AllocatorFacadePrivate {
         for (int dev_id = 0; dev_id < platform::GetGPUDeviceCount(); ++dev_id) {
           InitAutoGrowthCUDAAllocator(phi::GPUPlace(dev_id),
                                       allow_free_idle_chunk_);
+          PreAllocCUDAAllocator(phi::GPUPlace(dev_id));
         }
         auto_growth_allocators_ = allocators_;
 
@@ -933,6 +934,24 @@ class AllocatorFacadePrivate {
     }
   }
 
+  void PreAllocCUDAAllocator(phi::GPUPlace p) {
+    const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
+    if (FLAGS_use_auto_growth_v2) {
+      PADDLE_THROW(common::errors::Unavailable(
+          "PreAlloc is not implemented for AutoGrowthBestFitAllocatorV2."));
+    }
+    auto it = allocators_.find(p);
+    PADDLE_ENFORCE_NE(it,
+                      allocators_.end(),
+                      common::errors::NotFound("No allocator for %s", p));
+    if (current_device_id == p.GetDeviceId()) {
+      auto allocator =
+          std::dynamic_pointer_cast<AutoGrowthBestFitAllocator>(it->second);
+      VLOG(8) << "PreAlloc for dev_id=" << p.GetDeviceId();
+      allocator->PreAlloc();
+    }
+  }
+
   void InitCUDAMallocAsyncAllocator(phi::GPUPlace p, gpuStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
@@ -1188,7 +1207,6 @@ class AllocatorFacadePrivate {
   }
 
   void WrapStreamSafeCUDAAllocatorForDefault() {
-    const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
     for (auto& pair : allocators_) {
       auto& place = pair.first;
       if (phi::is_gpu_place(place)) {
@@ -1198,10 +1216,6 @@ class AllocatorFacadePrivate {
                 place,
                 /* default_stream = */ nullptr,
                 /* in_cuda_graph_capturing = */ !allow_free_idle_chunk_);
-        if (place.GetDeviceId() == current_device_id) {
-          VLOG(8) << "PreAlloc for current_device_id=" << current_device_id;
-          allocator->PreAlloc();
-        }
         pair.second = allocator;
 
         // NOTE(Ruibiao): A tricky implement to give StreamSafeCUDAAllocator an

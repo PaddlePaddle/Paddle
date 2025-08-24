@@ -44,20 +44,40 @@ PHI_DEFINE_EXPORTED_READONLY_bool(print_allocator_trace_info,
                                   "print trace memory info");
 
 PHI_DEFINE_EXPORTED_READONLY_bool(dump_chunk_info, false, "dump chunk info");
-PHI_DEFINE_EXPORTED_uint64(alignment_size, 256, "alignment_size");
-PHI_DEFINE_EXPORTED_uint64(small_pool_size_in_mb, 1, "small_pool_size_in_mb");
-PHI_DEFINE_EXPORTED_uint64(small_pool_auto_growth_chunk_size_in_mb,
-                           0,
-                           "small_pool_auto_growth_chunk_size_in_mb");
-PHI_DEFINE_EXPORTED_uint64(large_pool_auto_growth_chunk_size_in_mb,
-                           0,
-                           "large_pool_auto_growth_chunk_size_in_mb");
-PHI_DEFINE_EXPORTED_uint64(large_pool_pre_alloc_in_mb,
-                           0,
-                           "large_pool_pre_alloc_in_mb");
-PHI_DEFINE_EXPORTED_uint64(small_pool_pre_alloc_in_mb,
-                           0,
-                           "small_pool_pre_alloc_in_mb");
+PHI_DEFINE_EXPORTED_uint64(
+    alignment_size,
+    256,
+    "All sizes are rounded up to a multiple of this value. Default: 256.");
+PHI_DEFINE_EXPORTED_uint64(
+    small_pool_size_in_mb,
+    0,
+    "Threshold (MiB) separating the small and large pools. "
+    "0 disables the small pool and enables single-pool mode "
+    "(all requests go to the large pool). When > 0, requests "
+    "<= threshold use the small pool; larger requests use the "
+    "large pool. Default: 0.");
+PHI_DEFINE_EXPORTED_uint64(
+    small_pool_auto_growth_chunk_size_in_mb,
+    0,
+    "The minimal chunk size for the small pool in MiB. If > 0, this overrides "
+    "the constructor-provided global growth size "
+    "(FLAGS_auto_growth_chunk_size_in_mb) "
+    "If 0, falls back to the global growth size.");
+PHI_DEFINE_EXPORTED_uint64(
+    large_pool_auto_growth_chunk_size_in_mb,
+    0,
+    "The minimal chunk size for the large pool in MiB. If > 0, this overrides "
+    "the constructor-provided global growth size "
+    "(FLAGS_auto_growth_chunk_size_in_mb) "
+    "If 0, falls back to the global growth size.");
+PHI_DEFINE_EXPORTED_uint64(
+    large_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the large pool. 0 disables pre-allocation.");
+PHI_DEFINE_EXPORTED_uint64(
+    small_pool_pre_alloc_in_mb,
+    0,
+    "Pre-reserve this many MiB in the small pool. 0 disables pre-allocation.");
 
 namespace paddle::memory::allocation {
 
@@ -112,28 +132,34 @@ bool AutoGrowthBestFitAllocator::is_small_free_block(size_t size) {
 
 size_t AutoGrowthBestFitAllocator::auto_growth_size(bool is_small,
                                                     size_t chunk_size) {
-  size_t auto_growth_chunk_size = 0;
-  if (chunk_size > 0) {
-    auto_growth_chunk_size = chunk_size;
-  }
+  // Priority: pool-specific flag (>0) > constructor-provided chunk_size (>0) >
+  // member chunk_size_. Return value is aligned to alignment_ and at least
+  // alignment_.
+  const uint64_t pool_auto_growth_chunk_size_mb =
+      is_small ? FLAGS_small_pool_auto_growth_chunk_size_in_mb
+               : FLAGS_large_pool_auto_growth_chunk_size_in_mb;
+  const size_t pool_auto_growth_chunk_size_bytes =
+      pool_auto_growth_chunk_size_mb
+          ? (static_cast<size_t>(pool_auto_growth_chunk_size_mb) << 20)
+          : 0;
 
-  if (is_small) {
-    auto_growth_chunk_size = FLAGS_small_pool_auto_growth_chunk_size_in_mb
-                             << 20;
+  size_t auto_growth_size = 0;
+  if (pool_auto_growth_chunk_size_bytes) {
+    auto_growth_size = pool_auto_growth_chunk_size_bytes;  // 1) pool-specific
+                                                           // flag (MB -> bytes)
+  } else if (chunk_size > 0) {
+    auto_growth_size = chunk_size;  // 2) value provided at construction (bytes)
   } else {
-    auto_growth_chunk_size = FLAGS_large_pool_auto_growth_chunk_size_in_mb
-                             << 20;
+    auto_growth_size =
+        chunk_size_;  // 3) member fallback (already aligned in constructor)
   }
 
-  if (FLAGS_dump_chunk_info) {
-    std::cout << "is_small = " << is_small
-              << "auto_growth_size = " << auto_growth_chunk_size << std::endl;
-  }
-  return auto_growth_chunk_size;
+  auto_growth_size = AlignedSize(auto_growth_size, alignment_);
+
+  return auto_growth_size;
 }
 
 void AutoGrowthBestFitAllocator::PreAlloc() {
-  VLOG(10) << "AutoGrowthBestFitAllocator start PreAlloc ";
   auto small_pool_pre_alloc = FLAGS_small_pool_pre_alloc_in_mb << 20;
   auto large_pool_pre_alloc = FLAGS_large_pool_pre_alloc_in_mb << 20;
   if (small_pool_pre_alloc > 0) {
@@ -144,7 +170,8 @@ void AutoGrowthBestFitAllocator::PreAlloc() {
     auto *chunk = &(*chunks_.rbegin());
     uint8_t *p = reinterpret_cast<uint8_t *>(chunk->allocation_->ptr());
     auto &blocks = chunk->blocks_;
-    blocks.emplace_back(p, small_pool_pre_alloc, true, true, chunk);
+    blocks.emplace_back(
+        p, small_pool_pre_alloc, /*is_free=*/true, /*is_small=*/true, chunk);
     small_free_blocks_.emplace(std::make_pair(small_pool_pre_alloc, p),
                                --(blocks.end()));
   }
@@ -157,7 +184,8 @@ void AutoGrowthBestFitAllocator::PreAlloc() {
     auto *chunk = &(*chunks_.rbegin());
     uint8_t *p = reinterpret_cast<uint8_t *>(chunk->allocation_->ptr());
     auto &blocks = chunk->blocks_;
-    blocks.emplace_back(p, large_pool_pre_alloc, true, true, chunk);
+    blocks.emplace_back(
+        p, large_pool_pre_alloc, /*is_free=*/true, /*is_small=*/false, chunk);
     large_free_blocks_.emplace(std::make_pair(large_pool_pre_alloc, p),
                                --(blocks.end()));
   }
@@ -252,10 +280,6 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   auto block_t = new BlockAllocation(block_it);
-  if (FLAGS_dump_chunk_info) {
-    DumpInfo();
-  }
-  Trace();
   return block_t;
 }
 
