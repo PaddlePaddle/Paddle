@@ -1314,7 +1314,7 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-    dtype = dtype if dtype is not None else x.dtype
+    dtype = getattr(x, "dtype", None) if dtype is None else dtype
     # calculate vector norm, where axis is None, int or list with only one integer
     if p != 'nuc' and (axis is None or (isinstance(axis, int))):
         # 'fro' is used to adapt previous usage
