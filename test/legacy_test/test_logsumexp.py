@@ -276,7 +276,7 @@ class TestLogsumexpAPI(unittest.TestCase):
 
     def test_api(self):
         self.api_case()
-        self.api_case([2])
+        self.api_case(2)
         self.api_case([-1])
         self.api_case([2, -3])
         self.api_case((0, 1, -1))
