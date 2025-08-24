@@ -4297,7 +4297,7 @@ def multi_label_margin_loss(
 
     # calculate valid_mask
     valid_mask = (label != -1).cast('int32')
-    valid_mask = valid_mask * valid_mask.cumprod(dim=1)
+    valid_mask = valid_mask * valid_mask.cumprod(dim=1, dtype='int32')
 
     row_ids, col_ids = paddle.where(valid_mask)
     targets_flat = label[row_ids, col_ids]
