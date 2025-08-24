@@ -27,6 +27,7 @@ from typing import (
 )
 
 from paddle import nn
+from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
 
 if TYPE_CHECKING:
@@ -45,6 +46,7 @@ from .microbatch import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class _ActType(Enum):
@@ -569,8 +571,6 @@ def _manual_model_split(model, stage_idx, group, mode, pp_degree):
     virtual_pp_degree = model.config.virtual_pp_degree if mode == "VPP" else 1
     chunk_size = num_hidden_layers // virtual_pp_degree // pp_degree
     chunk_num = virtual_pp_degree * pp_degree
-    layer_lists = None
-
     layer_lists = model.layers
 
     def _build_stage(model, stage_idx, group):
@@ -639,32 +639,35 @@ def parse_args(args, num=3):
     for i in range(1, num):
         if trip[i] is not None and hasattr(trip[i], 'stop_gradient'):
             trip[i].stop_gradient = True
-
     return trip
 
 
 def return_args(**kwargs):
     ret = ()
-
     for name, value in kwargs.items():
         if value is not None:
             ret += (value.clone() if hasattr(value, "clone") else value,)
-
     return ret[0] if len(ret) == 1 else ret
 
 
-from paddle.distributed import fleet
-
-from ..static.utils import get_pp_stage_by_pp_degree
-
-
-def get_pp_stage_id(layer_id, num_hidden_layers, virtual_pp_degree):
-    pp_degree = fleet.auto.get_mesh().get_mesh_with_dim("pp").shape[0]
-    chunk_size = num_hidden_layers // (pp_degree * virtual_pp_degree)
-    chunk_id = layer_id // chunk_size
-    pp_stage_id = chunk_id % pp_degree
-    pp_stage = get_pp_stage_by_pp_degree(pp_degree)
-    return pp_stage_id
+def build_pp_layers(config, layer_func):
+    layers = nn.LayerList()
+    pp_degree = config.pipeline_parallel_degree
+    chunk_size = (
+        config.num_hidden_layers // pp_degree // config.virtual_pp_degree
+    )
+    current_rank = (
+        fleet.get_hybrid_communicate_group().get_pipe_parallel_group().rank
+        % pp_degree
+    )
+    for idx in range(config.num_hidden_layers):
+        target_stage = (idx // chunk_size) % pp_degree
+        if target_stage == current_rank:
+            stage_id = (idx // chunk_size) % pp_degree
+            layers.append(layer_func(config, idx, stage_id))
+        else:
+            layers.append(nn.Identity())
+    return layers
 
 
 class Schedule1F1B(PipelineScheduleSingle):
