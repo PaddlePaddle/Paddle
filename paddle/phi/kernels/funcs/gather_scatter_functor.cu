@@ -378,10 +378,10 @@ __device__ __forceinline__ void decompose_tid(int64_t tid,
                                               int64_t* j,
                                               int64_t* k) {
   const int64_t ij_span = select_dim_size * outer_dim_size;
-  i = tid / ij_span;
+  *i = tid / ij_span;
   const int64_t r = tid % ij_span;
-  j = r / outer_dim_size;
-  k = r % outer_dim_size;
+  *j = r / outer_dim_size;
+  *k = r % outer_dim_size;
 }
 
 template <typename index_t>
