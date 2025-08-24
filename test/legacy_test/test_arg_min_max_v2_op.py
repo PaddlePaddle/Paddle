@@ -441,33 +441,38 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()
 
-    def test_static_Compatibility(self):
+    def _test_static_Compatibility(self, api_name):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.base.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            paddle_api = eval(f"paddle.{api_name}")
             # Position args (args)
-            out1 = paddle.argmax(x, 1)
+            out1 = paddle_api(x, 1)
             # Key words args (kwargs) for paddle
-            out2 = paddle.argmax(x=x, axis=1)
+            out2 = paddle_api(x=x, axis=1)
             # Key words args for torch
-            out3 = paddle.argmax(input=x, dim=1)
+            out3 = paddle_api(input=x, dim=1)
             # Combined args and kwargs
-            out4 = paddle.argmax(x, dim=1)
-            # Tensor method args
-            out5 = x.argmax(1)
-            # Tensor method kwargs
-            out6 = x.argmax(dim=1)
+            out4 = paddle_api(x, dim=1)
+
+            if api_name == "argmax":
+                out5 = x.argmax(1)
+                out6 = x.argmax(dim=1)
+            elif api_name == "argmin":
+                out5 = x.argmin(1)
+                out6 = x.argmin(dim=1)
+
             # Do not support out in static
             # out7 = paddle.empty([])
-            # paddle.all(x, 1, True, out=out7)
             exe = paddle.base.Executor(paddle.CPUPlace())
             fetches = exe.run(
                 main,
                 feed={"x": self.np_input},
                 fetch_list=[out1, out2, out3, out4, out5, out6],
             )
-            ref_out = np.argmax(self.np_input, 1)
+            np_api = eval(f"np.{api_name}")
+            ref_out = np_api(self.np_input, 1)
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
 
@@ -475,6 +480,7 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
         apis = ["argmax", "argmin"]
         for api in apis:
             self._test_dygraph_Compatibility(api)
+            self._test_static_Compatibility(api)
 
 
 if __name__ == '__main__':
