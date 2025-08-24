@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike
 
     _POrder: TypeAlias = Literal['fro', 'nuc']
 
@@ -1174,7 +1173,7 @@ def norm(
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
-    dtype: DTypeLike = None,
+    dtype: paddle._typing.DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
