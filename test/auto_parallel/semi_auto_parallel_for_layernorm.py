@@ -35,9 +35,9 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
         np.testing.assert_allclose(np1, np2, rtol=1e-04, verbose=True)
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_layernorm_forward(self):
         shapes = ([16, 4, 4], [16], [16])

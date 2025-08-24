@@ -137,7 +137,8 @@ set(PYBIND_SRCS
     sot/guards.cc
     op_callstack_utils.cc
     python_callable_registry.cc
-    arg_pre_process.cc)
+    arg_pre_process.cc
+    args_mapper.cc)
 
 if(WITH_DISTRIBUTE)
   set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)

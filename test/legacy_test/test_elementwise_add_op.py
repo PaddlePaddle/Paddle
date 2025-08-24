@@ -1147,7 +1147,6 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
         self.public_python_api = paddle.add
         self.transpose_api = paddle.transpose
         self.as_stride_api = paddle.as_strided
-        self.check_strided_input = True
         self.init_dtype()
         self.init_input_output()
         self.init_kernel_type()
@@ -1155,19 +1154,24 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
 
         self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
 
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
         self.inputs = {
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
 
-        self.inputs_stride = {
-            'X': OpTest.np_dtype_to_base_dtype(self.x),
-            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
-        }
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
 
     def init_input_output(self):
         self.strided_input_type = "transpose"
@@ -1178,13 +1182,39 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
         self.y_trans = np.transpose(self.y, self.perm)
 
     def test_check_grad_normal(self):
-        pass
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X', 'Y'],
+            'Out',
+        )
 
     def test_check_grad_ignore_x(self):
-        pass
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+        )
 
     def test_check_grad_ignore_y(self):
-        pass
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+        )
 
 
 class TestElementwiseAddOp_Stride1(TestElementwiseAddOp_Stride):
@@ -1237,6 +1267,15 @@ class TestElementwiseAddOp_Stride5(TestElementwiseAddOp_Stride):
         self.out = np.add(self.x, self.y)
         self.shape_param = [23, 1, 13, 1]
         self.stride_param = [520, 260, 20, 1]
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
 
 
 class TestElementwiseAddOp_Stride_ZeroDim1(TestElementwiseAddOp_Stride):
