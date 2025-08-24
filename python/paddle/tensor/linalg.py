@@ -1338,8 +1338,6 @@ def norm(
     if isinstance(axis, list) and len(axis) == 2:
         if p is None:
             p = 'fro'
-        elif p == 'nuc' and axis is None:
-            axis = list(range(x.ndim))
         return matrix_norm(
             x=x, p=p, axis=axis, keepdim=keepdim, name=name
         ).astype(dtype)
