@@ -43,8 +43,8 @@ def logsumexp_op_grad(x, axis=None, keepdim=False, reduce_all=False):
     tensor_x = paddle.to_tensor(x)
     tensor_x.stop_gradient = False
     out = logsumexp_wrapper(tensor_x, axis, keepdim, reduce_all)
-    out.backward()
-    x_grad = tensor_x.grad.numpy()
+    grad = paddle.grad(out, [tensor_x])
+    x_grad = grad[0].numpy()
     paddle.enable_static()
     return x_grad
 
