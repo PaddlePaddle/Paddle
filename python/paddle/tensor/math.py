@@ -4648,7 +4648,6 @@ def cumprod(
         x = x.flatten(0, len(x.shape) - 1)
 
     if dtype is None:
-        x = cast(x, dtype)
         if x.dtype in [
             paddle.bool,
             paddle.uint8,
