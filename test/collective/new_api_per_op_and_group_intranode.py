@@ -42,9 +42,9 @@ def test_reducescatter(ep_group: Group, mode: str):
         * num_local_ranks
     )
 
-    assert paddle.allclose(
-        recv_tensor, expected_tensor
-    ), f"rank {local_rank}: reduce_scatter validation failed"
+    assert paddle.allclose(recv_tensor, expected_tensor), (
+        f"rank {local_rank}: reduce_scatter validation failed"
+    )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive reducescatter... passed')
@@ -73,9 +73,9 @@ def test_alltoall(ep_group: Group, mode: str):
     )
 
     for i in range(num_local_ranks):
-        assert paddle.allclose(
-            recv_tensors[i], expected_tensor
-        ), f"rank {local_rank}: alltoall validation failed"
+        assert paddle.allclose(recv_tensors[i], expected_tensor), (
+            f"rank {local_rank}: alltoall validation failed"
+        )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive alltoall... passed')
@@ -102,9 +102,9 @@ def test_scatter(ep_group: Group, mode: str):
     expected = paddle.ones(shape=[m, n], dtype=paddle.float32) * (
         local_rank + 1
     )
-    assert paddle.allclose(
-        recv_tensor, expected
-    ), f"rank {local_rank}: scatter validation failed"
+    assert paddle.allclose(recv_tensor, expected), (
+        f"rank {local_rank}: scatter validation failed"
+    )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive scatter... passed')
@@ -126,9 +126,9 @@ def test_reduce(ep_group: Group, mode: str):
         res = paddle.ones(shape=[m, n], dtype=paddle.float32) * (
             num_local_ranks * (num_local_ranks + 1) / 2
         )
-        assert paddle.allclose(
-            gbl_x, res
-        ), f"rank {local_rank}: reduce validation failed"
+        assert paddle.allclose(gbl_x, res), (
+            f"rank {local_rank}: reduce validation failed"
+        )
         print(f'[Algo {mode}] primitive reduce... passed')
 
 
@@ -150,9 +150,9 @@ def test_all_gather(ep_group: Group, mode: str):
 
     for i in range(num_local_ranks):
         expected = paddle.ones(shape=[m, n], dtype=paddle.float32) * (i + 1)
-        assert paddle.allclose(
-            tensor_list[i], expected
-        ), f"rank {local_rank}: allgather validation failed"
+        assert paddle.allclose(tensor_list[i], expected), (
+            f"rank {local_rank}: allgather validation failed"
+        )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive allgather... passed')
@@ -174,9 +174,9 @@ def test_broadcast(ep_group: Group, mode: str):
     dist.broadcast(gbl_x, src=0, group=ep_group)
 
     res = paddle.ones(shape=[m, n], dtype=paddle.float32) * 10
-    assert paddle.allclose(
-        gbl_x, res
-    ), f"rank {local_rank}: broadcast validation failed"
+    assert paddle.allclose(gbl_x, res), (
+        f"rank {local_rank}: broadcast validation failed"
+    )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive broadcast... passed')
@@ -197,9 +197,9 @@ def test_all_reduce(ep_group: Group, mode: str):
         num_local_ranks * (num_local_ranks + 1) / 2
     )
 
-    assert paddle.allclose(
-        gbl_x, res
-    ), f"rank {local_rank}: all reduce validation failed"
+    assert paddle.allclose(gbl_x, res), (
+        f"rank {local_rank}: all reduce validation failed"
+    )
 
     if local_rank == 0:
         print(f'[Algo {mode}] primitive allreduce... passed')

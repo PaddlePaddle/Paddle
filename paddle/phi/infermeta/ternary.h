@@ -92,6 +92,12 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void CrossEntropyWithSoftmaxBwdWithDowncastInferMeta(
+    const MetaTensor& label,
+    const MetaTensor& softmax,
+    const MetaTensor& loss_grad,
+    MetaTensor* logits_grad);
+
 void CollectFpnProposalsInferMeta(
     const std::vector<const MetaTensor*>& multi_level_rois,
     const std::vector<const MetaTensor*>& multi_level_scores,

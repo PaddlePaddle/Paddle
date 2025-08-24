@@ -1914,6 +1914,7 @@ class Unfold(Layer):
         illegal_keys={"kernel_size", "dilation", "padding", "stride"},
         func_name="paddle.nn.Unfold",
         correct_name="paddle.compat.Unfold",
+        url_suffix="nn/torch.nn.Unfold",
     )
     def __init__(
         self,
