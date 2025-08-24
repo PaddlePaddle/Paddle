@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
     _POrder: TypeAlias = Literal['fro', 'nuc']
 
@@ -1173,6 +1174,7 @@ def norm(
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
+    dtype: DTypeLike = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1311,9 +1313,9 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-
+    dtype = dtype if dtype is not None else x.dtype
     # calculate vector norm, where axis is None, int or list with only one integer
-    if axis is None or (isinstance(axis, int)):
+    if p != 'nuc' and (axis is None or (isinstance(axis, int))):
         # 'fro' is used to adapt previous usage
         if p is None or p == 'fro':
             p = 2.0
@@ -1324,17 +1326,23 @@ def norm(
                 axis=axis,
                 keepdim=keepdim,
                 name=name,
-            )
+            ).astype(dtype)
         else:
             raise ValueError(
                 f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
             )
 
     # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
+    if axis is None:
+        axis = list(range(x.ndim))
+    if isinstance(axis, list) and len(axis) == 2:
         if p is None:
             p = 'fro'
-        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+        elif p == 'nuc' and axis is None:
+            axis = list(range(x.ndim))
+        return matrix_norm(
+            x=x, p=p, axis=axis, keepdim=keepdim, name=name
+        ).astype(dtype)
 
     else:
         raise ValueError(
