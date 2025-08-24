@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/jit/function.h"
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -230,6 +231,39 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
   } else {
     return false;
   }
+}
+
+bool PyObject_CheckIRVectorOfValueOrLong(PyObject* obj) {
+  if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
+    return false;
+  }
+
+  Py_ssize_t len = PySequence_Size(obj);
+  if (len == 0) {
+    return false;
+  }
+
+  bool is_ir_value = false, is_long = false;
+
+  for (Py_ssize_t i = 0; i < len; ++i) {
+    PyObject* item = PySequence_GetItem(obj, i);  // Returns new reference
+    if (!item) {
+      return false;
+    }
+
+    if (PyObject_CheckIRValue(item)) {
+      is_ir_value = true;
+    } else if (PyObject_CheckLong(item)) {
+      is_long = true;
+    } else {
+      Py_DECREF(item);
+      return false;
+    }
+
+    Py_DECREF(item);  // Because PySequence_GetItem returns new reference
+  }
+
+  return is_ir_value && is_long;
 }
 
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
@@ -2273,6 +2307,178 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
+  return value_list;
+}
+
+// std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(PyObject* obj,
+//                                                 const std::string& op_type,
+//                                                 size_t arg_pos,
+//                                                 bool dispensable) {
+//   std::vector<pir::Value> value_list;
+//   if (PyList_Check(obj)) {
+//     Py_ssize_t len = PyList_Size(obj);
+//     if (len == 0 && !dispensable) {
+//       PADDLE_THROW(common::errors::InvalidArgument(
+//           "%s(): argument (position %d) must be "
+//           "list of Value, but got empty list",
+//           op_type,
+//           arg_pos + 1));
+//     }
+//     PyObject* item = nullptr;
+//     phi::DataType dtype = phi::DataType::INT64;
+//     for (Py_ssize_t i = 0; i < len; i++) {
+//       PyObject* t_item = PyList_GetItem(obj, i);
+//       if (PyObject_TypeCheck(t_item, g_ir_value_pytype)) {
+//         dtype =
+//         paddle::dialect::GetValueDataType(::pybind11::handle(t_item).cast<pir::Value>());
+//       }
+//     }
+//     for (Py_ssize_t i = 0; i < len; i++) {
+//       item = PyList_GetItem(obj, i);
+//       item = CastPyArg2ValuePreHook(item);
+//       if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+//         value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
+//       } else if(PyLong_Check(item)) {
+//         int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
+//         value_list.emplace_back(paddle::dialect::full(std::vector<int64_t>{1},
+//         k_tmp, dtype, phi::CPUPlace()));
+//       } else if (item == Py_None) {
+//         continue;
+//       } else {
+//         PADDLE_THROW(common::errors::InvalidType(
+//             "%s(): argument (position %d) must be "
+//             "vector<Value>, but got vector<%s>",
+//             op_type,
+//             arg_pos + 1,
+//             reinterpret_cast<PyTypeObject*>(item->ob_type)
+//                 ->tp_name));  // NOLINT
+//       }
+//     }
+//   } else if (PyTuple_Check(obj)) {
+//     Py_ssize_t len = PyTuple_Size(obj);
+//     if (len == 0 && !dispensable) {
+//       PADDLE_THROW(common::errors::InvalidArgument(
+//           "%s(): argument (position %d) must be "
+//           "list of Value, but got empty list",
+//           op_type,
+//           arg_pos + 1));
+//     }
+//     PyObject* item = nullptr;
+//     phi::DataType dtype = phi::DataType::INT64;
+//     for (Py_ssize_t i = 0; i < len; i++) {
+//       PyObject* t_item = PyTuple_GetItem(obj, i);
+//       if (PyObject_TypeCheck(t_item, g_ir_value_pytype)) {
+//         dtype =
+//         paddle::dialect::GetValueDataType(::pybind11::handle(t_item).cast<pir::Value>());
+//       }
+//     }
+//     for (Py_ssize_t i = 0; i < len; i++) {
+//       item = PyTuple_GetItem(obj, i);
+//       item = CastPyArg2ValuePreHook(item);
+//       if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+//         value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
+//       } else if(PyLong_Check(item)) {
+//         int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
+//         value_list.emplace_back(paddle::dialect::full(std::vector<int64_t>{1},
+//         k_tmp, dtype, phi::CPUPlace()));
+//       } else if (item == Py_None) {
+//         continue;
+//       } else {
+//         PADDLE_THROW(common::errors::InvalidType(
+//             "%s(): argument (position %d) must be "
+//             "vector<Value>, but got vector<%s>",
+//             op_type,
+//             arg_pos + 1,
+//             reinterpret_cast<PyTypeObject*>(item->ob_type)
+//                 ->tp_name));  // NOLINT
+//       }
+//     }
+//   } else {
+//     PADDLE_THROW(common::errors::InvalidType(
+//         "%s(): argument (position %d) must be "
+//         "Vector<>, but got %s",
+//         op_type,
+//         arg_pos + 1,
+//         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+//   }
+//   return value_list;
+// }
+
+std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable) {
+  std::vector<pir::Value> value_list;
+
+  if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
+    PADDLE_THROW(common::errors::InvalidType(
+        "%s(): argument (position %d) must be "
+        "Vector<>, but got %s",
+        op_type,
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+
+  Py_ssize_t len = PySequence_Size(obj);
+  if (len == 0 && !dispensable) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("%s(): argument (position %d) must be "
+                                        "list of Value, but got empty list",
+                                        op_type,
+                                        arg_pos + 1));
+  }
+
+  phi::DataType dtype = phi::DataType::INT64;
+  for (Py_ssize_t i = 0; i < len; ++i) {
+    PyObject* item = PySequence_GetItem(obj, i);
+    if (!item) {
+      continue;
+    }
+
+    item = CastPyArg2ValuePreHook(item);
+
+    if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+      pir::Value val = ::pybind11::handle(item).cast<pir::Value>();
+      dtype = paddle::dialect::GetValueDataType(val);
+      Py_DECREF(item);
+      break;  // 找到第一个 pir::Value 后退出
+    }
+
+    Py_DECREF(item);
+  }
+
+  for (Py_ssize_t i = 0; i < len; ++i) {
+    PyObject* item = PySequence_GetItem(obj, i);
+    if (!item) {
+      PADDLE_THROW(common::errors::Fatal(
+          "%s(): failed to get item from sequence at position %d",
+          op_type,
+          static_cast<int>(i)));
+    }
+
+    item = CastPyArg2ValuePreHook(item);
+
+    if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+      value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
+    } else if (PyLong_Check(item)) {
+      int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
+      value_list.emplace_back(paddle::dialect::full(
+          std::vector<int64_t>{1}, k_tmp, dtype, phi::CPUPlace()));
+    } else if (item == Py_None) {
+      // skip
+    } else {
+      PADDLE_THROW(common::errors::InvalidType(
+          "%s(): argument (position %d) must be vector<Value>, "
+          "but got vector<%s>",
+          op_type,
+          arg_pos + 1,
+          reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name));
+    }
+
+    Py_DECREF(item);
+  }
+
   return value_list;
 }
 

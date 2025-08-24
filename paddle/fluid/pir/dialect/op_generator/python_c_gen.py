@@ -211,6 +211,8 @@ MUTABLE_ATTR_LIST_TEMPLATE = """
            {mutable_cast_attrs}
         }}else if (PyObject_CheckIRVectorOfValue({name}_obj)){{
            {mutable_vector_cast_attrs}
+        }}else if (PyObject_CheckIRVectorOfValueOrLong({name}_obj)){{
+           {mix_vector_cast_attrs}
         }}else{{
            {no_mutable_cast_attrs}
         }}"""
@@ -219,9 +221,9 @@ MUTABLE_ATTR_OBJ_TEMPLATE = """
         PyObject *{name}_obj = PyTuple_GET_ITEM(args, {index});"""
 
 MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE = """
-        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
-MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
         PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);"""
+MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
 
 MUTABLE_ATTR_CAST_TEMPLATE = """
             {type} {name_} = {cast_func}({name}_obj, "{api_name}", {index});"""
@@ -259,7 +261,7 @@ TYPE_TO_FUNC_MAP = {
     "paddle::Place": "CastPyArg2Place",
     "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
-    "phi::DataType": "CastPyArg2DataTypeDirectly",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 TYPE_TO_PHI_DATATYPE_MAP = {
@@ -501,6 +503,18 @@ class PythonCCodeGen(CodeGen):
                         name=name
                     )
 
+                    mix_vector_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
+                        type='std::vector<pir::Value>',
+                        name_=name + '_tmp',
+                        name=name,
+                        cast_func='CastPyArg2VectorOfValueOrLong',
+                        api_name=op_name,
+                        index=input_size + i,
+                    )
+                    mix_vector_cast_str += BUILTIN_STACK_OP_TEMPLATE.format(
+                        name=name
+                    )
+
                 else:
                     mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
                         type='',
@@ -546,6 +560,7 @@ class PythonCCodeGen(CodeGen):
                         name=name,
                         mutable_cast_attrs=mutable_cast_str,
                         mutable_vector_cast_attrs=mutable_vector_cast_str,
+                        mix_vector_cast_attrs=mix_vector_cast_str,
                         no_mutable_cast_attrs=no_mutable_cast_str,
                     )
                 else:
