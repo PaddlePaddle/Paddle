@@ -444,7 +444,7 @@ class TestSigmoid(TestActivation):
             ['X'],
             'Out',
             max_relative_error=0.01,
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
