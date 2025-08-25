@@ -125,8 +125,7 @@ class TestCumprod(OpTest):
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
-            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype)
-            + 0.5
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
             # np.ones(self.shape).astype(self.val_dtype)
         )
         if zero_num > 0:

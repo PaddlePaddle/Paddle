@@ -396,6 +396,8 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
@@ -652,6 +654,9 @@ from .tensor.search import (
     topk,
     where,
     where_,
+)
+from .tensor.softmax import (
+    softmax,
 )
 from .tensor.stat import (
     mean,
@@ -1290,11 +1295,13 @@ __all__ = [
     'take_along_axis',
     'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1355,6 +1362,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 

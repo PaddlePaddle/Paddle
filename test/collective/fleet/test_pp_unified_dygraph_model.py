@@ -1,4 +1,4 @@
-# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,14 @@
 
 import unittest
 
-import collective.test_communication_api_base as test_base
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    TestMultipleAccelerators,
+)
 
 
-class TestReshardRToS(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=4, timeout=120)
-
-    def test_reshard_r_to_s(self):
-        self.run_test_case("co_shard.py")
+class TestPipelineParallel(TestMultipleAccelerators):
+    def test_pipeline_parallel(self):
+        self.run_mnist_2accelerators('hybrid_pp_unified_dygraph_model.py')
 
 
 if __name__ == "__main__":

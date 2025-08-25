@@ -178,7 +178,9 @@ class TestParallelAPI:
             ) or (
                 self.config.context_parallel is False
                 and self.config.sep_parallel is True
-            ), "when sep > 1, either context_parallel or sep_parallel should be true"
+            ), (
+                "when sep > 1, either context_parallel or sep_parallel should be true"
+            )
         num_hidden_layers = os.getenv("num_hidden_layers")
         if num_hidden_layers:
             self.config.num_hidden_layers = int(num_hidden_layers)
@@ -299,9 +301,9 @@ class TestParallelAPI:
                 ) and not self.share_embedding:
                     assert sub_layer.weight.stop_gradient
                 if 'o_proj' in name:
-                    assert (
-                        sub_layer.weight.stop_gradient
-                    ), f'{name} , {sub_layer.weight.name} , {sub_layer.weight}'
+                    assert sub_layer.weight.stop_gradient, (
+                        f'{name} , {sub_layer.weight.name} , {sub_layer.weight}'
+                    )
                     assert not sub_layer.lora_A.stop_gradient
                     assert not sub_layer.lora_B.stop_gradient
                     # assert sub_layer.bias.stop_gradient is None

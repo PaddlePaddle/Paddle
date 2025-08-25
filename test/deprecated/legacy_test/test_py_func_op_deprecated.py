@@ -148,18 +148,18 @@ def simple_fc_net(img, label, use_py_func_op):
             x=(loss, dummy_var),
             out=(loss_out, dummy_var_out),
         )
-        assert (
-            loss == loss_out and dummy_var == dummy_var_out
-        ), "py_func failed with multi input and output"
+        assert loss == loss_out and dummy_var == dummy_var_out, (
+            "py_func failed with multi input and output"
+        )
 
         paddle.static.py_func(
             func=dummy_func_with_multi_input_output,
             x=[loss, dummy_var],
             out=[loss_out, dummy_var_out],
         )
-        assert (
-            loss == loss_out and dummy_var == dummy_var_out
-        ), "py_func failed with multi input and output"
+        assert loss == loss_out and dummy_var == dummy_var_out, (
+            "py_func failed with multi input and output"
+        )
 
     loss = paddle.mean(loss)
     return loss

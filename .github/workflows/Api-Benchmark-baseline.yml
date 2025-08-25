@@ -51,7 +51,7 @@ jobs:
       is_pr: 'false'
 
   api-benchmark-baseline-schedule:
-    name: Api benchmark baseline
+    name: Api benchmark baseline with schedule
     strategy:
       matrix:
         run-labels: [api-bm-20, api-bm-27]
@@ -62,12 +62,9 @@ jobs:
       baseline: 'true'
       run-labels: ${{ matrix.run-labels }}
 
-  api-benchmark-baseline-pr:
-    name: Api benchmark baseline
+  api-benchmark-baseline-pr-20:
+    name: Api benchmark baseline with PR on 20
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.job-name == 'api-benchmark'
-    strategy:
-      matrix:
-        run-labels: [api-bm-20, api-bm-27]
     uses: ./.github/workflows/_Api-Benchmark.yml
     needs: [clone, build-docker]
     with:
@@ -75,4 +72,16 @@ jobs:
       baseline: 'true'
       MANUALLY_PR_ID: ${{ inputs.PR_ID }}
       MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
-      run-labels: ${{ matrix.run-labels }}
+      run-labels: api-bm-20
+
+  api-benchmark-baseline-pr-27:
+    name: Api benchmark baseline with PR on 27
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.job-name == 'api-benchmark'
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      baseline: 'true'
+      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
+      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}
+      run-labels: api-bm-27

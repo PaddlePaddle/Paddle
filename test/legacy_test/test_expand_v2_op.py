@@ -422,7 +422,7 @@ class TestExpandV2Error(unittest.TestCase):
             x2.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
             x2.stop_gradient = True
-            self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, 1)
 
 
 # Test python API
@@ -812,6 +812,70 @@ class TestExpandV2ZeroSizeOneDNNOp2(TestExpandV2ZeroSizeOneDNNOp):
         self.ori_shape = (0, 1, 8)
         self.shape = (0, 8, 8)
         self.expect_shape = (0, 8, 8)
+
+
+class TestExpandV2API_Compatibility(unittest.TestCase):
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = np.random.random([12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
+            expand_shape = paddle.static.data(
+                name="expand_shape",
+                shape=[2],
+                dtype="int32",
+            )
+
+            out_1 = paddle.expand(input=x, shape=[12, 14])
+            out_2 = paddle.expand(x, size=[positive_2, 14])
+            out_3 = paddle.expand(input=x, shape=expand_shape)
+            out_4 = x.expand([12, 14])
+            out_5 = x.expand(size=[positive_2, 14])
+            out_6 = x.expand(shape=expand_shape)
+            out_7 = x.expand(12, 14)
+
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+            )
+            np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_4, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_5, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_6, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_7, np.tile(input, (1, 1)))
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+
+        input = np.random.random([1, 3]).astype("float32")
+        x = paddle.to_tensor(input)
+
+        expect_out = paddle.expand(x, shape=[2, 3])
+        out_1 = paddle.expand(input=x, shape=[2, 3])
+        out_2 = paddle.expand(x, size=[2, 3])
+        out_3 = paddle.expand(input=x, shape=[2, 3])
+        out_4 = x.expand([2, 3])
+        out_5 = x.expand(size=[2, 3])
+        out_6 = x.expand(shape=[2, 3])
+        out_7 = x.expand(2, 3)
+
+        np.testing.assert_array_equal(out_1, expect_out)
+        np.testing.assert_array_equal(out_2, expect_out)
+        np.testing.assert_array_equal(out_3, expect_out)
+        np.testing.assert_array_equal(out_4, expect_out)
+        np.testing.assert_array_equal(out_5, expect_out)
+        np.testing.assert_array_equal(out_6, expect_out)
+        np.testing.assert_array_equal(out_7, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
