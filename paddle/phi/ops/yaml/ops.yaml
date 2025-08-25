@@ -4968,10 +4968,6 @@
 
 - op : sigmoid
   args : (Tensor x)
-  python_api:
-    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
-    args_alias:
-      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
