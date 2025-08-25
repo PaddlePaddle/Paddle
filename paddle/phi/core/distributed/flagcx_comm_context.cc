@@ -173,15 +173,15 @@ void FlagcxCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void FlagcxCommContext::AllToAll(phi::DenseTensor* out_tensor,
-              const phi::DenseTensor& in_tensor,
-              flagcxStream_t stream) {
+                                 const phi::DenseTensor& in_tensor,
+                                 flagcxStream_t stream) {
   phi::distributed::CommStaticCheck::SameShape(*out_tensor,
-                                                in_tensor,
-                                                /*dst_rank*/ rank_,
-                                                /*cur_rank*/ rank_,
-                                                size_);
+                                               in_tensor,
+                                               /*dst_rank*/ rank_,
+                                               /*cur_rank*/ rank_,
+                                               size_);
   FLAGCX_CHECK(phi::dynload::flagcxAlltoAll(in_tensor.data(),
-                                             out_tensor->data(),
+                                            out_tensor->data(),
                                             in_tensor.numel() / size_,
                                             ToFlagcxDataType(in_tensor.type()),
                                             flagcx_handler_->comm,
