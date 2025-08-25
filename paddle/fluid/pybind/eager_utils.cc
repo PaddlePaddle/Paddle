@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pir/utils/name_analysis.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
@@ -2336,6 +2337,7 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
   }
 
   phi::DataType dtype = phi::DataType::INT64;
+  std::vector<int64_t> shape;
   for (Py_ssize_t i = 0; i < len; ++i) {
     PyObject* item = PySequence_GetItem(obj, i);
     if (!item) {
@@ -2347,8 +2349,9 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
     if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
       pir::Value val = ::pybind11::handle(item).cast<pir::Value>();
       dtype = paddle::dialect::GetValueDataType(val);
+      shape = pir::GetShapeFromValue(val);
       Py_DECREF(item);
-      break;  // 找到第一个 pir::Value 后退出
+      break;
     }
 
     Py_DECREF(item);
@@ -2365,14 +2368,14 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
 
     item = CastPyArg2ValuePreHook(item);
 
-    if (PyObject_TypeCheck(item, g_ir_value_pytype)) {
+    if (PyObject_CheckIRValue(item)) {
       value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
-    } else if (PyLong_Check(item)) {
+    } else if (PyObject_CheckLong(item)) {
       int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
-      value_list.emplace_back(paddle::dialect::full(
-          std::vector<int64_t>{1}, k_tmp, dtype, phi::CPUPlace()));
+      value_list.emplace_back(
+          paddle::dialect::full(shape, k_tmp, dtype, phi::CPUPlace()));
     } else if (item == Py_None) {
-      // skip
+      continue;  // skip
     } else {
       PADDLE_THROW(common::errors::InvalidType(
           "%s(): argument (position %d) must be vector<Value>, "
