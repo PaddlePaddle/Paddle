@@ -15,7 +15,7 @@
 
 import os
 import warnings
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from functools import reduce
 
 import paddle
@@ -1241,14 +1241,12 @@ class DygraphShardingOptimizerV2:
 
         Args:
             model_sharded_state_dict: Sharded model state dictionary
-            optimizer: Optimizer with sharded parameters
 
         Returns:
             Dictionary mapping parameter names to ShardedWeight objects
         """
 
         _FP32_MASTER = "fp32_master_0"
-        _MOMENT_NAME = "moment"
         _optimizer_scalar_name = [
             "beta1_pow_acc_0",
             "beta2_pow_acc_0",
@@ -1267,225 +1265,97 @@ class DygraphShardingOptimizerV2:
                     return vname[: -(len(name) + 1)], name
             raise ValueError(f"Cannot split variable name: {vname}.")
 
-        # Group buffers by communication group
-        comm_group_buffers = OrderedDict()
-        for buffer in self._comm_buffer_list:
-            comm_group = buffer._comm_group
-            if comm_group not in comm_group_buffers:
-                comm_group_buffers[comm_group] = []
-            comm_group_buffers[comm_group].append(buffer)
-
-        #  Gather slice information from all ranks
-        all_rank_slice_info = []
-        current_rank_slice_info = []
-        current_rank_shape_info = []
-
-        for comm_group, buffers in comm_group_buffers.items():
-            # Collect parameter slice and shape information
-            param_slice_info = {}
-            param_shape_info = {}
-
-            for buffer in buffers:
-                for (
-                    param_name,
-                    grad_view,
-                ) in buffer._sharding_param_grad_view.items():
-                    param_slice_info[param_name] = (
-                        grad_view._param_begin,
-                        grad_view._param_end,
-                    )
-                    param_shape_info[param_name] = (
-                        grad_view._param.shape,
-                        grad_view._param.numel().item(),
-                        grad_view._index,
-                        grad_view._padded_size,
-                    )
-
-            # Add sharding rank info
-            param_slice_info["sharding_rank"] = comm_group.rank
-            current_rank_slice_info.append(param_slice_info)
-            current_rank_shape_info.append(param_shape_info)
-
-            # Gather info from all ranks in this group
-            gathered_info = []
-            paddle.distributed.all_gather_object(
-                gathered_info, param_slice_info, group=comm_group
-            )
-            all_rank_slice_info.extend(gathered_info)
-
-        param_slice_info_list = [
-            item for sublist in all_rank_slice_info for item in sublist
-        ]
-
-        #  Process optimizer state
-        optim_state_dict = self.state_dict()
-        master_weights = optim_state_dict.pop("master_weights", None)
-        optim_state_dict.pop("LR_Scheduler", None)
-
-        # Identify partially sharded tensors
-        partial_tensor_names = []
-        merged_slice_info = {}
-        merged_shape_info = {}
-
-        # Merge all slice and shape info from current rank
-        for slice_info in current_rank_slice_info:
-            merged_slice_info.update(
-                {k: v for k, v in slice_info.items() if k != "sharding_rank"}
-            )
-
-        for shape_info in current_rank_shape_info:
-            merged_shape_info.update(
-                {k: v for k, v in shape_info.items() if k != "sharding_rank"}
-            )
-
-        for param_key, tensor in optim_state_dict.items():
-            base_name, _ = _generate_base_static_name(param_key)
-
-            assert base_name in merged_slice_info, (
-                f"{base_name} not found in slice info"
-            )
-            assert base_name in merged_shape_info, (
-                f"{base_name} not found in shape info"
-            )
-
-            if int(tensor.numel()) > 1:
-                begin, end = merged_slice_info[base_name]
-                # Find shape info for this parameter
-                shape_info = merged_shape_info[base_name]
-
-                if shape_info and end > begin and end - begin < shape_info[1]:
-                    partial_tensor_names.append(base_name)
-
-        partial_tensor_names = list(set(partial_tensor_names))
-
-        # Calculate offset mapping
-        offset_mapping = {}
-        if all_rank_slice_info:
-            world_size = (
-                max(info["sharding_rank"] for info in all_rank_slice_info) + 1
-            )
-
-            for tensor_name in partial_tensor_names:
-                offset_mapping[tensor_name] = [0] * world_size
-
-                # Record sizes from all ranks
-                for info in all_rank_slice_info:
-                    if tensor_name in info:
-                        begin, end = info[tensor_name]
-                        if end > begin:
-                            offset_mapping[tensor_name][
-                                info["sharding_rank"]
-                            ] = end - begin
-
-                # Convert sizes to cumulative offsets
-                running_total = 0
-                for rank in range(world_size):
-                    current_size = offset_mapping[tensor_name][rank]
-                    offset_mapping[tensor_name][rank] = running_total
-                    running_total += current_size
-
-        static_to_struct = {
-            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
-        }
-
-        # Build sharded state dict
-        sharded_state = {}
-
-        # Process optimizer state
-        for param_key, tensor in optim_state_dict.items():
-            base_name, optim_state_type = _generate_base_static_name(param_key)
-            struct_name = static_to_struct[base_name]
-            sharded_param = model_sharded_state_dict[struct_name]
-            unified_name = f"{struct_name}.{optim_state_type}"
-            # Handle scalar parameters (e.g., beta1, beta2)
-            if int(tensor.numel()) == 1:
-                sharded_weight = ShardedWeight(
+        def _create_sharded_weight(
+            unified_name, tensor, sharded_param, is_padded, flattened_range
+        ):
+            if int(tensor.numel()) == 1:  # Handle scalar parameters
+                return ShardedWeight(
                     key=unified_name,
                     local_tensor=tensor,
                     local_shape=tensor.shape,
                     global_shape=tensor.shape,
                     global_offset=(0,),
                 )
-            # Handle partially sharded tensors
-            elif base_name in partial_tensor_names:
-                # Find current rank's sharding info
-                sharding_rank = -1
-                for info in current_rank_slice_info:
-                    if base_name in info:
-                        sharding_rank = info["sharding_rank"]
-                        break
-
-                assert sharding_rank >= 0, (
-                    f"Sharding info not found for {base_name}"
-                )
-                flattened_offset = offset_mapping[base_name][sharding_rank]
-
-                sharded_weight = ShardedWeight(
+            else:
+                if is_padded:
+                    local_tensor = paddle.slice(
+                        tensor,
+                        axes=[0],
+                        starts=[0],
+                        ends=[flattened_range.stop - flattened_range.start],
+                    )
+                else:
+                    local_tensor = tensor
+                return ShardedWeight(
                     key=unified_name,
-                    local_tensor=tensor,
+                    local_tensor=local_tensor,
                     local_shape=sharded_param.local_shape,
                     global_shape=sharded_param.global_shape,
                     global_offset=sharded_param.global_offset,
                     is_flattened=True,
-                    flattened_range=slice(
-                        flattened_offset, flattened_offset + int(tensor.numel())
+                    flattened_range=flattened_range,
+                )
+
+        param_slice_info = {}
+        padded_param = set()
+        for buffer in self._comm_buffer_list:
+            for (
+                param_name,
+                grad_view,
+            ) in buffer._sharding_param_grad_view.items():
+                numel = grad_view._param.numel().item()
+                param_begin = grad_view._param_begin
+                param_end = grad_view._param_end
+                index = grad_view._index
+                padding_begin = index + numel
+                flattened_range = slice(
+                    param_begin - index,
+                    max(
+                        min(padding_begin - index, param_end - index),
+                        param_begin - index,
                     ),
                 )
-            # Handle fully sharded tensors
-            else:
-                sharded_weight = ShardedWeight(
-                    key=unified_name,
-                    local_tensor=tensor,
-                    local_shape=sharded_param.local_shape,
-                    global_shape=sharded_param.global_shape,
-                    global_offset=sharded_param.global_offset,
-                    is_flattened=True,
-                    flattened_range=slice(0, int(tensor.numel())),
-                )
+                if param_end > padding_begin:
+                    padded_param.add(param_name)
 
-            sharded_state[unified_name] = sharded_weight
+                param_slice_info[param_name] = flattened_range
 
-        # Process master weights if they exist
+        optim_state_dict = self.state_dict()
+        master_weights = optim_state_dict.pop("master_weights", None)
+        optim_state_dict.pop("LR_Scheduler", None)
+
+        static_to_struct = {
+            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
+        }
+
+        sharded_state = {}
+
+        for param_key, tensor in optim_state_dict.items():
+            base_name, optim_state_type = _generate_base_static_name(param_key)
+            struct_name = static_to_struct[base_name]
+            sharded_param = model_sharded_state_dict[struct_name]
+            unified_name = f"{struct_name}.{optim_state_type}"
+            flattened_range = param_slice_info[base_name]
+            is_padded = base_name in padded_param
+
+            sharded_state[unified_name] = _create_sharded_weight(
+                unified_name, tensor, sharded_param, is_padded, flattened_range
+            )
+
         if master_weights:
             for weight_key, tensor in master_weights.items():
                 struct_name = static_to_struct[weight_key]
                 sharded_param = model_sharded_state_dict[struct_name]
                 unified_name = f"{struct_name}.w_0"
-                if weight_key in partial_tensor_names:
-                    # Find current rank's sharding info
-                    sharding_rank = -1
-                    for info in current_rank_slice_info:
-                        if weight_key in info:
-                            sharding_rank = info["sharding_rank"]
-                            break
-                    assert sharding_rank >= 0, (
-                        f"Sharding info not found for {weight_key}"
-                    )
-                    flattened_offset = offset_mapping[weight_key][sharding_rank]
+                flattened_range = param_slice_info[weight_key]
+                is_padded = weight_key in padded_param
 
-                    sharded_weight = ShardedWeight(
-                        key=unified_name,
-                        local_tensor=tensor,
-                        local_shape=sharded_param.local_shape,
-                        global_shape=sharded_param.global_shape,
-                        global_offset=sharded_param.global_offset,
-                        is_flattened=True,
-                        flattened_range=slice(
-                            flattened_offset,
-                            flattened_offset + int(tensor.numel()),
-                        ),
-                    )
-                else:
-                    sharded_weight = ShardedWeight(
-                        key=unified_name,
-                        local_tensor=tensor,
-                        local_shape=sharded_param.local_shape,
-                        global_shape=sharded_param.global_shape,
-                        global_offset=sharded_param.global_offset,
-                        is_flattened=True,
-                        flattened_range=slice(0, int(tensor.numel())),
-                    )
-
-                sharded_state[unified_name] = sharded_weight
+                sharded_state[unified_name] = _create_sharded_weight(
+                    unified_name,
+                    tensor,
+                    sharded_param,
+                    is_padded,
+                    flattened_range,
+                )
 
         return sharded_state

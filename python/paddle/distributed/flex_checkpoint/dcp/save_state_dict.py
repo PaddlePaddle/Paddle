@@ -366,6 +366,7 @@ def save_state_dict_impl(
                         if len(val.shape) > 0
                         else ((), ())
                     )
+                    global_shape = val.shape
                     if local_shape is None or global_offset is None:
                         continue
                 else:
@@ -375,6 +376,7 @@ def save_state_dict_impl(
                         if len(val.shape) > 0
                         else ()
                     )
+                    global_shape = local_shape
                     local_tensor = val
             elif isinstance(val, ShardedWeight):
                 local_tensor = val.local_tensor

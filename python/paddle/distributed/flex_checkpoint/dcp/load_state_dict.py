@@ -475,6 +475,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
             storage_state_dict_metadata[tensor_key] += local_tensor_metadata
 
     read_items = []
+    global_shape = None
     logger.debug(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
     for tensor_key, val in state_dict.items():
         tensor_name = None
@@ -493,6 +494,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                     if len(val.shape) > 0
                     else ((), ())
                 )
+                global_shape = tuple(val.shape)
                 if local_shape is None or global_offset is None:
                     continue
             else:
@@ -500,6 +502,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
+                global_shape = local_shape
             dtype = str(val.dtype).split(".")[1]
             tensor_name = tensor_key
         elif isinstance(val, ShardedWeight):
@@ -518,7 +521,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
             )
 
         cur_chunk_metadata = LocalTensorMetadata(
-            global_offset, local_shape, dtype
+            global_offset, local_shape, dtype, global_shape
         )
         assert tensor_name in storage_state_dict_metadata, (
             f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
