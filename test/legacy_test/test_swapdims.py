@@ -99,3 +99,7 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                     )
                     for out in fetches:
                         np.testing.assert_array_equal(self.np_out, out)
+
+
+if __name__ == "__main__":
+    unittest.main()

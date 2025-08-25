@@ -25,7 +25,7 @@ class TestSwapaxesCompatibility(unittest.TestCase):
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-        self.func = paddle.swapaxis
+        self.func = paddle.swapaxes
         self.init_data()
 
     def init_data(self):
@@ -44,22 +44,22 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                 paddle.device.set_device(place)
                 x = paddle.to_tensor(self.np_input)
                 outs = []
-                outs.append(paddle.swapaxis(x, perm=self.perm))
-                outs.append(paddle.swapaxis(x=x, perm=self.perm))
-                outs.append(paddle.swapaxis(input=x, perm=self.perm))
-                outs.append(paddle.swapaxis(x, self.dim0, self.dim1))
+                outs.append(paddle.swapaxes(x, perm=self.perm))
+                outs.append(paddle.swapaxes(x=x, perm=self.perm))
+                outs.append(paddle.swapaxes(input=x, perm=self.perm))
+                outs.append(paddle.swapaxes(x, self.dim0, self.dim1))
                 outs.append(
-                    paddle.swapaxis(x=x, dim0=self.dim0, dim1=self.dim1)
+                    paddle.swapaxes(x=x, dim0=self.dim0, dim1=self.dim1)
                 )
                 outs.append(
-                    paddle.swapaxis(input=x, dim0=self.dim0, dim1=self.dim1)
+                    paddle.swapaxes(input=x, dim0=self.dim0, dim1=self.dim1)
                 )
 
-                outs.append(x.swapaxis(self.perm))
-                outs.append(x.swapaxis(self.dim0, self.dim1))
-                outs.append(x.swapaxis(perm=self.perm))
-                outs.append(x.swapaxis(dim0=self.dim0, dim1=self.dim1))
-                outs.append(x.swapaxis(self.dim0, dim1=self.dim1))
+                outs.append(x.swapaxes(self.perm))
+                outs.append(x.swapaxes(self.dim0, self.dim1))
+                outs.append(x.swapaxes(perm=self.perm))
+                outs.append(x.swapaxes(dim0=self.dim0, dim1=self.dim1))
+                outs.append(x.swapaxes(self.dim0, dim1=self.dim1))
 
                 for out in outs:
                     np.testing.assert_array_equal(self.np_out, out.numpy())
@@ -74,22 +74,22 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                         name="x", shape=self.shape, dtype=self.dtype
                     )
                     outs = []
-                    outs.append(paddle.swapaxis(x, perm=self.perm))
-                    outs.append(paddle.swapaxis(x=x, perm=self.perm))
-                    outs.append(paddle.swapaxis(input=x, perm=self.perm))
-                    outs.append(paddle.swapaxis(x, self.dim0, self.dim1))
+                    outs.append(paddle.swapaxes(x, perm=self.perm))
+                    outs.append(paddle.swapaxes(x=x, perm=self.perm))
+                    outs.append(paddle.swapaxes(input=x, perm=self.perm))
+                    outs.append(paddle.swapaxes(x, self.dim0, self.dim1))
                     outs.append(
-                        paddle.swapaxis(x=x, dim0=self.dim0, dim1=self.dim1)
+                        paddle.swapaxes(x=x, dim0=self.dim0, dim1=self.dim1)
                     )
                     outs.append(
-                        paddle.swapaxis(input=x, dim0=self.dim0, dim1=self.dim1)
+                        paddle.swapaxes(input=x, dim0=self.dim0, dim1=self.dim1)
                     )
 
-                    outs.append(x.swapaxis(self.perm))
-                    outs.append(x.swapaxis(self.dim0, self.dim1))
-                    outs.append(x.swapaxis(perm=self.perm))
-                    outs.append(x.swapaxis(dim0=self.dim0, dim1=self.dim1))
-                    outs.append(x.swapaxis(self.dim0, dim1=self.dim1))
+                    outs.append(x.swapaxes(self.perm))
+                    outs.append(x.swapaxes(self.dim0, self.dim1))
+                    outs.append(x.swapaxes(perm=self.perm))
+                    outs.append(x.swapaxes(dim0=self.dim0, dim1=self.dim1))
+                    outs.append(x.swapaxes(self.dim0, dim1=self.dim1))
 
                     exe = paddle.base.Executor(place)
                     fetches = exe.run(
@@ -99,3 +99,7 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                     )
                     for out in fetches:
                         np.testing.assert_array_equal(self.np_out, out)
+
+
+if __name__ == "__main__":
+    unittest.main()
