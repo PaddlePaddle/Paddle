@@ -103,6 +103,9 @@ else:
         try:
             original_init(self, *args, **kwargs)
         except Exception as e:
+            kwargs_cnt = len(kwargs) - int("dtype" in kwargs)
+            if kwargs_cnt:
+                raise ValueError(e)
             default_dtype = kwargs.get("dtype", "float32")
             if len(args) == 0:
                 original_init(
