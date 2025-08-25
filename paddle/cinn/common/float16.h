@@ -94,7 +94,7 @@ struct CINN_ALIGN(2) float16 {
 // Constructors
 #if defined(CINN_CUDA_FP16) || defined(CINN_HIP_FP16)
   __host__ __device__ inline explicit float16(const half& h) {
-#if (CUDA_VERSION >= 9000)
+#if defined(CINN_CUDA_FP16) && (CUDA_VERSION >= 9000) || defined(CINN_HIP_FP16)
     x = reinterpret_cast<__half_raw*>(const_cast<half*>(&h))->x;
 #else
     x = h.x;
@@ -103,7 +103,9 @@ struct CINN_ALIGN(2) float16 {
 #endif  // CINN_CUDA_FP16
 
   __host__ __device__ inline explicit float16(float val) {
-#if defined(CINN_CUDA_FP16) && (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300)
+#if defined(CINN_CUDA_FP16) &&                              \
+        (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 300) || \
+    defined(CINN_HIP_FP16)
     half tmp = __float2half(val);
     x = *reinterpret_cast<uint16_t*>(&tmp);
 
@@ -708,5 +710,45 @@ __host__ __device__ inline cinn::common::float16 min(
   return a < b ? a : b;
 }
 #endif  // __cplusplus && CINN_CUDA_FP16
+
+// Note: HIP does not support half-float shuffles.
+#if defined(CINN_HIP_FP16)
+__device__ inline cinn::common::float16 __shfl(cinn::common::float16 var,
+                                               int srcLane,
+                                               int width = warpSize) {
+  return cinn::common::float16(__shfl(static_cast<float>(var), srcLane, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_up(cinn::common::float16 var,
+                                                  unsigned int delta,
+                                                  int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_up(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_down(cinn::common::float16 var,
+                                                    unsigned int delta,
+                                                    int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_down(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_xor(cinn::common::float16 var,
+                                                   int laneMask,
+                                                   int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_xor(static_cast<float>(var), laneMask, width));
+}
+
+__host__ __device__ inline cinn::common::float16 max(
+    const cinn::common::float16& a, const cinn::common::float16& b) {
+  return a > b ? a : b;
+}
+
+__host__ __device__ inline cinn::common::float16 min(
+    const cinn::common::float16& a, const cinn::common::float16& b) {
+  return a < b ? a : b;
+}
+#endif  // CINN_HIP_FP16
 
 #endif  // CINN_COMMON_FLOAT16_H
