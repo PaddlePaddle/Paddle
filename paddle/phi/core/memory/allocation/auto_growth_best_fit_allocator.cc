@@ -56,20 +56,18 @@ PHI_DEFINE_EXPORTED_uint64(
     "(all requests go to the large pool). When > 0, requests "
     "<= threshold use the small pool; larger requests use the "
     "large pool. Default: 0.");
-PHI_DEFINE_EXPORTED_uint64(
-    small_pool_auto_growth_chunk_size_in_mb,
-    0,
-    "The minimal chunk size for the small pool in MiB. If > 0, this overrides "
-    "the constructor-provided global growth size "
-    "(FLAGS_auto_growth_chunk_size_in_mb) "
-    "If 0, falls back to the global growth size.");
-PHI_DEFINE_EXPORTED_uint64(
-    large_pool_auto_growth_chunk_size_in_mb,
-    0,
-    "The minimal chunk size for the large pool in MiB. If > 0, this overrides "
-    "the constructor-provided global growth size "
-    "(FLAGS_auto_growth_chunk_size_in_mb) "
-    "If 0, falls back to the global growth size.");
+PHI_DEFINE_EXPORTED_uint64(small_pool_auto_growth_chunk_size_in_mb,
+                           0,
+                           "The minimal chunk size for the small pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
+PHI_DEFINE_EXPORTED_uint64(large_pool_auto_growth_chunk_size_in_mb,
+                           0,
+                           "The minimal chunk size for the large pool in MiB. "
+                           "If small_pool_size_in_mb > 0, this overrides "
+                           "the constructor-provided global growth size "
+                           "(FLAGS_auto_growth_chunk_size_in_mb).");
 PHI_DEFINE_EXPORTED_uint64(
     large_pool_pre_alloc_in_mb,
     0,
@@ -132,31 +130,20 @@ bool AutoGrowthBestFitAllocator::is_small_free_block(size_t size) {
 
 size_t AutoGrowthBestFitAllocator::auto_growth_size(bool is_small,
                                                     size_t chunk_size) {
-  // Priority: pool-specific flag (>0) > constructor-provided chunk_size (>0) >
-  // member chunk_size_. Return value is aligned to alignment_ and at least
-  // alignment_.
+  // fallback to single pool and use constructor-provided chunk_size.
+  if (FLAGS_small_pool_size_in_mb == 0) {
+    return chunk_size;
+  }
+
   const uint64_t pool_auto_growth_chunk_size_mb =
       is_small ? FLAGS_small_pool_auto_growth_chunk_size_in_mb
                : FLAGS_large_pool_auto_growth_chunk_size_in_mb;
-  const size_t pool_auto_growth_chunk_size_bytes =
+  const size_t auto_growth_size =
       pool_auto_growth_chunk_size_mb
           ? (static_cast<size_t>(pool_auto_growth_chunk_size_mb) << 20)
           : 0;
 
-  size_t auto_growth_size = 0;
-  if (pool_auto_growth_chunk_size_bytes) {
-    auto_growth_size = pool_auto_growth_chunk_size_bytes;  // 1) pool-specific
-                                                           // flag (MB -> bytes)
-  } else if (chunk_size > 0) {
-    auto_growth_size = chunk_size;  // 2) value provided at construction (bytes)
-  } else {
-    auto_growth_size =
-        chunk_size_;  // 3) member fallback (already aligned in constructor)
-  }
-
-  auto_growth_size = AlignedSize(auto_growth_size, alignment_);
-
-  return auto_growth_size;
+  return AlignedSize(auto_growth_size, alignment_);
 }
 
 void AutoGrowthBestFitAllocator::PreAlloc() {

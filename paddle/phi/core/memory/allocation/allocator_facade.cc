@@ -116,6 +116,7 @@ PHI_DEFINE_EXPORTED_bool(
 COMMON_DECLARE_string(allocator_strategy);
 COMMON_DECLARE_uint64(auto_growth_chunk_size_in_mb);
 COMMON_DECLARE_uint64(alignment_size);
+COMMON_DECLARE_uint64(small_pool_size_in_mb);
 COMMON_DECLARE_bool(use_auto_growth_pinned_allocator);
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
@@ -934,11 +935,18 @@ class AllocatorFacadePrivate {
     }
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   void PreAllocCUDAAllocator(phi::GPUPlace p) {
+    // fallback to single pool.
+    if (FLAGS_small_pool_size_in_mb <= 0) {
+      return;
+    }
     const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
-    if (FLAGS_use_auto_growth_v2) {
-      PADDLE_THROW(common::errors::Unavailable(
-          "PreAlloc is not implemented for AutoGrowthBestFitAllocatorV2."));
+    if (FLAGS_use_auto_growth_v2 || FLAGS_use_cuda_malloc_async_allocator ||
+        FLAGS_use_virtual_memory_auto_growth) {
+      VLOG(6) << "PreAlloc is not implemented for "
+                 "AutoGrowthBestFitAllocatorV2, CUDAMallocAsyncAllocator or "
+                 "VirtualMemoryAutoGrowthBestFitAllocator.";
     }
     auto it = allocators_.find(p);
     PADDLE_ENFORCE_NE(it,
@@ -951,6 +959,7 @@ class AllocatorFacadePrivate {
       allocator->PreAlloc();
     }
   }
+#endif
 
   void InitCUDAMallocAsyncAllocator(phi::GPUPlace p, gpuStream_t stream) {
 #ifdef PADDLE_WITH_CUDA
