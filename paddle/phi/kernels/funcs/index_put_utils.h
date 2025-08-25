@@ -39,6 +39,7 @@
 namespace phi {
 
 namespace funcs {
+
 template <typename T, typename Context>
 phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
                                            const phi::DenseTensor& tensor,

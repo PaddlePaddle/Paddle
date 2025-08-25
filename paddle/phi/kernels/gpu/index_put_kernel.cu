@@ -13,19 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
-#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
-#include "paddle/phi/kernels/funcs/indexing.h"
-#include "paddle/phi/kernels/funcs/stride_utils.h"
-#include "paddle/phi/kernels/funcs/strided_utils.h"
-#include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
 namespace phi {
 
