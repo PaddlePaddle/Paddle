@@ -3926,8 +3926,15 @@ def resize_(
 def dtype_tensor_factory(dtype):
     class _DtypeTensorFactory:
         def __new__(cls, *args, **kwargs):
-            kwargs.setdefault('dtype', dtype)
-            return paddle.Tensor(*args, **kwargs)
+            if len(args) == 0:
+                return paddle.empty(shape=[0], dtype=dtype)
+            elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+                return paddle.to_tensor(args[0], dtype=dtype)
+            elif all(isinstance(arg, int) for arg in args):
+                return paddle.empty(shape=list(args), dtype=dtype)
+            else:
+                kwargs.setdefault('dtype', dtype)
+                return paddle.Tensor(*args, **kwargs)
 
     return _DtypeTensorFactory
 

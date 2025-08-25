@@ -100,24 +100,19 @@ else:
     original_init = Tensor.__init__
 
     def new_init(self, *args, **kwargs):
-        kwargs_cnt = len(kwargs.keys()) - int("dtype" in kwargs)
-        if kwargs_cnt:
-            original_init(self, *args, **kwargs)
-            return
-        default_dtype = kwargs.get("dtype", "float32")
-        if len(args) == 0:
-            original_init(self, paddle.empty(shape=[0], dtype=default_dtype))
+        if len(args) + len(kwargs.keys()) == 0:
+            original_init(self, paddle.empty(shape=[0], dtype="float32"))
             return
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-            original_init(self, paddle.tensor(args[0], dtype=default_dtype))
+            original_init(self, paddle.tensor(args[0], dtype="float32"))
             return
-        is_all_int = True
+        args_is_all_int = True
         for arg in args:
             if not isinstance(arg, int):
-                is_all_int = False
+                args_is_all_int = False
                 break
-        if is_all_int:
-            original_init(self, paddle.empty(list(args), dtype=default_dtype))
+        if args_is_all_int:
+            original_init(self, paddle.empty(list(args), dtype="float32"))
         else:
             original_init(self, *args)
 
