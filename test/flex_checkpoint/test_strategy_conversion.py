@@ -20,6 +20,8 @@ import sys
 import tempfile
 import unittest
 
+import paddle
+
 
 def p_str_to_dict(p_str):
     """Parses a strategy string like 'd2·t2' into a config dictionary."""
@@ -50,46 +52,54 @@ TEST_CASES = [
         "id": "B1_d2_to_d4",
         "src": p_str_to_dict("d2"),
         "tgt": p_str_to_dict("d4"),
+        "gpu_num": 4,
     },
     {
         "id": "B2_t2_to_t4",
         "src": p_str_to_dict("t2"),
         "tgt": p_str_to_dict("t4"),
+        "gpu_num": 4,
     },
     {
         "id": "B3_p2_to_p4",
         "src": p_str_to_dict("p2"),
         "tgt": p_str_to_dict("p4"),
+        "gpu_num": 4,
     },
     {
         "id": "B4_e2_to_e4",
         "src": p_str_to_dict("e2"),
         "tgt": p_str_to_dict("e4"),
         "model_type": "moe",
+        "gpu_num": 4,
     },
     # Case 5 (pp2 -> tp4)
     {
         "id": "X5_pp2_to_tp4",
         "src": p_str_to_dict("p2"),
         "tgt": p_str_to_dict("t4"),
+        "gpu_num": 4,
     },
     # Case 6 (tp2 -> pp2)
     {
         "id": "X6_tp2_to_pp2",
         "src": p_str_to_dict("t2"),
         "tgt": p_str_to_dict("p2"),
+        "gpu_num": 2,
     },
     # Case 7 (dp4 -> tp2·dp2)
     {
         "id": "X7_dp4_to_tp2dp2",
         "src": p_str_to_dict("d4"),
         "tgt": p_str_to_dict("t2·d2"),
+        "gpu_num": 4,
     },
     # Case 8 (dp2 -> pp2)
     {
         "id": "X8_dp2_to_pp2",
         "src": p_str_to_dict("d2"),
         "tgt": p_str_to_dict("p2"),
+        "gpu_num": 2,
     },
     # Case 9 (dp2 -> ep2)
     {
@@ -97,6 +107,7 @@ TEST_CASES = [
         "src": p_str_to_dict("d2"),
         "tgt": p_str_to_dict("e2"),
         "model_type": "moe",
+        "gpu_num": 2,
     },
     # Case 10 (ep2 -> tp2)
     {
@@ -104,6 +115,7 @@ TEST_CASES = [
         "src": p_str_to_dict("e2"),
         "tgt": p_str_to_dict("t2"),
         "model_type": "moe",
+        "gpu_num": 2,
     },
     # Case 11 (tp2 -> ep2)
     {
@@ -111,49 +123,58 @@ TEST_CASES = [
         "src": p_str_to_dict("t2"),
         "tgt": p_str_to_dict("e2"),
         "model_type": "moe",
+        "gpu_num": 2,
     },
     {
         "id": "M12_dp2tp2_to_tp4",
         "src": p_str_to_dict("d2·t2"),
         "tgt": p_str_to_dict("t4"),
+        "gpu_num": 4,
     },
     {
         "id": "M13_dp2tp2_to_pp4",
         "src": p_str_to_dict("d2·t2"),
         "tgt": p_str_to_dict("p4"),
+        "gpu_num": 4,
     },
     {
         "id": "M14_dp2pp2_to_tp4",
         "src": p_str_to_dict("d2·p2"),
         "tgt": p_str_to_dict("t4"),
+        "gpu_num": 4,
     },
     {
         "id": "M15_tp2pp2_to_dp4",
         "src": p_str_to_dict("t2·p2"),
         "tgt": p_str_to_dict("d4"),
+        "gpu_num": 4,
     },
     {
         "id": "M16_tp2pp2_to_dp2tp2",
         "src": p_str_to_dict("t2·p2"),
         "tgt": p_str_to_dict("d2·t2"),
+        "gpu_num": 4,
     },
     {
         "id": "M17_dp2ep2_to_dp4",
         "src": p_str_to_dict("d2·e2"),
         "tgt": p_str_to_dict("d4"),
         "model_type": "moe",
+        "gpu_num": 4,
     },
     {
         "id": "M18_tp2ep2_to_tp4",
         "src": p_str_to_dict("t2·e2"),
         "tgt": p_str_to_dict("t4"),
         "model_type": "moe",
+        "gpu_num": 4,
     },
     # Case 19 (dp2·tp2 -> pp2)
     {
         "id": "M19_dp2tp2_to_pp2",
         "src": p_str_to_dict("d2·t2"),
         "tgt": p_str_to_dict("p2"),
+        "gpu_num": 4,
     },
     # E1 (e2->e4) is covered by B4
     {
@@ -161,12 +182,16 @@ TEST_CASES = [
         "src": p_str_to_dict("d2·e2"),
         "tgt": p_str_to_dict("t2·e2"),
         "model_type": "moe",
+        "gpu_num": 4,
     },
 ]
 
 
 class TestStrategyConversion(unittest.TestCase):
     def _run_workflow(self, case, logic_script="strategy_conversion_engine.py"):
+        if case["gpu_num"] > paddle.device.cuda.device_count():
+            self.skipTest("number of GPUs is not enough")
+
         case_id = case['id']
         src_config = case['src']
         tgt_config = case['tgt']
