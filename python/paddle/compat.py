@@ -137,16 +137,16 @@ def nanmedian(
 
             >>> values, indices = paddle.compat.nanmedian(x, dim=1)
             >>> print(values)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [2.0, 5.0, 8.5])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
             >>> print(indices)
-            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [1, 1, 1])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [0, 1, 1])
 
             >>> # Using out parameter
             >>> out_values = paddle.zeros([3], dtype='float32')
             >>> out_indices = paddle.zeros([3], dtype='int64')
             >>> paddle.compat.nanmedian(x, dim=1, out=(out_values, out_indices))
             >>> print(out_values)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [2.0, 5.0, 8.5])
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
     """
     if dim is None:
         result = paddle.nanmedian(input, axis=dim, keepdim=keepdim, mode='min')
@@ -162,6 +162,10 @@ def nanmedian(
         result, indices = paddle.nanmedian(
             input, axis=dim, keepdim=keepdim, mode='min'
         )
+        # This conversion is needed because PyTorch returns index 0 for all-nan rows,
+        # while PaddlePaddle returns index -1 for all-nan rows
+        indices = paddle.maximum(indices, paddle.zeros_like(indices))
+
         if out is not None:
             if isinstance(out, tuple) and len(out) == 2:
                 out_values, out_indices = out
