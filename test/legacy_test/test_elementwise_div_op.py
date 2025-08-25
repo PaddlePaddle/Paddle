@@ -840,6 +840,128 @@ class TestDivComplexDtype(unittest.TestCase):
                         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseDivOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.python_api = paddle.divide
+        self.public_python_api = paddle.divide
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseDivOp_Stride1(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride2(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride3(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride4(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride5(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = self.x / self.y
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseDivOp_Stride_ZeroDim1(TestElementwiseDivOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x / self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseDivOp_Stride_ZeroSize1(TestElementwiseDivOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = self.x / self.y
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
