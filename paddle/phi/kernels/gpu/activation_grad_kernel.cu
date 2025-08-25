@@ -311,15 +311,59 @@ void PowGradKernel(const Context& dev_ctx,
                    const DenseTensor& dout,
                    const Scalar& factor,
                    DenseTensor* dx) {
-  if (factor.to<float>() == 0) {
+  if (factor.to<double>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
     return;
   }
+  if (factor.to<double>() == 1) {
+    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    return;
+  }
+  if (factor.to<double>() == 2) {
+    funcs::CudaSquareGradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaSquareGradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if (factor.to<double>() == 3) {
+    funcs::CudaCubeGradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaCubeGradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if (factor.to<double>() == 4) {
+    funcs::CudaPow4GradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaPow4GradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if constexpr (!std::is_integral<T>::value) {
+    if (factor.to<double>() == 1.5) {
+      funcs::CudaPow1p5GradFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaPow1p5GradFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+    if (factor.to<double>() == 0.5) {
+      funcs::CudaSqrtGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaSqrtGradDepXFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+    if (factor.to<double>() == -1) {
+      funcs::CudaReciprocalGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T,
+                            Context,
+                            funcs::CudaReciprocalGradDepXFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+  }
   funcs::CudaPowGradFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<double>());
   ActivationGradGPUImpl<T, Context, funcs::CudaPowGradFunctor<T>>(
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }

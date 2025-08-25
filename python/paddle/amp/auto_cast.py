@@ -484,7 +484,7 @@ def amp_guard(
              observed in downstream ops. These ops will not be converted to fp16.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list;
              O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp).
-        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        dtype(str|core.DataType, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
         use_promote(bool, optional): Whether op's dtype is 'float32', accord 'Promote to the Widest' principle, use 'float32' to calculate.
              Only active on 'AMP-02'. Default is True.
 
