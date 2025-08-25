@@ -867,9 +867,13 @@ ger = outer
 
 div = divide
 div_ = divide_
+eq = equal
+gt = greater_than
 
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',

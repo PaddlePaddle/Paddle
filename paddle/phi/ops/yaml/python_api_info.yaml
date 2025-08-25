@@ -7,3 +7,8 @@
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
     use_default_mapping : True
+
+- op : greater_than
+  name : [paddle.greater_than, paddle.Tensor.greater_than]
+  args_alias :
+    use_default_mapping : True
