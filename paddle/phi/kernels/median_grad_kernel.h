@@ -18,13 +18,14 @@
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
 template <typename T, typename Context>
-void NanmedianKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& axes,
-                     bool keep_dim,
-                     const std::string& mode,
-                     DenseTensor* out,
-                     DenseTensor* medians);
+void MedianGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& median_data,
+                      const DenseTensor& median_index,
+                      const DenseTensor& out_grad,
+                      const IntArray& axes,
+                      bool keep_dim,
+                      const std::string& mode,
+                      DenseTensor* x_grad);
 }  // namespace phi

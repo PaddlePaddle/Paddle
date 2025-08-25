@@ -20,11 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NanmedianKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& axes,
-                     bool keep_dim,
-                     const std::string& mode,
-                     DenseTensor* out,
-                     DenseTensor* medians);
+void MedianKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& axes,
+                  bool keep_dim,
+                  const std::string& mode,
+                  DenseTensor* out,
+                  DenseTensor* medians);
 }  // namespace phi

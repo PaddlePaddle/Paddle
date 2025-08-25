@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
+#include "paddle/phi/kernels/median_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T>
-void CalcNanMedianGrad(int64_t pre_dim,
-                       int64_t stride,
-                       const DenseTensor& x,
-                       const T* m_data,
-                       const int64_t* m_index,
-                       T* dx_data,
-                       const T* dout_data) {
+void CalcMedianGrad(int64_t pre_dim,
+                    int64_t stride,
+                    const DenseTensor& x,
+                    const T* m_data,
+                    const int64_t* m_index,
+                    T* dx_data,
+                    const T* dout_data) {
   int64_t i = 0, j = 0;
   int64_t offset = 0;
   std::vector<int64_t> data_index;
@@ -55,13 +55,13 @@ void CalcNanMedianGrad(int64_t pre_dim,
 }
 
 template <typename T, typename Context>
-void CalcNanMedianGradKernel_CPU(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& median_data,
-                                 const DenseTensor& median_index,
-                                 const DenseTensor& out_grad,
-                                 const std::string& mode,
-                                 DenseTensor* x_grad) {
+void CalcMedianGradKernel_CPU(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& median_data,
+                              const DenseTensor& median_index,
+                              const DenseTensor& out_grad,
+                              const std::string& mode,
+                              DenseTensor* x_grad) {
   std::cout << "!!" << std::endl;
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
   if (!dx_data) return;
@@ -78,19 +78,19 @@ void CalcNanMedianGradKernel_CPU(const Context& dev_ctx,
   int64_t stride = x_dim[static_cast<int>(rank - 1)];
   int64_t pre_dim = numel / stride;
 
-  CalcNanMedianGrad(pre_dim, stride, x, m_data, m_index, dx_data, dout_data);
+  CalcMedianGrad(pre_dim, stride, x, m_data, m_index, dx_data, dout_data);
 }
 
 template <typename T, typename Context>
-void NanmedianGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& median_data,
-                         const DenseTensor& median_index,
-                         const DenseTensor& out_grad,
-                         const IntArray& axes,
-                         bool keepdim UNUSED,
-                         const std::string& mode,
-                         DenseTensor* x_grad) {
+void MedianGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& median_data,
+                      const DenseTensor& median_index,
+                      const DenseTensor& out_grad,
+                      const IntArray& axes,
+                      bool keepdim UNUSED,
+                      const std::string& mode,
+                      DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
@@ -100,14 +100,14 @@ void NanmedianGradKernel(const Context& dev_ctx,
   if ((axes.size() == 0) || rank <= 1) {
     tmp_x = x;
     tmp_x.Resize({x.numel()});
-    CalcNanMedianGradKernel_CPU<T, Context>(
+    CalcMedianGradKernel_CPU<T, Context>(
         dev_ctx, tmp_x, median_data, median_index, out_grad, mode, x_grad);
   } else {
     funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
 
     DenseTensor tmp_x_grad;
     tmp_x_grad.Resize(x_grad->dims());
-    CalcNanMedianGradKernel_CPU<T, Context>(
+    CalcMedianGradKernel_CPU<T, Context>(
         dev_ctx, tmp_x, median_data, median_index, out_grad, mode, &tmp_x_grad);
 
     dev_ctx.template Alloc<T>(x_grad);
@@ -118,10 +118,10 @@ void NanmedianGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nanmedian_grad,
+PD_REGISTER_KERNEL(median_grad,
                    CPU,
                    ALL_LAYOUT,
-                   phi::NanmedianGradKernel,
+                   phi::MedianGradKernel,
                    float,
                    double,
                    int,
