@@ -7,3 +7,23 @@
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
     use_default_mapping : True
+
+- op : logical_and
+  name : [paddle.logical_and, paddle.Tensor.logical_and]
+  args_alias:
+    use_default_mapping : True
+
+- op : logical_or
+  name : [paddle.logical_or, paddle.Tensor.logical_or]
+  args_alias:
+   use_default_mapping : True
+
+- op : logical_xor
+  name : [paddle.logical_xor, paddle.Tensor.logical_xor]
+  args_alias:
+   use_default_mapping : True
+
+- op : logical_not
+  name : [paddle.logical_not, paddle.Tensor.logical_not]
+  args_alias:
+   use_default_mapping : True

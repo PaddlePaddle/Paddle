@@ -3265,10 +3265,6 @@
 
 - op : logical_and
   args : (Tensor x, Tensor y)
-  python_api:
-    name : [paddle.logical_and, paddle.Tensor.logical_and]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
@@ -3283,10 +3279,6 @@
 
 - op : logical_not
   args : (Tensor x)
-  python_api:
-    name : [paddle.logical_not, paddle.Tensor.logical_not]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalNotInferMeta
@@ -3301,10 +3293,6 @@
 
 - op : logical_or
   args : (Tensor x, Tensor y)
-  python_api:
-    name : [paddle.logical_or, paddle.Tensor.logical_or]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
@@ -3319,10 +3307,6 @@
 
 - op : logical_xor
   args : (Tensor x, Tensor y)
-  python_api:
-    name : [paddle.logical_xor, paddle.Tensor.logical_xor]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : LogicalBinaryInferMeta
