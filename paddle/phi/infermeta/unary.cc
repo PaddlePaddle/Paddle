@@ -1315,7 +1315,12 @@ void ExpandInferMeta(const MetaTensor& x,
   auto expand_shape = shape.GetData();
 
   if (expand_shape.empty()) {
-    expand_shape = std::vector<int64_t>(x_dims.size(), -1);
+    out->set_dims(x_dims);
+    out->set_dtype(x.dtype());
+    if (x_dims.size() > 0) {
+      out->share_lod(x);
+    }
+    return;
   }
 
   PADDLE_ENFORCE_GE(
