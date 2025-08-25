@@ -3594,6 +3594,17 @@
   backward : max_pool3d_with_index_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : max_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : max_with_index
+    data_type : x
+  backward : max_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)
@@ -3701,6 +3712,17 @@
     func : meshgrid
     data_type : inputs
   backward : meshgrid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : min_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : min_with_index
+    data_type : x
+  backward : min_with_index_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mish
@@ -4953,10 +4975,6 @@
 
 - op : sigmoid
   args : (Tensor x)
-  python_api:
-    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
-    args_alias:
-      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
