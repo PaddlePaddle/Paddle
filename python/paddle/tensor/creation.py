@@ -25,6 +25,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import tril, triu  # noqa: F401
 from paddle.utils import deprecated
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -2269,96 +2270,6 @@ def _tril_triu_op(helper: LayerHelper) -> paddle.Tensor:
     return out
 
 
-def tril(
-    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
-) -> paddle.Tensor:
-    r"""
-    Returns the lower triangular part of a matrix (2-D tensor) or batch
-    of matrices :attr:`x`, the other elements of the result tensor are set
-    to 0. The lower triangular part of the matrix is defined as the elements
-    on and below the diagonal.
-
-    Args:
-        x (Tensor): The input x which is a Tensor.
-            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
-        diagonal (int, optional): The diagonal to consider, default value is 0.
-            If :attr:`diagonal` = 0, all elements on and below the main diagonal are
-            retained. A positive value includes just as many diagonals above the main
-            diagonal, and similarly a negative value excludes just as many diagonals below
-            the main diagonal. The main diagonal are the set of indices
-            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
-            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
-        it's data type is the same as x's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
-            >>> print(data)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 4 ],
-             [5 , 6 , 7 , 8 ],
-             [9 , 10, 11, 12]])
-
-            >>> tril1 = paddle.tril(data)
-            >>> print(tril1)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 0 , 0 , 0 ],
-             [5 , 6 , 0 , 0 ],
-             [9 , 10, 11, 0 ]])
-
-            >>> # example 2, positive diagonal value
-            >>> tril2 = paddle.tril(data, diagonal=2)
-            >>> print(tril2)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 0 ],
-             [5 , 6 , 7 , 8 ],
-             [9 , 10, 11, 12]])
-
-            >>> # example 3, negative diagonal value
-            >>> tril3 = paddle.tril(data, diagonal=-1)
-            >>> print(tril3)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0 , 0 , 0 , 0 ],
-             [5 , 0 , 0 , 0 ],
-             [9 , 10, 0 , 0 ]])
-    """
-    if in_dynamic_mode():
-        return _C_ops.tril(x, diagonal)
-    elif in_pir_mode():
-        op_type = 'tril'
-        assert x is not None, f'x cannot be None in {op_type}'
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'bool',
-                'complex64',
-                'complex128',
-            ],
-            op_type,
-        )
-        if len(x.shape) < 2:
-            raise ValueError(f"x shape in {op_type} must be at least 2-D")
-        if not isinstance(diagonal, (int,)):
-            raise TypeError(f"diagonal in {op_type} must be a python Int")
-        return _C_ops.tril(x, diagonal)
-    else:
-        return _tril_triu_op(LayerHelper('tril', **locals()))
-
-
 @inplace_apis_in_dygraph_only
 def tril_(
     x: paddle.Tensor, diagonal: int = 0, name: str | None = None
@@ -2370,98 +2281,6 @@ def tril_(
 
     if in_dynamic_mode():
         return _C_ops.tril_(x, diagonal)
-
-
-def triu(
-    x: paddle.Tensor, diagonal: int = 0, name: str | None = None
-) -> paddle.Tensor:
-    r"""
-    Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
-    :attr:`x`, the other elements of the result tensor are set to 0.
-    The upper triangular part of the matrix is defined as the elements on and
-    above the diagonal.
-
-    Args:
-        x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
-        diagonal (int, optional): The diagonal to consider, default value is 0.
-            If :attr:`diagonal` = 0, all elements on and above the main diagonal are
-            retained. A positive value excludes just as many diagonals above the main
-            diagonal, and similarly a negative value includes just as many diagonals below
-            the main diagonal. The main diagonal are the set of indices
-            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
-            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
-        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
-        it's data type is the same as x's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
-            >>> print(x)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 4 ],
-             [5 , 6 , 7 , 8 ],
-             [9 , 10, 11, 12]])
-
-            >>> # example 1, default diagonal
-            >>> triu1 = paddle.tensor.triu(x)
-            >>> print(triu1)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 4 ],
-             [0 , 6 , 7 , 8 ],
-             [0 , 0 , 11, 12]])
-
-            >>> # example 2, positive diagonal value
-            >>> triu2 = paddle.tensor.triu(x, diagonal=2)
-            >>> print(triu2)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0, 0, 3, 4],
-             [0, 0, 0, 8],
-             [0, 0, 0, 0]])
-
-            >>> # example 3, negative diagonal value
-            >>> triu3 = paddle.tensor.triu(x, diagonal=-1)
-            >>> print(triu3)
-            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1 , 2 , 3 , 4 ],
-             [5 , 6 , 7 , 8 ],
-             [0 , 10, 11, 12]])
-
-    """
-    if in_dynamic_mode():
-        return _C_ops.triu(x, diagonal)
-    elif in_pir_mode():
-        op_type = 'triu'
-        assert x is not None, f'x cannot be None in {op_type}'
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'bool',
-                'complex64',
-                'complex128',
-            ],
-            op_type,
-        )
-        if len(x.shape) < 2:
-            raise ValueError(f"x shape in {op_type} must be at least 2-D")
-        if not isinstance(diagonal, (int,)):
-            raise TypeError(f"diagonal in {op_type} must be a python Int")
-        return _C_ops.triu(x, diagonal)
-    else:
-        return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
 @inplace_apis_in_dygraph_only

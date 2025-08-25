@@ -5501,7 +5501,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
+  python_api :
+    name : [paddle.tril, paddle.Tensor.tril]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -5540,7 +5544,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
+  python_api :
+    name : [paddle.triu, paddle.Tensor.triu]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
