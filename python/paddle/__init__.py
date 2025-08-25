@@ -863,9 +863,11 @@ concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
 ger = outer
-
 div = divide
 div_ = divide_
+swapaxes = transpose
+swapdims = transpose
+
 
 __all__ = [
     'block_diag',
