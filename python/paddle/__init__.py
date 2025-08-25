@@ -101,7 +101,7 @@ else:
 
     def new_init(self, *args, **kwargs):
         kwargs_cnt = len(kwargs.keys()) - int("dtype" in kwargs)
-        if kwargs_cnt > 1:
+        if kwargs_cnt:
             original_init(self, *args, **kwargs)
             return
         default_dtype = kwargs.get("dtype", "float32")
