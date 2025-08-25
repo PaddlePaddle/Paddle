@@ -27,45 +27,7 @@
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
-COMMON_DECLARE_bool(use_stride_kernel);
-
 namespace phi {
-
-inline bool CheckIsDimsMatchBool(const DDim& first, const DDim& second) {
-  int ignore_axis1 = 0, ignore_axis2 = 0;
-  for (; ignore_axis1 < first.size(); ++ignore_axis1) {
-    if (first[ignore_axis1] != 1) {
-      break;
-    }
-  }
-  for (; ignore_axis2 < second.size(); ++ignore_axis2) {
-    if (second[ignore_axis2] != 1) {
-      break;
-    }
-  }
-
-  if (second.size() == ignore_axis2) {
-    // second tensor has only one value
-    return true;
-  }
-
-  if (first.size() - ignore_axis1 >= second.size() - ignore_axis2) {
-    auto idx1 = first.size() - 1;
-    auto idx2 = second.size() - 1;
-    bool is_match = true;
-    for (; idx2 >= ignore_axis2; idx2--) {
-      if (first[idx1--] != second[idx2] && second[idx2] != 1) {
-        is_match = false;
-        break;
-      }
-    }
-    if (is_match) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 template <typename T>
 __global__ void IndexPutCudaKernel(const T* x,
@@ -155,12 +117,12 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void IndexPutKernel_V1(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const std::vector<const DenseTensor*>& indices,
-                       const DenseTensor& value,
-                       bool accumulate,
-                       DenseTensor* out) {
+void IndexPutKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<const DenseTensor*>& indices,
+                    const DenseTensor& value,
+                    bool accumulate,
+                    DenseTensor* out) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -175,26 +137,6 @@ void IndexPutKernel_V1(const Context& dev_ctx,
       indices.empty(),
       false,
       common::errors::InvalidArgument("Indices cannot be empty."));
-  for (size_t i = 0; i < indices.size(); i++) {
-    PADDLE_ENFORCE_EQ(indices[i]->meta().is_contiguous(),
-                      true,
-                      common::errors::InvalidArgument(
-                          "Indices in Index_put must be contiguous."));
-  }
-
-  DenseTensor con_x;
-  DenseTensor con_v;
-  if (!x.meta().is_contiguous()) {
-    phi::ContiguousKernel<T, Context>(dev_ctx, x, &con_x);
-  } else {
-    con_x = x;
-  }
-  if (!value.meta().is_contiguous()) {
-    phi::ContiguousKernel<T, Context>(dev_ctx, value, &con_v);
-  } else {
-    con_v = value;
-  }
-
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
@@ -207,20 +149,19 @@ void IndexPutKernel_V1(const Context& dev_ctx,
   auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(common::vectorize(bd_dim));
-  std::vector<const phi::DenseTensor*> res_indices_v(con_x.dims().size(),
-                                                     nullptr);
+  std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = int_indices_v.size(); i < con_x.dims().size(); ++i) {
+  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
-        dev_ctx, con_x.dims()[i], phi::DataType::INT64));
+        dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
   funcs::DealWithIndices<T, Context>(dev_ctx,
-                                     con_x,
+                                     x,
                                      int_indices_v,
                                      &res_indices_v,
                                      &tmp_res_indices_v,
@@ -228,141 +169,25 @@ void IndexPutKernel_V1(const Context& dev_ctx,
                                      bd_dim,
                                      &res_dim_v);
 
-  if (con_v.numel() != 1) {
+  if (value.numel() != 1) {
     tmp_value_v.emplace_back(
-        DenseTensor(con_v.dtype()).Resize(common::make_ddim(res_dim_v)));
+        DenseTensor(value.dtype()).Resize(common::make_ddim(res_dim_v)));
     ExpandKernel<T, Context>(
-        dev_ctx, con_v, IntArray(res_dim_v), &tmp_value_v[0]);
+        dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
     ptr_value = &tmp_value_v[0];
   } else {
-    ptr_value = &con_v;
+    ptr_value = &value;
   }
 
   LaunchIndexPutCudaKernel<T, Context>(
       dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-}
-
-template <typename T, typename Context>
-void IndexPutKernel_V2(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const std::vector<const DenseTensor*>& indices,
-                       const DenseTensor& value,
-                       bool accumulate,
-                       DenseTensor* out) {
-  if (out && out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-  PADDLE_ENFORCE_EQ(
-      x.dtype(),
-      value.dtype(),
-      common::errors::InvalidArgument(
-          "The data type of tensor value must be same to the data type "
-          "of tensor x."));
-  PADDLE_ENFORCE_EQ(
-      indices.empty(),
-      false,
-      common::errors::InvalidArgument("Indices cannot be empty."));
-
-  funcs::AdvancedIndex ad = funcs::make_info<T, Context>(dev_ctx, x, indices);
-  if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
-    IndexPutKernel_V1<T, Context>(dev_ctx, x, indices, value, accumulate, out);
-    return;
-  }
-
-  int64_t numel = 0;
-  int64_t num_indices = ad.indexed_sizes.size();
-
-  DenseTensorIteratorConfig config;
-  config.add_output(ad.src);
-  config.add_const_input(value);
-  for (size_t i = 0; i < ad.indices.size(); i++) {
-    config.add_const_input(*(ad.indices[i]));
-  }
-  DenseTensorIterator iter = config.build();
-
-  auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
-  auto index_ptrs = std::array<const char*, phi::DDim::kMaxRank + 1>{};
-  for (int64_t i = 0; i < num_indices; i++) {
-    sizes[i] = ad.indexed_sizes[i];
-    strides[i] = ad.indexed_strides[i];
-    index_ptrs[i] = reinterpret_cast<const char*>(iter.data_ptr(i + 2));
-  }
-
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<3>(iter);
-
-  const int64_t N = iter.numel();
-  PADDLE_ENFORCE(N >= 0 && N <= std::numeric_limits<int32_t>::max(),
-                 "N >= 0 && N <= std::numeric_limits<int32_t>::max()");
-  constexpr int nt = 128;
-  constexpr int vt = 4;
-  const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
-  auto stream = dev_ctx.stream();
-
-  auto* val_data = value.data<T>();
-
-  bool is_initialized = out->initialized();
-  T* out_data = dev_ctx.template Alloc<T>(out);
-  if (!is_initialized) {
-    StridedTensorCopy<T>(x,
-                         common::vectorize<int64_t>(x.dims()),
-                         common::vectorize<int64_t>(x.strides()),
-                         x.offset(),
-                         out);
-  }
-
-  const char* in_ptr = reinterpret_cast<const char*>(val_data);
-  char* out_ptr = reinterpret_cast<char*>(out_data);
-  funcs::index_put_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
-      N, accumulate, [=] __device__(int idx, bool accumulate) {
-        const auto offsets = offset_calc.get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
-
-        int64_t offset = 0;
-#pragma unroll
-        for (int64_t i = 0; i < num_indices; i++) {
-          int64_t index =
-              *reinterpret_cast<const int64_t*>(index_ptrs[i] + offsets[2]);
-          if (index < 0) {
-            index += sizes[i];
-          }
-          offset += index * strides[i];
-        }
-        if (accumulate) {
-          *reinterpret_cast<T*>(out_data + offset) +=
-              *reinterpret_cast<const T*>(in_data);
-        } else {
-          *reinterpret_cast<T*>(out_data + offset) =
-              *reinterpret_cast<const T*>(in_data);
-        }
-      });
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(index_put,
                    GPU,
                    ALL_LAYOUT,
-                   phi::IndexPutKernel_V1,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   bool,
-                   int16_t,
-                   uint8_t,
-                   int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(index_put,
-                   GPU,
-                   STRIDED,
-                   phi::IndexPutKernel_V2,
+                   phi::IndexPutKernel,
                    float,
                    double,
                    int,

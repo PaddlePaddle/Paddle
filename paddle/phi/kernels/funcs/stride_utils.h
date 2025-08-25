@@ -600,7 +600,7 @@ static inline std::vector<phi::DenseTensor> expand_outplace(
       target_shape = to_expand[i].dims();
       first = false;
     } else {
-      target_shape = infer_size_symdimvector(target_shape, to_expand[i].dims());
+      target_shape = InferSizeSymdimvector(target_shape, to_expand[i].dims());
     }
   }
 
