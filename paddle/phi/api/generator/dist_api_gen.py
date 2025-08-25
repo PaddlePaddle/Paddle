@@ -83,14 +83,6 @@ AUTO_PARALLEL_COND_TEMPLATE = """
   }}
 """
 
-NCCL_GROUP_KEY = """
-#if defined(PADDLE_WITH_NCCL)
-  const auto &group_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
-#else
-  const auto &group_key = std::to_string(ring_id);
-#endif
-"""
-
 NCCL_COMMCONTEXT_INIT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
@@ -104,9 +96,9 @@ NCCL_COMMCONTEXT_INIT = """
   }}
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
-  if (nranks > 1 && !comm_context_manager_.Has(group_key)) {{
+  if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
     auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    CREATE_COMM_CONTEXT(store, group_key, phi::distributed::GetDefaultPlace(), rank, nranks);
+    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), phi::distributed::GetDefaultPlace(), rank, nranks);
   }}
 #endif
 """
@@ -130,7 +122,8 @@ SET_NCCL_COMMCONTEXT = """
         nullptr,
         common::errors::Unavailable(
             "NCCLCommContext is nullptr, collective op should "
-            "has ring_id(%d) attr.", ring_id));
+            "has ring_id(%d) attr.",
+            std::to_string(ring_id)));
     #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
         "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
@@ -976,7 +969,6 @@ class DistForwardAPI(ForwardAPI):
         # Current initialization only consider the case where the parameters of op contain ring_id, nranks and rank.
         # Other cases will be addressed in the future.
         if 'ring_id' in self.attrs['names']:
-            if_condition_code += NCCL_GROUP_KEY
             if (
                 'rank' in self.attrs['names']
                 and 'nranks' in self.attrs['names']
