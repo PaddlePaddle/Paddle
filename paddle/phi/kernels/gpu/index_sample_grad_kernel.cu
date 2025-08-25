@@ -88,6 +88,9 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   size_t batch_size = index_dim[0];
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
+  if (batch_size == 0 || input_length == 0 || index_length == 0) {
+    return;
+  }
   bool same_data_in_index_row = index_length == 1 ? false : true;
 
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
