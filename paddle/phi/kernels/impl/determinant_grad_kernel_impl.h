@@ -267,10 +267,8 @@ void DeterminantGradKernel(const Context& dev_ctx,
   DenseTensor a_inv_h;
   a_inv_h.Resize(x_dims);
   dev_ctx.template Alloc<MPType>(&a_inv_h);
-  funcs::ForRange<Context> for_range_transpose(dev_ctx, a_inv.numel());
-  funcs::ConjugateTransposeFunctor<MPType> conj_trans_functor(
-      a_inv.data<MPType>(), a_inv_h.data<MPType>(), batch_count, m);
-  for_range_transpose(conj_trans_functor);
+  funcs::ConjugateTransposeFunctor<MPType, Context> conj_trans_functor;
+  conj_trans_functor(dev_ctx, a_inv, &a_inv_h);
 
   auto grad_mp = phi::Multiply<MPType, Context>(dev_ctx, a_inv_h, k);
 
