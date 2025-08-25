@@ -17,6 +17,7 @@ import argparse
 from codegen_utils import (
     FunctionGeneratorBase,
     GeneratorBase,
+    ParsePythonAPIInfoFromYAML,
 )
 
 IMPORT_TEMPLATE = """
@@ -29,12 +30,25 @@ FUNCTION_NAME_TEMPLATE = """
 def {func_name}():
 """
 
-NAME_METHOD_MAPPING_TEMPLATE = """  ('{api_name}',_{api_name})"""
+NAME_METHOD_MAPPING_TEMPLATE = """  ('{op_name}',_{op_name})"""
 
 METHODS_MAP_TEMPLATE = """
 methods_map = [
 {}
 ]
+
+"""
+FUNCTIONS_MAP_TEMPLATE = """
+funcs_map = [
+{}
+]
+
+"""
+NN_FUNCTIONS_MAP_TEMPLATE = """
+nn_funcs_map = [
+{}
+]
+
 """
 
 METHOD_TEMPLATE = """
@@ -42,13 +56,31 @@ def _{name}(*args, **kwargs):
     return _C_ops.{name}(*args, **kwargs)
 """
 SET_METHOD_TEMPLATE = """
-    # set methods for Tensor in dygraph
+    # set methods for paddle.Tensor in dygraph
     local_tensor = core.eager.Tensor
     for method_name, method in methods_map:
         setattr(local_tensor, method_name, method)
+
+"""
+SET_FUNCTION_TEMPLATE = """
+    # set functions for paddle
+    for method_name, method in funcs_map:
         setattr(paddle, method_name, method)
 
 """
+SET_NN_FUNCTION_TEMPLATE = """
+    # set functions for paddle.nn.functional
+    for method_name, method in nn_funcs_map:
+        setattr(paddle.nn.functional, method_name, method)
+"""
+# The pair of name and func which should be added to paddle
+paddle_func_map = []
+# The pair of name and func which should be added to paddle.Tensor
+tensor_method_map = []
+# The pair of name and func which should be added to paddle.nn.functional
+nn_func_map = []
+# The python api info which not in ops.yaml
+python_api_info_from_yaml = {}
 
 
 class MethodGenerator(FunctionGeneratorBase):
@@ -58,22 +90,40 @@ class MethodGenerator(FunctionGeneratorBase):
         # Generated Results
         self.Method_str = ""
 
-    def GenerateMethod(self, name):
-        self.Method_str = METHOD_TEMPLATE.format(name=name)
-
     def run(self):
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-
         if len(self.python_api_info) > 0:
             self.need_parse_python_api_args = True
             self.ParsePythonAPIInfo()
-            for name in self.python_api_names:
-                if "Tensor." in name:
-                    api_name = name.split(".")[-1]
-                    self.GenerateMethod(api_name)
-                    self.api_name = api_name
-                    break
+            self.Method_str = GenerateMethod(self.forward_api_name)
+            ClassifyAPIByPrefix(self.python_api_info, self.forward_api_name)
+
+
+def ExtractPrefix(full_name):
+    res = ""
+    for m in full_name.split(".")[:-1]:
+        res += m + '.'
+    return res
+
+
+def GenerateMethod(name):
+    return METHOD_TEMPLATE.format(name=name)
+
+
+def ClassifyAPIByPrefix(python_api_info, op_name):
+    python_api_names = python_api_info["name"]
+    name_func_mapping = NAME_METHOD_MAPPING_TEMPLATE.format(op_name=op_name)
+    for name in python_api_names:
+        prefix = ExtractPrefix(name)
+        if prefix == "paddle.":
+            paddle_func_map.append(name_func_mapping)
+        elif prefix == "paddle.Tensor.":
+            tensor_method_map.append(name_func_mapping)
+        elif prefix == "paddle.nn.functional.":
+            nn_func_map.append(name_func_mapping)
+        else:
+            raise Exception("Unsupported Prefix " + prefix, "API : " + name)
 
 
 class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
@@ -92,23 +142,34 @@ class MonkeyPatchTensorMethodsGenerator(GeneratorBase):
 
         forward_api_list = self.forward_api_list
         methods_map = []  # [("method_name",method),]
+        method_str = ""
+        # some python api info in ops.yaml
         for forward_api_content in forward_api_list:
             f_generator = MethodGenerator(forward_api_content, None)
             status = f_generator.run()
-            method_str = f_generator.Method_str
-            if method_str != "":
-                methods_map.append(
-                    NAME_METHOD_MAPPING_TEMPLATE.format(
-                        api_name=f_generator.api_name
-                    )
-                )
-            self.MonkeyPatchTensorMethods_str += method_str
-        result = ',\n '.join(methods_map)
+            method_str += f_generator.Method_str
+        # some python api info not in ops.yaml but in python_api_info.yaml
+        for ops_name, python_api_info in python_api_info_from_yaml.items():
+            method_str += GenerateMethod(ops_name)
+            ClassifyAPIByPrefix(python_api_info, ops_name)
+
+        self.MonkeyPatchTensorMethods_str += method_str
+        result = ',\n '.join(tensor_method_map)
         self.MonkeyPatchTensorMethods_str += METHODS_MAP_TEMPLATE.format(result)
+        result = ',\n '.join(paddle_func_map)
+        self.MonkeyPatchTensorMethods_str += FUNCTIONS_MAP_TEMPLATE.format(
+            result
+        )
+        result = ',\n '.join(nn_func_map)
+        self.MonkeyPatchTensorMethods_str += NN_FUNCTIONS_MAP_TEMPLATE.format(
+            result
+        )
         self.MonkeyPatchTensorMethods_str += FUNCTION_NAME_TEMPLATE.format(
             func_name="monkey_patch_generated_methods_for_tensor"
         )
         self.MonkeyPatchTensorMethods_str += SET_METHOD_TEMPLATE
+        self.MonkeyPatchTensorMethods_str += SET_FUNCTION_TEMPLATE
+        self.MonkeyPatchTensorMethods_str += SET_NN_FUNCTION_TEMPLATE
 
     def run(self):
         # Read Yaml file
@@ -125,7 +186,7 @@ def ParseArguments():
     )
     parser.add_argument('--api_yaml_path', type=str)
     parser.add_argument('--output_path', type=str)
-
+    parser.add_argument('--python_api_info_yaml_path', type=str)
     args = parser.parse_args()
     return args
 
@@ -139,6 +200,12 @@ if __name__ == "__main__":
     args = ParseArguments()
     api_yaml_path = args.api_yaml_path
     output_path = args.output_path
+    python_api_info_yaml_path = args.python_api_info_yaml_path
+
+    python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
+        python_api_info_yaml_path
+    )
+
     gen = MonkeyPatchTensorMethodsGenerator(api_yaml_path)
     gen.run()
     GenerateMonkeyPathFile(output_path, gen.MonkeyPatchTensorMethods_str)
