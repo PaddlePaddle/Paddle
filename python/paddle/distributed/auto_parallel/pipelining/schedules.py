@@ -603,7 +603,7 @@ def _manual_model_split(model, stage_idx, group, mode, pp_degree):
     return stages
 
 
-def get_pipeline_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
+def get_pipeline_schedule(model, acc_steps, loss_fn, mode, pp_degree, group):
     assert mode in [
         "VPP",
         "1F1B",
@@ -614,15 +614,15 @@ def get_pipeline_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group
     stages = _manual_model_split(model, group.rank, group, mode, pp_degree)
     if mode == "VPP":
         schedule = ScheduleVPP(
-            stages, n_microbatches=n_microbatches, loss_fn=loss_fn
+            stages, n_microbatches=acc_steps, loss_fn=loss_fn
         )
     elif mode == "1F1B":
         schedule = Schedule1F1B(
-            stages[0], n_microbatches=n_microbatches, loss_fn=loss_fn
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
         )
     else:
         schedule = ScheduleFThenB(
-            stages[0], n_microbatches=n_microbatches, loss_fn=loss_fn
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
         )
     return schedule
 
