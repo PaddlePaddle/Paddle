@@ -212,6 +212,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     NVIDIA_TF32_OVERRIDE=0)
   # End of unittests WITH single card WITHOUT timeout
 
+  py_test_modules(test_clear_param_storage_api MODULES
+                  test_clear_param_storage_api)
+
 endif()
 
 py_test_modules(test_job_schedule_profiler_range MODULES
