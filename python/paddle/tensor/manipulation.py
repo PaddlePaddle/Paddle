@@ -2743,6 +2743,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
+    url_suffix="torch/torch.split",
 )
 def split(
     x: Tensor,
@@ -7343,6 +7344,22 @@ def put_along_axis_(
             )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
+    )
+
+
+def scatter_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_add`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_add`.
+    """
+
+    return put_along_axis_(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
     )
 
 

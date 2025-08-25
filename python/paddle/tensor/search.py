@@ -644,6 +644,7 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     illegal_keys={'input', 'dim'},
     func_name='paddle.sort',
     correct_name='paddle.compat.sort',
+    url_suffix="torch/torch.sort",
 )
 def sort(
     x: Tensor,
