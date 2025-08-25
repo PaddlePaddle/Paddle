@@ -1454,7 +1454,6 @@ class TestPutAlongAxisAPIMinUInt8(TestPutAlongAxisAPIReduceLowBits):
 
 
 class TestPutAlongAxisAPIMaxUInt8(TestPutAlongAxisAPIMinUInt8):
-
     def set_op_to_test(self):
         self.op = "amax"
 

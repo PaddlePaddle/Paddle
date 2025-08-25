@@ -207,19 +207,19 @@ class TestGradSync(unittest.TestCase):
                     if dp_ring_id is None:
                         dp_ring_id = int(op.attr("ring_id"))
                     else:
-                        assert dp_ring_id == int(
-                            op.attr("ring_id")
-                        ), "gradient synchronization of dp use different communication group [{}] and [{}]".format(
-                            dp_ring_id, int(op.attr("ring_id"))
+                        assert dp_ring_id == int(op.attr("ring_id")), (
+                            "gradient synchronization of dp use different communication group [{}] and [{}]".format(
+                                dp_ring_id, int(op.attr("ring_id"))
+                            )
                         )
                 elif allreduce_count in sp_sync_indices:
                     if sp_ring_id is None:
                         sp_ring_id = int(op.attr("ring_id"))
                     else:
-                        assert sp_ring_id == int(
-                            op.attr("ring_id")
-                        ), "gradient synchronization of sp use different communication group [{}] and [{}]".format(
-                            sp_ring_id, int(op.attr("ring_id"))
+                        assert sp_ring_id == int(op.attr("ring_id")), (
+                            "gradient synchronization of sp use different communication group [{}] and [{}]".format(
+                                sp_ring_id, int(op.attr("ring_id"))
+                            )
                         )
                 else:
                     raise AssertionError(
@@ -229,16 +229,16 @@ class TestGradSync(unittest.TestCase):
 
             elif is_data_parallel_scale_op(op):
                 if scale_count in dp_sync_indices:
-                    assert dp_scale == float(
-                        op.attr("scale")
-                    ), "gradient synchronization of dp use different scale [{}] and [{}]".format(
-                        dp_scale, int(op.attr("scale"))
+                    assert dp_scale == float(op.attr("scale")), (
+                        "gradient synchronization of dp use different scale [{}] and [{}]".format(
+                            dp_scale, int(op.attr("scale"))
+                        )
                     )
                 elif scale_count in sp_sync_indices:
-                    assert sp_scale == float(
-                        op.attr("scale")
-                    ), "gradient synchronization of sp use different scale [{}] and [{}]".format(
-                        sp_scale, int(op.attr("scale"))
+                    assert sp_scale == float(op.attr("scale")), (
+                        "gradient synchronization of sp use different scale [{}] and [{}]".format(
+                            sp_scale, int(op.attr("scale"))
+                        )
                     )
                 else:
                     raise AssertionError(

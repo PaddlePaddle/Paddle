@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
-    ParamIgnoreAndAliasDecorator,
+    softmax_param_ignore_alias,
 )
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 
-@ParamIgnoreAndAliasDecorator
+@softmax_param_ignore_alias
 def softmax(
     x: Tensor,
     axis: int = -1,

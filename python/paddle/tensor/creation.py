@@ -26,7 +26,12 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.utils import deprecated
-from paddle.utils.decorator_utils import ParamAliasDecorator, SizeArgsDecorator
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+    size_args_decorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1140,6 +1145,7 @@ class MmapStorage(paddle.base.core.MmapStorage):
         return out
 
 
+@param_one_alias(["x", "input"])
 def full_like(
     x: paddle.Tensor,
     fill_value: Numeric | str,
@@ -1154,8 +1160,13 @@ def full_like(
     This function creates a tensor filled with ``fill_value`` which has identical shape of ``x`` and ``dtype``.
     If the ``dtype`` is None, the data type of Tensor is same with ``x``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``full_like(input=tensor_x, ...)`` is equivalent to ``full_like(x=tensor_x, ...)``.
+
     Args:
         x(Tensor): The input tensor which specifies shape and data type. The data type can be bool, float16, float32, float64, int32, int64.
+            alias: ``input``.
         fill_value(Scalar|Tensor): The value to fill the tensor with. Note: this value shouldn't exceed the range of the output data type.
             If ``fill_value`` is an Tensor, it should be an 0-D Tensor which represents a scalar.
         dtype(np.dtype|str, optional): The data type of output. The data type can be one
@@ -1375,7 +1386,7 @@ def fill_constant(
         return out
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def ones(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -1502,7 +1513,7 @@ def ones_like(
     )
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def zeros(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,
@@ -1640,6 +1651,7 @@ def zeros_like(
     )
 
 
+@param_two_alias(["num_rows", "n"], ["num_columns", "m"])
 def eye(
     num_rows: int | paddle.Tensor,
     num_columns: int | paddle.Tensor | None = None,
@@ -1654,10 +1666,16 @@ def eye(
 
     This function constructs 2-D Tensor with ones on the diagonal and zeros elsewhere.
 
+    .. note::
+        Alias Support: The parameter name ``n`` can be used as an alias for ``num_rows``, and ``m`` can be used as an alias for ``num_columns``.
+        For example, ``eye(n=tensor_x, m=tensor_y, ...)`` is equivalent to ``eye(num_rows=tensor_x, num_columns=tensor_y, ...)``.
+
     Args:
         num_rows(int | paddle.Tensor): the number of rows in each batch Tensor.
+            Alias: ``n``.
         num_columns(int | paddle.Tensor | None, optional): the number of columns in each batch Tensor.
             If None, default: num_rows.
+            Alias: ``m``.
         dtype(np.dtype|str, optional): The data type of the returned Tensor.
             It should be int32, int64, float16, float32, float64, complex64, complex128. Default: if None, the data type
             is float32.
@@ -2055,13 +2073,14 @@ def arange(
     reason=(
         "paddle.range is deprecated and will be removed in a future release because its behavior is inconsistent with Python's range builtin."
         "Instead, use paddle.arange, which produces values in [start, end)"
-    )
+    ),
+    level=1,
 )
 def range(
     start: float | paddle.Tensor = 0,
     end: float | paddle.Tensor | None = None,
     step: float | paddle.Tensor = 1,
-    dtype=None,
+    dtype: DTypeLike = None,
     *,
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
@@ -2140,19 +2159,7 @@ def range(
         start = 0
 
     if dtype is None:
-        for val in [start, end, step]:
-            if isinstance(val, (Variable, paddle.pir.Value)):
-                if not paddle.is_integer(val):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
-            else:
-                if not isinstance(val, np.integer) and not isinstance(val, int):
-                    dtype = paddle.get_default_dtype()
-                    break
-                else:
-                    dtype = 'int64'
+        dtype = paddle.get_default_dtype()
 
     is_value_input = (
         not isinstance(start, (Variable, paddle.pir.Value))
@@ -2933,7 +2940,7 @@ def diag(
         return out
 
 
-@SizeArgsDecorator()
+@size_args_decorator
 def empty(
     shape: ShapeLike,
     dtype: DTypeLike | None = None,

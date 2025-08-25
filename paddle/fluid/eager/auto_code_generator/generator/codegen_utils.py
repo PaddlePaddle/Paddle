@@ -499,10 +499,8 @@ class FunctionGeneratorBase:
         self.dygraph_pre_process = (
             ""  # The pre_process function calling code for dygraph
         )
-        self.static_pre_process = (
-            ""  # The pre_process function calling code for static graph
-        )
-        self.args_parser_func_name = ""  # The custom args parser function
+
+        self.args_mapper_func_name = None  # The custom args parser function
         self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
@@ -535,20 +533,19 @@ class FunctionGeneratorBase:
             self.args_alias_map = args_alias
         if 'pre_process' in python_api_info.keys():
             pre_process = python_api_info['pre_process']
-            if 'func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['func']
-                self.static_pre_process = pre_process['func']
-                # TODO check len(pre_process) > 1
+            if pre_process is not None:
+                if 'dygraph_func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['dygraph_func']
+                elif 'func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['func']
 
-            if 'dygraph_func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['dygraph_func']
-            if 'static_func' in pre_process.keys():
-                self.static_pre_process = pre_process['static_func']
-        if (
-            'args_parser' in python_api_info.keys()
-            and 'func' in python_api_info['args_parser']
-        ):
-            self.args_parser_func_name = python_api_info['args_parser']['func']
+        if 'args_mapper' in python_api_info.keys():
+            args_mapper = python_api_info['args_mapper']
+            if args_mapper is not None:
+                if 'dygraph_func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['dygraph_func']
+                elif 'func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents

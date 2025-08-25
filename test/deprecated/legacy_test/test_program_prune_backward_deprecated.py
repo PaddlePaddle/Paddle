@@ -363,12 +363,12 @@ def optimization_in_pylayer_net(with_optimize=False):
 
 class TestProgramPruneBackward(unittest.TestCase):
     def program_compare(self, program_a, program_b):
-        assert isinstance(
-            program_a, base.framework.Program
-        ), "The first argument should be base.framework.Program."
-        assert isinstance(
-            program_b, base.framework.Program
-        ), "The second argument should be base.framework Program."
+        assert isinstance(program_a, base.framework.Program), (
+            "The first argument should be base.framework.Program."
+        )
+        assert isinstance(program_b, base.framework.Program), (
+            "The second argument should be base.framework Program."
+        )
 
         self.assertEqual(len(program_a.blocks), len(program_b.blocks))
         for idx in range(len(program_a.blocks)):

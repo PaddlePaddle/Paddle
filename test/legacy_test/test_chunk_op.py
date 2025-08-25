@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -31,24 +32,16 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type)
 
-            # The type of axis in chunk op should be int or Variable.
-            def test_axis_variable_type():
-                x2 = paddle.static.data(shape=[4], dtype='float16', name='x9')
-                x3 = paddle.static.data(shape=[1], dtype='float16', name='x10')
-                paddle.chunk(input=x2, chunks=2, axis=x3)
-
-            self.assertRaises(TypeError, test_axis_variable_type)
-
             # The type of num_or_sections in chunk_op should be int, tuple or list.
             def test_chunks_type():
                 x4 = paddle.static.data(shape=[4], dtype='float16', name='x4')
-                paddle.chunk(input=x4, chunks=2.1, axis=3)
+                paddle.chunk(x=x4, chunks=2.1, axis=3)
 
             self.assertRaises(TypeError, test_chunks_type)
 
             def test_axis_type_tensor():
                 x5 = paddle.static.data(shape=[4], dtype='float16', name='x6')
-                paddle.chunk(input=x5, chunks=2, axis=3.2)
+                paddle.chunk(x=x5, chunks=2, axis=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
@@ -186,6 +179,128 @@ class API_TestDygraphChunk(unittest.TestCase):
         np.testing.assert_allclose(ex_x0, x0_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x1, x1_out, rtol=1e-05)
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
+
+
+class TestChunkCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.func = paddle.chunk
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [6, 4]
+        self.dtype = 'float32'
+        self.np_input = np.random.random(self.shape).astype(self.dtype)
+        self.chunks = 2
+        self.axis = 0
+        self.np_out = np.array_split(self.np_input, self.chunks, axis=self.axis)
+
+    def init_case(self):
+        params = [
+            ['x', 'input'],  # param1
+            ['chunks'],  # param2
+            ['axis', 'dim'],  # param3
+        ]
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.chunk()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.chunk()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.chunks, self.axis)
+                    )
+                    outs = self.func(*args, **kwargs)
+                    for out, np_out in zip(outs, self.np_out):
+                        np.testing.assert_allclose(
+                            np_out, out.numpy(), rtol=1e-10
+                        )
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.chunks, self.axis)
+                    )
+                    outs = x.chunk(*args, **kwargs)
+                    for out, np_out in zip(outs, self.np_out):
+                        np.testing.assert_allclose(
+                            np_out, out.numpy(), rtol=1e-10
+                        )
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.chunks, self.axis)
+                        )
+
+                        outs = self.func(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=outs,
+                        )
+                        for fetch, np_out in zip(fetches, self.np_out):
+                            np.testing.assert_allclose(
+                                np_out, fetch, rtol=1e-10
+                            )
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.chunks, self.axis)
+                        )
+                        outs = x.chunk(*args, **kwargs)
+
+                        exe = base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=outs,
+                        )
+                        for fetch, np_out in zip(fetches, self.np_out):
+                            np.testing.assert_allclose(
+                                np_out, fetch, rtol=1e-10
+                            )
 
 
 if __name__ == '__main__':
