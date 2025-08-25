@@ -78,9 +78,6 @@ class TestDistCheckpoint(unittest.TestCase):
         self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
         self.temp_dir = tempfile.TemporaryDirectory()
 
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
     def _get_single_loss(self, dataloader, unsharded_state_dict):
         with paddle.LazyGuard():
             model = SingleMlpModel()
