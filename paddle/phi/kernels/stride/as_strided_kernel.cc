@@ -19,20 +19,37 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
-bool checkInBoundsForMemory(const std::vector<int64_t>& dims,
+void checkInBoundsForMemory(const std::vector<int64_t>& dims,
                             const std::vector<int64_t>& strides,
+                            const DDim& dim,
+                            const DDim& stride,
                             int64_t offset,
                             size_t memory_size,
                             phi::DataType dtype) {
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    strides.size(),
+                    common::errors::InvalidArgument(
+                        "The size of dims and strides should be equal."));
   size_t size = 1;
   for (size_t i = 0; i < dims.size(); i++) {
     if (dims[i] == 0) {
-      return true;
+      return;
     }
     size += strides[i] * (dims[i] - 1);
   }
   size_t size_bytes = (size + offset) * phi::SizeOf(dtype);
-  return size_bytes <= memory_size;
+  PADDLE_ENFORCE_LE(
+      size_bytes,
+      memory_size,
+      common::errors::InvalidArgument(
+          "sizes: [%s], strides: [%s], offset: %d, dtype: %s, size_bytes: %d is"
+          " out of bounds for input memory_size: %d.",
+          dim,
+          stride,
+          offset,
+          dtype,
+          size_bytes,
+          memory_size));
 }
 
 template <typename Context>
@@ -51,17 +68,20 @@ void AsStridedKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
-  if (!checkInBoundsForMemory(
-          dims, stride, offset, input.memory_size(), input.dtype())) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "sizes: [%s], strides: [%s], offset: %d, dtype: %s is out "
-        "of bounds for input memory_size: %d.",
-        meta.dims,
-        meta.strides,
-        offset,
-        input.dtype(),
-        input.memory_size()));
-  }
+  checkInBoundsForMemory(dims,
+                         stride,
+                         meta.dims,
+                         meta.strides,
+                         offset,
+                         input.memory_size(),
+                         input.dtype());
+  PADDLE_ENFORCE_GE(
+      offset,
+      0,
+      common::errors::InvalidArgument(
+          "The offset must be greater than or equal to 0. But received: "
+          "offset = %d.",
+          offset));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);
