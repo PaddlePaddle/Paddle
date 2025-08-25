@@ -115,6 +115,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 __all__ = []
 
 _supported_int_dtype_ = [
@@ -3300,6 +3302,11 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"input", "dim", "other"},
+    func_name="paddle.max",
+    correct_name="paddle.compat.max",
+)
 def max(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3459,6 +3466,11 @@ def max(
             return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"input", "dim", "other"},
+    func_name="paddle.min",
+    correct_name="paddle.compat.min",
+)
 def min(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -4514,7 +4526,7 @@ def logcumsumexp(
         x (Tensor): The input tensor, with data type float32, float64, float16,
             bfloat16, uint8, int8, int16, int32, int64
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4608,7 +4620,7 @@ def cumprod(
         x (Tensor): the input tensor need to be cumproded.
         dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank) or None,
                     where x.rank means the dimensions of the input tensor x and -1 means the last dimension. The default (None) is to compute the cumprod over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
@@ -4739,7 +4751,7 @@ def prod(
             alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
-        dtype (str|paddle.dtype|np.dtype, optional): The desired date type of returned tensor, can be bfloat16,
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The desired date type of returned tensor, can be bfloat16,
             float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before
             operator performed. This is very useful for avoiding data type overflows. The default value is None,
             the dtype of output is the same as input Tensor `x`.
