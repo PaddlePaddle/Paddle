@@ -25,7 +25,7 @@ from utils import dygraph_guard, static_guard
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
+from paddle import base, compat
 from paddle.base import core
 
 np.random.seed(10)
@@ -749,6 +749,73 @@ class TestSoftmaxAPI_CompatibleWithTorch(TestSoftmaxAPI):
                 else:
                     out = func(x, dim=-1, _stacklevel=3, dtype=np.float64)
                     out_ref = ref_softmax(x_np, axis=-1, dtype=np.float64)
+                np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+        paddle.enable_static()
+
+
+class TestCompatSoftmaxAPI_CompatibleWithTorch(TestSoftmaxAPI):
+    # default value from torch.softmax
+    def _get_softmax_dim(self, ndim: int) -> int:
+        if ndim == 0 or ndim == 1 or ndim == 3:
+            ret = 0
+        else:
+            ret = 1
+        return ret
+
+    def setUp(self):
+        self.place = get_device_place()
+        self.executed_api()
+        self.x_np_list = [
+            np.random.uniform(-1.0, 1.0, list(range(2, ndim + 2))).astype(
+                'float32'
+            )
+            for ndim in range(1, 6)
+        ]
+        self.out_ref_list = [
+            ref_softmax(x_np, axis=self._get_softmax_dim(x_np.ndim), dtype=None)
+            for x_np in self.x_np_list
+        ]
+
+    def test_static_check(self):
+        with static_guard():
+            for func in [compat.softmax]:
+                for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
+                    with paddle.static.program_guard(paddle.static.Program()):
+                        x = paddle.static.data('X', x_np.shape, 'float32')
+                        out1 = func(input=x, dim=None, _stacklevel=3)
+                        out2 = func(x, None, 3)
+                        exe = paddle.static.Executor(self.place)
+                        res = exe.run(feed={'X': x_np}, fetch_list=[out1, out2])
+                        for rr in res:
+                            np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
+
+    def test_dygraph_check(self):
+        paddle.disable_static(self.place)
+        for func in [compat.softmax]:
+            for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
+                x = paddle.to_tensor(x_np)
+                out1 = func(input=x, dim=None, _stacklevel=3)
+                x = paddle.to_tensor(x_np)
+                out2 = func(x, None, 3)
+                for r in [out1, out2]:
+                    np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+                # explicitly use float32 for ROCm, as MIOpen does not yet support float64
+                if core.is_compiled_with_rocm():
+                    out = func(x, dim=None, _stacklevel=3, dtype=np.float32)
+                    out_ref = ref_softmax(
+                        x_np,
+                        axis=self._get_softmax_dim(x_np.ndim),
+                        dtype=np.float32,
+                    )
+                else:
+                    out = func(x, dim=None, _stacklevel=3, dtype=np.float64)
+                    out_ref = ref_softmax(
+                        x_np,
+                        axis=self._get_softmax_dim(x_np.ndim),
+                        dtype=np.float64,
+                    )
                 np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()

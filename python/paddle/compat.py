@@ -14,8 +14,9 @@
 
 from .tensor.compat import (
     Unfold,
+    softmax,
     sort,
     split,
 )
 
-__all__ = ['split', 'sort', 'Unfold']
+__all__ = ['split', 'sort', 'Unfold', 'softmax']

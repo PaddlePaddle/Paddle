@@ -159,7 +159,15 @@ def softmax(
               [0.03205860, 0.08714432, 0.23688282, 0.64391426],
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
+    return _softmax_impl(x, axis, dtype, name)
 
+
+def _softmax_impl(
+    x: Tensor,
+    axis: int = -1,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
     if (
         (dtype is not None)
         and (not isinstance(dtype, core.VarDesc.VarType))
