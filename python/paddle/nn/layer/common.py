@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
+from paddle.base.param_attr import ParamAttr
+from paddle.utils.decorator_utils import param_one_alias
 
 from .. import functional as F
 from .layers import Layer
@@ -31,7 +33,9 @@ if TYPE_CHECKING:
         DataLayout1DVariant,
         DataLayout2D,
         DataLayout3D,
+        DTypeLike,
         ParamAttrLike,
+        PlaceLike,
         ShapeLike,
         Size2,
         Size4,
@@ -1720,14 +1724,23 @@ class Embedding(Layer):
             True because sparse update is faster. But some optimizer does not support sparse update,
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these case, sparse must be False. Default: False.
+        scale_grad_by_freq(bool, optional): Indicating whether to scale the gradients by the inverse frequency of the
+            word ids in input `x`. Default: False.
+        _weight(Tensor, optional): The learnable weights to be applied to the input embeddings.
+            If :attr:`_weight` is specified, the :attr:`weight_attr` is ignored. Default: None.
+        _freeze(bool, optional): Indicates whether to freeze the embedding weights when
+            :attr:`_weight` is provided. If set to True, the provided embedding tensor
+            will be treated as a fixed lookup table and will not be updated during training.
+            If set to False, the provided tensor remains learnable. Only takes effect when
+            :attr:`_weight` is specified. Default: False.
+        device(str, optional): Device where the computation takes place. Default: None
+        dtype(str, optional): Data type of the weights and bias. Default: None.
         weight_attr(ParamAttr|None, optional): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`num_embeddings` . Then :ref:`api_paddle_nn_initializer_Assign`
             is used to load custom or pre-trained word vectors. See code example for details.
-        scale_grad_by_freq(bool, optional): Indicating whether to scale the gradients by the inverse frequency of the
-            word ids in input `x`. Default: False.
         name(str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and
             None by default.
 
@@ -1783,9 +1796,14 @@ class Embedding(Layer):
         padding_idx: float | None = None,
         max_norm: float | None = None,
         norm_type: float = 2.0,
-        sparse: bool = False,
-        weight_attr: ParamAttrLike | None = None,
+        *,
         scale_grad_by_freq: bool = False,
+        sparse: bool = False,
+        _weight: Tensor | None = None,
+        _freeze: bool = False,
+        device: str | PlaceLike | None = None,
+        dtype: DTypeLike | None = None,
+        weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
     ) -> None:
         super().__init__()
@@ -1797,6 +1815,7 @@ class Embedding(Layer):
         self._norm_type = norm_type
         self._padding_idx = padding_idx
         self._scale_grad_by_freq = scale_grad_by_freq
+        self._device = device
 
         if self._num_embeddings <= 0:
             raise ValueError("num_embeddings must be gather than 0")
@@ -1819,10 +1838,22 @@ class Embedding(Layer):
                 f"padding_idx must be within [-{num_embeddings}, {num_embeddings})"
             )
 
-        self._dtype = self._helper.get_default_dtype()
+        self._dtype = (
+            self._helper.get_default_dtype() if dtype is None else dtype
+        )
         self._size = [self._num_embeddings, self._embedding_dim]
 
-        self._weight_attr = weight_attr
+        if _weight is not None:
+            assert list(_weight.shape) == [
+                num_embeddings,
+                embedding_dim,
+            ], "Shape of weight does not match num_embeddings and embedding_dim"
+            self._weight_attr = ParamAttr(
+                initializer=paddle.nn.initializer.Assign(value=_weight),
+                trainable=not _freeze,
+            )
+        else:
+            self._weight_attr = weight_attr
         self._remote_prefetch = False
         self._name = name
         self.weight = self.create_parameter(
@@ -1830,12 +1861,14 @@ class Embedding(Layer):
             shape=self._size,
             dtype=self._dtype,
             is_bias=False,
+            device=self._device,
         )
 
         if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
+    @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
             x,
