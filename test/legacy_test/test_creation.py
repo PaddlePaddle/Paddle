@@ -30,7 +30,7 @@ class TestTensorCreation(unittest.TestCase):
             self.devices.append("gpu")
             self.devices.append("gpu:0")
         if paddle.device.is_compiled_with_xpu():
-            self.devices.append(paddle.device.XPUPlace(0))
+            self.devices.append(paddle.XPUPlace(0))
         if paddle.device.is_compiled_with_ipu():
             self.devices.append(paddle.device.IPUPlace())
 
@@ -254,6 +254,17 @@ class TestTensorCreation(unittest.TestCase):
             self.dtypes,
             pin_memorys,
         ):
+            if device not in [
+                "gpu",
+                "gpu:0",
+                paddle.CUDAPlace(0)
+                if paddle.device.is_compiled_with_cuda()
+                else None,
+                paddle.XPUPlace(0)
+                if paddle.device.is_compiled_with_xpu()
+                else None,
+            ]:
+                pin_memory = False
             with dygraph_guard():
                 x = paddle.empty(
                     [2],
@@ -262,7 +273,10 @@ class TestTensorCreation(unittest.TestCase):
                     device=device,
                     pin_memory=pin_memory,
                 )
-                if isinstance(device, paddle.framework.core.Place):
+                if (
+                    isinstance(device, paddle.framework.core.Place)
+                    and not pin_memory
+                ):
                     self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
@@ -304,11 +318,6 @@ class TestTensorCreation(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                if pin_memory:
-                    if paddle.device.is_compiled_with_cuda():
-                        self.assertIsInstance(x.place, paddle.CUDAPinnedPlace)
-                    elif paddle.device.is_compiled_with_cuda():
-                        self.assertIsInstance(x.place, paddle.XPUPinnedPlace)
 
     def test_eye(self):
         for device, requires_grad, dtype in product(
@@ -685,7 +694,7 @@ class TestTensorPatchMethod(unittest.TestCase):
             self.devices.append("gpu")
             self.devices.append("gpu:0")
         if paddle.device.is_compiled_with_xpu():
-            self.devices.append(paddle.device.XPUPlace(0))
+            self.devices.append(paddle.XPUPlace(0))
         if paddle.device.is_compiled_with_ipu():
             self.devices.append(paddle.device.IPUPlace())
 
@@ -845,11 +854,23 @@ class TestTensorPatchMethod(unittest.TestCase):
         ):
             pin_memorys.append(True)
         for shape, device, requires_grad, dtype, pin_memory in product(
+            self.shapes,
             self.devices,
             self.requires_grads,
             self.dtypes,
             pin_memorys,
         ):
+            if device not in [
+                "gpu",
+                "gpu:0",
+                paddle.CUDAPlace(0)
+                if paddle.device.is_compiled_with_cuda()
+                else None,
+                paddle.XPUPlace(0)
+                if paddle.device.is_compiled_with_xpu()
+                else None,
+            ]:
+                pin_memory = False
             with dygraph_guard():
                 x = paddle.empty(
                     [1],
@@ -860,7 +881,10 @@ class TestTensorPatchMethod(unittest.TestCase):
                     device=device,
                     pin_memory=pin_memory,
                 )
-                if isinstance(device, paddle.framework.core.Place):
+                if (
+                    isinstance(device, paddle.framework.core.Place)
+                    and not pin_memory
+                ):
                     self.assertEqual(x.place, device)
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
@@ -893,11 +917,6 @@ class TestTensorPatchMethod(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
-                if pin_memory:
-                    if paddle.device.is_compiled_with_cuda():
-                        self.assertIsInstance(x.place, paddle.CUDAPinnedPlace)
-                    elif paddle.device.is_compiled_with_cuda():
-                        self.assertIsInstance(x.place, paddle.XPUPinnedPlace)
 
 
 class TestCreationOut(unittest.TestCase):

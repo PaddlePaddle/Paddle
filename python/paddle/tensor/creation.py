@@ -2871,18 +2871,25 @@ def empty(
         )
         if (
             pin_memory
+            and in_dynamic_mode()
             and device is not None
             and not isinstance(
                 device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
             )
         ):
-            if isinstance(device, core.CUDAPlace):
+            if isinstance(device, core.CUDAPlace) or (
+                isinstance(device, core.Place) and device.is_gpu_place()
+            ):
                 device = core.CUDAPinnedPlace()
-            elif isinstance(device, core.XPUPlace):
+            elif isinstance(device, core.XPUPlace) or (
+                isinstance(device, core.Place) and device.is_xpu_place()
+            ):
                 device = core.XPUPinnedPlace()
             else:
                 raise RuntimeError(
-                    f"Pinning memory is not supported for {device}."
+                    f"Pinning memory is not supported for {device}., "
+                    f"{in_dynamic_mode()}, "
+                    f"device = {device}, {type(device)}"
                 )
         tensor = _C_ops.empty(
             shape,
