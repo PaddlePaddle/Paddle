@@ -21,7 +21,6 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import index_select  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -375,6 +374,84 @@ def argmin(
             type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
         )
         out.stop_gradient = True
+        return out
+
+
+def index_select(
+    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
+) -> Tensor:
+    """
+
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using
+    the entries in ``index`` which is a Tensor. The returned tensor has the same number
+    of dimensions as the original ``x`` tensor. The dim-th dimension has the same
+    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
+
+    Args:
+        x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
+        index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
+        axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, A Tensor with same data type as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+            ...                       [5.0, 6.0, 7.0, 8.0],
+            ...                       [9.0, 10.0, 11.0, 12.0]])
+            >>> index = paddle.to_tensor([0, 1, 1], dtype='int32')
+            >>> out_z1 = paddle.index_select(x=x, index=index)
+            >>> print(out_z1.numpy())
+            [[1. 2. 3. 4.]
+             [5. 6. 7. 8.]
+             [5. 6. 7. 8.]]
+            >>> out_z2 = paddle.index_select(x=x, index=index, axis=1)
+            >>> print(out_z2.numpy())
+            [[ 1.  2.  2.]
+             [ 5.  6.  6.]
+             [ 9. 10. 10.]]
+    """
+
+    if in_dynamic_or_pir_mode():
+        return _C_ops.index_select(x, index, axis)
+    else:
+        helper = LayerHelper("index_select", **locals())
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'complex64',
+                'complex128',
+            ],
+            'paddle.tensor.search.index_select',
+        )
+        check_variable_and_dtype(
+            index,
+            'index',
+            ['int32', 'int64'],
+            'paddle.tensor.search.index_select',
+        )
+
+        out = helper.create_variable_for_type_inference(x.dtype)
+
+        helper.append_op(
+            type='index_select',
+            inputs={'X': x, 'Index': index},
+            outputs={'Out': out},
+            attrs={'dim': axis},
+        )
         return out
 
 
