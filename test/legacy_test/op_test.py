@@ -60,6 +60,7 @@ from paddle import base
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
+from paddle.base.core import DataType, VarDesc
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
     OpProtoHolder,
@@ -164,19 +165,25 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == paddle.float32:
+    if tensor_to_check_dtype in [VarDesc.VarType.FP32, DataType.FLOAT32]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.float64:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP64, DataType.FLOAT64]:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == paddle.float16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP16, DataType.FLOAT16]:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == paddle.bfloat16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.BF16, DataType.BFLOAT16]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.complex64:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX64,
+        DataType.COMPLEX64,
+    ]:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == paddle.complex128:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX128,
+        DataType.COMPLEX128,
+    ]:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -410,8 +417,8 @@ def get_devices():
     if (
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
-        or not paddle.is_compiled_with_cuda()
-    ):
+        or not core.is_compiled_with_cuda()
+    ) and not is_custom_device():
         devices.append('cpu')
     if paddle.is_compiled_with_cuda():
         devices.append('gpu')
@@ -1208,7 +1215,7 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 if self.strided_input_type == "transpose":
                     args[1] = self.transpose_api(args[1], self.perm)
                 elif self.strided_input_type == "as_stride":
@@ -1220,6 +1227,13 @@ class OpTest(unittest.TestCase):
                         f"Unsupported test type {self.strided_input_type}."
                     )
             ret_tuple = python_api(*args)
+            if hasattr(self, "test_stride_backward"):
+                if self.strided_input_type == "transpose":
+                    ret_tuple = self.transpose_api(ret_tuple, self.perm)
+                else:
+                    raise TypeError(
+                        f"Unsupported test type {self.strided_input_type}."
+                    )
             result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
@@ -1234,7 +1248,7 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             input_vars = self.inputs
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 input_vars = self.inputs_stride
             dygraph_tensor_inputs = (
                 egr_inps

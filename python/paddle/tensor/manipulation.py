@@ -1352,7 +1352,11 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 
 @ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
-    x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int | Tensor = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -1381,6 +1385,7 @@ def concat(
             it works the same way as ``axis+R``. Default is 0.
             alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -1423,7 +1428,7 @@ def concat(
     if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        return _C_ops.concat(input, axis)
+        return _C_ops.concat(input, axis, out=out)
     elif in_pir_mode():
 
         def is_in_amp_mode():
@@ -2641,6 +2646,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
+    url_suffix="torch/torch.split",
 )
 def split(
     x: Tensor,
@@ -3842,6 +3848,7 @@ def unique(
         return tuple(outs)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unsqueeze(
     x: Tensor,
     axis: int | Sequence[Tensor | int] | Tensor,
@@ -3856,12 +3863,18 @@ def unsqueeze(
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unsqueeze(input=tensor_x, dim=1)`` is equivalent to ``unsqueeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                     If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
+            alias: ``dim``.
         name (str|None, optional): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -4808,7 +4821,9 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
-    x: Tensor, shape: ShapeLike, name: str | None = None
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -6834,7 +6849,12 @@ def scatter_add(
 
 @ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
-    arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
+    arr: Tensor,
+    indices: Tensor,
+    axis: int,
+    broadcast: bool = True,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -6852,9 +6872,10 @@ def take_along_axis(
         axis (int) : The axis to take 1d slices along.
             alias: ``dim``.
         broadcast (bool, optional): whether the indices broadcast.
+        out (Tensor, optional): The output Tensor. If set, the output will be written to this Tensor.
 
     Returns:
-        Tensor, The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr.
 
     Examples:
         .. code-block:: python
@@ -6901,7 +6922,7 @@ def take_along_axis(
                 )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.take_along_axis(arr, indices, axis)
+        return _C_ops.take_along_axis(arr, indices, axis, out=out)
     else:
         check_variable_and_dtype(
             arr,
@@ -7241,6 +7262,22 @@ def put_along_axis_(
             )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
+    )
+
+
+def scatter_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_add`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_add`.
+    """
+
+    return put_along_axis_(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
     )
 
 

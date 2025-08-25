@@ -22,6 +22,7 @@ from api_gen import (
     VECTOR_TYPE,
     CodeGen,
 )
+from gen_utils import ParsePythonAPIInfoFromYAML
 
 args_default_mapping = {
     "x": ["input"],
@@ -29,6 +30,8 @@ args_default_mapping = {
     "axis": ["dim"],
     "keepdims": ["keepdim"],
 }
+# The python api info which not in ops.yaml
+python_api_info_from_yaml = {}
 DISABLE_TIPS = (
     "// This part of the function will be performed by a custom args mapper"
 )
@@ -232,7 +235,7 @@ MUTABLE_ATTR_OBJ_TEMPLATE = """
 MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_WITH_DEFAULT_VALUE_TEMPLATE = """
         PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs);"""
 MUTABLE_ATTR_OBJ_FROM_ARGS_KWARGS_TEMPLATE = """
-        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs, false);"""
+        PyObject *{name}_obj = GetItemFromArgsOrKWArgs(args, {index},kwargs,{keywords}, nargs, &remaining_kwargs,false);"""
 
 MUTABLE_ATTR_CAST_TEMPLATE = """
             {type} {name_} = {cast_func}({name}_obj, "{api_name}", {index});"""
@@ -270,7 +273,7 @@ TYPE_TO_FUNC_MAP = {
     "paddle::Place": "CastPyArg2Place",
     "phi::Place": "CastPyArg2Place",
     "Place": "CastPyArg2Place",
-    "phi::DataType": "CastPyArg2DataTypeDirectly",
+    "phi::DataType": "CastPyArg2DataType",
 }
 
 TYPE_TO_PHI_DATATYPE_MAP = {
@@ -436,6 +439,8 @@ class PythonCCodeGen(CodeGen):
         return ret
 
     def _gen_attrs_py_obj_with_mutable(self, op_info, args_alias_map={}):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         input_size = len(op_info.input_name_list)
         name_list = op_info.attribute_name_list
         default_value_list = op_info.attribute_default_value_list
@@ -475,6 +480,8 @@ class PythonCCodeGen(CodeGen):
         return ret
 
     def _gen_cast_attrs(self, op_info, op_name):
+        if self.use_custom_args_mapper:
+            return DISABLE_TIPS
         input_size = len(op_info.input_name_list)
         attr_name_list = op_info.attribute_name_list
         attr_type_list = op_info.attribute_build_arg_type_list
@@ -649,7 +656,10 @@ class PythonCCodeGen(CodeGen):
             all_params_list.append(name)
         attribute_name_list = op_info.attribute_name_list
         attribute_type_list = op_info.attribute_build_arg_type_list
+        mutable_attr_name_list = op_info.mutable_attribute_name_list
         for name, type in zip(attribute_name_list, attribute_type_list):
+            if name in mutable_attr_name_list:
+                type = OP_INPUT
             custom_args_mapper_str += PARAMS_DECLARE_TEMPLE.format(
                 name=name, type=_trans_dtype(type)
             )
@@ -698,6 +708,8 @@ class PythonCCodeGen(CodeGen):
         self.need_parse_python_api_args = False
         self.use_custom_args_mapper = False
 
+        if op_name in python_api_info_from_yaml.keys():
+            python_api_info = python_api_info_from_yaml[op_name]
         if python_api_info is not None:
             self.need_parse_python_api_args = True
             if "args_alias" in python_api_info.keys():
@@ -835,6 +847,7 @@ def ParseArguments():
     )
     parser.add_argument('--op_yaml_files', type=str)
     parser.add_argument('--op_compat_yaml_file', type=str)
+    parser.add_argument('--python_api_info_yaml_path', type=str)
     parser.add_argument('--namespaces', type=str)
     parser.add_argument('--python_c_def_h_file', type=str)
     parser.add_argument('--python_c_def_cc_file', type=str)
@@ -845,6 +858,12 @@ if __name__ == '__main__':
     args = ParseArguments()
     op_yaml_files = args.op_yaml_files.split(",")
     op_compat_yaml_file = args.op_compat_yaml_file
+
+    python_api_info_yaml_path = args.python_api_info_yaml_path
+    python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
+        python_api_info_yaml_path
+    )
+
     if args.namespaces is not None:
         namespaces = args.namespaces.split(",")
     python_c_def_h_file = args.python_c_def_h_file
