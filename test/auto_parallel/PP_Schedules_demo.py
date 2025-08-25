@@ -508,9 +508,7 @@ class Test_Schedules:
             parameters=self.model.parameters(),
             grad_clip=paddle.nn.ClipGradByGlobalNorm(1.0),
         )
-        if (
-            dist.in_auto_parallel_align_mode()
-        ):  # When in auto parallel align mode, patching the optimizer step function
+        if dist.in_auto_parallel_align_mode():  # When in auto parallel align mode, patching the optimizer step function
             orig_step = (
                 opt.step.__func__ if hasattr(opt.step, "__func__") else opt.step
             )

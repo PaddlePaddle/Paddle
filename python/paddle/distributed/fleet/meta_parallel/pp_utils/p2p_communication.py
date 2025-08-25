@@ -131,9 +131,9 @@ class SendRecvMeta:
             stop_grads.append(stop_gradient)
             keys.append(key)
 
-        assert (
-            len(data) == 0
-        ), f"send data must be parsed zero, now it is {data}"
+        assert len(data) == 0, (
+            f"send data must be parsed zero, now it is {data}"
+        )
 
         if tensor_type == 0:
             self.recv_shape_message = shapes[0]
@@ -247,15 +247,15 @@ class SendRecvMeta:
         actual_shape, actual_dtype, actual_key = self._obtain_send_message(
             tensor
         )
-        assert (
-            self.send_shape_message == actual_shape
-        ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
-        assert (
-            self.send_dtype_message == actual_dtype
-        ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
-        assert (
-            self.send_key_message == actual_key
-        ), f"send_key_message: {self.send_key_message}, actual_key: {actual_key}"
+        assert self.send_shape_message == actual_shape, (
+            f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
+        )
+        assert self.send_dtype_message == actual_dtype, (
+            f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
+        )
+        assert self.send_key_message == actual_key, (
+            f"send_key_message: {self.send_key_message}, actual_key: {actual_key}"
+        )
 
     def __repr__(self):
         return f"send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}"
@@ -270,9 +270,9 @@ def _is_valid_send_recv_partial(tensor, mp_degree):
 
 
 def _send_on_calc_stream(tensor, group, dst, nranks=1, rank_id=0):
-    assert (
-        group is not None
-    ), "Group should be an instance for _send_on_calc_stream."
+    assert group is not None, (
+        "Group should be an instance for _send_on_calc_stream."
+    )
     dst_rank_in_group = group.get_group_rank(dst)
     if _is_valid_send_recv_partial(tensor, nranks):
         return group.process_group.send_partial_on_calc_stream(
@@ -285,9 +285,9 @@ def _send_on_calc_stream(tensor, group, dst, nranks=1, rank_id=0):
 
 
 def _recv_on_calc_stream(tensor, group, src, nranks=1, rank_id=0):
-    assert (
-        group is not None
-    ), "Group should be an instance for _recv_on_calc_stream."
+    assert group is not None, (
+        "Group should be an instance for _recv_on_calc_stream."
+    )
     src_rank_in_group = group.get_group_rank(src)
     if _is_valid_send_recv_partial(tensor, nranks):
         return group.process_group.recv_partial_on_calc_stream(
@@ -918,9 +918,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_forward_recv_backward").start()
 
-        assert (
-            not self._dynamic_shape
-        ), "p2p_helper.send_forward_recv_backward function doesn't support dynamic_shape now"
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_forward_recv_backward function doesn't support dynamic_shape now"
+        )
 
         if pp_last_stage:
             output_tensor_grad = None
@@ -944,9 +944,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_backward_recv_forward").start()
 
-        assert (
-            not self._dynamic_shape
-        ), "p2p_helper.send_backward_recv_forward function doesn't support dynamic_shape now"
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_backward_recv_forward function doesn't support dynamic_shape now"
+        )
 
         if pp_first_stage:
             input_tensor = None
@@ -977,9 +977,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").start()
 
-        assert (
-            not self._dynamic_shape
-        ), "p2p_helper.send_forward_backward_recv_forward_backward function doesn't support dynamic_shape now"
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_forward_backward_recv_forward_backward function doesn't support dynamic_shape now"
+        )
 
         if output_tensor is not None:
             self._send_meta(output_tensor, skip_check_meta=skip_check_meta)

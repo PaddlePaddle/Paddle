@@ -203,9 +203,9 @@ class BuildCINNPass(CPPPassWrapper):
         return PassType.CALC_OPT
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        assert (
-            'FLAGS_allow_cinn_ops' in core.globals()
-        ), "PaddlePaddle is not compiled with CINN support"
+        assert 'FLAGS_allow_cinn_ops' in core.globals(), (
+            "PaddlePaddle is not compiled with CINN support"
+        )
         old_allow_ops = core.globals()['FLAGS_allow_cinn_ops']
         old_deny_ops = core.globals()['FLAGS_deny_cinn_ops']
         try:
