@@ -30,6 +30,11 @@ void ExpandGradKernel(const Context& dev_ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  auto expand_shape = shape.GetData();
+  if (expand_shape.empty()) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
   if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
