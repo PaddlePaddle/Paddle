@@ -85,9 +85,9 @@ def get_tensor(run_time_args, arg_name):
     elif is_list_or_tuple(run_time_args):
         this_input_tensor_lists = []
         for ele in run_time_args:
-            assert isinstance(
-                ele, paddle.Tensor
-            ), f"the elements in {arg_name} must be paddle.Tensor"
+            assert isinstance(ele, paddle.Tensor), (
+                f"the elements in {arg_name} must be paddle.Tensor"
+            )
             this_input_tensor_lists.append(ele)
         return this_input_tensor_lists
     elif is_fixed_type(run_time_args):

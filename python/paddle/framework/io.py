@@ -235,9 +235,9 @@ def _load_state_dict_from_save_inference_model(model_path, config):
                 structured_name = extra_var_info[var_name].get(
                     'structured_name', None
                 )
-                assert (
-                    structured_name is not None
-                ), f"Cannot find saved variable ({var_name})'s structured name in saved model."
+                assert structured_name is not None, (
+                    f"Cannot find saved variable ({var_name})'s structured name in saved model."
+                )
                 structured_para_dict[structured_name] = load_param_dict[
                     var_name
                 ]

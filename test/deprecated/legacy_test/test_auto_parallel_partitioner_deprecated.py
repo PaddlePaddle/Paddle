@@ -605,9 +605,9 @@ class AttentionLayer(nn.Layer):
         self.vdim = self.embed_dim
         self.num_heads = num_heads
         self.head_dim = self.embed_dim // self.num_heads
-        assert (
-            self.head_dim * self.num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * self.num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
         self.dropout_ratio = dropout_ratio
         self.initializer_range = initializer_range
         self.training = True
@@ -1019,9 +1019,9 @@ class DecoderLayer(nn.Layer):
         self.attn_mask = None
 
         self.head_dim = self.embed_dim // self.num_heads
-        assert (
-            self.head_dim * self.num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * self.num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
         self.word_embeddings = nn.Embedding(
             self.vocab_size,
             self.hidden_size,

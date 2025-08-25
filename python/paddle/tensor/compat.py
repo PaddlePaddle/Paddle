@@ -157,9 +157,9 @@ def split(
 
         if isinstance(split_size_or_sections, int):
             # check whether shape is divisible
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -190,9 +190,9 @@ def split(
                 "The type of 'split_size_or_sections' in split must be int, list or tuple in imperative mode."
             )
         if isinstance(split_size_or_sections, int):
-            assert (
-                split_size_or_sections > 0
-            ), 'split_size_or_sections must be greater than 0.'
+            assert split_size_or_sections > 0, (
+                'split_size_or_sections must be greater than 0.'
+            )
 
             split_size_or_sections = GetSplitSize(
                 split_size_or_sections, GetShapeOnDimInRange(tensor.shape, dim)
@@ -209,9 +209,9 @@ def split(
                 )
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(split_size_or_sections) <= input_shape[dim]
-                ), 'len(split_size_or_sections) must not be more than input.shape[dim].'
+                assert len(split_size_or_sections) <= input_shape[dim], (
+                    'len(split_size_or_sections) must not be more than input.shape[dim].'
+                )
             if paddle.utils._contain_var(split_size_or_sections):
                 split_size_or_sections = paddle.utils.get_int_tensor_list(
                     split_size_or_sections
@@ -317,21 +317,21 @@ def sort(
     """
     _check_out_status(out, expect_multiple=True)
     outputs, indices = _C_ops.argsort(input, dim, descending, stable)
-    if out is None:
-        return SortRetType(values=outputs, indices=indices)
-    paddle.assign(outputs, out[0])
-    paddle.assign(indices, out[1])
+    if out is not None:
+        paddle.assign(outputs, out[0])
+        paddle.assign(indices, out[1])
+    return SortRetType(values=outputs, indices=indices)
 
 
 class Unfold(nn.Unfold):
     """
     A compatible version of paddle.nn.Unfold:
-    - The keyword arguments are in non-plural forms, example: `kernel_size` instead of kernel_sizes
-    - `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed. To use a more
-       input-flexible version of Unfold, please refer to `paddle.nn.Unfold`.
-    - All the input parameters allow `Tensor` or `pir.Value` as inputs, and will be converted to list
-    Other aspects are the same. See ``paddle.nn.Unfold`` for more details.
-    Parameters:
+
+    The keyword arguments are in non-plural forms, example: `kernel_size` instead of `kernel_sizes`. `padding` restricts the size of the input to be 1(int) or 2, Size4 is not allowed.
+
+    All the input parameters allow `Tensor` or `pir.Value` as inputs, and will be converted to lists. Other aspects are the same. To use a more input-flexible version of Unfold, please refer to `paddle.nn.Unfold`.
+
+    Args:
         kernel_size(int|list|tuple|Tensor): The size of convolution kernel, should be [k_h, k_w]
             or an integer k treated as [k, k].
         stride(int|list|tuple|Tensor, optional): The strides, should be [stride_h, stride_w]
@@ -343,8 +343,10 @@ class Unfold(nn.Unfold):
         dilation(int|list|tuple|Tensor, optional): The dilations of convolution kernel, should be
             [dilation_h, dilation_w], or an integer dilation treated as [dilation, dilation].
             For default, it will be [1, 1].
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> x = paddle.randn((100, 3, 224, 224))
             >>> unfold = paddle.compat.Unfold(kernel_size=[3, 3])
@@ -370,7 +372,6 @@ class Unfold(nn.Unfold):
         padding: Size2 = 0,
         stride: Size2 = 1,
     ) -> None:
-
         super().__init__(kernel_size, dilation, padding, stride)
 
     def forward(self, input: Tensor) -> Tensor:

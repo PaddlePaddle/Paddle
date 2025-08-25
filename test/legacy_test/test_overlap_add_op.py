@@ -35,9 +35,9 @@ def overlap_add(x, hop_length, axis=-1):
     frame_length = x.shape[1] if axis == 0 else x.shape[-2]
 
     # Assure no gaps between frames.
-    assert (
-        0 < hop_length <= frame_length
-    ), f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+    assert 0 < hop_length <= frame_length, (
+        f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+    )
 
     seq_length = (n_frames - 1) * hop_length + frame_length
 
