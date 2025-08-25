@@ -741,6 +741,59 @@ def triu(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "bmm",
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dimensional and share the same batch size.
+
+    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: The product Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # In imperative mode:
+            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+            ...                     [2.0, 2.0, 2.0]],
+            ...                     [[3.0, 3.0, 3.0],
+            ...                     [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            >>> out = paddle.bmm(x, y)
+            >>> print(out)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[6. , 6. ],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+
+    """,
+    """
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 # lihaoyang
 
 # lubingxin
