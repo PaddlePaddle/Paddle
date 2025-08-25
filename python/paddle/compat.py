@@ -79,10 +79,6 @@ def median(
     if dim is None:
         result = paddle.median(input, axis=dim, keepdim=keepdim, mode='min')
         if out is not None:
-            if isinstance(out, tuple):
-                raise ValueError(
-                    "For global median (dim=None), out must be a single tensor"
-                )
             paddle.assign(result, out)
             return out
         return result
@@ -91,17 +87,10 @@ def median(
             input, axis=dim, keepdim=keepdim, mode='min'
         )
         if out is not None:
-            if isinstance(out, tuple) and len(out) == 2:
-                out_values, out_indices = out
-                if out_values is not None:
-                    paddle.assign(result, out_values)
-                if out_indices is not None:
-                    paddle.assign(indices, out_indices)
-                return out_values, out_indices
-            else:
-                raise ValueError(
-                    "For median with dim specified, out must be a tuple of two tensors"
-                )
+            out_values, out_indices = out
+            paddle.assign(result, out_values)
+            paddle.assign(indices, out_indices)
+            return out_values, out_indices
         return result, indices
 
 
@@ -153,10 +142,6 @@ def nanmedian(
     if dim is None:
         result = paddle.nanmedian(input, axis=dim, keepdim=keepdim, mode='min')
         if out is not None:
-            if isinstance(out, tuple):
-                raise ValueError(
-                    "For global nanmedian (dim=None), out must be a single tensor"
-                )
             paddle.assign(result, out)
             return out
         return result
@@ -169,15 +154,8 @@ def nanmedian(
         indices = paddle.maximum(indices, paddle.zeros_like(indices))
 
         if out is not None:
-            if isinstance(out, tuple) and len(out) == 2:
-                out_values, out_indices = out
-                if out_values is not None:
-                    paddle.assign(result, out_values)
-                if out_indices is not None:
-                    paddle.assign(indices, out_indices)
-                return out_values, out_indices
-            else:
-                raise ValueError(
-                    "For nanmedian with dim specified, out must be a tuple of two tensors"
-                )
+            out_values, out_indices = out
+            paddle.assign(result, out_values)
+            paddle.assign(indices, out_indices)
+            return out_values, out_indices
         return result, indices
