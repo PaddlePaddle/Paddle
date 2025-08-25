@@ -266,6 +266,8 @@ def matmul(
     transpose_x: bool = False,
     transpose_y: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -313,6 +315,7 @@ def matmul(
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
         name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output Tensor.
@@ -360,7 +363,7 @@ def matmul(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
     else:
         attrs = {
             'trans_x': transpose_x,

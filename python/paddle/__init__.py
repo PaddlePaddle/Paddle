@@ -166,6 +166,7 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
 )
@@ -885,6 +886,12 @@ pi = math.pi
 e = math.e
 
 # API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+
 div = divide
 div_ = divide_
 
@@ -1001,6 +1008,7 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1145,6 +1153,7 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
@@ -1262,6 +1271,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1293,6 +1304,7 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
     'scatter_reduce',
     'put_along_axis',
     'scatter_add',
