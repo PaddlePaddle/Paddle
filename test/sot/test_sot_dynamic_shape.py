@@ -25,6 +25,7 @@ from test_case_base import (
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import (
+    ConditionalFallbackError,
     allow_dynamic_shape_guard,
     enable_0_size_fallback_guard,
     specialized_dim_numbers_guard,
@@ -341,6 +342,11 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
                 ctx.translate_count,
                 5,  # hit 2 * (s0 + s1 - 2) <= 30
             )
+
+            with self.assertRaises(ConditionalFallbackError):
+                self.assert_results(
+                    dynamic_shape_constraint, paddle.randn([0, 1, const_dim])
+                )
 
     def test_mixed_dynamic_and_static(self):
         with (
