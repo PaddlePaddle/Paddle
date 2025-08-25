@@ -161,7 +161,6 @@ class TestSaveLoadPickle(unittest.TestCase):
                 )
 
 
-'''
 class TestSaveLoadSafetensors(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -194,7 +193,6 @@ class TestSaveLoadSafetensors(unittest.TestCase):
         for key, value in save_dict.items():
             self.assertTrue(isinstance(tensor_load[key], paddle.Tensor))
             np.testing.assert_array_equal(tensor_load[key].numpy(), value)
-'''
 
 
 class TestSaveLoadAny(unittest.TestCase):
