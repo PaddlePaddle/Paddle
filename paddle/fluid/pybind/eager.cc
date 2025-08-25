@@ -845,7 +845,6 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   PyObject* kw_type = nullptr;
   PyObject* kw_process_mesh = nullptr;
   PyObject* kw_placements = nullptr;
-  PyObject* kw_device = nullptr;
 
   // the keywords argument
   static char* kwlist[] = {const_cast<char*>("value"),  // NOLINT
@@ -859,7 +858,6 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                            const_cast<char*>("type"),
                            const_cast<char*>("process_mesh"),
                            const_cast<char*>("placements"),
-                           const_cast<char*>("device"),
                            nullptr};
 
   // 'O' Store a Python object (without any conversion) in a C object pointer,
@@ -870,7 +868,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   // which enhance case2, case3, case4, case5, case6, case7.
   bool flag_ = PyArg_ParseTupleAndKeywords(args,
                                            kwargs,
-                                           "|OOOOOOOOOOOO",
+                                           "|OOOOOOOOOOO",
                                            kwlist,
                                            &kw_value,
                                            &kw_place,
@@ -882,9 +880,8 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
                                            &kw_dtype,
                                            &kw_type,
                                            &kw_process_mesh,
-                                           &kw_placements,
-                                           &kw_device);
-  kw_place = kw_place ? kw_place : kw_device;
+                                           &kw_placements);
+
   // helper map
   std::unordered_map<std::string, PyObject*> kws_map{
       {"value", kw_value},

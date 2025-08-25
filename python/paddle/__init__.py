@@ -101,14 +101,10 @@ else:
 
     def new_init(self, *args, **kwargs):
         if len(args) + len(kwargs.keys()) == 0:
-            original_init(
-                self, paddle.empty(shape=[0], dtype="float32"), **kwargs
-            )
+            original_init(self, paddle.empty(shape=[0], dtype="float32"))
             return
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-            original_init(
-                self, paddle.tensor(args[0], dtype="float32"), **kwargs
-            )
+            original_init(self, paddle.tensor(args[0], dtype="float32"))
             return
         args_is_all_int = True
         for arg in args:
@@ -116,9 +112,7 @@ else:
                 args_is_all_int = False
                 break
         if args_is_all_int:
-            original_init(
-                self, paddle.empty(list(args), dtype="float32"), **kwargs
-            )
+            original_init(self, paddle.empty(list(args), dtype="float32"))
         else:
             original_init(self, *args, **kwargs)
 
