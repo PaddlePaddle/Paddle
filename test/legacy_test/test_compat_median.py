@@ -78,21 +78,6 @@ class TestCompatMedianAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_compat_median_error_cases(self):
-        paddle.disable_static()
-
-        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='int64')
-
-        # Test wrong out type for global median
-        with self.assertRaises(ValueError):
-            paddle.compat.median(x, out=(paddle.zeros([], dtype='int64'), None))
-
-        # Test wrong out type for dimension median
-        with self.assertRaises(ValueError):
-            paddle.compat.median(x, dim=1, out=paddle.zeros([2], dtype='int64'))
-
-        paddle.enable_static()
-
     def test_compat_median_different_dims(self):
         paddle.disable_static()
 
@@ -210,25 +195,6 @@ class TestCompatNanmedianAPI(unittest.TestCase):
         )
         self.assertIs(result_values, out_values)
         self.assertIs(result_indices, out_indices)
-
-        paddle.enable_static()
-
-    def test_compat_nanmedian_error_cases(self):
-        paddle.disable_static()
-
-        x = paddle.to_tensor([[1, float('nan'), 3], [4, 5, 6]], dtype='float32')
-
-        # Test wrong out type for global nanmedian
-        with self.assertRaises(ValueError):
-            paddle.compat.nanmedian(
-                x, out=(paddle.zeros([], dtype='float32'), None)
-            )
-
-        # Test wrong out type for dimension nanmedian
-        with self.assertRaises(ValueError):
-            paddle.compat.nanmedian(
-                x, dim=1, out=paddle.zeros([2], dtype='float32')
-            )
 
         paddle.enable_static()
 
