@@ -461,7 +461,7 @@ add_doc_and_signature(
         index: Tensor,
         axis: int = 0,
         name: str | None = None
-    ) -> Tensor:
+    ) -> Tensor
     """,
 )
 
