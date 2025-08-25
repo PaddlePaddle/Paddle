@@ -19,18 +19,18 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
-void checkInBoundsForMemory(const std::vector<int64_t>& dims,
+void CheckInBoundsForMemory(const std::vector<int64_t>& dims,
                             const std::vector<int64_t>& strides,
-                            const DDim& dim,
-                            const DDim& stride,
+                            const DDim& output_dims,
+                            const DDim& output_strides,
                             int64_t offset,
-                            size_t memory_size,
-                            phi::DataType dtype) {
+                            const DenseTensor& input) {
   PADDLE_ENFORCE_EQ(dims.size(),
                     strides.size(),
                     common::errors::InvalidArgument(
                         "The size of dims and strides should be equal."));
   size_t size = 1;
+  phi::DataType dtype = input.dtype();
   for (size_t i = 0; i < dims.size(); i++) {
     if (dims[i] == 0) {
       return;
@@ -38,17 +38,25 @@ void checkInBoundsForMemory(const std::vector<int64_t>& dims,
     size += strides[i] * (dims[i] - 1);
   }
   size_t size_bytes = (size + offset) * phi::SizeOf(dtype);
+  size = 1;
+  for (int i = 0; i < input.dims().size(); i++) {
+    size += input.strides()[i] * (input.dims()[i] - 1);
+  }
+  size_t memory_size = (size + input.offset()) * phi::SizeOf(dtype);
+  if (input.numel() == 0) {
+    memory_size = 0;
+  }
   PADDLE_ENFORCE_LE(
       size_bytes,
       memory_size,
       common::errors::InvalidArgument(
-          "sizes: [%s], strides: [%s], offset: %d, dtype: %s, size_bytes: %d is"
-          " out of bounds for input memory_size: %d.",
-          dim,
-          stride,
+          "Output tensor requires %d bytes memory (dims: [%s], strides: [%s], "
+          "offset: %d, dtype: %s), but input only has %d bytes available.",
+          size_bytes,
+          output_dims,
+          output_strides,
           offset,
           dtype,
-          size_bytes,
           memory_size));
 }
 
@@ -68,20 +76,12 @@ void AsStridedKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
-  checkInBoundsForMemory(dims,
-                         stride,
-                         meta.dims,
-                         meta.strides,
-                         offset,
-                         input.memory_size(),
-                         input.dtype());
+  CheckInBoundsForMemory(dims, stride, meta.dims, meta.strides, offset, input);
   PADDLE_ENFORCE_GE(
       offset,
       0,
       common::errors::InvalidArgument(
-          "The offset must be greater than or equal to 0. But received: "
-          "offset = %d.",
-          offset));
+          "The offset must be non-negative, but got %d.", offset));
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);
