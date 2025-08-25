@@ -18,12 +18,34 @@
 // paddle/fluid/pybind/eager_op_function.cc. Mainly used to customize the
 // processing of parameters originally done in the Python API
 #include "paddle/fluid/pybind/arg_pre_process.h"
+#include "paddle/common/ddim.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
+
 namespace paddle {
-namespace pybind {}  // namespace pybind
+namespace pybind {
+
+void ExpandAsPreProcess(paddle::optional<paddle::Tensor>* y,
+                        std::vector<int64_t>* target_shape) {
+  if (target_shape->empty() && y->get_ptr() == nullptr) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The y of expand_as api must be specified."));
+  }
+  *target_shape = common::vectorize<int64_t>(y->get_ptr()->dims());
+}
+void ExpandAsPreProcess(paddle::optional<pir::Value>* y,
+                        std::vector<int64_t>* target_shape) {
+  if (target_shape->empty() && y->get_ptr() == nullptr) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The y of expand_as api must be specified."));
+  }
+  *target_shape = pir::GetShapeFromValue(*(y->get_ptr()));
+}
+
+}  // namespace pybind
 
 }  // namespace paddle

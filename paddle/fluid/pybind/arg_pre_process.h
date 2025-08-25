@@ -15,9 +15,18 @@
 #pragma once
 
 #include <Python.h>
-
+#include <vector>
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/pir/include/core/value.h"
+#include "paddle/utils/optional.h"
 namespace paddle {
 
-namespace pybind {}  // namespace pybind
+namespace pybind {
+void ExpandAsPreProcess(paddle::optional<paddle::Tensor>* y,
+                        std::vector<int64_t>* target_shape);
+void ExpandAsPreProcess(paddle::optional<pir::Value>* y,
+                        std::vector<int64_t>* target_shape);
+
+}  // namespace pybind
 
 }  // namespace paddle
