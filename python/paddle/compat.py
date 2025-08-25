@@ -23,11 +23,13 @@ if TYPE_CHECKING:
 
 from .tensor.compat import (
     Unfold,
+    max,
+    min,
     sort,
     split,
 )
 
-__all__ = ['split', 'sort', 'Unfold', 'median', 'nanmedian']
+__all__ = ['split', 'sort', 'Unfold', 'median', 'nanmedian', 'max', 'min']
 
 
 def median(

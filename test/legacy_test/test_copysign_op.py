@@ -404,6 +404,128 @@ class TestCopySignNan8(TestCopySignAPI):
         self.y.view('uint64')[0, 0] &= ~np.uint64(0x8000000000000000)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCopySignOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "copysign"
+        self.python_api = paddle.copysign
+        self.public_python_api = paddle.copysign
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'x': OpTest.np_dtype_to_base_dtype(self.x),
+            'y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'x': OpTest.np_dtype_to_base_dtype(self.x),
+            'y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestCopySignOp_Stride1(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride2(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride3(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride4(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride5(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = ref_copysign(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestCopySignOp_Stride_ZeroDim1(TestCopySignOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestCopySignOp_Stride_ZeroSize1(TestCopySignOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = ref_copysign(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

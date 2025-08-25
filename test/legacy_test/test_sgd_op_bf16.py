@@ -355,9 +355,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 weight_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
-            )(
-                x
-            )  # bfloat16
+            )(x)  # bfloat16
             paddle.set_default_dtype(pre_dtype)
             cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)

@@ -29,9 +29,9 @@ class TestReshapeSemiAutoParallel(SemiAutoParallelTestBase):
         super().__init__()
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_reshape_forward(self):
         shape = [200, 30]
