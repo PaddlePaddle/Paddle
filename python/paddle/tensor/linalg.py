@@ -191,59 +191,6 @@ def transpose(
         return out
 
 
-def swapaxes(input: Tensor, axis0: int, axis1: int) -> Tensor:
-    """
-    Interchange two axes of a tensor.
-
-    Args:
-        input (Tensor): The input N-D Tensor. Supported data types are bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
-            alias: ``x``.
-        axis0 (int): The first axis to be swapped.
-        axis1 (int): The second axis to be swapped.
-
-    Returns:
-        Tensor: A new tensor with the given axes interchanged. The data type is the same as the input tensor.
-
-    Examples:
-
-        .. code-block:: text
-
-            # The following codes in this code block are pseudocode,
-            # designed to show the execution logic and results of the function.
-
-            x = to_tensor([[[ 1  2  3  4], [ 5  6  7  8], [ 9 10 11 12]],
-                           [[13 14 15 16], [17 18 19 20], [21 22 23 24]]])
-            shape(x): return [2, 3, 4]
-
-            # Example: swap the 0-th and 2-th axes
-            y = swapaxes(x, 0, 2)
-
-            # The 0-th dimension of y corresponds to the 2-th dimension of x.
-            # The 2-th dimension of y corresponds to the 0-th dimension of x.
-            # The 1-st dimension remains unchanged.
-
-            y.data = [[[ 1 13], [ 5 17], [ 9 21]],
-                      [[ 2 14], [ 6 18], [10 22]],
-                      [[ 3 15], [ 7 19], [11 23]],
-                      [[ 4 16], [ 8 20], [12 24]]]
-            shape(y): return [4, 3, 2]
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.randn([2, 3, 4])
-            >>> print(x.shape)
-            [2, 3, 4]
-
-            >>> y = paddle.swapaxes(x, 0, 2)
-            >>> print(y.shape)
-            [4, 3, 2]
-
-    """
-    return transpose(input=input, dim0=axis0, dim1=axis1)
-
-
 @inplace_apis_in_dygraph_only
 def transpose_(x, perm, name=None):
     r"""

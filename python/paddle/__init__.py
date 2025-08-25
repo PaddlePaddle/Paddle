@@ -274,7 +274,6 @@ from .tensor.linalg import (  # noqa: F401
     mv,
     norm,
     permute,
-    swapaxes,
     t,
     t_,
     transpose,
@@ -867,6 +866,7 @@ ger = outer
 div = divide
 div_ = divide_
 swapdims = transpose
+swapaxes = transpose
 
 
 __all__ = [

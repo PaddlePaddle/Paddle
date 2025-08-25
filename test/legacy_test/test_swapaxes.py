@@ -49,17 +49,17 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                 outs.append(paddle.swapaxes(input=x, perm=self.perm))
                 outs.append(paddle.swapaxes(x, self.dim0, self.dim1))
                 outs.append(
-                    paddle.swapaxes(x=x, dim0=self.dim0, dim1=self.dim1)
+                    paddle.swapaxes(x=x, axis0=self.dim0, axis1=self.dim1)
                 )
                 outs.append(
-                    paddle.swapaxes(input=x, dim0=self.dim0, dim1=self.dim1)
+                    paddle.swapaxes(input=x, axis0=self.dim0, axis1=self.dim1)
                 )
 
                 outs.append(x.swapaxes(self.perm))
                 outs.append(x.swapaxes(self.dim0, self.dim1))
                 outs.append(x.swapaxes(perm=self.perm))
-                outs.append(x.swapaxes(dim0=self.dim0, dim1=self.dim1))
-                outs.append(x.swapaxes(self.dim0, dim1=self.dim1))
+                outs.append(x.swapaxes(axis0=self.dim0, axis1=self.dim1))
+                outs.append(x.swapaxes(self.dim0, axis1=self.dim1))
 
                 for out in outs:
                     np.testing.assert_array_equal(self.np_out, out.numpy())
@@ -79,17 +79,19 @@ class TestSwapaxesCompatibility(unittest.TestCase):
                     outs.append(paddle.swapaxes(input=x, perm=self.perm))
                     outs.append(paddle.swapaxes(x, self.dim0, self.dim1))
                     outs.append(
-                        paddle.swapaxes(x=x, dim0=self.dim0, dim1=self.dim1)
+                        paddle.swapaxes(x=x, axis0=self.dim0, axis1=self.dim1)
                     )
                     outs.append(
-                        paddle.swapaxes(input=x, dim0=self.dim0, dim1=self.dim1)
+                        paddle.swapaxes(
+                            input=x, axis0=self.dim0, axis1=self.dim1
+                        )
                     )
 
                     outs.append(x.swapaxes(self.perm))
                     outs.append(x.swapaxes(self.dim0, self.dim1))
                     outs.append(x.swapaxes(perm=self.perm))
-                    outs.append(x.swapaxes(dim0=self.dim0, dim1=self.dim1))
-                    outs.append(x.swapaxes(self.dim0, dim1=self.dim1))
+                    outs.append(x.swapaxes(axis0=self.dim0, axis1=self.dim1))
+                    outs.append(x.swapaxes(self.dim0, axis1=self.dim1))
 
                     exe = paddle.base.Executor(place)
                     fetches = exe.run(

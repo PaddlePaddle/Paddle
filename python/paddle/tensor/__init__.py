@@ -106,7 +106,6 @@ from .linalg import (  # noqa: F401
     svd,
     svd_lowrank,
     svdvals,
-    swapaxes,
     t,
     t_,
     transpose,
@@ -498,6 +497,7 @@ from .to_string import set_printoptions  # noqa: F401
 div = divide
 div_ = divide_
 swapdims = transpose
+swapaxes = transpose
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
