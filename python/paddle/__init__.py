@@ -97,18 +97,20 @@ if typing.TYPE_CHECKING:
 else:
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
-    super_init = Tensor.__init__
+    original_init = Tensor.__init__
 
     def new_init(self, *args, **kwargs):
         try:
-            super_init(self, *args, **kwargs)
+            original_init(self, *args, **kwargs)
         except Exception as e:
             default_dtype = kwargs.get("dtype", "float32")
             if len(args) == 0:
-                super_init(self, paddle.empty(shape=[0], dtype=default_dtype))
+                original_init(
+                    self, paddle.empty(shape=[0], dtype=default_dtype)
+                )
                 return
             elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-                super_init(self, paddle.tensor(args[0], dtype=default_dtype))
+                original_init(self, paddle.tensor(args[0], dtype=default_dtype))
                 return
             is_all_int = True
             for arg in args:
@@ -116,7 +118,9 @@ else:
                     is_all_int = False
                     break
             if is_all_int:
-                super_init(self, paddle.empty(list(args), dtype=default_dtype))
+                original_init(
+                    self, paddle.empty(list(args), dtype=default_dtype)
+                )
                 return
             raise ValueError(e)
 
