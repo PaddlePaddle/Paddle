@@ -76,7 +76,13 @@ void AsStridedKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
-  CheckInBoundsForMemory(dims, stride, meta.dims, meta.strides, offset, input);
+  // Note(ooooo): Now it's to check 0-size tensor.
+  // Because i see in test_inplace.py to use as_strided as a noinplace op
+  // implementation for paddle.set_.
+  if (input.numel() == 0) {
+    CheckInBoundsForMemory(
+        dims, stride, meta.dims, meta.strides, offset, input);
+  }
   PADDLE_ENFORCE_GE(
       offset,
       0,

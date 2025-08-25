@@ -2122,7 +2122,7 @@ class TestDygraphInplaceSet(unittest.TestCase):
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
-        self.new_x_np = np.random.uniform(-5, 5, [20])
+        self.new_x_np = np.random.uniform(-5, 5, [15, 3])
         self.dtype = "float32"
         self.new_shape = [20]
         self.new_stride = [2]
