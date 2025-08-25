@@ -534,7 +534,6 @@ def median(
             the median values when the input tensor has an even number of elements
             in the dimension ``axis``. Support 'avg' and 'min'. Default is 'avg'.
             When an alias replacement occurs, the default parameter for mode setting is min instead of avg.
-
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
