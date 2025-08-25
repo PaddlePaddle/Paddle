@@ -7,3 +7,13 @@
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
     use_default_mapping : True
+
+- op : maximum
+  name : [paddle.maximum,paddle.Tensor.maximum]
+  args_alias :
+    use_default_mapping : True
+
+- op : minimum
+  name : [paddle.minimum,paddle.Tensor.minimum]
+  args_alias :
+    use_default_mapping : True
