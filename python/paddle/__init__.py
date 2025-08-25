@@ -114,7 +114,7 @@ else:
         if args_is_all_int:
             original_init(self, paddle.empty(list(args), dtype="float32"))
         else:
-            original_init(self, *args)
+            original_init(self, *args, **kwargs)
 
     Tensor.__init__ = new_init
 

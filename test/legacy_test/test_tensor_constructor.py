@@ -25,6 +25,10 @@ class TestTensorConstructor(unittest.TestCase):
         paddle.seed(2025)
         self.shape = [10, 20, 30]
 
+    def test_device(self):
+        x = paddle.Tensor([1, 2, 3], device="cpu")
+        self.assertEqual(x.place, paddle.CPUPlace())
+
     def test_construct_from_list_and_tuple(self):
         x = np.random.random(size=self.shape)
         res = paddle.Tensor(list(x))
