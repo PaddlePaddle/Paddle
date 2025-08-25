@@ -39,6 +39,11 @@
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_mean_kernel.h"
+#include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_variance_kernel.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/core/program.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -63,6 +68,14 @@ void SerializeToPyObject(std::ostream& ss, float x) {
 }
 
 void SerializeToPyObject(std::ostream& ss, double x) {
+  ss << "float(\"" << x << "\")";
+}
+
+void SerializeToPyObject(std::ostream& ss, phi::dtype::float16 x) {
+  ss << "float(\"" << x << "\")";
+}
+
+void SerializeToPyObject(std::ostream& ss, phi::dtype::bfloat16 x) {
   ss << "float(\"" << x << "\")";
 }
 
@@ -155,6 +168,8 @@ using TensorDataT = std::variant<std::vector<int32_t>,
                                  std::vector<int64_t>,
                                  std::vector<float>,
                                  std::vector<double>,
+                                 std::vector<phi::dtype::float16>,
+                                 std::vector<phi::dtype::bfloat16>,
                                  std::monostate>;
 
 TensorDataT GetTensorData(const phi::DenseTensor& tensor,
@@ -188,7 +203,114 @@ TensorDataT GetTensorData(const phi::DenseTensor& tensor,
                              }},
         tensor_dump_policy);
   }
+  if (tensor.dtype() == phi::DataType::FLOAT16) {
+    return std::visit(
+        ::common::Overloaded{
+            [&](const EnableDumpFloatData&) -> TensorDataT {
+              return phi::GetVectorFromTensor<phi::dtype::float16>(&tensor);
+            },
+            [&](const DisableDumpFloatData&) -> TensorDataT {
+              return std::monostate{};
+            }},
+        tensor_dump_policy);
+  }
+  if (tensor.dtype() == phi::DataType::BFLOAT16) {
+    return std::visit(
+        ::common::Overloaded{
+            [&](const EnableDumpFloatData&) -> TensorDataT {
+              return phi::GetVectorFromTensor<phi::dtype::bfloat16>(&tensor);
+            },
+            [&](const DisableDumpFloatData&) -> TensorDataT {
+              return std::monostate{};
+            }},
+        tensor_dump_policy);
+  }
   return std::monostate{};
+}
+
+template <typename T>
+void CalcTensorStatForDevice(const phi::DenseTensor& tensor,
+                             const std::string& stat_type,
+                             phi::DenseTensor* out) {
+  out->Resize({1});
+
+  phi::Place place = tensor.place();
+  auto& pool = phi::DeviceContextPool::Instance();
+  if (place.GetType() == phi::AllocationType::GPU ||
+      place.GetType() == phi::AllocationType::GPUPINNED) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto* ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
+    ctx->template Alloc<T>(out);
+    if (stat_type == "max") {
+      phi::MaxKernel<T, phi::GPUContext>(*ctx, tensor, {}, false, out);
+    } else if (stat_type == "min") {
+      phi::MinKernel<T, phi::GPUContext>(*ctx, tensor, {}, false, out);
+    }
+    if constexpr (std::is_floating_point_v<T>) {
+      if (stat_type == "mean") {
+        phi::MeanKernel<T, phi::GPUContext>(*ctx, tensor, {}, false, out);
+      } else if (stat_type == "std") {
+        phi::VarianceKernel<T, phi::GPUContext>(*ctx, tensor, {}, false, out);
+        phi::SqrtKernel<T, phi::GPUContext>(*ctx, *out, out);
+      }
+    }
+#else
+    PADDLE_THROW(
+        common::errors::Unavailable(("Paddle is not compiled with CUDA. Cannot "
+                                     "visit cuda or cuda_pinned place.")));
+#endif
+  } else if (place.GetType() == phi::AllocationType::CPU) {
+    auto* ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(place));
+    if constexpr (!std::is_same_v<T, phi::dtype::float16> &&
+                  !std::is_same_v<T, phi::dtype::bfloat16>) {
+      // float16 and bfloat16 are not supported on CPU.
+      ctx->template Alloc<T>(out);
+      if (stat_type == "max") {
+        phi::MaxKernel<T, phi::CPUContext>(*ctx, tensor, {}, false, out);
+      } else if (stat_type == "min") {
+        phi::MinKernel<T, phi::CPUContext>(*ctx, tensor, {}, false, out);
+      }
+    }
+    if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+      if (stat_type == "mean") {
+        phi::MeanKernel<T, phi::CPUContext>(*ctx, tensor, {}, false, out);
+      } else if (stat_type == "std") {
+        phi::VarianceKernel<T, phi::CPUContext>(*ctx, tensor, {}, false, out);
+        phi::SqrtKernel<T, phi::CPUContext>(*ctx, *out, out);
+      }
+    }
+  } else {
+    PADDLE_THROW(common::errors::Unavailable(
+        "Unsupported place (only cpu and gpu are supported)."));
+  }
+}
+
+phi::DenseTensor CalcTensorStat(const phi::DenseTensor& tensor,
+                                const std::string& stat_type) {
+  phi::DenseTensor out;
+  int kLimit = FLAGS_logging_pir_py_code_int_tensor_element_limit;
+  // When tensor.numel() <= kLimit, all the data will be dumped, and there is no
+  // need to calculate the statistics.
+  if (tensor.numel() <= kLimit || !tensor.IsInitialized()) {
+    VLOG(4) << "tensor (dtype=" << tensor.dtype()
+            << ", numel=" << tensor.numel() << ", place=" << tensor.place()
+            << ") may not initialized!";
+    return out;
+  }
+  if (tensor.dtype() == phi::DataType::INT64) {
+    CalcTensorStatForDevice<int64_t>(tensor, stat_type, &out);
+  } else if (tensor.dtype() == phi::DataType::INT32) {
+    CalcTensorStatForDevice<int32_t>(tensor, stat_type, &out);
+  } else if (tensor.dtype() == phi::DataType::FLOAT64) {
+    CalcTensorStatForDevice<double>(tensor, stat_type, &out);
+  } else if (tensor.dtype() == phi::DataType::FLOAT32) {
+    CalcTensorStatForDevice<float>(tensor, stat_type, &out);
+  } else if (tensor.dtype() == phi::DataType::FLOAT16) {
+    CalcTensorStatForDevice<phi::dtype::float16>(tensor, stat_type, &out);
+  } else if (tensor.dtype() == phi::DataType::BFLOAT16) {
+    CalcTensorStatForDevice<phi::dtype::bfloat16>(tensor, stat_type, &out);
+  }
+  return out;
 }
 
 std::string ShapeToString(const phi::DenseTensor& tensor) {
@@ -203,6 +325,25 @@ std::string ShapeToString(const phi::DenseTensor& tensor) {
   }
   ss << "]";
   return ss.str();
+}
+
+std::string TensorStatToString(const phi::DenseTensor& tensor,
+                               const TensorDumpPolicy& tensor_dump_policy,
+                               const std::string& stat_type) {
+  const auto& SerializeValue = [](const auto& data) {
+    std::ostringstream ss;
+    SerializeToPyObject(ss, data[0]);
+    return ss.str();
+  };
+
+  phi::DenseTensor stat = CalcTensorStat(tensor, stat_type);
+  return std::visit(
+      ::common::Overloaded{
+          [&](const std::monostate&) -> std::string { return "None"; },
+          [&](const auto& data) -> std::string {
+            return SerializeValue(data);
+          }},
+      GetTensorData(stat, tensor_dump_policy));
 }
 
 std::string DataToString(const phi::DenseTensor& tensor,
@@ -246,6 +387,18 @@ std::string GetLoggingShapeAndDataForName(int64_t program_id,
   ss << "\n\tprogram_id = " << program_id;
   ss << "\n\tinput_name = " << std::quoted(name);
   ss << "\n\tshape = " << ShapeToString(tensor);
+  ss << "\n\tmean = "
+     << TensorStatToString(
+            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "mean");
+  ss << "\n\tstd = "
+     << TensorStatToString(
+            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "std");
+  ss << "\n\tmax_val = "
+     << TensorStatToString(
+            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "max");
+  ss << "\n\tmin_val = "
+     << TensorStatToString(
+            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "min");
   ss << "\n\tdata = " << DataToString(tensor, policy);
   ss << "\n\n";
   return ss.str();
