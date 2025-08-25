@@ -115,6 +115,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 __all__ = []
 
 _supported_int_dtype_ = [
@@ -1391,10 +1393,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
-@param_two_alias(["x", "input"], ["y", "other"])
-def maximum(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
+def maximum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
 
@@ -1451,15 +1450,12 @@ def maximum(
             [5.  , 3.  , inf.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.maximum(x, y, out=out)
+        return _C_ops.maximum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-@param_two_alias(["x", "input"], ["y", "other"])
-def minimum(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
+def minimum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
 
@@ -1516,7 +1512,7 @@ def minimum(
             [ 1.  , -inf.,  5.  ])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.minimum(x, y, out=out)
+        return _C_ops.minimum(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -3160,7 +3156,6 @@ def outer(
         return out
 
 
-@param_two_alias(["x", "input"], ["axis", "dim"])
 def logsumexp(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3193,7 +3188,6 @@ def logsumexp(
             the output Tensor is the same as ``x`` except in the reduced
             dimensions(it is of size 1 in this case). Otherwise, the shape of
             the output Tensor is squeezed in ``axis`` . Default is False.
-        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor|None, optional): The output Tensor. If set, the result will be
@@ -3308,6 +3302,11 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"input", "dim", "other"},
+    func_name="paddle.max",
+    correct_name="paddle.compat.max",
+)
 def max(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -3467,6 +3466,11 @@ def max(
             return out
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"input", "dim", "other"},
+    func_name="paddle.min",
+    correct_name="paddle.compat.min",
+)
 def min(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
@@ -4522,7 +4526,7 @@ def logcumsumexp(
         x (Tensor): The input tensor, with data type float32, float64, float16,
             bfloat16, uint8, int8, int16, int32, int64
         axis (int, optional): The dimension to do the operation along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be float16, float32, float64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4616,7 +4620,7 @@ def cumprod(
         x (Tensor): the input tensor need to be cumproded.
         dim (int|None, optional): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank) or None,
                     where x.rank means the dimensions of the input tensor x and -1 means the last dimension. The default (None) is to compute the cumprod over the flattened array.
-        dtype (str|paddle.dtype|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64,
                     complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed.
                     This is useful for preventing data type overflows. The default value is None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information,
@@ -4747,7 +4751,7 @@ def prod(
             alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
-        dtype (str|paddle.dtype|np.dtype, optional): The desired date type of returned tensor, can be bfloat16,
+        dtype (str|core.VarDesc.VarType|core.DataType|np.dtype, optional): The desired date type of returned tensor, can be bfloat16,
             float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before
             operator performed. This is very useful for avoiding data type overflows. The default value is None,
             the dtype of output is the same as input Tensor `x`.
