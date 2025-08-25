@@ -130,7 +130,6 @@ void NanmedianGradKernel(const Context& dev_ctx,
     funcs::PostprocessMedianGradKernel<T, Context>(
         dev_ctx, &tmp_x_grad, axes, x_grad);
   }
-  test_cuda("done");
 }
 
 }  // namespace phi
