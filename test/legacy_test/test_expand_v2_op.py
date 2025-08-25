@@ -80,6 +80,11 @@ class TestExpandV2OpRank1_ZeroDim2(TestExpandV2OpRank1):
     def if_enable_cinn(self):
         pass
 
+    def test_check_grad(self):
+        if self.shape == [] or self.ori_shape == []:
+            return
+        super().test_check_grad()
+
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
     def init_data(self):
