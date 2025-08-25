@@ -64,6 +64,7 @@ if TYPE_CHECKING:
         ShapeLike,
         TensorOrTensors,
     )
+from paddle._C_ops import expand_as  # noqa: F401
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
