@@ -27,7 +27,6 @@ from typing import (
 )
 
 from paddle import nn
-from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
 
 if TYPE_CHECKING:
