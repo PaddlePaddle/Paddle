@@ -15,7 +15,7 @@
 import os
 
 from paddle import nn
-from paddle.distributed import fleet
+from paddle.distributed import ShardedWeight, fleet
 from paddle.distributed.fleet.layers.mpu import (
     ColumnParallelLinear,
     RowParallelLinear,
@@ -25,7 +25,6 @@ from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
 )
-from paddle.distributed.flex_checkpoint import ShardedWeight
 
 
 class SimpleMLPForSharding(nn.Layer):
