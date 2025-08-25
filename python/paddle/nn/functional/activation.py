@@ -30,7 +30,6 @@ from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
-from ...tensor.softmax import softmax as softmax
 
 if TYPE_CHECKING:
     from paddle import Tensor

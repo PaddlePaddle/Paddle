@@ -23,20 +23,18 @@ from ..base.framework import Variable
 from ..framework import (
     in_dynamic_mode,
 )
-from .softmax import _softmax_impl
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
-    from paddle._typing import DTypeLike, Size2
+    from paddle._typing import (
+        Size2,
+    )
 
 
 from paddle import nn
-from paddle.utils.decorator_utils import (
-    ForbidKeywordsDecorator,
-    softmax_param_ignore_alias,
-)
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
 
@@ -832,19 +830,3 @@ def max(
         else:
             paddle.assign(ret, out)
     return ret
-
-
-@softmax_param_ignore_alias
-def softmax(
-    x: Tensor,
-    axis: int = -1,
-    dtype: DTypeLike | None = None,
-    name: str | None = None,
-) -> Tensor:
-    if axis is None:
-        ndim = x.ndim
-        if ndim == 0 or ndim == 1 or ndim == 3:
-            axis = 0
-        else:
-            axis = 1
-    return _softmax_impl(x, axis, dtype, name)
