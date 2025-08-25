@@ -1579,10 +1579,14 @@ def get_package_data_and_package_dir():
         package_data['paddle.libs'] += ['cinn_hip_runtime_source.h']
         package_data['paddle.libs'] += ['cinn_sycl_runtime_source.h']
 
-        cinn_fp16_file = (
-            env_dict.get("CINN_INCLUDE_DIR")
-            + '/paddle/cinn/runtime/cuda/float16.h'
-        )
+        if env_dict.get("WITH_ROCM") == 'ON':
+            cinn_fp16_file = (
+                '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/hip/float16.h'
+            )
+        else:
+            cinn_fp16_file = (
+                '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16.h'
+            )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
