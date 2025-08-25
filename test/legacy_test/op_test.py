@@ -402,7 +402,7 @@ def get_places():
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
         or not core.is_compiled_with_cuda()
-    ):
+    ) and not is_custom_device():
         places.append(base.CPUPlace())
     if core.is_compiled_with_cuda():
         places.append(base.CUDAPlace(0))
