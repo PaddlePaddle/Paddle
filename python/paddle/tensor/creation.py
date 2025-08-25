@@ -3456,7 +3456,7 @@ def tril_indices(
             - If offset > 0, include just as many diagonals above the main diagonal.
             - If offset < 0, excludes just as many diagonals below the main diagonal.
 
-        dtype (int, optional): the data type of the output tensor, can be int32, int64.
+        dtype (str|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor, can be int32, int64.
 
     Returns:
         Tensor: Results of the indices of lower triangular part of a row * col matrix,
@@ -3543,7 +3543,7 @@ def triu_indices(
             - If offset > 0, include just as few diagonals above the main diagonal.
             - If offset < 0, excludes just as few diagonals below the main diagonal.
 
-        dtype (str|np.dtype|paddle.dtype, optional): the data type of the output tensor,
+        dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): the data type of the output tensor,
             can be int32, int64, default value is int64.
     Returns:
         Tensor: Results of the indices of upper triangular part of a row * col matrix,

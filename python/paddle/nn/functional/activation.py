@@ -1542,7 +1542,7 @@ def log_softmax(
             calculations. It should be in range [-D, D), where D is the
             dimensions of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str|np.dtype|core.VarDesc.VarType, optional): The desired data
+        dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional): The desired data
             type of the output tensor. If dtype is specified, ``x`` is casted
             to ``dtype`` before the operation is performed. This is useful for
             preventing data type overflows. Supported dtype: float32, float64.
