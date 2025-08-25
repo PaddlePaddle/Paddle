@@ -27,6 +27,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -61,6 +62,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@transpose_decorator()
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
@@ -70,8 +72,13 @@ def transpose(
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim0`` & ``dim1`` can replace ``perm``.
+        For example, ``transpose(input=x, dim0=0, dim1=1)`` is equivalent to ``transpose(x=x, perm=[1, 0, 2])``.
+
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
+            alias: ``input``.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str|None, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -259,6 +266,8 @@ def matmul(
     transpose_x: bool = False,
     transpose_y: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -306,6 +315,7 @@ def matmul(
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
         name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output Tensor.
@@ -353,7 +363,7 @@ def matmul(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
     else:
         attrs = {
             'trans_x': transpose_x,

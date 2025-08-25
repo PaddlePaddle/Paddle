@@ -27,6 +27,7 @@ from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    expand_decorator,
     param_two_alias,
     reshape_decorator,
     view_decorator,
@@ -1350,7 +1351,11 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 
 @ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
-    x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int | Tensor = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -1379,6 +1384,7 @@ def concat(
             it works the same way as ``axis+R``. Default is 0.
             alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -1421,7 +1427,7 @@ def concat(
     if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        return _C_ops.concat(input, axis)
+        return _C_ops.concat(input, axis, out=out)
     elif in_pir_mode():
 
         def is_in_amp_mode():
@@ -2742,6 +2748,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
+    url_suffix="torch/torch.split",
 )
 def split(
     x: Tensor,
@@ -3312,6 +3319,7 @@ def vsplit(
     return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def squeeze(
     x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
 ) -> Tensor:
@@ -3360,12 +3368,18 @@ def squeeze(
           Output:
             out.shape = [1, 3, 5]
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``squeeze(input=tensor_x, dim=1)`` is equivalent to ``squeeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
                           If axis is None, all the dimensions of x of size 1 will be removed.
+            alias: ``dim``.
         name (str|None, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -3936,6 +3950,7 @@ def unique(
         return tuple(outs)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unsqueeze(
     x: Tensor,
     axis: int | Sequence[Tensor | int] | Tensor,
@@ -3950,12 +3965,18 @@ def unsqueeze(
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unsqueeze(input=tensor_x, dim=1)`` is equivalent to ``unsqueeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                     If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
+            alias: ``dim``.
         name (str|None, optional): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -4536,6 +4557,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4555,12 +4577,18 @@ def chunk(
         :alt: legend of reshape API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``chunk(input=tensor_x, dim=1)`` is equivalent to ``chunk(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+            alias: ``input``.
         chunks(int): The number of tensor to be split along the certain axis.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+            alias: ``dim``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -4895,7 +4923,9 @@ def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
-    x: Tensor, shape: ShapeLike, name: str | None = None
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -4940,6 +4970,7 @@ def broadcast_to(
     return expand(x, shape, name)
 
 
+@expand_decorator()
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
 
@@ -4955,12 +4986,23 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         :alt: legend of expand API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and ``size`` can be used as an alias for ``shape``.
+        ``shape`` can be a variable number of arguments.
+        For example:
+            ``paddle.expand(tensor_x, shape=[3, 4], name=None)``
+            ``tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])``
+            ``tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)``
+            ``tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])``
 
     Args:
         x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8, uint16, complex64 or complex128.
-        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
+            alias: ``input``
+        shape (list|tuple|Tensor|variable number of arguments): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            ``shape`` can be a variable number of arguments.
+            alias: ``size``.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -6866,9 +6908,55 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+def scatter_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Scatter the values of the source tensor to the target tensor according to the given indices, and perform a add operation along the designated axis.
+
+    Args:
+        input (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
+        dim (int) : The axis to scatter 1d slices along.
+        index (Tensor) : Indices to scatter along each 1d slice of input. This must match the dimension of input,
+             Supported data type are int32 and int64.
+        src (Tensor) : The value element(s) to scatter. The data types should be same as input.
+
+    Returns:
+        Tensor, The indexed element, same dtype with input
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
+            >>> indices = paddle.zeros((2,3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> result = paddle.scatter_add(x, 0, indices, values)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[15, 27, 39],
+             [40, 50, 60]])
+
+    """
+
+    return put_along_axis(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
+    )
+
+
 @ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
-    arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
+    arr: Tensor,
+    indices: Tensor,
+    axis: int,
+    broadcast: bool = True,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -6886,9 +6974,10 @@ def take_along_axis(
         axis (int) : The axis to take 1d slices along.
             alias: ``dim``.
         broadcast (bool, optional): whether the indices broadcast.
+        out (Tensor, optional): The output Tensor. If set, the output will be written to this Tensor.
 
     Returns:
-        Tensor, The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr.
 
     Examples:
         .. code-block:: python
@@ -6935,7 +7024,7 @@ def take_along_axis(
                 )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.take_along_axis(arr, indices, axis)
+        return _C_ops.take_along_axis(arr, indices, axis, out=out)
     else:
         check_variable_and_dtype(
             arr,
@@ -7275,6 +7364,22 @@ def put_along_axis_(
             )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
+    )
+
+
+def scatter_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_add`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_add`.
+    """
+
+    return put_along_axis_(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
     )
 
 

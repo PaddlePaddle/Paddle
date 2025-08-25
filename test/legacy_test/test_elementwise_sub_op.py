@@ -1216,6 +1216,163 @@ class TestTensorSubAPIWarnings(unittest.TestCase):
             os.environ['FLAGS_print_extra_attrs'] = "0"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseSubOp_Stride(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_grad_normal(self):
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X', 'Y'],
+            'Out',
+        )
+
+    def test_check_grad_ignore_x(self):
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.test_stride_backward = True
+        place = core.CUDAPlace(0)
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+        )
+
+
+class TestElementwiseSubOp_Stride1(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride2(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride3(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride4(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride5(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.subtract(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseSubOp_Stride_ZeroDim1(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride_ZeroSize1(TestElementwiseSubOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

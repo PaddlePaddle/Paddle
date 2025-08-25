@@ -205,6 +205,8 @@ from .manipulation import (  # noqa: F401
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
@@ -478,6 +480,7 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
+from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -822,11 +825,13 @@ tensor_method_func = [
     'take_along_axis',
     'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'put_along_axis_',
     'bernoulli_',
     'exponential_',
     'heaviside',
+    'scatter_add_',
     'index_add',
     "index_add_",
     'index_put',
@@ -906,6 +911,7 @@ tensor_method_func = [
     'set_',
     'resize_',
     'argwhere',
+    'softmax',
 ]
 
 mul = multiply

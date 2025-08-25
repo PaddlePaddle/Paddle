@@ -60,6 +60,7 @@ from paddle import base
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
+from paddle.base.core import DataType, VarDesc
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
     OpProtoHolder,
@@ -164,19 +165,25 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == paddle.float32:
+    if tensor_to_check_dtype in [VarDesc.VarType.FP32, DataType.FLOAT32]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.float64:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP64, DataType.FLOAT64]:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == paddle.float16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP16, DataType.FLOAT16]:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == paddle.bfloat16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.BF16, DataType.BFLOAT16]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.complex64:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX64,
+        DataType.COMPLEX64,
+    ]:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == paddle.complex128:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX128,
+        DataType.COMPLEX128,
+    ]:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -410,8 +417,8 @@ def get_devices():
     if (
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
-        or not paddle.is_compiled_with_cuda()
-    ):
+        or not core.is_compiled_with_cuda()
+    ) and not is_custom_device():
         devices.append('cpu')
     if paddle.is_compiled_with_cuda():
         devices.append('gpu')
@@ -719,9 +726,9 @@ class OpTest(unittest.TestCase):
             return isinstance(input, (np.ndarray, np.generic))
 
         def infer_dtype(numpy_dict, dtype_set):
-            assert isinstance(
-                numpy_dict, dict
-            ), "self.inputs, self.outputs must be numpy_dict"
+            assert isinstance(numpy_dict, dict), (
+                "self.inputs, self.outputs must be numpy_dict"
+            )
             # the inputs are as follows:
             # case 1: inputs = {'X': x}
             # case 2: inputs = {'X': (x, x_lod)}
@@ -1111,9 +1118,9 @@ class OpTest(unittest.TestCase):
                     inputs_grad_dict[name] = v
                 continue
             if var_proto.duplicable:
-                assert isinstance(
-                    np_list[name], list
-                ), f"Duplicable {name} should be set as list"
+                assert isinstance(np_list[name], list), (
+                    f"Duplicable {name} should be set as list"
+                )
                 var_list = []
                 slot_name = name
                 for name, np_value in np_list[slot_name]:
@@ -1162,9 +1169,9 @@ class OpTest(unittest.TestCase):
         for name in api_outs:
             np_api = np.array(api_outs[name])
             np_dyg = np.array(dygraph_outs[name])
-            assert (
-                np_api.shape == np_dyg.shape
-            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {np_dyg.shape}, but actual shape is {np_api.shape}"
+            assert np_api.shape == np_dyg.shape, (
+                f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {np_dyg.shape}, but actual shape is {np_api.shape}"
+            )
             np.testing.assert_allclose(
                 np_api,
                 np_dyg,
@@ -1198,9 +1205,9 @@ class OpTest(unittest.TestCase):
                 return {a: [b] for a, b in zip(output_sig, ret_tuple)}
             else:
                 # [assumption]: return multi-Tensor in a single output. such as paddle.split()
-                assert (
-                    len(output_sig) == 1
-                ), "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                assert len(output_sig) == 1, (
+                    "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                )
                 return {output_sig[0]: ret_tuple}
 
         def cal_python_api(python_api, args, kernel_sig):
@@ -1208,7 +1215,7 @@ class OpTest(unittest.TestCase):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 if self.strided_input_type == "transpose":
                     args[1] = self.transpose_api(args[1], self.perm)
                 elif self.strided_input_type == "as_stride":
@@ -1220,6 +1227,13 @@ class OpTest(unittest.TestCase):
                         f"Unsupported test type {self.strided_input_type}."
                     )
             ret_tuple = python_api(*args)
+            if hasattr(self, "test_stride_backward"):
+                if self.strided_input_type == "transpose":
+                    ret_tuple = self.transpose_api(ret_tuple, self.perm)
+                else:
+                    raise TypeError(
+                        f"Unsupported test type {self.strided_input_type}."
+                    )
             result = construct_output_dict_by_kernel_sig(ret_tuple, outputs_sig)
             if hasattr(self, "python_out_sig_sub_name"):
                 for key in self.python_out_sig_sub_name.keys():
@@ -1234,7 +1248,7 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
             # prepare input variable
             input_vars = self.inputs
-            if hasattr(self, "check_strided_input"):
+            if hasattr(self, "check_strided_forward"):
                 input_vars = self.inputs_stride
             dygraph_tensor_inputs = (
                 egr_inps
@@ -1273,9 +1287,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(
-                self, "python_api"
-            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
+            assert hasattr(self, "python_api"), (
+                f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
+            )
             args = OpTestUtils.prepare_python_api_arguments(
                 self.python_api,
                 dygraph_tensor_inputs,
@@ -1376,9 +1390,9 @@ class OpTest(unittest.TestCase):
                 return None
             if not hasattr(self, "python_api"):
                 print(kernel_sig)
-            assert hasattr(
-                self, "python_api"
-            ), f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
+            assert hasattr(self, "python_api"), (
+                f"Detect there is KernelSignature for `{self.op_type}` op, please set the `self.python_api` if you set check_dygraph = True"
+            )
             return kernel_sig
 
     def get_ir_input_attr_dict_and_feed(self, stop_gradient):
@@ -1442,9 +1456,9 @@ class OpTest(unittest.TestCase):
                 return {a: [b] for a, b in zip(output_sig, ret_tuple)}
             else:
                 # [assumption]: return multi-Tensor in a single output. such as paddle.split()
-                assert (
-                    len(output_sig) == 1
-                ), "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                assert len(output_sig) == 1, (
+                    "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                )
                 return {output_sig[0]: ret_tuple}
 
         # get kernel signature
@@ -1570,9 +1584,9 @@ class OpTest(unittest.TestCase):
                 return_numpy=False,
                 scope=new_scope,
             )
-            assert len(outs) == len(
-                ir_outs
-            ), "Fetch result should have same length when executed in pir"
+            assert len(outs) == len(ir_outs), (
+                "Fetch result should have same length when executed in pir"
+            )
 
             check_method = np.testing.assert_array_equal
             if os.getenv("FLAGS_PIR_OPTEST_RELAX_CHECK", None) == "True":
@@ -1842,9 +1856,9 @@ class OpTest(unittest.TestCase):
             # to check inplace result instead of numpy.array_equal.
             expect_out = np.array(expect_outs[i])
             actual_out = np.array(actual_outs[i])
-            assert (
-                actual_out.shape == expect_out.shape
-            ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_out.shape}, but actual shape is {actual_out.shape}"
+            assert actual_out.shape == expect_out.shape, (
+                f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_out.shape}, but actual shape is {actual_out.shape}"
+            )
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
@@ -2356,9 +2370,9 @@ class OpTest(unittest.TestCase):
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 expect_np = np.array(expect_np)
-                assert (
-                    actual_np.shape == expect_np.shape
-                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                assert actual_np.shape == expect_np.shape, (
+                    f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                )
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2509,9 +2523,9 @@ class OpTest(unittest.TestCase):
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 expect_np = np.array(expect_np)
-                assert (
-                    actual_np.shape == expect_np.shape
-                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                assert actual_np.shape == expect_np.shape, (
+                    f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                )
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -2603,9 +2617,9 @@ class OpTest(unittest.TestCase):
 
             def _compare_numpy(self, name, actual_np, expect_np):
                 expect_np = np.array(expect_np)
-                assert (
-                    actual_np.shape == expect_np.shape
-                ), f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                assert actual_np.shape == expect_np.shape, (
+                    f"Operator ({self.op_type}) : Output ({name}) shape mismatch, expect shape is {expect_np.shape}, but actual shape is {actual_np.shape}"
+                )
                 np.testing.assert_allclose(
                     actual_np,
                     expect_np,
@@ -3083,9 +3097,9 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
-            assert tuple(a.shape) == tuple(
-                b.shape
-            ), f"Operator ({self.op_type}) : Output ({name}) gradient shape mismatch, expect shape is {a.shape}, but actual shape is {b.shape}"
+            assert tuple(a.shape) == tuple(b.shape), (
+                f"Operator ({self.op_type}) : Output ({name}) gradient shape mismatch, expect shape is {a.shape}, but actual shape is {b.shape}"
+            )
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
@@ -3118,12 +3132,12 @@ class OpTest(unittest.TestCase):
                         not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST
                     ):
                         abs_a[abs_a < 1e-10] = 1e-3
-                        abs_a[
-                            np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)
-                        ] *= 1e4
-                        abs_a[
-                            np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)
-                        ] *= 1e2
+                        abs_a[np.logical_and(abs_a > 1e-10, abs_a <= 1e-8)] *= (
+                            1e4
+                        )
+                        abs_a[np.logical_and(abs_a > 1e-8, abs_a <= 1e-6)] *= (
+                            1e2
+                        )
                     elif self.is_bfloat16_op():
                         abs_a[abs_a < 1e-2] = 1
                     else:
@@ -3910,9 +3924,9 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = [g for p, g in param_grad_list]
             else:
-                assert (
-                    parallel is False
-                ), "unsupported parallel mode when giving custom grad outputs."
+                assert parallel is False, (
+                    "unsupported parallel mode when giving custom grad outputs."
+                )
                 # user_defined_grad_outputs here are numpy arrays
                 if not isinstance(user_defined_grad_outputs, list):
                     user_defined_grad_outputs = [user_defined_grad_outputs]
@@ -4018,9 +4032,9 @@ class OpTest(unittest.TestCase):
                 return {a: [b] for a, b in zip(output_sig, ret_tuple)}
             else:
                 # [assumption]: return multi-Tensor in a single output. such as paddle.split()
-                assert (
-                    len(output_sig) == 1
-                ), "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                assert len(output_sig) == 1, (
+                    "Don't support multi-output with multi-tensor output. (May be you can use set `python_out_sig`, see `test_squeeze2_op` as a example.)"
+                )
                 return {output_sig[0]: ret_tuple}
 
         # get kernel signature
