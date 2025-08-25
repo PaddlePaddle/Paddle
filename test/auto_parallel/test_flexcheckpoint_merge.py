@@ -124,8 +124,7 @@ class TestDistCheckpoint(unittest.TestCase):
 
         return losses[0]
 
-    def dist_checkpoint(self, offload=False):
-        flag = False
+    def dist_checkpoint(self, offload=False, safetensors=True):
         model_path = os.path.join(self.temp_dir.name, '/model')
         opt_path = os.path.join(self.temp_dir.name, '/opt')
 
@@ -157,17 +156,23 @@ class TestDistCheckpoint(unittest.TestCase):
             opt.step()
             opt.clear_grad()
 
-        dist.save_state_dict(model.state_dict(), model_path, safetensors=flag)
-        dist.save_state_dict(opt.state_dict(), opt_path, safetensors=flag)
+        dist.save_state_dict(
+            model.state_dict(), model_path, safetensors=safetensors
+        )
+        dist.save_state_dict(
+            opt.state_dict(), opt_path, safetensors=safetensors
+        )
 
         unsharded_state_dict = dist.load_merged_state_dict(
-            model_path, offload=offload, safetensors=flag
+            model_path, offload=offload, safetensors=safetensors
         )
         # Get single loss
         single_loss = self._get_single_loss(dataloader, unsharded_state_dict)
 
         shard_state_dict = model.state_dict()
-        dist.load_state_dict(shard_state_dict, model_path, safetensors=flag)
+        dist.load_state_dict(
+            shard_state_dict, model_path, safetensors=safetensors
+        )
 
         # Get distributed loss
         dist_loss = self._get_dist_loss(dataloader, shard_state_dict)
@@ -179,8 +184,10 @@ class TestDistCheckpoint(unittest.TestCase):
         )
 
     def test_dist_checkpoint(self):
-        self.dist_checkpoint(True)
-        self.dist_checkpoint(False)
+        self.dist_checkpoint(True, True)
+        self.dist_checkpoint(False, True)
+        self.dist_checkpoint(True, False)
+        self.dist_checkpoint(False, False)
 
 
 if __name__ == '__main__':
