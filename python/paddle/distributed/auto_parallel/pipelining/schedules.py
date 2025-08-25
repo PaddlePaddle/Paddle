@@ -534,7 +534,9 @@ class ScheduleFThenB(PipelineScheduleSingle):
 class PipelineChunk(nn.Layer):
     def __init__(self, layers=None, is_first=False, is_last=False):
         super().__init__()
-        assert not (is_first and is_last)
+        assert not (is_first and is_last), (
+            "Pipeline stage cannot be both first and last."
+        )
         self.layers = layers
         self.is_first = is_first
         self.is_last = is_last
