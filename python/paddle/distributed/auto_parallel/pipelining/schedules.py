@@ -46,7 +46,6 @@ from .microbatch import (
 )
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class _ActType(Enum):
@@ -533,7 +532,7 @@ class ScheduleFThenB(PipelineScheduleSingle):
         self._stage._sync_shared_param_grads()
 
 
-class PPChunk(nn.Layer):
+class PipelineChunk(nn.Layer):
     def __init__(self, layers=None, is_first=False, is_last=False):
         super().__init__()
         assert not (is_first and is_last)
@@ -576,11 +575,11 @@ def _manual_model_split(model, stage_idx, group, mode, pp_degree):
     def _build_stage(model, stage_idx, group):
         new_model = None
         if stage_idx == 0:
-            new_model = PPChunk(
+            new_model = PipelineChunk(
                 layer_lists[:chunk_size], is_first=True, is_last=False
             )
         elif stage_idx == chunk_num - 1:
-            new_model = PPChunk(
+            new_model = PipelineChunk(
                 layer_lists[
                     stage_idx * chunk_size : (stage_idx + 1) * chunk_size
                 ],
@@ -588,7 +587,7 @@ def _manual_model_split(model, stage_idx, group, mode, pp_degree):
                 is_last=True,
             )
         else:
-            new_model = PPChunk(
+            new_model = PipelineChunk(
                 layer_lists[
                     stage_idx * chunk_size : (stage_idx + 1) * chunk_size
                 ],
@@ -605,7 +604,7 @@ def _manual_model_split(model, stage_idx, group, mode, pp_degree):
     return stages
 
 
-def get_pp_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
+def get_pipeline_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
     assert mode in [
         "VPP",
         "1F1B",
@@ -627,47 +626,6 @@ def get_pp_schedule(model, n_microbatches, loss_fn, mode, pp_degree, group):
             stages[0], n_microbatches=n_microbatches, loss_fn=loss_fn
         )
     return schedule
-
-
-def parse_args(args, num=3):
-    trip = tuple([None] * num)
-    if isinstance(args, tuple):
-        for i in range(min(len(args), num)):
-            trip = (*trip[:i], args[i], *trip[i + 1 :])
-    else:
-        trip = (args, *trip[1:])
-    for i in range(1, num):
-        if trip[i] is not None and hasattr(trip[i], 'stop_gradient'):
-            trip[i].stop_gradient = True
-    return trip
-
-
-def return_args(**kwargs):
-    ret = ()
-    for name, value in kwargs.items():
-        if value is not None:
-            ret += (value.clone() if hasattr(value, "clone") else value,)
-    return ret[0] if len(ret) == 1 else ret
-
-
-def build_pp_layers(config, layer_func):
-    layers = nn.LayerList()
-    pp_degree = config.pipeline_parallel_degree
-    chunk_size = (
-        config.num_hidden_layers // pp_degree // config.virtual_pp_degree
-    )
-    current_rank = (
-        fleet.get_hybrid_communicate_group().get_pipe_parallel_group().rank
-        % pp_degree
-    )
-    for idx in range(config.num_hidden_layers):
-        target_stage = (idx // chunk_size) % pp_degree
-        if target_stage == current_rank:
-            stage_id = (idx // chunk_size) % pp_degree
-            layers.append(layer_func(config, idx, stage_id))
-        else:
-            layers.append(nn.Identity())
-    return layers
 
 
 class Schedule1F1B(PipelineScheduleSingle):
