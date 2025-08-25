@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 import paddle
 from paddle import _C_ops
@@ -224,6 +224,11 @@ class SortRetType(NamedTuple):
     indices: Tensor
 
 
+class MinMaxRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
 def _check_out_status(
     out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
     expect_multiple: bool = False,
@@ -400,3 +405,428 @@ class Unfold(nn.Unfold):
             dilations=to_list_if_necessary(self.dilations),
             name=self.name,
         )
+
+
+def _min_max_param_checker(func_name: str, *args: Any, **kwargs: Any):
+    def invalid_arguments_exception(error_prefix=""):
+        type_strs = [type(v).__name__ for v in args]
+        type_strs.extend([f"{k}={type(v).__name__}" for k, v in kwargs.items()])
+        signature = ", ".join(type_strs)
+
+        error_msg = (
+            f"Invalid arguments for `paddle.compat.{func_name}`:\n{error_prefix}"
+            f"Got: (paddle.Tensor input, {signature}), but expect one of:\n"
+            f" - (input: paddle.Tensor) for reduce_{func_name} on all dims.\n"
+            f" - (input: paddle.Tensor, other: paddle.Tensor) -> see paddle.{func_name}imum\n"
+            f" - (input: paddle.Tensor, int dim (cannot be None), bool keepdim = False)\n"
+        )
+        return TypeError(error_msg)
+
+    def try_get_keys(key):
+        res = None
+        try:
+            res = kwargs[key]
+        except KeyError:
+            raise invalid_arguments_exception() from None
+        return res
+
+    dim_or_other = None
+    keepdim = False
+
+    num_args = len(args)
+    total_arg_num = num_args + len(kwargs)
+    if total_arg_num > 2:
+        raise invalid_arguments_exception()
+    elif total_arg_num == 2:
+        if num_args == 2:
+            dim_or_other, keepdim = args
+        elif num_args == 1:
+            dim_or_other = args[0]
+            keepdim = try_get_keys("keepdim")
+        else:
+            dim_or_other = try_get_keys("dim")
+            keepdim = try_get_keys("keepdim")
+        if dim_or_other is None or isinstance(
+            dim_or_other, (Variable, paddle.pir.Value)
+        ):
+            raise invalid_arguments_exception()
+    elif total_arg_num == 1:
+        if num_args:
+            dim_or_other = args[0]
+        else:
+            if "dim" in kwargs:
+                dim_or_other = kwargs["dim"]
+            elif "other" in kwargs:
+                dim_or_other = kwargs["other"]
+                if not isinstance(dim_or_other, (Variable, paddle.pir.Value)):
+                    raise invalid_arguments_exception()
+        if dim_or_other is None:
+            raise invalid_arguments_exception()
+
+    if (
+        dim_or_other is not None
+        and not isinstance(dim_or_other, (Variable, paddle.pir.Value))
+        and type(dim_or_other) is not int
+    ):
+        raise invalid_arguments_exception(
+            f"The second input must be int or Tensor or implicit None in compat.{func_name}, but received {type(dim_or_other)}.\n"
+        )
+
+    return dim_or_other, keepdim
+
+
+def _min_max_tensor_allow_grad(input: Tensor):
+    """Prevent integral input tensor type to have `stop_gradient=False`"""
+    in_dtype = input.dtype
+    if (
+        in_dtype == paddle.int32
+        or in_dtype == paddle.int64
+        or in_dtype == paddle.uint8
+        or in_dtype == paddle.int16
+    ):
+        if not input.stop_gradient:
+            raise TypeError(
+                f"Tensors with integral type: '{in_dtype}' should stop gradient."
+            )
+
+
+def _min_max_allow_cpu_composite(input: Tensor):
+    """paddle.min/argmin(max/argmax), paddle.take_along_axis reject the following types"""
+    in_dtype = input.dtype
+    if (
+        in_dtype == paddle.float16
+        or in_dtype == paddle.bfloat16
+        or in_dtype == paddle.int16
+    ):
+        raise TypeError(
+            f"Non-CUDA GPU placed Tensor does not have '{in_dtype}' op registered.\n"
+            "Paddle support following DataTypes: int32, int64, float64, float32, uint8"
+        )
+
+
+def _check_out_status(
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor],
+    expect_multiple: bool = False,
+):
+    if out is None:
+        return
+    if not in_dynamic_mode():
+        raise RuntimeError(
+            "Using `out` static graph CINN backend is currently not supported. Directly return the tensor tuple instead.\n"
+        )
+    if expect_multiple:
+        if not isinstance(out, (tuple, list)) or len(out) != 2:
+            raise TypeError(
+                f"Expected a list or tuple of two tensors, got {type(out)} instead."
+            )
+        if not (
+            isinstance(out[0], paddle.Tensor)
+            and isinstance(out[1], paddle.Tensor)
+        ):
+            raise TypeError(
+                f"Expected Tensor type in the tuple/list, got ({type(out[0])}, {type(out[1])}) instead."
+            )
+    else:
+        if not isinstance(out, paddle.Tensor):
+            raise TypeError(f"Expected a Tensor, got {type(out)} instead.")
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.min",
+    correct_name="paddle.min",
+)
+def min(
+    input: Tensor,
+    *args: Any,
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor] = None,
+    **kwargs: Any,
+) -> Tensor | MinMaxRetType:
+    """
+
+    Computes the minimum of tensor elements. There are mainly 3 cases (functionalities):
+    1. paddle.compat.min(input: Tensor): reduce min over all dims, return a single value Tensor
+    2. paddle.compat.min(input: Tensor, dim: int (cannot be None), keepdim=False): reduce min over the given dim,
+        returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
+    3. paddle.compat.min(input: Tensor, other: Tensor): see `paddle.minimum`
+
+    Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+    1. Case 1: the same as `min`
+    2. Case 2: NOT evenly distributing the gradient for equal minimum elements! PyTorch actually only propagates to the elements with indices,
+        for example: Tensor([1, 1, 1]) -> min(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
+        Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
+    3. Case 3: the same as `minimum`
+
+    Args:
+        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
+            uint8, int32, int64, float32, float64 are allowed on CPU.
+        dim (int, optional): The dim along which the minimum is computed.
+            If this is not specified: see case 1, note that: `None` cannot be passed to this (TypeError will be thrown)
+            compute the minimum over all elements of `input` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-input.ndim, input.ndim)`.
+            If :math:`dim < 0`, the axis to reduce is :math:`input.ndim + dim`.
+            Warning: if `dim` is specified, execute static graph will throw exceptions
+            when not on a GPU device, since max_with_index is not implemented for non-GPU devices
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the `input` unless :attr:`keepdim` is true, default
+            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+        other (Tensor, optional): the other tensor to perform `paddle.minimum` with. This Tensor should
+            have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
+            meaning that trying to composite both will result in TypeError
+        out (Tensor|tuple[Tensor, Tensor], optional): the output Tensor or tuple of (Tensor, int64 Tensor) that can be optionally
+            given to be used as output buffers. For case 1 and 3 out is just a Tensor, while for case 2 we expect a tuple
+
+
+    Returns:
+        - For case 1: a single value Tensor (0-dim)
+        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+            while indices is always an int64 Tensor, with exactly the same shape as `values`.
+            MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
+        - For case 3: see `paddle.minimum`
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # data_x is a Tensor with shape [2, 4]
+            >>> # the axis is a int element
+            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+            ...                       [0.1, 0.2, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> # Case 1: reduce over all dims
+            >>> result1 = paddle.compat.min(x)
+            >>> result1
+            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            0.10000000)
+
+            >>> # Case 2: reduce over specified dim
+            >>> x.clear_grad()
+            >>> result2 = paddle.compat.min(x, dim=1)
+            >>> result2
+            MinMaxRetType(values=Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [0.20000000, 0.10000000]), indices=Tensor(shape=[2], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [0, 0]))
+            >>> result2[0].backward()
+            >>> x.grad
+            Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[1., 0., 0., 0.],
+                 [1., 0., 0., 0.]])
+
+            >>> # Case 3: equivalent to `paddle.minimum`
+            >>> x.clear_grad()
+            >>> y = paddle.to_tensor([[0.5, 0.4, 0.1, 0.2],
+            ...                       [0.3, 0.1, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> result3 = paddle.compat.min(x, y)
+            >>> result3
+            Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[0.20000000, 0.30000000, 0.10000000, 0.20000000],
+                 [0.10000000, 0.10000000, 0.60000000, 0.70000000]])
+    """
+    if not isinstance(input, (paddle.pir.Value, paddle.Tensor)):
+        raise TypeError(
+            f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
+        )
+    _min_max_tensor_allow_grad(input)
+
+    dim_or_other, keepdim = _min_max_param_checker("min", *args, **kwargs)
+
+    ret = None
+    if dim_or_other is None:
+        # paddle.min and paddle.amin actually shares the same grad op (ReduceAminKernel)
+        _check_out_status(out, False)
+        ret = paddle.min(input)
+    elif isinstance(dim_or_other, int):
+        _check_out_status(out, True)
+        if input.ndim:
+            if in_dynamic_mode() and not input.place.is_gpu_place():
+                _min_max_allow_cpu_composite(input)
+                # CPUPlace and other placements are implemented by composition
+
+                indices = paddle.argmin(input, axis=dim_or_other, keepdim=True)
+                values = paddle.take_along_axis(
+                    input, indices, axis=dim_or_other
+                )
+                if keepdim:
+                    ret = MinMaxRetType(values=values, indices=indices)
+                else:
+                    ret = MinMaxRetType(
+                        values=values.squeeze_(axis=dim_or_other),
+                        indices=indices.squeeze_(axis=dim_or_other),
+                    )
+            else:
+                vals, inds = _C_ops.min_with_index(
+                    input, dim_or_other, keepdim, False
+                )
+                inds.stop_gradient = True
+                ret = MinMaxRetType(values=vals, indices=inds)
+        else:
+            ret = MinMaxRetType(
+                values=input,
+                indices=paddle.zeros(
+                    [], dtype=paddle.int64, device=input.place
+                ),
+            )
+    else:
+        _check_out_status(out, False)
+        ret = _C_ops.minimum(input, dim_or_other)
+
+    if out is not None:
+        if isinstance(ret, MinMaxRetType):
+            paddle.assign(ret.values, out[0])
+            paddle.assign(ret.indices, out[1])
+        else:
+            paddle.assign(ret, out)
+    return ret
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.max",
+    correct_name="paddle.max",
+)
+def max(
+    input: Tensor,
+    *args: Any,
+    out: Tensor | tuple[Tensor, Tensor] | list[Tensor] = None,
+    **kwargs: Any,
+) -> Tensor | MinMaxRetType:
+    """
+
+    Computes the maximum of tensor elements. There are mainly 3 cases (functionalities):
+    1. paddle.compat.max(input: Tensor): reduce max over all dims, return a single value Tensor
+    2. paddle.compat.max(input: Tensor, dim: int (cannot be None), keepdim=False): reduce max over the given dim,
+        returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
+    3. paddle.compat.max(input: Tensor, other: Tensor): see `paddle.maximum`
+
+    Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+    1. Case 1: the same as `max`
+    2. Case 2: NOT evenly distributing the gradient for equal maximum elements! PyTorch actually only propagates to the elements with indices,
+        for example: Tensor([1, 1, 1]) -> max(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
+        Tensor([1/3, 1/3, 1/3]) as stated in their documentation, but will be Tensor([1, 0, 0]). This API implements a similar backward kernel.
+    3. Case 3: the same as `maximum`
+
+    Args:
+        input (Tensor): A tensor, the data type is bfloat16, float16, float32, float64, int32, int64 on GPU.
+            uint8, int32, int64, float32, float64 are allowed on CPU.
+        dim (int, optional): The dim along which the maximum is computed.
+            If this is not specified: see case 1, note that: `None` cannot be passed to this (TypeError will be thrown)
+            compute the maximum over all elements of `input` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-input.ndim, input.ndim)`.
+            If :math:`dim < 0`, the axis to reduce is :math:`input.ndim + dim`.
+            Warning: if `dim` is specified, execute static graph will throw exceptions
+            when not on a GPU device, since max_with_index is not implemented for non-GPU devices
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the `input` unless :attr:`keepdim` is true, default
+            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+        other (Tensor, optional): the other tensor to perform `paddle.maximum` with. This Tensor should
+            have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
+            meaning that trying to composite both will result in TypeError
+        out (Tensor|tuple[Tensor, Tensor], optional): the output Tensor or tuple of (Tensor, int64 Tensor) that can be optionally
+            given to be used as output buffers. For case 1 and 3 out is just a Tensor, while for case 2 we expect a tuple
+
+
+    Returns:
+        - For case 1: a single value Tensor (0-dim)
+        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+            while indices is always an int64 Tensor, with exactly the same shape as `values`.
+            MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
+        - For case 3: see `paddle.maximum`
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # data_x is a Tensor with shape [2, 4]
+            >>> # the axis is a int element
+            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+            ...                       [0.1, 0.2, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> # Case 1: reduce over all dims
+            >>> result1 = paddle.compat.max(x)
+            >>> result1
+            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+            0.90000000)
+
+            >>> # Case 2: reduce over specified dim
+            >>> x.clear_grad()
+            >>> result2 = paddle.compat.max(x, dim=1)
+            >>> result2
+            MinMaxRetType(values=Tensor(shape=[2], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [0.90000000, 0.70000000]), indices=Tensor(shape=[2], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                [3, 3]))
+            >>> result2[0].backward()
+            >>> x.grad
+            Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[0., 0., 0., 1.],
+                 [0., 0., 0., 1.]])
+
+            >>> # Case 3: equivalent to `paddle.maximum`
+            >>> x.clear_grad()
+            >>> y = paddle.to_tensor([[0.5, 0.4, 0.1, 0.2],
+            ...                       [0.3, 0.1, 0.6, 0.7]],
+            ...                       dtype='float64', stop_gradient=False)
+            >>> result3 = paddle.compat.max(x, y)
+            >>> result3
+            Tensor(shape=[2, 4], dtype=float64, place=Place(gpu:0), stop_gradient=False,
+                [[0.50000000, 0.40000000, 0.50000000, 0.90000000],
+                 [0.30000000, 0.20000000, 0.60000000, 0.70000000]])
+    """
+    if not isinstance(input, (paddle.pir.Value, paddle.Tensor)):
+        raise TypeError(
+            f"input should be a tensor, but got an instance with type '{type(input).__name__}'"
+        )
+    _min_max_tensor_allow_grad(input)
+
+    dim_or_other, keepdim = _min_max_param_checker("max", *args, **kwargs)
+
+    ret = None
+    if dim_or_other is None:
+        _check_out_status(out, False)
+        ret = paddle.max(input)
+    elif isinstance(dim_or_other, int):
+        _check_out_status(out, True)
+        if input.ndim:
+            if in_dynamic_mode() and not input.place.is_gpu_place():
+                _min_max_allow_cpu_composite(input)
+                indices = paddle.argmax(input, axis=dim_or_other, keepdim=True)
+                values = paddle.take_along_axis(
+                    input, indices, axis=dim_or_other
+                )
+                if keepdim:
+                    ret = MinMaxRetType(values=values, indices=indices)
+                else:
+                    ret = MinMaxRetType(
+                        values=values.squeeze_(axis=dim_or_other),
+                        indices=indices.squeeze_(axis=dim_or_other),
+                    )
+            else:
+                vals, inds = _C_ops.max_with_index(
+                    input, dim_or_other, keepdim, False
+                )
+                inds.stop_gradient = True
+                ret = MinMaxRetType(values=vals, indices=inds)
+        else:
+            ret = MinMaxRetType(
+                values=input,
+                indices=paddle.zeros(
+                    [], dtype=paddle.int64, device=input.place
+                ),
+            )
+    else:
+        _check_out_status(out, False)
+        ret = _C_ops.maximum(input, dim_or_other)
+
+    if out is not None:
+        if isinstance(ret, MinMaxRetType):
+            paddle.assign(ret.values, out[0])
+            paddle.assign(ret.indices, out[1])
+        else:
+            paddle.assign(ret, out)
+    return ret
