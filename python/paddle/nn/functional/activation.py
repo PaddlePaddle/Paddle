@@ -30,12 +30,13 @@ from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
 from ...tensor.math import tanh, tanh_  # noqa: F401
 from ...tensor.ops import sigmoid
+from ...tensor.softmax import nn_functional_softmax as softmax
 
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DataLayout2D, DTypeLike
 
-__all__ = []
+__all__ = ["softmax"]
 
 
 def celu(x: Tensor, alpha: float = 1.0, name: str | None = None) -> Tensor:
