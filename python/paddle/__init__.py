@@ -629,9 +629,7 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.softmax import (
-    softmax,
-)
+from .tensor.softmax import paddle_softmax as softmax
 from .tensor.stat import (
     mean,
     median,

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import paddle
 from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
@@ -170,7 +171,7 @@ def compat_softmax(
     name: str | None = None,
 ) -> Tensor:
     r"""
-    This operator implements the softmax layer. The calculation process is as follows:
+    This operator implements the compat.softmax. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
 
@@ -299,9 +300,11 @@ def compat_softmax(
 
 
 @softmax_param_ignore_alias
-def softmax(x: Tensor, axis: int, *, dtype: DTypeLike | None = None) -> Tensor:
+def tensor_softmax(
+    x: Tensor, axis: int, dtype: DTypeLike | None = None
+) -> Tensor:
     r"""
-    This operator implements the softmax layer. The calculation process is as follows:
+    This operator implements the paddle.Tensor.softmax. The calculation process is as follows:
 
     1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
 
@@ -420,6 +423,137 @@ def softmax(x: Tensor, axis: int, *, dtype: DTypeLike | None = None) -> Tensor:
               [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
     """
     return _softmax_impl(x, axis, dtype)
+
+
+@softmax_param_ignore_alias
+def paddle_softmax(
+    x: Tensor,
+    axis: int,
+    dtype: DTypeLike | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    This operator implements the paddle.softmax. The calculation process is as follows:
+
+    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
+
+    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
+    and the first dimension(column length) is the product of all other dimensions
+    of ``x``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
+    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
+    vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2
+    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
+
+    It computes the exponential of the given dimension and the sum of exponential
+    values of all the other dimensions in the K-dimensional vector input.
+    Then the ratio of the exponential of the given dimension and the sum of
+    exponential values of all the other dimensions is the output of the softmax
+    operator.
+
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
+
+    .. math::
+
+        softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            x.shape = [2, 3, 4]
+            x.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            out.shape = [2, 3, 4]
+            out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
+
+    Parameters:
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+        axis (int): The axis along which to perform softmax
+            calculations. It should be in range [-D, D), where D is the
+            rank of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` .
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
+        out (Tensor, optional): The output Tensor.
+
+    Returns:
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+            ...                        [3.0, 4.0, 5.0, 6.0],
+            ...                        [7.0, 8.0, 8.0, 9.0]],
+            ...                       [[1.0, 2.0, 3.0, 4.0],
+            ...                        [5.0, 6.0, 7.0, 8.0],
+            ...                        [6.0, 7.0, 8.0, 9.0]]],dtype='float32')
+            >>> out1 = paddle.softmax(x, -1)
+            >>> out2 = paddle.softmax(x, -1, dtype='float64')
+            >>> #out1's data type is float32; out2's data type is float64
+            >>> #out1 and out2's value is as follows:
+            >>> print(out1)
+            >>> print(out2)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.07232949, 0.19661194, 0.19661194, 0.53444666]],
+             [[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428]]])
+            Tensor(shape=[2, 3, 4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+             [[0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426],
+              [0.03205860, 0.08714432, 0.23688282, 0.64391426]]])
+    """
+    return paddle.assign(_softmax_impl(x, axis, dtype), out)
 
 
 def _softmax_impl(
