@@ -552,6 +552,7 @@ def allclose(
         return out
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def equal(
     x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
@@ -564,7 +565,9 @@ def equal(
 
     Args:
         x (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``
         y (Tensor): Tensor, data type is bool, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``other``
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
         out (Tensor, optional): Output tensor. If provided, the result will be stored in this tensor.
