@@ -77,9 +77,9 @@ class JITTuner:
                 print(
                     f"Tuned JIT kernel {name} with keys {keys} and tuned keys {tuned_keys} has time {elapsed_time}"
                 )
-        assert (
-            best_runtime is not None
-        ), f"Failed to tune JIT kernel {name} with keys {keys}"
+        assert best_runtime is not None, (
+            f"Failed to tune JIT kernel {name} with keys {keys}"
+        )
 
         # Cache the best runtime and return
         if os.getenv("DG_JIT_DEBUG", None) or os.getenv(
@@ -140,9 +140,9 @@ class JITTuner:
                 print(
                     f"Tuned JIT kernel {name} with keys {keys} and tuned keys {tuned_keys} has time {elapsed_time}"
                 )
-        assert (
-            best_runtime is not None
-        ), f"Failed to tune JIT kernel {name} with keys {keys}"
+        assert best_runtime is not None, (
+            f"Failed to tune JIT kernel {name} with keys {keys}"
+        )
 
         # Cache the best runtime and return
         if os.getenv("DG_JIT_DEBUG", None) or os.getenv(

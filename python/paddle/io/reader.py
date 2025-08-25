@@ -476,9 +476,9 @@ class DataLoader:
         self.dataset = dataset
 
         if not return_list and not in_dynamic_mode():
-            assert (
-                feed_list is not None
-            ), "feed_list should be set when return_list=False"
+            assert feed_list is not None, (
+                "feed_list should be set when return_list=False"
+            )
         self.feed_list = feed_list
 
         if places is None:

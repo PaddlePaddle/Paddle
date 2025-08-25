@@ -292,7 +292,9 @@ def test_main(
                     rank_prefix_matrix = handle[0]
                     assert (
                         gbl_num_tokens_per_rank[rank].item() == recv_x.shape[0]
-                    ), f'{gbl_num_tokens_per_rank[rank].item()} != {recv_x.shape[0]}'
+                    ), (
+                        f'{gbl_num_tokens_per_rank[rank].item()} != {recv_x.shape[0]}'
+                    )
                     assert (
                         gbl_num_tokens_per_expert.view([num_ranks, -1])[
                             rank
@@ -318,15 +320,13 @@ def test_main(
 
                         # Check `topk_weights`
                         if current_x is not x_pure_rand:
-                            recv_topk_weights[
-                                recv_topk_idx.equal(-1)
-                            ] = recv_topk_weights.amax(
-                                axis=1, keepdim=True
-                            ).expand_as(
-                                recv_topk_weights
-                            )[
-                                recv_topk_idx.equal(-1)
-                            ]
+                            recv_topk_weights[recv_topk_idx.equal(-1)] = (
+                                recv_topk_weights.amax(
+                                    axis=1, keepdim=True
+                                ).expand_as(recv_topk_weights)[
+                                    recv_topk_idx.equal(-1)
+                                ]
+                            )
                             # check_data(recv_topk_weights, rank_prefix_matrix)
 
                     # Test cached dispatch (must without top-k staffs)
