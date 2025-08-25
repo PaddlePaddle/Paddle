@@ -340,5 +340,61 @@ class TestLogsumexp_ZeroSize2(TestLogsumexp_ZeroSize):
         self.axis = [1]  # out return shape [2, 0]
 
 
+class TestLogsumexpOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_shape = [2, 3, 4]
+        self.axis = 1
+        self.x_np = np.random.rand(*self.x_shape).astype(np.float32)
+
+        self.apis = [
+            paddle.logsumexp,
+            paddle.special.logsumexp,
+        ]
+        self.test_types = [
+            # "decorator1",
+            # "decorator2",
+            "out",
+            # "out_decorator",
+        ]
+
+    def do_test(self, api, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        out = paddle.empty((2, 3), dtype='float32')
+        out.stop_gradient = False
+
+        if test_type == 'raw':
+            result = api(x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator1':
+            result = api(x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator2':
+            result = api(input=x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            api(x, axis=self.axis, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            api(input=x, axis=self.axis, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_logsumexp_out(self):
+        out_std, grad_std = self.do_test(paddle.logsumexp, 'raw')
+        for test_type in self.test_types:
+            out, grad = self.do_test(paddle.logsumexp, test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            np.testing.assert_allclose(
+                grad.numpy(), grad_std.numpy(), rtol=1e-20
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -696,6 +697,229 @@ class TestClipOp_FP64(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestClipOutAndParaDecorator(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.apis = [
+            paddle.clip,
+            paddle.clamp,
+        ]
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+        self.test_types = [
+            "decorator1",
+            "decorator2",
+            "out",
+            "out_decorator",
+        ]
+        self.min, self.max = -0.5, 0.5
+
+    def do_test(self, api, test_type):
+        self.test_types = [
+            "decorator1",
+            "out",
+            "out_decorator",
+        ]
+        x = paddle.to_tensor(self.input_np, stop_gradient=False)
+        out = paddle.zeros(self.shape, dtype='float32')
+        out.stop_gradient = False
+        if test_type == "raw":
+            out = paddle.clip(x, min=self.min, max=self.max)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == "decorator1":
+            res = api(input=x, min=self.min, max=self.max)
+            loss = res.mean()
+            loss.backward()
+            x_grad = x.grad
+            return res, x_grad
+        elif test_type == "out":
+            res = api(x, min=self.min, max=self.max, out=out)
+            loss = out.mean()
+            loss.backward()
+            x_grad = x.grad
+            return out, x_grad
+        elif test_type == "out_decorator":
+            res = api(out=out, input=x, min=self.min, max=self.max)
+            loss = out.mean()
+            loss.backward()
+            x_grad = x.grad
+            return out, x_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_api(self):
+        out_std, x_grad_std = self.do_test(paddle.clip, "raw")
+        for api in self.apis:
+            for test_type in self.test_types:
+                out, x_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+                )
+
+
+class TestClipCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.func = paddle.clip
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.min_val = 0.3
+        self.max_val = 0.7
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.clip(self.np_input, self.min_val, self.max_val)
+
+    def init_case(self):
+        params = [['x', 'input'], ['min'], ['max']]
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.clip()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.clip()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.min_val, self.max_val)
+                    )
+                    for out_flag in [False, True]:
+                        if out_flag:
+                            kwargs['out'] = paddle.empty([])
+                            self.func(*args, **kwargs)
+                            out = kwargs["out"]
+                        else:
+                            out = self.func(*args, **kwargs)
+                        np.testing.assert_array_equal(self.np_out, out.numpy())
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.min_val, self.max_val)
+                    )
+                    out = x.clip(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_dygraph_out(self):
+        def run_clip(test_type):
+            x = paddle.to_tensor(self.np_input)
+            x.stop_gradient = False
+            out = (
+                paddle.zeros(self.np_out.shape)
+                if test_type in ["with_out", "both"]
+                else None
+            )
+            if test_type == "return":
+                out = paddle.clip(x, self.min_val, self.max_val)
+            elif test_type == "with_out":
+                paddle.clip(x, self.min_val, self.max_val, out=out)
+            elif test_type == "both":
+                out = paddle.clip(x, self.min_val, self.max_val, out=out)
+            else:
+                raise ValueError(f"Invalid test_mode: {test_type}")
+
+            expected = paddle._C_ops.clip(x, self.min_val, self.max_val)
+            np.testing.assert_array_equal(out.numpy(), expected.numpy())
+            loss = out.sum().astype('float32')
+            loss.backward()
+            return out, x.grad
+
+        def assert_outputs_equal(outputs, rtol: float = 1e-10):
+            for out in outputs[1:]:
+                np.testing.assert_allclose(
+                    outputs[0].numpy(), out.numpy(), rtol=rtol
+                )
+
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                out1, grad1 = run_clip("return")
+                out2, grad2 = run_clip("with_out")
+                out3, grad3 = run_clip("both")
+
+                assert_outputs_equal([out1, out2, out3])
+                if (
+                    grad1 is not None
+                    and grad2 is not None
+                    and grad3 is not None
+                ):
+                    assert_outputs_equal([grad1, grad2, grad3])
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.min_val, self.max_val)
+                        )
+                        out = self.func(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.min_val, self.max_val)
+                        )
+
+                        out = x.clip(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
 
 
 if __name__ == '__main__':
