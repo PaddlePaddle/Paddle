@@ -42,7 +42,7 @@ COMMON_DECLARE_bool(check_cuda_error);
 
 using egr::ConvertToDistTensor;
 
-PHI_DECLARE_int64(offload_retry_times);
+COMMON_DECLARE_int64(offload_retry_times);
 
 namespace paddle::pybind {
 

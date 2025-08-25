@@ -1383,7 +1383,7 @@ class AllocatorFacadePrivate {
         common::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
-    allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+    allocator = std::make_shared<RetryAllocator>(allocator, p, retry_time);
   }
 
   void WrapStatAllocator(phi::XPUPlace p, XPUStream stream) {

@@ -38,7 +38,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
-PHI_DECLARE_int64(offload_retry_times);
+COMMON_DECLARE_int64(offload_retry_times);
 
 namespace egr {
 class TensorWrapper {
