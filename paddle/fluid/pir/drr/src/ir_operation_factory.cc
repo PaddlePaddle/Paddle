@@ -274,14 +274,12 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
-          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
-                            true,
-                            common::errors::InvalidArgument(
-                                "'onednn_data_type' Attribute is expected "
-                                "for Conv2dTransposeBiasOp. "));
-          std::string onednn_data_type = attrs.at("onednn_data_type")
-                                             .dyn_cast<pir::StrAttribute>()
-                                             .AsString();
+          std::string onednn_data_type = "";
+          if (attrs.find("onednn_data_type") != attrs.end()) {
+            onednn_data_type = attrs.at("onednn_data_type")
+                                   .dyn_cast<pir::StrAttribute>()
+                                   .AsString();
+          }
 
           PADDLE_ENFORCE_EQ(attrs.find("fuse_relu") != attrs.end(),
                             true,
