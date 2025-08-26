@@ -260,7 +260,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             let case_num++
             clean_file ${work_dir}/../workspace/PaddleNLP/llm
         elif [[ ${case} == "deepseek_auto" ]];then
-            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
             timeout 5m bash $cmd prepare_case deepseek_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd deepseek_auto
             export FLAGS_install_deps=1
