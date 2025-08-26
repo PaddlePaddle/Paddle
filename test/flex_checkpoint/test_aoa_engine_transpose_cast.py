@@ -15,16 +15,16 @@
 import unittest
 
 from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
-    AoAEngine,
+    AOAEngine,
     ShardedWeightDesc,
     ShardMappingEntry,
 )
 
 
-class TestAoAEngineTransposeCast(unittest.TestCase):
+class TestAOAEngineTransposeCast(unittest.TestCase):
     def setUp(self):
         self.setup_statements()
-        self.aoa_engine = AoAEngine(
+        self.aoa_engine = AOAEngine(
             aoa_config={"aoa_statements": self.aoa_statements},
             source_state_shard_info=self.source_state_shard_info,
             destination_state_shard_info=self.destination_state_shard_info,
@@ -183,7 +183,7 @@ class TestAoAEngineTransposeCast(unittest.TestCase):
             self.assertEqual(result, answer)
 
 
-class TestAoAEngineTransposeCast2(TestAoAEngineTransposeCast):
+class TestAOAEngineTransposeCast2(TestAOAEngineTransposeCast):
     def setup_statements(self):
         s0 = ShardedWeightDesc(
             key="s0",
@@ -330,7 +330,7 @@ class TestAoAEngineTransposeCast2(TestAoAEngineTransposeCast):
         self.answers.append(answer)
 
 
-class TestAoAEngineTransposeCast3(TestAoAEngineTransposeCast):
+class TestAOAEngineTransposeCast3(TestAOAEngineTransposeCast):
     def setup_statements(self):
         s0 = ShardedWeightDesc(
             key="s0",
@@ -473,7 +473,7 @@ class TestAoAEngineTransposeCast3(TestAoAEngineTransposeCast):
         self.answers.append(answer)
 
 
-class TestAoAEngineTransposeCast4(TestAoAEngineTransposeCast):
+class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
     def setup_statements(self):
         s0 = ShardedWeightDesc(
             key="s0",
