@@ -344,8 +344,8 @@ jobs:
             mkdir ${{ env.home_path }}/bos_retry
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
-          cd /workspace/case_logs
-          for FILE in /workspace/case_logs/*; do
+          cd /paddle/case_logs
+          for FILE in /paddle/case_logs/*; do
             file=$(basename "$FILE")
             python ${{ env.bos_file }} $file paddle-github-action/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs
             echo "$file: https://paddle-github-action.bj.bcebos.com/PR/Distribute-Stable/${PR_ID}/${COMMIT_ID}/logs/$file"
