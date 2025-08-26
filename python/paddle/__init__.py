@@ -138,6 +138,7 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
 )
@@ -358,6 +359,7 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
     ravel,
     repeat_interleave,
@@ -368,6 +370,8 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
@@ -625,6 +629,9 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.softmax import (
+    softmax,
+)
 from .tensor.stat import (
     mean,
     median,
@@ -852,6 +859,12 @@ pi = math.pi
 e = math.e
 
 # API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+
 div = divide
 div_ = divide_
 
@@ -933,6 +946,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -968,6 +982,7 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1112,6 +1127,7 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
@@ -1229,6 +1245,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1260,13 +1278,16 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
     'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1327,6 +1348,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 

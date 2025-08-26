@@ -761,9 +761,9 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             pool_add = paddle.add(pool1, pool2)
             pool_add = paddle.nn.functional.relu(pool_add)
     elif isinstance(quant_skip_pattern, list):
-        assert (
-            len(quant_skip_pattern) > 1
-        ), 'test config error: the len of quant_skip_pattern list should be greater than 1.'
+        assert len(quant_skip_pattern) > 1, (
+            'test config error: the len of quant_skip_pattern list should be greater than 1.'
+        )
         with paddle.static.name_scope(quant_skip_pattern[0]):
             pool1 = paddle.nn.functional.avg_pool2d(
                 hidden, kernel_size=2, stride=2

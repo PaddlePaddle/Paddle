@@ -94,14 +94,14 @@ def append_backward_new(
     from paddle.incubate.autograd.primx import Transform, orig2prim
 
     program = default_main_program()
-    assert (
-        program.num_blocks == 1
-    ), "The append_backward_new interface is designed to process only one block."
+    assert program.num_blocks == 1, (
+        "The append_backward_new interface is designed to process only one block."
+    )
     block = program.current_block()
     for el in loss_list:
-        assert (
-            el.block == block
-        ), 'variable in loss_list should be in current block of main program'
+        assert el.block == block, (
+            'variable in loss_list should be in current block of main program'
+        )
 
     orig2prim(block)
     ad = Transform(block)
@@ -280,9 +280,9 @@ class Optimizer:
         if self._parameter_list:
             if isinstance(self._parameter_list[0], dict):
                 for param_group in self._parameter_list:
-                    assert (
-                        'params' in param_group
-                    ), 'params should be set in parameters if parameter groups are optimized in different options'
+                    assert 'params' in param_group, (
+                        'params should be set in parameters if parameter groups are optimized in different options'
+                    )
                 self._dtype = self._parameter_list[0]['params'][0].dtype
             else:
                 self._dtype = self._parameter_list[0].dtype
@@ -477,9 +477,9 @@ class Optimizer:
         if isinstance(self._learning_rate, LRScheduler):
             lr_state_dict = state_dict.get("LR_Scheduler", None)
             if not isinstance(self._learning_rate, LambdaDecay):
-                assert (
-                    lr_state_dict is not None
-                ), "LR_Scheduler state must be included in the state dict except LambdaDecay"
+                assert lr_state_dict is not None, (
+                    "LR_Scheduler state must be included in the state dict except LambdaDecay"
+                )
             if lr_state_dict:
                 self._learning_rate.set_state_dict(lr_state_dict)
 
@@ -495,9 +495,9 @@ class Optimizer:
         self._accumulators_holder = state_dict
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
-                assert (
-                    var_tmp.name in state_dict
-                ), f"optimizer Tensor {var_tmp.name} not found"
+                assert var_tmp.name in state_dict, (
+                    f"optimizer Tensor {var_tmp.name} not found"
+                )
 
                 var = var_tmp.value()
                 tensor = var.get_tensor()
@@ -1112,9 +1112,9 @@ class Optimizer:
 
             if framework.in_dygraph_mode():
                 if len(self._accumulators_holder) > 0:
-                    assert (
-                        var_name in self._accumulators_holder
-                    ), f"Optimizer set error, {var_name} should in state dict"
+                    assert var_name in self._accumulators_holder, (
+                        f"Optimizer set error, {var_name} should in state dict"
+                    )
                     var.set_value(self._accumulators_holder.pop(var_name))
 
                     # load scale value for xpu
@@ -1231,9 +1231,9 @@ class Optimizer:
         target_block = global_block
         current_block = framework.default_main_program().current_block()
         if current_block.idx != global_block.idx:
-            assert (
-                current_block.backward_block_idx != -1
-            ), "current block is not global_block, but it doesn't have backward block."
+            assert current_block.backward_block_idx != -1, (
+                "current block is not global_block, but it doesn't have backward block."
+            )
             target_block = framework.default_main_program().blocks[
                 current_block.backward_block_idx
             ]
@@ -1669,9 +1669,7 @@ class Optimizer:
                 paddle.static.default_main_program(),
                 paddle.static.default_startup_program(),
             ):
-                auto_dp = (
-                    paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
-                )
+                auto_dp = paddle.distributed.auto_parallel.auto_dp_utils.in_auto_dp_mode()
                 if auto_dp:
                     paddle.distributed.auto_parallel.auto_dp_utils._convert_fake_replicate_grad_to_partial(
                         params_grads
@@ -1943,9 +1941,9 @@ class Optimizer:
                 >>> adam.clear_grad()
 
         """
-        assert isinstance(
-            loss, (Variable, paddle.pir.Value)
-        ), "The loss should be an Tensor."
+        assert isinstance(loss, (Variable, paddle.pir.Value)), (
+            "The loss should be an Tensor."
+        )
 
         parameter_list = parameters if parameters else self._parameter_list
 
@@ -1969,9 +1967,9 @@ class Optimizer:
         params = (
             paddle.static.default_main_program().global_block().all_parameters()
         )
-        assert not isinstance(
-            self._parameter_list[0], dict
-        ), "Only list of parameters is supported while using optimizer in @paddle.jit.static."
+        assert not isinstance(self._parameter_list[0], dict), (
+            "Only list of parameters is supported while using optimizer in @paddle.jit.static."
+        )
         selected_params = {param.name for param in self._parameter_list}
         parameters = [param for param in params if param.trainable]
         parameters = list(
@@ -2141,9 +2139,9 @@ class Optimizer:
         :param dtype: instance of core.VarDesc.VarType
         :return: True if dtype is one of fp16 or bf16, False otherwise
         """
-        assert isinstance(
-            dtype, (core.VarDesc.VarType, core.DataType)
-        ), "The dtype should be an instance of core.VarDesc.VarType or core.DataType."
+        assert isinstance(dtype, (core.VarDesc.VarType, core.DataType)), (
+            "The dtype should be an instance of core.VarDesc.VarType or core.DataType."
+        )
         if isinstance(dtype, core.VarDesc.VarType):
             return (
                 dtype == core.VarDesc.VarType.FP16

@@ -317,6 +317,7 @@ def monkey_patch_math_tensor():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ) -> Tensor:
         if dtype is None:
             dtype = var.dtype
@@ -328,6 +329,7 @@ def monkey_patch_math_tensor():
             dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _new_ones_(
