@@ -588,10 +588,6 @@ if(NOT WIN32)
   set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
 endif()
 
-# setting timeout value as 15S
-set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
-                     PROPERTIES TIMEOUT 200)
-
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
 
