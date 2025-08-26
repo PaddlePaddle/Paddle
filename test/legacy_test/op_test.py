@@ -516,7 +516,10 @@ class OpTest(unittest.TestCase):
                 if is_onednn_op_test():
                     grad_op_kernels = all_op_kernels[grad_op]
                     for grad_op_kernel in grad_op_kernels:
-                        if 'MKLDNN' in grad_op_kernel:
+                        if (
+                            'MKLDNN' in grad_op_kernel
+                            or 'ONEDNN' in grad_op_kernel
+                        ):
                             return False
                 else:
                     return False
