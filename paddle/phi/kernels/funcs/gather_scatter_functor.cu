@@ -245,12 +245,12 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      int64_t self_select_dim_size,
                                      int64_t src_select_dim_size,
                                      int64_t numel,
-                                     int64_t self_numel,
                                      int dim,
                                      int ndim,
                                      const func_t& reduce_op,
                                      bool include_self = true,
-                                     int* aux_buffer = nullptr) {
+                                     int* aux_buffer = nullptr,
+                                     int* atomic_cnt_buffer = nullptr) {
   extern __shared__ int64_t
       smem_shape_strides[];  // no more than 27 int64_t, won't affect occupancy
 
@@ -310,7 +310,7 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                  ndim,
                                  dim,
                                  index);
-  if (include_self) {
+  if (!include_self) {
     self_data[replace_index_self] = 0;
     __syncthreads();
   }
@@ -318,14 +318,15 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
   reduce_op(static_cast<tensor_t*>(self_data + replace_index_self),
             static_cast<tensor_t*>(src_data + replace_index_src));
 
+  // So this is the culprit
   phi::CudaAtomicMax(aux_buffer + replace_index_self, tid);
-  phi::CudaAtomicAdd(aux_buffer + self_numel + replace_index_self, 1);
+  phi::CudaAtomicAdd(atomic_cnt_buffer + replace_index_self, 1);
   __syncthreads();
 
   if (tid == aux_buffer[replace_index_self]) {
     self_data[replace_index_self] =
         self_data[replace_index_self] /
-        static_cast<tensor_t>(aux_buffer[replace_index_self + self_numel]);
+        static_cast<tensor_t>(atomic_cnt_buffer[replace_index_self]);
   }
 }
 
@@ -446,7 +447,6 @@ struct gpu_gather_scatter_functor {
     for (int64_t i = 0; i < dim; ++i) {
       inner_dim_size *= index_dims[i];
     }
-
     for (int i = dim + 1; i < index_dims.size(); i++) {
       outer_dim_size *= index_dims[i];
     }
@@ -516,12 +516,19 @@ struct gpu_gather_scatter_functor {
     } else if (method_name == "scatter_mean_gpu") {
       // TODO(heqianyue): the original impl is too wasteful, this can be
       // optimized
-      aux_tensor.Resize({self_size * 2});
-      int constant_to_set = include_self ? 1 : 0;
+      DenseTensor atomic_cnt_tensor;
+      aux_tensor.Resize({self_size});
+      atomic_cnt_tensor.Resize({self_size});
       dev_ctx.Alloc<int>(&aux_tensor);
-      phi::funcs::set_constant(dev_ctx, &aux_tensor, constant_to_set);
+      dev_ctx.Alloc<int>(&atomic_cnt_tensor);
+
+      // threadidx must start with 0, otherwise atomicMax will be faulty
+      phi::funcs::set_constant(dev_ctx, &aux_tensor, 0);
+      phi::funcs::set_constant(
+          dev_ctx, &atomic_cnt_tensor, include_self ? 1 : 0);
 
       int* aux_buffer = aux_tensor.data<int>();
+      int* atomic_cnt_buffer = atomic_cnt_tensor.data<int>();
       ScatterMeanGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
           <<<grid, block, shared_mem_bytes, stream>>>(self_data,
                                                       index_data,
@@ -530,12 +537,12 @@ struct gpu_gather_scatter_functor {
                                                       self_select_dim_size,
                                                       src_select_dim_size,
                                                       index_size,
-                                                      self_size,
                                                       dim,
                                                       ndim,
                                                       reduce_op,
                                                       include_self,
-                                                      aux_buffer);
+                                                      aux_buffer,
+                                                      atomic_cnt_buffer);
     } else {
       if (include_self == false) {
         aux_tensor.Resize({self_size});
@@ -1146,6 +1153,9 @@ __global__ void ScatterValueGradGPUKernel(tensor_t* grad_data,
                       dim,
                       index);
 
+  atomicMax(aux_buffer + replace_index_self, tid);
+  __syncthreads();
+
   if (tid == aux_buffer[replace_index_self]) {
     grad_data[replace_index_grad] = self_data[replace_index_self];
   }
@@ -1173,7 +1183,6 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
   for (int i = dim + 1; i < index_dims.size(); i++) {
     outer_dim_size *= index_dims[i];
   }
-
   DenseTensor aux_tensor;
   aux_tensor.Resize({self.numel()});
   dev_ctx.Alloc<int>(&aux_tensor);
