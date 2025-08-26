@@ -137,7 +137,7 @@ def make_tp_sharded_weight_for_checkpoint(
     Returns:
         A ShardedWeight configured for tensor parallel checkpointing.
     """
-    from ...fleet.fleet import get_hybrid_communicate_group
+    from paddle.distributed.fleet import get_hybrid_communicate_group
 
     hcg = get_hybrid_communicate_group()
     tensor_parallel_group = hcg.get_model_parallel_group()
