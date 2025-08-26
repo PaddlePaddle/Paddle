@@ -269,8 +269,16 @@ class AOAEngine:
                 slices.append((aidx, src_sl, trans_dst_sl, [transpose]))
         return TensorDesc(slices, tensor_shape)
 
-    def cast(self, tensor: TensorDesc) -> TensorDesc:
-        raise NotImplementedError
+    def cast(self, tensor: TensorDesc, dtype: str) -> TensorDesc:
+        slices = []
+        for aidx, src_sl, dst_sl, pp_list in tensor.slices:
+            if pp_list is not None:
+                new_pp_list = pp_list.copy()
+                new_pp_list.append(dtype)
+                slices.append((aidx, src_sl, dst_sl, new_pp_list))
+            else:
+                slices.append((aidx, src_sl, dst_sl, [dtype]))
+        return TensorDesc(slices, tensor.shape)
 
     def shape_propagation(self):
         intermediate_vars = {}
@@ -334,8 +342,8 @@ class AOAEngine:
                 else:
                     if attrs:
                         for attr in attrs:
+                            in_ref = _get_var_ref(lvar)
                             if attr.key == "transpose":
-                                in_ref = _get_var_ref(lvar)
                                 if attr.value == "[]":
                                     ndim = len(in_ref.shape)
                                     transpose = str(
@@ -344,20 +352,20 @@ class AOAEngine:
                                 else:
                                     transpose = attr.value
                                 result = self.transpose(in_ref, transpose)
-                                out_name = rvar.name
-                                intermediate_vars[out_name] = result
-                                if (
-                                    out_name
-                                    in self.context.get_all_dst_state_keys()
-                                ):
-                                    self.output_vars[out_name] = result
-
                             elif attr.key == "dtype":
-                                raise NotImplementedError
+                                result = self.cast(in_ref, attr.value)
                             else:
                                 raise ValueError(
                                     f"Unsupported attribute: {attr}"
                                 )
+
+                            out_name = rvar.name
+                            intermediate_vars[out_name] = result
+                            if (
+                                out_name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[out_name] = result
                     else:
                         intermediate_vars[rvar.name] = _get_var_ref(lvar)
                         if rvar.name in self.context.get_all_dst_state_keys():
