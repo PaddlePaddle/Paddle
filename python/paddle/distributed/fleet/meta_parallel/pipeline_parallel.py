@@ -153,9 +153,9 @@ class FakeMicroDataset:
             output_dict = {}
             for key, data in inputs.items():
                 if isinstance(data, list):
-                    assert (
-                        len(data) == self._acc_steps
-                    ), f"length of data should be {self._acc_steps}, but it is {len(data)}"
+                    assert len(data) == self._acc_steps, (
+                        f"length of data should be {self._acc_steps}, but it is {len(data)}"
+                    )
                     output_dict[key] = (
                         data[micro_step].detach()
                         if data[micro_step] is not None
@@ -1181,7 +1181,6 @@ class PipelineParallel(MetaParallelBase):
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
             input_tensor = next(micro_dataset)[0]
-            logger.info(f"{type(input_tensor)=}")
             self._check_micro_batch_data_valid(input_tensor)
 
         assert chunk_id is None or isinstance(chunk_id, int)
