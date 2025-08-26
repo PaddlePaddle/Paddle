@@ -632,7 +632,6 @@ __global__ void __launch_bounds__(256) inline fp8_fast_transpose_kernel(
     const __nv_fp8_e4m3* src_ptr = src + current_batch_offset +
                                    static_cast<size_t>(src_global_row) * N +
                                    src_global_col_start;
-    // local_tile[k] = *reinterpret_cast<const fp8x8_t*>(src_ptr);
     local_tile[k].load(src_ptr);
   }
 
