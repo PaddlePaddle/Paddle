@@ -240,8 +240,6 @@ class TestFP8FastTranspose(unittest.TestCase):
                 "name": "3D(8,2048,7168)",
             },
         ]
-        self.iterations = 1000
-        self.warmup = 10
 
     def test_verify_transpose(self):
         for case in self.test_cases:
@@ -251,12 +249,6 @@ class TestFP8FastTranspose(unittest.TestCase):
             out = paddle.transpose(x, case["perm"]).contiguous()
             out_ref = paddle.to_tensor(gold).cast(self.dtype)
             np.testing.assert_equal(out.numpy(), out_ref)
-
-    def calculate_throughput(self, shape, avg_time_ms):
-        element_count = np.prod(shape)
-        data_size_gb = (element_count * 1 * 2) / (1024**3)
-        time_sec = avg_time_ms / 1000
-        return data_size_gb / time_sec if time_sec > 0 else 0
 
 
 class TestAutoTuneTransposeFP16Op(OpTest):
