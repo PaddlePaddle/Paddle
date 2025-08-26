@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle import _C_ops
-from paddle.utils.decorator_utils import param_one_alias
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -30,9 +30,10 @@ if TYPE_CHECKING:
 __all__ = []
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def one_hot(
     x: Tensor,
-    num_classes: int,
+    num_classes: int = -1,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -72,11 +73,17 @@ def one_hot(
             so it throws an exception.
 
 
+    .. note::
+            Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+            For example, ``one_hot(input=tensor_x, ...)`` is equivalent to ``one_hot(x=tensor_x, ...)``.
+
+
     Args:
         x(Tensor): Tensor with shape :math:`[N_1, N_2, ..., N_k]` ,
             which contains at least one dimension. The data type is int32 or int64.
+            input: An alias for ``x`` , with identical behavior.
         num_classes(int): An integer defining the `num_classes` of the one hot dimension. If input `x`
-            is word id, `num_classes` is generally the dictionary size.
+            is word id, `num_classes` is generally the dictionary size. Default value: -1.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
            None by default.
