@@ -30,10 +30,10 @@ from paddle._C_ops import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
-    maximum,
-    minimum,
     log,
     logsumexp,
+    maximum,
+    minimum,
     sign,
     sin,
 )
