@@ -15,8 +15,12 @@
 #pragma once
 
 #include <Python.h>
+#include <vector>
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 
@@ -28,6 +32,9 @@ using IntVector = std::vector<int64_t>;
 
 void RollPreProcess(Tensor* x, IntArray* shifts, IntVector* axis);
 void RollPreProcess(Value* x, Value* shifts, IntVector* axis);
+
+void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
+void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 }  // namespace pybind
 
 }  // namespace paddle

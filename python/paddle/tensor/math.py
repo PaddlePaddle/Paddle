@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     isinf,
     isnan,
     log,
+    logsumexp,
     sign,
     sin,
 )
@@ -3109,95 +3110,6 @@ def outer(
         out = helper.create_variable_for_type_inference(dtype=nx.dtype)
         helper.append_op(
             type='matmul_v2', inputs={'X': nx, 'Y': ny}, outputs={'Out': out}
-        )
-        return out
-
-
-def logsumexp(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
-
-    .. math::
-       logsumexp(x) = \log\sum exp(x)
-
-    Args:
-        x (Tensor): The input Tensor with data type bfloat16, float16, float32,
-            float64, uint8, int8, int16, int32, int64, which have no more than
-            4 dimensions.
-        axis (int|list|tuple|None, optional): The axis along which to perform
-            logsumexp calculations. ``axis`` should be int, list(int) or
-            tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
-            is calculated along all element(s) of ``axis`` . ``axis`` or
-            element(s) of ``axis`` should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
-            less than 0, it works the same way as :math:`axis + D` . If
-            ``axis`` is None, logsumexp is calculated along all elements of
-            ``x``. Default is None.
-        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keep_dim`` is True, the dimensions of
-            the output Tensor is the same as ``x`` except in the reduced
-            dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be
-            stored in this Tensor.
-
-    Returns:
-        Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
-        type as ``x`` (integer types are autocasted into float32).
-
-    Examples:
-
-    .. code-block:: python
-
-        >>> import paddle
-
-        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        >>> out1 = paddle.logsumexp(x)
-        >>> out1
-        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-        3.46912265)
-        >>> out2 = paddle.logsumexp(x, 1)
-        >>> out2
-        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [2.15317822, 3.15684605])
-
-    """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.logsumexp(x, axis, keepdim, reduce_all, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'logsumexp',
-        )
-
-        helper = LayerHelper('logsumexp', **locals())
-        attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
         )
         return out
 
