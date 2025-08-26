@@ -717,6 +717,7 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
         input_dims[1] % 128 == 0 && input_dims[2] % 128 == 0) {
       dispatch_fp8_fast_transpose_kernel<T, IndexType>(
           d, input, input_dims[0], input_dims[1], input_dims[2], output);
+      return;
     }
   }
   // Suppose tile size > 16
