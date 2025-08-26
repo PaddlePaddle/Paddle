@@ -273,6 +273,35 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
+def size_args_decorator(func: Callable) -> Callable:
+    """
+    A decorator that normalizes the 'size' argument to 'shape'.
+
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
+    @functools.wraps(func)
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        elif len(args) >= 1 and isinstance(args[0], int):
+            kwargs['shape'] = list(args)
+            args = ()
+
+        return func(*args, **kwargs)
+
+    wrapped_func.__signature__ = inspect.signature(func)
+
+    return wrapped_func
+
+
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()
@@ -324,12 +353,32 @@ class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
     def __init__(
-        self, illegal_keys: set[str], func_name: str, correct_name: str
+        self,
+        illegal_keys: set[str],
+        func_name: str,
+        correct_name: str,
+        url_suffix: str = "",
     ) -> None:
+        """
+        Args:
+            illegal_keys (set[str]): the keywords to reject
+            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
+            correct_name (str): the user hint that points to the correct function
+            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
+                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
+                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
+
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+
+                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
+        """
         super().__init__()
         self.illegal_keys = illegal_keys
         self.func_name = func_name
         self.correct_name = correct_name
+        self.warn_msg = None
+        if url_suffix:
+            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -344,6 +393,11 @@ class ForbidKeywordsDecorator(DecoratorBase):
             raise TypeError(
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
+            )
+        if self.warn_msg is not None:
+            warnings.warn(
+                self.warn_msg,
+                category=Warning,
             )
         return args, kwargs
 
@@ -367,6 +421,54 @@ def reshape_decorator():
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def transpose_decorator():
+    """
+    Usage Example:
+    PyTorch:
+        torch.transpose(x, dim0=0, dim1=1)
+    Paddle:
+        paddle.transpose(x, perm=[1, 0, 2])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+
+            has_dim0 = "dim0" in kwargs or (
+                len(args) > 1 and isinstance(args[1], int)
+            )
+            if has_dim0:
+                dim0 = kwargs.pop(
+                    "dim0",
+                    args[1]
+                    if (len(args) > 1 and isinstance(args[1], int))
+                    else None,
+                )
+                dim1 = kwargs.pop(
+                    "dim1",
+                    args[2]
+                    if (len(args) > 2 and isinstance(args[2], int))
+                    else None,
+                )
+
+                if dim0 is not None and dim1 is not None:
+                    ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
+                    perm = list(range(ndim))
+                    perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
+                    kwargs["perm"] = perm
+                    if len(args) > 1:
+                        args = (args[0],)
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

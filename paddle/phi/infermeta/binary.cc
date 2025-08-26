@@ -1244,11 +1244,19 @@ void CrossEntropyWithSoftmaxInferMeta(const MetaTensor& logits,
   }
 
   softmax->set_dims(logits_dims);
-  softmax->set_dtype(logits.dtype());
+  if (softmax->dtype() == DataType::BFLOAT16) {
+    softmax->set_dtype(DataType::FLOAT32);
+  } else {
+    softmax->set_dtype(logits.dtype());
+  }
 
   logits_dims[axis] = 1;
   loss->set_dims(logits_dims);
-  loss->set_dtype(logits.dtype());
+  if (logits.dtype() == DataType::BFLOAT16) {
+    loss->set_dtype(DataType::FLOAT32);
+  } else {
+    loss->set_dtype(logits.dtype());
+  }
 
   softmax->share_lod(logits);
   loss->share_lod(logits);
