@@ -342,6 +342,10 @@
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmax, paddle.Tensor.argmax]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -354,6 +358,10 @@
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmin, paddle.Tensor.argmin]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -3377,7 +3385,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logsumexp
-  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
+  args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
+  python_api:
+    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
+    args_alias:
+      use_default_mapping : True
+    pre_process:
+      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
