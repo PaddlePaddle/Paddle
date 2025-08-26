@@ -61,6 +61,14 @@ class EventStore:
         cls.event = event
 
 
+class StepEvent:
+    need_rc_o1 = None
+
+    @classmethod
+    def set(cls, need_rc_o1) -> None:
+        cls.need_rc_o1 = need_rc_o1
+
+
 def fold_init_dims(tensor):
     # NOTE(zhangyuqin1998): Reshape a rank-3 tensor from P x M x N to (P * M) x N,
     # to keep weight_grad in a correct rank. See phi::FoldInitDims.

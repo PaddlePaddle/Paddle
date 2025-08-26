@@ -18,6 +18,8 @@
 
 from __future__ import annotations
 
+import os
+
 import paddle
 from paddle import framework
 from paddle.distributed.communication.batch_isend_irecv import (
@@ -37,9 +39,11 @@ from .pipeline_parallel import (
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
-from .zero_bubble_utils import EventStore, WeightGradStore
+from .zero_bubble_utils import EventStore, StepEvent, WeightGradStore
 
 __all__ = []
+
+stepped_recompute_o1 = int(os.getenv("FLAGS_stepped_recompute_o1", "0"))
 
 
 def detach_and_requires_grad(x):
@@ -690,11 +694,15 @@ class DualPipeVParallel(PipelineParallel):
         micro_datasets = [micro_dataset_phase0, micro_dataset_phase1]
 
         # Step 1: nF0
+        if stepped_recompute_o1:
+            StepEvent.set(True)
         step_1 = (num_ranks - rank - 1) * 2
         for i in range(step_1):
             self._forward_pass(0, micro_datasets)
 
         # Step 2: nF0F1
+        if stepped_recompute_o1:
+            StepEvent.set(True)
         step_2 = rank + 1
         self._recv_forward(0)
         for i in range(step_2):
@@ -708,6 +716,8 @@ class DualPipeVParallel(PipelineParallel):
             self._send_forward(0)
 
         # Step 3: nB1W1F1 (Use zero bubble)
+        if stepped_recompute_o1:
+            StepEvent.set(False)
         step_3 = num_ranks - rank - 1
         for i in range(step_3):
             self._backward_pass(1, enable_zb=True)
