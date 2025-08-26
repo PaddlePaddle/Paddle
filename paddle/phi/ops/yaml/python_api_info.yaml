@@ -13,4 +13,4 @@
   args_alias :
     use_default_mapping : True
   pre_process :
-    func : ExpandAsPreProcess(y,target_shape)
+    func : ExpandAsPreProcess(x,y,target_shape)

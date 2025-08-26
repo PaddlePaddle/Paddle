@@ -22,9 +22,11 @@
 namespace paddle {
 
 namespace pybind {
-void ExpandAsPreProcess(paddle::optional<paddle::Tensor>* y,
+void ExpandAsPreProcess(paddle::Tensor* x,
+                        paddle::optional<paddle::Tensor>* y,
                         std::vector<int64_t>* target_shape);
-void ExpandAsPreProcess(paddle::optional<pir::Value>* y,
+void ExpandAsPreProcess(pir::Value* x,
+                        paddle::optional<pir::Value>* y,
                         std::vector<int64_t>* target_shape);
 
 }  // namespace pybind
