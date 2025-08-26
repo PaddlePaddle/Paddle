@@ -2277,6 +2277,16 @@
   kernel :
     func : max_pool3d_with_index_grad
 
+- backward_op : max_with_index_grad
+  forward : max_with_index (Tensor x, Scalar dim, bool keepdim, bool flatten) -> Tensor(values), Tensor(indices)
+  args : (Tensor x, Tensor values, Tensor indices, Tensor values_grad, Scalar dim, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : max_with_index_grad
+
 - backward_op : maxout_grad
   forward : maxout(Tensor x, int groups, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int groups, int axis)
@@ -2339,6 +2349,16 @@
   kernel :
     func : meshgrid_grad
     data_type : out_grad
+
+- backward_op : min_with_index_grad
+  forward : min_with_index (Tensor x, Scalar dim, bool keepdim, bool flatten) -> Tensor(values), Tensor(indices)
+  args : (Tensor x, Tensor values, Tensor indices, Tensor values_grad, Scalar dim, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : min_with_index_grad
 
 - backward_op : mish_grad
   forward : mish (Tensor x, float lambda) -> Tensor(out)

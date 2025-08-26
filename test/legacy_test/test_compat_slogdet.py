@@ -43,6 +43,11 @@ class TestSlogDet(unittest.TestCase):
         grad_x = grad_logabsdet * x_inv_T
         return grad_x
 
+    @unittest.skipIf(
+        paddle.device.is_compiled_with_cuda()
+        and paddle.device.is_compiled_with_rocm(),
+        reason="Skip dcu for error occurs when running on dcu",
+    )
     def test_compat_slogdet(self):
         with dygraph_guard():
             for shape, dtype in product(self.shapes, self.dtypes):
@@ -82,6 +87,30 @@ class TestSlogDet(unittest.TestCase):
                     paddle.compat.slogdet,
                     full_graph=True,
                     backend=None,
+                )
+                sign, logabsdet = st_f(x)
+                self.assertTrue(hasattr(out, "sign"))
+                self.assertTrue(hasattr(out, "logabsdet"))
+                self.assertEqual(sign.dtype, x.dtype)
+                self.assertFalse(logabsdet.is_complex())
+
+                np.testing.assert_allclose(
+                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
+                np.testing.assert_allclose(
+                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
+                )
+
+                # test pir + dynamic shape
+                st_f = paddle.jit.to_static(
+                    paddle.compat.slogdet,
+                    full_graph=True,
+                    backend=None,
+                    input_spec=[
+                        paddle.static.InputSpec(
+                            shape=[-1] * len(shape), dtype=dtype
+                        ),
+                    ],
                 )
                 sign, logabsdet = st_f(x)
                 self.assertTrue(hasattr(out, "sign"))

@@ -315,26 +315,44 @@ bool AnyOpInferSymbolicShape(pir::Operation *op,
                                  axis.size() == 0 /*reduce_all*/);
 }
 
-bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
-                                pir::InferSymbolicShapeContext *infer_context) {
+bool MinMaxOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context,
+                                bool output_val_and_ind = false) {
   bool flatten = GetBoolAttr(op, "flatten");
-  bool keepdims = GetBoolAttr(op, "keepdims");
+  bool keepdims = false;
+  int axis = 0;
 
+  if (output_val_and_ind) {
+    keepdims = GetBoolAttr(op, "keepdim");
+
+    PADDLE_ENFORCE_NE(
+        op->attributes().find("dim"),
+        op->attributes().end(),
+        common::errors::InvalidArgument(
+            "'dim' Attribute is expected for Min/MaxWithIndexOp. "));
+    axis = op->attributes()
+               .at("dim")
+               .dyn_cast<paddle::dialect::ScalarAttribute>()
+               .data()
+               .to<int64_t>();
+  } else {
+    keepdims = GetBoolAttr(op, "keepdims");
+    const auto &axis_shape_or_data =
+        infer_context->GetShapeOrDataForValue(op->operand_source(1));
+    axis = static_cast<int>(
+        axis_shape_or_data.data().value().at(0).Get<int64_t>());
+  }
   const auto &input_sym_shape =
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape();
-  int rank = input_sym_shape.size();
 
-  const auto &axis_shape_or_data =
-      infer_context->GetShapeOrDataForValue(op->operand_source(1));
-  int axis =
-      static_cast<int>(axis_shape_or_data.data().value().at(0).Get<int64_t>());
+  int rank = input_sym_shape.size();
   if (axis < 0) axis += rank;
 
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     if (flatten) {
       if (keepdims) {
-        out_sym_shape.emplace_back(std::int64_t(rank));
+        out_sym_shape.resize(rank, std::int64_t(1));
       } else {
         out_sym_shape = {};
       }
@@ -357,12 +375,29 @@ bool ArgmaxOpInferSymbolicShape(pir::Operation *op,
       symbol::TensorShapeOrDataDimExprs(out_sym_shape)};
 
   infer_context->SetShapeOrDataForValue(op->result(0), shape_data);
+  if (output_val_and_ind)
+    infer_context->SetShapeOrDataForValue(op->result(1), shape_data);
   return true;
 }
+
+#define DEFINE_MINMAX_OP_INFER_FUNC(OpName, output_val_and_ind)               \
+  bool OpName##OpInferSymbolicShape(                                          \
+      pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {    \
+    return MinMaxOpInferSymbolicShape(op, infer_context, output_val_and_ind); \
+  }
+
+DEFINE_MINMAX_OP_INFER_FUNC(Argmax, false)
+DEFINE_MINMAX_OP_INFER_FUNC(MaxWithIndex, true)
+#undef DEFINE_MINMAX_OP_INFER_FUNC
 
 bool ArgminOpInferSymbolicShape(pir::Operation *op,
                                 pir::InferSymbolicShapeContext *infer_context) {
   return ArgmaxOpInferSymbolicShape(op, infer_context);
+}
+
+bool MinWithIndexOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return MaxWithIndexOpInferSymbolicShape(op, infer_context);
 }
 
 bool AsComplexOpInferSymbolicShape(

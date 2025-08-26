@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -131,6 +132,162 @@ class TestBitwiseAndBool(TestBitwiseAnd):
         self.outputs = {'Out': out}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseBitwiseAndOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "bitwise_and"
+        self.python_api = paddle.tensor.logic.bitwise_and
+        self.public_python_api = paddle.tensor.logic.bitwise_and
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_bound()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': self.x,
+            'Y': self.y_trans,
+        }
+
+        self.inputs = {
+            'X': self.x,
+            'Y': self.y,
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output_with_place(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def init_bound(self):
+        self.low = -100
+        self.high = 100
+
+    def test_check_grad(self):
+        pass
+
+
+class TestElementwiseBitwiseAndOp_Stride1(TestElementwiseBitwiseAndOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride2(TestElementwiseBitwiseAndOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride3(TestElementwiseBitwiseAndOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride4(TestElementwiseBitwiseAndOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [1, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride5(TestElementwiseBitwiseAndOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.randint(
+            self.low, self.high, [23, 10, 1, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [23, 2, 13, 20], dtype=self.dtype
+        )
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.bitwise_and(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseBitwiseAndOp_Stride_ZeroDim1(
+    TestElementwiseBitwiseAndOp_Stride
+):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(self.low, self.high, [], dtype=self.dtype)
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride_ZeroSize1(
+    TestElementwiseBitwiseAndOp_Stride
+):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 # ----------------- TEST OP: BitwiseOr ------------------ #
 class TestBitwiseOr(OpTest):
     def setUp(self):
@@ -238,6 +395,162 @@ class TestBitwiseOrBool(TestBitwiseOr):
 
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseBitwiseOrOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "bitwise_or"
+        self.python_api = paddle.tensor.logic.bitwise_or
+        self.public_python_api = paddle.tensor.logic.bitwise_or
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_bound()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': self.x,
+            'Y': self.y_trans,
+        }
+
+        self.inputs = {
+            'X': self.x,
+            'Y': self.y,
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output_with_place(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def init_bound(self):
+        self.low = -100
+        self.high = 100
+
+    def test_check_grad(self):
+        pass
+
+
+class TestElementwiseBitwiseOrOp_Stride1(TestElementwiseBitwiseOrOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride2(TestElementwiseBitwiseOrOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride3(TestElementwiseBitwiseOrOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride4(TestElementwiseBitwiseOrOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [1, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride5(TestElementwiseBitwiseOrOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.randint(
+            self.low, self.high, [23, 10, 1, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [23, 2, 13, 20], dtype=self.dtype
+        )
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.bitwise_or(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseBitwiseOrOp_Stride_ZeroDim1(
+    TestElementwiseBitwiseOrOp_Stride
+):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(self.low, self.high, [], dtype=self.dtype)
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride_ZeroSize1(
+    TestElementwiseBitwiseOrOp_Stride
+):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 # ----------------- TEST OP: BitwiseXor ---------------- #
@@ -348,6 +661,162 @@ class TestBitwiseXorBool(TestBitwiseXor):
 
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseBitwiseXorOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "bitwise_xor"
+        self.python_api = paddle.tensor.logic.bitwise_xor
+        self.public_python_api = paddle.tensor.logic.bitwise_xor
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_bound()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': self.x,
+            'Y': self.y_trans,
+        }
+
+        self.inputs = {
+            'X': self.x,
+            'Y': self.y,
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.int32
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output_with_place(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def init_bound(self):
+        self.low = -100
+        self.high = 100
+
+    def test_check_grad(self):
+        pass
+
+
+class TestElementwiseBitwiseXorOp_Stride1(TestElementwiseBitwiseXorOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride2(TestElementwiseBitwiseXorOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride3(TestElementwiseBitwiseXorOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [20, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride4(TestElementwiseBitwiseXorOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(
+            self.low, self.high, [1, 2, 13, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [20, 2, 13, 1], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride5(TestElementwiseBitwiseXorOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.randint(
+            self.low, self.high, [23, 10, 1, 17], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [23, 2, 13, 20], dtype=self.dtype
+        )
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseBitwiseXorOp_Stride_ZeroDim1(
+    TestElementwiseBitwiseXorOp_Stride
+):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(self.low, self.high, [], dtype=self.dtype)
+        self.y = np.random.randint(
+            self.low, self.high, [13, 17], dtype=self.dtype
+        )
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride_ZeroSize1(
+    TestElementwiseBitwiseXorOp_Stride
+):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 # ---------------  TEST OP: BitwiseNot ----------------- #

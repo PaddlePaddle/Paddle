@@ -14,9 +14,11 @@
 
 from .tensor.compat import (
     Unfold,
+    max,
+    min,
     slogdet,
     sort,
     split,
 )
 
-__all__ = ['split', 'sort', 'slogdet', 'Unfold']
+__all__ = ['split', 'sort', 'slogdet', 'Unfold', 'min', 'max']
