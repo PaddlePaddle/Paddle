@@ -140,7 +140,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Forward API Call
-  auto api_result = paddle::experimental::multiply(x, y);
+  auto api_result = paddle::experimental::multiply(x, y, input_out);
   // Check NaN and Inf if needed
 
   if (FLAGS_check_nan_inf) {
