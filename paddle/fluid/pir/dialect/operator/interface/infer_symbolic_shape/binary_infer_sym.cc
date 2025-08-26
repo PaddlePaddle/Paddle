@@ -1914,11 +1914,18 @@ bool RepeatInterleaveWithTensorIndexOpInferSymbolicShape(
   int x_rank = x_shape.size();
   if (axis < 0) axis += x_rank;
 
+  bool has_output_size = (attributes.find("output_size") != attributes.end());
+  symbol::DimExpr axis_len = has_output_size
+                                 ? symbol::DimExpr{attributes.at("output_size")
+                                                       .dyn_cast<pir::Int64Attribute>()
+                                                       .data()}
+                                 : GetSum(repeat_times_shape);
+
   const auto &out_sym_shape = [&] {
     std::vector<symbol::DimExpr> out_sym_shape;
     for (int i = 0; i < x_rank; i++) {
       if (i == axis) {
-        out_sym_shape.push_back(GetSum(repeat_times_shape));
+        out_sym_shape.push_back(axis_len);
       } else {
         out_sym_shape.push_back(x_shape.at(i));
       }
