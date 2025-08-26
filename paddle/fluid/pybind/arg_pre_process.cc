@@ -19,11 +19,39 @@
 // processing of parameters originally done in the Python API
 #include "paddle/fluid/pybind/arg_pre_process.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
-namespace pybind {}  // namespace pybind
+namespace pybind {
+void LogsumexpPreProcess(Tensor *x, std::vector<int> *axis, bool *reduce_all) {
+  /**
+  if axis == [] or len(axis) == len(x.shape):
+      reduce_all = True
+  else:
+      reduce_all = False
+  */
+  if (axis->empty() || axis->size() == x->dims().size()) {
+    *reduce_all = true;
+  } else {
+    *reduce_all = false;
+  }
+  return;
+}
+
+void LogsumexpPreProcess(pir::Value *x,
+                         std::vector<int> *axis,
+                         bool *reduce_all) {
+  std::vector<int64_t> x_shape = pir::GetShapeFromValue(*x);
+  if (axis->empty() || axis->size() == x_shape.size()) {
+    *reduce_all = true;
+  } else {
+    *reduce_all = false;
+  }
+  return;
+}
+}  // namespace pybind
 
 }  // namespace paddle

@@ -758,6 +758,22 @@ def check_linalg_vector_dygraph(
         np.testing.assert_equal(result.shape, expected_result.shape)
 
 
+class NormTestForNUCAndDtype(unittest.TestCase):
+    def test_nuc_and_dtype(self):
+        x = np.random.randn(10, 20).astype("float32")
+        res_numpy = np.linalg.norm(x, ord='nuc')
+        res_paddle = paddle.tensor(x).norm(p="nuc")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        res_numpy = np.linalg.norm(x.astype("float64"), ord="nuc")
+        res_paddle = paddle.tensor(x).norm(p="nuc", dtype="float64")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res_paddle.dtype, paddle.float64)
+
+
 class API_NormTest(unittest.TestCase):
     def test_basic(self):
         with static_guard():
