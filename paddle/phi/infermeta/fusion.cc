@@ -947,6 +947,111 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config) {
   auto x_dim = x.dims();
+  if (x_dim.size() == 3 && (x_dim[0] == 0 || x_dim[1] == 0)) {
+    int64_t bsz_seq = x_dim[0] * x_dim[1];
+    int64_t head_dim = x_dim[2] / num_heads;
+
+    if (ln_mean) {
+      ln_mean->set_dims({bsz_seq});
+      ln_mean->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_var) {
+      ln_var->set_dims({bsz_seq});
+      ln_var->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_out) {
+      ln_out->set_dims(x_dim);
+      ln_out->set_dtype(x.dtype());
+    }
+    if (qkv_out) {
+      auto qkv_dim = common::make_ddim({x_dim[0], x_dim[1], 3 * x_dim[2]});
+      qkv_out->set_dims(qkv_dim);
+      qkv_out->set_dtype(x.dtype());
+    }
+    if (qkv_bias_out) {
+      auto qkv_dim = common::make_ddim({x_dim[0], x_dim[1], 3 * x_dim[2]});
+      qkv_bias_out->set_dims(qkv_dim);
+      qkv_bias_out->set_dtype(x.dtype());
+    }
+    if (transpose_out_2) {
+      auto transpose_dim =
+          common::make_ddim({3, x_dim[0], num_heads, x_dim[1], head_dim});
+      transpose_out_2->set_dims(transpose_dim);
+      transpose_out_2->set_dtype(x.dtype());
+    }
+    if (qk_out) {
+      auto qk_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], x_dim[1]});
+      qk_out->set_dims(qk_dim);
+      qk_out->set_dtype(x.dtype());
+    }
+    if (qktv_out) {
+      auto qktv_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], head_dim});
+      qktv_out->set_dims(qktv_dim);
+      qktv_out->set_dtype(x.dtype());
+    }
+    if (softmax_out) {
+      auto softmax_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], x_dim[1]});
+      softmax_out->set_dims(softmax_dim);
+      softmax_out->set_dtype(x.dtype());
+    }
+    if (attn_dropout_mask_out) {
+      auto attn_dropout_mask_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], x_dim[1]});
+      attn_dropout_mask_out->set_dims(attn_dropout_mask_dim);
+      attn_dropout_mask_out->set_dtype(DataType::UINT8);
+    }
+    if (attn_dropout_out) {
+      auto attn_dropout_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], x_dim[1]});
+      attn_dropout_out->set_dims(attn_dropout_dim);
+      attn_dropout_out->set_dtype(x.dtype());
+    }
+    if (src_mask_out) {
+      auto src_mask_dim =
+          common::make_ddim({x_dim[0], num_heads, x_dim[1], x_dim[1]});
+      src_mask_out->set_dims(src_mask_dim);
+      src_mask_out->set_dtype(x.dtype());
+    }
+    if (fmha_out) {
+      auto fmha_dim =
+          common::make_ddim({x_dim[0], x_dim[1], num_heads, head_dim});
+      fmha_out->set_dims(fmha_dim);
+      fmha_out->set_dtype(x.dtype());
+    }
+    if (out_linear_out) {
+      out_linear_out->set_dims(x_dim);
+      out_linear_out->set_dtype(x.dtype());
+    }
+    if (dropout_mask_out) {
+      dropout_mask_out->set_dims(x_dim);
+      dropout_mask_out->set_dtype(DataType::UINT8);
+    }
+    if (ln_mean_2) {
+      ln_mean_2->set_dims({bsz_seq});
+      ln_mean_2->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_var_2) {
+      ln_var_2->set_dims({bsz_seq});
+      ln_var_2->set_dtype(DataType::FLOAT32);
+    }
+    if (bias_dropout_residual_out) {
+      bias_dropout_residual_out->set_dims(x_dim);
+      bias_dropout_residual_out->set_dtype(x.dtype());
+    }
+    if (cache_kv_out && cache_kv) {
+      cache_kv_out->set_dims(cache_kv.dims());
+      cache_kv_out->set_dtype(cache_kv.dtype());
+    }
+    if (out) {
+      out->set_dims(x_dim);
+      out->set_dtype(x.dtype());
+    }
+    return;
+  }
+
   auto y_dim = qkv_weight.dims();
 
   int dim_head = 0;
@@ -1216,6 +1321,96 @@ void FusedAttentionGradInferMeta(const MetaTensor& out_grad,
                     false,
                     common::errors::InvalidArgument(
                         "GradOp is only callable when is_test is false"));
+  auto x_dim = x.dims();
+  if (x_dim.size() == 3 && (x_dim[0] == 0 || x_dim[1] == 0)) {
+    if (x_grad) {
+      x_grad->set_dims(x_dim);
+      x_grad->set_dtype(x.dtype());
+    }
+    if (qkv_weight_grad) {
+      qkv_weight_grad->set_dims(qkv_weight.dims());
+      qkv_weight_grad->set_dtype(qkv_weight.dtype());
+    }
+    if (out_linear_weight_grad) {
+      out_linear_weight_grad->set_dims(out_linear_weight.dims());
+      out_linear_weight_grad->set_dtype(out_linear_weight.dtype());
+    }
+    if (qkv_bias_grad && qkv_bias) {
+      qkv_bias_grad->set_dims(qkv_bias.dims());
+      qkv_bias_grad->set_dtype(qkv_bias.dtype());
+    }
+    if (out_linear_bias_grad && out_linear_bias) {
+      out_linear_bias_grad->set_dims(out_linear_bias.dims());
+      out_linear_bias_grad->set_dtype(out_linear_bias.dtype());
+    }
+    if (ln_scale_grad && ln_scale) {
+      ln_scale_grad->set_dims(ln_scale.dims());
+      ln_scale_grad->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_bias_grad && ln_bias) {
+      ln_bias_grad->set_dims(ln_bias.dims());
+      ln_bias_grad->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_scale_2_grad && ln_scale_2) {
+      ln_scale_2_grad->set_dims(ln_scale_2.dims());
+      ln_scale_2_grad->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_bias_2_grad && ln_bias_2) {
+      ln_bias_2_grad->set_dims(ln_bias_2.dims());
+      ln_bias_2_grad->set_dtype(DataType::FLOAT32);
+    }
+    if (ln_out_grad && ln_out) {
+      ln_out_grad->set_dims(ln_out.dims());
+      ln_out_grad->set_dtype(ln_out.dtype());
+    }
+    if (bias_dropout_residual_out_grad && bias_dropout_residual_out) {
+      bias_dropout_residual_out_grad->set_dims(
+          bias_dropout_residual_out.dims());
+      bias_dropout_residual_out_grad->set_dtype(
+          bias_dropout_residual_out.dtype());
+    }
+    if (qkv_out_grad && qkv_out) {
+      qkv_out_grad->set_dims(qkv_out.dims());
+      qkv_out_grad->set_dtype(qkv_out.dtype());
+    }
+    if (qkv_bias_out_grad && qkv_bias_out) {
+      qkv_bias_out_grad->set_dims(qkv_bias_out.dims());
+      qkv_bias_out_grad->set_dtype(qkv_bias_out.dtype());
+    }
+    if (qktv_out_grad && qktv_out) {
+      qktv_out_grad->set_dims(qktv_out.dims());
+      qktv_out_grad->set_dtype(qktv_out.dtype());
+    }
+    if (transpose_out_2_grad && transpose_out_2) {
+      transpose_out_2_grad->set_dims(transpose_out_2.dims());
+      transpose_out_2_grad->set_dtype(transpose_out_2.dtype());
+    }
+    if (qk_out_grad && qk_out) {
+      qk_out_grad->set_dims(qk_out.dims());
+      qk_out_grad->set_dtype(qk_out.dtype());
+    }
+    if (softmax_out_grad && softmax_out) {
+      softmax_out_grad->set_dims(softmax_out.dims());
+      softmax_out_grad->set_dtype(softmax_out.dtype());
+    }
+    if (attn_dropout_out_grad && attn_dropout_out) {
+      attn_dropout_out_grad->set_dims(attn_dropout_out.dims());
+      attn_dropout_out_grad->set_dtype(attn_dropout_out.dtype());
+    }
+    if (fmha_out_grad && fmha_out) {
+      fmha_out_grad->set_dims(fmha_out.dims());
+      fmha_out_grad->set_dtype(fmha_out.dtype());
+    }
+    if (out_linear_out_grad && out_linear_out) {
+      out_linear_out_grad->set_dims(out_linear_out.dims());
+      out_linear_out_grad->set_dtype(out_linear_out.dtype());
+    }
+    if (src_mask_out_grad && src_mask_out) {
+      src_mask_out_grad->set_dims(src_mask_out.dims());
+      src_mask_out_grad->set_dtype(src_mask_out.dtype());
+    }
+    return;
+  }
 
   if (!pre_layer_norm) {
     if (ln_scale_2_grad && ln_scale_2) {
