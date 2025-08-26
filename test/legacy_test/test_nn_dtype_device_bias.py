@@ -64,8 +64,8 @@ class Test_Conv3D(unittest.TestCase):
 
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32, 32, 32], dtype=dtype).to(device)
-            conv = self.api(16, 33, 3, dtype=dtype, device=device)
+            x_var = paddle.randn([5, 8, 12, 12, 12], dtype=dtype).to(device)
+            conv = self.api(8, 16, 3, dtype=dtype, device=device)
             check_dtype_device(conv.weight, dtype, device)
             check_dtype_device(conv.bias, dtype, device)
 
@@ -94,12 +94,12 @@ class Test_Conv3D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1, -1, -1)
+                input_shape = (-1, 8, -1, -1, -1)
 
                 x_var = paddle.static.data("input", input_shape, dtype=dtype)
                 conv = self.api(
-                    in_channels=16,
-                    out_channels=33,
+                    in_channels=8,
+                    out_channels=16,
                     kernel_size=3,
                     dtype=dtype,
                     device=device,
@@ -112,7 +112,7 @@ class Test_Conv3D(unittest.TestCase):
                 dtype_str = dtype
             else:
                 dtype_str = str(dtype).replace('paddle.', '')
-            input = np.random.randn(10, 16, 32, 32, 32).astype(dtype_str)
+            input = np.random.randn(5, 8, 12, 12, 12).astype(dtype_str)
 
             feed_dict = {"input": input}
             exe = base.Executor(device)
@@ -137,12 +137,12 @@ class Test_Conv3D(unittest.TestCase):
 
     def test_bias_dygraph(self):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32, 32, 32])
-            conv = self.api(16, 33, 3, bias=True)
+            x_var = paddle.randn([5, 8, 12, 12, 12])
+            conv = self.api(8, 16, 3, bias=True)
             y_var = conv(x_var)
             assert isinstance(conv.bias, paddle.Tensor)
 
-            conv = self.api(16, 33, 3, bias=False, bias_attr=True)
+            conv = self.api(8, 16, 3, bias=False, bias_attr=True)
             y_var = conv(x_var)
             assert conv.bias is None
 
@@ -154,15 +154,15 @@ class Test_Conv3D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1, -1, -1)
+                input_shape = (-1, 8, -1, -1, -1)
 
                 x_var = paddle.static.data("input", input_shape)
-                conv = self.api(16, 33, 3, bias=False)
+                conv = self.api(8, 16, 3, bias=False)
                 y_var = conv(x_var)
                 assert conv.bias is None
 
             feed_dict = {
-                "input": np.random.randn(10, 16, 32, 32, 32).astype('float32')
+                "input": np.random.randn(5, 8, 12, 12, 12).astype('float32')
             }
             exe = base.Executor()
             exe.run(start)
@@ -186,8 +186,8 @@ class Test_Conv2D(unittest.TestCase):
 
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32, 32], dtype=dtype).to(device)
-            conv = self.api(16, 33, 3, dtype=dtype, device=device)
+            x_var = paddle.randn([5, 8, 12, 12], dtype=dtype).to(device)
+            conv = self.api(8, 16, 3, dtype=dtype, device=device)
             check_dtype_device(conv.weight, dtype, device)
             check_dtype_device(conv.bias, dtype, device)
 
@@ -214,12 +214,12 @@ class Test_Conv2D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1, -1)
+                input_shape = (-1, 8, -1, -1)
 
                 x_var = paddle.static.data("input", input_shape, dtype=dtype)
                 conv = self.api(
-                    in_channels=16,
-                    out_channels=33,
+                    in_channels=8,
+                    out_channels=16,
                     kernel_size=3,
                     dtype=dtype,
                     device=device,
@@ -231,7 +231,7 @@ class Test_Conv2D(unittest.TestCase):
                 dtype_str = dtype
             else:
                 dtype_str = str(dtype).replace('paddle.', '')
-            input = np.random.randn(10, 16, 32, 32).astype(dtype_str)
+            input = np.random.randn(5, 8, 12, 12).astype(dtype_str)
 
             feed_dict = {"input": input}
             exe = base.Executor(device)
@@ -256,12 +256,12 @@ class Test_Conv2D(unittest.TestCase):
 
     def test_bias_dygraph(self):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32, 32])
-            conv = self.api(16, 33, 3, bias=True)
+            x_var = paddle.randn([5, 8, 12, 12])
+            conv = self.api(8, 16, 3, bias=True)
             y_var = conv(x_var)
             assert isinstance(conv.bias, paddle.Tensor)
 
-            conv = self.api(16, 33, 3, bias=False)
+            conv = self.api(8, 16, 3, bias=False)
             y_var = conv(x_var)
             assert conv.bias is None
 
@@ -273,15 +273,15 @@ class Test_Conv2D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1, -1)
+                input_shape = (-1, 8, -1, -1)
 
                 x_var = paddle.static.data("input", input_shape)
-                conv = self.api(16, 33, 3, bias=False)
+                conv = self.api(8, 16, 3, bias=False)
                 y_var = conv(x_var)
                 assert conv.bias is None
 
             feed_dict = {
-                "input": np.random.randn(10, 16, 32, 32).astype('float32')
+                "input": np.random.randn(5, 8, 12, 12).astype('float32')
             }
             exe = base.Executor()
             exe.run(start)
@@ -305,8 +305,8 @@ class Test_Conv1D(unittest.TestCase):
 
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32], dtype=dtype).to(device)
-            conv = self.api(16, 33, 3, dtype=dtype, device=device)
+            x_var = paddle.randn([5, 8, 12], dtype=dtype).to(device)
+            conv = self.api(8, 16, 3, dtype=dtype, device=device)
             check_dtype_device(conv.weight, dtype, device)
             check_dtype_device(conv.bias, dtype, device)
 
@@ -333,12 +333,12 @@ class Test_Conv1D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1)
+                input_shape = (-1, 8, -1)
 
                 x_var = paddle.static.data("input", input_shape, dtype=dtype)
                 conv = self.api(
-                    in_channels=16,
-                    out_channels=33,
+                    in_channels=8,
+                    out_channels=16,
                     kernel_size=3,
                     dtype=dtype,
                     device=device,
@@ -350,7 +350,7 @@ class Test_Conv1D(unittest.TestCase):
                 dtype_str = dtype
             else:
                 dtype_str = str(dtype).replace('paddle.', '')
-            input = np.random.randn(10, 16, 32).astype(dtype_str)
+            input = np.random.randn(5, 8, 12).astype(dtype_str)
 
             feed_dict = {"input": input}
             exe = base.Executor(device)
@@ -375,12 +375,12 @@ class Test_Conv1D(unittest.TestCase):
 
     def test_bias_dygraph(self):
         with dygraph_guard():
-            x_var = paddle.randn([10, 16, 32])
-            conv = self.api(16, 33, 3, bias=True)
+            x_var = paddle.randn([5, 8, 12])
+            conv = self.api(8, 16, 3, bias=True)
             y_var = conv(x_var)
             assert isinstance(conv.bias, paddle.Tensor)
 
-            conv = self.api(16, 33, 3, bias=False)
+            conv = self.api(8, 16, 3, bias=False)
             y_var = conv(x_var)
             assert conv.bias is None
 
@@ -392,14 +392,14 @@ class Test_Conv1D(unittest.TestCase):
                 base.unique_name.guard(),
                 base.program_guard(main, start),
             ):
-                input_shape = (-1, 16, -1)
+                input_shape = (-1, 8, -1)
 
                 x_var = paddle.static.data("input", input_shape)
-                conv = self.api(16, 33, 3, bias=False)
+                conv = self.api(8, 16, 3, bias=False)
                 y_var = conv(x_var)
                 assert conv.bias is None
 
-            feed_dict = {"input": np.random.randn(10, 16, 32).astype('float32')}
+            feed_dict = {"input": np.random.randn(5, 8, 12).astype('float32')}
             exe = base.Executor()
             exe.run(start)
             (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
@@ -422,8 +422,8 @@ class Test_Embedding(unittest.TestCase):
 
     def run_test_dygraph_one(self, dtype, device):
         with dygraph_guard():
-            x_var = paddle.randint(low=0, high=256, shape=[1024]).to(device)
-            layer = self.api(256, 128, dtype=dtype, device=device)
+            x_var = paddle.randint(low=0, high=32, shape=[128]).to(device)
+            layer = self.api(32, 16, dtype=dtype, device=device)
             check_dtype_device(layer.weight, dtype, device)
 
             y_var = layer(x_var)
@@ -453,8 +453,8 @@ class Test_Embedding(unittest.TestCase):
 
                 x_var = paddle.static.data("input", input_shape, dtype=dtype)
                 layer = self.api(
-                    256,
-                    128,
+                    32,
+                    16,
                     dtype=dtype,
                     device=device,
                 )
@@ -465,7 +465,7 @@ class Test_Embedding(unittest.TestCase):
                 dtype_str = dtype
             else:
                 dtype_str = str(dtype).replace('paddle.', '')
-            input = np.random.randint(0, 256, size=(1024,))
+            input = np.random.randint(0, 32, size=(128,))
 
             feed_dict = {"input": input}
             exe = base.Executor(device)
@@ -490,15 +490,15 @@ class Test_Embedding(unittest.TestCase):
 
     def test_weight_freeze(self):
         with dygraph_guard():
-            x_var = paddle.randint(low=0, high=256, shape=[1024])
-            weight = paddle.randn([256, 128])
-            layer = self.api(256, 128, _weight=weight, _freeze=True)
+            x_var = paddle.randint(low=0, high=32, shape=[128])
+            weight = paddle.randn([32, 16])
+            layer = self.api(32, 16, _weight=weight, _freeze=True)
 
             y_var = layer(x_var)
             np.testing.assert_allclose(weight.numpy(), layer.weight.numpy())
             np.testing.assert_allclose(
                 y_var.numpy(),
-                paddle.nn.functional.one_hot(x_var, num_classes=256).numpy()
+                paddle.nn.functional.one_hot(x_var, num_classes=32).numpy()
                 @ weight.numpy(),
             )
             assert layer.weight.stop_gradient
