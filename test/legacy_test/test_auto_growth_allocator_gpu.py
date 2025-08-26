@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 
 import paddle
@@ -33,18 +33,27 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
     env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
     env["FLAGS_JSON"] = json.dumps(flags)
 
-    p = subprocess.run(
-        [sys.executable, script, "--plan", json.dumps(plan)],
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    if p.returncode != 0:
-        raise RuntimeError(
-            f"probe failed:\nSTDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
+    with tempfile.TemporaryDirectory() as td:
+        out_path = os.path.join(td, "result.json")
+        p = subprocess.run(
+            [
+                sys.executable,
+                script,
+                "--plan",
+                json.dumps(plan),
+                "--out",
+                out_path,
+            ],
+            env=env,
+            capture_output=True,
+            text=True,
         )
-
-    return json.loads(p.stdout.strip().splitlines()[-1])
+        if p.returncode != 0:
+            raise RuntimeError(
+                f"probe failed:\nSTDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
+            )
+        with open(out_path, "r") as f:
+            return json.load(f)
 
 
 class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
@@ -53,7 +62,6 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             paddle.set_flags(
                 {
                     'FLAGS_allocator_strategy': 'auto_growth',
-                    # Async allocator does not support auto growth allocator.
                     'FLAGS_use_cuda_malloc_async_allocator': 0,
                 }
             )
@@ -70,15 +78,17 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             "FLAGS_large_pool_pre_alloc_in_mb": 20,
         }
         plan = [
-            {"op": "init"},  # small pre-alloc 2MB, large pre-alloc 20MB
-            {"op": "alloc_small", "mb_per_block": 0.5, "blocks": 7},  # 3.5MB
+            {"op": "init"},
+            {"op": "alloc_small", "mb_per_block": 0.5, "blocks": 7},
         ]
         out = _run_test_case(plan, flags)
+
         a0, a1 = out["allocated"][0], out["allocated"][1]
         r0, r1 = out["reserved"][0], out["reserved"][1]
-        self.assertEqual(a1, 3.5 * MiB)
-        self.assertEqual(r0, 22 * MiB)
-        self.assertEqual(r1, r0 + 2 * MiB, msg=f"r0={r0}, r1={r1}")
+
+        self.assertEqual(a1, int(3.5 * MiB))
+        self.assertEqual(r0, int(22 * MiB))
+        self.assertEqual(r1, r0 + int(2 * MiB), msg=f"r0={r0}, r1={r1}")
 
     def test_large_pool_growth_override_16mb(self):
         if not base.is_compiled_with_cuda():
@@ -95,13 +105,15 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             {"op": "alloc_large", "mb": 8},
         ]
         out = _run_test_case(plan, flags)
+
         r0, r1 = out["reserved"][0], out["reserved"][1]
-        self.assertEqual(r1, r0 + 16 * MiB, msg=f"r0={r0}, r1={r1}")
+        self.assertEqual(r1, r0 + int(16 * MiB), msg=f"r0={r0}, r1={r1}")
 
     def test_single_pool(self):
         if not base.is_compiled_with_cuda():
             return
         flags = {
+            "FLAGS_small_pool_size_in_mb": 0,
             "FLAGS_small_pool_auto_growth_chunk_size_in_mb": 2,
             "FLAGS_large_pool_auto_growth_chunk_size_in_mb": 4,
             "FLAGS_auto_growth_chunk_size_in_mb": 10,
@@ -110,20 +122,23 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         }
         plan = [
             {"op": "init"},
-            {"op": "alloc_small", "mb": 0.5, "blocks": 1},
+            {"op": "alloc_small", "mb_per_block": 0.5, "blocks": 1},
             {"op": "alloc_large", "mb": 10},
         ]
         out = _run_test_case(plan, flags)
+
         a0, a1, a2 = (
             out["allocated"][0],
             out["allocated"][1],
             out["allocated"][2],
         )
         r0, r1, r2 = out["reserved"][0], out["reserved"][1], out["reserved"][2]
-        self.assertEqual(a1, 0.5 * MiB)
-        self.assertEqual(a2, 10.5 * MiB)
-        self.assertEqual(r1, 10 * MiB, msg=f"r0={r0}, r1={r1}")
-        self.assertEqual(r2, 20 * MiB, msg=f"r0={r0}, r1={r1}")
+
+        self.assertEqual(a1, int(0.5 * MiB))
+        self.assertEqual(a2, int(10.5 * MiB))
+        self.assertEqual(r0, int(10 * MiB), msg=f"r0={r0}")
+        self.assertEqual(r1, int(10 * MiB), msg=f"r1={r1}")
+        self.assertEqual(r2, int(20 * MiB), msg=f"r2={r2}")
 
     def test_memory_limit(self):
         if not base.is_compiled_with_cuda():
