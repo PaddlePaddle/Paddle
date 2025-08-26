@@ -4283,8 +4283,11 @@ def cumsum_(
         flatten = True
     else:
         flatten = False
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
-        x = cast_(x, dtype)
+    if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast_(x, dtype)
 
     if in_dynamic_mode():
         if axis is None:
@@ -4640,9 +4643,12 @@ def cumprod(
     if dim is None:
         dim = -1
         x = x.flatten(0, len(x.shape) - 1)
-
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
-        x = cast(x, dtype)
+    if dtype is None and paddle.is_tensor(x):
+        dtype = x.dtype
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+    if dtype is not None and x.dtype != dtype:
+        x = cast_(x, dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
@@ -4689,9 +4695,13 @@ def cumprod_(
     if dim is None:
         dim = -1
         x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
-
-    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
-        x = cast_(x, dtype)
+    if dtype is None:
+        dtype = x.dtype
+    else:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast_(x, dtype)
 
     if in_dynamic_mode():
         return _C_ops.cumprod_(x, dim, False, False)
@@ -4778,14 +4788,26 @@ def prod(
             [24.  , 1680.])
 
     """
-    if dtype is not None:
+    if dtype is None:
+        if paddle.is_tensor(x):
+            dtype = x.dtype
+    else:
         check_dtype(
             dtype,
             'dtype',
-            ['float32', 'float64', 'int32', 'int64', "float16", "uint16"],
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                "float16",
+                "uint16",
+                "complex64",
+                "complex128",
+            ],
             'prod',
         )
-        if x.dtype != convert_np_dtype_to_dtype_(dtype):
+        if x.dtype != dtype:
             x = cast(x, dtype)
 
     # axis is 0-size tensor.
