@@ -2980,10 +2980,18 @@ bool RepeatInterleaveOpInferSymbolicShape(
     for (int i = 0; i < x_rank; i++) {
       if (i == axis) {
         if (has_output_size) {
-          out_sym_shape.push_back(symbol::DimExpr{
-              attributes.at("output_size").dyn_cast<pir::Int64Attribute>().data()});
+          int64_t os = attributes.at("output_size")
+                           .dyn_cast<pir::Int64Attribute>()
+                           .data();
+          if (os != -1) {
+            out_sym_shape.push_back(symbol::DimExpr{os});
+          } else {
+            out_sym_shape.push_back(operand_shape_or_data.shape().at(i) *
+                                    repeats);
+          }
         } else {
-          out_sym_shape.push_back(operand_shape_or_data.shape().at(i) * repeats);
+          out_sym_shape.push_back(operand_shape_or_data.shape().at(i) *
+                                  repeats);
         }
       } else {
         out_sym_shape.push_back(operand_shape_or_data.shape().at(i));
