@@ -342,6 +342,10 @@
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmax, paddle.Tensor.argmax]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -354,6 +358,10 @@
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmin, paddle.Tensor.argmin]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta

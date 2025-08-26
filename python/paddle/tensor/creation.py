@@ -2768,6 +2768,7 @@ def empty(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Returns a Tensor with uninitialized data which size is same as ``shape``.
@@ -2786,6 +2787,7 @@ def empty(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: Tensor which is created according to ``shape`` and ``dtype``, and is uninitialized.
@@ -2862,16 +2864,41 @@ def empty(
             else:
                 raise TypeError("Shape only supports Value, or list, or tuple.")
 
+        device = (
+            _get_paddle_place(device)
+            if device is not None
+            else _current_expected_place()
+        )
+        if (
+            pin_memory
+            and in_dynamic_mode()
+            and device is not None
+            and not isinstance(
+                device, (core.CUDAPinnedPlace, core.XPUPinnedPlace)
+            )
+        ):
+            if isinstance(device, core.CUDAPlace) or (
+                isinstance(device, core.Place) and device.is_gpu_place()
+            ):
+                device = core.CUDAPinnedPlace()
+            elif isinstance(device, core.XPUPlace) or (
+                isinstance(device, core.Place) and device.is_xpu_place()
+            ):
+                device = core.XPUPinnedPlace()
+            else:
+                raise RuntimeError(
+                    f"Pinning memory is not supported for {device}., "
+                    f"{in_dynamic_mode()}, "
+                    f"device = {device}, {type(device)}"
+                )
         tensor = _C_ops.empty(
             shape,
             convert_np_dtype_to_dtype_(dtype),
-            (
-                _get_paddle_place(device)
-                if device is not None
-                else _current_expected_place()
-            ),
+            device,
             out=out,
         )
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         if requires_grad is True:
             tensor.stop_gradient = False
         return tensor
