@@ -617,11 +617,27 @@ def median(
              [1],
              [0]])
     """
+    for i in range(5):
+        print(1111)
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
     if isinstance(axis, (list, tuple)) and len(axis) == 0:
         raise ValueError("Axis list should not be empty.")
+    dims = len(x.shape)
+    if dims == 0:
+        assert axis in [
+            -1,
+            0,
+            None,
+        ], 'when input 0-D, axis can only be [-1, 0] or default None'
+
+    if ((axis is not None) and (not isinstance(axis, int))) or not (
+        axis < dims and axis >= -dims
+    ):
+        raise ValueError(
+            "In median, axis should be none or an integer in range [-rank(x), rank(x))."
+        )
 
     if mode not in ('avg', 'min'):
         raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")

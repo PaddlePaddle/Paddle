@@ -181,6 +181,7 @@ class TestMedianAvg(unittest.TestCase):
         x = [1, 2, 3, 4]
         self.assertRaises(TypeError, paddle.median, x)
         x = paddle.arange(12).reshape([3, 4])
+        self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
         self.assertRaises(ValueError, paddle.median, x, 2, False, 'max')
 

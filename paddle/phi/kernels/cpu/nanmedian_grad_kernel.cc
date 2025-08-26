@@ -73,7 +73,6 @@ void CalcNanMedianGradEvenly(int64_t pre_dim,
   std::vector<int64_t> data_index;
   const T* x_data = x.data<T>();
   for (i = 0; i < pre_dim; i++) {
-    if (m_index[i] == -1) continue;
     data_index.clear();
     for (j = 0; j < stride; j++) {
       if ((m_data[i] == x_data[offset + j]) ||
