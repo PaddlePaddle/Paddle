@@ -481,7 +481,7 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .softmax import tensor_softmax as softmax
+from .softmax import softmax
 from .stat import (  # noqa: F401
     mean,
     median,
