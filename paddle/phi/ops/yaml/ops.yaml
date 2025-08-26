@@ -778,7 +778,12 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  output : Tensor
+  python_api :
+    name : [paddle.bmm, paddle.Tensor.bmm]
+    args_alias:
+      x : [input]
+      y : [mat2]
+  output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
   kernel :
