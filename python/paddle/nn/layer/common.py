@@ -18,7 +18,6 @@ from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 import paddle
 from paddle import in_dynamic_mode
-from paddle.base.param_attr import ParamAttr
 from paddle.utils.decorator_utils import param_one_alias
 
 from .. import functional as F
@@ -1728,14 +1727,13 @@ class Embedding(Layer):
             word ids in input `x`. Default: False.
         _weight(Tensor, optional): The learnable weights to be applied to the input embeddings.
             If :attr:`_weight` is specified, the :attr:`weight_attr` is ignored. Default: None.
-        _freeze(bool, optional): Indicates whether to freeze the embedding weights when
-            :attr:`_weight` is provided. If set to True, the provided embedding tensor
+        _freeze(bool, optional): Indicates whether to freeze the embedding weights. If set to True, the provided embedding tensor
             will be treated as a fixed lookup table and will not be updated during training.
-            If set to False, the provided tensor remains learnable. Only takes effect when
-            :attr:`_weight` is specified. Default: False.
-        device(str, optional): Device where the computation takes place. Default: None
-        dtype(str, optional): Data type of the weights and bias. Default: None.
-        weight_attr(ParamAttr|None, optional): To specify the weight parameter property. Default: None, which means the
+            If set to False, the provided tensor remains learnable. Default: False.
+        device(str, optional): Device where the computation takes place when :attr:`weight_attr` is specified. Default: None
+        dtype(str, optional): Data type of the weights when :attr:`weight_attr` is specified. Default: None.
+        weight_attr(ParamAttr|None, optional): To specify the weight parameter property. If set, the :attr:`_freeze` attribute will be
+            ignored and whether the weight is trainable  depends on the ``trainable`` option in ``weight_attr`. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
@@ -1843,26 +1841,26 @@ class Embedding(Layer):
         )
         self._size = [self._num_embeddings, self._embedding_dim]
 
+        self._weight_attr = weight_attr
+        self._remote_prefetch = False
+        self._name = name
         if _weight is not None:
             assert list(_weight.shape) == [
                 num_embeddings,
                 embedding_dim,
             ], "Shape of weight does not match num_embeddings and embedding_dim"
-            self._weight_attr = ParamAttr(
-                initializer=paddle.nn.initializer.Assign(value=_weight),
-                trainable=not _freeze,
-            )
+            self.weight = _weight
+            self.weight.stop_gradient = _freeze
         else:
-            self._weight_attr = weight_attr
-        self._remote_prefetch = False
-        self._name = name
-        self.weight = self.create_parameter(
-            attr=self._weight_attr,
-            shape=self._size,
-            dtype=self._dtype,
-            is_bias=False,
-            device=self._device,
-        )
+            self.weight = self.create_parameter(
+                attr=self._weight_attr,
+                shape=self._size,
+                dtype=self._dtype,
+                is_bias=False,
+                device=self._device,
+            )
+            if self._weight_attr is None:
+                self.weight.stop_gradient = _freeze
 
         if in_dynamic_mode() and padding_idx != -1:
             with paddle.no_grad():
