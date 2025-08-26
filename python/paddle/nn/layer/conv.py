@@ -323,8 +323,8 @@ class Conv1D(_ConvNd):
             When in 'replicate' mode, uses input boundaries to pad the input tensor.
             When in 'circular' mode, uses circular input to pad the input tensor.
             Default is 'zeros'.
-        device(str, optional): Device where the computation takes place. Default: None
-        dtype(str, optional): Data type of the weights and bias. Default: None.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -385,7 +385,7 @@ class Conv1D(_ConvNd):
         *,
         bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
@@ -676,8 +676,8 @@ class Conv2D(_ConvNd):
         bias(bool, optional): Whether to learn and add the bias of this layer. If set
             to False, no bias will be created and :attr:`bias_attr` is ignored. Default: True.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
-        device(str, optional): Device where the computation takes place. Default: None
-        dtype(str, optional): Data type of the weights and bias. Default: None.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -743,7 +743,7 @@ class Conv2D(_ConvNd):
         *,
         bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
@@ -1048,8 +1048,8 @@ class Conv3D(_ConvNd):
         bias(bool, optional): Whether to learn and add the bias of this layer. If set
             to False, no bias will be created and :attr:`bias_attr` is ignored. Default: True.
         padding_mode(str, optional): ``'zeros'``, ``'reflect'``, ``'replicate'`` or ``'circular'``. Default: ``'zeros'``.
-        device(str, optional): Device where the computation takes place. Default: None
-        dtype(str, optional): Data type of the weights and bias. Default: None.
+        device(PlaceLike, optional): Device where the computation takes place. Default: None
+        dtype(DTypeLike, optional): Data type of the weights and bias. Default: None.
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
@@ -1118,7 +1118,7 @@ class Conv3D(_ConvNd):
         *,
         bias: bool = True,
         padding_mode: _PaddingTensorMode = 'zeros',
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,

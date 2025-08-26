@@ -1730,8 +1730,8 @@ class Embedding(Layer):
         _freeze(bool, optional): Indicates whether to freeze the embedding weights. If set to True, the provided embedding tensor
             will be treated as a fixed lookup table and will not be updated during training.
             If set to False, the provided tensor remains learnable. Default: False.
-        device(str, optional): Device where the computation takes place when :attr:`weight_attr` is specified. Default: None
-        dtype(str, optional): Data type of the weights when :attr:`weight_attr` is specified. Default: None.
+        device(PlaceLike, optional): Device where the computation takes place when :attr:`weight_attr` is specified. Default: None
+        dtype(DTypeLike, optional): Data type of the weights when :attr:`weight_attr` is specified. Default: None.
         weight_attr(ParamAttr|None, optional): To specify the weight parameter property. If set, the :attr:`_freeze` attribute will be
             ignored and whether the weight is trainable  depends on the ``trainable`` option in ``weight_attr`. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_paddle_ParamAttr` . In addition,
@@ -1799,7 +1799,7 @@ class Embedding(Layer):
         sparse: bool = False,
         _weight: Tensor | None = None,
         _freeze: bool = False,
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         weight_attr: ParamAttrLike | None = None,
         name: str | None = None,
