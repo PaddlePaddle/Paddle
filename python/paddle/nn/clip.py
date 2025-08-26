@@ -717,7 +717,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list = []
         sum_square_list_fp16 = []
         sum_square_list_fp32 = []
-        flag_auto_hybrid_pp = True  # Determine whether to use the new dynamic graph semi-automatic parallel pp framework
         if len(params_grads) > 0 and len(params_grads[0]) > 0:
             src_mesh = params_grads[0][0].process_mesh
         else:
@@ -743,7 +742,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh
             if src_mesh is not None and g.process_mesh != src_mesh:
-                flag_auto_hybrid_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
                     sum_square = dist.reshard(
@@ -800,7 +798,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         # then performs pp group communication reduce(sum) to get correct global_norm_var.
         # For complete alignment with old dygraph semi-auto parallel PP logic,
         # refer to NOTE: align ClipGradByGlobalNorm in auto_parallel_align_mode
-        if flag_auto_hybrid_pp and src_mesh is not None:
+        if src_mesh is not None:
             g_mesh = dist.get_mesh()
             if (
                 g_mesh
@@ -884,15 +882,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                                 "Reshard a sharded tensor from a local mesh to a global mesh is not supported"
                             )
                     else:
-                        pp_mesh = get_complete_pp_mesh(g.process_mesh)
-
-                        if set(g.process_mesh.process_ids) < set(
-                            pp_mesh.process_ids
-                        ):
-                            clip_input = dist.reshard(
-                                clip_input, pp_mesh, clip_input.placements
-                            )
-
                         clip_input = paddle.distributed.reshard(
                             clip_input, g.process_mesh, clip_input.placements
                         )
