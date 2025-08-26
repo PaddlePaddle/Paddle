@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/funcs/nanmedian_utils.h"
 
 namespace phi {
+
 template <typename T>
 void CalcNanMedianMeanGrad(int64_t pre_dim,
                            int64_t stride,
@@ -74,7 +75,9 @@ void CalcNanMedianGradEvenly(int64_t pre_dim,
     if (m_index[i] == -1) continue;
     data_index.clear();
     for (j = 0; j < stride; j++) {
-      if (m_data[i] == x_data[offset + j]) {
+      if ((m_data[i] == x_data[offset + j]) ||
+          (isnan(static_cast<float>(m_data[i])) &&
+           isnan(static_cast<float>(x_data[offset + j])))) {
         data_index.push_back(offset + j);
       }
     }

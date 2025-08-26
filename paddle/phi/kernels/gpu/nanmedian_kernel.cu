@@ -294,7 +294,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
                      sizeof(int64_t),
                      stream);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
-  if (nan_stat_cpu_ptr[0] == numel && ignore_nan) {
+  if (nan_stat_cpu_ptr[0] == numel) {
     phi::funcs::SetConstant<Context, T> set_nan;
     set_nan(dev_ctx, out, nan_val);
 
