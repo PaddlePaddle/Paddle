@@ -21,8 +21,12 @@ import paddle
 if TYPE_CHECKING:
     from paddle import Tensor
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 from .tensor.compat import (
+    MinMaxRetType,
     Unfold,
+    _check_out_status,
     max,
     min,
     sort,
@@ -32,13 +36,22 @@ from .tensor.compat import (
 __all__ = ['split', 'sort', 'Unfold', 'median', 'nanmedian', 'max', 'min']
 
 
+class MedianRetType(MinMaxRetType):
+    pass
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.median",
+    correct_name="paddle.median",
+)
 def median(
     input: Tensor,
     dim: int | None = None,
     keepdim: bool = False,
     *,
     out: tuple[Tensor, Tensor] | Tensor | None = None,
-) -> tuple[Tensor, Tensor] | Tensor:
+) -> Tensor | MedianRetType:
     """
     Returns the median of the values in input.
 
@@ -51,7 +64,8 @@ def median(
             For median along a dimension (dim specified, including dim=-1), out must be a tuple of two tensors (values, indices).
 
     Returns:
-        Tensor|tuple[Tensor, Tensor]: The median values. If dim is None, returns a single tensor. If dim is specified (including dim=-1), returns a tuple of (values, indices).
+        Tensor|MedianRetType: If dim is None, returns a single tensor. If dim is specified (including dim=-1),
+        returns a named tuple MedianRetType(values: Tensor, indices: Tensor).
 
     Examples:
         .. code-block:: python
@@ -63,10 +77,10 @@ def median(
             >>> print(result)
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 5)
 
-            >>> values, indices = paddle.compat.median(x, dim=1)
-            >>> print(values)
+            >>> ret = paddle.compat.median(x, dim=1)
+            >>> print(ret.values)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [2, 5, 8])
-            >>> print(indices)
+            >>> print(ret.indices)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [1, 1, 1])
 
             >>> # Using out parameter
@@ -77,30 +91,36 @@ def median(
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [2, 5, 8])
     """
     if dim is None:
+        _check_out_status(out, False)
         result = paddle.median(input, axis=dim, keepdim=keepdim, mode='min')
         if out is not None:
             paddle.assign(result, out)
             return out
         return result
     else:
-        result, indices = paddle.median(
+        _check_out_status(out, True)
+        values, indices = paddle.median(
             input, axis=dim, keepdim=keepdim, mode='min'
         )
         if out is not None:
-            out_values, out_indices = out
-            paddle.assign(result, out_values)
-            paddle.assign(indices, out_indices)
-            return out_values, out_indices
-        return result, indices
+            paddle.assign(values, out[0])
+            paddle.assign(indices, out[1])
+            return MedianRetType(values=out[0], indices=out[1])
+        return MedianRetType(values=values, indices=indices)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.nanmedian",
+    correct_name="paddle.nanmedian",
+)
 def nanmedian(
     input: Tensor,
     dim: int | None = None,
     keepdim: bool = False,
     *,
     out: tuple[Tensor, Tensor] | Tensor | None = None,
-) -> tuple[Tensor, Tensor] | Tensor:
+) -> Tensor | MedianRetType:
     """
     Returns the median of the values in input, ignoring NaN values.
 
@@ -113,7 +133,8 @@ def nanmedian(
             For nanmedian along a dimension (dim specified, including dim=-1), out must be a tuple of two tensors (values, indices).
 
     Returns:
-        Tensor|tuple[Tensor, Tensor]: The median values, ignoring NaN. If dim is None, returns a single tensor. If dim is specified (including dim=-1), returns a tuple of (values, indices).
+        Tensor|MedianRetType: The median values, ignoring NaN. If dim is None, returns a single tensor. If dim is specified (including dim=-1),
+        returns a named tuple MedianRetType(values: Tensor, indices: Tensor).
 
     Examples:
         .. code-block:: python
@@ -126,10 +147,10 @@ def nanmedian(
             >>> print(result)
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 5.0)
 
-            >>> values, indices = paddle.compat.nanmedian(x, dim=1)
-            >>> print(values)
+            >>> ret = paddle.compat.nanmedian(x, dim=1)
+            >>> print(ret.values)
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
-            >>> print(indices)
+            >>> print(ret.indices)
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [0, 1, 1])
 
             >>> # Using out parameter
@@ -140,13 +161,15 @@ def nanmedian(
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
     """
     if dim is None:
+        _check_out_status(out, False)
         result = paddle.nanmedian(input, axis=dim, keepdim=keepdim, mode='min')
         if out is not None:
             paddle.assign(result, out)
             return out
         return result
     else:
-        result, indices = paddle.nanmedian(
+        _check_out_status(out, True)
+        values, indices = paddle.nanmedian(
             input, axis=dim, keepdim=keepdim, mode='min'
         )
         # This conversion is needed because PyTorch returns index 0 for all-nan rows,
@@ -154,8 +177,7 @@ def nanmedian(
         indices = paddle.maximum(indices, paddle.zeros_like(indices))
 
         if out is not None:
-            out_values, out_indices = out
-            paddle.assign(result, out_values)
-            paddle.assign(indices, out_indices)
-            return out_values, out_indices
-        return result, indices
+            paddle.assign(values, out[0])
+            paddle.assign(indices, out[1])
+            return MedianRetType(values=out[0], indices=out[1])
+        return MedianRetType(values=values, indices=indices)
