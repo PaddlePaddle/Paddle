@@ -1251,6 +1251,19 @@ class TestFusedLayerNorm_ZeroSize_Error(unittest.TestCase):
                 residual=residual,
             )
 
+            bias = paddle.randn([256], dtype="float32")
+            self.assertRaises(
+                ValueError,
+                paddle.incubate.nn.functional.fused_layer_norm,
+                x=x,
+                norm_weight=paddle.randn([256], dtype="float32"),
+                norm_bias=paddle.randn([0], dtype="float32"),
+                epsilon=1e-06,
+                begin_norm_axis=1,
+                bias=bias,
+                residual=residual,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
