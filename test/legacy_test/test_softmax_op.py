@@ -679,7 +679,7 @@ class TestSoftmaxCompatibility(unittest.TestCase):
                     for param_x in ['x', 'input']:
                         for param_axis in ['axis', 'dim']:
                             kwargs = {param_x: input_tensor, param_axis: axis}
-                            result = paddle.compat.softmax(**kwargs)
+                            result = paddle.nn.functional.softmax(**kwargs)
                             expected = np.exp(
                                 input_tensor.numpy()
                                 - np.max(
