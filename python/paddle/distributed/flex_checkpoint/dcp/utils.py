@@ -16,13 +16,17 @@ from __future__ import annotations
 import copy
 import os
 import re
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 import paddle
 
-from .sharded_weight import ShardedWeight
+from .sharded_weight import (
+    ShardedWeight,
+    ShardedWeightDesc,
+)
 
 if TYPE_CHECKING:
     from paddle.framework import core
@@ -210,3 +214,85 @@ def is_sharded_state_dict(o):
         return True
     else:
         return False
+
+
+def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
+    ndim = len(desc_offset)
+    overlap_offset = []
+    overlap_shape = []
+    desc_starts = []
+    shard_starts = []
+    for i in range(ndim):
+        desc_lo = desc_offset[i]
+        desc_hi = desc_offset[i] + desc_shape[i]
+        shard_lo = shard_offset[i]
+        shard_hi = shard_offset[i] + shard_shape[i]
+        # overlap
+        lo = max(desc_lo, shard_lo)
+        hi = min(desc_hi, shard_hi)
+        if lo >= hi:
+            return False, None, None, None, None
+        overlap_offset.append(lo)
+        overlap_shape.append(hi - lo)
+        desc_starts.append(lo - desc_lo)
+        shard_starts.append(lo - shard_lo)
+    return True, overlap_offset, overlap_shape, desc_starts, shard_starts
+
+
+def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
+    src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
+        get_overlap_region(
+            src_desc.global_offset,
+            src_desc.local_shape,
+            src_shard.global_offset,
+            src_shard.local_shape,
+        )
+    )
+
+    dst_has, _, overlap_shape2, dst_desc_starts, dst_shard_starts = (
+        get_overlap_region(
+            dst_desc.global_offset,
+            dst_desc.local_shape,
+            dst_shard.global_offset,
+            dst_shard.local_shape,
+        )
+    )
+
+    assert src_has or dst_has, "no overlap!"
+    assert overlap_shape == overlap_shape2, (
+        f"overlap shape mismatch: {overlap_shape} vs {overlap_shape2}"
+    )
+    axes = list(range(len(overlap_shape)))
+
+    src_tensor_slice = paddle.slice(
+        src_shard.local_tensor,
+        axes=axes,
+        starts=src_shard_starts,
+        ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+    )
+
+    dst_tensor_slice = paddle.slice(
+        dst_shard.local_tensor,
+        axes=axes,
+        starts=dst_shard_starts,
+        ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
+    )
+
+    paddle.assign(src_tensor_slice, dst_tensor_slice)
+
+
+def merge_shard_info_list(list_of_dicts):
+    merged = defaultdict(list)
+    for info in list_of_dicts:
+        for k, v in info.items():
+            merged[k].extend(v)
+    return dict(merged)
+
+
+def build_shard_desc(val):
+    return ShardedWeightDesc(
+        key=val.key,
+        local_shape=tuple(val.local_shape),
+        global_shape=tuple(val.global_shape),
+        global_offset=tuple(val.global_offset),
+    )
