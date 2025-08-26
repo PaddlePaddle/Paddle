@@ -19,6 +19,8 @@
 // processing of parameters originally done in the Python API
 #include "paddle/fluid/pybind/arg_pre_process.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/utils/general_functions.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/common/data_type.h"

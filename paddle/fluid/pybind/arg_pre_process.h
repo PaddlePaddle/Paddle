@@ -15,6 +15,8 @@
 #pragma once
 
 #include <Python.h>
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 

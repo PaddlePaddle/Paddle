@@ -88,6 +88,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
@@ -223,6 +224,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
@@ -353,6 +355,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
@@ -451,9 +454,9 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
-
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isinf(x)
             >>> out
@@ -487,6 +490,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
 
@@ -537,6 +541,7 @@ add_doc_and_signature(
         .. code-block:: python
 
             >>> import paddle
+
             >>> # type: ignore
 
             >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
