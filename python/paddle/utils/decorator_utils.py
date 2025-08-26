@@ -444,30 +444,21 @@ def transpose_decorator():
             if ("input" in kwargs) and ("x" not in kwargs):
                 kwargs["x"] = kwargs.pop("input")
 
-            has_dim0 = "dim0" in kwargs or (
-                len(args) > 1 and isinstance(args[1], int)
-            )
-            if has_dim0:
-                dim0 = kwargs.pop(
-                    "dim0",
-                    args[1]
-                    if (len(args) > 1 and isinstance(args[1], int))
-                    else None,
-                )
-                dim1 = kwargs.pop(
-                    "dim1",
-                    args[2]
-                    if (len(args) > 2 and isinstance(args[2], int))
-                    else None,
-                )
+            dim0 = kwargs.pop("dim0", kwargs.pop("axis0", None))
+            dim1 = kwargs.pop("dim1", kwargs.pop("axis1", None))
 
-                if dim0 is not None and dim1 is not None:
-                    ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
-                    perm = list(range(ndim))
-                    perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
-                    kwargs["perm"] = perm
-                    if len(args) > 1:
-                        args = (args[0],)
+            if dim0 is None and len(args) > 1 and isinstance(args[1], int):
+                dim0 = args[1]
+            if dim1 is None and len(args) > 2 and isinstance(args[2], int):
+                dim1 = args[2]
+
+            if dim0 is not None and dim1 is not None:
+                ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
+                perm = list(range(ndim))
+                perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
+                kwargs["perm"] = perm
+                if len(args) > 1:
+                    args = (args[0],)
 
             return func(*args, **kwargs)
 
