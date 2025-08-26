@@ -613,7 +613,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_slice_op_xpu',
     'test_generate_proposals_v2_op',
     'test_lamb_op_xpu',
-    'test_model_cast_to_bf16',
     'test_sgd_op_bf16',
     'test_c_embedding_op',
     'test_class_center_sample_op',
