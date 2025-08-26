@@ -404,8 +404,8 @@ class TestElementwiseOp0SizeInput(TestElementwiseOp):
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
 
-class TestMaximumOutAPI(unittest.TestCase):
-    def test_out_in_dygraph(self):
+class TestMaximumOutAndAlias(unittest.TestCase):
+    def test_dygraph(self):
         paddle.disable_static()
         np.random.seed(2024)
         x = paddle.to_tensor(
@@ -426,9 +426,9 @@ class TestMaximumOutAPI(unittest.TestCase):
                 paddle.maximum(x, y, out=out_buf)
                 z = out_buf
             elif case_type == 'both_return':
-                z = paddle.maximum(x, y, out=out_buf)
+                z = paddle.maximum(input=x, other=y, out=out_buf)
             elif case_type == 'both_input_out':
-                _ = paddle.maximum(x, y, out=out_buf)
+                _ = paddle.maximum(input=x, other=y, out=out_buf)
                 z = out_buf
             else:
                 raise AssertionError
@@ -464,6 +464,22 @@ class TestMaximumOutAPI(unittest.TestCase):
         np.testing.assert_allclose(gy1, gy4, rtol=1e-6, atol=1e-6)
 
         paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', [5, 7], 'float32')
+            y = paddle.static.data('Y', [5, 7], 'float32')
+            z = paddle.maximum(input=x, other=y)
+        ref = np.maximum(x, y)
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(paddle.static.default_startup_program())
+        out = exe.run(
+            paddle.static.default_main_program(),
+            feed={'X': x, 'Y': y},
+            fetch_list=[z],
+        )
+        np.testing.assert_allclose(out, ref, rtol=1e-6, atol=1e-6)
 
 
 if __name__ == '__main__':
