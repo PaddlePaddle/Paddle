@@ -591,6 +591,222 @@ add_doc_and_signature(
 # shenwei
 
 # zhouxin
+add_doc_and_signature(
+    "sin",
+    """
+    Sine Activation Operator.
+
+    .. math::
+       out = sin(x)
+
+    Args:
+        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Sin operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.sin(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
+    """,
+    """
+def sin(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "sign",
+    """
+    Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
+
+    Args:
+        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
+            >>> out = paddle.sign(x=x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [ 1.,  0., -1.,  1.])
+    """,
+    """
+def sign(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "log",
+    r"""
+    Calculates the natural log of the given input Tensor, element-wise.
+
+    .. math::
+
+        Out = \ln(x)
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128. Alias: ``input``.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
+
+
+    Returns:
+        Tensor: The natural log of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = [[2, 3, 4], [7, 8, 9]]
+            >>> x = paddle.to_tensor(x, dtype='float32')
+            >>> print(paddle.log(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.69314718, 1.09861231, 1.38629436],
+             [1.94591010, 2.07944155, 2.19722462]])
+    """,
+    """
+def log(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "rsqrt",
+    """
+    Rsqrt Activation Operator.
+
+    Please make sure input is legal in case of numeric errors.
+
+    .. math::
+       out = \\frac{1}{\\sqrt{x}}
+
+    Args:
+        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Rsqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.rsqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [3.16227770, 2.23606801, 1.82574177, 1.58113885])
+    """,
+    """
+def rsqrt(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "cos",
+    """
+    Cosine Operator. Computes cosine of x element-wise.
+
+    Input range is `(-inf, inf)` and output range is `[-1,1]`.
+
+    .. math::
+       out = cos(x)
+
+    Args:
+        x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64, complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Cos operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cos(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.92106098, 0.98006660, 0.99500418, 0.95533651])
+    """,
+    """
+def cos(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "floor",
+    """
+    Floor Activation Operator. Computes floor of x element-wise.
+
+    .. math::
+        out = \\lfloor x \\rfloor
+
+    Args:
+        x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Floor operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.floor(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1., -1.,  0.,  0.])
+    """,
+    """
+def floor(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
 
 # hehongyu
 
