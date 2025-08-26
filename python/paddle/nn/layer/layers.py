@@ -789,7 +789,7 @@ class Layer:
         dtype: DTypeLike | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
     ) -> Tensor:
         """Create parameters for this layer.
 
@@ -803,7 +803,7 @@ class Layer:
             default_initializer(Initializer, optional): the default initializer for this parameter.
                 If set None, default initializer will be set to paddle.nn.initializer.Xavier and paddle.nn.initializer.Constant
                 for non-bias and bias parameter, respectively. Default: None.
-            device(str|Place, optional): the device place for the parameter. Default: None.
+            device(PlaceLike, optional): the device place for the parameter. Default: None.
 
         Returns:
             :Tensor, created parameter.
