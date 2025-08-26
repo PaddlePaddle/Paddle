@@ -1239,7 +1239,6 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                         )
                     else:
                         load_result = load_file(path, device='cpu')
-                    load_result = _pack_loaded_dict(load_result, is_numpy=False)
 
                 return load_result
 

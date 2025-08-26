@@ -217,21 +217,16 @@ def _pickle_loads_mac(path, f):
     return load_result
 
 
-def _pack_loaded_dict(load_obj, is_numpy=True):
+def _pack_loaded_dict(load_obj):
     if isinstance(load_obj, dict):
         unpack_info = 'UnpackBigParamInfor@@'  # typos: disable-line
         if unpack_info in load_obj:
             removes = []
             for key, value in load_obj[unpack_info].items():
                 slices = [load_obj[part] for part in value["slices"]]
-                if is_numpy:
-                    load_obj[key] = np.concatenate(slices).reshape(
-                        value["OriginShape"]
-                    )
-                else:
-                    load_obj[key] = paddle.reshape(
-                        paddle.concat(slices), value["OriginShape"]
-                    )
+                load_obj[key] = np.concatenate(slices).reshape(
+                    value["OriginShape"]
+                )
                 removes += value["slices"]
             for key in removes:
                 load_obj.pop(key)

@@ -161,40 +161,6 @@ class TestSaveLoadPickle(unittest.TestCase):
                 )
 
 
-class TestSaveLoadSafetensors(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def test_safetensors(self):
-        # enable dygraph mode
-        paddle.disable_static()
-        # create network
-        layer = LinearNet()
-        save_dict = layer.state_dict()
-
-        path = os.path.join(
-            self.temp_dir.name,
-            "test_paddle_save_load_safetensors",
-            "layer.safetensors",
-        )
-
-        paddle.save(save_dict, path, safetensors=True)
-        numpy_load = paddle.load(path, return_numpy=True, safetensors=True)
-        # compare results before and after saving
-        for key, value in save_dict.items():
-            self.assertTrue(isinstance(numpy_load[key], np.ndarray))
-            np.testing.assert_array_equal(numpy_load[key], value)
-
-        tensor_load = paddle.load(path, return_numpy=False, safetensors=True)
-        # compare results before and after saving
-        for key, value in save_dict.items():
-            self.assertTrue(isinstance(tensor_load[key], paddle.Tensor))
-            np.testing.assert_array_equal(tensor_load[key].numpy(), value)
-
-
 class TestSaveLoadAny(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
