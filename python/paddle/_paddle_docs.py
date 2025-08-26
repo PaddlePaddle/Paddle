@@ -598,6 +598,10 @@ add_doc_and_signature(
     .. math::
        out = \\frac{1}{1 + e^{-x}}
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``sigmoid(input=tensor_x)`` is equivalent to ``sigmoid(x=tensor_x)``.
+
     Args:
         x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64, complex64 or complex128.
