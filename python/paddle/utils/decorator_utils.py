@@ -159,18 +159,11 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def softmax_param_ignore_alias(
+def softmax_param_alias(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # Remove ignored parameters from args
-        if 2 < len(args) and isinstance(args[2], int):
-            args = args[:2] + args[2 + 1 :]
-        else:
-            # Remove ignored parameters from kwargs
-            kwargs.pop("_stacklevel", None)
-
         # Process parameters to handle alias mapping
         if "input" in kwargs:
             kwargs["x"] = kwargs.pop("input")

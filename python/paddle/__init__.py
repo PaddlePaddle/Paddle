@@ -155,6 +155,7 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
+from .compat import softmax
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
@@ -629,7 +630,6 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.softmax import softmax
 from .tensor.stat import (
     mean,
     median,

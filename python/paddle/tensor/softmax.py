@@ -16,11 +16,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import paddle
 from paddle import _C_ops
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
-    param_two_alias,
+    softmax_param_alias,
 )
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -32,14 +31,12 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike
 
 
-@param_two_alias(["x", "input"], ["axis", "dim"])
+@softmax_param_alias
 def softmax(
     x: Tensor,
     axis: int = -1,
     dtype: DTypeLike | None = None,
     name: str | None = None,
-    *,
-    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This operator implements the softmax layer. The calculation process is as follows:
@@ -171,7 +168,7 @@ def softmax(
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
-        return paddle.assign(_C_ops.softmax(outs_cast, axis), out)
+        return _C_ops.softmax(outs_cast, axis)
     else:
         use_cudnn = True
         if dtype is None:
@@ -208,4 +205,4 @@ def softmax(
             attrs={'axis': axis, 'use_cudnn': use_cudnn},
         )
 
-        return paddle.assign(outs_softmax, out)
+        return outs_softmax

@@ -848,6 +848,8 @@ def softmax(
     dim: int | None = None,
     _stacklevel: int = 3,
     dtype: DTypeLike | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     This operator implements the compat.softmax. The calculation process is as follows:
@@ -989,7 +991,7 @@ def softmax(
         dtype = convert_np_dtype_to_dtype_(dtype)
     if in_dynamic_or_pir_mode():
         outs_cast = input if dtype is None else _C_ops.cast(input, dtype)
-        return _C_ops.softmax(outs_cast, dim)
+        return paddle.assign(_C_ops.softmax(outs_cast, dim), out)
     else:
         use_cudnn = True
         if dtype is None:
@@ -1029,4 +1031,4 @@ def softmax(
             attrs={'axis': dim, 'use_cudnn': use_cudnn},
         )
 
-        return outs_softmax
+        return paddle.assign(outs_softmax, out)
