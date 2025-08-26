@@ -210,7 +210,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
       max_valid_num = stride - nan_count;
     }
   }
-  if (total_nan_num == numel) {
+  if (total_nan_num == numel && ignore_nan) {
     for (i = 0; i < pre_dim; i++) {
       out_data[i] = std::numeric_limits<T>::quiet_NaN();
       if (mode == "avg") {

@@ -62,7 +62,6 @@ void CalcMedianGradKernel_CPU(const Context& dev_ctx,
                               const DenseTensor& out_grad,
                               const std::string& mode,
                               DenseTensor* x_grad) {
-  std::cout << "!!" << std::endl;
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
   if (!dx_data) return;
 

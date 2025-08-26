@@ -294,12 +294,12 @@ void ProcessMedianKernel(const Context& dev_ctx,
                      sizeof(int64_t),
                      stream);
   T nan_val = std::numeric_limits<T>::quiet_NaN();
-  if (nan_stat_cpu_ptr[0] == numel) {
+  if (nan_stat_cpu_ptr[0] == numel && ignore_nan) {
     phi::funcs::SetConstant<Context, T> set_nan;
     set_nan(dev_ctx, out, nan_val);
 
     phi::funcs::SetConstant<Context, int64_t> set_negatvie;
-    set_negatvie(dev_ctx, median_index, static_cast<int64_t>(-1));
+    set_negatvie(dev_ctx, median_index, static_cast<int64_t>(numel / 2));
     return;
   }
 

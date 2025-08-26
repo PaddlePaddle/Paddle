@@ -620,32 +620,14 @@ def median(
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    is_flatten = False
-    dims = len(x.shape)
-    if dims == 0:
-        assert axis in [
-            -1,
-            0,
-            None,
-        ], 'when input 0-D, axis can only be [-1, 0] or default None'
-        is_flatten = True
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
 
     if mode not in ('avg', 'min'):
         raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
     need_idx = axis is not None
     if axis is None:
         is_flatten = True
-
-    if is_flatten:
-        x = paddle.flatten(x)
-        axis = 0
-    else:
-        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-            raise ValueError(
-                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
-            )
-        if axis < 0:
-            axis += dims
 
     if axis is None:
         axis = []
@@ -654,17 +636,12 @@ def median(
     elif isinstance(axis, int):
         axis = [axis]
 
-    ignore_nan = False
     if mode == "avg" and not x.dtype == paddle.float64:
         x = x.astype(paddle.float32)
 
     out, indices = _C_ops.median(x, axis, keepdim, mode)
     indices.stop_gradient = True
-    if is_flatten:
-        if keepdim:
-            out = out.reshape([1] * dims)
-        else:
-            out = out.reshape([])
+
     if mode == 'min' and need_idx:
         return out, indices
     else:
