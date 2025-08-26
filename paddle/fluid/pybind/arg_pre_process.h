@@ -17,18 +17,25 @@
 #include <Python.h>
 #include <vector>
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/value.h"
 #include "paddle/utils/optional.h"
 namespace paddle {
 
 namespace pybind {
+
+using Value = pir::Value;
+
 void ExpandAsPreProcess(paddle::Tensor* x,
                         paddle::optional<paddle::Tensor>* y,
                         std::vector<int64_t>* target_shape);
-void ExpandAsPreProcess(pir::Value* x,
+void ExpandAsPreProcess(Value* x,
                         paddle::optional<pir::Value>* y,
                         std::vector<int64_t>* target_shape);
 
+void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
+void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 }  // namespace pybind
 
 }  // namespace paddle

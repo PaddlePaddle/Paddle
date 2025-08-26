@@ -651,6 +651,8 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
       }
       Py_DECREF(item);
     }
+  } else if (PyObject_CheckLong(obj)) {
+    value.emplace_back(PyObject_ToInt32(obj));
   } else {
     PADDLE_THROW(common::errors::InvalidType(
         "%s(): argument (position %d) must be "
@@ -666,7 +668,7 @@ std::vector<int> CastPyArg2Ints(PyObject* obj,
                                 const std::string& op_type,
                                 ssize_t arg_pos,
                                 std::vector<int> default_value) {
-  if (obj != nullptr) {
+  if (obj != nullptr && obj != Py_None) {
     return CastPyArg2Ints(obj, op_type, arg_pos);
   } else {
     return default_value;

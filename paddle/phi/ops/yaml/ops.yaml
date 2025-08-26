@@ -342,6 +342,10 @@
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmax, paddle.Tensor.argmax]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -354,6 +358,10 @@
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmin, paddle.Tensor.argmin]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -778,7 +786,12 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  output : Tensor
+  python_api :
+    name : [paddle.bmm, paddle.Tensor.bmm]
+    args_alias:
+      x : [input]
+      y : [mat2]
+  output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
   kernel :
@@ -1205,6 +1218,10 @@
 
 - op : cos
   args : (Tensor x)
+  python_api:
+    name: [paddle.cos, paddle.Tensor.cos]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2185,6 +2202,10 @@
 
 - op : floor
   args : (Tensor x)
+  python_api:
+    name: [paddle.floor, paddle.Tensor.floor]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3181,6 +3202,10 @@
 
 - op : log
   args : (Tensor x)
+  python_api:
+    name: [paddle.log, paddle.Tensor.log]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3360,7 +3385,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logsumexp
-  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
+  args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
+  python_api:
+    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
+    args_alias:
+      use_default_mapping : True
+    pre_process:
+      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -4701,6 +4732,10 @@
 
 - op : rsqrt
   args : (Tensor x)
+  python_api:
+    name: [paddle.sqrt, paddle.Tensor.rsqrt]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4993,6 +5028,10 @@
 
 - op : sign
   args : (Tensor x)
+  python_api :
+    name: [paddle.sign, paddle.Tensor.sign]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5017,6 +5056,10 @@
 
 - op : sin
   args : (Tensor x)
+  python_api :
+    name: [paddle.sin, paddle.Tensor.sin]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
