@@ -1325,12 +1325,23 @@ def norm(
         axis = axis[0]
     if dtype is not None:
         x = x.astype(dtype)
-    # calculate vector norm, where axis is None, int or list with only one integer
-    if p != 'nuc' and (axis is None or (isinstance(axis, int))):
-        # 'fro' is used to adapt previous usage
-        if p is None or p == 'fro':
-            p = 2.0
-        if isinstance(p, (int, float)):
+    if isinstance(p, str):
+        if p == "fro" and (axis is None or isinstance(axis, int)):
+            return vector_norm(
+                x,
+                p=2,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        if axis is None:
+            axis = list(range(x.ndim))
+        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+    else:
+        p = 2.0 if p is None else p
+        if isinstance(axis, list) and len(axis) == 2:
+            return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+        else:
             return vector_norm(
                 x,
                 p=p,
@@ -1338,23 +1349,6 @@ def norm(
                 keepdim=keepdim,
                 name=name,
             )
-        else:
-            raise ValueError(
-                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
-            )
-
-    # calculate matrix norm, where axis is list with two integers
-    if axis is None:
-        axis = list(range(x.ndim))
-    if isinstance(axis, list) and len(axis) == 2:
-        if p is None:
-            p = 'fro'
-        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
-
-    else:
-        raise ValueError(
-            f"except axis type int or list (length of list <=2), found {axis}"
-        )
 
 
 def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
