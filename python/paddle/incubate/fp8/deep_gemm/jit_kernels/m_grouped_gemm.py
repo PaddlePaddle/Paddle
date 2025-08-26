@@ -193,9 +193,9 @@ def auto_tuning_with_compilation_grouped_gemm_masked(
 
     # Extra checks for TMA store
     if num_groups > 1 and m > block_m:
-        assert (
-            m % block_m == 0
-        ), f"For masked grouped GEMM, shape M should be multiple of the block M (current block M: {block_m})"
+        assert m % block_m == 0, (
+            f"For masked grouped GEMM, shape M should be multiple of the block M (current block M: {block_m})"
+        )
 
     runtime = jit_tuner.compile_and_tune_group_gemm_masked(
         name="m_grouped_gemm_fp8_fp8_bf16_nt",

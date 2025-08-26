@@ -42,9 +42,9 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'custom_cpp_extension' in x
         ]
-        assert (
-            len(custom_egg_path) == 1
-        ), f"Matched egg number is {len(custom_egg_path)}."
+        assert len(custom_egg_path) == 1, (
+            f"Matched egg number is {len(custom_egg_path)}."
+        )
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
         #################################
 
@@ -139,9 +139,9 @@ class TestCppExtensionSetupInstall(unittest.TestCase):
         import custom_cpp_extension
 
         x = custom_cpp_extension.optional_tensor(True)
-        assert (
-            x is None
-        ), "Return None when input parameter return_option = True"
+        assert x is None, (
+            "Return None when input parameter return_option = True"
+        )
         x = custom_cpp_extension.optional_tensor(False).numpy()
         x_np = np.ones(shape=[2, 2])
         np.testing.assert_array_equal(

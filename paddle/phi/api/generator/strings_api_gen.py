@@ -251,9 +251,9 @@ class StringsAPI(ForwardAPI):
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'Backend':
-                assert (
-                    kernel['backend'] is not None
-                ), f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                assert kernel['backend'] is not None, (
+                    f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                )
                 attr_backend_count = attr_backend_count + 1
 
         # preprocess kernel configures
@@ -261,13 +261,15 @@ class StringsAPI(ForwardAPI):
         if kernel['backend'] is not None:
             if '>' in kernel['backend']:
                 vars_list = kernel['backend'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (vars_list[0].strip() in attrs['names']) and (
                     attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
-                ), f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                ), (
+                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""

@@ -202,9 +202,14 @@ def embedding(
             The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
             It will pad all-zero data when id is 127.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``embedding(input=tensor_x, ...)`` is equivalent to ``embedding(x=tensor_x, ...)``.
+
     Args:
         x(Tensor): A Tensor with type int32/int64, which contains the id information. The value of the input id should
             satisfy :math:`0 <= id < weight.shape[0]` .
+            alias: ``input``.
         weight (Tensor): The weight. A Tensor with shape of lookup table parameter. It should have two elements which
             indicates the size of the dictionary of embeddings and the size of each embedding vector respectively.
         sparse(bool, optional): The flag indicating whether to use sparse update. This parameter only

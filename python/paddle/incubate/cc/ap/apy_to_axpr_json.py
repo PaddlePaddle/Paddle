@@ -114,9 +114,9 @@ class PyToAnfParser:
             for func_def in tree.body:
                 if isinstance(func_def, ast.Pass):
                     continue
-                assert isinstance(
-                    func_def, ast.FunctionDef
-                ), f"only method supported in class definition, {type(func_def)} were given."
+                assert isinstance(func_def, ast.FunctionDef), (
+                    f"only method supported in class definition, {type(func_def)} were given."
+                )
                 func_code = self.BindToTmpVar(
                     [
                         '__builtin_getattr__',
