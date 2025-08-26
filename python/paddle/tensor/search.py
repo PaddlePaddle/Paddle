@@ -415,13 +415,12 @@ def index_select(
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
             alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
-            alias: ``index``.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
             alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Keyword Args:
-        out (Tensor|optional): The output tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.

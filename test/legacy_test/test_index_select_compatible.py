@@ -69,15 +69,17 @@ class TestIndexSelectAPI_Compatibility(unittest.TestCase):
         paddle_dygraph_out.append(out6)
 
         # PyTorch positional args order: (Tensor, int, Tensor)
-        out_torch_pos_order = paddle.index_select(x, self.axis, index)
-        paddle_dygraph_out.append(out_torch_pos_order)
+        out7 = paddle.index_select(x, self.axis, index)
+        paddle_dygraph_out.append(out7)
+        out8 = paddle.index_select(x, self.axis, index=index)
+        paddle_dygraph_out.append(out8)
 
         # Test out
         ref_out_shape = list(self.np_input.shape)
         ref_out_shape[self.axis] = len(self.np_index)
-        out7 = paddle.empty(ref_out_shape, dtype=x.dtype)
-        paddle.index_select(input=x, index=index, dim=self.axis, out=out7)
-        paddle_dygraph_out.append(out7)
+        out9 = paddle.empty(ref_out_shape, dtype=x.dtype)
+        paddle.index_select(input=x, index=index, dim=self.axis, out=out9)
+        paddle_dygraph_out.append(out9)
 
         # Numpy reference out
         ref_out = np.take(self.np_input, self.np_index, axis=self.axis)
@@ -109,7 +111,8 @@ class TestIndexSelectAPI_Compatibility(unittest.TestCase):
             out6 = x.index_select(index=index, dim=self.axis)
 
             # PyTorch positional args order: (Tensor, int, Tensor)
-            out_torch_pos_order = paddle.index_select(x, self.axis, index)
+            out7 = paddle.index_select(x, self.axis, index)
+            out8 = paddle.index_select(x, self.axis, index=index)
 
             # Do not support out in static
             ref_out = np.take(self.np_input, self.np_index, axis=self.axis)
@@ -120,7 +123,8 @@ class TestIndexSelectAPI_Compatibility(unittest.TestCase):
                 out4,
                 out5,
                 out6,
-                out_torch_pos_order,
+                out7,
+                out8,
             ]
             for place in self.places:
                 exe = base.Executor(place)
