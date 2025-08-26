@@ -27,9 +27,35 @@
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
 namespace pybind {
-void SumPreProcess(Tensor* x, IntArray* axis) {}
-void SumPreProcess(Value* x, Value* axis) {
+void SumPreProcess(Tensor *x, IntArray *axis) {}
+void SumPreProcess(Value *x, Value *axis) {
   paddle::dialect::SetStopGradient(x);
+}
+void LogsumexpPreProcess(Tensor *x, std::vector<int> *axis, bool *reduce_all) {
+  /**
+  if axis == [] or len(axis) == len(x.shape):
+      reduce_all = True
+  else:
+      reduce_all = False
+  */
+  if (axis->empty() || axis->size() == x->dims().size()) {
+    *reduce_all = true;
+  } else {
+    *reduce_all = false;
+  }
+  return;
+}
+
+void LogsumexpPreProcess(pir::Value *x,
+                         std::vector<int> *axis,
+                         bool *reduce_all) {
+  std::vector<int64_t> x_shape = pir::GetShapeFromValue(*x);
+  if (axis->empty() || axis->size() == x_shape.size()) {
+    *reduce_all = true;
+  } else {
+    *reduce_all = false;
+  }
+  return;
 }
 }  // namespace pybind
 

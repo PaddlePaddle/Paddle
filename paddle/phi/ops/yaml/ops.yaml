@@ -3385,7 +3385,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logsumexp
-  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
+  args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
+  python_api:
+    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
+    args_alias:
+      use_default_mapping : True
+    pre_process:
+      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta

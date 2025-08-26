@@ -505,6 +505,69 @@ add_doc_and_signature(
     """,
 )
 
+add_doc_and_signature(
+    "logsumexp",
+    r"""
+    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
+
+    Args:
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32,
+            float64, uint8, int8, int16, int32, int64, which have no more than
+            4 dimensions.
+        axis (int|list|tuple|None, optional): The axis along which to perform
+            logsumexp calculations. ``axis`` should be int, list(int) or
+            tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
+            is calculated along all element(s) of ``axis`` . ``axis`` or
+            element(s) of ``axis`` should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
+            less than 0, it works the same way as :math:`axis + D` . If
+            ``axis`` is None, logsumexp is calculated along all elements of
+            ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+    Returns:
+        Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
+        type as ``x`` (integer types are autocasted into float32).
+
+    Examples:
+
+    .. code-block:: python
+
+        >>> import paddle
+
+        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+        >>> out1 = paddle.logsumexp(x)
+        >>> out1
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        3.46912265)
+        >>> out2 = paddle.logsumexp(x, 1)
+        >>> out2
+        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [2.15317822, 3.15684605])
+
+    """,
+    """
+def logsumexp(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+    """,
+)
+
 # zhengsheng
 add_doc_and_signature(
     "isfinite",
