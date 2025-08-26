@@ -947,6 +947,15 @@ void FusedAttentionInferMeta(const MetaTensor& x,
                              MetaTensor* out,
                              MetaConfig config) {
   auto x_dim = x.dims();
+  bool ln_scale_empty =
+      ln_scale_2 && ln_scale_2.dims().size() == 1 && ln_scale_2.dims()[0] == 0;
+  if (ln_scale_empty) {
+    if (ln_mean_2) ln_mean_2->set_dims({0});
+    if (ln_var_2) ln_var_2->set_dims({0});
+  } else {
+    if (ln_mean_2) ln_mean_2->set_dims({x_dim[0] * x_dim[1]});
+    if (ln_var_2) ln_var_2->set_dims({x_dim[0] * x_dim[1]});
+  }
   auto y_dim = qkv_weight.dims();
 
   int dim_head = 0;
