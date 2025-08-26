@@ -57,12 +57,12 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             )
             stdout, stderr = ps_proc.communicate()
 
-            assert 'CPU device will be used by default' in str(
-                stderr
-            ), "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
-            assert "AssertionError" not in str(
-                stderr
-            ), "There is no CUDA device, but Tensor's place is CUDAPlace"
+            assert 'CPU device will be used by default' in str(stderr), (
+                "GPU version Paddle is installed. But CPU device can't be used when CUDA device is not set properly"
+            )
+            assert "AssertionError" not in str(stderr), (
+                "There is no CUDA device, but Tensor's place is CUDAPlace"
+            )
 
 
 if __name__ == '__main__':

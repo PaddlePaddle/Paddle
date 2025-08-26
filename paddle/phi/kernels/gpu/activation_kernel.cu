@@ -211,24 +211,61 @@ void PowKernel(const Context& dev_ctx,
                DenseTensor* out) {
   if constexpr (std::is_integral<T>::value) {
     PADDLE_ENFORCE_GE(
-        factor.to<float>(),
+        factor.to<double>(),
         0,
         common::errors::InvalidArgument(
             "Integers to negative integer powers are not allowed."));
+  } else {
+    if (factor.to<double>() == 0.5) {
+      funcs::CudaSqrtFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaSqrtFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -0.5) {
+      funcs::CudaRsqrtFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsqrtFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -1) {
+      funcs::CudaReciprocalFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaReciprocalFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
+    if (factor.to<double>() == -2) {
+      funcs::CudaRsquareFunctor<T> functor;
+      ActivationGPUImpl<T, Context, funcs::CudaRsquareFunctor<T>>(
+          dev_ctx, x, out, functor);
+      return;
+    }
   }
-  if (factor.to<float>() == 0) {
+  if (factor.to<double>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(out->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(1), out);
     return;
   }
-  if (factor.to<float>() == 1) {
+  if (factor.to<double>() == 1) {
     phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
+  if (factor.to<double>() == 2) {
+    funcs::CudaSquareFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaSquareFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
+  if (factor.to<double>() == 3) {
+    funcs::CudaCubeFunctor<T> functor;
+    ActivationGPUImpl<T, Context, funcs::CudaCubeFunctor<T>>(
+        dev_ctx, x, out, functor);
+    return;
+  }
+
   funcs::CudaPowFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<double>());
   ActivationGPUImpl<T, Context, funcs::CudaPowFunctor<T>>(
       dev_ctx, x, out, functor);
 }
