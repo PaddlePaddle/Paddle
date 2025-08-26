@@ -60,30 +60,5 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
   return index_ptrs;
 }
 
-template <typename IndexT>
-std::array<char*, DDim::kMaxRank> GetIndexDataPtrs_v2(
-    std::vector<DenseTensor*> index) {
-  std::array<char*, DDim::kMaxRank> index_ptrs{};
-
-  PADDLE_ENFORCE_LE(index.size(),
-                    DDim::kMaxRank,
-                    "The number of index tensors exceeds the maximum rank.");
-
-  for (size_t i = 0; i < index.size(); ++i) {
-    IndexT* p_index = index[i]->data<IndexT>();
-
-    PADDLE_ENFORCE_NOT_NULL(
-        p_index,
-        ::common::errors::InvalidArgument(
-            "The pointer p_index is nullptr, "
-            "please check whether the index tensor is valid and "
-            "its data is correctly initialized."));
-
-    index_ptrs[i] = reinterpret_cast<char*>(p_index);
-  }
-
-  return index_ptrs;
-}
-
 }  // namespace funcs
 }  // namespace phi
