@@ -26,11 +26,6 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {
-namespace pybind {
-void SumPreProcess(Tensor* x, IntArray* axis) {}
-void SumPreProcess(Value* x, Value* axis) {
-  paddle::dialect::SetStopGradient(x);
-}
-}  // namespace pybind
+namespace pybind {}  // namespace pybind
 
 }  // namespace paddle
