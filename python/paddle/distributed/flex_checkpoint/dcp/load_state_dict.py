@@ -1008,7 +1008,7 @@ def load_merged_state_dict(
     offload: bool = False,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
-) -> dict:
+) -> dict[str, paddle.Tensor]:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict.
 

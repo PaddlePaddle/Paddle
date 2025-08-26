@@ -14,7 +14,6 @@
 
 import os
 import tempfile
-import unittest
 
 import numpy as np
 
@@ -72,8 +71,8 @@ class SingleMlpModel(paddle.nn.Layer):
         return z
 
 
-class TestDistCheckpoint(unittest.TestCase):
-    def setUp(self):
+class TestDistCheckpoint:
+    def __init__(self):
         np.random.seed(42)
         self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['dp', 'mp'])
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -179,6 +178,7 @@ class TestDistCheckpoint(unittest.TestCase):
         np.testing.assert_array_equal(
             unsharded_state_dict['w1'].numpy(), shard_state_dict['w1'].numpy()
         )
+        self.temp_dir.cleanup()
 
     def test_dist_checkpoint(self):
         self.dist_checkpoint(True, True)
@@ -188,4 +188,4 @@ class TestDistCheckpoint(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    TestDistCheckpoint().test_dist_checkpoint()
