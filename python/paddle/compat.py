@@ -16,9 +16,9 @@ from .tensor.compat import (
     Unfold,
     max,
     min,
+    softmax,
     sort,
     split,
 )
-from .tensor.softmax import compat_softmax as softmax
 
 __all__ = ['split', 'sort', 'Unfold', 'min', 'max', 'softmax']
