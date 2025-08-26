@@ -294,7 +294,6 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 
 # python API test
 class TestMultiDotOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -335,7 +334,6 @@ class TestMultiDotOpError(unittest.TestCase):
 
 
 class APITestMultiDot(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

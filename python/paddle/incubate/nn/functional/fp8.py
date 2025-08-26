@@ -237,7 +237,6 @@ def fused_transpose_split_quant(
 def fused_transpose_wlch_split_quant(
     x: Tensor, tokens_per_expert: Sequence[int], pow_2_scales: bool = False
 ) -> tuple[list[Tensor], list[Tensor]]:
-
     tokens_per_expert = [int(t) for t in tokens_per_expert]
 
     if in_dynamic_or_pir_mode():
@@ -323,7 +322,6 @@ def fp8_gemm_blockwise(
     is_a_1d_scaled: bool = True,
     is_b_1d_scaled: bool = True,
 ):
-
     assert bias is None, "Bias is not supported"
 
     if bias is None:

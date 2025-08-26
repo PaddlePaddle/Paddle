@@ -65,5 +65,6 @@ PD_REGISTER_KERNEL(take_along_axis,
                    float,
                    double,
                    int,
+                   int16_t,
                    uint8_t,
                    int64_t) {}

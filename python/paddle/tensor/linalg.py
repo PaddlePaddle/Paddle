@@ -21,9 +21,15 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import bmm  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    VariableArgsDecorator,
+    transpose_decorator,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -57,6 +63,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@transpose_decorator()
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
@@ -66,8 +73,13 @@ def transpose(
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim0`` & ``dim1`` can replace ``perm``.
+        For example, ``transpose(input=x, dim0=0, dim1=1)`` is equivalent to ``transpose(x=x, perm=[1, 0, 2])``.
+
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
+            alias: ``input``.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str|None, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -190,6 +202,36 @@ def transpose_(x, perm, name=None):
         return _C_ops.transpose_(x, perm)
 
 
+@VariableArgsDecorator('dims')
+def permute(input: Tensor, dims: Sequence[int]) -> Tensor:
+    """
+    Permute the dimensions of a tensor.
+
+    Args:
+        input (Tensor): the input tensor.
+        *dims (tuple|list|int): The desired ordering of dimensions. Supports passing as variable-length
+            arguments (e.g., permute(x, 1, 0, 2)) or as a single list/tuple (e.g., permute(x, [1, 0, 2])).
+
+    Returns:
+        Tensor: A tensor with permuted dimensions.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.randn([2, 3, 4])
+            >>> y = paddle.permute(x, (1, 0, 2))
+            >>> print(y.shape)
+            [3, 2, 4]
+
+            >>> y = x.permute([1, 0, 2])
+            >>> print(y.shape)
+            [3, 2, 4]
+    """
+    return transpose(x=input, perm=dims)
+
+
 def matrix_transpose(
     x: paddle.Tensor,
     name: str | None = None,
@@ -225,6 +267,8 @@ def matmul(
     transpose_x: bool = False,
     transpose_y: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -272,6 +316,7 @@ def matmul(
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
         name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output Tensor.
@@ -319,7 +364,7 @@ def matmul(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
     else:
         attrs = {
             'trans_x': transpose_x,
@@ -1133,6 +1178,7 @@ def matrix_norm(
         )
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def norm(
     x: Tensor,
     p: float | _POrder | None = None,
@@ -1184,9 +1230,14 @@ def norm(
     |     or float   |                                | {(1 / porder)}                 |
     +----------------+--------------------------------+--------------------------------+
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``norm(input=tensor_x, dim=1, ...)`` is equivalent to ``norm(x=tensor_x, axis=1, ...)``.
+
     Args:
         x (Tensor): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
+            alias: ``input``.
         p (int|float|string|None, optional): Order of the norm. Supported values are `fro`, `nuc`, `0`, `±1`, `±2`,
             `±inf` and any real number yielding the corresponding p-norm.
             Default value is None.
@@ -1195,6 +1246,7 @@ def norm(
             If `axis < 0`, the dimension to norm operation is rank(input) + axis.
             If axis is a list(int)/tuple(int) with two elements, the matrix norm is computed over the axis.
             Default value is `None`.
+            alias: ``dim``.
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
@@ -2308,9 +2360,9 @@ def cholesky(x: Tensor, upper: bool = False, name: str | None = None) -> Tensor:
     """
     if in_dynamic_or_pir_mode():
         x_shape = x.shape
-        assert (
-            len(x_shape) >= 2 and x_shape[-1] == x_shape[-2]
-        ), "Shape must have at least 2 dimensions and last two dimensions must be equal."
+        assert len(x_shape) >= 2 and x_shape[-1] == x_shape[-2], (
+            "Shape must have at least 2 dimensions and last two dimensions must be equal."
+        )
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -2496,70 +2548,6 @@ def matrix_rank(
                 attrs=attrs,
             )
             return out
-
-
-def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Applies batched matrix multiplication to two tensors.
-
-    Both of the two input tensors must be three-dimensional and share the same batch size.
-
-    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
-
-    Args:
-        x (Tensor): The input Tensor.
-        y (Tensor): The input Tensor.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
-
-    Returns:
-        Tensor: The product Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # In imperative mode:
-            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
-            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-            ...                     [2.0, 2.0, 2.0]],
-            ...                     [[3.0, 3.0, 3.0],
-            ...                     [4.0, 4.0, 4.0]]])
-            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-            >>> out = paddle.bmm(x, y)
-            >>> print(out)
-            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[6. , 6. ],
-              [12., 12.]],
-             [[45., 45.],
-              [60., 60.]]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bmm(x, y)
-    else:
-        x_shape = x.shape
-        y_shape = y.shape
-        if not len(x_shape) == len(y_shape) == 3:
-            raise ValueError(
-                f"x and y should be 3-dimensional. But received x's dimension: {x_shape}, y's dimension: {y_shape}"
-            )
-        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
-            raise ValueError(
-                f"x's width must be equal with y's height. But received x's shape: {x_shape}, y's shape: {y_shape}"
-            )
-        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
-            raise ValueError(
-                f"x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {x_shape}, y's shape: {y_shape}"
-            )
-        helper = LayerHelper('bmm', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out}
-        )
-        return out
 
 
 def histogram(
@@ -5043,7 +5031,7 @@ def cdist(
         f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
-        "The p must be greater than or equal to 0, " f"But received p is {p}.\n"
+        f"The p must be greater than or equal to 0, But received p is {p}.\n"
     )
 
     r1 = x.shape[-2]
@@ -5141,9 +5129,9 @@ def householder_product(
         ],
         'householder_product',
     )
-    assert (
-        x.dtype == tau.dtype
-    ), "The input x must have the same dtype with input tau.\n"
+    assert x.dtype == tau.dtype, (
+        "The input x must have the same dtype with input tau.\n"
+    )
     assert (
         len(x.shape) >= 2
         and len(tau.shape) >= 1
@@ -5152,16 +5140,16 @@ def householder_product(
         "The input x must have more than 2 dimensions, and input tau must have more than 1 dimension,"
         "and the dimension of x is 1 larger than the dimension of tau\n"
     )
-    assert (
-        x.shape[-2] >= x.shape[-1]
-    ), "The rows of input x must be greater than or equal to the columns of input x.\n"
-    assert (
-        x.shape[-1] >= tau.shape[-1]
-    ), "The last dim of x must be greater than tau.\n"
+    assert x.shape[-2] >= x.shape[-1], (
+        "The rows of input x must be greater than or equal to the columns of input x.\n"
+    )
+    assert x.shape[-1] >= tau.shape[-1], (
+        "The last dim of x must be greater than tau.\n"
+    )
     for idx, _ in enumerate(x.shape[:-2]):
-        assert (
-            x.shape[idx] == tau.shape[idx]
-        ), "The input x must have the same batch dimensions with input tau.\n"
+        assert x.shape[idx] == tau.shape[idx], (
+            "The input x must have the same batch dimensions with input tau.\n"
+        )
 
     def _householder_product(x, tau):
         m, n = x.shape[-2:]
@@ -5653,9 +5641,9 @@ def histogramdd(
     """
 
     def __check_x(x):
-        assert (
-            len(x.shape) >= 2
-        ), "input x must be a tensor with at least 2 dimensions."
+        assert len(x.shape) >= 2, (
+            "input x must be a tensor with at least 2 dimensions."
+        )
         check_variable_and_dtype(
             x,
             'x',
@@ -5678,9 +5666,9 @@ def histogramdd(
                 ],
                 'histogramdd',
             )
-            assert (
-                bins_tensor.dtype == x.dtype
-            ), "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+            assert bins_tensor.dtype == x.dtype, (
+                "When bins is Tensor[], the dtype of bins must be the same as x.\n"
+            )
 
     def __check_weights(x, weights):
         if weights is None:
@@ -5704,17 +5692,17 @@ def histogramdd(
             ],
             'histogramdd',
         )
-        assert (
-            weights.dtype == x.dtype
-        ), "The dtype of weights must be the same as x.\n"
+        assert weights.dtype == x.dtype, (
+            "The dtype of weights must be the same as x.\n"
+        )
 
     def __check_ranges(D, ranges):
         if ranges is None:
             return
         check_type(ranges, 'ranges', (list, tuple), 'histogramdd')
-        assert D * 2 == len(
-            ranges
-        ), f"The length of ranges list must be {D * 2}\n"
+        assert D * 2 == len(ranges), (
+            f"The length of ranges list must be {D * 2}\n"
+        )
 
     def __compute_flattened_index(index_list, hist_shape):
         strides = paddle.to_tensor(hist_shape[::-1]).cumprod(dim=0).flip(0)[1:]
@@ -5762,9 +5750,9 @@ def histogramdd(
     if isinstance(bins, (int, list)):  # int or int[]
         if isinstance(bins, int):
             bins = [bins] * D
-        assert (
-            len(bins) == D
-        ), f"The length of bins must be {D} when bins is a list.\n"
+        assert len(bins) == D, (
+            f"The length of bins must be {D} when bins is a list.\n"
+        )
         for idx, r in enumerate(ranges):
             if not isinstance(bins[idx], int):
                 raise ValueError(
@@ -5885,38 +5873,40 @@ def ormqr(
     )
     check_type(left, 'left', bool, 'ormqr')
     check_type(transpose, 'transpose', bool, 'ormqr')
-    assert (
-        x.dtype == tau.dtype and x.dtype == y.dtype
-    ), "The input tau and y must have the same dtype with the x.\n"
-    assert (
-        len(x.shape) >= 2 and len(y.shape) >= 2 and len(tau.shape) >= 1
-    ), "The input x and y must have more than 2 dimensions, and input tau must have more than 1 dimension"
+    assert x.dtype == tau.dtype and x.dtype == y.dtype, (
+        "The input tau and y must have the same dtype with the x.\n"
+    )
+    assert len(x.shape) >= 2 and len(y.shape) >= 2 and len(tau.shape) >= 1, (
+        "The input x and y must have more than 2 dimensions, and input tau must have more than 1 dimension"
+    )
     assert len(x.shape) == len(tau.shape) + 1 and len(x.shape) == len(
         y.shape
-    ), "the dimension of x is 1 larger than the dimension of tau\n and the dimension of x is equal to the dimension of input"
-    assert (
-        x.shape[-1] == tau.shape[-1]
-    ), "The innermost dimension of x and tau should be the same"
+    ), (
+        "the dimension of x is 1 larger than the dimension of tau\n and the dimension of x is equal to the dimension of input"
+    )
+    assert x.shape[-1] == tau.shape[-1], (
+        "The innermost dimension of x and tau should be the same"
+    )
     if transpose and left:
-        assert (
-            x.shape[-2] == y.shape[-2]
-        ), "The row dimensions of x and y should be the same"
+        assert x.shape[-2] == y.shape[-2], (
+            "The row dimensions of x and y should be the same"
+        )
     elif not transpose and left:
-        assert (
-            x.shape[-1] == y.shape[-2]
-        ), "The column dimension of x and the row dimension of y should be the same"
+        assert x.shape[-1] == y.shape[-2], (
+            "The column dimension of x and the row dimension of y should be the same"
+        )
     elif transpose and not left:
-        assert (
-            x.shape[-2] == y.shape[-1]
-        ), "The row dimension of x and the column dimension of y should be the same"
+        assert x.shape[-2] == y.shape[-1], (
+            "The row dimension of x and the column dimension of y should be the same"
+        )
     else:
-        assert (
-            x.shape[-1] == y.shape[-1]
-        ), "The column dimensions of Impt and Osser's should be the same"
+        assert x.shape[-1] == y.shape[-1], (
+            "The column dimensions of Impt and Osser's should be the same"
+        )
     if len(x.shape) == 3:
-        assert (
-            x.shape[0] == y.shape[0] and x.shape[0] == tau.shape[0]
-        ), "The input and tau and y parameters should have the same batch"
+        assert x.shape[0] == y.shape[0] and x.shape[0] == tau.shape[0], (
+            "The input and tau and y parameters should have the same batch"
+        )
     Q = householder_product(x, tau)
     if len(x.shape) == 2:
         Q = Q.T if transpose else Q
@@ -6091,13 +6081,13 @@ def diagonal(
             axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
             axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-            assert axis1_ < len(
-                input_shape
-            ), f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+            assert axis1_ < len(input_shape), (
+                f"The argument axis1 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis1}).\n"
+            )
 
-            assert axis2_ < len(
-                input_shape
-            ), f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+            assert axis2_ < len(input_shape), (
+                f"The argument axis2 is out of range (expected to be in range of [{-(len(input_shape))}, {len(input_shape) - 1}], but got {axis2}).\n"
+            )
 
             assert axis1_ != axis2_, (
                 "axis1 and axis2 cannot be the same axis."

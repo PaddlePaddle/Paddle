@@ -9,15 +9,29 @@ on:
       can-skip:
         type: string
         required: false
+      baseline:
+        type: string
+        required: false
+        default: "false"
+      MANUALLY_PR_ID:
+        type: string
+        required: false
+      MANUALLY_COMMIT_ID:
+        type: string
+        required: false
+      run-labels:
+        type: string
+        required: false
+        default: "api-bm"
 
 env:
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   work_dir: /paddle
   PADDLE_ROOT: /paddle
   TASK: paddle-CI-${{ github.event.pull_request.number }}-api-benchmark
   ci_scripts: /paddle/ci
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
   CI_name: api-benchmark
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -28,6 +42,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'api-benchmark'
@@ -37,9 +52,10 @@ jobs:
   data-storage:
     name: Performance data storage
     needs: check-bypass
-    if: ${{ inputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: Api-bm
+      labels: [self-hosted, "${{ inputs.run-labels }}"]
     steps:
       - name: Determine the runner
         run: |
@@ -60,7 +76,7 @@ jobs:
       - name: Check docker image and run container
         env:
           python: "python3.10"
-          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          GIT_PR_ID: ${{ github.event.pull_request.number || '0' }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ github.run_id }}
           wheel_link: https://paddle-github-action.bj.bcebos.com/PR/build/${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
@@ -117,7 +133,18 @@ jobs:
           cd ./PaddleTest/framework/e2e/api_benchmark_new
           cp /paddle/PTSTools/Uploader/apibm_config.yml .
           source ${{ github.workspace }}/../../../proxy
-          ${python} -m pip install https://paddle-github-action.bj.bcebos.com/PR/build/${PR_ID}/${COMMIT_ID}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+          if [[ "${{ inputs.baseline }}" == "true" ]];then
+            set -e
+            if [[ "${{ inputs.MANUALLY_PR_ID }}" == "" ]]; then
+              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/$PR_ID/$COMMIT_ID/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+            else
+              export pr_wheel_link=https://paddle-github-action.bj.bcebos.com/PR/build/${{ inputs.MANUALLY_PR_ID }}/${{ inputs.MANUALLY_COMMIT_ID }}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
+            fi
+            ${python} -m pip install $pr_wheel_link
+            ${python} runner_ci_multipro_action.py --yaml ../yaml/sort_api_benchmark_fp32.yml --core_index ${core_index} --baseline_whl_link $pr_wheel_link
+            exit 0
+          fi
+          ${python} -m pip install $wheel_link
           if [ ${core_index} -eq -1 ];then
             ${python} runner_ci_action.py --yaml ../yaml/api_benchmark_fp32.yml --core_index 2
           else

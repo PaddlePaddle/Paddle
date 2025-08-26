@@ -81,6 +81,68 @@ void ArangeInferMeta(const Scalar& start,
   out->set_dtype(dtype);
 }
 
+void RangeInferMeta(const Scalar& start,
+                    const Scalar& end,
+                    const Scalar& step,
+                    DataType dtype,
+                    MetaTensor* out) {
+  // ugly, but no work-around. 1. For pd_op, dynamic shape generated scalar will
+  // have FromTensor == true, yet the dtype is related to input op's dtype,
+  // 2. while for cinn_op.Build, pir::Attribute won't record FromTensor flag, so
+  // the info is discarded, dtype will however be intact.
+  auto IsFromTensor = [=](const Scalar& scalar) {
+    return scalar.FromTensor() || scalar.dtype() == DataType::BOOL;
+  };
+  if (IsFromTensor(start) || IsFromTensor(end) || step.FromTensor()) {
+    out->set_dims({-1});
+  } else {
+    auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
+      using ElementType = std::decay_t<decltype(start)>;
+      PADDLE_ENFORCE_NE(step,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The step of range op should not be 0."));
+
+      if ((start < end && step < 0) || (start > end && step > 0)) {
+        return 0;
+      } else {
+        return static_cast<int64_t>((end - start) / step + 1);
+      }
+    };
+
+#define GET_SIZE_GIVEN_TYPE(type)                     \
+  {                                                   \
+    type start_ = start.to<type>();                   \
+    type end_ = end.to<type>();                       \
+    type step_ = step.to<type>();                     \
+    arange_size = GetArangeSize(start_, end_, step_); \
+    break;                                            \
+  }
+
+    int64_t arange_size = 0;
+
+    switch (dtype) {
+      case DataType::FLOAT32:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::FLOAT64:
+        GET_SIZE_GIVEN_TYPE(double)
+      case DataType::INT32:
+        GET_SIZE_GIVEN_TYPE(int)
+      case DataType::FLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
+      case DataType::BFLOAT16:
+        GET_SIZE_GIVEN_TYPE(float)
+      default:
+        GET_SIZE_GIVEN_TYPE(int64_t)
+    }
+
+#undef GET_SIZE_GIVEN_TYPE
+
+    out->set_dims(common::make_ddim(std::vector<int64_t>(1, arange_size)));
+  }
+  out->set_dtype(dtype);
+}
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {

@@ -24,7 +24,6 @@ from paddle.framework import core
 
 # case: bmm
 class TestEinsumSPMDRule(unittest.TestCase):
-
     def setUp(self):
         self.init_data()
         self.init_parallel_setting()

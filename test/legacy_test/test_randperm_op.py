@@ -28,9 +28,9 @@ from paddle.base.framework import in_pir_mode
 
 
 def check_randperm_out(n, data_np):
-    assert isinstance(
-        data_np, np.ndarray
-    ), "The input data_np should be np.ndarray."
+    assert isinstance(data_np, np.ndarray), (
+        "The input data_np should be np.ndarray."
+    )
     gt_sorted = np.arange(n)
     out_sorted = np.sort(data_np)
     return list(gt_sorted == out_sorted)
@@ -161,7 +161,6 @@ class TestRandpermBF16Op(OpTest):
 
 
 class TestRandpermOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -172,7 +171,6 @@ class TestRandpermOpError(unittest.TestCase):
 
 
 class TestRandpermAPI(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         n = 10

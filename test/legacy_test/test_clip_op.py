@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -301,7 +302,6 @@ class TestBF16Case5(TestClipBF16Op):
 
 
 class TestClipOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -488,8 +488,154 @@ class TestClipAPI(unittest.TestCase):
         paddle.disable_static()
 
 
-class TestClipOpFp16(unittest.TestCase):
+class TestClipAPI_Int(unittest.TestCase):
+    def _executed_api(self, x, min=None, max=None):
+        return paddle.clip(x, min, max)
 
+    def test_clip(self):
+        paddle.enable_static()
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('int32')
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        exe = base.Executor(place)
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='int32'
+            )
+            min = paddle.static.data(name='min', shape=[1], dtype='float32')
+            max = paddle.static.data(name='max', shape=[1], dtype='float32')
+            out_1 = self._executed_api(images, min=min, max=max)
+            out_2 = self._executed_api(images, min=2.2, max=8.9)
+            out_3 = self._executed_api(images, min=3.3)
+            out_4 = self._executed_api(images, max=4.7)
+            out_5 = self._executed_api(images, min=min)
+            out_6 = self._executed_api(images, max=max)
+            out_7 = self._executed_api(images, max=-1.0)
+            out_8 = self._executed_api(images)
+            out_9 = self._executed_api(
+                paddle.cast(images, 'int32'), min=2.2, max=8.9
+            )
+            out_10 = self._executed_api(
+                paddle.cast(images * 10, 'int32'), min=2.8, max=8.8
+            )
+            out_11 = self._executed_api(
+                paddle.cast(images * 10, 'int64'), min=2.8, max=8.8
+            )
+
+        (
+            res1,
+            res2,
+            res3,
+            res4,
+            res5,
+            res6,
+            res7,
+            res8,
+            res9,
+            res10,
+            res11,
+        ) = exe.run(
+            main,
+            feed={
+                "image": data,
+                "min": np.array([2.2]).astype('float32'),
+                "max": np.array([8.8]).astype('float32'),
+            },
+            fetch_list=[
+                out_1,
+                out_2,
+                out_3,
+                out_4,
+                out_5,
+                out_6,
+                out_7,
+                out_8,
+                out_9,
+                out_10,
+                out_11,
+            ],
+        )
+
+        np.testing.assert_allclose(res1, data.clip(2.2, 8.8), rtol=1e-05)
+        np.testing.assert_allclose(res2, data.clip(2.2, 8.9), rtol=1e-05)
+        np.testing.assert_allclose(res3, data.clip(min=3.3), rtol=1e-05)
+        np.testing.assert_allclose(res4, data.clip(max=4.7), rtol=1e-05)
+        np.testing.assert_allclose(res5, data.clip(min=2.2), rtol=1e-05)
+        np.testing.assert_allclose(res6, data.clip(max=8.8), rtol=1e-05)
+        np.testing.assert_allclose(res7, data.clip(max=-1.0), rtol=1e-05)
+        np.testing.assert_allclose(res8, data, rtol=1e-05)
+        np.testing.assert_allclose(
+            res9, data.astype(np.int32).clip(2.2, 8.9), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            res10, (data * 10).astype(np.int32).clip(2.8, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            res11, (data * 10).astype(np.int64).clip(2.8, 8.8), rtol=1e-05
+        )
+        paddle.disable_static()
+
+    def test_clip_dygraph(self):
+        paddle.disable_static()
+        place = (
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        paddle.disable_static(place)
+        data_shape = [1, 9, 9, 4]
+        data = np.random.random(data_shape).astype('int32')
+        images = paddle.to_tensor(data, dtype='int32')
+        v_min = paddle.to_tensor(np.array([2.2], dtype=np.float32))
+        v_max = paddle.to_tensor(np.array([8.8], dtype=np.float32))
+
+        out_1 = self._executed_api(images, min=2.2, max=8.8)
+        images = paddle.to_tensor(data, dtype='int32')
+        out_2 = self._executed_api(images, min=2.2, max=8.9)
+        images = paddle.to_tensor(data, dtype='int32')
+        out_3 = self._executed_api(images, min=v_min, max=v_max)
+
+        out_4 = self._executed_api(
+            paddle.cast(images * 10, 'int32'), min=2.2, max=8.8
+        )
+        out_5 = self._executed_api(
+            paddle.cast(images * 10, 'int64'), min=2.2, max=8.8
+        )
+        # test with numpy.generic
+        out_6 = self._executed_api(images, min=np.abs(2.2), max=np.abs(8.8))
+
+        np.testing.assert_allclose(
+            out_1.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_2.numpy(), data.clip(2.2, 8.9), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_3.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            out_4.numpy(),
+            (data * 10).astype(np.int32).clip(2.2, 8.8),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            out_5.numpy(),
+            (data * 10).astype(np.int64).clip(2.2, 8.8),
+            rtol=1e-05,
+        )
+        np.testing.assert_allclose(
+            out_6.numpy(), data.clip(2.2, 8.8), rtol=1e-05
+        )
+
+
+class TestClipOpFp16(unittest.TestCase):
     def test_fp16(self):
         if base.core.is_compiled_with_cuda():
             paddle.enable_static()
@@ -551,6 +697,229 @@ class TestClipOp_FP64(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestClipOutAndParaDecorator(unittest.TestCase):
+    def setUp(self) -> None:
+        paddle.disable_static()
+        self.apis = [
+            paddle.clip,
+            paddle.clamp,
+        ]
+        self.shape = [3, 4, 5]
+        self.input_np = np.random.random(self.shape).astype('float32')
+        self.test_types = [
+            "decorator1",
+            "decorator2",
+            "out",
+            "out_decorator",
+        ]
+        self.min, self.max = -0.5, 0.5
+
+    def do_test(self, api, test_type):
+        self.test_types = [
+            "decorator1",
+            "out",
+            "out_decorator",
+        ]
+        x = paddle.to_tensor(self.input_np, stop_gradient=False)
+        out = paddle.zeros(self.shape, dtype='float32')
+        out.stop_gradient = False
+        if test_type == "raw":
+            out = paddle.clip(x, min=self.min, max=self.max)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == "decorator1":
+            res = api(input=x, min=self.min, max=self.max)
+            loss = res.mean()
+            loss.backward()
+            x_grad = x.grad
+            return res, x_grad
+        elif test_type == "out":
+            res = api(x, min=self.min, max=self.max, out=out)
+            loss = out.mean()
+            loss.backward()
+            x_grad = x.grad
+            return out, x_grad
+        elif test_type == "out_decorator":
+            res = api(out=out, input=x, min=self.min, max=self.max)
+            loss = out.mean()
+            loss.backward()
+            x_grad = x.grad
+            return out, x_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_api(self):
+        out_std, x_grad_std = self.do_test(paddle.clip, "raw")
+        for api in self.apis:
+            for test_type in self.test_types:
+                out, x_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+                )
+
+
+class TestClipCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.func = paddle.clip
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.min_val = 0.3
+        self.max_val = 0.7
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.clip(self.np_input, self.min_val, self.max_val)
+
+    def init_case(self):
+        params = [['x', 'input'], ['min'], ['max']]
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.clip()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.clip()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.min_val, self.max_val)
+                    )
+                    for out_flag in [False, True]:
+                        if out_flag:
+                            kwargs['out'] = paddle.empty([])
+                            self.func(*args, **kwargs)
+                            out = kwargs["out"]
+                        else:
+                            out = self.func(*args, **kwargs)
+                        np.testing.assert_array_equal(self.np_out, out.numpy())
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.min_val, self.max_val)
+                    )
+                    out = x.clip(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_dygraph_out(self):
+        def run_clip(test_type):
+            x = paddle.to_tensor(self.np_input)
+            x.stop_gradient = False
+            out = (
+                paddle.zeros(self.np_out.shape)
+                if test_type in ["with_out", "both"]
+                else None
+            )
+            if test_type == "return":
+                out = paddle.clip(x, self.min_val, self.max_val)
+            elif test_type == "with_out":
+                paddle.clip(x, self.min_val, self.max_val, out=out)
+            elif test_type == "both":
+                out = paddle.clip(x, self.min_val, self.max_val, out=out)
+            else:
+                raise ValueError(f"Invalid test_mode: {test_type}")
+
+            expected = paddle._C_ops.clip(x, self.min_val, self.max_val)
+            np.testing.assert_array_equal(out.numpy(), expected.numpy())
+            loss = out.sum().astype('float32')
+            loss.backward()
+            return out, x.grad
+
+        def assert_outputs_equal(outputs, rtol: float = 1e-10):
+            for out in outputs[1:]:
+                np.testing.assert_allclose(
+                    outputs[0].numpy(), out.numpy(), rtol=rtol
+                )
+
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                out1, grad1 = run_clip("return")
+                out2, grad2 = run_clip("with_out")
+                out3, grad3 = run_clip("both")
+
+                assert_outputs_equal([out1, out2, out3])
+                if (
+                    grad1 is not None
+                    and grad2 is not None
+                    and grad3 is not None
+                ):
+                    assert_outputs_equal([grad1, grad2, grad3])
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.min_val, self.max_val)
+                        )
+                        out = self.func(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.min_val, self.max_val)
+                        )
+
+                        out = x.clip(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
 
 
 if __name__ == '__main__':

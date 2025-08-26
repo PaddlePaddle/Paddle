@@ -14,14 +14,11 @@
 
 """Tests for PyLayer of Dynamic-to-Static.
 Only test simple cases here."""
+
 import sys
 from pathlib import Path
 
-from dygraph_to_static_utils import (
-    enable_to_static_guard,
-    to_legacy_ir_test,
-    to_pir_test,
-)
+from dygraph_to_static_utils import enable_to_static_guard
 
 sys.path.append(
     str(Path(__file__).absolute().parent.parent.joinpath("legacy_test"))
@@ -295,9 +292,9 @@ class TestPyLayerBase(unittest.TestCase):
         self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
-        assert getattr(
-            self, "dygraph_func", None
-        ), "Please setting `self.dygraph_func` before calling `self._run`"
+        assert getattr(self, "dygraph_func", None), (
+            "Please setting `self.dygraph_func` before calling `self._run`"
+        )
 
         with enable_to_static_guard(self.to_static):
             paddle.set_device(self.place)
@@ -311,11 +308,7 @@ class TestPyLayerBase(unittest.TestCase):
 
     def _run_static(self, *args, **kwargs):
         self.to_static = True
-        fn = (
-            to_pir_test(self._run)
-            if self.run_in_pir
-            else to_legacy_ir_test(self._run)
-        )
+        fn = self._run
         return fn(*args, **kwargs)
 
     # TODO(MarioLulab): In the future, this will be supported: not only `paddle.Tensor`
@@ -325,9 +318,9 @@ class TestPyLayerBase(unittest.TestCase):
         dygraph_inp_args = []
         static_inp_args = []
         for v in args:
-            assert isinstance(
-                v, paddle.Tensor
-            ), f"Only Support `paddle.Tensor` now, but got {type(v)}"
+            assert isinstance(v, paddle.Tensor), (
+                f"Only Support `paddle.Tensor` now, but got {type(v)}"
+            )
             stop_gradient = v.stop_gradient
             # detach from the compute graph to turn `dygraph_inp_args` and `static_inp_args` into leaf nodes
             v = v.detach()
@@ -341,9 +334,9 @@ class TestPyLayerBase(unittest.TestCase):
         static_inp_kwargs = {}
         for k, v in kwargs.items():
             stop_gradient = v.stop_gradient
-            assert isinstance(
-                v, paddle.Tensor
-            ), "Only Support `paddle.Tensor` now"
+            assert isinstance(v, paddle.Tensor), (
+                "Only Support `paddle.Tensor` now"
+            )
             # detach from the compute graph to turn `dygraph_inp_kwargs` and `static_inp_kwargs` into leaf nodes
             v = v.detach()
             dygraph_inp_kwargs[k] = v.clone()
@@ -400,10 +393,6 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_multi_in_single_out(self):
@@ -419,10 +408,6 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
@@ -438,10 +423,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_nested_pylayer(self):
@@ -457,10 +438,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_apply_kwargs_pylayer(self):
@@ -476,10 +453,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs(self):
@@ -493,10 +466,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_simple_pylayer_return_none_with_no_grad(self):
@@ -513,9 +482,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_simple_pylayer_return_none(self):
@@ -532,10 +498,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs_and_userdefined_call(self):
@@ -551,10 +513,6 @@ class TestPyLayerWithContext(TestPyLayerBase):
         input1 = paddle.randn([2, 3]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
 
@@ -566,10 +524,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_inplace(self):
@@ -579,10 +533,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_non_variable_args_pylayernet(self):
@@ -592,10 +542,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1 = paddle.randn([3, 4]).astype("float32")
         input1.stop_gradient = False
 
-        self.run_in_pir = False
-        self._run_and_compare(input1)
-
-        self.run_in_pir = True
         self._run_and_compare(input1)
 
     def test_pylayer_net_with_no_grad(self):
@@ -607,10 +553,6 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         input1.stop_gradient = False
         input2.stop_gradient = True
 
-        self.run_in_pir = False
-        self._run_and_compare(input1, input2)
-
-        self.run_in_pir = True
         self._run_and_compare(input1, input2)
 
 
@@ -640,12 +582,7 @@ class PyLayerTrainHelper(unittest.TestCase):
                 net, build_strategy=build_strategy, full_graph=True
             )
 
-            train_fn = (
-                to_pir_test(train) if in_pir else to_legacy_ir_test(train)
-            )
-            _, _, avg_loss = train_fn(net)
-        else:
-            _, _, avg_loss = train(net)
+        _, _, avg_loss = train(net)
 
         return avg_loss.numpy()
 
@@ -760,16 +697,7 @@ class TestPyLayerJitSaveLoad(unittest.TestCase):
         self.assertEqual(orig_input_types, new_input_types)
         return layer
 
-    @to_legacy_ir_test
     def test_save_load(self):
-        # train and save model
-        train_layer = self.train_and_save_model()
-        # load model
-        loaded_layer = paddle.jit.load(self.model_path)
-        self.load_and_inference(train_layer, loaded_layer)
-
-    @to_pir_test
-    def test_pir_save_load(self):
         # train and save model
         train_layer = self.train_and_save_model()
         # load model

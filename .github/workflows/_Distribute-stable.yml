@@ -6,6 +6,10 @@ on:
       docker_distribute_image:
         type: string
         required: true
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -26,6 +30,7 @@ defaults:
 jobs:
   build:
     name: Build
+    if: ${{ inputs.clone-can-skip != 'true' }}
     outputs:
       can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     runs-on:

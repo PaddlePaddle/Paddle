@@ -86,12 +86,6 @@ class TestFeedData(unittest.TestCase):
         for use_cuda in (
             [True, False] if core.is_compiled_with_cuda() else [False]
         ):
-            print('Test Parameters:'),
-            print(
-                {
-                    'use_cuda': use_cuda,
-                }
-            )
             # Test feeding without error
             self._test_feed_data_match_shape_type(use_cuda)
             self._test_feed_data_contains_neg_one(use_cuda)

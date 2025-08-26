@@ -20,7 +20,7 @@ from auto_scan_test import IgnoreReasons, PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class DepthwiseConvMKLDNNPass(PassAutoScanTest):
+class DepthwiseConvONEDNNPass(PassAutoScanTest):
     r'''
     conv_input   conv_weight_var(persistable)
       \       /
@@ -99,7 +99,7 @@ class DepthwiseConvMKLDNNPass(PassAutoScanTest):
                 'paddings': random_paddings,
                 'padding_algorithm': random_padding_algorithm,
                 'data_format': random_data_layout,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
