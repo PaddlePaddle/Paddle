@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import QuantInt8MkldnnPass
+from paddle.static.quantization import QuantInt8OnednnPass
 
 paddle.enable_static()
 
@@ -190,10 +190,10 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
             if transform_to_int8:
-                mkldnn_int8_pass = QuantInt8MkldnnPass(
+                onednn_int8_pass = QuantInt8OnednnPass(
                     _scope=inference_scope, _place=place
                 )
-                graph = mkldnn_int8_pass.apply(graph)
+                graph = onednn_int8_pass.apply(graph)
             else:
                 graph = self._prepare_for_fp32_mkldnn(graph)
 
@@ -287,13 +287,13 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
             return
 
         quant_model_path = test_case_args.quant_model
-        assert (
-            quant_model_path
-        ), 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        assert quant_model_path, (
+            'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        )
         data_path = test_case_args.infer_data
-        assert (
-            data_path
-        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert data_path, (
+            'The dataset path cannot be empty. Please, use the --infer_data option.'
+        )
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num

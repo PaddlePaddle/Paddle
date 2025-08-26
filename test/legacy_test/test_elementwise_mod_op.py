@@ -16,7 +16,12 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -41,7 +46,7 @@ class TestElementwiseModOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -124,7 +129,8 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_dtype(self):
@@ -189,7 +195,7 @@ class TestElementwiseModBF16Op(OpTest):
             'X': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.x)),
             'Y': convert_float_to_uint16(OpTest.np_dtype_to_base_dtype(self.y)),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def test_check_output(self):
@@ -580,6 +586,128 @@ class TestRemainderInplaceBroadcastSuccess3(
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseModOp_Stride(OpTest):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "elementwise_mod"
+        self.python_api = paddle.remainder
+        self.public_python_api = paddle.remainder
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.val_dtype = np.float64
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_gradient(self):
+        pass
+
+
+class TestElementwiseModOp_Stride1(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseModOp_Stride2(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseModOp_Stride3(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseModOp_Stride4(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseModOp_Stride5(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = self.x % self.y
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseModOp_Stride_ZeroDim1(TestElementwiseModOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = self.x % self.y
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseModOp_Stride_ZeroSize1(TestElementwiseModOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = self.x % self.y
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == '__main__':

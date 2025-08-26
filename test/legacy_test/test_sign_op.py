@@ -194,10 +194,7 @@ class TestSignAPI(unittest.TestCase):
 
 class TestSignComplexAPI(TestSignAPI):
     def setUp(self):
-        self.place = []
-        self.place.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(base.CUDAPlace(0))
+        self.place = get_places()
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -305,6 +302,48 @@ class TestSignTripleGradCheck(unittest.TestCase):
         paddle.enable_static()
         for p in get_places():
             self.func(p)
+
+
+class TestSignOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.randn(3, 4).astype(np.float32)
+        self.x_np[self.x_np == 0] = 1  # Avoid zero for gradient check
+        self.test_types = ["decorator", "out", "out_decorator"]
+
+    def do_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        if test_type == 'raw':
+            result = paddle.sign(x)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator':
+            result = paddle.sign(input=x)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.sign(x, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.sign(input=x, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            np.testing.assert_allclose(
+                grad.numpy(), grad_std.numpy(), rtol=1e-20
+            )
 
 
 if __name__ == "__main__":

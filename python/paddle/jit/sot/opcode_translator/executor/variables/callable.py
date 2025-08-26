@@ -1171,9 +1171,9 @@ class UserDefinedGeneratorFunctionVariable(FunctionVariable):
                 vframe, code_var, self.graph
             )
             gen = inline_gen_executor.inline_call()
-            assert isinstance(
-                gen, GeneratorVariable
-            ), f"GeneratorFunction calling result should be GeneratorVariable, but got {type(gen)}"
+            assert isinstance(gen, GeneratorVariable), (
+                f"GeneratorFunction calling result should be GeneratorVariable, but got {type(gen)}"
+            )
             gen.tracker = DummyTracker([self, *args, *kwargs.values()])
             return gen
         return GeneratorVariable(
@@ -1266,9 +1266,9 @@ class PaddleLayerClassVariable(ClassVariable):
         input_py_args = [var.get_py_value() for var in args]
         input_py_kwargs = {k: v.get_py_value() for k, v in kwargs.items()}
         new_layer = self.value(*input_py_args, **input_py_kwargs)
-        assert self.check_no_weight_and_buffers(
-            new_layer
-        ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
+        assert self.check_no_weight_and_buffers(new_layer), (
+            "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
+        )
         return VariableFactory.from_value(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
@@ -1372,9 +1372,9 @@ class NamedTupleClassVariable(ClassVariable):
 
         parameters = fn_bind_inputs(self.value, self.graph, *args, **kwargs)
         fields = self.get_py_value()._fields
-        assert all(
-            field in parameters for field in fields
-        ), f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+        assert all(field in parameters for field in fields), (
+            f"All fields of namedtuple should be in parameters, but got parameter {parameters} and fields {fields}"
+        )
 
         parameters_tuple = tuple(parameters[field] for field in fields)
         return NamedTupleVariable(

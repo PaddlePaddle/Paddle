@@ -26,7 +26,6 @@ from paddle.base import core
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 3]
@@ -50,7 +49,6 @@ class TestConvDoubleGradCheck(unittest.TestCase):
 
 
 class TestConvDoubleGradCheckTest0(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 3]
@@ -74,7 +72,6 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
 
 
 class TestConvDoubleGradCheckTest1(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 3, 3, 3]
@@ -98,7 +95,6 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 3, 4, 2]
@@ -122,7 +118,6 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 4, 5, 3, 2]
@@ -146,7 +141,6 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -170,7 +164,6 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -194,7 +187,6 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3]
@@ -218,7 +210,6 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -243,7 +234,6 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 3, 3]
@@ -268,7 +258,6 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 2, 2, 2]
@@ -292,7 +281,6 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
 
 
 class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 2, 2, 2]
@@ -316,7 +304,6 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
 
 
 class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         shape = [2, 2, 3, 3, 2]
@@ -340,7 +327,6 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 2, 2, 3]
@@ -365,7 +351,6 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 2, 2, 2, 3]
@@ -390,7 +375,6 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
 
 class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func_pir(self, place):
         x_shape = [2, 4, 3, 3]

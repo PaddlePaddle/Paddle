@@ -14,13 +14,16 @@
 
 import unittest
 
+from op_test import is_custom_device
+
 import paddle
 from paddle import _C_ops
 from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "mamtul 0 size only with in cuda"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "mamtul 0 size only with in cuda",
 )
 class TestMatmulDygraph(unittest.TestCase):
     def test_matmul(self):

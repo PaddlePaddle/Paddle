@@ -418,9 +418,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -442,9 +442,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])
@@ -641,9 +641,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -665,9 +665,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])

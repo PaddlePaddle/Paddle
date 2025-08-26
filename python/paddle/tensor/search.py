@@ -22,6 +22,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -38,12 +39,15 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle._typing import DTypeLike
 
+from paddle.utils.decorator_utils import ForbidKeywordsDecorator
+
 # from ..base.layers import has_inf  #DEFINE_ALIAS
 # from ..base.layers import has_nan  #DEFINE_ALIAS
 
 __all__ = []
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def argsort(
     x: Tensor,
     axis: int = -1,
@@ -54,12 +58,18 @@ def argsort(
     """
     Sorts the input along the given axis, and returns the corresponding index tensor for the sorted output values. The default sort algorithm is ascending, if you want the sort algorithm to be descending, you must set the :attr:`descending` as True.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``argsort(input=tensor_x, dim=1)`` is equivalent to ``(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): An input N-D Tensor with type bfloat16, float16, float32, float64, int16,
             int32, int64, uint8.
+            alias: ``input``.
         axis (int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is -1.
+            alias: ``dim``.
         descending (bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
@@ -453,18 +463,25 @@ def index_select(
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[False] = ...) -> Tensor: ...
+def nonzero(
+    x: Tensor, as_tuple: Literal[False] = ..., *, out: Tensor | None = None
+) -> Tensor: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: Literal[True] = ...) -> tuple[Tensor, ...]: ...
+def nonzero(
+    x: Tensor, as_tuple: Literal[True] = ..., *, out: Tensor | None = None
+) -> tuple[Tensor, ...]: ...
 
 
 @overload
-def nonzero(x: Tensor, as_tuple: bool = ...) -> Tensor | tuple[Tensor, ...]: ...
+def nonzero(
+    x: Tensor, as_tuple: bool = ..., *, out: Tensor | None = None
+) -> Tensor | tuple[Tensor, ...]: ...
 
 
-def nonzero(x: Tensor, as_tuple=False):
+@param_one_alias(['x', 'input'])
+def nonzero(x: Tensor, as_tuple=False, *, out: Tensor | None = None):
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
     tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
@@ -474,9 +491,15 @@ def nonzero(x: Tensor, as_tuple=False):
     number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``nonzero(input=tensor_x)`` is equivalent to ``nonzero(x=tensor_x)``.
+
     Args:
         x (Tensor): The input tensor variable.
+            alias: ``input``.
         as_tuple (bool, optional): Return type, Tensor or tuple of Tensor.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor or tuple of Tensor, The data type is int64.
@@ -501,14 +524,10 @@ def nonzero(x: Tensor, as_tuple=False):
             >>> out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
             >>> for out in out_z1_tuple:
             ...     print(out)
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
-            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[0],
-             [1],
-             [2]])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 1, 2])
 
             >>> out_z2 = paddle.nonzero(x2)
             >>> print(out_z2)
@@ -519,13 +538,12 @@ def nonzero(x: Tensor, as_tuple=False):
             >>> out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
             >>> for out in out_z2_tuple:
             ...     print(out)
-            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1],
-             [3]])
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 3])
 
     """
     if in_dynamic_or_pir_mode():
-        outs = _C_ops.nonzero(x)
+        outs = _C_ops.nonzero(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -561,6 +579,38 @@ def nonzero(x: Tensor, as_tuple=False):
         return tuple(list_out)
 
 
+def argwhere(input: Tensor) -> Tensor:
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. The returned tensor has shape [z, n], where `z` is the number of all non-zero
+    elements in the `input` tensor, and `n` is the number of dimensions in the `input`
+    tensor.
+
+    Args:
+        input (Tensor): The input tensor variable.
+
+    Returns:
+        Tensor, The data type is int64.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                       [0.0, 2.0, 0.0],
+            ...                       [0.0, 0.0, 3.0]])
+            >>> out = paddle.tensor.search.argwhere(x)
+            >>> print(out)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+    """
+    return nonzero(input, as_tuple=False)
+
+
 def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     """
     Return a tensor containing the indices of all non-zero elements of the `input`
@@ -590,6 +640,12 @@ def _restrict_nonzero(condition: Tensor, total_true_num: int) -> Tensor:
     return _C_ops.restrict_nonzero(condition, total_true_num)
 
 
+@ForbidKeywordsDecorator(
+    illegal_keys={'input', 'dim'},
+    func_name='paddle.sort',
+    correct_name='paddle.compat.sort',
+    url_suffix="torch/torch.sort",
+)
 def sort(
     x: Tensor,
     axis: int = -1,
@@ -676,6 +732,44 @@ def sort(
         return out
 
 
+def msort(input: Tensor) -> Tensor:
+    """
+
+    Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
+
+    Args:
+        input (Tensor): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+
+    Returns:
+        Tensor, sorted tensor(with the same shape and data type as ``input``).
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.msort(input=x)
+            >>> print(out1.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
+    """
+
+    return sort(input, axis=0)
+
+
 def mode(
     x: Tensor, axis: int = -1, keepdim: bool = False, name: str | None = None
 ) -> tuple[Tensor, Tensor]:
@@ -731,6 +825,7 @@ def mode(
         return values, indices
 
 
+@ParamAliasDecorator({"x": ["input"], "y": ["other"]})
 def where(
     condition: Tensor,
     x: Tensor | float | None = None,
@@ -751,14 +846,20 @@ def where(
     Notes:
         ``numpy.where(condition)`` is identical to ``paddle.nonzero(condition, as_tuple=True)``, please refer to :ref:`api_paddle_nonzero`.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
+        For example, ``paddle.where(condition, input=x, other=y)`` can be written as ``paddle.where(condition, x=x, y=y)``.
+
     Args:
         condition (Tensor): The condition to choose x or y. When True (nonzero), yield x, otherwise yield y, must have a dtype of bool if used as mask.
         x (Tensor|scalar|None, optional): A Tensor or scalar to choose when the condition is True with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+            alias: ``input``.
         y (Tensor|scalar|None, optional): A Tensor or scalar to choose when the condition is False with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
+            alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
-        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
+       Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
 
     Examples:
 
@@ -776,15 +877,14 @@ def where(
 
             >>> out = paddle.where(x>1)
             >>> print(out)
-            (Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[2],
-             [3]]),)
+            (Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [2, 3]),)
     """
     if np.isscalar(x):
-        x = paddle.full([1], x, np.array([x]).dtype.name)
+        x = paddle.to_tensor(x)
 
     if np.isscalar(y):
-        y = paddle.full([1], y, np.array([y]).dtype.name)
+        y = paddle.to_tensor(y)
 
     if x is None and y is None:
         return nonzero(condition, as_tuple=True)

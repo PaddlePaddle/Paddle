@@ -232,5 +232,7 @@ PD_REGISTER_KERNEL(argsort_grad,
                    double,
                    int,
                    int64_t,
+                   uint8_t,
+                   int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

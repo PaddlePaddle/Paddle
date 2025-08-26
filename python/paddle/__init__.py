@@ -36,19 +36,30 @@ except ImportError:
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
+from .base.dygraph.generated_tensor_methods_patch import (
+    monkey_patch_generated_methods_for_tensor,
+)
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
-from .framework import monkey_patch_math_tensor, monkey_patch_variable
+from .framework import (
+    monkey_patch_math_tensor,
+    monkey_patch_variable,
+)
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
+from .pir.generated_methods_patch import (
+    monkey_patch_generated_methods_for_value,
+)
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
+
+monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -122,12 +133,20 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
+    compat as compat,
     fft as fft,
     hub as hub,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
+)
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
 )
 from .autograd import (
     enable_grad,
@@ -192,7 +211,17 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
     MmapStorage,
+    ShortTensor,
     arange,
     assign,
     cauchy_,
@@ -214,7 +243,9 @@ from .tensor.creation import (
     ones,
     ones_like,
     polar,
+    range,
     to_tensor,
+    to_tensor as as_tensor,
     tril,
     tril_,
     tril_indices,
@@ -242,6 +273,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -327,7 +359,9 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
+    ravel,
     repeat_interleave,
     reshape,
     reshape_,
@@ -336,8 +370,11 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -362,6 +399,8 @@ from .tensor.manipulation import (
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -397,6 +436,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     clip,
@@ -544,6 +584,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -573,18 +614,23 @@ from .tensor.search import (
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
     kthvalue,
     masked_select,
     mode,
+    msort,
     nonzero,
     searchsorted,
     sort,
     topk,
     where,
     where_,
+)
+from .tensor.softmax import (
+    softmax,
 )
 from .tensor.stat import (
     mean,
@@ -601,6 +647,34 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
+
+
+class _TensorMethodOrModule:
+    def __init__(self):
+        import paddle.tensor as tensor_module
+
+        from .tensor.creation import tensor as tensor_api
+
+        self.module = tensor_module
+        self.method = tensor_api
+
+    def __call__(self, *args, **kwargs):
+        return self.method(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+    def __repr__(self):
+        return repr(self.method)
+
+    def __str__(self):
+        return str(self.method)
+
+    def __dir__(self):
+        return dir(self.module)
+
+
+tensor = _TensorMethodOrModule()  # noqa: F811
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -784,6 +858,16 @@ nan = math.nan
 pi = math.pi
 e = math.e
 
+# API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+
+div = divide
+div_ = divide_
+
 __all__ = [
     'block_diag',
     'iinfo',
@@ -862,6 +946,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -879,6 +964,7 @@ __all__ = [
     'summary',
     'flops',
     'sort',
+    'msort',
     'searchsorted',
     'bucketize',
     'split',
@@ -896,7 +982,18 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     'crop',
     'ParamAttr',
     'stanh',
@@ -910,6 +1007,7 @@ __all__ = [
     'squeeze',
     'squeeze_',
     'to_tensor',
+    'as_tensor',
     'gather_nd',
     'isin',
     'isinf',
@@ -967,6 +1065,7 @@ __all__ = [
     'pdist',
     'unbind',
     'meshgrid',
+    'range',
     'arange',
     'load',
     'numel',
@@ -1012,6 +1111,7 @@ __all__ = [
     'DataParallel',
     'argmin',
     'prod',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -1027,10 +1127,14 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1079,6 +1183,7 @@ __all__ = [
     'tanh_',
     'transpose',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
@@ -1092,6 +1197,7 @@ __all__ = [
     'std',
     'flatten',
     'flatten_',
+    'ravel',
     'asin',
     'multiply',
     'multiply_',
@@ -1121,6 +1227,7 @@ __all__ = [
     'atleast_3d',
     'reverse',
     'nonzero',
+    'argwhere',
     'CUDAPinnedPlace',
     'XPUPinnedPlace',
     'logical_not',
@@ -1138,6 +1245,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1155,7 +1264,9 @@ __all__ = [
     'acosh',
     'atanh',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'diff',
     'angle',
     'fmax',
@@ -1167,12 +1278,16 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1229,9 +1344,16 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
+    'softmax',
 ]
-
 import os
+
+monkey_patch_generated_methods_for_tensor()
+import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

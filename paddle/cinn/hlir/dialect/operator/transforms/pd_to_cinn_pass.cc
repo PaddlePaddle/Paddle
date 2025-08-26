@@ -742,9 +742,7 @@ class SplitOpPattern : public pir::OpRewritePattern<paddle::dialect::SplitOp> {
   using pir::OpRewritePattern<paddle::dialect::SplitOp>::OpRewritePattern;
 
   bool Match(paddle::dialect::SplitOp op) const override {
-    const bool is_denied = CompatibleInfo::IsDeniedForCinn(*op.operation());
-
-    return !is_denied && PatternConstraint(op);
+    return PatternConstraint(op);
   }
 
   void Rewrite(paddle::dialect::SplitOp op,

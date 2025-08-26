@@ -118,6 +118,79 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
   }
 }
 
+phi::DataType NumpyDtype2TensorDtype(const int& np_dtype) {
+  switch (np_dtype) {
+    case pybind11::detail::npy_api::NPY_BOOL_:
+      return phi::DataType::BOOL;
+    case pybind11::detail::npy_api::NPY_INT8_:
+      return phi::DataType::INT8;
+    case pybind11::detail::npy_api::NPY_UINT8_:
+      return phi::DataType::UINT8;
+    case pybind11::detail::npy_api::NPY_INT16_:
+      return phi::DataType::INT16;
+    case pybind11::detail::npy_api::NPY_INT32_:
+      return phi::DataType::INT32;
+    case pybind11::detail::npy_api::NPY_INT64_:
+      return phi::DataType::INT64;
+    case pybind11::detail::NPY_UINT16_:
+      return phi::DataType::BFLOAT16;
+    case pybind11::detail::NPY_FLOAT16_:
+      return phi::DataType::FLOAT16;
+    case pybind11::detail::npy_api::NPY_FLOAT_:
+      return phi::DataType::FLOAT32;
+    case pybind11::detail::npy_api::NPY_DOUBLE_:
+      return phi::DataType::FLOAT64;
+    case pybind11::detail::NPY_COMPLEX64:
+      return phi::DataType::COMPLEX64;
+    case pybind11::detail::NPY_COMPLEX128:
+      return phi::DataType::COMPLEX128;
+    case pybind11::detail::npy_api::NPY_UNICODE_:
+      return phi::DataType::PSTRING;
+    default:
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unknown numpy dtype, the int value = %d.", np_dtype));
+      return phi::DataType::UNDEFINED;
+  }
+}
+
+phi::DataType StrDtype2TensorDtype(const std::string& np_dtype) {
+  if (np_dtype == "bool") {
+    return phi::DataType::BOOL;
+  } else if (np_dtype == "int8") {
+    return phi::DataType::INT8;
+  } else if (np_dtype == "uint8") {
+    return phi::DataType::UINT8;
+  } else if (np_dtype == "int16") {
+    return phi::DataType::INT16;
+  } else if (np_dtype == "int32") {
+    return phi::DataType::INT32;
+  } else if (np_dtype == "int64") {
+    return phi::DataType::INT64;
+  } else if (np_dtype == "bfloat16") {
+    return phi::DataType::BFLOAT16;
+  } else if (np_dtype == "float16") {
+    return phi::DataType::FLOAT16;
+  } else if (np_dtype == "float32") {
+    return phi::DataType::FLOAT32;
+  } else if (np_dtype == "float64") {
+    return phi::DataType::FLOAT64;
+  } else if (np_dtype == "complex64") {
+    return phi::DataType::COMPLEX64;
+  } else if (np_dtype == "complex128") {
+    return phi::DataType::COMPLEX128;
+  } else if (np_dtype == "float8_e4m3fn") {
+    return phi::DataType::FLOAT8_E4M3FN;
+  } else if (np_dtype == "float8_e5m2") {
+    return phi::DataType::FLOAT8_E5M2;
+  } else if (np_dtype == "unicode") {
+    return phi::DataType::PSTRING;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unknown numpy dtype, the value = %s.", np_dtype));
+    return phi::DataType::UNDEFINED;
+  }
+}
+
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
 bool PyObject_CheckIRValue(PyObject* obj) {
@@ -864,6 +937,17 @@ paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
   return dtype;
 }
 
+paddle::DataType CastPyArg2DataTypeDirectly(PyObject* obj,
+                                            const std::string& op_type,
+                                            ssize_t arg_pos,
+                                            paddle::DataType default_value) {
+  if (obj == nullptr) {
+    return default_value;
+  } else {
+    return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+  }
+}
+
 phi::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
     phi::Vocab vocab;
@@ -1358,6 +1442,20 @@ paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   ssize_t arg_idx,
                                   bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
+}
+paddle::Tensor& GetTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable) {
+  PyObject* obj = GetItemFromArgsOrKWArgs(
+      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
@@ -2249,6 +2347,17 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // Fake a Scalar
   return paddle::experimental::Scalar(1.0);
 }
+paddle::experimental::Scalar CastPyArg2Scalar(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    paddle::experimental::Scalar default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2Scalar(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 
 std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
                                                const std::string& op_type,
@@ -2311,7 +2420,17 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
 }
-
+std::vector<phi::Scalar> CastPyArg2ScalarArray(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    std::vector<phi::Scalar> default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2ScalarArray(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
@@ -2343,7 +2462,17 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
-
+paddle::experimental::IntArray CastPyArg2IntArray(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    paddle::experimental::IntArray default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2IntArray(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
+}
 paddle::framework::Scope* CastPyArg2ScopePtr(PyObject* obj) {
   if (PyObject_TypeCheck(obj, g_framework_scope_pytype)) {
     return ::pybind11::handle(obj).cast<paddle::framework::Scope*>();
@@ -2582,7 +2711,16 @@ paddle::Place CastPyArg2Place(PyObject* obj,
                               ssize_t arg_pos) {
   return CastPyArg2Place(obj, arg_pos);
 }
-
+paddle::Place CastPyArg2Place(PyObject* obj,
+                              const std::string& op_type,
+                              ssize_t arg_pos,
+                              paddle::Place default_place) {
+  if (obj != nullptr) {
+    return CastPyArg2Place(obj, op_type, arg_pos);
+  } else {
+    return default_place;
+  }
+}
 paddle::DataType CastPyArg2DataType(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos) {
@@ -2592,8 +2730,31 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (PyObject_TypeCheck(obj, g_vartype_pytype)) {
     framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
     return phi::TransToPhiDataType(type);
+  } else if (PyObject_TypeCheck(obj, g_data_type_pytype)) {
+    return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+  } else if (PyObject_CheckStr(obj)) {
+    std::string type_str = CastPyArg2AttrString(obj, arg_pos);
+    return StrDtype2TensorDtype(type_str);
+  } else {
+    if (!pybind11::detail::npy_api::get().PyArrayDescr_Check_(obj)) {
+      pybind11::object dtype_obj = pybind11::module::import("numpy").attr(
+          "dtype")(pybind11::reinterpret_borrow<pybind11::object>(obj));
+      obj = dtype_obj.ptr();
+    }
+    int type_num =
+        reinterpret_cast<pybind11::detail::PyArrayDescr1_Proxy*>(obj)->type_num;
+    return NumpyDtype2TensorDtype(type_num);
   }
-  return CastPyArg2DataTypeDirectly(obj, op_type, arg_pos);
+}
+paddle::DataType CastPyArg2DataType(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos,
+                                    paddle::DataType default_value) {
+  if (obj != nullptr) {
+    return CastPyArg2DataType(obj, op_type, arg_pos);
+  } else {
+    return default_value;
+  }
 }
 
 paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
@@ -3094,6 +3255,32 @@ void EagerSetDeviceId() {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "PaddlePaddle should compile with XPU if use XPUPlace."));
 #endif
+  }
+}
+
+paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs) {
+  if (!kwargs) {
+    return paddle::none;
+  }
+  PyObject* obj = PyDict_GetItemString(kwargs, "out");
+  if (obj && PyObject_TypeCheck(obj, p_tensor_type)) {
+    return paddle::make_optional<paddle::Tensor*>(
+        &(reinterpret_cast<TensorObject*>(obj)->tensor));
+  }
+  return paddle::none;
+}
+
+void Check_PIR_not_support_out(PyObject* kwargs) {
+  if (!kwargs) {
+    return;
+  }
+  PyObject* obj = PyDict_GetItemString(kwargs, "out");
+  if (obj) {
+    static std::once_flag once_flag;
+    std::call_once(once_flag, [&] {
+      LOG(WARNING) << "Paddle static graph(PIR) not support input out tensor "
+                      "for now!!!!!";
+    });
   }
 }
 

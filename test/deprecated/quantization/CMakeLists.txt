@@ -5,13 +5,13 @@ file(
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
 function(_inference_analysis_python_api_int8_test target model_dir data_path
-         filename use_mkldnn)
+         filename use_onednn)
   py_test(
     ${target}
     SRCS ${filename}
          ENVS
          CPU_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=${use_mkldnn}
+         FLAGS_use_onednn=${use_onednn}
          ARGS
          --infer_model
          ${model_dir}/model
@@ -67,7 +67,7 @@ function(inference_quant_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -91,7 +91,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -123,7 +123,7 @@ function(
          ENVS
          FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
          OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-         FLAGS_use_mkldnn=true
+         FLAGS_use_onednn=true
          ARGS
          --quant_model
          ${quant_model_dir}
@@ -157,7 +157,7 @@ function(inference_quant2_int8_lstm_model_test target fp32_model quant_model
          ${dataset_path}
          --num_threads
          1
-         --mkldnn_cache_capacity
+         --onednn_cache_capacity
          100
          --warmup_iter
          100
@@ -207,7 +207,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
 endif()
 
-if(LINUX AND WITH_MKLDNN)
+if(LINUX AND WITH_ONEDNN)
 
   #### Image classification dataset: ImageNet (small)
   # The dataset should already be downloaded for INT8v2 unit tests

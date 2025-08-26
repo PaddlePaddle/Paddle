@@ -49,7 +49,7 @@ class TestSGDOpBF16(OpTest):
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
         self.outputs = {'ParamOut': w - lr * g}
-        self.attrs = {'use_mkldnn': self.use_onednn}
+        self.attrs = {'use_onednn': self.use_onednn}
 
     def conf(self):
         self.h = 102
@@ -157,7 +157,7 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_onednn=True,
         )
         sgd_op.run(scope, place)
 
@@ -215,7 +215,7 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
             Grad='Grad',
             ParamOut='Param',
             LearningRate='LearningRate',
-            use_mkldnn=True,
+            use_onednn=True,
         )
         sgd_op.run(scope, place)
 
@@ -239,7 +239,7 @@ class TestSGDOpBF16API(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         np.random.seed(12345)
-        base.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_onednn': True})
 
     def setUp(self):
         self.sample_count = 20
@@ -355,9 +355,7 @@ class TestSGDOpBF16API(unittest.TestCase):
                 weight_attr=base.ParamAttr(
                     name="emb_weight", initializer=self.initializer
                 ),
-            )(
-                x
-            )  # bfloat16
+            )(x)  # bfloat16
             paddle.set_default_dtype(pre_dtype)
             cost = paddle.add(emb, label)
             avg_cost = paddle.mean(cost)

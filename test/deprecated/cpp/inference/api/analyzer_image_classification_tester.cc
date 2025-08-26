@@ -37,11 +37,11 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-void profile(bool use_mkldnn = false) {
+void profile(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
     if (FLAGS_disable_onednn_fc) {
       cfg.DisableOnednnFcPasses();
@@ -59,14 +59,14 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_resnet50, profile) { profile(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, profile_onednn) { profile(true /* use_onednn */); }
 #endif
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false) {
+void compare(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (use_mkldnn) {
+  if (use_onednn) {
     cfg.EnableONEDNN();
     if (FLAGS_disable_onednn_fc) {
       cfg.DisableOnednnFcPasses();
@@ -81,7 +81,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_resnet50, compare) { compare(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_resnet50, compare_onednn) { compare(true /* use_onednn */); }
 #endif
 
 // Compare Deterministic result

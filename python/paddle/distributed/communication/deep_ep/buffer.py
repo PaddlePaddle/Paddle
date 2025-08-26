@@ -121,7 +121,7 @@ class Buffer:
             # Make sure QP depth is always larger than the number of on-flight WRs, so that we can skip WQ slot check
             os.environ['NVSHMEM_QP_DEPTH'] = '1024'
             # NOTES: NVSHMEM initialization requires at least 256 MiB
-            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2 ** 29}'
+            os.environ['NVSHMEM_CUMEM_GRANULARITY'] = f'{2**29}'
 
             nvshmem_unique_ids = []
             if (low_latency_mode and self.rank == 0) or (
@@ -266,9 +266,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 32, 720, 12, 128),
             160: Config(Buffer.num_sms, 28, 720, 12, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     @staticmethod
@@ -294,9 +294,9 @@ class Buffer:
             144: Config(Buffer.num_sms, 2, 720, 8, 128),
             160: Config(Buffer.num_sms, 2, 720, 8, 128),
         }
-        assert (
-            num_ranks in config_map
-        ), f'Unsupported number of EP ranks: {num_ranks}'
+        assert num_ranks in config_map, (
+            f'Unsupported number of EP ranks: {num_ranks}'
+        )
         return config_map[num_ranks]
 
     # noinspection PyTypeChecker
@@ -912,7 +912,11 @@ class Buffer:
             packed_recv_layout_range,
         )
         return (
-            (packed_recv_x, packed_recv_x_scales) if use_fp8 else packed_recv_x,
+            (
+                (packed_recv_x, packed_recv_x_scales)
+                if use_fp8 and expertwise_scale is None
+                else packed_recv_x
+            ),
             packed_recv_count,
             handle,
             EventOverlap(event, tensors_to_record if async_finish else None),

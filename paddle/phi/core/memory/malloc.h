@@ -22,6 +22,11 @@ limitations under the License. */
 #include "paddle/phi/core/memory/allocation/allocator.h"
 #include "paddle/phi/core/stream.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "xpu/runtime.h"
+#include "xpu/runtime_ex.h"
+#endif
+
 namespace paddle {
 namespace memory {
 
@@ -58,6 +63,11 @@ void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
+
+#ifdef PADDLE_WITH_XPU
+bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
+#endif
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 extern uint64_t Release(const phi::CustomPlace& place,
                         phi::stream::stream_t stream);

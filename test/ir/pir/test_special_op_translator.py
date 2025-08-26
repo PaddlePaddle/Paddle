@@ -564,9 +564,9 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
                     outputs={"Out": y, "XOut": x},
                 )
             l = pir.translate_to_pir(main_program.desc)
-            assert (
-                l.global_block().ops[2].name() == "pd_op.share_data_"
-            ), "share_buffer should be translated to share_data_"
+            assert l.global_block().ops[2].name() == "pd_op.share_data_", (
+                "share_buffer should be translated to share_data_"
+            )
 
 
 class TestDataOp(unittest.TestCase):

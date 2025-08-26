@@ -365,7 +365,6 @@ create_test_bf16(TestSplitWithNumOp)
 
 
 class TestSplitAPI(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input_1 = np.random.random([4, 5, 6]).astype("int32")
@@ -405,7 +404,6 @@ class TestSplitAPI(unittest.TestCase):
 
 
 class TestSplitOpErrorStatic(unittest.TestCase):
-
     def test_errors_with_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -472,7 +470,6 @@ class TestSplitOpErrorDynamic(unittest.TestCase):
 
 
 class API_TestSplit(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
@@ -498,7 +495,6 @@ class API_TestSplit(unittest.TestCase):
 
 
 class API_TestSplit2(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
@@ -520,7 +516,6 @@ class API_TestSplit2(unittest.TestCase):
 
 
 class API_TestSplit3(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
@@ -535,7 +530,6 @@ class API_TestSplit3(unittest.TestCase):
 
 
 class API_TestSplit4(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')
@@ -554,7 +548,6 @@ class API_TestSplit4(unittest.TestCase):
 
 
 class API_TestSplit5(unittest.TestCase):
-
     def test_out(self):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
@@ -575,7 +568,6 @@ class API_TestSplit5(unittest.TestCase):
 
 
 class API_TestSplit6(unittest.TestCase):
-
     def test_out(self):
         with base.program_guard(base.Program(), base.Program()):
             data = paddle.static.data('data', shape=[-1, 10], dtype='float64')

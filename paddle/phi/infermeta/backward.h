@@ -476,6 +476,14 @@ void MoeCombineGradInferMeta(const MetaTensor& x,
                              const MetaTensor& grad_y,
                              MetaTensor* grad_x,
                              MetaTensor* grad_combine_weights_helper);
+
+void MoeCombineAutoGradInferMeta(const MetaTensor& x,
+                                 const MetaTensor& combine_weights,
+                                 const MetaTensor& scatter_index,
+                                 const MetaTensor& grad_y,
+                                 MetaTensor* grad_x,
+                                 MetaTensor* grad_combine_weights_helper,
+                                 MetaTensor* grad_scatter_index);
 // Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev,
 // Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor
 // combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t
@@ -769,6 +777,17 @@ void MoeGateDispatchGradInferMeta(const MetaTensor& combine_weights,
                                   const bool use_pad,
                                   MetaTensor* x_grad,
                                   MetaTensor* gate_logits_grad);
+
+void MoeGateDispatchAutoGradInferMeta(const MetaTensor& combine_weights,
+                                      const MetaTensor& scatter_index,
+                                      const MetaTensor& expert_id,
+                                      const MetaTensor& y_grad,
+                                      const MetaTensor& combine_weights_grad,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      MetaTensor* x_grad,
+                                      MetaTensor* gate_logits_grad);
 
 void FusedRMSNormGradInferMeta(const MetaTensor& x,
                                const MetaTensor& scale,

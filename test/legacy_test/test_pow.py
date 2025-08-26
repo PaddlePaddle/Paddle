@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_devices
 
 import paddle
 from paddle.static import Program, program_guard
@@ -79,7 +79,7 @@ class TestPowerAPI(unittest.TestCase):
     """TestPowerAPI."""
 
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def test_power(self):
         """test_power."""
@@ -227,7 +227,7 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
     """TestPowerAPI."""
 
     def setUp(self):
-        self.places = get_places(string_format=True)
+        self.places = get_devices()
 
     def _test_power(self, shape):
         np.random.seed(7)
@@ -249,6 +249,158 @@ class TestPowerAPI_ZeroSize(unittest.TestCase):
     def test_power(self):
         self._test_power((0, 2))
         self._test_power((0, 0))
+
+
+class TestPowerAPI_Specialization(unittest.TestCase):
+    """TestPowerAPI."""
+
+    def setUp(self):
+        self.places = get_devices()
+
+    def _test_power(self, factor: float):
+        np.random.seed(7)
+        inputs = [
+            np.random.rand(10, 10) * 10,
+            np.complex128(
+                np.random.rand(10, 10) * 10 + 1j * np.random.rand(10, 10)
+            ),
+        ]
+        for x in inputs:
+            for place in self.places:
+                paddle.disable_static()
+                paddle.set_device(place)
+                x_ = paddle.to_tensor(x)
+                x_.stop_gradient = False
+                res = paddle.pow(x_, factor)
+                np.testing.assert_allclose(res, np.power(x, factor), rtol=1e-05)
+                loss = paddle.sum(res)
+                loss.backward()
+                np.testing.assert_allclose(x_.grad.shape, x_.shape)
+
+    def test_power(self):
+        self._test_power(0)
+        self._test_power(0.5)
+        self._test_power(1.5)
+        self._test_power(1)
+        self._test_power(2)
+        self._test_power(3)
+        self._test_power(4)
+        self._test_power(-0.5)
+        self._test_power(-1)
+        self._test_power(-2)
+
+
+class TestPowerAPI_Alias(unittest.TestCase):
+    """
+    Test the alias of pow function.
+    ``pow(input=2, exponent=1.1)`` is equivalent to ``pow(x=2, y=1.1)``
+    """
+
+    def setUp(self):
+        self.places = get_devices()
+        self.test_cases = [
+            ([1.0, 2.0, 3.0], [1.1]),  # 1D tensor
+            ([[1, 2], [3, 4]], 2),  # 2D tensor with scalar exponent
+            (3.0, [2.0]),  # Scalar input
+        ]
+
+    def test_powxy(self):
+        for alias_param_1 in ["x", "input"]:
+            for alias_param_2 in ["y", "exponent"]:
+                for place in self.places:
+                    paddle.set_device(place)
+                    paddle.disable_static(place)
+                    for input_data, exp_data in self.test_cases:
+                        input_tensor = paddle.to_tensor(input_data)
+                        exp_tensor = paddle.to_tensor(exp_data)
+                        output_alias = paddle.pow(
+                            **{
+                                alias_param_1: input_tensor,
+                                alias_param_2: exp_tensor,
+                            }
+                        )
+                        output_std = paddle.pow(x=input_tensor, y=exp_tensor)
+                        self.assertTrue(
+                            paddle.allclose(output_alias, output_std),
+                            msg=f"Alias {alias_param_1}/{alias_param_2} failed on {place} with input {input_data}, exp {exp_data}",
+                        )
+
+    def test_xpowy(self):
+        for alias_param_2 in ["y", "exponent"]:
+            for place in self.places:
+                paddle.set_device(place)
+                paddle.disable_static(place)
+                for input_data, exp_data in self.test_cases:
+                    input_tensor = paddle.to_tensor(input_data)
+                    exp_tensor = paddle.to_tensor(exp_data)
+                    output_alias = input_tensor.pow(
+                        **{alias_param_2: exp_tensor}
+                    )
+                    output_std = input_tensor.pow(y=exp_tensor)
+                    self.assertTrue(
+                        paddle.allclose(output_alias, output_std),
+                        msg=f"Alias {alias_param_2} failed on {place} with input {input_data}, exp {exp_data}",
+                    )
+
+
+class TestPowOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.uniform(0.1, 1, [3, 4]).astype(np.float32)
+        self.y_np = np.random.uniform(1, 3, [3, 4]).astype(np.float32)
+        self.test_types = [
+            "decorator_input",
+            "decorator_exponent",
+            "decorator_both",
+            "out",
+            "out_decorator",
+        ]
+
+    def do_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np, stop_gradient=False)
+        if test_type == 'raw':
+            result = paddle.pow(x, y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_input':
+            result = paddle.pow(input=x, y=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_exponent':
+            result = paddle.pow(x, exponent=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_both':
+            result = paddle.pow(input=x, exponent=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.pow(x, y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.pow(input=x, exponent=y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, x_grad_std, y_grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, x_grad, y_grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(
+                x_grad.numpy(), x_grad_std.numpy(), rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                y_grad.numpy(), y_grad_std.numpy(), rtol=1e-6
+            )
 
 
 if __name__ == '__main__':
