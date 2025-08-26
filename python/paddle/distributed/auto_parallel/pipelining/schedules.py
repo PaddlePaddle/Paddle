@@ -778,7 +778,14 @@ class PipelineScheduleMulti(_PipelineSchedule):
                     )
         self._stages_initialized = True
 
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -805,9 +812,10 @@ class PipelineScheduleMulti(_PipelineSchedule):
         self._step_microbatches(args_split, kwargs_split, targets_split, losses)
 
         # Return merged results per original format
-        for stage in self._stages:
-            if stage.is_last:
-                return self._merge_outputs(stage.output_chunks)
+        if return_output:
+            for stage in self._stages:
+                if stage.is_last:
+                    return self._merge_outputs(stage.output_chunks)
         # Does not contain the last stage
         return None
 
