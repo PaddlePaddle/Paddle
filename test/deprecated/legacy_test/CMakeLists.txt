@@ -39,12 +39,9 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
@@ -145,12 +142,9 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
@@ -493,9 +487,6 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
                     FLAGS_enable_pir_api=0)
     if(NOT WIN32)
-      py_test_modules(
-        test_auto_parallel_partitioner_deprecated MODULES
-        test_auto_parallel_partitioner_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_searcher_deprecated MODULES
                       test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_deprecated MODULES
@@ -503,12 +494,7 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_dist_tensor_deprecated MODULES
         test_auto_parallel_dist_tensor_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_reshard_mppp_deprecated MODULES
-        test_auto_parallel_reshard_mppp_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_reshard_dpmppp_deprecated MODULES
-        test_auto_parallel_reshard_dpmppp_deprecated ENVS ${dist_ENVS})
+
       py_test_modules(
         test_auto_parallel_cost_model_deprecated MODULES
         test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
