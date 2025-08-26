@@ -557,9 +557,6 @@ __global__ void TransposeSimpleKernel(IndexType nthreads,
   }
 }
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900
-using fp8_t = __nv_fp8_e4m3;
-
 typedef struct alignas(8) fp8x8_t {
   union data_t {
     __nv_fp8_e4m3 scalar[8];
@@ -708,7 +705,6 @@ void dispatch_fp8_fast_transpose_kernel(const phi::GPUContext& d,
       N,
       static_cast<size_t>(M) * static_cast<size_t>(N));
 }
-#endif
 
 // Here suppose convert all tensor to dim3, so just change dim1 and 2.
 template <typename T, typename IndexType = int>
@@ -716,7 +712,6 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
                                  const T* input,
                                  const Dim3<IndexType>& input_dims,
                                  T* output) {
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 900
   // FP8 fast path
   if constexpr (std::is_same<T, phi::float8_e4m3fn>::value) {
     if (input_dims[1] >= 128 && input_dims[2] >= 128 &&
@@ -725,7 +720,6 @@ void SendSwapDim1And2InTranspose(const phi::GPUContext& d,
           d, input, input_dims[0], input_dims[1], input_dims[2], output);
     }
   }
-#endif
   // Suppose tile size > 16
   static const int kMinTileSize = 16;
   static const int kMinNarrowTileSize = 96;
