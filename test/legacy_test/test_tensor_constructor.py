@@ -49,6 +49,22 @@ class TestTensorConstructor(unittest.TestCase):
             a = paddle.tensor([1])
             paddle.Tensor(1, 2, 3, a)
 
+    def test_kwargs(self):
+        x1 = paddle.Tensor(device="cpu")
+        self.assertEqual(x1.place, paddle.CPUPlace())
+        x2 = paddle.Tensor(*self.shape, device="cpu")
+        self.assertEqual(x2.place, paddle.CPUPlace())
+
+        x = np.random.random(size=self.shape)
+        x3 = paddle.Tensor(data=x)
+        np.testing.assert_allclose(x, x3.numpy(), rtol=1e-6, atol=1e-6)
+        x4 = paddle.Tensor(list(x), device="cpu")
+        x5 = paddle.Tensor(data=list(x), device="cpu")
+        np.testing.assert_allclose(x4.numpy(), x5.numpy(), rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(x, x4.numpy(), rtol=1e-6, atol=1e-6)
+        self.assertEqual(x4.place, x5.place)
+        self.assertEqual(x4.place, paddle.CPUPlace())
+
 
 class TestFloatTensor(unittest.TestCase):
     def setUp(self):

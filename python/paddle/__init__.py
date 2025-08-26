@@ -95,26 +95,57 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
+    import builtins
+
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
     original_init = Tensor.__init__
 
     def new_init(self, *args, **kwargs):
-        if len(args) + len(kwargs.keys()) == 0:
-            original_init(self, paddle.empty(shape=[0], dtype="float32"))
+        """
+        New Usage Example:
+        1. paddle.Tensor()
+        2. paddle.Tensor(device="cpu")
+        3. paddle.Tensor(1,2,3)
+        4. paddle.Tensor(1,2,3, device="cpu")
+        5. paddle.Tensor([1,2,3])
+        6. paddle.Tensor([1,2,3], device="cpu")
+        7. paddle.Tensor(data=[1,2,3])
+        8. paddle.Tensor(data=[1,2,3], device="cpu")
+        Original Usage Example:
+        9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
+        """
+        device = "cpu"
+        if 'device' in kwargs:
+            device = kwargs.pop('device')
+        device = framework._get_paddle_place(device)
+        if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
+            original_init(
+                self, paddle.empty(shape=[0], dtype='float32'), place=device
+            )
             return
-        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-            original_init(self, paddle.tensor(args[0], dtype="float32"))
-            return
-        args_is_all_int = True
-        for arg in args:
-            if not isinstance(arg, int):
-                args_is_all_int = False
-                break
-        if args_is_all_int and len(kwargs) == 0:
-            original_init(self, paddle.empty(list(args), dtype="float32"))
-        else:
+        try:
             original_init(self, *args, **kwargs)
+        except Exception as e:
+            if 'data' in kwargs:  # case 7,8
+                data = kwargs.pop('data')
+                original_init(
+                    self, paddle.tensor(data, dtype='float32'), place=device
+                )
+            elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+                # case 5, 6
+                original_init(
+                    self, paddle.tensor(args[0], dtype='float32'), place=device
+                )
+            elif builtins.all(isinstance(arg, int) for arg in args):
+                # case 3, 4
+                original_init(
+                    self,
+                    paddle.empty(shape=list(args), dtype='float32'),
+                    place=device,
+                )
+            else:
+                raise e
 
     Tensor.__init__ = new_init
 
