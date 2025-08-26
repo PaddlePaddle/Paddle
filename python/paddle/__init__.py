@@ -532,6 +532,7 @@ from .tensor.math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -864,7 +865,6 @@ concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
 ger = outer
-
 div = divide
 div_ = divide_
 
@@ -1199,6 +1199,7 @@ __all__ = [
     'flatten_',
     'ravel',
     'asin',
+    'mul',
     'multiply',
     'multiply_',
     'disable_static',

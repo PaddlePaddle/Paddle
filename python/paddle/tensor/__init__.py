@@ -376,6 +376,7 @@ from .math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -497,6 +498,7 @@ from .to_string import set_printoptions  # noqa: F401
 # API alias
 div = divide
 div_ = divide_
+mul_ = multiply_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -916,8 +918,6 @@ tensor_method_func = [
     'softmax',
 ]
 
-mul = multiply
-mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [

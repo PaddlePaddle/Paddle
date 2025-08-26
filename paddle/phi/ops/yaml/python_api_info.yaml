@@ -7,3 +7,8 @@
   name : [paddle.amax,paddle.Tensor.amax]
   args_alias :
     use_default_mapping : True
+
+- op : multiply
+  name : [paddle.multiply, paddle.Tensor.multiply]
+  args_alias :
+    use_default_mapping : True
