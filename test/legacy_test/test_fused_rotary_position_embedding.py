@@ -87,7 +87,9 @@ def get_sin_cos_tensor(seq_len, head_dim, sign=1, rotate_half=False):
         for value in iter_array:
             sin_sin[i] = sign * np.sin(value)
             cos_cos[i] = np.cos(value)
-            sin_sin[i + stride] = np.sin(value)
+            sin_sin[i + stride] = np.sin(
+                value * 0.1
+            )  # Verify the accuracy of the reverse computation logic for rotate_half by setting the front and back sin values inconsistently.
             cos_cos[i + stride] = np.cos(value)
             i += 1
             if i % head_dim == stride:

@@ -310,8 +310,8 @@ elseif(WITH_ONEDNN)
       test_mkldnn_conv_transpose_bias_fuse_pass
       test_mkldnn_conv3d_op
       test_mkldnn_depthwise_conv_pass
-      test_mkldnn_shape_op
-      test_mkldnn_shuffle_channel_op)
+      test_onednn_shape_op
+      test_onednn_shuffle_channel_op)
   foreach(target ${PIR_COVERAGE_MKLDNN_TESTS})
     py_test_modules(${target}_pir MODULES ${target} ENVS FLAGS_enable_pir_api=1)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
@@ -334,8 +334,8 @@ elseif(WITH_ONEDNN)
     message(STATUS "PIR Copied Test: ${target}_pir in inference test")
   endforeach()
 
-  set_tests_properties(test_mkldnn_shape_op_pir PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_mkldnn_shuffle_channel_op_pir PROPERTIES TIMEOUT
+  set_tests_properties(test_onednn_shape_op_pir PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_onednn_shuffle_channel_op_pir PROPERTIES TIMEOUT
                                                                      300)
   set_tests_properties(test_onednn_conv_bias_fuse_pass_pir PROPERTIES TIMEOUT
                                                                       300)

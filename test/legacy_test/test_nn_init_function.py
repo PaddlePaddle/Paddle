@@ -88,7 +88,6 @@ class Test_calculate_gain(unittest.TestCase):
 
 
 class Test_kaiming_uniform_(unittest.TestCase):
-
     def check_kaiming_uniform(
         self, tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'
     ):
@@ -230,7 +229,6 @@ class Test_kaiming_uniform_(unittest.TestCase):
 
 
 class Test_kaiming_normal_(unittest.TestCase):
-
     def check_kaiming_normal(
         self, tensor, a=0, mode='fan_in', nonlinearity='leaky_relu'
     ):
@@ -370,7 +368,6 @@ class Test_kaiming_normal_(unittest.TestCase):
 
 
 class Test_xavier_uniform_(unittest.TestCase):
-
     def check(self, tensor, gain=1.0):
         if len(tensor.shape) == 2:
             # This is the case for simple matrix multiply
@@ -473,7 +470,6 @@ class Test_xavier_uniform_(unittest.TestCase):
 
 
 class Test_xavier_normal_(unittest.TestCase):
-
     def check(self, tensor, gain=1.0):
         if len(tensor.shape) == 2:
             # This is the case for simple matrix multiply
@@ -567,7 +563,6 @@ class Test_xavier_normal_(unittest.TestCase):
 
 
 class Test_uniform_(unittest.TestCase):
-
     def check(self, tensor, a=0.0, b=1.0):
         samples = tensor.flatten().tolist()
         p_value = stats.kstest(samples, "uniform", args=(a, (b - a)))[1]
@@ -646,7 +641,6 @@ class Test_uniform_(unittest.TestCase):
 
 
 class Test_normal_(unittest.TestCase):
-
     def check(self, tensor, mean=0.0, std=1.0):
         samples = tensor.flatten().tolist()
         p_value = stats.kstest(samples, "norm", args=(mean, std))[1]
@@ -727,7 +721,6 @@ class Test_normal_(unittest.TestCase):
 
 
 class Test_trunc_normal_(unittest.TestCase):
-
     def check(self, tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
         samples = ((tensor.flatten() - mean) / std).tolist()
         a0 = (a - mean) / std
@@ -805,7 +798,6 @@ class Test_trunc_normal_(unittest.TestCase):
 
 
 class Test_constant_(unittest.TestCase):
-
     def check(self, tensor, val):
         if isinstance(tensor, paddle.Tensor):
             diff = (tensor - val).abs().max().item()
@@ -877,7 +869,6 @@ class Test_constant_(unittest.TestCase):
 
 
 class Test_ones_(unittest.TestCase):
-
     def check(self, tensor, eps=1e-6):
         if isinstance(tensor, paddle.Tensor):
             diff = (tensor - 1.0).abs().max().item()
@@ -958,7 +949,6 @@ class Test_ones_(unittest.TestCase):
 
 
 class Test_zeros_(unittest.TestCase):
-
     def check(self, tensor, eps=1e-6):
         if isinstance(tensor, paddle.Tensor):
             diff = tensor.abs().max().item()
@@ -1039,7 +1029,6 @@ class Test_zeros_(unittest.TestCase):
 
 
 class Test_eye_(unittest.TestCase):
-
     def check(self, tensor):
         if not isinstance(tensor, np.ndarray):
             tensor = tensor.numpy()
@@ -1114,12 +1103,10 @@ class Test_eye_(unittest.TestCase):
 
 
 class Test_dirac_(unittest.TestCase):
-
     def test_dygraph(self):
         with dygraph_guard():
             for dims in [3, 4, 5]:
                 for groups in [1, 2, 3]:
-
                     a, c, d, e = (random.randint(1, 5) for _ in range(4))
                     b = random.randint(1, 5 * groups)
                     input_tensor = paddle.randn((a * groups, b, c, d, e)[:dims])
@@ -1179,7 +1166,6 @@ class Test_dirac_(unittest.TestCase):
 
 
 class Test_orthogonal_(unittest.TestCase):
-
     def check(self, tensor, gain):
         if isinstance(tensor, paddle.Tensor):
             tensor = tensor.numpy()
