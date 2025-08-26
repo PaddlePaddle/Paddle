@@ -107,8 +107,6 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                 (batch_size + block_dim.y - 1) / block_dim.y);
   phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(dev_ctx, x_grad, static_cast<T>(0));
   bool use_int32 = true;
   if (out_grad.numel() > UINT32_MAX || x_grad->numel() > UINT32_MAX) {
     use_int32 = false;
