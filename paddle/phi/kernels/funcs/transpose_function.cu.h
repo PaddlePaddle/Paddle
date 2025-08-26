@@ -580,7 +580,8 @@ constexpr int BLOCK_TILE_WIDTH = BLOCK_TILE_SIZE;
 constexpr int BLOCK_TILE_HEIGHT = BLOCK_TILE_SIZE;
 constexpr int THREAD_TILE_DIM = BLOCK_TILE_SIZE / BLOCK_DIM;
 
-__global__ void __launch_bounds__(256) inline fp8_fast_transpose_kernel(
+__global__ void
+__launch_bounds__(BLOCK_DIM* BLOCK_DIM) inline fp8_fast_transpose_kernel(
     const __nv_fp8_e4m3* __restrict__ src,  // Source matrix (M x N)
     __nv_fp8_e4m3* __restrict__ dst,        // Destination matrix (N x M)
     int B,
@@ -683,14 +684,9 @@ void dispatch_fp8_fast_transpose_kernel(const phi::GPUContext& d,
                                         const uint32_t M,
                                         const uint32_t N,
                                         T* output) {
-  constexpr int threads_per_block = 256;
-  constexpr int block_tile_y = 128;
-  constexpr int block_tile_x = 128;
-  const int ndim = 3;
-
   dim3 grid, block;
-  block.x = 16;  // 256 threads per block
-  block.y = 16;
+  block.x = BLOCK_DIM;  // 256 threads per block
+  block.y = BLOCK_DIM;
 
   grid.z = B;
   grid.y = M / BLOCK_TILE_SIZE;  // not for un-aligned
