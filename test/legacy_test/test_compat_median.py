@@ -24,20 +24,20 @@ class TestCompatMedianAPI(unittest.TestCase):
     def test_compat_median_basic(self):
         paddle.disable_static()
 
-        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
 
         result = paddle.compat.median(x)
-        expected = paddle.to_tensor(5, dtype='int64')
+        expected = paddle.to_tensor(5, dtype='float32')
         np.testing.assert_allclose(result.numpy(), expected.numpy())
 
         values, indices = paddle.compat.median(x, dim=1)
-        expected_values = paddle.to_tensor([2, 5, 8], dtype='int64')
+        expected_values = paddle.to_tensor([2, 5, 8], dtype='float32')
         expected_indices = paddle.to_tensor([1, 1, 1], dtype='int64')
         np.testing.assert_allclose(values.numpy(), expected_values.numpy())
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
 
         values, indices = paddle.compat.median(x, dim=1, keepdim=True)
-        expected_values = paddle.to_tensor([[2], [5], [8]], dtype='int64')
+        expected_values = paddle.to_tensor([[2], [5], [8]], dtype='float32')
         expected_indices = paddle.to_tensor([[1], [1], [1]], dtype='int64')
         np.testing.assert_allclose(values.numpy(), expected_values.numpy())
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
@@ -47,21 +47,21 @@ class TestCompatMedianAPI(unittest.TestCase):
     def test_compat_median_out(self):
         paddle.disable_static()
 
-        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
 
-        out = paddle.zeros([], dtype='int64')
+        out = paddle.zeros([], dtype='float32')
         result = paddle.compat.median(x, out=out)
-        expected = paddle.to_tensor(5, dtype='int64')
+        expected = paddle.to_tensor(5, dtype='float32')
         np.testing.assert_allclose(result.numpy(), expected.numpy())
         np.testing.assert_allclose(out.numpy(), expected.numpy())
         self.assertIs(result, out)
 
-        out_values = paddle.zeros([3], dtype='int64')
+        out_values = paddle.zeros([3], dtype='float32')
         out_indices = paddle.zeros([3], dtype='int64')
         result_values, result_indices = paddle.compat.median(
             x, dim=1, out=(out_values, out_indices)
         )
-        expected_values = paddle.to_tensor([2, 5, 8], dtype='int64')
+        expected_values = paddle.to_tensor([2, 5, 8], dtype='float32')
         expected_indices = paddle.to_tensor([1, 1, 1], dtype='int64')
         np.testing.assert_allclose(
             result_values.numpy(), expected_values.numpy()
@@ -81,22 +81,22 @@ class TestCompatMedianAPI(unittest.TestCase):
     def test_compat_median_different_dims(self):
         paddle.disable_static()
 
-        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32')
 
         values, indices = paddle.compat.median(x, dim=0)
-        expected_values = paddle.to_tensor([4, 5, 6], dtype='int64')
+        expected_values = paddle.to_tensor([4, 5, 6], dtype='float32')
         expected_indices = paddle.to_tensor([1, 1, 1], dtype='int64')
         np.testing.assert_allclose(values.numpy(), expected_values.numpy())
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
 
         values, indices = paddle.compat.median(x, dim=1)
-        expected_values = paddle.to_tensor([2, 5, 8], dtype='int64')
+        expected_values = paddle.to_tensor([2, 5, 8], dtype='float32')
         expected_indices = paddle.to_tensor([1, 1, 1], dtype='int64')
         np.testing.assert_allclose(values.numpy(), expected_values.numpy())
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
 
         values, indices = paddle.compat.median(x, dim=-1)
-        expected_values = paddle.to_tensor([2, 5, 8], dtype='int64')
+        expected_values = paddle.to_tensor([2, 5, 8], dtype='float32')
         expected_indices = paddle.to_tensor([1, 1, 1], dtype='int64')
         np.testing.assert_allclose(values.numpy(), expected_values.numpy())
         np.testing.assert_allclose(indices.numpy(), expected_indices.numpy())
@@ -109,16 +109,18 @@ class TestCompatMedianAPI(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.static.data(name='x', shape=[3, 3], dtype='int64')
+            x = paddle.static.data(name='x', shape=[3, 3], dtype='float32')
             values, indices = paddle.compat.median(x, dim=1)
 
             exe = base.Executor(base.CPUPlace())
-            x_data = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            x_data = np.array(
+                [[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32'
+            )
             result_values, result_indices = exe.run(
                 feed={'x': x_data}, fetch_list=[values, indices]
             )
 
-            expected_values = np.array([2, 5, 8], dtype='int64')
+            expected_values = np.array([2, 5, 8], dtype='float32')
             expected_indices = np.array([1, 1, 1], dtype='int64')
             np.testing.assert_allclose(result_values, expected_values)
             np.testing.assert_allclose(result_indices, expected_indices)
