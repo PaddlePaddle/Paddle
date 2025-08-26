@@ -3295,7 +3295,7 @@ function is_run_distribute_in_op_test() {
         if [ ! -f "$TARGET_FILE" ]; then
             continue
         fi
-        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH "$TARGET_FILE" | grep "+" | grep "check_auto_parallel=" || true`
+        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH -- "$TARGET_FILE" | grep "+" | grep "check_auto_parallel=" || true`
         if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
         fi
