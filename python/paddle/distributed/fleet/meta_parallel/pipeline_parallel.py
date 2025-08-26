@@ -281,6 +281,8 @@ class PipelineParallel(MetaParallelBase):
             self._hcg.get_moe_sharding_parallel_world_size() > 1
         )
 
+        self.use_dict_in_pp = True
+
         self.total_loss = None
 
         self.micro_batch_size = self._strategy.pipeline_configs[
