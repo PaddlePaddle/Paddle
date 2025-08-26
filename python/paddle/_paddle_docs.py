@@ -505,6 +505,88 @@ def isnan(
 )
 
 # liuyi
+add_doc_and_signature(
+    "any",
+    """
+    Computes the ``logical or`` of tensor elements over the given dimension, and return the result.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``any(input=tensor_x, dim=1)`` is equivalent to ``any(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the input data type should be 'bool', 'float32', 'float64', 'int32', 'int64', 'complex64', 'complex128'.
+            alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions along which the ``logical or`` is compute. If
+            :attr:`None`, and all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+            alias: ``dim``.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: Results the ``logical or`` on the specified axis of input Tensor `x`,  it's data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # type: ignore
+
+            >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
+            >>> x = paddle.assign(x)
+            >>> x
+            Tensor(shape=[2, 2], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 0],
+             [1, 1]])
+            >>> x = paddle.cast(x, 'bool')
+            >>> # x is a bool Tensor with following elements:
+            >>> #    [[True, False]
+            >>> #     [True, True]]
+
+            >>> # out1 should be True
+            >>> out1 = paddle.any(x)
+            >>> out1
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+
+            >>> # out2 should be [True, True]
+            >>> out2 = paddle.any(x, axis=0)
+            >>> out2
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=False, out3 should be [True, True], out.shape should be (2,)
+            >>> out3 = paddle.any(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
+
+            >>> # keepdim=True, result should be [[True], [True]], out.shape should be (2,1)
+            >>> out4 = paddle.any(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True],
+             [True]])
+
+    """,
+    """
+    def any(
+        x: Tensor,
+        axis: int | Sequence[int] | None = None,
+        keepdim: bool = False,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
 
 # shenwei
 
@@ -515,6 +597,202 @@ def isnan(
 # lousiyu
 
 # zhengshijie
+add_doc_and_signature(
+    "tril",
+    r"""
+    Returns the lower triangular part of a matrix (2-D tensor) or batch
+    of matrices :attr:`x`, the other elements of the result tensor are set
+    to 0. The lower triangular part of the matrix is defined as the elements
+    on and below the diagonal.
+
+    Args:
+        x (Tensor): The input x which is a Tensor.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
+        diagonal (int, optional): The diagonal to consider, default value is 0.
+            If :attr:`diagonal` = 0, all elements on and below the main diagonal are
+            retained. A positive value includes just as many diagonals above the main
+            diagonal, and similarly a negative value excludes just as many diagonals below
+            the main diagonal. The main diagonal are the set of indices
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: Results of lower triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> print(data)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
+
+            >>> tril1 = paddle.tril(data)
+            >>> print(tril1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 0 , 0 , 0 ],
+             [5 , 6 , 0 , 0 ],
+             [9 , 10, 11, 0 ]])
+
+            >>> # example 2, positive diagonal value
+            >>> tril2 = paddle.tril(data, diagonal=2)
+            >>> print(tril2)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 0 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
+
+            >>> # example 3, negative diagonal value
+            >>> tril3 = paddle.tril(data, diagonal=-1)
+            >>> print(tril3)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 0 , 0 , 0 ],
+             [5 , 0 , 0 , 0 ],
+             [9 , 10, 0 , 0 ]])
+    """,
+    """
+def tril(
+    x: Tensor,
+    diagonal: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+
+add_doc_and_signature(
+    "triu",
+    r"""
+    Return the upper triangular part of a matrix (2-D tensor) or batch of matrices
+    :attr:`x`, the other elements of the result tensor are set to 0.
+    The upper triangular part of the matrix is defined as the elements on and
+    above the diagonal.
+
+    Args:
+        x (Tensor): The input x which is a Tensor.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
+        diagonal (int, optional): The diagonal to consider, default value is 0.
+            If :attr:`diagonal` = 0, all elements on and above the main diagonal are
+            retained. A positive value excludes just as many diagonals above the main
+            diagonal, and similarly a negative value includes just as many diagonals below
+            the main diagonal. The main diagonal are the set of indices
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`d_{1}, d_{2}` are the dimensions of the matrix.
+        name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: Results of upper triangular operation by the specified diagonal of input tensor x,
+        it's data type is the same as x's Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.arange(1, 13, dtype="int64").reshape([3,-1])
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [9 , 10, 11, 12]])
+
+            >>> # example 1, default diagonal
+            >>> triu1 = paddle.tensor.triu(x)
+            >>> print(triu1)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [0 , 6 , 7 , 8 ],
+             [0 , 0 , 11, 12]])
+
+            >>> # example 2, positive diagonal value
+            >>> triu2 = paddle.tensor.triu(x, diagonal=2)
+            >>> print(triu2)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 3, 4],
+             [0, 0, 0, 8],
+             [0, 0, 0, 0]])
+
+            >>> # example 3, negative diagonal value
+            >>> triu3 = paddle.tensor.triu(x, diagonal=-1)
+            >>> print(triu3)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1 , 2 , 3 , 4 ],
+             [5 , 6 , 7 , 8 ],
+             [0 , 10, 11, 12]])
+
+    """,
+    """
+def triu(
+    x: Tensor,
+    diagonal: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "bmm",
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dimensional and share the same batch size.
+
+    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: The product Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # In imperative mode:
+            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+            ...                     [2.0, 2.0, 2.0]],
+            ...                     [[3.0, 3.0, 3.0],
+            ...                     [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            >>> out = paddle.bmm(x, y)
+            >>> print(out)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[6. , 6. ],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+
+    """,
+    """
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
 
 # lihaoyang
 

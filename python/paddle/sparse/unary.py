@@ -601,7 +601,7 @@ def cast(
             or crows/cols of SparseCsrTensor. Can be uint8, int8, int16, int32, int64.
         value_dtype (np.dtype|str, optional): Data type of the value of SparseCooTensor,
             SparseCsrTensor. Can be bool, float16, float32, float64, int8, int32, int64, uint8.
-        name (str|None, optional): Name for the operation (optional, default is None).
+        name (str|core.VarDesc.VarType|core.DataType|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
