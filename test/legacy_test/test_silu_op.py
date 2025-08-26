@@ -274,6 +274,15 @@ class TestSiluParamDecorator(unittest.TestCase):
             )
 
 
+class TestSiluPrint(unittest.TestCase):
+    def test_print(self):
+        print(nn.Silu())
+        print(nn.Silu(True))
+        print(nn.Silu(False))
+        print(nn.Silu(inplace=True))
+        print(nn.Silu(inplace=False))
+
+
 class SiluOpDefaultTest(OpTest):
     """the base class of other op testcases"""
 
