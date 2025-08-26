@@ -16,8 +16,25 @@
 
 #include <Python.h>
 #include <vector>
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/pir/include/core/value.h"
 namespace paddle {
 
-namespace pybind {}  // namespace pybind
+namespace pybind {
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  Tensor* x,
+                  paddle::experimental::IntArray* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim);
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  pir::Value* x,
+                  pir::Value* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim);
+}  // namespace pybind
 
 }  // namespace paddle
