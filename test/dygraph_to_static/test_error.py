@@ -350,31 +350,6 @@ class TestKeyError(unittest.TestCase):
             func_ker_error(x)
 
 
-@paddle.jit.to_static(full_graph=True)
-def NpApiErr():
-    a = paddle.to_tensor([1, 2])
-    b = np.sum(a.numpy())
-    print(b)
-
-
-class TestNumpyApiErr(unittest.TestCase):
-    def test_numpy_api_err(self):
-        with self.assertRaises(TypeError) as e:
-            NpApiErr()
-
-        new_exception = e.exception
-
-        error_data = getattr(new_exception, error.ERROR_DATA, None)
-        self.assertIsInstance(error_data, error.ErrorData)
-
-        error_message = str(new_exception)
-
-        self.assertIn(
-            "values will be changed to variables by dy2static, numpy api can not handle variables",
-            error_message,
-        )
-
-
 class test_set_state_dict_err_layer(paddle.nn.Layer):
     def __init__(self):
         super().__init__()

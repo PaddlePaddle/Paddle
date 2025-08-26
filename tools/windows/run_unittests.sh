@@ -24,7 +24,6 @@ disable_wingpu_test="^test_model$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_program_prune_backward_deprecated$|\
 ^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
@@ -95,7 +94,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dygraph_multi_forward$|\
 ^test_instance_norm_op_v2$|\
 ^test_rnn_op$|\
-^test_composite_batch_norm_deprecated$|\
 ^test_prim_amp$|\
 ^test_cumprod_op$|\
 ^test_elementwise_sub_op$|\
@@ -430,7 +428,6 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\
-^test_program_prune_backward_deprecated$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
 ^test_imperative_se_resnext$|\
@@ -459,7 +456,6 @@ long_time_test="^test_gru_op$|\
 ^test_cross_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_imperative_lod_tensor_to_selected_rows_deprecated$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_layer_norm_op_static_build$|\
