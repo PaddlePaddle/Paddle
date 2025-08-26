@@ -184,10 +184,6 @@ list(REMOVE_ITEM TEST_OPS decorator_helper)
 # decorator_helper is a helper python file, not a test
 
 if(APPLE)
-  if(NOT WITH_DISTRIBUTE)
-    list(REMOVE_ITEM TEST_OPS test_desc_clone_deprecated)
-    list(REMOVE_ITEM TEST_OPS test_program_code_deprecated)
-  endif()
   message(
     WARNING
       "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_dist_se_resnext_*"
@@ -604,8 +600,6 @@ set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
-                                                                       120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
