@@ -22,11 +22,7 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import (
-    ParamAliasDecorator,
-    param_one_alias,
-    param_two_alias,
-)
+from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -1205,7 +1201,6 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-@param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
     k: int | Tensor,
@@ -1213,8 +1208,6 @@ def topk(
     largest: bool = True,
     sorted: bool = True,
     name: str | None = None,
-    *,
-    out: tuple[Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
     Return values and indices of the k largest or smallest at the optional axis.
@@ -1286,13 +1279,8 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        values, indices = _C_ops.topk(x, k, axis, largest, sorted)
-        if out is not None:
-            out_values, out_indices = out
-            out_values = paddle.assign(values, output=out_values)
-            out_indices = paddle.assign(indices, output=out_indices)
-            return out_values, out_indices
-        return values, indices
+        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
+        return out, indices
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}
