@@ -17,7 +17,6 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
@@ -222,10 +221,10 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<int64_t> input_dims_;
   std::vector<int64_t> input_strides_;
   int64_t slice_offset_;
-  if (!x.meta().is_contiguous()) {
-    phi::ContiguousKernel<T, Context>(dev_ctx, x, &x_);
+  auto x_meta = x.meta();
+  if (common::vectorize<int64_t>(x.strides()) != input_strides) {
     input_dims_ = common::vectorize<int64_t>(x.dims());
-    input_strides_ = common::vectorize<int64_t>(x.strides());
+    input_strides_ = common::vectorize<int64_t>(x_meta.calc_strides(x.dims()));
     slice_offset_ = 0;
   } else {
     x_ = x;
