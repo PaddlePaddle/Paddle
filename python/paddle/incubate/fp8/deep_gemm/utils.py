@@ -119,11 +119,11 @@ def calc_diff(x, y):
     return 1 - sim
 
 
-def count_bytes(tensors):
+def count_bytes(*tensors):
     total = 0
     for t in tensors:
-        if isinstance(t, tuple):
-            total += count_bytes(t)
-        else:
+        if isinstance(t, (tuple, list)):
+            total += count_bytes(*t)
+        elif t is not None:
             total += t.numel() * t.element_size()
     return total

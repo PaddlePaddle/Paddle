@@ -17,13 +17,18 @@
 # Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
 
 import random
+import unittest
 
 import paddle
 from paddle import Tensor
+from paddle.distributed.fleet.utils.timer_helper import (
+    _GPUEventTimer as GPUEventTimer,
+)
 from paddle.incubate.fp8 import deep_gemm
 from paddle.incubate.fp8.deep_gemm import (
     calc_diff,
     ceil_div,
+    count_bytes,
     get_col_major_tma_aligned_tensor,
 )
 
@@ -209,9 +214,128 @@ def test_m_grouped_gemm_masked() -> None:
     print()
 
 
+class BenchmarkDeepGEMM(unittest.TestCase):
+    def _benchmark_gemm(self, func, name, warmup=10, repeat=100):
+        t = GPUEventTimer(name)
+        for _ in range(warmup):
+            func()
+        t.start()
+        for _ in range(repeat):
+            func()
+        t.stop()
+        avg_time = t.elapsed() / repeat
+        return avg_time
+
+    def test_gemm_performance(self):
+        print("Testing GEMM:")
+        for m in (64, 128, 4096):
+            for k, n in [
+                (7168, 2112),
+                (1536, 24576),
+                (512, 32768),
+                (16384, 7168),
+                (7168, 4096),
+                (2048, 7168),
+            ]:
+                x_fp8, y_fp8, out, ref_out = construct(m, k, n)
+
+                def test_func():
+                    deep_gemm.gemm_fp8_fp8_bf16_nt(x_fp8, y_fp8, out)
+
+                avg_time = self._benchmark_gemm(
+                    test_func, f"GEMM {m=}, {k=}, {n=}"
+                )
+                print(
+                    f' > Perf (m={m:5}, n={n:5}, k={k:5}, "gemm_fp8_fp8_bf16_nt"): '
+                    f'| {avg_time * 1e6:4.0f} us | {2 * m * n * k / avg_time / 1e12:4.0f} TFLOPS | '
+                    f'{(count_bytes(x_fp8, y_fp8, out)) / 1e9 / avg_time:4.0f} GB/s'
+                )
+
+        print()
+
+    def test_m_grouped_gemm_contiguous(self):
+        print("Testing grouped contiguous GEMM:")
+
+        for num_groups, m, k, n in (
+            (8, 4096, 7168, 4096),
+            (8, 4096, 2048, 7168),
+            (4, 8192, 2048, 7168),
+            (4, 8192, 7168, 4096),
+        ):
+            # TODO: make a stronger test
+            x_fp8, y_fp8, out, ref_out = construct_grouped(
+                num_groups, m, k, n, is_masked=False
+            )
+            m_indices = paddle.arange(0, num_groups, dtype=paddle.int32)
+            m_indices = paddle.flatten(
+                paddle.expand(
+                    paddle.unsqueeze(m_indices, -1), shape=[num_groups, m]
+                )
+            )
+
+            def test_func():
+                deep_gemm.m_grouped_gemm_fp8_fp8_bf16_nt_contiguous(
+                    x_fp8, y_fp8, out, m_indices
+                )
+
+            avg_time = self._benchmark_gemm(
+                test_func, f"m_grouped_gemm_contiguous {m=}, {k=}, {n=}"
+            )
+            print(
+                f' > Perf ({num_groups=:2}, m={m:5}, n={n:5}, k={k:5}, "m_grouped_gemm_fp8_fp8_bf16_nt_contiguous"): '
+                f'| {avg_time * 1e6:4.0f} us | {2 * m * n * k / avg_time / 1e12:4.0f} TFLOPS | '
+                f'{(count_bytes(x_fp8, y_fp8, out)) / 1e9 / avg_time:4.0f} GB/s'
+            )
+        print()
+
+    def test_m_grouped_gemm_masked(self):
+        print("Testing grouped masked GEMM:")
+
+        for num_groups, m in ((1, 1024), (2, 512), (4, 256)):
+            for k, n in (
+                (7168, 4096),
+                (2048, 7168),
+            ):
+                # Test correctness
+                masked_m_candidates = list(
+                    filter(
+                        lambda candidate: candidate <= m,
+                        (64, 128, 192, 256, 320, 384),
+                    )
+                )
+                for i in range(10):
+                    x_fp8, y_fp8, out, ref_out = construct_grouped(
+                        num_groups, m, k, n, is_masked=True
+                    )
+                    masked_m = paddle.empty((num_groups,), dtype=paddle.int32)
+                    for j in range(num_groups):
+                        masked_m[j] = random.choice(masked_m_candidates)
+                    masked_m_float = paddle.cast(masked_m, "float32")
+                    masked_m_mean = paddle.mean(masked_m_float)
+                    masked_m_mean_int = paddle.cast(masked_m_mean, "int32")
+                    expected_m = min(int(masked_m_mean_int + 1), m)
+
+                    def test_func():
+                        deep_gemm.m_grouped_gemm_fp8_fp8_bf16_nt_masked(
+                            x_fp8, y_fp8, out, masked_m, expected_m
+                        )
+
+                    avg_time = self._benchmark_gemm(
+                        test_func, f"m_grouped_gemm_masked {m=}, {k=}, {n=}"
+                    )
+
+                    print(
+                        f' > Perf ({num_groups=:2}, m={m:5}, n={n:5}, k={k:5}, "m_grouped_gemm_fp8_fp8_bf16_nt_masked"): '
+                        f'| {avg_time * 1e6:4.0f} us | {2 * m * n * k / avg_time / 1e12:4.0f} TFLOPS | '
+                        f'{(count_bytes(x_fp8, y_fp8, out)) / 1e9 / avg_time:4.0f} GB/s'
+                    )
+        print()
+
+
 if __name__ == "__main__":
     paddle.seed(0)
     random.seed(0)
     test_gemm()
-    test_m_grouped_gemm_contiguous()
-    test_m_grouped_gemm_masked()
+    unittest.main()
+    # test_m_grouped_gemm_contiguous()
+    # test_m_grouped_gemm_masked()
