@@ -143,7 +143,7 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
     auto grad_dim = x_grad->dims();
     x_grad->Resize(x.dims());
     ReduceCudaAMaxAMinGrad<T, Context>(
-        dev_ctx, tmp_x, median_data, out_grad, dims, true, false, x_grad, 0);
+        dev_ctx, tmp_x, median_data, out_grad, dims, true, false, x_grad, true);
     x_grad->Resize(grad_dim);
   }
 }
