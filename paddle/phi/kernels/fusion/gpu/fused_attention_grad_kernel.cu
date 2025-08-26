@@ -448,7 +448,7 @@ void FusedAttentionGradKernel(
         bias_dropout_residual_out_grad,
         bias_dropout_residual_out_grad->numel() * sizeof(T));
 
-    bool ln_0_size = ln_scale_2_p && ln_scale_2_p->numel() == 0;
+    bool ln_0_size = (ln_scale_2_p == nullptr) || (ln_scale_2_p->numel() == 0);
     if (ln_0_size) {
       fused_dropout_layernorm_helper.ResidualDropoutBiasGrad(
           dev_ctx,

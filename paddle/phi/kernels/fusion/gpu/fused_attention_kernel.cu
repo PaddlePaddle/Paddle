@@ -375,30 +375,31 @@ void FusedAttentionKernel(const Context &dev_ctx,
         dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
 
     // 0-size
-    if (ln_scale_2_p && ln_scale_2_p->numel() == 0) {
-      // output = (residual + dropout(input + bias))
+    bool ln_scale_empty =
+        (ln_scale_2_p == nullptr) || (ln_scale_2_p->numel() == 0);
+    if (ln_scale_empty) {
+      // residual + dropout + bias
       fused_dropout_layernorm_helper.ResidualDropoutBias(dev_ctx,
                                                          out_linear_out_data,
                                                          residual_ptr,
                                                          out_linear_bias_data,
                                                          final_out_data,
                                                          dropout_mask_out_data);
-      return;
+    } else {
+      // LayerNorm + residual + dropout + bias
+      fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
+          dev_ctx,
+          out_linear_out_data,
+          residual_ptr,
+          out_linear_bias_data,
+          ln_scale_2_ptr,
+          ln_bias_2_ptr,
+          bias_dropout_residual_out_ptr,
+          dropout_mask_out_data,
+          final_out_data,
+          ln_mean_2_ptr,
+          ln_var_2_ptr);
     }
-
-    // output = layernorm(residual + dropout(input + bias))
-    fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-        dev_ctx,
-        out_linear_out_data,
-        residual_ptr,
-        out_linear_bias_data,
-        ln_scale_2_ptr,
-        ln_bias_2_ptr,
-        bias_dropout_residual_out_ptr,
-        dropout_mask_out_data,
-        final_out_data,
-        ln_mean_2_ptr,
-        ln_var_2_ptr);
   }
 }
 
