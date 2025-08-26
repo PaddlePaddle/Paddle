@@ -94,7 +94,7 @@ class _ConvNd(Layer):
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
         data_format: DataLayoutND = "NCHW",
-        device: str | PlaceLike | None = None,
+        device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
     ) -> None:
         super().__init__()
