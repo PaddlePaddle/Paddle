@@ -48,6 +48,7 @@ from test_activation_op import (
     TestSoftplus,
     TestSoftshrink,
     TestSoftsign,
+    TestSqrt,
     TestSquare,
     TestSTanh,
     TestSwish,
@@ -104,6 +105,7 @@ create_test_zero_size_class(TestTanhshrink)
 create_test_zero_size_class(TestSilu)
 create_test_zero_size_class(TestReciprocal)
 create_test_zero_size_class(TestSquare)
+create_test_zero_size_class(TestSqrt)
 create_test_zero_size_class(TestRsqrt)
 create_test_zero_size_class(TestSoftsign)
 create_test_zero_size_class(TestSigmoid)

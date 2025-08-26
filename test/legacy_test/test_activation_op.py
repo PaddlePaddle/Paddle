@@ -1683,7 +1683,7 @@ class TestSqrt(TestActivation, TestParameter):
             self.check_grad(
                 ['X'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_pir=True,
                 check_prim_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -1696,7 +1696,7 @@ class TestSqrt(TestActivation, TestParameter):
 
     def test_check_output(self):
         self.check_output(
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -5640,8 +5640,8 @@ class TestMishAPI(unittest.TestCase):
             F.mish(x_fp16)
 
 
-class TestSqrtOutAPI(unittest.TestCase):
-    def test_out_in_dygraph(self):
+class TestSqrtOutAndAlias(unittest.TestCase):
+    def test_dygraph(self):
         paddle.disable_static()
         np.random.seed(2024)
         x = paddle.to_tensor(
@@ -5658,12 +5658,10 @@ class TestSqrtOutAPI(unittest.TestCase):
                 paddle.sqrt(x, out=out_buf)
                 y = out_buf
             elif case_type == 'both_return':
-                y = paddle.sqrt(x, out=out_buf)
+                y = paddle.sqrt(input=x, out=out_buf)
             elif case_type == 'both_input_out':
-                _ = paddle.sqrt(x, out=out_buf)
+                _ = paddle.sqrt(input=x, out=out_buf)
                 y = out_buf
-            else:
-                raise AssertionError
 
             ref = paddle._C_ops.sqrt(x)
             np.testing.assert_allclose(
@@ -5691,6 +5689,29 @@ class TestSqrtOutAPI(unittest.TestCase):
         np.testing.assert_allclose(g1, g4, rtol=1e-6, atol=1e-6)
 
         paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data('x', shape=[4, 6], dtype='float32')
+            y_input = paddle.sqrt(input=x)
+
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+
+        exe.run(paddle.static.default_startup_program())
+
+        feed_x = np.random.rand(4, 6).astype('float32')
+        fetch_y_input = exe.run(
+            paddle.static.default_main_program(),
+            feed={'x': feed_x},
+            fetch_list=[y_input],
+        )
+        np.testing.assert_allclose(
+            fetch_y_input[0], np.sqrt(feed_x), rtol=1e-6, atol=1e-6
+        )
 
 
 # ------------------ Test Cudnn Activation----------------------

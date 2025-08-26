@@ -37,10 +37,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_random_ctrl_deprecated)
   set_tests_properties(test_random_ctrl_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_selective_recompute_deprecated MODULES
-                  test_selective_recompute_deprecated)
-  set_tests_properties(test_selective_recompute_deprecated PROPERTIES TIMEOUT
-                                                                      50)
   py_test_modules(test_parallel_tuner_deprecated MODULES
                   test_parallel_tuner_deprecated)
   set_tests_properties(test_parallel_tuner_deprecated PROPERTIES TIMEOUT 120)
@@ -75,8 +71,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_pattern_deprecated MODULES test_pattern_deprecated)
   py_test_modules(test_pattern_match_deprecated MODULES
                   test_pattern_match_deprecated)
-  py_test_modules(test_rule_based_tuner_deprecated MODULES
-                  test_rule_based_tuner_deprecated)
   py_test_modules(test_shard_layer_api_deprecated MODULES
                   test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
@@ -95,9 +89,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_amp_o2_pass_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_pass_bf16_deprecated MODULES test_pass_bf16_deprecated)
-  py_test_modules(test_pass_base_list_deprecated MODULES
-                  test_pass_base_list_deprecated)
-  set_tests_properties(test_pass_base_list_deprecated PROPERTIES TIMEOUT 40)
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_serialization_deprecated MODULES
                   test_serialization_deprecated)
@@ -105,8 +96,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_process_mesh_deprecated)
   py_test_modules(test_new_cost_model_deprecated MODULES
                   test_new_cost_model_deprecated)
-  py_test_modules(test_lr_grad_clip_deprecated MODULES
-                  test_lr_grad_clip_deprecated)
   py_test_modules(test_interface_deprecated MODULES test_interface_deprecated)
   py_test_modules(test_group_operators_deprecated MODULES
                   test_group_operators_deprecated)
