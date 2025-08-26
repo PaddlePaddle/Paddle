@@ -32,9 +32,9 @@ def create_kernel_case(op_type, numpy_op_type):
             np.random.seed(123)
             self.initTestCase()
             if op_type == 'arg_min':
-                self.python_api = paddle.tensor.argmin
+                self.python_api = paddle.Tensor.argmin
             else:
-                self.python_api = paddle.tensor.argmax
+                self.python_api = paddle.Tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -75,9 +75,9 @@ def create_kernel_case(op_type, numpy_op_type):
         def setUp(self):
             self.initTestCase()
             if op_type == 'arg_min':
-                self.python_api = paddle.tensor.argmin
+                self.python_api = paddle.Tensor.argmin
             else:
-                self.python_api = paddle.tensor.argmax
+                self.python_api = paddle.Tensor.argmax
             self.dims = (4, 5, 6)
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -92,9 +92,9 @@ def create_kernel_case(op_type, numpy_op_type):
         def setUp(self):
             self.initTestCase()
             if op_type == 'arg_min':
-                self.python_api = paddle.tensor.argmin
+                self.python_api = paddle.Tensor.argmin
             else:
-                self.python_api = paddle.tensor.argmax
+                self.python_api = paddle.Tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -109,9 +109,9 @@ def create_kernel_case(op_type, numpy_op_type):
         def setUp(self):
             self.initTestCase()
             if op_type == 'arg_min':
-                self.python_api = paddle.tensor.argmin
+                self.python_api = paddle.Tensor.argmin
             else:
-                self.python_api = paddle.tensor.argmax
+                self.python_api = paddle.Tensor.argmax
             self.dims = 4
             self.dtype = "float64"
             self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
@@ -320,7 +320,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmax(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmax_attr_type)
+            self.assertRaises(ValueError, test_argmax_attr_type)
 
             def test_argmin_attr_type():
                 data = paddle.static.data(
@@ -328,7 +328,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmin(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmin_attr_type)
+            self.assertRaises(ValueError, test_argmin_attr_type)
 
             def test_argmax_axis_type():
                 data = paddle.static.data(
@@ -391,6 +391,96 @@ class TestArgMinOpFp16(unittest.TestCase):
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
+
+
+class TestArgmaxAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = get_places()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def _test_dygraph_Compatibility(self, api_name):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        paddle_api = eval(f"paddle.{api_name}")
+        # Position args (args)
+        out1 = paddle_api(x, 1)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle_api(x=x, axis=1)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle_api(input=x, dim=1)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle_api(x, dim=1)
+        paddle_dygraph_out.append(out4)
+
+        # Tensor method kwargs and args
+        if api_name == "argmax":
+            out5 = x.argmax(1)
+            out6 = x.argmax(dim=1)
+        elif api_name == "argmin":
+            out5 = x.argmin(1)
+            out6 = x.argmin(dim=1)
+        paddle_dygraph_out.append(out5)
+        paddle_dygraph_out.append(out6)
+        # Numpy reference  out
+        np_api = eval(f"np.{api_name}")
+        ref_out = np_api(self.np_input, 1)
+        # Check
+        count = 1
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def _test_static_Compatibility(self, api_name):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            paddle_api = eval(f"paddle.{api_name}")
+            # Position args (args)
+            out1 = paddle_api(x, 1)
+            # Key words args (kwargs) for paddle
+            out2 = paddle_api(x=x, axis=1)
+            # Key words args for torch
+            out3 = paddle_api(input=x, dim=1)
+            # Combined args and kwargs
+            out4 = paddle_api(x, dim=1)
+
+            if api_name == "argmax":
+                out5 = x.argmax(1)
+                out6 = x.argmax(dim=1)
+            elif api_name == "argmin":
+                out5 = x.argmin(1)
+                out6 = x.argmin(dim=1)
+
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            np_api = eval(f"np.{api_name}")
+            ref_out = np_api(self.np_input, 1)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+    def test(self):
+        apis = ["argmax", "argmin"]
+        for api in apis:
+            self._test_dygraph_Compatibility(api)
+            self._test_static_Compatibility(api)
 
 
 if __name__ == '__main__':
