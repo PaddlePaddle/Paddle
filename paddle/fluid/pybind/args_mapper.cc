@@ -131,13 +131,13 @@ void ArgSumMapper(PyObject* args,
   Check_PIR_not_support_out(kwargs);
 
   // Check for mutable attrs
-  if (PyObject_CheckIRValue(axis_obj)) {
+  if (axis_obj && PyObject_CheckIRValue(axis_obj)) {
     *axis = CastPyArg2Value(axis_obj, "sum", 1);
-  } else if (PyObject_CheckIRVectorOfValue(axis_obj)) {
+  } else if (axis_obj && PyObject_CheckIRVectorOfValue(axis_obj)) {
     std::vector<pir::Value> axis_tmp =
         CastPyArg2VectorOfValue(axis_obj, "sum", 1);
     *axis = paddle::dialect::stack(axis_tmp, /*axis*/ 0);
-  } else if (PyObject_CheckIRVectorOfValueOrLong(axis_obj)) {
+  } else if (axis_obj && PyObject_CheckIRVectorOfValueOrLong(axis_obj)) {
     std::vector<pir::Value> axis_tmp =
         CastPyArg2VectorOfValueOrLong(axis_obj, "sum", 1);
     *axis = paddle::dialect::stack(axis_tmp, /*axis*/ 0);
