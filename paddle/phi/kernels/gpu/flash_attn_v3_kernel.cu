@@ -2090,7 +2090,7 @@ void FlashMaskV2BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] = ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4;
+    flashmask_maxmin_shape[2] = ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);
