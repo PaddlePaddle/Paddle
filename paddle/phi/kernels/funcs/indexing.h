@@ -41,8 +41,8 @@ namespace phi {
 
 namespace funcs {
 
-static inline common::DDim InferSizeSymdimvector(common::DDim a,
-                                                 common::DDim b) {
+static inline common::DDim InferSizeSymdimvector(const common::DDim& a,
+                                                 const common::DDim& b) {
   auto dimsA = a.size();
   auto dimsB = b.size();
   auto ndim = dimsA > dimsB ? dimsA : dimsB;
@@ -73,7 +73,7 @@ static inline common::DDim InferSizeSymdimvector(common::DDim a,
 
 template <typename T, typename Context>
 std::vector<phi::DenseTensor*> ExpandTensors(
-    const Context& dev_ctx, std::vector<phi::DenseTensor*> indices) {
+    const Context& dev_ctx, const std::vector<phi::DenseTensor*>& indices) {
   std::vector<phi::DenseTensor*> result;
   for (auto& index : indices) {
     if (index->dtype() == paddle::DataType::BOOL) {
@@ -93,7 +93,7 @@ std::vector<phi::DenseTensor*> ExpandTensors(
 
 template <typename T, typename Context>
 std::vector<phi::DenseTensor*> ExpandOutplace(
-    const Context& dev_ctx, std::vector<phi::DenseTensor*> to_expand) {
+    const Context& dev_ctx, const std::vector<phi::DenseTensor*>& to_expand) {
   bool first = true;
   common::DDim sizes;
   for (size_t i = 0; i < to_expand.size(); i++) {
@@ -159,9 +159,9 @@ struct AdvancedIndex {
 
 inline static phi::DenseTensor RestrideSrc(
     phi::DenseTensor* src,
-    int64_t dims_before,
-    int64_t dims_indexed,
-    std::vector<int64_t> replacement_shape) {
+    const int64_t& dims_before,
+    const int64_t& dims_indexed,
+    const std::vector<int64_t>& replacement_shape) {
   std::vector<int64_t> shape_vec = (common::vectorize<int64_t>(src->dims()));
   std::vector<int64_t> strides_vec =
       (common::vectorize<int64_t>(src->strides()));
@@ -183,8 +183,8 @@ inline static phi::DenseTensor RestrideSrc(
 }
 
 inline static void ReshapeIndexer(phi::DenseTensor* index,
-                                  int64_t dims_before,
-                                  int64_t dims_after) {
+                                  const int64_t& dims_before,
+                                  const int64_t& dims_after) {
   auto orig_shape = common::vectorize<int64_t>(index->dims());
   auto shape = std::vector<int64_t>{};
   shape.insert(shape.end(), dims_before, 1);
