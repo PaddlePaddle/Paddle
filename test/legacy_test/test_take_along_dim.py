@@ -111,16 +111,13 @@ class TestTensorTakeAlongAxisParamDecorator(unittest.TestCase):
         elif test_type == 'kwargs':
             result = api_to_call(indices=indices, axis=self.axis)
         else:
-            raise ValueError(f"未知的测试类型: {test_type}")
+            raise ValueError(f"Unknown test type: {test_type}")
 
         result.mean().backward()
 
         return result, x.grad
 
     def test_tensor_methods(self):
-        """
-        主测试函数，遍历所有方法和调用方式进行验证。
-        """
         for method in self.method_names:
             out_std, grad_std = self.do_test(method, 'raw')
 
@@ -131,15 +128,13 @@ class TestTensorTakeAlongAxisParamDecorator(unittest.TestCase):
                     np.testing.assert_allclose(
                         out.numpy(),
                         out_std.numpy(),
-                        rtol=1e-6,
-                        err_msg=f"方法 {method} 在测试类型 {test_type} 下的输出值不匹配",
+                        rtol=1e-20,
                     )
 
                     np.testing.assert_allclose(
                         grad.numpy(),
                         grad_std.numpy(),
-                        rtol=1e-6,
-                        err_msg=f"方法 {method} 在测试类型 {test_type} 下的梯度值不匹配",
+                        rtol=1e-20,
                     )
 
 
