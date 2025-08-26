@@ -18,12 +18,14 @@
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 #include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_subtract_kernel.h"
+#include "paddle/phi/kernels/trunc_kernel.h"
 
 namespace phi {
 
@@ -158,6 +160,17 @@ void FloorDivideKernel(const Context& dev_ctx,
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  DenseTensor tmp;
+  tmp.Resize(out->dims());
+  DivideKernel<T, Context>(dev_ctx, x, y, &tmp);
+  TruncKernel<T, Context>(dev_ctx, tmp, out);
+}
+
 // Create the definition of Heaviside
 template <typename T, typename Context>
 void HeavisideKernel(const Context& dev_ctx,
@@ -261,6 +274,19 @@ PD_REGISTER_KERNEL(floor_divide,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
@@ -300,6 +326,8 @@ PD_REGISTER_KERNEL(multiply, KPS, ALL_LAYOUT, phi::MultiplyKernel, float) {}
 PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
 PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int) {
+}
+PD_REGISTER_KERNEL(trunc_divide, KPS, ALL_LAYOUT, phi::TruncDivideKernel, int) {
 }
 PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
