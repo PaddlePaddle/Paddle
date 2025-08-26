@@ -14,9 +14,9 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
-from paddle.base import core
 
 
 class TestPaddleAddNewFeatures(unittest.TestCase):
@@ -24,11 +24,7 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
         self.x_np = np.array([3, 5], dtype='float32')
         self.y_np = np.array([2, 3], dtype='float32')
         self.scalar = 2.0
-        self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else core.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_paddle_add_with_alpha(self):
         """test paddle.add alpha"""
@@ -184,10 +180,7 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
 class TestAddOut(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
-        else:
-            self.place = core.CPUPlace()
+        self.place = get_device_place()
 
     def test_add_with_alpha_out(self):
         def run_add_with_alpha(test_type):
