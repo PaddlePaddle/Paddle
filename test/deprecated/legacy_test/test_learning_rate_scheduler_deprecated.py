@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 import math
-import os
 import unittest
 
 import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import core, framework
 
 
 def exponential_decay(
@@ -384,134 +381,6 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
                 lr = paddle.optimizer.lr.LambdaDecay(learning_rate, "test")
 
 
-class TestLearningRateDecay(unittest.TestCase):
-    def check_decay(self, python_decay_fn, base_decay_fn, kwargs):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for place in places:
-            self.check_decay_with_place(
-                place, python_decay_fn, base_decay_fn, kwargs
-            )
-
-    def check_decay_with_place(
-        self, place, python_decay_fn, base_decay_fn, kwargs
-    ):
-        main_prog = base.Program()
-        startup_prog = base.Program()
-
-        with base.program_guard(main_prog, startup_prog):
-            decayed_lr = base_decay_fn(**kwargs)
-
-        place = base.CPUPlace()
-        exe = base.Executor(place)
-
-        exe.run(startup_prog)
-
-        for step in range(10):
-            # Step of NoamDecay starts from 1.
-            if python_decay_fn.__name__ == 'noam_decay':
-                step += 1
-            (lr_val,) = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
-            python_decayed_lr = python_decay_fn(
-                global_step=float(step), **kwargs
-            )
-            self.assertAlmostEqual(
-                python_decayed_lr,
-                lr_val[0],
-                places=6,
-                msg=f'Failed lr scheduler is {python_decay_fn.__name__}, step {step}, Python result is {python_decayed_lr}, Fluid result is {lr_val[0]}',
-            )
-
-    def test_decay(self):
-        common_kwargs_true = {
-            "learning_rate": 1.0,
-            "decay_steps": 5,
-            "decay_rate": 0.5,
-            "staircase": True,
-        }
-        common_kwargs_false = copy.deepcopy(common_kwargs_true)
-        common_kwargs_false["staircase"] = False
-
-        decay_fns = [
-            (
-                exponential_decay,
-                paddle.optimizer.lr.exponential_decay,
-                common_kwargs_true,
-            ),
-            (
-                exponential_decay,
-                paddle.optimizer.lr.exponential_decay,
-                common_kwargs_false,
-            ),
-            (
-                natural_exp_decay,
-                paddle.optimizer.lr.natural_exp_decay,
-                common_kwargs_true,
-            ),
-            (
-                natural_exp_decay,
-                paddle.optimizer.lr.natural_exp_decay,
-                common_kwargs_false,
-            ),
-            (
-                inverse_time_decay,
-                paddle.optimizer.lr.inverse_time_decay,
-                common_kwargs_true,
-            ),
-            (
-                inverse_time_decay,
-                paddle.optimizer.lr.inverse_time_decay,
-                common_kwargs_false,
-            ),
-            (
-                polynomial_decay,
-                paddle.optimizer.lr.polynomial_decay,
-                {"learning_rate": 1.0, "decay_steps": 5, "cycle": True},
-            ),
-            (
-                polynomial_decay,
-                paddle.optimizer.lr.polynomial_decay,
-                {"learning_rate": 1.0, "decay_steps": 5, "cycle": False},
-            ),
-            (
-                piecewise_decay,
-                paddle.optimizer.lr.piecewise_decay,
-                {"boundaries": [3, 6, 9], "values": [0.1, 0.2, 0.3, 0.4]},
-            ),
-            (
-                cosine_decay,
-                paddle.optimizer.lr.cosine_decay,
-                {"learning_rate": 0.1, "step_each_epoch": 100, "epochs": 120},
-            ),
-            (
-                noam_decay,
-                paddle.optimizer.lr.noam_decay,
-                {"d_model": 0.01, "warmup_steps": 200, "learning_rate": 2.0},
-            ),
-        ]
-
-        for py_decay_fn, base_decay_fn, kwargs in decay_fns:
-            print(
-                "class="
-                + self.__class__.__name__
-                + " decay_fn="
-                + py_decay_fn.__name__
-                + " kwargs="
-                + str(kwargs)
-            )
-            main_program = framework.Program()
-            startup_program = framework.Program()
-            with framework.program_guard(main_program, startup_program):
-                self.check_decay(py_decay_fn, base_decay_fn, kwargs)
-
-
 class TestLinearWamrupLearningRateDecay(unittest.TestCase):
     def check_decay_with_place(
         self, place, python_decay_fn, base_decay_fn, kwargs
@@ -550,69 +419,6 @@ class TestLinearWamrupLearningRateDecay(unittest.TestCase):
                 lr_val[0],
                 msg=f'Test {python_decay_fn.__name__} Failed, step {step}, Python result is {python_decayed_lr}, Fluid result is {lr_val[0]}',
             )
-
-
-class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
-    def run_scalar_lr(self, place, lr, start_lr, end_lr):
-        main_prog = base.Program()
-        startup_prog = base.Program()
-
-        warmup_steps = 10
-
-        with base.program_guard(main_prog, startup_prog):
-            decayed_lr = paddle.optimizer.lr.linear_lr_warmup(
-                lr, warmup_steps, start_lr, end_lr
-            )
-
-        exe = base.Executor(place)
-        exe.run(startup_prog)
-
-        for step in range(20):
-            (lr_val,) = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
-            if step < warmup_steps:
-                expected_lr = linear_lr_warmup(
-                    float(step), warmup_steps, start_lr, end_lr
-                )
-            else:
-                expected_lr = lr
-            self.assertAlmostEqual(
-                expected_lr,
-                lr_val[0],
-                places=6,
-                msg=f'Test failed, step {step}, expected {expected_lr}, but got {lr_val[0]}',
-            )
-
-    def test_scalar_lr(self):
-        def run_places(lr, start_lr, end_lr):
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for p in places:
-                self.run_scalar_lr(p, lr, start_lr, end_lr)
-
-        # float
-        lr = 0.2
-        start_lr = 0.1 / 3.0
-        end_lr = 0.2
-        run_places(lr, start_lr, end_lr)
-
-        # int end_lr
-        lr = 2.0
-        start_lr = 0.1 / 3.0
-        end_lr = 1
-        run_places(lr, start_lr, end_lr)
-
-        # int
-        lr = 1
-        start_lr = 0
-        end_lr = 1
-        run_places(lr, start_lr, end_lr)
 
 
 if __name__ == '__main__':

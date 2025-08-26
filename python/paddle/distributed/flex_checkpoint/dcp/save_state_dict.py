@@ -343,6 +343,7 @@ def save_state_dict_impl(
         local_state_dict = {}
         local_state_dict_metadata = {}
         local_storage_metadata = {}
+        global_shape = None
         for key, val in flat_state_dict.items():
             if isinstance(val, paddle.Tensor):
                 # Case1: not initialized means this tensor is placed in another mesh which do not contain this rank
@@ -365,6 +366,7 @@ def save_state_dict_impl(
                         if len(val.shape) > 0
                         else ((), ())
                     )
+                    global_shape = val.shape
                     if local_shape is None or global_offset is None:
                         continue
                 else:
@@ -374,11 +376,13 @@ def save_state_dict_impl(
                         if len(val.shape) > 0
                         else ()
                     )
+                    global_shape = local_shape
                     local_tensor = val
             elif isinstance(val, ShardedWeight):
                 local_tensor = val.local_tensor
                 local_shape = val.local_shape
                 global_offset = val.global_offset
+                global_shape = val.global_shape
             else:
                 raise ValueError(
                     f"The value of state_dict should be a paddle.Tensor, but got: {val}"
@@ -387,7 +391,7 @@ def save_state_dict_impl(
             local_state_dict[key] = local_tensor
             local_tensor_dtype = str(local_tensor.dtype).split('.')[1]
             local_state_dict_metadata[key] = LocalTensorMetadata(
-                global_offset, local_shape, local_tensor_dtype
+                global_offset, local_shape, local_tensor_dtype, global_shape
             )
             local_storage_metadata[
                 LocalTensorIndex(key, tuple(global_offset))
