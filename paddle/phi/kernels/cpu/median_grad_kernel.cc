@@ -83,8 +83,13 @@ void CalcMedianGradEvenly(int64_t pre_dim,
       }
     }
     if (data_index.size() == 0) {
-      dx_data[offset + m_index[2 * i]] = dout_data[i] / static_cast<T>(2.0);
-      dx_data[offset + m_index[2 * i + 1]] = dout_data[i] / static_cast<T>(2.0);
+      if (m_index[2 * i] == m_index[2 * i + 1]) {
+        dx_data[offset + m_index[2 * i]] = dout_data[i];
+      } else {
+        dx_data[offset + m_index[2 * i]] = dout_data[i] / static_cast<T>(2.0);
+        dx_data[offset + m_index[2 * i + 1]] =
+            dout_data[i] / static_cast<T>(2.0);
+      }
     } else {
       for (j = 0; j < data_index.size(); j++) {
         dx_data[data_index[j]] =
