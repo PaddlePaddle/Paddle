@@ -111,7 +111,7 @@ else:
             if not isinstance(arg, int):
                 args_is_all_int = False
                 break
-        if args_is_all_int:
+        if args_is_all_int and len(kwargs) == 0:
             original_init(self, paddle.empty(list(args), dtype="float32"))
         else:
             original_init(self, *args, **kwargs)
