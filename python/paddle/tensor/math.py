@@ -1654,6 +1654,7 @@ def sum(
 ) -> Tensor:
     """
     Computes the sum of tensor elements over the given dimension.
+
     Args:
         x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
             uint8, int8, int16, int32, int64, complex64, complex128.
@@ -1669,13 +1670,17 @@ def sum(
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
         if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
+
     Examples:
         .. code-block:: python
+
             >>> import paddle
+
             >>> # x is a Tensor with following elements:
             >>> #    [[0.2, 0.3, 0.5, 0.9]
             >>> #     [0.1, 0.2, 0.6, 0.7]]
@@ -1699,6 +1704,7 @@ def sum(
             Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[1.89999998],
              [1.60000002]])
+
             >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
             >>> #      [[[1, 2], [3, 4]],
             >>> #      [[5, 6], [7, 8]]]
@@ -1713,6 +1719,7 @@ def sum(
             >>> out6
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [16, 20])
+
             >>> # x is a Tensor with following elements:
             >>> #    [[True, True, True, True]
             >>> #     [False, False, False, False]]
