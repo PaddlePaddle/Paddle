@@ -18,6 +18,9 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/trunc_kernel.h"
+
 #ifdef PADDLE_WITH_XPU_FFT
 #include "fft/cuComplex.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -37,6 +40,17 @@ void FloorDivideKernel(const Context& dev_ctx,
                        DenseTensor* out) {
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  DenseTensor tmp;
+  tmp.Resize(out->dims());
+  DivideKernel<T, Context>(dev_ctx, x, y, &tmp);
+  TruncKernel<T, Context>(dev_ctx, tmp, out);
 }
 
 template <typename T, typename Context>
@@ -161,6 +175,15 @@ PD_REGISTER_KERNEL(floor_divide,
                    XPU,
                    ALL_LAYOUT,
                    phi::FloorDivideKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,

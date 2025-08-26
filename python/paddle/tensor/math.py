@@ -1042,8 +1042,7 @@ def divide(
         return res
     elif rounding_mode == "trunc":
         if in_dynamic_or_pir_mode():
-            tmp = _C_ops.divide(x, y)
-            res = _C_ops.trunc(tmp, out=out)
+            res = _C_ops.trunc_divide(x, y, out=out)
         else:
             tmp = _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -1095,8 +1094,7 @@ def divide_(
     if rounding_mode is None:
         res = _C_ops.divide_(x, y)
     elif rounding_mode == "trunc":
-        tmp = _C_ops.divide_(x, y)
-        res = _C_ops.trunc_(tmp)
+        res = _C_ops.trunc_divide_(x, y)
     elif rounding_mode == "floor":
         res = _C_ops.floor_divide_(x, y)
     else:

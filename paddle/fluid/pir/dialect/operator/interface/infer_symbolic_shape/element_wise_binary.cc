@@ -129,6 +129,16 @@ bool FloorDivideOpInferSymbolicShape(
       });
 }
 
+bool TruncDivideOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return InferSymbolicShapeElementWiseBinary(
+      op,
+      infer_context,
+      [&](const symbol::DimExpr &x, const symbol::DimExpr &y) {
+        return x / y;
+      });
+}
+
 bool MinimumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return InferSymbolicShapeElementWiseBinary(

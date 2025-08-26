@@ -392,6 +392,16 @@
     func : tile
   backward : tile_grad
 
+- op : trunc_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : trunc_divide
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
+
 # The `axis` argument of Python API paddle.unique is not vector
 - op : unique
   args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64)
