@@ -387,7 +387,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
-list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -572,21 +571,9 @@ py_test_modules(
   FLAGS_cudnn_batchnorm_spatial_persistent=1
   FLAGS_conv_workspace_size_limit=1000)
 
-if(NOT WIN32)
-  # TODO: fix these unittests failure on Windows
-  py_test_modules(test_layers_deprecated MODULES test_layers_deprecated ENVS
-                  FLAGS_cudnn_deterministic=1)
-endif()
-
 set_tests_properties(
   test_dataloader_keep_order_deprecated test_dataloader_unkeep_order_deprecated
   PROPERTIES LABELS "RUN_TYPE=DIST")
-
-if(NOT WIN32)
-  set_tests_properties(test_multiprocess_reader_exception_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
-endif()
 
 # setting timeout value as 15S
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
