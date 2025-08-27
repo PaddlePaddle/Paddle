@@ -26,6 +26,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     index_select_decorator,
     param_one_alias,
+    param_two_alias,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -665,6 +666,8 @@ def where(
     x: Tensor | float | None = None,
     y: Tensor | float | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
@@ -691,6 +694,7 @@ def where(
         y (Tensor|scalar|None, optional): A Tensor or scalar to choose when the condition is False with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
             alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored to this tensor. Default is None.
 
     Returns:
        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
@@ -721,7 +725,7 @@ def where(
         y = paddle.to_tensor(y)
 
     if x is None and y is None:
-        return nonzero(condition, as_tuple=True)
+        return nonzero(condition, as_tuple=True, out=out)
 
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
@@ -758,7 +762,9 @@ def where(
         if y_shape != broadcast_shape:
             broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
 
-        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+        return _C_ops.where(
+            broadcast_condition, broadcast_x, broadcast_y, out=out
+        )
 
     else:
         # for PIR and old IR
@@ -781,7 +787,9 @@ def where(
             broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
         if in_pir_mode():
-            return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+            return _C_ops.where(
+                broadcast_condition, broadcast_x, broadcast_y, out=out
+            )
         else:
             check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
             check_variable_and_dtype(
@@ -1035,6 +1043,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
     k: int | Tensor,
@@ -1042,6 +1051,8 @@ def topk(
     largest: bool = True,
     sorted: bool = True,
     name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor]:
     """
     Return values and indices of the k largest or smallest at the optional axis.
@@ -1113,8 +1124,13 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
-        return out, indices
+        values, indices = _C_ops.topk(x, k, axis, largest, sorted)
+        if out is not None:
+            out_values, out_indices = out
+            out_values = paddle.assign(values, output=out_values)
+            out_indices = paddle.assign(indices, output=out_indices)
+            return out_values, out_indices
+        return values, indices
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}
