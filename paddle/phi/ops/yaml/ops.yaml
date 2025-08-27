@@ -3644,12 +3644,6 @@
 
 - op : median
   args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
-  python_api :
-    name : [paddle.bmm, paddle.Tensor.bmm]
-    args_alias:
-      x : [input]
-      y : [mat2]
-  output : Tensor(out)
   output : Tensor(out), Tensor(medians)
   infer_meta :
     func : MedianInferMeta

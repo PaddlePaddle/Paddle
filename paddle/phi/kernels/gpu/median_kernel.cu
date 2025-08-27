@@ -125,7 +125,6 @@ __global__ void CalcMedianMinKernel(const T* sort_out_ptr,
 
   for (int64_t index = begin; index < pre_dim; index += step) {
     if (nan_counts[index] > 0) {
-      printf("id = %lld\n", nan_indice[index]);
       output[index] = nan_val;
       median_val[index] = nan_indice[index];
       continue;
