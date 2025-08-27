@@ -629,8 +629,7 @@ def median(
             0,
             None,
         ], 'when input 0-D, axis can only be [-1, 0] or default None'
-
-    if axis is not None:
+    elif axis is not None:
         if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
             raise ValueError(
                 "In median, axis should be none or an integer in range [-rank(x), rank(x))."
