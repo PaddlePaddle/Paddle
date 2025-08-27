@@ -559,7 +559,7 @@ __global__ void TransposeSimpleKernel(IndexType nthreads,
 
 typedef struct alignas(8) fp8x8_t {
   union data_t {
-    __nv_fp8_e4m3 scalar[8];
+    phi::float8_e4m3fn scalar[8];
     uint2 vector;
   };
   data_t data;
@@ -582,8 +582,8 @@ constexpr int THREAD_TILE_DIM = BLOCK_TILE_SIZE / BLOCK_DIM;
 
 __global__ void
 __launch_bounds__(BLOCK_DIM* BLOCK_DIM) inline fp8_fast_transpose_kernel(
-    const __nv_fp8_e4m3* __restrict__ src,  // Source matrix (M x N)
-    __nv_fp8_e4m3* __restrict__ dst,        // Destination matrix (N x M)
+    const phi::float8_e4m3fn* __restrict__ src,  // Source matrix (M x N)
+    phi::float8_e4m3fn* __restrict__ dst,        // Destination matrix (N x M)
     int B,
     int M,
     int N,                  // Batch size, M-dimension, N-dimension
@@ -630,9 +630,9 @@ __launch_bounds__(BLOCK_DIM* BLOCK_DIM) inline fp8_fast_transpose_kernel(
 
     // Check bounds for source matrix before loading
     // THREAD_TILE_DIM (8) is the width of the fp8x8_t block.
-    const __nv_fp8_e4m3* src_ptr = src + current_batch_offset +
-                                   static_cast<size_t>(src_global_row) * N +
-                                   src_global_col_start;
+    const phi::float8_e4m3fn* src_ptr =
+        src + current_batch_offset + static_cast<size_t>(src_global_row) * N +
+        src_global_col_start;
     local_tile[k].load(src_ptr);
   }
 
@@ -667,7 +667,7 @@ __launch_bounds__(BLOCK_DIM* BLOCK_DIM) inline fp8_fast_transpose_kernel(
     size_t offset = current_batch_offset +
                     static_cast<size_t>(dst_global_row) * M +
                     dst_global_col_start;
-    __nv_fp8_e4m3* dst_ptr = dst + offset;
+    phi::float8_e4m3fn* dst_ptr = dst + offset;
 
     fp8x8_t output_block;
     const uint32_t smem_row = tid_y * THREAD_TILE_DIM + k;
@@ -693,12 +693,7 @@ void dispatch_fp8_fast_transpose_kernel(const phi::GPUContext& d,
   grid.x = N / BLOCK_TILE_SIZE;  // not for un-aligned
 
   fp8_fast_transpose_kernel<<<grid, block>>>(
-      reinterpret_cast<const __nv_fp8_e4m3*>(input),
-      reinterpret_cast<__nv_fp8_e4m3*>(output),
-      B,
-      M,
-      N,
-      static_cast<size_t>(M) * static_cast<size_t>(N));
+      input, output, B, M, N, static_cast<size_t>(M) * static_cast<size_t>(N));
 }
 
 // Here suppose convert all tensor to dim3, so just change dim1 and 2.
