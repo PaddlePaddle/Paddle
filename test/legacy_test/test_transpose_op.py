@@ -242,13 +242,14 @@ class TestFP8FastTranspose(unittest.TestCase):
         ]
 
     def test_verify_transpose(self):
-        for case in self.test_cases:
-            np_data = np.random.rand(*case["shape"]).astype(np.float32)
-            gold = np.transpose(np_data, case["perm"])
-            x = paddle.to_tensor(np_data).cast(self.dtype)
-            out = paddle.transpose(x, case["perm"]).contiguous()
-            out_ref = paddle.to_tensor(gold).cast(self.dtype)
-            np.testing.assert_equal(out.numpy(), out_ref)
+        paddle.disable_static()
+        with paddle.no_grad():
+            for case in self.test_cases:
+                x = paddle.randn(case["shape"]).cast(self.dtype)
+                np_data = x.numpy()
+                gold = np.transpose(np_data, case["perm"])
+                out = paddle.transpose(x, case["perm"]).contiguous()
+                np.testing.assert_equal(out.numpy(), gold)
 
 
 class TestAutoTuneTransposeFP16Op(OpTest):
