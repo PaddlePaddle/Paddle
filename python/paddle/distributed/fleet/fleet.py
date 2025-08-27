@@ -39,7 +39,6 @@ from .meta_parallel import model_parallel_random_seed
 from .utils.log_util import logger, set_log_level
 
 if TYPE_CHECKING:
-
     from collections.abc import (
         Callable,
         Iterable,
@@ -334,7 +333,12 @@ class Fleet:
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num
                     )
-                paddle.distributed.init_parallel_env()
+
+                paddle.distributed.init_parallel_env(
+                    self._user_defined_strategy.hybrid_configs[
+                        "default_comm_group_configs"
+                    ].nccl_config
+                )
 
             # hybrid parallel not support for npu/xpu
             if not self._user_defined_strategy.heter_ccl_mode:
@@ -679,12 +683,16 @@ class Fleet:
             and dims[hybrid_group_names.index("expert")] > 1
         ):
             # for expert parallel in MoE model
-            hcg = tp.EPHybridCommunicateGroup(hybrid_group_names, dims)
+            hcg = tp.EPHybridCommunicateGroup(
+                hybrid_group_names, dims, self.hybrid_configs
+            )
             self._topology = hcg._dense_topo
             return hcg
         else:
             self._topology = tp.CommunicateTopology(hybrid_group_names, dims)
-            return tp.HybridCommunicateGroup(self._topology)
+            return tp.HybridCommunicateGroup(
+                self._topology, self.hybrid_configs
+            )
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
@@ -699,12 +707,12 @@ class Fleet:
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
-        assert (
-            self.sep_degree >= 0
-        ), "sep_degree should be greater or equal to 0"
-        assert (
-            self.sharding_degree >= 0
-        ), "sharding_degree should be greater or equal to 0"
+        assert self.sep_degree >= 0, (
+            "sep_degree should be greater or equal to 0"
+        )
+        assert self.sharding_degree >= 0, (
+            "sharding_degree should be greater or equal to 0"
+        )
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
@@ -1526,9 +1534,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'amp_init'):
                 amp_optimizer = self.user_defined_optimizer
 
-        assert (
-            amp_optimizer is not None
-        ), "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        assert amp_optimizer is not None, (
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        )
         return amp_optimizer
 
     def get_loss_scaling(self) -> float:
@@ -1612,9 +1620,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'qat_init'):
                 qat_optimizer = self.user_defined_optimizer
 
-        assert (
-            qat_optimizer is not None
-        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        assert qat_optimizer is not None, (
+            "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        )
         return qat_optimizer
 
     def qat_init(

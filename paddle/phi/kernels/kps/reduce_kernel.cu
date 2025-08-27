@@ -45,6 +45,13 @@ void ProdKernel(const Context& dev_ctx,
                 bool keep_dim,
                 bool reduce_all,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    // fill with 1.
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
@@ -345,6 +352,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    double,
                    bool,
                    phi::dtype::bfloat16,
+                   phi::dtype::float8_e4m3fn,
                    float16,
                    int,
                    int64_t,

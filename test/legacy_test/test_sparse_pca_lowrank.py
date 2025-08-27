@@ -38,7 +38,7 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
     def transpose(self, x):
         shape = x.shape
         perm = list(range(0, len(shape)))
-        perm = perm[:-2] + [perm[-1]] + [perm[-2]]
+        perm = [*perm[:-2], perm[-1], perm[-2]]
         return paddle.transpose(x, perm)
 
     def random_sparse_matrix(self, rows, columns, density=0.01, **kwargs):
@@ -54,7 +54,7 @@ class TestSparsePcaLowrankAPI(unittest.TestCase):
         indices = [row_indices, column_indices]
         values = paddle.randn((nonzero_elements,), dtype=dtype)
         values *= paddle.to_tensor(
-            [-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype
+            [-(float(i - j) ** 2) for i, j in zip(*indices)], dtype=dtype
         ).exp()
         indices_tensor = paddle.to_tensor(indices)
         x = paddle.sparse.sparse_coo_tensor(

@@ -628,6 +628,26 @@ class CustomDevice : public DeviceInterface {
     return grid_dim_size;
   }
 
+  bool IsFloat16Supported(size_t dev_id) {
+    const auto device = &devices_pool[dev_id];
+    bool supported = false;
+    if (pimpl_->is_float16_supported) {
+      pimpl_->is_float16_supported(device, &supported);
+    }
+    VLOG(10) << Type() << " is float16 supported: " << supported;
+    return supported;
+  }
+
+  bool IsBFloat16Supported(size_t dev_id) {
+    const auto device = &devices_pool[dev_id];
+    bool supported = false;
+    if (pimpl_->is_bfloat16_supported) {
+      pimpl_->is_bfloat16_supported(device, &supported);
+    }
+    VLOG(10) << Type() << " is bfloat16 supported: " << false;
+    return supported;
+  }
+
   void* InitEigenDevice(const Place& place,
                         phi::stream::stream_t stream,
                         phi::Allocator* allocator) override {
@@ -1007,6 +1027,52 @@ class CustomDevice : public DeviceInterface {
     CHECK_PTR(pimpl_->profiler_collect_trace_data);
     PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->profiler_collect_trace_data(
         reinterpret_cast<C_Profiler>(collector), start_ns, user_data));
+  }
+
+  void InitBlasHandle(size_t dev_id,
+                      void** blas_handle,
+                      phi::stream::stream_t stream) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_blas_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(
+          pimpl_->init_blas_handle(device,
+                                   reinterpret_cast<C_BLASHandle*>(blas_handle),
+                                   reinterpret_cast<C_Stream>(stream)));
+    }
+  }
+
+  void BlasSetMathMode(size_t dev_id,
+                       void* blas_handle,
+                       int math_mode) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->blas_set_math_mode) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->blas_set_math_mode(
+          device, reinterpret_cast<C_BLASHandle>(blas_handle), math_mode));
+    }
+  }
+
+  void InitBlasLtHandle(size_t dev_id, void** blaslt_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->init_blaslt_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->init_blaslt_handle(
+          device, reinterpret_cast<C_BLASLtHandle*>(blaslt_handle)));
+    }
+  }
+
+  void DestroyBlasHandle(size_t dev_id, void* blas_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_blas_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blas_handle(
+          device, reinterpret_cast<C_BLASHandle>(blas_handle)));
+    }
+  }
+
+  void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) override {
+    const auto device = &devices_pool[dev_id];
+    if (pimpl_->destroy_blaslt_handle) {
+      PADDLE_ENFORCE_CUSTOM_DEVICE_SUCCESS(pimpl_->destroy_blaslt_handle(
+          device, reinterpret_cast<C_BLASLtHandle>(blaslt_handle)));
+    }
   }
 
  private:

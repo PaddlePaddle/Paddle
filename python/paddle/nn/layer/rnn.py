@@ -1496,9 +1496,9 @@ class BiRNN(Layer):
         **kwargs: Any,
     ) -> tuple[Tensor, tuple[Tensor, Tensor]]:
         if isinstance(initial_states, (list, tuple)):
-            assert (
-                len(initial_states) == 2
-            ), "length of initial_states should be 2 when it is a list/tuple"
+            assert len(initial_states) == 2, (
+                "length of initial_states should be 2 when it is a list/tuple"
+            )
 
         outputs, final_states = birnn(
             self.cell_fw,

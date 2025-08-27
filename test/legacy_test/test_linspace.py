@@ -171,12 +171,14 @@ class TestLinspaceAPI(unittest.TestCase):
     def test_name(self):
         if paddle.framework.use_pir_api():
             return
-        with paddle_static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                out = paddle.linspace(
-                    0, 10, 5, dtype='float32', name='linspace_res'
-                )
-                assert 'linspace_res' in out.name
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            out = paddle.linspace(
+                0, 10, 5, dtype='float32', name='linspace_res'
+            )
+            assert 'linspace_res' in out.name
 
     def test_imperative(self):
         out1 = paddle.linspace(0, 10, 5, dtype='float32')

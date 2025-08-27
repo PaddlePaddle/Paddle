@@ -1421,44 +1421,49 @@ void HeavisideGradKernel(const Context& dev_ctx,
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   return dout * y * pow(static_cast<double>(x), static_cast<double>(y - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dx(T x, T y, T out, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * y_val *
-                        pow(x_val, y_val - 1));
+  return dout * static_cast<T>(y_val * pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   return dout * log(static_cast<double>(x)) *
          pow(static_cast<double>(x), static_cast<double>(y));
 }
 template <typename T, typename MPType>
 HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
 compute_pow_grad_dy(T x, T y, T out, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * log(x_val) *
-                        pow(x_val, y_val));
+  return dout * static_cast<T>(log(x_val) * pow(x_val, y_val));
 }
 #else
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * y_val *
-                        std::pow(x_val, y_val - 1));
+  return dout * static_cast<T>(y_val * std::pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
 HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
-  return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
-                        std::pow(x_val, y_val));
+  return dout * static_cast<T>(std::log(x_val) * std::pow(x_val, y_val));
 }
 #endif
 

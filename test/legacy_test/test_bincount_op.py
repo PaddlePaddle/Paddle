@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.inference as paddle_infer
@@ -251,11 +251,7 @@ class TestTensorMinlength(unittest.TestCase):
         self.save_path = os.path.join(
             self.temp_dir.name, 'tensor_minlength_bincount'
         )
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -316,6 +312,13 @@ class TestTensorMinlength(unittest.TestCase):
             output_handle = predictor.get_output_handle(output_names[0])
             infer_out = output_handle.copy_to_cpu()
             np.testing.assert_allclose(static_out[0], infer_out)
+
+
+class TestBincountOp_ZeroSize(TestBincountOp):
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(low=0, high=20, size=0)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
 if __name__ == "__main__":

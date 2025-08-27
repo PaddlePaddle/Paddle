@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -37,11 +38,7 @@ class TestVarAPI(unittest.TestCase):
         self.unbiased = True
         self.set_attrs()
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def set_attrs(self):
         pass
@@ -119,7 +116,6 @@ class TestVarAPI_alias(unittest.TestCase):
 
 
 class TestVarError(unittest.TestCase):
-
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [2, 3, 4], 'int32')

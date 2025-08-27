@@ -34,15 +34,11 @@ PaddlePaddle security team attaches great importance to the security of the fram
 
 ### Reporting vulnerabilities
 
-We encourage responsible disclosure of security issues to PaddlePaddle and please email reports about any security issues you find to paddle-security@baidu.com.
+We encourage responsible disclosure of security issues to PaddlePaddle and Please submit the discovered security issues through the BSRC platform (platform link: https://bsrc.baidu.com/v2/#/home?language=en ）
 
+After the security team receives your message, they will communicate with you in time. The security team will work to keep you informed of an issue fix.
 
-
-After the security team receives your email, they will communicate with you in time. The security team will work to keep you informed of an issue fix.
-
-
-
-In order to reproduce and identify the issue, please include the following information along with your email:
+In order to reproduce and identify the issue, To reproduce and identify the issue, please include the following information in the vulnerability report you submit::
 
 - The details of the vulnerability including how to reproduce it. Try to attach a PoC.
 - The attack scenario and what an attacker might be able to achieve with this issue.

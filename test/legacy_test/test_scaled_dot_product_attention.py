@@ -215,7 +215,18 @@ class TestAttentionWith3DInput(unittest.TestCase):
 
         out_ref = attention_naive(q_ref, k_ref, v_ref, self.causal)
 
+        out_ref = paddle.squeeze(out_ref, axis=0)
+
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=5e-03, atol=1e-03)
+
+
+class TestAttentionWithBoolMaskZeroSize(TestAttentionWithBoolMask):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (0, 1, 8, 8)
+        self.dtype = 'float32'
+        self.dropout = 0.0
+        self.causal = False
 
 
 if __name__ == '__main__':

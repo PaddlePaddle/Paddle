@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 namespace phi {
 
 template <typename DeviceContext, typename T, typename Enable = void>
@@ -1381,9 +1380,19 @@ void DotGradKernel(const Context& dev_ctx,
                    DenseTensor* dy) {
   if (dx) {
     dev_ctx.template Alloc<T>(dx);
+    if (dx->numel() == 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
+      return;
+    }
   }
   if (dy) {
     dev_ctx.template Alloc<T>(dy);
+    if (dy->numel() == 0) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+      return;
+    }
   }
   DotGradFunction<Context, T>()(dev_ctx, &x, &y, &dout, dx, dy);
 }

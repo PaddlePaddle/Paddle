@@ -63,7 +63,7 @@ PHI_DEFINE_EXPORTED_int32(paddle_num_threads,
  */
 PHI_DEFINE_EXPORTED_int32(low_precision_op_list,
                           0,
-                          "Setting the level of low precision op"
+                          "Setting the level of low precision op "
                           "list printing. It will be return the "
                           "low precision op list of current module.");
 
@@ -171,8 +171,8 @@ PHI_DEFINE_EXPORTED_string(
     "This option is useful when doing multi process training and "
     "each process have only one device (GPU). If you want to use "
     "all visible devices, set this to empty string. NOTE: the "
-    "reason of doing this is that we want to use P2P communication"
-    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use"
+    "reason of doing this is that we want to use P2P communication "
+    "between GPU devices, use CUDA_VISIBLE_DEVICES can only use "
     "share-memory only.");
 #endif
 
@@ -434,8 +434,8 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * Memory related FLAG
- * Name: FLAGS_enable_async_fast_gc
- * Since Version: 3.1.0
+ * Name: FLAGS_async_fast_eager_deletion_mode
+ * Since Version: 3.1.1
  * Value Range: bool, default=false
  * Example:
  * Note: Enable async fast garbage collection mode. If enabled, allocation will
@@ -443,7 +443,7 @@ PHI_DEFINE_EXPORTED_bool(
  *       faster. This flag is valid when fast_eager_deletion_mode is enabled.
  */
 PHI_DEFINE_EXPORTED_bool(
-    enable_async_fast_gc,
+    async_fast_eager_deletion_mode,
     false,
     "Enable async fast garbage collection mode. If enabled, allocation will "
     "be released asynchronously, which make the garbage collection process "
@@ -697,6 +697,16 @@ PHI_DEFINE_EXPORTED_bool(
 PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
+ * ONEDNN related FLAG
+ * Name: use_onednn
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note:
+ */
+PHI_DEFINE_EXPORTED_bool(use_onednn, false, "Use ONEDNN to run");
+
+/**
  * Debug related FLAG
  * Name: FLAGS_call_stack_level
  * Since Version: 2.0.0
@@ -759,7 +769,7 @@ PHI_DEFINE_EXPORTED_int32(
     0,
     "The maximum number of inplace grad_add. When doing "
     "gradient accumulation, if the number of gradients need to that "
-    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add"
+    "less FLAGS_max_inplace_grad_add, than it will be use several grad_add "
     "instead of sum. Default is 0.");
 
 /**
@@ -1196,6 +1206,19 @@ PHI_DEFINE_EXPORTED_bool(
     "release graph-owned blocks that have not freed before relaunching.");
 
 /*
+ * CUDA Graph related FLAG
+ * Name: FLAGS_cuda_graph_blacklist
+ * Since Version: 3.1
+ * Value Range: string, default=""
+ * Example: FLAGS_cuda_graph_blacklist="op1,op2,op3" would
+ * blacklist op1, op2, op3 from being captured in CUDA Graph.
+ */
+PHI_DEFINE_EXPORTED_string(
+    cuda_graph_blacklist,
+    "",
+    "CUDA Graph blacklist, split by ',', e.g., 'op1,op2,op3'");
+
+/*
  * Executor related FLAG
  * Name: FLAGS_executor_log_deps_every_microseconds
  * Since Version: 2.5
@@ -1347,7 +1370,7 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Doing memory benchmark. It will make deleting scope synchronized, "
     "and add some memory usage logs."
-    "Default cuda is asynchronous device, set to True will"
+    "Default cuda is asynchronous device, set to True will "
     "force op run in synchronous mode.");
 
 PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
@@ -1915,6 +1938,21 @@ PHI_DEFINE_EXPORTED_bool(specialize_device_in_dy2st,
                          "Run Dy2St in specialized device");
 
 /**
+ * Persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ * Name: parameters_persistent_mode_in_dy2st
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: If True, will persist parameters in scope to avoid the overhead of
+ * repeated sharing during each execution period.
+ */
+PHI_DEFINE_EXPORTED_bool(parameters_persistent_mode_in_dy2st,
+                         false,
+                         "Persist parameters in scope to avoid the overhead of "
+                         "repeated sharing during each execution period.");
+
+/**
  * Max count of eliminate redundant computation in CSE, for debug usage
  * Name: cse_max_count
  * Since Version: 3.0.0
@@ -2119,3 +2157,38 @@ PHI_DEFINE_EXPORTED_int32(
     "Version 2 requires Ampere architecture or higher, "
     "while version 3 requires Hopper architecture.");
 #endif
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_cuda_error
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether CUDA error occurred or not.
+ */
+PHI_DEFINE_EXPORTED_bool(check_cuda_error,
+                         false,
+                         "Checking whether CUDA error occurred or not.");
+
+/**
+ * Stream related FLAG
+ * Name: FLAGS_use_default_stream
+ * Since Version: 3.1.1
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use default stream.
+ */
+PHI_DEFINE_EXPORTED_bool(use_default_stream,
+                         false,
+                         "Whether use default stream.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_use_stride_compute_kernel
+ * Since Version: 3.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use Stride_Compute_Kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
+                         false,
+                         "Whether use Stride_Compute_Kernel.");

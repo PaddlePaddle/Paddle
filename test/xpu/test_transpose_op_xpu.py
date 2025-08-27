@@ -36,11 +36,11 @@ class XPUTestXPUTransposeOp(XPUOpTestWrapper):
             self.init_type()
             self.initTestCase()
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             self.attrs = {
                 'axis': list(self.axis),
-                'use_mkldnn': False,
+                'use_onednn': False,
                 'use_xpu': True,
             }
             self.outputs = {
@@ -50,7 +50,7 @@ class XPUTestXPUTransposeOp(XPUOpTestWrapper):
 
         def init_op_type(self):
             self.op_type = "transpose2"
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def init_type(self):
             self.dtype = self.in_type
@@ -147,7 +147,7 @@ if 'complex64' in support_types:
             self.initTestCase()
             self.dtype = np.complex64
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.inputs = {
                 'X': (
                     np.random.random(self.shape)
@@ -156,7 +156,7 @@ if 'complex64' in support_types:
             }
             self.attrs = {
                 'axis': list(self.axis),
-                'use_mkldnn': False,
+                'use_onednn': False,
                 'use_xpu': True,
             }
             self.outputs = {

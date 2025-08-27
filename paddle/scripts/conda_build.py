@@ -56,7 +56,6 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
-    - decorator
 """
 
         self.requirement_run_windows = r"""
@@ -66,7 +65,6 @@ requirements:
     - protobuf>=3.1.0
     - gast==0.3.3
     - Pillow
-    - decorator
 """
         self.test = r"""
 test:

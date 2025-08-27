@@ -61,7 +61,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmulDescCreate execution error"
+            "cublasLtMatmulDescCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
     cublasOperation_t op_transpose = CUBLAS_OP_T;
@@ -73,7 +73,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmulDescSetAttribute execution error"
+            "cublasLtMatmulDescSetAttribute execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -83,7 +83,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -92,7 +92,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -101,7 +101,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -204,7 +204,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmul execution error"
+            "cublasLtMatmul execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
   }

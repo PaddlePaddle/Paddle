@@ -46,6 +46,14 @@ void WeightQuantizeKernel(const Context& dev_ctx,
 
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
+  if (out->numel() == 0) {
+    if (algo == "llm.int8") {
+      dev_ctx.template Alloc<float>(scale);
+    } else {
+      dev_ctx.template Alloc<T>(scale);
+    }
+    return;
+  }
   quanted_x.Resize({m, n});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
   std::vector<int64_t> weight_shape{m, n};
@@ -71,13 +79,26 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     dev_ctx.template Alloc<T>(scale);
-    weight_quant_gpu<T, Context>(dev_ctx,
-                                 x.data<T>(),
-                                 quanted_x.data<int8_t>(),
-                                 scale->data<T>(),
-                                 weight_shape,
-                                 arch,
-                                 algo);
+
+    if (std::is_same<T, int8_t>::value) {
+      // Zkk: you are loading already quantized weight, so we skip doing
+      // quantize. and just copy!
+#ifdef PADDLE_WITH_CUDA
+      cudaMemcpy(quanted_x.data<int8_t>(),
+                 x.data<T>(),
+                 x.numel(),
+                 cudaMemcpyDeviceToDevice);
+#endif
+    } else {
+      weight_quant_gpu<T, Context>(dev_ctx,
+                                   x.data<T>(),
+                                   quanted_x.data<int8_t>(),
+                                   scale->data<T>(),
+                                   weight_shape,
+                                   arch,
+                                   algo);
+    }
+
 #ifdef PADDLE_WITH_HIP
     std::vector<int> axis = {1, 0};
     funcs::Transpose<Context, int8_t, 2> trans;
@@ -126,10 +147,17 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                      weight_shape,
                                      arch,
                                      algo);
+  } else if (algo == "w4afp8") {
+    weight_permute_gpu_w4afp8<Context>(dev_ctx,
+                                       x.data<int8_t>(),
+                                       out->data<int8_t>(),
+                                       weight_shape,
+                                       arch,
+                                       algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8', 'w4a8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo);
   }
 }

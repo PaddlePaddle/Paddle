@@ -279,7 +279,6 @@ class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
 
 
 class API_test(unittest.TestCase):
-
     def test_out(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -336,7 +335,6 @@ class API_DygraphTest(unittest.TestCase):
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
-
     def test_out(self):
         main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
         with paddle.static.program_guard(main_prg, startup_prg):
@@ -541,6 +539,71 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
                 )
                 expected_result = np.stack([input1, input2, input3], axis=0)
                 np.testing.assert_equal(expected_result, result)
+
+
+class TestStackOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.inputs_np = [
+            np.random.rand(2, 3).astype(np.float32) for _ in range(3)
+        ]
+        self.test_types = [
+            "decorator_tensors",
+            "decorator_dim",
+            "decorator_both",
+            "out",
+            "out_decorator",
+        ]
+
+    def do_test(self, test_type):
+        inputs = [
+            paddle.to_tensor(x, stop_gradient=False) for x in self.inputs_np
+        ]
+
+        if test_type == 'raw':
+            result = paddle.stack(inputs, axis=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_tensors':
+            result = paddle.stack(tensors=inputs, axis=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_dim':
+            result = paddle.stack(inputs, dim=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'decorator_both':
+            result = paddle.stack(tensors=inputs, dim=1)
+            result.mean().backward()
+            grads = [x.grad for x in inputs]
+            return result, grads
+        elif test_type == 'out':
+            out = paddle.empty((2, 3, 3), dtype='float32')
+            out.stop_gradient = False
+            paddle.stack(inputs, axis=1, out=out)
+            out.mean().backward()
+            grads = [x.grad for x in inputs]
+            return out, grads
+        elif test_type == 'out_decorator':
+            out = paddle.empty((2, 3, 3), dtype='float32')
+            out.stop_gradient = False
+            paddle.stack(tensors=inputs, dim=1, out=out)
+            out.mean().backward()
+            grads = [x.grad for x in inputs]
+            return out, grads
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, grads_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, grads = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            for g, g_std in zip(grads, grads_std):
+                np.testing.assert_allclose(g.numpy(), g_std.numpy(), rtol=1e-20)
 
 
 if __name__ == '__main__':

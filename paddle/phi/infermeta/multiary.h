@@ -478,6 +478,26 @@ void FakeQuantOrWithDequantMovingAverageAbsMaxInferMeta(
     MetaTensor* out_state,
     MetaTensor* out_accum);
 
+void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
+                               const MetaTensor& A_scale,
+                               const MetaTensor& B,
+                               const MetaTensor& B_scale,
+                               const MetaTensor& input_result,
+                               const MetaTensor& bias,
+                               const MetaTensor& pre_gelu,
+                               const MetaTensor& workspace,
+                               bool transa,
+                               bool transb,
+                               bool grad,
+                               bool accumulate,
+                               bool use_split_accumulator,
+                               int math_sm_count,
+                               bool is_A_1d_scaled,
+                               bool is_B_1d_scaled,
+                               MetaTensor* output,
+                               MetaTensor* pre_gelu_out,
+                               MetaTensor* workspace_out);
+
 void FtrlInferMeta(const MetaTensor& param,
                    const MetaTensor& squared_accumulator,
                    const MetaTensor& linear_accumulator,
@@ -968,7 +988,8 @@ void RmsNormInferMeta(const MetaTensor& x,
                       const float quant_min_bound,
                       MetaTensor* out,
                       MetaTensor* residual_out,
-                      MetaTensor* inv_var);
+                      MetaTensor* inv_var,
+                      MetaConfig config = MetaConfig());
 
 void RmspropInferMeta(const MetaTensor& param,
                       const MetaTensor& mean_square,
@@ -1211,7 +1232,7 @@ void FusedConvInferMeta(const MetaTensor& input,
                         const std::vector<int>& dilations,
                         int groups,
                         const std::string& data_format,
-                        const std::string& mkldnn_data_type,
+                        const std::string& onednn_data_type,
                         const std::string& fuse_activation,
                         bool fuse_residual_conn,
                         bool force_fp32_output,
@@ -1331,4 +1352,15 @@ void MoeGateDispatchInferMeta(const MetaTensor& x,
                               MetaTensor* expert_offset,
                               MetaTensor* expert_id);
 
+void MoeGateDispatchAutoInferMeta(const MetaTensor& x,
+                                  const MetaTensor& gate_logits,
+                                  const MetaTensor& corr_bias,
+                                  const int64_t k,
+                                  const int64_t capacity,
+                                  const bool use_pad,
+                                  MetaTensor* y,
+                                  MetaTensor* combine_weights,
+                                  MetaTensor* scatter_index,
+                                  MetaTensor* expert_offset,
+                                  MetaTensor* expert_id);
 }  // namespace phi

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -174,11 +174,7 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def check_api(self, axis=-1):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
@@ -208,11 +204,7 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def check_api(self, axis=-1, dtype=None):
         x = self.x.copy()
@@ -261,6 +253,34 @@ class TestLogSoftmaxLargeOp(unittest.TestCase):
     def test_check_run(self):
         x = paddle.randn([4, 4096, 131072 + 2048])  # 8GB+4*4096*2048
         paddle.nn.functional.log_softmax(x, axis=-1)
+
+
+class TestLogSoftmaxOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = 'log_softmax'
+        self.python_api = F.log_softmax
+        self.public_python_api = F.log_softmax
+        self.dtype = 'float64'
+        self.shape = [2, 0, 4, 5]
+        self.axis = -1
+        self.set_attrs()
+
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        # shape is same as x, size is 0.
+        out = np.random.random(self.shape).astype(self.dtype)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'axis': self.axis}
+
+    def set_attrs(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['Out'], check_pir=True)
 
 
 if __name__ == "__main__":

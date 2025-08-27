@@ -26,6 +26,7 @@
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
 COMMON_DECLARE_bool(check_nan_inf);
+COMMON_DECLARE_bool(check_cuda_error);
 
 bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
   // TODO(@gexiao): replace this function with api implemented at custom repo
@@ -37,10 +38,14 @@ bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
 }
 
 paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
-                                const paddle::Tensor& y) {
+                                const paddle::Tensor& y,
+                                paddle::optional<paddle::Tensor*> input_out) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("multiply_ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", phi::TracerEventType::Operator, 1);
@@ -135,7 +140,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Forward API Call
-  auto api_result = paddle::experimental::multiply(x, y);
+  auto api_result = paddle::experimental::multiply(x, y, input_out);
   // Check NaN and Inf if needed
 
   if (FLAGS_check_nan_inf) {
@@ -229,16 +234,22 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("multiply_ad_func finish");
+  }
   // Returns
   return out;
 }
 
 paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
-                                  const paddle::Tensor& y) {
+                                  const paddle::Tensor& y,
+                                  paddle::optional<paddle::Tensor*> input_out) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply_";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("multiply__ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "multiply_ dygraph", phi::TracerEventType::Operator, 1);
@@ -400,6 +411,9 @@ paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("multiply__ad_func finish");
+  }
   // Returns
   return out;
 }
@@ -411,6 +425,9 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::multiply_ad_func begin");
+  }
   // Dygraph Record Event
   phi::RecordEvent dygraph_entrance_record_event(
       "multiply dygraph", phi::TracerEventType::Operator, 1);
@@ -578,7 +595,9 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
     VLOG(4) << paddle::string::Sprintf(
         INPUT_PRINT_TEMPLATE, input_str, output_str);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::multiply_ad_func finish");
+  }
   // Returns
   return out;
 }

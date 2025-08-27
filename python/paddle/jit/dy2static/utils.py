@@ -29,9 +29,10 @@ import textwrap
 import time
 import types
 import warnings
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import fields, is_dataclass
-from enum import Enum, Flag, auto
+from enum import Enum, Flag, IntEnum, auto
 from importlib.machinery import SourceFileLoader
 from typing import TYPE_CHECKING, Any
 
@@ -47,6 +48,7 @@ from paddle.jit.utils import OrderedSet
 from paddle.utils import flatten, gast
 from paddle.utils.environments import (
     BooleanEnvironmentVariable,
+    IntegerEnvironmentVariable,
 )
 
 from .ast_utils import ast_to_source_code
@@ -82,10 +84,13 @@ NO_SHAPE_VAR_TYPE = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+ENV_SOT_EVENT_LEVEL = IntegerEnvironmentVariable("SOT_EVENT_LEVEL", 0)
 ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
 ENV_ENABLE_CINN_IN_DY2ST = BooleanEnvironmentVariable(
     "ENABLE_CINN_IN_DY2ST", True
 )
+
+DYNAMIC_DIMS_ATTR_NAME = "__sot_dynamic_dims"
 
 
 class Backend(Enum):
@@ -117,8 +122,14 @@ class Backend(Enum):
         return self == Backend.PHI
 
 
-class TransformOptions:
+class CUDAGraphState(IntEnum):
+    DISABLE = 0
+    WARMUP = 1
+    CAPTURE = 2
+    REPLAY = 3
 
+
+class TransformOptions:
     class ToStaticMode(Flag):
         SOT = auto()
         AST = auto()
@@ -297,6 +308,21 @@ def is_dataclass_instance(obj):
 
 def is_dataclass_type(obj):
     return is_dataclass(obj) and isinstance(obj, type)
+
+
+def is_plain_dataclass_type(cls: type):
+    """
+    Returns True if `cls` and all its non-ABC, non-object base classes are dataclasses.
+    Disallows inheritance from any non-dataclass types except for ABC and object.
+    """
+    if not is_dataclass_type(cls):
+        return False
+    for base_cls in cls.__mro__[-2 : -len(cls.__mro__) - 1 : -1]:
+        if base_cls is ABC:
+            continue
+        if not is_dataclass_type(base_cls):
+            return False
+    return True
 
 
 def dataclass_as_dict(obj):
@@ -613,6 +639,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         argdefs=callable_func.__defaults__,
         closure=get_new_closure(dyfunc, callable_func),
     )
+    new_fn.__kwdefaults__ = callable_func.__kwdefaults__
 
     return new_fn, f.name
 
@@ -764,9 +791,9 @@ class GetterSetterHelper:
         if vars is None:
             return ()
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -778,9 +805,9 @@ class GetterSetterHelper:
         if vars is None:
             return
         for n in names:
-            assert (
-                n in self.name2id
-            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            assert n in self.name2id, (
+                f"the name `{n}` not in name union set`{self.name2id.keys()}`."
+            )
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):
@@ -840,6 +867,12 @@ def cse_is_enabled():
 def use_specialized_device():
     return paddle.get_flags(["FLAGS_specialize_device_in_dy2st"])[
         "FLAGS_specialize_device_in_dy2st"
+    ]
+
+
+def parameters_persistent_mode_is_enabled():
+    return paddle.get_flags(["FLAGS_parameters_persistent_mode_in_dy2st"])[
+        "FLAGS_parameters_persistent_mode_in_dy2st"
     ]
 
 
@@ -1012,3 +1045,26 @@ def patch_method_guard(
         yield
     finally:
         restorer(instance)
+
+
+def extract_tensor_dynamic_dims(
+    tensor: paddle.Tensor,
+) -> tuple[int]:
+    """
+    Extract dynamic dimensions from a paddle.Tensor.
+    Returns a list of dynamic dimensions or None if no dynamic dimensions exist.
+    """
+    if not isinstance(tensor, paddle.Tensor):
+        raise TypeError(
+            f"Expected a paddle.Tensor, but got {type(tensor).__name__}"
+        )
+
+    if not hasattr(tensor, DYNAMIC_DIMS_ATTR_NAME):
+        return []
+
+    dynamic_dims = getattr(tensor, DYNAMIC_DIMS_ATTR_NAME)
+    if not isinstance(dynamic_dims, tuple):
+        raise TypeError(
+            f"Expected {DYNAMIC_DIMS_ATTR_NAME} to be a tuple, but got {type(dynamic_dims).__name__}"
+        )
+    return dynamic_dims

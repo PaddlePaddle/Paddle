@@ -572,16 +572,23 @@ void FusionGRUKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type"))
           : "float32";
-  std::vector<std::string> mkldnn_data_type_list = {
+  const std::string onednn_data_type =
+      (dev_ctx.HasDnnAttr("onednn_data_type") &&
+       PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("onednn_data_type")) !=
+           "")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("onednn_data_type"))
+          : mkldnn_data_type;
+  std::vector<std::string> onednn_data_type_list = {
       "float32", "int8", "bfloat16"};
-  PADDLE_ENFORCE_EQ(std::find(mkldnn_data_type_list.begin(),
-                              mkldnn_data_type_list.end(),
-                              mkldnn_data_type) != mkldnn_data_type_list.end(),
+  PADDLE_ENFORCE_EQ(std::find(onednn_data_type_list.begin(),
+                              onednn_data_type_list.end(),
+                              onednn_data_type) != onednn_data_type_list.end(),
                     true,
                     common::errors::InvalidArgument(
-                        "The mkldnn_data_type should be [float32, "
+                        "The onednn_data_type should be [float32, "
                         "int8, bfloat16], but found %s.",
-                        mkldnn_data_type.c_str()));
+                        onednn_data_type.c_str()));
   const float scale_data =
       dev_ctx.HasDnnAttr("Scale_data")
           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("Scale_data"))

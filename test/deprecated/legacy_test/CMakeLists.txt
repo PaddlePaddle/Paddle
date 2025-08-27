@@ -40,7 +40,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
@@ -147,7 +146,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
@@ -465,6 +463,8 @@ endforeach()
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES LABELS
                                                            "RUN_TYPE=EXCLUSIVE")
 if(WITH_DISTRIBUTE)
+  list(REMOVE_ITEM DIST_TEST_OPS " test_dist_sparse_tensor_load_sgd_deprecated")
+
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
@@ -485,9 +485,7 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
 
-  if(NOT WITH_HETERPS)
-    list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
-  endif()
+  list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
 
   py_test_modules(test_communicator_geo_deprecated MODULES
                   test_communicator_geo_deprecated ENVS ${dist_ENVS})
@@ -498,9 +496,6 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_partitioner_deprecated MODULES
         test_auto_parallel_partitioner_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_partitioner_gpt_deprecated MODULES
-        test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_searcher_deprecated MODULES
                       test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_deprecated MODULES
@@ -718,5 +713,4 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
-set_tests_properties(test_lbfgs_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)

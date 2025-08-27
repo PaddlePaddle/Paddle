@@ -17,6 +17,7 @@ import sys
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle.base import core
@@ -34,9 +35,7 @@ class VecDotTestCase(unittest.TestCase):
         self.init_config()
         self.generate_input()
         self.generate_expected_output()
-        self.places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def generate_input(self):
         np.random.seed(123)

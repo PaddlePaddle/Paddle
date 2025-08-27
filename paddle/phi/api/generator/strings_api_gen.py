@@ -31,7 +31,7 @@ class StringsAPI(ForwardAPI):
     def gene_api_declaration(self):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super().gene_api_declaration()}
+{super().gene_api_declaration(append_input_out=False)}
 """
 
     def get_kernel_tensor_out_type(self, output_name):
@@ -251,9 +251,9 @@ class StringsAPI(ForwardAPI):
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'Backend':
-                assert (
-                    kernel['backend'] is not None
-                ), f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                assert kernel['backend'] is not None, (
+                    f"{api} api: When there is a parameter with 'Backend' type in attributes, you must set backend of kernel manually."
+                )
                 attr_backend_count = attr_backend_count + 1
 
         # preprocess kernel configures
@@ -261,13 +261,15 @@ class StringsAPI(ForwardAPI):
         if kernel['backend'] is not None:
             if '>' in kernel['backend']:
                 vars_list = kernel['backend'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (vars_list[0].strip() in attrs['names']) and (
                     attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
-                ), f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                ), (
+                    f"{api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -306,10 +308,12 @@ class StringsAPI(ForwardAPI):
 
         return kernel_select_code
 
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_input_out=False
+    ):
         api_func_name = self.get_api_func_name()
         return f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_input_out=False)}) {{
 {self.gene_kernel_select()}
 {self.gen_string_tensor_kernel_code(inplace_flag)}
 }}

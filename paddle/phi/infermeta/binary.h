@@ -384,7 +384,7 @@ void FusedMatmulInferMeta(const MetaTensor& x,
                           const std::vector<int>& fused_transpose_Y,
                           const std::vector<int>& fused_reshape_Out,
                           const std::vector<int>& fused_transpose_Out,
-                          const std::string& mkldnn_data_type,
+                          const std::string& onednn_data_type,
                           const float scale_x,
                           const float scale_y,
                           const float scale_scale_in_eltwise,
@@ -466,7 +466,7 @@ void IndexAddInferMeta(const MetaTensor& x,
 
 void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& index,
-                                  const MetaTensor& value,
+                                  const Scalar& value,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
@@ -474,12 +474,26 @@ void IndexElementwisePutInferMeta(const MetaTensor& x,
                                   const int64_t slice_offset,
                                   MetaTensor* out);
 
+void IndexElementwisePutWithTensorInferMeta(
+    const MetaTensor& x,
+    const std::vector<const MetaTensor*>& index,
+    const MetaTensor& value,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t slice_offset,
+    MetaTensor* out);
+
 void IndexElementwiseGetInferMeta(const MetaTensor& x,
                                   const std::vector<const MetaTensor*>& index,
                                   const std::vector<int64_t>& input_dims,
                                   const std::vector<int64_t>& input_strides,
                                   const std::vector<int64_t>& index_dims,
                                   const std::vector<int64_t>& index_stride,
+                                  const int64_t slice_offset,
+                                  const bool accumulate,
+                                  const bool is_combined,
                                   MetaTensor* out);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);

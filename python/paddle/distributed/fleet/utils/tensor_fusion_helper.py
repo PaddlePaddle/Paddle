@@ -66,9 +66,9 @@ def get_current_device_type():
                 device_type = current_device.get_device_type()
             except:
                 device_type = "unknown"
-        assert (
-            device_type in alignment.keys()
-        ), f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
+        assert device_type in alignment.keys(), (
+            f"tensor fusion helper now only support {alignment.keys()}, but got device {device_type} instead."
+        )
         __current_device_type__ = device_type
     return __current_device_type__
 
@@ -89,7 +89,7 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
             group_size += np.prod(parameters[index].shape)
         dtype = parameters[indices[0]].dtype
         bytes = group_size * core.size_of_dtype(dtype)
-        msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {dtype!s}"
+        msg = f"group_{group_idx}: {bytes / 1024**2:.4f} MB, dtype: {dtype!s}"
         group_msg.append(msg)
 
     logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
@@ -284,8 +284,8 @@ class ShardingGradView:
         slice_begin = self._param_begin
         slice_end = self._param_end
         slice_buffer = self._param_buffer._slice(slice_begin, slice_end)
-        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
         slice_buffer._share_buffer_to(slice_param)
+        slice_param.get_tensor()._set_dims([slice_end - slice_begin])
 
     def assign_slice_grad(self, slice_param):
         assert self._param_buffer._is_shared_buffer_with(self._param)
@@ -303,6 +303,16 @@ class ShardingGradView:
                 slice_param._copy_gradient_from(slice_grad)
             else:
                 assert slice_param.grad._is_shared_buffer_with(slice_grad)
+
+    def _clear_param_buffer(self):
+        self._param._clear_to_zero_allocation()
+        self._param_buffer._clear_to_zero_allocation()
+
+    def _reset_param_buffer(self, new_param_storage):
+        new_param = paddle.empty_like(self._param)
+        new_param._share_buffer_to(self._param)
+        new_param_storage._share_buffer_to(self._param_buffer)
+        self._share_param_buffer()
 
     def _clear_grad_buffer(self):
         if self._slice_grad is not None:
@@ -406,7 +416,6 @@ def get_grad_address(param, use_main_grad):
 
 
 class FusedCommBuffer:
-
     class Status(enum.Enum):
         """Status of this bucket, Only useful when param allgather overlap is enabled"""
 
@@ -449,17 +458,17 @@ class FusedCommBuffer:
         self.sync_param_task = None
 
         if self._free_grads_in_comm:
-            assert (
-                acc_steps == 1
-            ), f"No need to use free_grads_in_comm when acc_steps `{acc_steps}` != 1"
-            assert (
-                act == HOOK_ACTION.REDUCE_SCATTER
-            ), "Currently, only support reduce_scatter"
+            assert acc_steps == 1, (
+                f"No need to use free_grads_in_comm when acc_steps `{acc_steps}` != 1"
+            )
+            assert act == HOOK_ACTION.REDUCE_SCATTER, (
+                "Currently, only support reduce_scatter"
+            )
             assert release_grads, "Currently, only support release_grads"
 
-        assert not (
-            self._fuse_param and self._release_grads
-        ), "It's not supported when using fuse_param and release_grad at the same time."
+        assert not (self._fuse_param and self._release_grads), (
+            "It's not supported when using fuse_param and release_grad at the same time."
+        )
 
         self.use_main_grad = (
             use_main_grad
@@ -553,6 +562,18 @@ class FusedCommBuffer:
                 param, self.use_main_grad
             )
 
+    def _clear_param_storage(self):
+        self.param_storage._clear_to_zero_allocation()
+        for param in self._params:
+            self._sharding_param_grad_view[param.name]._clear_param_buffer()
+
+    def _reset_param_storage(self):
+        new_param_storage = paddle.empty_like(self.param_storage)
+        new_param_storage._share_buffer_to(self.param_storage)
+        for param in self._params:
+            grad_view = self._sharding_param_grad_view[param.name]
+            grad_view._reset_param_buffer(new_param_storage)
+
     def _clear_grad_storage(self):
         self.grad_storage._clear_dataptr()
         self.grad_storage = None
@@ -584,9 +605,9 @@ class FusedCommBuffer:
             )
 
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
-            self._sharding_param_grad_view[param.name]._grad_buffer = (
-                self.grad_storage
-            )
+            self._sharding_param_grad_view[
+                param.name
+            ]._grad_buffer = self.grad_storage
             tmp_var = self._sharding_param_grad_view[
                 param.name
             ]._slice_grad_from_buffer()
@@ -598,9 +619,9 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
-        assert (
-            grad_var is not None
-        ), f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
+        assert grad_var is not None, (
+            f"The current parameter[{param.name}] has no gradient, its stop_grdient is {param.stop_gradient}"
+        )
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
@@ -775,6 +796,7 @@ class FusedCommBuffer:
                 group=self._comm_group,
                 sync_op=False,
             )
+
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
 
@@ -784,6 +806,7 @@ class FusedCommBuffer:
     def scale_grads(self):
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
+                self._reset_params_checked_in()
                 return
             assert self._task is not None, "Task is not initialized."
             self._task.wait()
@@ -1009,9 +1032,9 @@ def fused_parameters(
 
     if comm_overlap:
         if comm_group is None:
-            assert (
-                act == HOOK_ACTION.ALL_REDUCE
-            ), "Only allreduce action can use default comm group"
+            assert act == HOOK_ACTION.ALL_REDUCE, (
+                "Only allreduce action can use default comm group"
+            )
             comm_group = paddle.distributed.collective._get_default_group()
     if act == HOOK_ACTION.REDUCE:
         assert dst != -1
@@ -1022,12 +1045,12 @@ def fused_parameters(
         updated_parameters = []
         comm_buffers = []
         for idx, group_param in enumerate(parameters):
-            assert isinstance(
-                group_param, dict
-            ), "For group params, each group should be a dictionary."
-            assert (
-                'params' in group_param.keys()
-            ), "For group params, each group should have parameters."
+            assert isinstance(group_param, dict), (
+                "For group params, each group should be a dictionary."
+            )
+            assert 'params' in group_param.keys(), (
+                "For group params, each group should have parameters."
+            )
             real_param = group_param['params']
             (
                 group_decay_fused,

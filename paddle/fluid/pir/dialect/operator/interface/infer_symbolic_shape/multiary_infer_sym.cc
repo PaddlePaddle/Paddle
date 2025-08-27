@@ -98,7 +98,6 @@ bool AddNOpInferSymbolicShape(pir::Operation *op,
   }
   infer_context->SetShapeOrDataForValue(
       op->result(0), symbol::ShapeOrDataDimExprs{candidate_shape});
-
   return true;
 }
 
@@ -379,7 +378,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of scale must equal to 1."
                           "But received: the dimension of scale is [%d]",
                           scale_dims.size()));
-    infer_context->AddEqualCstr(scale_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(scale_dims[0], C);
   }
 
   if (!bias_shape_or_data.isa<symbol::NullShapeOrDataDimExpr>()) {
@@ -390,7 +389,7 @@ bool BatchNormOpInferSymbolicShape(
                           "ShapeError: the dimension of bias must equal to 1."
                           "But received: the dimension of bias is [%d]",
                           bias_dims.size()));
-    infer_context->AddEqualCstr(bias_dims[0], C);
+    if (C != 0) infer_context->AddEqualCstr(bias_dims[0], C);
   }
 
   // Set output shapes
@@ -1755,9 +1754,9 @@ bool FusedAttentionOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(qkv_weight_shape.size(),
                       2,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 2 if enable"
-                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
-                          "but received dimensions of"
+                          "The dimensions of qkv_weight must be 2 if enable "
+                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed), "
+                          "but received dimensions of "
                           "Input is [%d]",
                           qkv_weight_shape.size()));
     PADDLE_ENFORCE_GT(num_heads_,
@@ -1780,7 +1779,7 @@ bool FusedAttentionOpInferSymbolicShape(
     PADDLE_ENFORCE_EQ(qkv_weight_shape.size(),
                       4,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4 if not"
+                          "The dimensions of qkv_weight must be 4 if not "
                           "enable transpose_qkv_wb: (3, num_head, dim_head, "
                           "dim_embed), but received [%d]",
                           qkv_weight_shape.size()));
@@ -2228,16 +2227,16 @@ bool FusedMultiTransformerOpInferSymbolicShape(
       x_shape.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_shape.size()));
   PADDLE_ENFORCE_EQ(
       y_shape.size(),
       4,
       common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                      "(3, num_head, dim_head, dim_embed),"
-                                      "but received dimensions of"
+                                      "(3, num_head, dim_head, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       y_shape.size()));
 
@@ -3087,19 +3086,19 @@ bool MemoryEfficientAttentionOpInferSymbolicShape(
   PADDLE_ENFORCE_EQ(
       q_shape.size(),
       4,
-      common::errors::InvalidArgument("Query should be a 4-D tensor"
+      common::errors::InvalidArgument("Query should be a 4-D tensor. "
                                       "But received Query dimension(%d)",
                                       q_shape.size()));
   PADDLE_ENFORCE_EQ(
       k_shape.size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%d)",
                                       k_shape.size()));
   PADDLE_ENFORCE_EQ(
       v_shape.size(),
       4,
-      common::errors::InvalidArgument("Value should be a 4-D tensor"
+      common::errors::InvalidArgument("Value should be a 4-D tensor. "
                                       "But received Value dimension(%d)",
                                       v_shape.size()));
 
@@ -3942,7 +3941,9 @@ bool RmsNormOpInferSymbolicShape(
   const std::vector<symbol::DimExpr> &norm_weight_dims =
       norm_weight_shape.shape();
 
-  infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  if (normalized_dims != 0) {
+    infer_context->AddEqualCstr(normalized_dims, norm_weight_dims[0]);
+  }
 
   infer_context->SetShapeOrDataForValue(
       op->result(0),
@@ -4488,6 +4489,17 @@ bool WarpctcOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const std::vector<symbol::DimExpr> &logits_shape =
       logits_shape_or_data.shape();
+  bool logits_0_size = false;
+  for (size_t i = 0; i < logits_shape.size(); ++i) {
+    if (logits_shape[i] == 0) {
+      logits_0_size = true;
+      break;
+    }
+  }
+  if (logits_0_size) {
+    PADDLE_THROW(
+        common::errors::InvalidArgument("The input size can not be zero."));
+  }
 
   symbol::DimExpr max_sequence_length, num_sequences;
   symbol::DimExpr sequence_width = symbol::DimExpr(1);
@@ -4796,12 +4808,12 @@ bool YoloLossOpInferSymbolicShape(
   if (op->operand_source(3) != nullptr) {
     const auto &score_shape =
         infer_context->GetShapeOrDataForValue(op->operand_source(3)).shape();
-    PADDLE_ENFORCE_EQ(
-        score_shape.size(),
-        2,
-        common::errors::InvalidArgument("Input(GTScore) should be a 2-D tensor"
-                                        "But received GTScore dimension(%s)",
-                                        box_shape.size()));
+    PADDLE_ENFORCE_EQ(score_shape.size(),
+                      2,
+                      common::errors::InvalidArgument(
+                          "Input(GTScore) should be a 2-D tensor. "
+                          "But received GTScore dimension(%s)",
+                          box_shape.size()));
     infer_context->AddEqualCstr(score_shape[0], box_shape[0]);
     infer_context->AddEqualCstr(score_shape[1], box_shape[1]);
   }

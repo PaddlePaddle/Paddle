@@ -240,6 +240,21 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
+  if (kernel_backend == Backend::UNDEFINED ||
+      kernel_layout == DataLayout::UNDEFINED ||
+      kernel_data_type == DataType::UNDEFINED) {
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, bias);
+    auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+    if (kernel_backend == Backend::UNDEFINED) {
+      kernel_backend = kernel_key.backend();
+    }
+    if (kernel_layout == DataLayout::UNDEFINED) {
+      kernel_layout = kernel_key.layout();
+    }
+    if (kernel_data_type == DataType::UNDEFINED) {
+      kernel_data_type = kernel_key.dtype();
+    }
+  }
 #ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(x, y, bias);
   bool rank_is_in_current_mesh = true;
@@ -249,23 +264,6 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
             ->dist_attr()
             .process_mesh();
     rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
-  }
-  if (rank_is_in_current_mesh) {
-    if (kernel_backend == Backend::UNDEFINED ||
-        kernel_layout == DataLayout::UNDEFINED ||
-        kernel_data_type == DataType::UNDEFINED) {
-      auto kernel_key_set = ParseKernelKeyByInputArgs(x, y, bias);
-      auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-      if (kernel_backend == Backend::UNDEFINED) {
-        kernel_backend = kernel_key.backend();
-      }
-      if (kernel_layout == DataLayout::UNDEFINED) {
-        kernel_layout = kernel_key.layout();
-      }
-      if (kernel_data_type == DataType::UNDEFINED) {
-        kernel_data_type = kernel_key.dtype();
-      }
-    }
   }
 
   // Kernel Dispatch Body
@@ -555,7 +553,6 @@ std::tuple<Tensor, Tensor> fused_gemm_epilogue_impl(
     TransDataBackend(kernel_out_0, kernel_backend, kernel_out_0);
     TransDataBackend(kernel_out_1, kernel_backend, kernel_out_1);
   }
-  dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
   return api_output;
 }
@@ -1272,7 +1269,6 @@ std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> cudnn_lstm_grad_impl(
     TransDataBackend(kernel_out_2, kernel_backend, kernel_out_2);
     TransDataBackend(kernel_out_3, kernel_backend, kernel_out_3);
   }
-  dev_ctx = GetDeviceContextByBackend(kernel_backend);
 
   return api_output;
 }

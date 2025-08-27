@@ -173,7 +173,6 @@ class DotOpBatch(DotOp):
 
 
 class TestDotOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -448,6 +447,41 @@ class DotBF16OpBatch(TestDotBF16Op):
                     user_defined_grads=[self.y / self.y.shape[0]],
                     check_pir=True,
                 )
+
+
+class DotOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "dot"
+        self.python_api = paddle.dot
+        self.public_python_api = paddle.dot
+        self.init_shape()
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        self.y = np.random.uniform(1, 3, self.shape).astype(self.dtype)
+        self.out = np.dot(self.x, self.y).astype(self.dtype)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_shape(self):
+        # return shape []
+        self.shape = [0]
 
 
 if __name__ == '__main__':

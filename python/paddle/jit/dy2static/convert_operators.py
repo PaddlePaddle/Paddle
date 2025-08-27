@@ -93,7 +93,6 @@ def convert_load(x):
 
         # get the new output of the var
         if isinstance(x, Value):
-
             from paddle.jit.pir_dy2static.parameter_recorder import (
                 _global_inplace_map,
             )
@@ -539,11 +538,11 @@ def _remove_no_value_return_var(out):
                 ):
                     # return None
                     if index == 0:
-                        processed_out = (None,) + out[1:]
+                        processed_out = (None, *out[1:])
                     elif index == 1:
                         processed_out = align_ret[:1] + out[1:]
                     else:
-                        processed_out = (align_ret[:index],) + out[1:]
+                        processed_out = (align_ret[:index], *out[1:])
                     break
 
         for index, item in enumerate(processed_out):
@@ -757,13 +756,17 @@ def convert_var_dtype(var, dtype):
             'int32',
             'int64',
             'uint8',
-        ], f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        ], (
+            f"The dtype of var {var.name} is {src_dtype}, which is not supported in the cast op."
+        )
         assert dtype in [
             'bool',
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         cast_map = {
             'bool': 'bool',
             'int': 'int32',
@@ -777,7 +780,9 @@ def convert_var_dtype(var, dtype):
             'int',
             'float',
             'complex',
-        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
+        ], (
+            f"The casted target dtype is {dtype}, which is not supported in type casting."
+        )
         return eval(dtype)(var)
 
 

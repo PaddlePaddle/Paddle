@@ -23,7 +23,7 @@ namespace phi {
 using Tensor = DenseTensor;
 
 template <typename DeviceContext, typename T>
-inline void ResizeToChannelFirst(const DeviceContext& context,
+inline void ResizeToChannelFirst(const DeviceContext& dev_ctx,
                                  const Tensor* input,
                                  Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
@@ -37,7 +37,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[2];
     in_dims_vec[4] = input->dims()[3];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 2) {
     // input
     transformed_input->Resize(input->dims());
@@ -47,7 +47,7 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -55,12 +55,12 @@ inline void ResizeToChannelFirst(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
   }
 }
 
 template <typename DeviceContext, typename T>
-inline void ResizeToChannelLast(const DeviceContext& context,
+inline void ResizeToChannelLast(const DeviceContext& dev_ctx,
                                 const Tensor* input,
                                 Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
@@ -74,7 +74,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[3] = input->dims()[4];
     in_dims_vec[4] = input->dims()[1];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
 
   } else if (dim == 2) {
     // input
@@ -85,7 +85,7 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[2] = input->dims()[3];
     in_dims_vec[3] = input->dims()[1];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
   } else if (dim == 1) {
     transformed_input->Resize(input->dims());
 
@@ -93,12 +93,12 @@ inline void ResizeToChannelLast(const DeviceContext& context,
     in_dims_vec[1] = input->dims()[2];
     in_dims_vec[2] = input->dims()[1];
     transformed_input->Resize(common::make_ddim(in_dims_vec));
-    context.template Alloc<T>(transformed_input);
+    dev_ctx.template Alloc<T>(transformed_input);
   }
 }
 
 template <typename DeviceContext, typename T>
-inline void TransToChannelFirst(const DeviceContext& context,
+inline void TransToChannelFirst(const DeviceContext& dev_ctx,
                                 const Tensor* input,
                                 Tensor* transformed_input) {
   VLOG(5) << "Why am I called?";
@@ -106,37 +106,37 @@ inline void TransToChannelFirst(const DeviceContext& context,
   if (dim == 3) {
     std::vector<int> axis{0, 4, 1, 2, 3};
     phi::funcs::Transpose<DeviceContext, T, 5> trans5;
-    trans5(context, *input, transformed_input, axis);
+    trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 3, 1, 2};
     phi::funcs::Transpose<DeviceContext, T, 4> trans4;
-    trans4(context, *input, transformed_input, axis);
+    trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
     phi::funcs::Transpose<DeviceContext, T, 3> trans3;
-    trans3(context, *input, transformed_input, axis);
+    trans3(dev_ctx, *input, transformed_input, axis);
   }
 }
 
 template <typename DeviceContext, typename T>
-inline void TransToChannelLast(const DeviceContext& context,
+inline void TransToChannelLast(const DeviceContext& dev_ctx,
                                const Tensor* input,
                                Tensor* transformed_input) {
   int dim = input->dims().size() - 2;
   if (dim == 3) {
     std::vector<int> axis{0, 2, 3, 4, 1};
     phi::funcs::Transpose<DeviceContext, T, 5> trans5;
-    trans5(context, *input, transformed_input, axis);
+    trans5(dev_ctx, *input, transformed_input, axis);
 
   } else if (dim == 2) {
     std::vector<int> axis{0, 2, 3, 1};
     phi::funcs::Transpose<DeviceContext, T, 4> trans4;
-    trans4(context, *input, transformed_input, axis);
+    trans4(dev_ctx, *input, transformed_input, axis);
   } else if (dim == 1) {
     std::vector<int> axis{0, 2, 1};
     phi::funcs::Transpose<DeviceContext, T, 3> trans3;
-    trans3(context, *input, transformed_input, axis);
+    trans3(dev_ctx, *input, transformed_input, axis);
   }
 }
 

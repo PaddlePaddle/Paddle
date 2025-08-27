@@ -25,8 +25,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi tools
-add_subdirectory(tools)
 # phi capi
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(capi)
@@ -295,7 +293,6 @@ endif()
 
 add_dependencies(phi extern_lapack)
 if(WITH_CUTLASS)
-  add_dependencies(phi cutlass_codegen)
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION"
   )# for memory_efficient_attention.h
 endif()

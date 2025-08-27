@@ -234,9 +234,11 @@ class TestSPMT(unittest.TestCase):
 
         startup_program = base.Program()
         main_program = base.Program()
-        with base.program_guard(main_program, startup_program):
-            with base.unique_name.guard():
-                loss, acc, _ = self.net()
+        with (
+            base.program_guard(main_program, startup_program),
+            base.unique_name.guard(),
+        ):
+            loss, acc, _ = self.net()
         optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer.minimize(loss)
         print("===main_program====")

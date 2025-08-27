@@ -115,9 +115,9 @@ def compare_benchmark_result(
     develop_speed = develop_result.get("speed")
     pr_speed = pr_result.get("speed")
 
-    assert type(develop_speed) == type(
-        pr_speed
-    ), "The types of comparison results need to be consistent."
+    assert type(develop_speed) == type(pr_speed), (
+        "The types of comparison results need to be consistent."
+    )
 
     if isinstance(develop_speed, dict) and isinstance(pr_speed, dict):
         if check_speed_result(case_name, develop_speed, pr_speed, pr_result):
@@ -147,8 +147,7 @@ def update_api_info_file(fail_case_list, api_info_file):
 
     # update api info file
     with open(api_info_file, 'w') as f:
-        for api_info_line in api_info_list:
-            f.write(api_info_line)
+        f.writelines(api_info_line for api_info_line in api_info_list)
 
 
 def summary_results(check_results, api_info_file):

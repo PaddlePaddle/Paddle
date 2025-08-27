@@ -25,7 +25,7 @@ paddle.enable_static()
 def infinite_reader():
     num = 0
     while True:
-        yield (np.ones([8, 32]) * num).astype('float32'),
+        yield ((np.ones([8, 32]) * num).astype('float32'),)
         num += 1
 
 
@@ -54,9 +54,11 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         )
 
     def test_main(self):
-        with base.program_guard(base.Program(), base.Program()):
-            with base.scope_guard(base.Scope()):
-                self.run_network()
+        with (
+            base.program_guard(base.Program(), base.Program()),
+            base.scope_guard(base.Scope()),
+        ):
+            self.run_network()
 
     def run_network(self):
         loader = self.create_data_loader()

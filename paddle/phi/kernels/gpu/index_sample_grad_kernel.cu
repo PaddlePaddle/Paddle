@@ -30,25 +30,27 @@ namespace {
 #define PREDEFINED_BLOCK_SIZE_X 512
 #define PREDEFINED_BLOCK_SIZE 1024
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define UINT32_MAX std::numeric_limits<uint32_t>::max()
+
 }  // namespace
 
-template <typename T, typename IndexT = int>
-__global__ void IndexSampleGrad(const IndexT* index,
+template <typename T, typename SampleIndexT = int, typename ElementIndexT>
+__global__ void IndexSampleGrad(const SampleIndexT* index,
                                 T* in_grad,
                                 const T* out_grad,
                                 size_t index_length,
                                 size_t input_length,
                                 size_t batch_size,
                                 bool same_data_in_row = true) {
-  unsigned int index_i = blockDim.x * blockIdx.x + threadIdx.x;
-  unsigned int index_j = blockDim.y * blockIdx.y + threadIdx.y;
+  ElementIndexT index_i = blockDim.x * blockIdx.x + threadIdx.x;
+  ElementIndexT index_j = blockDim.y * blockIdx.y + threadIdx.y;
 
   for (; index_j < batch_size; index_j += blockDim.y * gridDim.y) {
     index_i = blockDim.x * blockIdx.x + threadIdx.x;
     for (; index_i < index_length; index_i += blockDim.x * gridDim.x) {
-      unsigned int index_idx = index_j * index_length + index_i;
-      unsigned int in_idx = index_j * input_length + index_i;
-      IndexT sample_idx = index[index_idx];
+      ElementIndexT index_idx = index_j * index_length + index_i;
+      ElementIndexT in_idx = index_j * input_length + index_i;
+      SampleIndexT sample_idx = index[index_idx];
       if (same_data_in_row) {
         phi::CudaAtomicAdd(&(in_grad[in_idx - index_i + sample_idx]),
                            out_grad[sample_idx]);
@@ -101,28 +103,57 @@ void IndexSampleGradKernel(const Context& dev_ctx,
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(dev_ctx, x_grad, static_cast<T>(0));
+  bool use_int32 = true;
+  if (out_grad.numel() > UINT32_MAX || x_grad->numel() > UINT32_MAX) {
+    use_int32 = false;
+  }
 
   if (out_grad.numel() == 0) return;
   if (index_type == DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();
-    IndexSampleGrad<T, int64_t>
-        <<<grid_dim, block_dim, 0, stream>>>(index_data,
-                                             input_grad_data,
-                                             output_grad_data,
-                                             index_length,
-                                             input_length,
-                                             batch_size,
-                                             same_data_in_index_row);
+    if (use_int32) {
+      IndexSampleGrad<T, int64_t, uint32_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               input_grad_data,
+                                               output_grad_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size,
+                                               same_data_in_index_row);
+
+    } else {
+      IndexSampleGrad<T, int64_t, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               input_grad_data,
+                                               output_grad_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size,
+                                               same_data_in_index_row);
+    }
+
   } else if (index_type == DataType::INT32) {
     const int* index_data = index.data<int>();
-    IndexSampleGrad<T, int>
-        <<<grid_dim, block_dim, 0, stream>>>(index_data,
-                                             input_grad_data,
-                                             output_grad_data,
-                                             index_length,
-                                             input_length,
-                                             batch_size,
-                                             same_data_in_index_row);
+    if (use_int32) {
+      IndexSampleGrad<T, int, uint32_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               input_grad_data,
+                                               output_grad_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size,
+                                               same_data_in_index_row);
+
+    } else {
+      IndexSampleGrad<T, int, int64_t>
+          <<<grid_dim, block_dim, 0, stream>>>(index_data,
+                                               input_grad_data,
+                                               output_grad_data,
+                                               index_length,
+                                               input_length,
+                                               batch_size,
+                                               same_data_in_index_row);
+    }
   }
 }
 }  // namespace phi

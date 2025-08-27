@@ -321,14 +321,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 #endif
 
   // code status
-  if (is_code_without_graph(code == Py_None ? PyFrame_GET_CODE(frame)
-                                            : (PyCodeObject *)code) &&
-      disable_eval_frame == Py_False) {
-    out = eval_frame_default(tstate, frame, throw_flag);
-    eval_frame_callback_set(callback);
-    Py_DECREF(code);
+  if (code == Py_None && is_code_without_graph(PyFrame_GET_CODE(frame))) {
     Py_DECREF(disable_eval_frame);
-    return out;
+    disable_eval_frame = Py_True;
+    Py_INCREF(disable_eval_frame);
   }
 
   // run code

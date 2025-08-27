@@ -377,6 +377,89 @@ class TestEagerTensor(unittest.TestCase):
         self.assertEqual(var.dtype, paddle.float32)
         self.assertEqual(var.type, core.VarDesc.VarType.DENSE_TENSOR)
 
+    def test_tensor_pin_memory_and_device(self):
+        if core.is_compiled_with_cuda():
+            tensor_res = paddle.tensor(
+                self.array, device="gpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
+
+            tensor_cuda = paddle.tensor(self.array, device="cuda:0")
+            self.assertEqual(tensor_cuda.place, paddle.CUDAPlace(0))
+
+            tensor_pin = paddle.tensor(self.array, device="gpu_pinned")
+            self.assertEqual(tensor_pin.place, core.CUDAPinnedPlace())
+
+        if core.is_compiled_with_xpu():
+            tensor_res = paddle.tensor(
+                self.array, device="xpu", pin_memory=True
+            )
+            self.assertEqual(tensor_res.place, core.XPUPinnedPlace())
+
+            tensor_pin = paddle.tensor(self.array, device="xpu_pinned")
+            self.assertEqual(tensor_pin.place, core.XPUPinnedPlace())
+
+        with self.assertRaises(RuntimeError) as context:
+            paddle.tensor(
+                self.array,
+                device="cpu",
+                pin_memory=True,  # no support
+            )
+        self.assertIn(
+            "Pinning memory is not supported",
+            str(context.exception),
+        )
+
+    def test_tensor_and_to_tensor(self):
+        """
+        test tensor equal to to_tensor
+        """
+        tensor_res = paddle.tensor(
+            self.array, dtype="float32", device="cpu", requires_grad=True
+        )
+        tensor_target = paddle.to_tensor(
+            self.array, dtype="float32", place="cpu", stop_gradient=False
+        )
+        np.testing.assert_array_equal(tensor_res.numpy(), tensor_target.numpy())
+        self.assertEqual(tensor_res.place, tensor_target.place)
+        self.assertEqual(tensor_res.place, core.CPUPlace())
+        self.assertEqual(tensor_res.dtype, tensor_target.dtype)
+        self.assertEqual(tensor_res.dtype, paddle.float32)
+        self.assertEqual(tensor_res.stop_gradient, tensor_target.stop_gradient)
+        self.assertEqual(tensor_res.stop_gradient, False)
+
+    def test_tensor_module(self):
+        """
+        test paddle.tensor usable as an API and a module
+        """
+        tensor_api = paddle.tensor(self.array, dtype="float32")
+        tensor_module = paddle.tensor.creation.tensor(
+            self.array, dtype="float32"
+        )
+        np.testing.assert_array_equal(tensor_api.numpy(), tensor_module.numpy())
+        self.assertEqual(tensor_api.place, tensor_module.place)
+        self.assertEqual(tensor_api.dtype, tensor_module.dtype)
+        self.assertEqual(tensor_api.stop_gradient, tensor_module.stop_gradient)
+
+    def test_tensor_method_or_module(self):
+        """
+        test the class method
+        """
+        # __rerp__
+        ori_repr = repr(paddle.tensor.creation.tensor)
+        now_repr = repr(paddle.tensor)
+        self.assertEqual(ori_repr, now_repr)
+
+        # __str__
+        ori_str = str(paddle.tensor.creation.tensor)
+        now_str = str(paddle.tensor)
+        self.assertEqual(ori_str, now_str)
+
+        # __dir__
+        api_dir = dir(paddle.tensor.creation.tensor)
+        module_dir = dir(paddle.tensor)
+        self.assertGreater(len(module_dir), len(api_dir))
+
     def test_list_to_tensor(self):
         array = [[[1, 2], [1, 2], [1.0, 2]], [[1, 2], [1, 2], [1, 2]]]
         var = paddle.to_tensor(array, dtype="int32")
@@ -1302,7 +1385,7 @@ class TestEagerTensor(unittest.TestCase):
         ):
             x = paddle.to_tensor([1, 2, 3])
             paddle.to_tensor(x)
-            flag = paddle.tensor.creation._warned_in_to_tensor
+            flag = paddle.tensor.creation._warned_in_tensor
             self.assertTrue(flag)
 
     def test_dlpack_device(self):

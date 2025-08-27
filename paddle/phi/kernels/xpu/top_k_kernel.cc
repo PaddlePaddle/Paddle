@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
@@ -52,12 +53,7 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   int64_t k = k_scalar.to<int64_t>();
-  PADDLE_ENFORCE_GE(
-      x.numel(),
-      k,
-      errors::InvalidArgument(
-          "x has only %d element, can not find %d top values.", x.numel(), k));
-
+  // out shape [-1]
   if (k_scalar.FromTensor()) {
     auto out_dims_ = out->dims();
     // according to axis to set K value in the dim
@@ -65,6 +61,18 @@ void TopkKernel(const Context& dev_ctx,
     out->Resize(out_dims_);
     indices->Resize(out_dims_);
   }
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    phi::Full<int64_t, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(indices->dims())), 0, indices);
+    return;
+  }
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
 
   const T* in_data = x.data<T>();
   int64_t* indices_data = dev_ctx.template Alloc<int64_t>(indices);

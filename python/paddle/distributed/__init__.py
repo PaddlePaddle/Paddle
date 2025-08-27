@@ -18,7 +18,10 @@ from .value_patch import monkey_patch_value_in_dist
 
 monkey_patch_value_in_dist()
 from paddle.base.core import Placement, ReduceType
-from paddle.distributed.fleet.base.topology import ParallelMode
+from paddle.distributed.fleet.base.topology import (
+    ParallelMode,
+    create_nccl_config,
+)
 from paddle.distributed.fleet.dataset import InMemoryDataset, QueueDataset
 
 from . import (
@@ -48,6 +51,10 @@ from .auto_parallel.api import (
 )
 from .auto_parallel.high_level_api import to_distributed
 from .auto_parallel.interface import get_mesh, set_mesh
+from .auto_parallel.intermediate.context_parallel import (
+    ContextParallel,
+    PrepareContextParallel,
+)
 from .auto_parallel.intermediate.parallelize import parallelize
 from .auto_parallel.intermediate.pipeline_parallel import SplitPoint
 from .auto_parallel.intermediate.tensor_parallel import (
@@ -69,8 +76,6 @@ from .auto_parallel.placement_type import (
     Shard,
 )
 from .auto_parallel.process_mesh import ProcessMesh
-from .checkpoint.load_state_dict import load_state_dict
-from .checkpoint.save_state_dict import save_state_dict
 from .collective import (
     is_available,
     new_group,
@@ -114,6 +119,14 @@ from .entry_attr import (
     ShowClickEntry,
 )
 from .fleet import BoxPSDataset  # noqa: F401
+from .flex_checkpoint.dcp.load_state_dict import load_state_dict
+from .flex_checkpoint.dcp.save_state_dict import save_state_dict
+from .flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    ShardedWeight,
+    build_sharded_state_dict,
+    shard_weight,
+)
 from .launch.main import launch
 from .parallel import (  # noqa: F401
     DataParallel,
@@ -219,4 +232,11 @@ __all__ = [
     "get_mesh",
     "to_distributed",
     "ConvParallel",
+    "ContextParallel",
+    "PrepareContextParallel",
+    "create_nccl_config",
+    "ShardedWeight",
+    "ShardedStateDict",
+    "shard_weight",
+    "build_sharded_state_dict",
 ]

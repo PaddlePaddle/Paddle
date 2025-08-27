@@ -82,9 +82,9 @@ class VecT2<phi::dtype::bfloat16> {
   using Type = int;
 };
 
-static inline int Log2Ceil(int value) {
+static inline int Log2Ceil(int64_t value) {
   int log2_value = 0;
-  while ((1 << log2_value) < value) ++log2_value;
+  while ((int64_t(1) << log2_value) < value) ++log2_value;
   return log2_value;
 }
 
@@ -646,7 +646,9 @@ __global__ void WarpSoftmaxBackward(T* dst,
   constexpr IndexType kBatchSize = (kDimCeil <= 128) ? 2 : 1;
   constexpr IndexType kLoopsV = (kLoops >= kVSize) ? (kLoops / kVSize) : 1;
   IndexType element_count_v = element_count / kVSize;
-  IndexType first_batch = (blockDim.y * blockIdx.x + threadIdx.y) * kBatchSize;
+  IndexType first_batch =
+      (static_cast<int64_t>(blockDim.y) * blockIdx.x + threadIdx.y) *
+      kBatchSize;
   IndexType local_batches = min(batch_size - first_batch, kBatchSize);
 
   // max index to read
@@ -836,37 +838,42 @@ void SwitchWarpSoftmaxBackward(const IndexType blocks,
  * Better performance when axis != -1
  */
 
-static void GetGridDim(
-    int high_dim, int mid_dim, int low_dim, const dim3& block, dim3* grid) {
+static void GetGridDim(int64_t high_dim,
+                       int64_t low_dim,
+                       const dim3& block,
+                       dim3* grid) {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
   int max_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
-  int max_threads = max_threads_per_mp * max_mp;
-  int num_threads = block.x * block.y;
-  int max_num_blocks = max_threads / num_threads;
+  int64_t max_threads = max_threads_per_mp * max_mp;
+  int64_t num_threads = static_cast<int64_t>(block.x) * block.y;
+  int64_t max_num_blocks = max_threads / num_threads;
 
-  int grid_x = (low_dim + block.x - 1) / block.x;
+  int64_t grid_x = (low_dim + block.x - 1) / block.x;
   grid_x = std::min(grid_x, max_num_blocks);
-  int grid_y = (max_num_blocks + grid_x - 1) / grid_x;
+  int64_t grid_y = (max_num_blocks + grid_x - 1) / grid_x;
   grid_y = std::min(grid_y, high_dim);
   grid->x = grid_x;
   grid->y = grid_y;
 }
 
-static void GetBlockDim(int mid_dim, int low_dim, dim3* block) {
+static void GetBlockDim(int64_t mid_dim, int64_t low_dim, dim3* block) {
   constexpr int max_num_threads = 1024;
-  int block_x = 1 << Log2Ceil(low_dim);
-  int block_y = 1 << Log2Ceil(mid_dim);
-  block->x = std::min(block_x, 32);
-  block->y = std::min(block_y, static_cast<int>(max_num_threads / block->x));
-  block->x = std::min(block_x, static_cast<int>(max_num_threads / block->y));
+  int64_t block_x = int64_t(1) << Log2Ceil(low_dim);
+  int64_t block_y = int64_t(1) << Log2Ceil(mid_dim);
+  block->x = std::min<int64_t>(block_x, 32);
+  block->y = std::min<int64_t>(block_y, max_num_threads / block->x);
+  block->x = std::min<int64_t>(block_x, max_num_threads / block->y);
 }
 
-static void GetLaunchConfig(
-    int high_dim, int mid_dim, int low_dim, dim3* grid, dim3* block) {
+static void GetLaunchConfig(int64_t high_dim,
+                            int64_t mid_dim,
+                            int64_t low_dim,
+                            dim3* grid,
+                            dim3* block) {
   GetBlockDim(mid_dim, low_dim, block);
-  GetGridDim(high_dim, mid_dim, low_dim, *block, grid);
+  GetGridDim(high_dim, low_dim, *block, grid);
 }
 
 template <typename T,
@@ -884,9 +891,10 @@ __global__ void NormalSoftmaxForward(T* output,
   const IndexType mid_stride = low_dim;
   for (IndexType high_id = blockIdx.y; high_id < high_dim;
        high_id += gridDim.y) {
-    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (IndexType low_id =
+             static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
          low_id < low_dim;
-         low_id += blockDim.x * gridDim.x) {
+         low_id += static_cast<int64_t>(blockDim.x) * gridDim.x) {
       const IndexType input_offset = high_id * high_stride + low_id;
 
       // 1. reduce max
@@ -943,9 +951,10 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
   const IndexType mid_stride = low_dim;
   for (IndexType high_id = blockIdx.y; high_id < high_dim;
        high_id += gridDim.y) {
-    for (IndexType low_id = blockIdx.x * blockDim.x + threadIdx.x;
+    for (IndexType low_id =
+             static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
          low_id < low_dim;
-         low_id += blockDim.x * gridDim.x) {
+         low_id += static_cast<int64_t>(blockDim.x) * gridDim.x) {
       const IndexType grad_offset = high_id * high_stride + low_id;
 
       // 1. reduce sum
@@ -1106,7 +1115,7 @@ void LaunchSoftmaxForwardCudnnKernel(const GPUContext& dev_ctx,
   int64_t remaining = tensor_dims[0];
   int dim = tensor_dims[1];
   int64_t batch_size = std::numeric_limits<int32_t>::max() / dim;
-  int offset = batch_size * dim;
+  int64_t offset = batch_size * dim;
   while (remaining > 0) {
     tensor_dims[0] = std::min<int64_t>(remaining, batch_size);
     SoftmaxForwardCudnnKernel<T>(
@@ -1184,7 +1193,7 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   int64_t remaining = tensor_dims[0];
   int dim = tensor_dims[1];
   int64_t batch_size = std::numeric_limits<int32_t>::max() / dim;
-  int offset = batch_size * dim;
+  int64_t offset = batch_size * dim;
   while (remaining > 0) {
     tensor_dims[0] = std::min<int64_t>(remaining, batch_size);
     SoftmaxBackwardCudnnKernel<T>(dev_ctx,
@@ -1370,7 +1379,7 @@ void SoftmaxBackwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       GetSoftmaxTensorDims<IndexType>(out.dims(), axis);
   IndexType N = tensor_dims[0];
   IndexType dim = tensor_dims[1];
-  int D = tensor_dims[2];
+  IndexType D = tensor_dims[2];
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true) ||

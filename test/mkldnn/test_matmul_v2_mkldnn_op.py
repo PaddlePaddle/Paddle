@@ -53,7 +53,7 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.trans_x = False
         self.trans_y = False
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def set_inputs(self, x, y):
         self.inputs = {'X': x, 'Y': y}
@@ -77,7 +77,7 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
         self.attrs = {
             'trans_x': self.trans_x,
             'trans_y': self.trans_y,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
         self.set_dtype_attr()
         self.outputs = {'Out': result}

@@ -50,7 +50,7 @@ def np_medain_min(data, keepdims=False):
     return np_res + np.sum(np.isnan(data).astype(data.dtype) * data)
 
 
-def np_medain_min_axis(data, axis=None, keepdims=False):
+def np_median_min_axis(data, axis=None, keepdims=False):
     data = copy.deepcopy(data)
     if axis is None:
         return np_medain_min(data, keepdims)
@@ -232,7 +232,7 @@ class TestMedianMin(unittest.TestCase):
     def static_single_test_median(self, lis_test):
         paddle.enable_static()
         x, axis, keepdims = lis_test
-        res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         exe = paddle.static.Executor()
@@ -245,7 +245,7 @@ class TestMedianMin(unittest.TestCase):
 
     def dygraph_single_test_median(self, lis_test):
         x, axis, keepdims = lis_test
-        res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
         if axis is None:
             res_pd = paddle.median(
                 paddle.to_tensor(x), axis, keepdims, mode='min'
@@ -335,7 +335,7 @@ class TestMedianMin(unittest.TestCase):
             for keepdims in [False, True]
         ]
         for axis, keepdims in lis_tests:
-            res_np = np_medain_min_axis(x, axis=axis, keepdims=keepdims)
+            res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
             if axis is None:
                 res_pd = paddle.median(
                     paddle.to_tensor(x), axis, keepdims, mode='min'
@@ -355,6 +355,125 @@ class TestMedianMin(unittest.TestCase):
             )
             res = paddle.median(paddle.to_tensor(x), mode='min')
             np.testing.assert_equal(res.numpy().dtype, np.dtype(inp_dtype))
+
+
+class TestMedianAvg_ZeroSize(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        res_pd = paddle.median(x_pd, axis, keepdims)
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+        paddle.sum(res_pd).backward()
+        np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 0
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianMin_ZeroSize(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        if axis is None:
+            res_pd = paddle.median(x_pd, axis, keepdims, mode='min')
+        else:
+            res_pd, _ = paddle.median(x_pd, axis, keepdims, mode='min')
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+        paddle.sum(res_pd).backward()
+        np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 0
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianSort(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        res_pd = paddle.median(x_pd, axis, keepdims)
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 2
+        w = 20000
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianAlias(unittest.TestCase):
+    def static_single_test_median(self, lis_test):
+        paddle.enable_static()
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        exe = paddle.static.Executor()
+        with paddle.static.program_guard(main_program, startup_program):
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
+            y = paddle.median(x_in, dim=axis, keepdim=keepdims)
+            [res_pd, _] = exe.run(feed={'x': x}, fetch_list=[y])
+            np.testing.assert_allclose(res_pd, res_np)
+        paddle.disable_static()
+
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        if axis is None:
+            res_pd = paddle.median(
+                paddle.to_tensor(x), dim=axis, keepdim=keepdims
+            )
+        else:
+            res_pd, _ = paddle.median(
+                paddle.to_tensor(x), dim=axis, keepdim=keepdims
+            )
+        np.testing.assert_allclose(res_pd.numpy(False), res_np)
+
+    def test_median_static(self):
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.static_single_test_median(lis_test)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
 
 
 if __name__ == '__main__':

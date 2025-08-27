@@ -69,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from paddle import Tensor
+    from paddle.base.libpaddle import NCCLConfig
     from paddle.nn.layer.layers import _StateDict
 __all__ = []
 
@@ -390,9 +391,9 @@ class DataParallel(Layer):
     ) -> None:
         super().__init__(layers.full_name() + "_data_parallel")
 
-        assert (
-            in_dynamic_mode()
-        ), "It's not supported to construct DataParallel in static graph mode."
+        assert in_dynamic_mode(), (
+            "It's not supported to construct DataParallel in static graph mode."
+        )
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
@@ -755,12 +756,12 @@ class ParallelEnv:
         ).split(",")
         self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT", "")
         self._nrings = int(os.getenv("FLAGS_nccl_nrings", "1"))
-        assert (
-            self._nrings > 0
-        ), "nccl_nrings must be an integer greater than 0."
-        assert (
-            self._nrings < 9
-        ), "nccl_nrings should be less than 9, which is enough in most scenarios."
+        assert self._nrings > 0, (
+            "nccl_nrings must be an integer greater than 0."
+        )
+        assert self._nrings < 9, (
+            "nccl_nrings should be less than 9, which is enough in most scenarios."
+        )
 
     @property
     def rank(self) -> int:
@@ -984,7 +985,7 @@ def _print_modified_flags(modified_flags):
         )
 
 
-def init_parallel_env() -> Group:
+def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     """
 
     Initialize parallel training environment in dynamic graph mode.
@@ -1146,6 +1147,10 @@ def init_parallel_env() -> Group:
         if backend in ["nccl", 'xccl', 'bkcl', 'flagcx']:
             core.CommContextManager.set_device_id(parallel_env.device_id)
 
+        from paddle.distributed.fleet.base.topology import (
+            message2nccl_config,
+        )
+
         pg = _new_process_group_impl(
             backend,
             default_store,
@@ -1153,6 +1158,10 @@ def init_parallel_env() -> Group:
             world_size,
             _default_group_name,
             pg_options=None,
+            nccl_config=message2nccl_config(
+                nccl_config,
+                "default",
+            ),
         )
         ranks = list(range(world_size))
         group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)

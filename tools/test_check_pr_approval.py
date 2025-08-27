@@ -16,6 +16,7 @@
 """
 TestCases for check_pr_approval.py
 """
+
 import subprocess
 import sys
 import unittest
@@ -67,9 +68,7 @@ class Test_check_approval(unittest.TestCase):
     "author_association": "CONTRIBUTOR"
   }
 ]
-""".encode(
-            self.codeset
-        )
+""".encode(self.codeset)
 
     def test_ids(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', '26408901']

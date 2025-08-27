@@ -12,18 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
 from paddle.framework import core
 
 paddle.enable_static()
+
+
+class TestTakeAlongAxis0Size(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.zeros((2, 0, 5)).astype(self.dtype)
+        indices = np.zeros((2, 3, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 3, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=self.check_pir)
+
+    def test_check_grad(self):
+        self.check_grad(['Input'], 'Result', check_pir=self.check_pir)
+
+
+class TestTakeAlongAxis0Size2(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.random.rand(2, 3, 5).astype(self.dtype)
+        indices = np.zeros((2, 0, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 0, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=self.check_pir)
+
+    def test_check_grad(self):
+        self.grad = np.zeros_like(self.outputs['Result']).astype(self.dtype)
+        self.check_grad(
+            ['Input'],
+            'Result',
+            user_defined_grads=[self.grad],
+            check_pir=self.check_pir,
+        )
 
 
 class TestTakeAlongAxisOp(OpTest):
@@ -228,15 +279,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             -dim_size, dim_size, size=([1, 3])
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -291,15 +334,7 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
             -dim_size, dim_size, size=(4, 2)
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
 
 class TestTakeAlongAxisAPICase2(unittest.TestCase):
@@ -313,15 +348,7 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
             -dim_size, dim_size, size=(1, 3)
         ).astype('int64')
         self.x_np = np.random.random(self.shape).astype(np.float32)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -382,7 +409,6 @@ class TestTakeAlongAxisAPICase2(unittest.TestCase):
 class TestTakeAlongAxisAPICase4(unittest.TestCase):
     def test_static_shape_take_along_axis(self):
         with dygraph_guard():
-
             x = paddle.randn([4, 2])
             ind = paddle.to_tensor([[0, 1]])
 
@@ -399,6 +425,77 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
                 full_graph=True,
             )
             _ = static_f(x, ind, axis=0, broadcast=False)
+
+
+class TestTakeAlongAxis_ZeroSize(OpTest):
+    def setUp(self):
+        self.python_api = paddle.take_along_axis
+        self.op_type = "take_along_axis"
+        self.dtype = "float64"
+        self.check_pir = True
+
+        x = np.zeros((2, 0, 5)).astype(self.dtype)
+        indices = np.zeros((2, 3, 5)).astype("int64")
+
+        self.inputs = {'Input': x, 'Index': indices}
+        self.attrs = {'Axis': 1}
+
+        output = np.zeros((2, 3, 5)).astype(self.dtype)
+        self.outputs = {'Result': output}
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            paddle.CPUPlace(), check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0), check_pir=self.check_pir
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
+        )
+        if core.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['Input'], 'Result', check_pir=self.check_pir
+            )
+
+
+class TestTakeAlongAxisInt16(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.int16
+        self.x_type = "int16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """int16 does not require and allow for grad check"""
+        pass
+
+
+class TestTakeAlongAxisUInt8(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.uint8
+        self.x_type = "uint8"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.axis = 2
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(
+            -dim_size, dim_size, size=(5, 1, 1)
+        ).astype(self.index_type)
+        self.axis_type = "int64"
+
+    def test_check_grad(self):
+        """uint8 does not require and allow for grad check"""
+        pass
 
 
 if __name__ == "__main__":

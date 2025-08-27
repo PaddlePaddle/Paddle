@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -185,15 +183,7 @@ class TestFoldAPI(TestFoldOp):
         self.op_type = 'fold'
         self.python_api = paddle.nn.functional.fold
         self.set_data()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def test_api(self):
         for place in self.places:
@@ -211,7 +201,6 @@ class TestFoldAPI(TestFoldOp):
 
 
 class TestFoldOpError(unittest.TestCase):
-
     def test_errors(self):
         from paddle.base.framework import Program, program_guard
         from paddle.nn.functional import fold
@@ -239,7 +228,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_dilations_shape():
-                # dialtions_size must be 2
+                # dilations_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,
@@ -249,7 +238,7 @@ class TestFoldOpError(unittest.TestCase):
                 )
 
             def test_strides_shape():
-                # strids_size must be 2
+                # strides_size must be 2
                 x = paddle.randn(shape=[2, 6, 6], dtype="float32")
                 out = fold(
                     x,

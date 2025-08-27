@@ -262,7 +262,9 @@ PD_REGISTER_KERNEL(amax_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(amin_grad,
                    GPU,
@@ -291,6 +293,7 @@ PD_REGISTER_KERNEL(mean_grad,
                    bool,
                    float,
                    double,
+                   phi::dtype::float8_e4m3fn,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from paddle.nn import Layer
 
 
-def c_split(x, process_mesh, need_transpose):
+def c_split(x, process_mesh, need_transpose, split_type="sp"):
     mp_index = process_mesh.dim_names.index('mp')  # get the axis for the split
     dp_index = process_mesh.dim_names.index('dp')
     if isinstance(x, tuple):
@@ -44,17 +44,23 @@ def c_split(x, process_mesh, need_transpose):
     placements = target_x.placements
     if placements is None:
         placements = [dist.Replicate() for _ in range(len(process_mesh.shape))]
-    if placements[dp_index] == dist.Shard(0):
-        # NOTE(zhangwl):if shard(0) , input shape should be [b,s,h]
-        split_dims = dist.Shard(1)
-    elif placements[dp_index] == dist.Shard(1):
-        # NOTE(zhangwl):if shard(1) , input shape should be [s,b,h]
-        split_dims = dist.Shard(0)
+    if split_type == "sp":
+        if placements[dp_index] == dist.Shard(0):
+            # NOTE(zhangwl):if shard(0) , input shape should be [b,s,h]
+            split_dims = dist.Shard(1)
+        elif placements[dp_index] == dist.Shard(1):
+            # NOTE(zhangwl):if shard(1) , input shape should be [s,b,h]
+            split_dims = dist.Shard(0)
+        else:
+            logging.warning(
+                f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
+            )
+            split_dims = dist.Shard(0)
+    elif split_type == "mp":
+        split_dims = dist.Shard(2)  # split h [b,s,h]
     else:
-        logging.warning(
-            f"parallel api don't know {target_x.shape} which dimension is batch, default is to cut to the 0th dimension"
-        )
-        split_dims = dist.Shard(0)
+        raise ValueError(f"Unsupported split type {split_type}")
+
     placements[mp_index] = split_dims
     target_x = dist.reshard(target_x, process_mesh, placements)
     if isinstance(x, tuple):
@@ -251,7 +257,7 @@ class RowWiseParallel(PlanBase):
 
     def split_input_hook(self, process_mesh):
         def split_hook(layer, input):
-            return c_split(input, process_mesh, False)
+            return c_split(input, process_mesh, False, split_type="mp")
 
         return split_hook
 
@@ -815,15 +821,15 @@ class TensorParallel(ParallelModel):
         if parallelize_plan is not None:
             assert isinstance(parallelize_plan, dict)
             for key, plan in parallelize_plan.items():
-                assert isinstance(
-                    key, str
-                ), "The key of the parallelize plan should be a string."
+                assert isinstance(key, str), (
+                    "The key of the parallelize plan should be a string."
+                )
                 if not isinstance(plan, list):
                     plan = [plan]
                 for p in plan:
-                    assert isinstance(
-                        p, PlanBase
-                    ), "The value the the parallelize plan should be a instance of PlanBase or a list of PlanBase."
+                    assert isinstance(p, PlanBase), (
+                        "The value the the parallelize plan should be a instance of PlanBase or a list of PlanBase."
+                    )
 
             self.global_mesh = dist.auto_parallel.get_mesh()
             self.parallelize_plan = parallelize_plan
@@ -928,12 +934,12 @@ def tensor_parallel(model, optimizer=None, config=None):
 
     global_mesh = dist.auto_parallel.get_mesh()
 
-    assert (
-        global_mesh is not None
-    ), "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
-    assert (
-        "mp" in global_mesh.dim_names
-    ), "mp must in the mesh dim_names when use tensor_parallel"
+    assert global_mesh is not None, (
+        "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
+    )
+    assert "mp" in global_mesh.dim_names, (
+        "mp must in the mesh dim_names when use tensor_parallel"
+    )
 
     model = TensorParallel(model, parallelize_plan)
     if optimizer is not None:

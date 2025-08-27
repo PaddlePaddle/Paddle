@@ -91,11 +91,29 @@ class TestLlamaAuto:
         self.dp = int(os.getenv("dp"))
         self.mp = int(os.getenv("mp"))
         self.pp = int(os.getenv("pp"))
+        self.sep = int(os.getenv("sep", "1"))
         if os.getenv("use_sp") == "true":
             self.config.sequence_parallel = True
         self.gradient_accumulation_steps = int(os.getenv("acc_step"))
         self.config.recompute = False
+        self.config.context_parallel_degree = 1
         self.config.sep_parallel_degree = 1
+        self.config.tensor_parallel_degree = self.mp
+        self.config.pipeline_parallel_degree = self.pp
+        if os.getenv("context_parallel", "false") == "true":
+            self.config.context_parallel_degree = self.sep
+            self.config.use_flash_attention = True
+            dist.init_parallel_env()
+        if os.getenv("sep_parallel", "false") == "true":
+            self.config.sep_parallel_degree = self.sep
+        if self.sep > 1:
+            # only one of the context_parallel and sep_parallel can be True
+            assert (
+                self.config.sep_parallel_degree
+                != self.config.context_parallel_degree
+            ), (
+                f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
+            )
 
         self.init_dist_env()
 
@@ -120,41 +138,43 @@ class TestLlamaAuto:
         random.seed(1024)
 
     def check_program_equal(self, program_a, program_b):
-        assert (
-            program_a.num_ops() == program_b.num_ops()
-        ), f'The number of ops between two programs is different: {program_a.num_ops()} vs {program_b.num_ops()}.'
+        assert program_a.num_ops() == program_b.num_ops(), (
+            f'The number of ops between two programs is different: {program_a.num_ops()} vs {program_b.num_ops()}.'
+        )
         for i in range(program_a.num_ops()):
             a_op = program_a.global_block().ops[i]
             b_op = program_a.global_block().ops[i]
             # check op name
-            assert (
-                a_op.name() == b_op.name()
-            ), f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
+            assert a_op.name() == b_op.name(), (
+                f'The name of {i} op in program is different: {a_op.name()} vs {b_op.name()}.'
+            )
             # check op inputs
             for index in range(a_op.num_operands()):
                 assert (
                     a_op.operand(index)
                     .source()
                     .is_same(b_op.operand(index).source())
-                ), f'The type of {index} operand is different: {a_op.operand(index).source()} vs {b_op.operand(index).source()}'
+                ), (
+                    f'The type of {index} operand is different: {a_op.operand(index).source()} vs {b_op.operand(index).source()}'
+                )
             # check op outputs
             for index in range(a_op.num_results()):
-                assert a_op.result(index).is_same(
-                    b_op.result(index)
-                ), f'The type of {index} result is different: {a_op.result(index)} vs {b_op.result(index)}'
+                assert a_op.result(index).is_same(b_op.result(index)), (
+                    f'The type of {index} result is different: {a_op.result(index)} vs {b_op.result(index)}'
+                )
             # check op attrs
             for k, v in a_op.attrs().items():
-                assert (
-                    k in b_op.attrs()
-                ), f'Can not find key of {k} attribute in other program'
+                assert k in b_op.attrs(), (
+                    f'Can not find key of {k} attribute in other program'
+                )
                 if k == 'place':
-                    assert type(v) == type(
-                        b_op.attrs()[k]
-                    ), f'The attribute of {k} is different: {type(v)} vs {type(b_op.attrs()[k])}'
+                    assert type(v) == type(b_op.attrs()[k]), (
+                        f'The attribute of {k} is different: {type(v)} vs {type(b_op.attrs()[k])}'
+                    )
                 else:
-                    assert (
-                        v == b_op.attrs()[k]
-                    ), f'The attribute of {k} is different: {v} vs {b_op.attrs()[k]}'
+                    assert v == b_op.attrs()[k], (
+                        f'The attribute of {k} is different: {v} vs {b_op.attrs()[k]}'
+                    )
 
     def run_dy2static(self, tmp_ckpt_path):
         model = LlamaForCausalLMAuto(self.config)

@@ -48,6 +48,8 @@ inline bool HasOnlyOneValueName(pir::Value value) {
   std::vector<std::string> names = GetValueAllNames(value);
   return std::set<std::string>(names.begin(), names.end()).size() <= 1;
 }
+std::unordered_map<std::string, pir::Value> GetAllNamedValues(
+    const pir::Program &program);
 
 }  // namespace name_analysis
 }  // namespace utils

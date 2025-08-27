@@ -21,10 +21,16 @@
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
-#include "paddle/fluid/framework/inlined_vector.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/platform/device/gpu/gpu_types.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #ifdef PADDLE_WITH_NCCL
 #include <nccl.h>
@@ -42,7 +48,7 @@ namespace allocation {
 // Exception when `Alloc`/`AllocShared` failed
 struct BadAlloc : public std::exception {
   inline explicit BadAlloc(std::string err_msg, const char* file, int line)
-      : err_str_(platform::GetCompleteTraceBackString(
+      : err_str_(phi::enforce::GetCompleteTraceBackString(
             std::move(err_msg), file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
@@ -128,7 +134,7 @@ class Allocation : public phi::Allocation {
    */
   static constexpr size_t kReserveAllocatorNum = 8;
   using DecoratedAllocatorStack =
-      framework::InlinedVector<Allocator*, kReserveAllocatorNum>;
+      InlinedVector<Allocator*, kReserveAllocatorNum>;
 
   DecoratedAllocatorStack decorated_allocators_;
 

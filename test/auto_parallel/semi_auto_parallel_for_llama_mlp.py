@@ -149,9 +149,9 @@ class TestLlamaMlpForSemiAutoParallel:
         )
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def get_shard_check_hook(self, placements, check_input=False):
         def check_func(layer, input, output=None):

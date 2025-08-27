@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -69,15 +69,7 @@ class TestUnflattenAPI(unittest.TestCase):
         self.set_api()
         self.set_args()
         self.get_output()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def func_dygraph(self):
         for place in self.places:
@@ -96,16 +88,7 @@ class TestUnflattenAPI(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -132,6 +115,38 @@ class TestUnflattenAPI(unittest.TestCase):
                 )
 
                 np.testing.assert_allclose(fetches[0], self.output, rtol=1e-05)
+
+
+class TestUnflattenInputZeroSize(TestUnflattenAPI):
+    def set_args(self):
+        self.x = np.random.rand(4, 0, 16).astype('int16')
+        self.axis = 0
+        self.shape = (2, 2)
+        self.shape_is_tensor = False
+
+
+class TestUnflattenInputZeroSizeError(unittest.TestCase):
+    def test_errors(self):
+        paddle.disable_static()
+        x = np.random.rand(4, 0, 16).astype('float32')
+        x = paddle.to_tensor(x)
+        with self.assertRaises(Exception) as context:
+            paddle.unflatten(x, axis=0, shape=[-1, 0, 1])
+        self.assertTrue(
+            "Provided sizes don't multiply up" in str(context.exception)
+        )
+
+
+class TestUnflattenInputZeroSizeError2(unittest.TestCase):
+    def test_errors(self):
+        paddle.disable_static()
+        x = np.random.rand(4, 0, 16).astype('float32')
+        x = paddle.to_tensor(x)
+        with self.assertRaises(Exception) as context:
+            paddle.unflatten(x, axis=0, shape=[-1, 3])
+        self.assertTrue(
+            "The 'shape' attribute in ReshapeOp" in str(context.exception)
+        )
 
 
 # check the data type of the input x
@@ -273,27 +288,10 @@ class TestLayer(unittest.TestCase):
 
     def setUp(self):
         self.set_args()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_layer(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             paddle.disable_static()
             x = paddle.to_tensor(self.x, dtype='float32', place=place)
             unflatten = paddle.nn.Unflatten(self.axis, self.shape)
@@ -327,7 +325,6 @@ class TestLayer(unittest.TestCase):
 
 
 class TestLayerName(unittest.TestCase):
-
     def test_name(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
         self.axis = 1

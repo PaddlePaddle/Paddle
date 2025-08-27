@@ -183,8 +183,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._places
         )
 
-        self._init_thread()
         self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
         global _loader
         _loader = self
@@ -373,8 +377,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._resume_worker_cnt = 0
 
         assert self._num_workers > 0, (
-            "Multi-process DataLoader "
-            f"invalid num_workers({self._num_workers})"
+            f"Multi-process DataLoader invalid num_workers({self._num_workers})"
         )
 
         # subprocess wrokers' result queue
@@ -427,13 +430,17 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             (self._worker_shm_buffer_size) * 2 * self._num_workers
         )
 
+        self._shutdown = False
         # init workers and indices queues and put 2 indices in each indices queue
         self._init_workers()
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
 
-        self._init_thread()
-        self._shutdown = False
+        try:
+            self._init_thread()
+        except Exception:
+            self._try_shutdown_all()
+            raise
 
     def _init_workers(self):
         from paddle.incubate import multiprocessing
@@ -577,8 +584,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._try_put_indices()
 
     def _shutdown_worker(self, worker_id, shutdown=False):
-        if self._worker_status[worker_id] or (
-            self._persistent_workers and shutdown
+        if worker_id < len(self._worker_status) and (
+            self._worker_status[worker_id]
+            or self._persistent_workers
+            and shutdown
         ):
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
@@ -775,9 +784,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
     def _try_put_indices(self):
-        assert (
-            self._batches_outstanding <= self._outstanding_capacity
-        ), "too many indices have been put to queue"
+        assert self._batches_outstanding <= self._outstanding_capacity, (
+            "too many indices have been put to queue"
+        )
         # In multi-process mode for IterableDataset, _try_put_indices will
         # be called both in main process(for our implement has blocking queue,
         # and blocking queue read is in main process) and thread, which may

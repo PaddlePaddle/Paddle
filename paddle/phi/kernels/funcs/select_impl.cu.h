@@ -396,7 +396,7 @@ void SelectKernel(const KPDevice &dev_ctx,
   using CT = int64_t;  // set Count_data Type
   const int t_size = sizeof(CT);
 
-  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
+  const phi::Place &cuda_place = dev_ctx.GetPlace();
   phi::CPUPlace cpu_place = phi::CPUPlace();
 
   // 1.1 get stored data num of per block
@@ -537,7 +537,7 @@ void RestrictSelectKernel(const KPDevice &dev_ctx,
   using CT = int64_t;  // set Count_data Type
   const int t_size = sizeof(CT);
 
-  const phi::GPUPlace &cuda_place = dev_ctx.GetPlace();
+  const phi::Place &cuda_place = dev_ctx.GetPlace();
   phi::CPUPlace cpu_place = phi::CPUPlace();
 
   // 1.1 get stored data num of per block

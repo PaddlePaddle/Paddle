@@ -2673,6 +2673,18 @@ class TestNoBackwardAPI(unittest.TestCase):
         for i in range(len(res)):
             self.assertEqual(emb.numpy()[i], res[i])
 
+    def test_embedding_alias(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            input=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)

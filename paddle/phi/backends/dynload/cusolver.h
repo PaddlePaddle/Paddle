@@ -46,8 +46,10 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnSetStream);         \
   __macro(cusolverDnSpotrf_bufferSize); \
   __macro(cusolverDnDpotrf_bufferSize); \
+  __macro(cusolverDnXpotrf_bufferSize); \
   __macro(cusolverDnSpotrf);            \
   __macro(cusolverDnDpotrf);            \
+  __macro(cusolverDnXpotrf);            \
   __macro(cusolverDnSpotrs);            \
   __macro(cusolverDnDpotrs);            \
   __macro(cusolverDnCpotrs);            \
@@ -77,6 +79,7 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnDgeqrf_bufferSize);   \
   __macro(cusolverDnCgeqrf_bufferSize);   \
   __macro(cusolverDnZgeqrf_bufferSize);   \
+  __macro(cusolverDnXgeqrf_bufferSize);   \
   __macro(cusolverDnSorgqr_bufferSize);   \
   __macro(cusolverDnDorgqr_bufferSize);   \
   __macro(cusolverDnSormqr_bufferSize);   \
@@ -96,6 +99,8 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnSgetrf);              \
   __macro(cusolverDnSgetrs);              \
   __macro(cusolverDnDgetrs);              \
+  __macro(cusolverDnCgetrs);              \
+  __macro(cusolverDnZgetrs);              \
   __macro(cusolverDnDgetrf);              \
   __macro(cusolverDnCgetrf);              \
   __macro(cusolverDnZgetrf);              \
@@ -103,6 +108,7 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnDgeqrf);              \
   __macro(cusolverDnCgeqrf);              \
   __macro(cusolverDnZgeqrf);              \
+  __macro(cusolverDnXgeqrf);              \
   __macro(cusolverDnSorgqr);              \
   __macro(cusolverDnDorgqr);              \
   __macro(cusolverDnSormqr);              \
@@ -116,6 +122,8 @@ CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #if CUDA_VERSION >= 9020
 #define CUSOLVER_ROUTINE_EACH_R2(__macro)      \
   __macro(cusolverDnCreateSyevjInfo);          \
+  __macro(cusolverDnCreateParams);             \
+  __macro(cusolverDnDestroyParams);            \
   __macro(cusolverDnSsyevj_bufferSize);        \
   __macro(cusolverDnDsyevj_bufferSize);        \
   __macro(cusolverDnCheevj_bufferSize);        \

@@ -67,6 +67,11 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& step,
                            MetaTensor* out);
 
+void RangeTensorInferMeta(const MetaTensor& start,
+                          const MetaTensor& end,
+                          const MetaTensor& step,
+                          MetaTensor* out);
+
 void AssignPosInferMeta(const MetaTensor& x,
                         const MetaTensor& cum_count,
                         const MetaTensor& eff_num_len,
@@ -86,6 +91,12 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const std::vector<float>& variance,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
+
+void CrossEntropyWithSoftmaxBwdWithDowncastInferMeta(
+    const MetaTensor& label,
+    const MetaTensor& softmax,
+    const MetaTensor& loss_grad,
+    MetaTensor* logits_grad);
 
 void CollectFpnProposalsInferMeta(
     const std::vector<const MetaTensor*>& multi_level_rois,
@@ -167,6 +178,12 @@ void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& v,
                           MetaTensor* out,
                           MetaTensor* softmax_lse);
+
+void FlashAttnV3VarlenInferMeta(const MetaTensor& q,
+                                const MetaTensor& k,
+                                const MetaTensor& v,
+                                MetaTensor* out,
+                                MetaTensor* softmax_lse);
 
 void InstanceNormInferMeta(const MetaTensor& x,
                            const MetaTensor& scale,
@@ -274,6 +291,12 @@ void MoeCombineInferMeta(const MetaTensor& x,
                          const MetaTensor& scatter_index,
                          MetaTensor* y);
 
+void MoeCombineNoWeightInferMeta(const MetaTensor& x,
+                                 const MetaTensor& combine_weights,
+                                 const MetaTensor& scatter_index,
+                                 float epsilon,
+                                 MetaTensor* y);
+
 void MoeGateDispatchPartialNoSoftmaxTopKInferMeta(
     const MetaTensor& x,
     const MetaTensor& combine_weights,
@@ -303,6 +326,20 @@ void MoeGateDispatchPermuteInferMeta(const MetaTensor& x,
                                      MetaTensor* scatter_index,
                                      MetaTensor* expert_offset,
                                      MetaTensor* expert_id);
+
+void MoeGateDispatchAndQuantInferMeta(const MetaTensor& x,
+                                      const MetaTensor& gate_logits,
+                                      const MetaTensor& corr_bias,
+                                      const int64_t k,
+                                      const int64_t capacity,
+                                      const bool use_pad,
+                                      const bool use_pow2_scale,
+                                      MetaTensor* fp8_out,
+                                      MetaTensor* scale,
+                                      MetaTensor* combine_weights,
+                                      MetaTensor* scatter_index,
+                                      MetaTensor* expert_offset,
+                                      MetaTensor* expert_id);
 
 void MovingAverageAbsMaxScaleInferMeta(const MetaTensor& x,
                                        const MetaTensor& in_accum,

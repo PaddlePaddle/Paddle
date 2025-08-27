@@ -18,7 +18,6 @@ import warnings
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -43,7 +42,6 @@ def false_fn():
 
 class TestReturnNoneInIfelse(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_dy2static_warning(self):
         paddle.disable_static()
         with warnings.catch_warnings(record=True) as w:
@@ -52,9 +50,9 @@ class TestReturnNoneInIfelse(Dy2StTestBase):
             flag = False
             for warn in w:
                 if (
-                    issubclass(warn.category, UserWarning)
-                ) and "Set var to 'None' in ifelse block might lead to error." in str(
-                    warn.message
+                    (issubclass(warn.category, UserWarning))
+                    and "Set var to 'None' in ifelse block might lead to error."
+                    in str(warn.message)
                 ):
                     flag = True
                     break

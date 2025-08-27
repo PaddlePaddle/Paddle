@@ -144,9 +144,9 @@ class TestCppExtensionJITInstall(unittest.TestCase):
 
     def _test_optional_tensor(self):
         x = custom_cpp_extension.optional_tensor(True)
-        assert (
-            x is None
-        ), "Return None when input parameter return_option = True"
+        assert x is None, (
+            "Return None when input parameter return_option = True"
+        )
         x = custom_cpp_extension.optional_tensor(False).numpy()
         x_np = np.ones(shape=[2, 2])
         np.testing.assert_array_equal(

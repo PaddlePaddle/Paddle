@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle import base, static
-from paddle.base import core
+from paddle import static
 
 
 class TestDiffOp(unittest.TestCase):
@@ -53,15 +52,7 @@ class TestDiffOp(unittest.TestCase):
     def setUp(self):
         self.set_args()
         self.get_output()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def func_dygraph(self):
         for place in self.places:
@@ -86,16 +77,7 @@ class TestDiffOp(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -324,7 +306,6 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 class TestDiffOpFp16(TestDiffOp):
-
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -360,6 +341,35 @@ class TestDiffOp_ZeroSize(TestDiffOp):
         self.axis = 0
         self.prepend = None
         self.append = None
+
+
+class TestDiffOpFp16_TorchAlias(TestDiffOp):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.base.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([4, 4]).astype("float16")
+                x = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float16"
+                )
+                exe = paddle.static.Executor(place)
+                out = paddle.diff(
+                    x,
+                    n=self.n,
+                    dim=self.axis,
+                    prepend=self.prepend,
+                    append=self.append,
+                )
+                fetches = exe.run(
+                    feed={
+                        "input": input,
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

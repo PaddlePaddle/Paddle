@@ -57,16 +57,18 @@ class TestSimpleRNN(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.SimpleRNN(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    activation=self.mode[4:].lower(),
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.SimpleRNN(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                activation=self.mode[4:].lower(),
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -98,22 +100,24 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
-                mask = paddle.static.nn.sequence_lod.sequence_mask(
-                    seq_len, dtype=paddle.get_default_dtype()
-                )
-                if self.time_major:
-                    mask = paddle.transpose(mask, [1, 0])
-                y, h = rnn2(x_data, sequence_length=seq_len)
-                mask = paddle.unsqueeze(mask, -1)
-                y = paddle.multiply(y, mask)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
+            mask = paddle.static.nn.sequence_lod.sequence_mask(
+                seq_len, dtype=paddle.get_default_dtype()
+            )
+            if self.time_major:
+                mask = paddle.transpose(mask, [1, 0])
+            y, h = rnn2(x_data, sequence_length=seq_len)
+            mask = paddle.unsqueeze(mask, -1)
+            y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 
@@ -145,15 +149,17 @@ class TestGRU(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.GRU(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.GRU(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -185,22 +191,24 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
-                mask = paddle.static.nn.sequence_lod.sequence_mask(
-                    seq_len, dtype=paddle.get_default_dtype()
-                )
-                if self.time_major:
-                    mask = paddle.transpose(mask, [1, 0])
-                y, h = rnn2(x_data, sequence_length=seq_len)
-                mask = paddle.unsqueeze(mask, -1)
-                y = paddle.multiply(y, mask)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
+            mask = paddle.static.nn.sequence_lod.sequence_mask(
+                seq_len, dtype=paddle.get_default_dtype()
+            )
+            if self.time_major:
+                mask = paddle.transpose(mask, [1, 0])
+            y, h = rnn2(x_data, sequence_length=seq_len)
+            mask = paddle.unsqueeze(mask, -1)
+            y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 
@@ -232,15 +240,17 @@ class TestLSTM(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()
@@ -272,22 +282,24 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                x_data = paddle.static.data(
-                    "input",
-                    [-1, -1, 16],
-                    dtype=paddle.framework.get_default_dtype(),
-                )
-                seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
-                mask = paddle.static.nn.sequence_lod.sequence_mask(
-                    seq_len, dtype=paddle.get_default_dtype()
-                )
-                if self.time_major:
-                    mask = paddle.transpose(mask, [1, 0])
-                y, (h, c) = rnn2(x_data, sequence_length=seq_len)
-                mask = paddle.unsqueeze(mask, -1)
-                y = paddle.multiply(y, mask)
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            x_data = paddle.static.data(
+                "input",
+                [-1, -1, 16],
+                dtype=paddle.framework.get_default_dtype(),
+            )
+            seq_len = paddle.static.data("seq_len", [-1], dtype="int64")
+            mask = paddle.static.nn.sequence_lod.sequence_mask(
+                seq_len, dtype=paddle.get_default_dtype()
+            )
+            if self.time_major:
+                mask = paddle.transpose(mask, [1, 0])
+            y, (h, c) = rnn2(x_data, sequence_length=seq_len)
+            mask = paddle.unsqueeze(mask, -1)
+            y = paddle.multiply(y, mask)
 
         feed_dict = {x_data.name: x, seq_len.name: sequence_length}
 
@@ -318,16 +330,18 @@ class TestLSTMWithProjSize(TestLSTM):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.base.unique_name.guard():
-            with paddle.static.program_guard(mp, sp):
-                rnn2 = paddle.nn.LSTM(
-                    16,
-                    32,
-                    2,
-                    time_major=self.time_major,
-                    direction=self.direction,
-                    proj_size=8,
-                )
+        with (
+            paddle.base.unique_name.guard(),
+            paddle.static.program_guard(mp, sp),
+        ):
+            rnn2 = paddle.nn.LSTM(
+                16,
+                32,
+                2,
+                time_major=self.time_major,
+                direction=self.direction,
+                proj_size=8,
+            )
 
         exe = paddle.static.Executor(place)
         scope = paddle.base.Scope()

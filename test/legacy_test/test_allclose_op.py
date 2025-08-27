@@ -179,7 +179,6 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
-
     def test_fp16(self):
         if core.is_compiled_with_cuda():
             x_data = np.random.rand(10, 10).astype('float16')
@@ -253,20 +252,22 @@ class TestAllcloseOpBool(unittest.TestCase):
                     True,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='bool')
-                    y = paddle.static.data(shape=[1], name='y', dtype='bool')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], True)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='bool')
+                y = paddle.static.data(shape=[1], name='y', dtype='bool')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], True)
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
@@ -289,20 +290,22 @@ class TestAllcloseOpBool(unittest.TestCase):
                     False,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='bool')
-                    y = paddle.static.data(shape=[1], name='y', dtype='bool')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], False)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='bool')
+                y = paddle.static.data(shape=[1], name='y', dtype='bool')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], False)
 
 
 class TestAllcloseOpInt32(unittest.TestCase):
@@ -327,20 +330,22 @@ class TestAllcloseOpInt32(unittest.TestCase):
                     True,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='int32')
-                    y = paddle.static.data(shape=[1], name='y', dtype='int32')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], True)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='int32')
+                y = paddle.static.data(shape=[1], name='y', dtype='int32')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], True)
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
@@ -363,20 +368,22 @@ class TestAllcloseOpInt32(unittest.TestCase):
                     False,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='int32')
-                    y = paddle.static.data(shape=[1], name='y', dtype='int32')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], False)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='int32')
+                y = paddle.static.data(shape=[1], name='y', dtype='int32')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], False)
 
 
 class TestAllcloseOpInt64(unittest.TestCase):
@@ -401,20 +408,22 @@ class TestAllcloseOpInt64(unittest.TestCase):
                     True,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='int64')
-                    y = paddle.static.data(shape=[1], name='y', dtype='int64')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], True)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='int64')
+                y = paddle.static.data(shape=[1], name='y', dtype='int64')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], True)
 
     def test_close_False(self):
         places = [paddle.CPUPlace()]
@@ -437,20 +446,22 @@ class TestAllcloseOpInt64(unittest.TestCase):
                     False,
                 )
 
-            with static_guard():
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data(shape=[1], name='x', dtype='int64')
-                    y = paddle.static.data(shape=[1], name='y', dtype='int64')
-                    out = paddle.allclose(
-                        x, y, self.rtol.item(), self.atol.item(), self.equal_nan
-                    )
-                    exe = paddle.static.Executor(place)
-                    exe.run(paddle.static.default_startup_program())
-                    out = exe.run(
-                        feed={'x': self.input, 'y': self.other},
-                        fetch_list=[out],
-                    )
-                    self.assertEqual(out[0], False)
+            with (
+                static_guard(),
+                paddle.static.program_guard(paddle.static.Program()),
+            ):
+                x = paddle.static.data(shape=[1], name='x', dtype='int64')
+                y = paddle.static.data(shape=[1], name='y', dtype='int64')
+                out = paddle.allclose(
+                    x, y, self.rtol.item(), self.atol.item(), self.equal_nan
+                )
+                exe = paddle.static.Executor(place)
+                exe.run(paddle.static.default_startup_program())
+                out = exe.run(
+                    feed={'x': self.input, 'y': self.other},
+                    fetch_list=[out],
+                )
+                self.assertEqual(out[0], False)
 
 
 class TestAllcloseOpLargeDimInput(TestAllcloseOp):

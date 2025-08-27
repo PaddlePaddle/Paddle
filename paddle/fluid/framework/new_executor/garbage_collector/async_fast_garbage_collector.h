@@ -24,26 +24,31 @@ class SingleThreadLockFreeWorker {
 
   explicit SingleThreadLockFreeWorker(int capacity);
 
-  ~SingleThreadLockFreeWorker() { Wait(); }
+  ~SingleThreadLockFreeWorker();
+
+  void Reset(int capacity);
 
   void AddTask(Task task);
 
+ private:
   void Wait();
 
- private:
   void WorkerLoop();
 
-  const int capacity_;
+  int capacity_;
   std::thread worker_;
   std::vector<Task> tasks_queue_;
   std::atomic<int> head_;
   std::atomic<int> tail_;
   std::atomic<bool> running_;
+  std::atomic<bool> break_loop_;
 };
 
 class InterpreterCoreAsyncFastGarbageCollector {
  public:
   explicit InterpreterCoreAsyncFastGarbageCollector(int num_instructions);
+
+  void Reset(int num_instructions);
 
   void Add(const std::vector<Variable*>& vars);
 

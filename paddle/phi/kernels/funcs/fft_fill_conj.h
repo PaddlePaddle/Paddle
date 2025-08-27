@@ -16,6 +16,7 @@
 
 #include <vector>
 #include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -79,7 +80,7 @@ HOSTDEVICE inline bool is_conj_part(const int64_t dst_idx,
 
 // FFTFillConjFunctor fill the destination tensor with source tensor and
 // conjugate symmetry element of source tensor .
-// Use framework::ForRange to iterate destination element with
+// Use phi::ForRange to iterate destination element with
 // supporting different device
 template <typename C>
 struct FFTFillConjFunctor {
@@ -137,7 +138,7 @@ struct FFTFillConjFunctor {
 };
 
 template <typename DeviceContext, typename C>
-void FFTFillConj(const DeviceContext& ctx,
+void FFTFillConj(const DeviceContext& dev_ctx,
                  const DenseTensor* src,
                  DenseTensor* dst,
                  const std::vector<int64_t>& axes) {
@@ -157,22 +158,51 @@ void FFTFillConj(const DeviceContext& ctx,
   }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
-  const thrust::device_vector<int64_t> src_strides_g(src_strides_v);
-  const auto src_strides = thrust::raw_pointer_cast(src_strides_g.data());
-  const thrust::device_vector<int64_t> dst_strides_g(dst_strides_v);
-  const auto dst_strides = thrust::raw_pointer_cast(dst_strides_g.data());
-  const thrust::device_vector<int64_t> dst_shape_g(dst_shape_v);
-  const auto dst_shape = thrust::raw_pointer_cast(dst_shape_g.data());
-  const thrust::device_vector<bool> is_fft_axis_g(_is_fft_axis.get(),
-                                                  _is_fft_axis.get() + rank);
-  const auto p_is_fft_axis = thrust::raw_pointer_cast(is_fft_axis_g.data());
+  DenseTensor src_strides_g;
+  src_strides_g.Resize({(int64_t)src_strides_v.size()});
+  int64_t* src_strides = dev_ctx.template Alloc<int64_t>(&src_strides_g);
+  DenseTensor dst_strides_g;
+  dst_strides_g.Resize({(int64_t)dst_strides_v.size()});
+  int64_t* dst_strides = dev_ctx.template Alloc<int64_t>(&dst_strides_g);
+  DenseTensor dst_shape_g;
+  dst_shape_g.Resize({(int64_t)dst_shape_v.size()});
+  int64_t* dst_shape = dev_ctx.template Alloc<int64_t>(&dst_shape_g);
+  DenseTensor is_fft_axis_g;
+  is_fft_axis_g.Resize({rank});
+  bool* p_is_fft_axis = dev_ctx.template Alloc<bool>(&is_fft_axis_g);
+  auto cplace = phi::CPUPlace();
+  const auto gplace = dev_ctx.GetPlace();
+  memory_utils::Copy(gplace,
+                     src_strides,
+                     cplace,
+                     src_strides_v.data(),
+                     sizeof(int64_t) * src_strides_v.size(),
+                     dev_ctx.stream());
+  memory_utils::Copy(gplace,
+                     dst_strides,
+                     cplace,
+                     dst_strides_v.data(),
+                     sizeof(int64_t) * dst_strides_v.size(),
+                     dev_ctx.stream());
+  memory_utils::Copy(gplace,
+                     dst_shape,
+                     cplace,
+                     dst_shape_v.data(),
+                     sizeof(int64_t) * dst_shape_v.size(),
+                     dev_ctx.stream());
+  memory_utils::Copy(gplace,
+                     p_is_fft_axis,
+                     cplace,
+                     _is_fft_axis.get(),
+                     sizeof(bool) * rank,
+                     dev_ctx.stream());
 #else
   const auto src_strides = src_strides_v.data();
   const auto dst_strides = dst_strides_v.data();
   const auto dst_shape = dst_shape_v.data();
   const auto p_is_fft_axis = _is_fft_axis.get();
 #endif
-  ForRange<DeviceContext> for_range(ctx, dst->numel());
+  ForRange<DeviceContext> for_range(dev_ctx, dst->numel());
   FFTFillConjFunctor<C> fill_conj_functor(src_data,
                                           dst_data,
                                           src_strides,

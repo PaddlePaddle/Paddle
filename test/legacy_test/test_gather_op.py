@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import dygraph_guard
 
 import paddle
@@ -46,9 +45,7 @@ class TestGatherOp(OpTest):
         self.check_output(check_pir=True, check_symbol_infer=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
-        )
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
     def config(self):
         """
@@ -132,7 +129,6 @@ class TestGatherOpBFP16(TestGatherOp):
             paddle.CUDAPlace(0),
             ['X'],
             'Out',
-            check_prim=True,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -704,13 +700,11 @@ class TestGatherOp5(TestGatherOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
             check_prim_pir=True,
         )
 
 
 class API_TestGather(unittest.TestCase):
-
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -818,7 +812,6 @@ class API_TestDygraphGather(unittest.TestCase):
 
 
 class TestGathertError(unittest.TestCase):
-
     def test_error1(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -892,7 +885,6 @@ class TestGathertError(unittest.TestCase):
 
 
 class TestCheckOutType(unittest.TestCase):
-
     def test_out_type(self):
         data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
@@ -915,15 +907,7 @@ class TestGatherBackward(unittest.TestCase):
         self.dtype = 'float32'
         self.index = (1, 3, 5)
         self.index_dtype = 'int64'
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def test_gather_backward(self):
         if len(self.places) != 2:
@@ -946,6 +930,46 @@ class TestGatherBackward(unittest.TestCase):
                 )
                 res_list.append(re.numpy())
         np.testing.assert_allclose(res_list[0], res_list[1])
+
+
+class TestGatherOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "gather"
+        self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
+        self.config()
+        self.init_inputs_and_outputs()
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def config(self):
+        self.x_shape = (3, 0, 4)
+        self.config_dtype()
+        self.index = [2]
+        self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': np.array(self.index).astype(self.index_type),
+        }
+        self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
+
+
+class TestGatherOp_ZeroSize2(TestGatherOp_ZeroSize):
+    def config(self):
+        self.x_shape = (10, 20)
+        self.config_dtype()
+        self.index = [2, 0]
+        self.index_type = "int32"
 
 
 if __name__ == "__main__":

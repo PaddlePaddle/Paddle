@@ -111,6 +111,7 @@ __device__ inline float FN_FP32(acosh)(float x) { return acosh(x); }
 __device__ inline float FN_FP32(atanh)(float x) { return atanh(x); }
 
 __device__ inline float FN_FP32(ceil)(float x) { return ceil(x); }
+__device__ inline float FN_FP32(rint)(float x) { return rint(x); }
 __device__ inline float FN_FP32(round)(float x) { return round(x); }
 __device__ inline float FN_FP32(trunc)(float x) { return trunc(x); }
 __device__ inline float FN_FP32(abs)(float x) { return abs(x); }
@@ -171,6 +172,7 @@ __device__ inline double FN_FP64(acosh)(double x) { return acosh(x); }
 __device__ inline double FN_FP64(atanh)(double x) { return atanh(x); }
 
 __device__ inline double FN_FP64(ceil)(double x) { return ceil(x); }
+__device__ inline double FN_FP64(rint)(double x) { return rint(x); }
 __device__ inline double FN_FP64(round)(double x) { return round(x); }
 __device__ inline double FN_FP64(trunc)(double x) { return trunc(x); }
 __device__ inline double FN_FP64(abs)(double x) { return abs(x); }
@@ -336,7 +338,7 @@ extern "C" {
 
 __device__ inline int FN_INT32(pow)(int a, int b) {
   if (a == 0 && b < 0) {
-    return -1;
+    return 0;
   }
   float res = pow(__int2float_rd(a), __int2float_rd(b));
   return __float2int_rn(res);
@@ -357,6 +359,7 @@ __device__ inline int FN_INT32(trunc)(int a) { return a; }
 
 __device__ inline int FN_INT32(max)(int a, int b) { return max(a, b); }
 __device__ inline int FN_INT32(min)(int a, int b) { return min(a, b); }
+__device__ inline int FN_INT32(abs)(int x) { return abs(x); }
 
 __device__ inline int FN_INT32(mod)(int a, int b) {
   int res = a % b;
@@ -394,6 +397,9 @@ __device__ inline long long int FN_INT64(clz)(long long int a) {
 __device__ inline long long int FN_INT64(popc)(long long int a) {
   return __popcll(a);
 }
+__device__ inline long long int FN_INT64(abs)(long long int x) {
+  return llabs(x);
+}
 __device__ inline long long int FN_INT64(logical_right_shift)(long long int a,
                                                               long long int b) {
   return ((unsigned long long int)a >> b);
@@ -412,6 +418,9 @@ __device__ inline long long int FN_INT64(exp)(long long int a) {
 
 __device__ inline long long int FN_INT64(pow)(long long int a,
                                               long long int b) {
+  if (a == 0 && b < 0) {
+    return 0;
+  }
   double res = pow(__ll2double_rd(a), __ll2double_rd(b));
   return __double2ll_rn(res);
 }
@@ -434,6 +443,13 @@ __device__ inline bfloat16 FN_BF16(floor)(bfloat16 x) {
   return bfloat16(hfloor(x.to_nv_bfloat16()));
 #else
   return bfloat16(FN_FP32(floor)(static_cast<float>(x)));
+#endif
+}
+__device__ inline bfloat16 FN_BF16(rint)(bfloat16 x) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(hrint(x.to_nv_bfloat16()));
+#else
+  return bfloat16(FN_FP32(rint)(static_cast<float>(x)));
 #endif
 }
 __device__ inline bfloat16 FN_BF16(round)(bfloat16 x) {
@@ -587,6 +603,9 @@ __device__ inline float16 FN_FP16(ceil)(float16 x) {
 }
 __device__ inline float16 FN_FP16(floor)(float16 x) {
   return float16(hfloor(x.to_half()));
+}
+__device__ inline float16 FN_FP16(rint)(float16 x) {
+  return float16(FN_FP32(rint)(static_cast<float>(x)));
 }
 __device__ inline float16 FN_FP16(round)(float16 x) {
   return float16(FN_FP32(round)(static_cast<float>(x)));

@@ -24,6 +24,7 @@ from ...utils import (
     FallbackError,
     UnsupportedIteratorBreak,
 )
+from ...utils.exceptions import SotCapturedStopIteration
 from ..instruction_utils import Instruction
 from .dispatch_functions import generator_send
 from .opcode_executor import OpcodeExecutorBase, Stop
@@ -53,7 +54,7 @@ def inline_for_iter_impl(exe: OpcodeExecutorBase, instr: Instruction):
     if not isinstance(iterator, UserDefinedIterVariable):
         try:
             exe.stack.push(iterator.next())
-        except StopIteration:
+        except SotCapturedStopIteration:
             exe.stack.pop()
             assert isinstance(instr.jump_to, Instruction)
             exe.vframe.lasti = exe.indexof(instr.jump_to)
@@ -101,9 +102,9 @@ class OpcodeInlineExecutor(OpcodeExecutorBase):
         return self.return_value
 
     def RETURN_VALUE(self, instr: Instruction):
-        assert (
-            len(self.stack) == 1
-        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        assert len(self.stack) == 1, (
+            f"Stack must have one element, but get {len(self.stack)} elements."
+        )
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 
@@ -216,9 +217,9 @@ class OpcodeInlineGeneratorExecutor(OpcodeExecutorBase):
         return inline_for_iter_impl(self, instr)
 
     def RETURN_VALUE(self, instr: Instruction):
-        assert (
-            len(self.stack) == 1
-        ), f"Stack must have one element, but get {len(self.stack)} elements."
+        assert len(self.stack) == 1, (
+            f"Stack must have one element, but get {len(self.stack)} elements."
+        )
         self.return_value = self.stack.pop()
         return Stop(state="Return")
 

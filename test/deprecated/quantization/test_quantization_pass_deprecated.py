@@ -291,18 +291,20 @@ class TestQuantizationFreezePass(unittest.TestCase):
     ):
         def build_program(main, startup, is_test):
             paddle.seed(seed)
-            with paddle.utils.unique_name.guard():
-                with paddle.static.program_guard(main, startup):
-                    img = paddle.static.data(
-                        name='image', shape=[-1, 1, 28, 28], dtype='float32'
-                    )
-                    label = paddle.static.data(
-                        name='label', shape=[-1, 1], dtype='int64'
-                    )
-                    loss = conv_net(img, label, quant_skip_pattern)
-                    if not is_test:
-                        opt = paddle.optimizer.Adam(learning_rate=0.001)
-                        opt.minimize(loss)
+            with (
+                paddle.utils.unique_name.guard(),
+                paddle.static.program_guard(main, startup),
+            ):
+                img = paddle.static.data(
+                    name='image', shape=[-1, 1, 28, 28], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[-1, 1], dtype='int64'
+                )
+                loss = conv_net(img, label, quant_skip_pattern)
+                if not is_test:
+                    opt = paddle.optimizer.Adam(learning_rate=0.001)
+                    opt.minimize(loss)
             return [img, label], loss
 
         random.seed(0)
@@ -759,9 +761,9 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             pool_add = paddle.add(pool1, pool2)
             pool_add = paddle.nn.functional.relu(pool_add)
     elif isinstance(quant_skip_pattern, list):
-        assert (
-            len(quant_skip_pattern) > 1
-        ), 'test config error: the len of quant_skip_pattern list should be greater than 1.'
+        assert len(quant_skip_pattern) > 1, (
+            'test config error: the len of quant_skip_pattern list should be greater than 1.'
+        )
         with paddle.static.name_scope(quant_skip_pattern[0]):
             pool1 = paddle.nn.functional.avg_pool2d(
                 hidden, kernel_size=2, stride=2

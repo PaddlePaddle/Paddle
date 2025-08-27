@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 def ref_frac(x):
@@ -34,11 +34,7 @@ class TestFracAPI(unittest.TestCase):
     def setUp(self):
         self.set_dtype()
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype(self.dtype)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()
@@ -92,11 +88,7 @@ class TestFracError(unittest.TestCase):
 
     def setUp(self):
         self.x_np = np.random.uniform(-3, 3, [2, 3]).astype('int16')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_error(self):
         paddle.enable_static()
@@ -108,6 +100,26 @@ class TestFracError(unittest.TestCase):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.x_np, dtype='int16')
         self.assertRaises(TypeError, paddle.frac, x)
+
+
+class TestFracAPI_ZeroSize(unittest.TestCase):
+    def set_dtype(self):
+        self.dtype = 'float64'
+
+    def setUp(self):
+        self.set_dtype()
+        self.x_np = np.random.random([0, 3]).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        x.stop_gradient = False
+        out = paddle.frac(x)
+        out_ref = ref_frac(self.x_np)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+        out.sum().backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 if __name__ == '__main__':

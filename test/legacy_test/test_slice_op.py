@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -155,7 +160,7 @@ class TestSliceZerosShapeTensor(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'infer_flags': self.infer_flags,
-            'use_mkldnn': True,
+            'use_onednn': True,
         }
 
     def config(self):
@@ -937,11 +942,7 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
         self.end = 2
         self.axis = 1
 
-        self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        self.place = get_device_place()
         self.exe = base.Executor(self.place)
 
     def set_program_and_run(self, main_program, case_num):
@@ -1215,16 +1216,7 @@ class TestSliceDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         with paddle_static_guard():
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for p in places:
+            for p in get_places():
                 self.func(p)
 
 
@@ -1256,16 +1248,7 @@ class TestSliceTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         with paddle_static_guard():
-            places = []
-            if (
-                os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-                in ['1', 'true', 'on']
-                or not core.is_compiled_with_cuda()
-            ):
-                places.append(base.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
-            for p in places:
+            for p in get_places():
                 self.func(p)
 
 

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -24,7 +24,6 @@ from paddle.base.executor import Executor
 
 
 class TestSquareErrorCost(unittest.TestCase):
-
     def test_square_error_cost(self):
         paddle.enable_static()
         shape = [2, 3]
@@ -60,7 +59,6 @@ class TestSquareErrorCost(unittest.TestCase):
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
-
     def test_error(self):
         paddle.enable_static()
 
@@ -88,15 +86,7 @@ class TestSquareErrorCost_ZeroSize(unittest.TestCase):
         self.shape = [0, 3]
 
     def test_square_error_cost(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
         self.init_shape()
         shape = self.shape
         input_val = np.random.uniform(0.1, 0.5, shape).astype("float32")

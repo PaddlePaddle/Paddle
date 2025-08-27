@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle.base import core
@@ -329,16 +335,15 @@ class TestMarginCrossEntropyOpCPU(TestMarginCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpV2(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_out_sig = ["Loss"]
@@ -501,16 +506,15 @@ class TestMarginCrossEntropyOpV4(TestMarginCrossEntropyOpV2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
     def setUp(self):
         self.initParams()
         np.random.seed(self.seed)
         paddle.framework.random._manual_program_seed(self.seed)
-        self.places = []
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.base.CUDAPlace(0))
+        self.places = get_places()
 
     def initParams(self):
         self.python_api = python_api
@@ -603,9 +607,30 @@ class TestMarginCrossEntropyOpAPIError(unittest.TestCase):
                         group=True,
                     )
 
+        def test_shape_error():
+            for place in self.places:
+                with paddle.base.dygraph.guard(place):
+                    logits_np = np.random.random([5, 0]).astype(self.dtype)
+                    labels_np = np.random.random(5).astype(np.int64)
+                    labels = paddle.to_tensor(labels_np)
+                    logits = paddle.to_tensor(logits_np)
+
+                    loss, softmax = paddle.nn.functional.margin_cross_entropy(
+                        logits,
+                        labels,
+                        margin1=self.margin1,
+                        margin2=self.margin2,
+                        margin3=self.margin3,
+                        scale=self.scale,
+                        return_softmax=True,
+                        reduction=None,
+                        group=True,
+                    )
+
         self.assertRaises(ValueError, test_dim)
         self.assertRaises(NotImplementedError, test_label_type)
         self.assertRaises(ValueError, test_group_value)
+        self.assertRaises(ValueError, test_shape_error)
 
 
 if __name__ == '__main__':

@@ -122,9 +122,9 @@ class Imikolov(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
-            assert (
-                download
-            ), "data_file is not set and downloading automatically disabled"
+            assert download, (
+                "data_file is not set and downloading automatically disabled"
+            )
             self.data_file = _check_exists_and_download(
                 data_file, URL, MD5, 'imikolov', download
             )
@@ -193,7 +193,7 @@ class Imikolov(Dataset):
                         continue
                     self.data.append((src_seq, trg_seq))
                 else:
-                    raise AssertionError('Unknow data type')
+                    raise AssertionError('Unknown data type')
 
     def __getitem__(
         self, idx: int

@@ -181,6 +181,24 @@ def slice_list_after_change(l):
     return sum
 
 
+class ReadBufferAfterChanged(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.buffer1 = paddle.to_tensor(1)
+        self.buffer2 = paddle.to_tensor(2)
+
+    def forward(self, x):
+        self.buffer1 += 1
+        return x + self.buffer1 + self.buffer2
+
+    def __eq__(self, other):
+        if not isinstance(other, ReadBufferAfterChanged):
+            return False
+        return paddle.equal(self.buffer1, other.buffer1) and paddle.equal(
+            self.buffer2, other.buffer2
+        )
+
+
 class TestDictSideEffect(TestCaseBase):
     def test_dict_setitem(self):
         self.assert_results_with_side_effects(
@@ -246,6 +264,7 @@ class TestListSideEffect(TestCaseBase):
     def test_list_remove(self):
         self.assert_results_with_side_effects(list_remove, [1, 1, 1])
         self.assert_results_with_side_effects(list_remove, [0, 1, 2])
+        # TODO(DrRyanHuang): change this to ValueError
         with self.assertRaises(InnerError):
             symbolic_translate(list_remove)([0, 2, 4])
 
@@ -327,6 +346,17 @@ class TestAttrSideEffect(TestCaseBase):
     def test_attr_set_breakgraph(self):
         self.attr_check(object_attr_breakgraph, ["x"], CustomObject, 100)
         self.attr_check(object_attr_breakgraph, ["x"], CustomObject, 1000)
+
+
+class TestReadBufferAfterChanged(TestCaseBase):
+    def test_read_buffer_after_change(self):
+        layer = ReadBufferAfterChanged()
+        x = paddle.randn([1, 2, 3])
+        self.assert_results_with_side_effects(
+            layer.__class__.forward,
+            layer,
+            x,
+        )
 
 
 if __name__ == "__main__":

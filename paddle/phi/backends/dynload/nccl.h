@@ -28,6 +28,30 @@ ncclResult_t ncclCommInitRank2(ncclComm_t* newcomm,
                                ncclUniqueId commId,
                                int myrank,
                                int param);
+
+#if NCCL_VERSION_CODE < 21400
+typedef struct ncclConfig_v21400 ncclConfig_t;
+#endif
+
+typedef struct ncclMemOptConfig ncclMemOptConfig_t;
+
+ncclResult_t ncclCommInitRankConfigMemOpt(ncclComm_t* comm,
+                                          int nranks,
+                                          ncclUniqueId commId,
+                                          int myrank,
+                                          ncclConfig_t* config,
+                                          ncclMemOptConfig_t* memopt_config);
+
+ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
+                                            int ll_buffsize,
+                                            int ll128_buffsize,
+                                            int simple_buffsize,
+                                            int buffsize_align,
+                                            int nchannels,
+                                            const char* algoStr,
+                                            const char* protoStr);
+
+ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
 #ifdef __cplusplus
 }
 #endif
@@ -58,24 +82,27 @@ extern void* nccl_dso_handle;
   };                                                             \
   extern DynLoad__##__name __name
 
-#define NCCL_RAND_ROUTINE_EACH(__macro) \
-  __macro(ncclCommInitAll);             \
-  __macro(ncclGetUniqueId);             \
-  __macro(ncclCommInitRank);            \
-  __macro(ncclCommInitRank2);           \
-  __macro(ncclCommAbort);               \
-  __macro(ncclCommDestroy);             \
-  __macro(ncclCommCount);               \
-  __macro(ncclCommCuDevice);            \
-  __macro(ncclCommUserRank);            \
-  __macro(ncclAllReduce);               \
-  __macro(ncclBcast);                   \
-  __macro(ncclAllGather);               \
-  __macro(ncclGroupStart);              \
-  __macro(ncclGroupEnd);                \
-  __macro(ncclReduce);                  \
-  __macro(ncclReduceScatter);           \
-  __macro(ncclCommGetAsyncError);       \
+#define NCCL_RAND_ROUTINE_EACH(__macro)  \
+  __macro(ncclCommInitAll);              \
+  __macro(ncclGetUniqueId);              \
+  __macro(ncclCommInitRank);             \
+  __macro(ncclCommInitRank2);            \
+  __macro(ncclCommInitRankConfigMemOpt); \
+  __macro(ncclCommGenMemOptConfig);      \
+  __macro(ncclCommFreeMemOptConfig);     \
+  __macro(ncclCommAbort);                \
+  __macro(ncclCommDestroy);              \
+  __macro(ncclCommCount);                \
+  __macro(ncclCommCuDevice);             \
+  __macro(ncclCommUserRank);             \
+  __macro(ncclAllReduce);                \
+  __macro(ncclBcast);                    \
+  __macro(ncclAllGather);                \
+  __macro(ncclGroupStart);               \
+  __macro(ncclGroupEnd);                 \
+  __macro(ncclReduce);                   \
+  __macro(ncclReduceScatter);            \
+  __macro(ncclCommGetAsyncError);        \
   __macro(ncclGetErrorString);
 
 NCCL_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)

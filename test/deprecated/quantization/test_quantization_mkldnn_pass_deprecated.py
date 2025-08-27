@@ -22,7 +22,7 @@ import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import (
-    QuantInt8MkldnnPass,
+    QuantInt8OnednnPass,
     QuantizationFreezePass,
     QuantizationTransformPass,
 )
@@ -60,7 +60,7 @@ def conv_net(img, label):
     return avg_loss
 
 
-class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
+class TestONEDNNTransformBasedFreezePass(unittest.TestCase):
     def setUp(self):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
@@ -82,21 +82,23 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
 
     def build_program(self, main, startup, is_test, seed):
         paddle.seed(seed)
-        with paddle.utils.unique_name.guard():
-            with paddle.static.program_guard(main, startup):
-                img = paddle.static.data(
-                    name='image', shape=[-1, 1, 28, 28], dtype='float32'
-                )
-                label = paddle.static.data(
-                    name='label', shape=[-1, 1], dtype='int64'
-                )
-                loss = conv_net(img, label)
-                if not is_test:
-                    opt = paddle.optimizer.Adam(learning_rate=0.001)
-                    opt.minimize(loss)
+        with (
+            paddle.utils.unique_name.guard(),
+            paddle.static.program_guard(main, startup),
+        ):
+            img = paddle.static.data(
+                name='image', shape=[-1, 1, 28, 28], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            loss = conv_net(img, label)
+            if not is_test:
+                opt = paddle.optimizer.Adam(learning_rate=0.001)
+                opt.minimize(loss)
         return [img, label], loss
 
-    def mkldnn_based_freeze_graph(
+    def onednn_based_freeze_graph(
         self,
         use_cuda,
         seed,
@@ -172,8 +174,8 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         freeze_pass.apply(test_graph)
 
         # Transform quantized graph for MKL-DNN INT8 inference
-        mkldnn_int8_pass = QuantInt8MkldnnPass(_scope=scope, _place=place)
-        mkldnn_int8_pass.apply(test_graph)
+        onednn_int8_pass = QuantInt8OnednnPass(_scope=scope, _place=place)
+        onednn_int8_pass.apply(test_graph)
         dev_name = '_cpu_'
         if not for_ci:
             marked_nodes = set()
@@ -189,7 +191,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                 + weight_quant_type,
                 marked_nodes,
             )
-        mkldnn_program = test_graph.to_program()
+        onednn_program = test_graph.to_program()
 
         # Check the transformation weights of conv2d and mul
         conv_w_mkldnn = np.array(scope.find_var('conv2d_1.w_0').get_tensor())
@@ -200,7 +202,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
 
         # Check if the conv2d output and mul output are correctly linked to fake_dequantize's
         # output
-        self.check_program(mkldnn_program)
+        self.check_program(onednn_program)
         if not for_ci:
             print(
                 '{}: {}'.format(
@@ -213,16 +215,16 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                 )
             )
 
-    def test_mkldnn_graph_cpu_static(self):
+    def test_onednn_graph_cpu_static(self):
         with paddle.utils.unique_name.guard():
-            self.mkldnn_based_freeze_graph(
+            self.onednn_based_freeze_graph(
                 False,
                 seed=2,
                 activation_quant_type='range_abs_max',
                 weight_quant_type='abs_max',
                 for_ci=True,
             )
-            self.mkldnn_based_freeze_graph(
+            self.onednn_based_freeze_graph(
                 False,
                 seed=2,
                 activation_quant_type='moving_average_abs_max',

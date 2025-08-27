@@ -199,7 +199,7 @@ class ListVariable(ContainerVariable):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetItemTracker(self, key, changed=proxy.has_changed),
+            tracker=GetItemTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_value(self, allow_tensor=False):
@@ -249,7 +249,7 @@ class ListVariable(ContainerVariable):
                 items[key],
                 self.graph,
                 tracker=GetItemTracker(
-                    self, key, changed=self.proxy.has_changed
+                    self, key, changed=self.proxy.check_changed(key)
                 ),
             )
         else:
@@ -418,9 +418,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -442,9 +442,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])
@@ -641,9 +641,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -665,9 +665,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])
@@ -870,7 +870,7 @@ class DictVariable(ContainerVariable):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetItemTracker(self, key, changed=proxy.has_changed),
+            tracker=GetItemTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_value(self, allow_tensor=False):
@@ -962,7 +962,10 @@ class DictVariable(ContainerVariable):
     def getitem(self, key):
         self.graph.add_global_guarded_variable(key)
         key = key.get_py_value()
-        return self.proxy.get(key)
+        res = self.proxy.get(key)
+        if self.proxy.is_empty(res):
+            raise KeyError(key)
+        return res
 
     def setitem(self, key, value):
         if isinstance(key, VariableBase):

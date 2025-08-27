@@ -100,6 +100,7 @@ void SwiGLUKernelImpl(const Context &dev_ctx,
 #define PD_LAUNCH_SWIGLU_CUDA_KERNEL(__is_combine)               \
   do {                                                           \
     switch (vec_size) {                                          \
+      PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(8, __is_combine);        \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeL, __is_combine); \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeM, __is_combine); \
       PD_LAUNCH_SWIGLU_CUDA_KERNEL_BASE(VecSizeS, __is_combine); \

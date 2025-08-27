@@ -758,6 +758,22 @@ def check_linalg_vector_dygraph(
         np.testing.assert_equal(result.shape, expected_result.shape)
 
 
+class NormTestForNUCAndDtype(unittest.TestCase):
+    def test_nuc_and_dtype(self):
+        x = np.random.randn(10, 20).astype("float32")
+        res_numpy = np.linalg.norm(x, ord='nuc')
+        res_paddle = paddle.tensor(x).norm(p="nuc")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        res_numpy = np.linalg.norm(x.astype("float64"), ord="nuc")
+        res_paddle = paddle.tensor(x).norm(p="nuc", dtype="float64")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res_paddle.dtype, paddle.float64)
+
+
 class API_NormTest(unittest.TestCase):
     def test_basic(self):
         with static_guard():
@@ -1659,6 +1675,28 @@ class API_NormTest_ZeroSize(unittest.TestCase):
         loss.backward()
         np.testing.assert_equal(x_paddle.grad.shape, x_paddle.shape)
 
+    def check_linalg_matrix_dygraph_and_grad(
+        self, p, axis, shape_x, dtype, keep_dim, check_dim=False
+    ):
+        x_numpy = (np.random.random(shape_x) + 1.0).astype(dtype)
+        expected_result = np_linalg_matrix_norm(
+            x_numpy, porder=p, axis=axis, keepdims=keep_dim
+        )
+        x_paddle = paddle.to_tensor(x_numpy)
+        x_paddle.stop_gradient = False
+        result1 = paddle.linalg.matrix_norm(
+            x=x_paddle, p=p, axis=axis, keepdim=keep_dim
+        )
+        result = result1.numpy()
+        np.testing.assert_allclose(
+            result, expected_result, rtol=1e-6, atol=1e-8
+        )
+        if keep_dim and check_dim:
+            np.testing.assert_equal(result.shape, expected_result.shape)
+        loss = paddle.sum(result1)
+        loss.backward()
+        np.testing.assert_equal(x_paddle.grad.shape, x_paddle.shape)
+
     def test_dygraph(self):
         paddle.disable_static()
         keep_dims = {False, True}
@@ -1679,6 +1717,87 @@ class API_NormTest_ZeroSize(unittest.TestCase):
                 dtype="float32",
                 keep_dim=keep,
             )
+
+            self.check_linalg_matrix_dygraph_and_grad(
+                p=np.inf,
+                axis=[1, 2],
+                shape_x=[0, 3, 4],
+                dtype="float32",
+                keep_dim=keep,
+            )
+
+
+class API_NormTest_Alias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_alias(self):
+        """
+        Test the alias of norm function.
+        ``norm(x=x, axis=1)`` is equivalent to ``norm(input=x, dim=1)``
+        """
+        shape_cases = [
+            [2, 3, 4],
+            [3, 4, 5],
+        ]
+        p_cases = [2, 'fro', 'nuc', np.inf, -np.inf, 1, -1]
+        axis_cases = [None, 1, [0, 1], [-2, -1]]
+
+        for shape in shape_cases:
+            x = paddle.rand(shape)
+            for p in p_cases:
+                for axis in axis_cases:
+                    # Skip invalid combinations
+                    if p == 'fro' and (axis is None or isinstance(axis, int)):
+                        continue
+                    if p == 'nuc' and (axis is None or isinstance(axis, int)):
+                        continue
+
+                    # Test x/input alias
+                    kwargs1 = {'x': x, 'p': p, 'axis': axis}
+                    kwargs2 = {'input': x, 'p': p, 'axis': axis}
+
+                    out1 = paddle.norm(**kwargs1).numpy()
+                    out2 = paddle.norm(**kwargs2).numpy()
+                    np.testing.assert_allclose(out1, out2, rtol=1e-6, atol=1e-8)
+
+                    # Test axis/dim alias
+                    kwargs3 = {'x': x, 'p': p, 'dim': axis}
+                    out3 = paddle.norm(**kwargs3).numpy()
+                    np.testing.assert_allclose(out1, out3, rtol=1e-6, atol=1e-8)
+
+                    # Test both aliases together
+                    kwargs4 = {'input': x, 'p': p, 'dim': axis}
+                    out4 = paddle.norm(**kwargs4).numpy()
+                    np.testing.assert_allclose(out1, out4, rtol=1e-6, atol=1e-8)
+
+    def test_static_alias(self):
+        """
+        Test alias in static mode
+        """
+        paddle.enable_static()
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(name='x', shape=[2, 3, 4], dtype='float32')
+
+            # Test x/input alias
+            out1 = paddle.norm(x=x, p=2, axis=1)
+            out2 = paddle.norm(input=x, p=2, axis=1)
+
+            # Test axis/dim alias
+            out3 = paddle.norm(x=x, p=2, dim=1)
+            out4 = paddle.norm(input=x, p=2, dim=1)
+
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            x_np = np.random.random([2, 3, 4]).astype('float32')
+            res1, res2, res3, res4 = exe.run(
+                feed={'x': x_np}, fetch_list=[out1, out2, out3, out4]
+            )
+
+            np.testing.assert_allclose(res1, res2, rtol=1e-6, atol=1e-8)
+            np.testing.assert_allclose(res1, res3, rtol=1e-6, atol=1e-8)
+            np.testing.assert_allclose(res1, res4, rtol=1e-6, atol=1e-8)
+        paddle.disable_static()
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ add_subdirectory(spmd_rules)
 add_subdirectory(hybrid_strategy)
 add_subdirectory(custom_op)
 add_subdirectory(pir)
+add_subdirectory(end_to_end)
 
 if(WITH_DISTRIBUTE AND WITH_GPU)
 
@@ -147,6 +148,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
+  py_test_modules(test_semi_auto_parallel_moe_utils MODULES
+                  test_semi_auto_parallel_moe_utils)
+  set_tests_properties(test_semi_auto_parallel_moe_utils
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   # End of unittests WITH multi cards and WITHOUT timeout
 
   py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
@@ -173,6 +178,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_api_dist_branch MODULES test_api_dist_branch)
   py_test_modules(test_shard_tensor_api MODULES test_shard_tensor_api ENVS
                   FLAGS_enable_pir_api=1)
+  py_test_modules(test_placement_types MODULES test_placement_types)
   py_test_modules(test_strategy_api MODULES test_strategy_api)
   py_test_modules(test_parallel_api MODULES test_parallel_api)
   py_test_modules(test_dtensor_to_local_api MODULES test_dtensor_to_local_api)
@@ -192,6 +198,17 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
     FLAGS_embedding_deterministic=1
     NVIDIA_TF32_OVERRIDE=0)
   py_test_modules(test_PP_Schedules MODULES test_PP_Schedules)
+  py_test_modules(test_pipeline_sync_shared_parameters MODULES
+                  test_pipeline_sync_shared_parameters)
+  py_test_modules(
+    test_context_parallel
+    MODULES
+    test_context_parallel
+    ENVS
+    FLAGS_max_inplace_grad_add=4
+    FLAGS_cudnn_deterministic=1
+    FLAGS_embedding_deterministic=1
+    NVIDIA_TF32_OVERRIDE=0)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

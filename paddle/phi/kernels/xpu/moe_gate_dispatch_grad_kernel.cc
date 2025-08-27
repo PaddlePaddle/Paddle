@@ -1,4 +1,3 @@
-// NOLINT
 // Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,13 +72,8 @@ void moe_dispatch_grad(
   int64_t num_rows = scatter_index.dims()[1];
 
   const std::vector<int32_t> axis = {1, 0};
-  DenseTensor t_scatter_index_tmp;
-  phi::Transpose<int, Context>(
-      dev_ctx, scatter_index, axis, &t_scatter_index_tmp);
-  DenseTensor t_scatter_index_;
-  phi::ContiguousKernel<int, Context>(
-      dev_ctx, t_scatter_index_tmp, &t_scatter_index_);
-  const DenseTensor t_scatter_index = t_scatter_index_;
+  DenseTensor t_scatter_index;
+  phi::Transpose<int, Context>(dev_ctx, scatter_index, axis, &t_scatter_index);
 
   // output
   DenseTensor x_grad_tmp =
@@ -92,7 +86,7 @@ void moe_dispatch_grad(
   auto combine_weights_data =
       reinterpret_cast<const float*>(combine_weights.data<float>());
   auto t_scatter_index_data =
-      reinterpret_cast<const int*>(t_scatter_index_tmp.data<int>());
+      reinterpret_cast<const int*>(t_scatter_index.data<int>());
   auto combine_weights_grad_data =
       reinterpret_cast<const float*>(combine_weights_grad.data<float>());
   auto expert_id_data = reinterpret_cast<const int*>(expert_id.data<int>());

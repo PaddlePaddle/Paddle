@@ -60,9 +60,9 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
             and not op_dist_attr.is_recompute
             and rank_id in op_dist_attr.process_mesh.process_ids
         ):
-            assert (
-                op_dist_attr is not None
-            ), f"forward op [{src_op}] don't have dist attribute !"
+            assert op_dist_attr is not None, (
+                f"forward op [{src_op}] don't have dist attribute !"
+            )
 
             if (
                 len(kwargs.get('fixed_seed_offset', [])) > 0
@@ -77,7 +77,7 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
                 q_dims_mapping = op_dist_attr.get_input_dims_mapping(q_var.name)
                 k_dims_mapping = op_dist_attr.get_input_dims_mapping(k_var.name)
                 process_mesh = op_dist_attr.process_mesh
-                dims_mapping = q_dims_mapping[:3] + [q_dims_mapping[2]]
+                dims_mapping = [*q_dims_mapping[:3], q_dims_mapping[2]]
 
                 rng_name = determinate_rng(rank_id, dims_mapping, process_mesh)
                 assert rng_name is not None and rng_name != ""

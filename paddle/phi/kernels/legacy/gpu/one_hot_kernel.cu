@@ -44,24 +44,24 @@ template <typename DeviceContext, typename InT>
 struct OneHotV2OpCUDAFunctor {
   const DenseTensor* in_;
   DenseTensor* out_;
-  const DeviceContext& ctx_;
+  const DeviceContext& dev_ctx_;
   int depth_;
 
   OneHotV2OpCUDAFunctor(const DenseTensor* in,
                         DenseTensor* out,
                         int depth,
-                        const DeviceContext& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+                        const DeviceContext& dev_ctx)
+      : in_(in), out_(out), depth_(depth), dev_ctx_(dev_ctx) {}
 
   template <typename OutT>
   void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
-    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
-    auto stream = ctx_.stream();
-    funcs::set_constant(ctx_, out_, 0.0);
+    auto* p_out_data = dev_ctx_.template Alloc<OutT>(out_);
+    auto stream = dev_ctx_.stream();
+    funcs::set_constant(dev_ctx_, out_, 0.0);
 
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx_, numel);
 
     FillOutputKernel<<<config.block_per_grid,
                        config.thread_per_block,

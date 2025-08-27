@@ -97,6 +97,7 @@ DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Floor, FloorFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Ceil, CeilFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Negative, NegativeFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Rint, RintFunctor)
 
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log, LogFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL_WITH_INT_IN_FLOAT_OUT(Log2, Log2Functor)
@@ -253,9 +254,10 @@ PD_REGISTER_ACTIVATION_KERNEL(hardsigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(swish, SwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(hardswish, HardSwishKernel)
-PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-PD_REGISTER_ACTIVATION_KERNEL(ceil, CeilKernel)
 PD_REGISTER_ACTIVATION_KERNEL(celu, CeluKernel)
+
+PD_REGISTER_KERNEL(
+    rint, CPU, ALL_LAYOUT, phi::RintKernel, int, int64_t, float, double) {}
 
 PD_REGISTER_KERNEL(round,
                    CPU,
@@ -377,3 +379,31 @@ PD_REGISTER_KERNEL(pow,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(ceil,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CeilKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(floor,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FloorKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

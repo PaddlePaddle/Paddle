@@ -57,7 +57,7 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
   int64_t numel = out->numel();
   T *out_data = dev_ctx.template Alloc<T>(out);
   if (numel <= 0) return;
-  int vec_size = phi::GetVectorizedSize(out_data);
+  int vec_size = std::min(4, phi::GetVectorizedSize(out_data));
 #ifdef PADDLE_WITH_XPU_KP
   int block = 64;
   int grid = 8;

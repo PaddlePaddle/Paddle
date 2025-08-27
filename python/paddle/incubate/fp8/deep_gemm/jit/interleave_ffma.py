@@ -29,41 +29,22 @@ def run_cuobjdump(file_path):
     CUDA_HOME = get_cuda_home()
     command = [f"{CUDA_HOME}/bin/cuobjdump", "-sass", file_path]
     result = subprocess.run(command, capture_output=True, text=True)
-    assert (
-        result.returncode == 0
-    ), f"Command failed with return code {result.returncode}: {result.stderr}"
+    assert result.returncode == 0
     return result.stdout
 
 
 def extract_ffma(sass):
-    """
-    Extract FFMA segments from SASS code.
-
-    Args:
-        sass (str): The SASS code as a string.
-
-    Returns:
-        list: A list of tuples, each containing the function and architecture name along with the FFMA segments.
-    """
     lines = sass.splitlines()
     collected = []
     current = []
 
     arch_name, func_name = "N/A", "N/A"
     skip_next_line = False
-
     for line in lines:
-        # Extract architecture name
         if "code for" in line:
-            arch_name = line.strip().split("code for", 1)[-1].strip()
-
-        # Extract function name using regex
+            arch_name = line.replace("code for ", "").strip()
         elif "Function :" in line:
-            match = re.search(r"Function : (\S+)", line)
-            if match:
-                func_name = match.group(1)
-
-        # Collect FFMA segments
+            func_name = line.replace("Function :", "").strip()
         elif "FFMA" in line:
             current.append(line)
             skip_next_line = True
@@ -72,9 +53,7 @@ def extract_ffma(sass):
             skip_next_line = False
         else:
             if len(current) >= 16:
-                assert (
-                    len(current) % 2 == 0
-                ), "FFMA segments count should be even"
+                assert len(current) % 2 == 0
                 collected.append((f"{arch_name}::{func_name}", current))
             current = []
 
@@ -114,7 +93,7 @@ def parse_registers(line):
 
 
 def modify_segment(m, name, ffma_lines):
-    num_lines = (len(ffma_lines) * 9 // 16) // 2 * 2
+    num_lines = len(ffma_lines)
     assert num_lines % 2 == 0
 
     le_bytes, new_le_bytes = [], []
@@ -125,9 +104,10 @@ def modify_segment(m, name, ffma_lines):
     for i in range(num_lines // 2):
         dst_reg = parse_registers(ffma_lines[i * 2])[-2]
         low_line, high_line = ffma_lines[i * 2], ffma_lines[i * 2 + 1]
-        low_hex, high_hex = extract_hex_from_line(
-            low_line
-        ), extract_hex_from_line(high_line)
+        low_hex, high_hex = (
+            extract_hex_from_line(low_line),
+            extract_hex_from_line(high_line),
+        )
         le_bytes.append(
             low_hex.to_bytes(8, "little") + high_hex.to_bytes(8, "little")
         )

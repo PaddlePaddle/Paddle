@@ -21,7 +21,6 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/schema.h"
 #include "paddle/fluid/pir/serialize_deserialize/patch/patch.h"
-#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/include/core/builtin_attribute.h"
 #include "paddle/pir/include/core/builtin_op.h"
 #include "paddle/pir/include/core/builtin_type.h"
@@ -31,7 +30,7 @@ namespace pir {
 
 Json BuildAttrJsonPatch(const YAML::Node &action) {
   Json j_attr_type;
-  if (!action["type"].IsDefined() && !action["default"].IsDefined()) {
+  if (!action["type"].IsDefined() && !action["data"].IsDefined()) {
     j_attr_type = nullptr;
   } else {
     j_attr_type = GetAttrJson(action);
@@ -55,124 +54,260 @@ Json GetAttrJson(const YAML::Node &action) {
   if (action.IsScalar()) {
     at_name = action.as<std::string>();
     VLOG(8) << "Get old Attr name." << at_name;
+    VLOG(8) << "Get old Attr name." << at_name;
   } else {
     at_name = action["type"].as<std::string>();
+    VLOG(8) << "Get new Attr name." << at_name;
     VLOG(8) << "Get new Attr name." << at_name;
   }
   if (at_name == "pir::BoolAttribute") {
     VLOG(8) << "Get BoolAttribute name.";
     json[ID] = builtin_dialect + pir::BoolAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<bool>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<bool>();
     }
   } else if (at_name == "pir::FloatAttribute") {
     VLOG(8) << "Get FloatAttribute name.";
     json[ID] = builtin_dialect + pir::FloatAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<float>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<float>();
     }
   } else if (at_name == "pir::DoubleAttribute") {
     VLOG(8) << "Get DoubleAttribute name.";
     json[ID] = builtin_dialect + pir::DoubleAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<double>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<double>();
     }
   } else if (at_name == "pir::Int32Attribute") {
     VLOG(8) << "Get Int32Attribute name.";
     json[ID] = builtin_dialect + pir::Int32Attribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<int32_t>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<int32_t>();
     }
   } else if (at_name == "pir::Int64Attribute") {
     VLOG(8) << "Get Int64Attribute name.";
     json[ID] = builtin_dialect + pir::Int64Attribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<int64_t>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<int64_t>();
     }
   } else if (at_name == "pir::IndexAttribute") {
     VLOG(8) << "Get IndexAttribute name.";
     json[ID] = builtin_dialect + pir::IndexAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<int64_t>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<int64_t>();
     }
   } else if (at_name == "pir::ArrayAttribute") {
     VLOG(8) << "Get ArrayAttribute name.";
     json[ID] = builtin_dialect + pir::ArrayAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
+    if (!action.IsScalar() && action["data"].IsDefined()) {
       json[DATA] = Json::array();
-      for (size_t i = 0; i < action["default"].size(); ++i) {
-        YAML::Node array_value = action["default"][i];
+      for (size_t i = 0; i < action["data"].size(); ++i) {
+        YAML::Node array_value = action["data"][i];
         json[DATA].push_back(BuildAttrJsonPatch(array_value));
       }
     }
   } else if (at_name == "pir::TypeAttribute") {
     VLOG(8) << "Get TypeAttribute name.";
     json[ID] = builtin_dialect + pir::TypeAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<std::string>();
-    }  // TODO(czy): type attribute
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      YAML::Node type_value = action["data"];
+      json[DATA] = BuildTypeJsonPatch(type_value);
+    }
   } else if (at_name == "pir::TensorNameAttribute") {
     VLOG(8) << "Get TensorNameAttribute name.";
     json[ID] = builtin_dialect + pir::TensorNameAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<std::string>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<std::string>();
     }
   } else if (at_name == "pir::Complex64Attribute") {
     VLOG(8) << "Get Complex64Attribute name.";
     json[ID] = builtin_dialect + pir::Complex64Attribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<float>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      Json content = Json::array();
+      content.push_back(action["data"][0].as<float>());
+      content.push_back(action["data"][1].as<float>());
+      json[DATA] = content;
     }
   } else if (at_name == "pir::Complex128Attribute") {
     VLOG(8) << "Get Complex128Attribute name.";
     json[ID] = builtin_dialect + pir::Complex128Attribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<double>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      Json content = Json::array();
+      content.push_back(action["data"][0].as<double>());
+      content.push_back(action["data"][1].as<double>());
+      json[DATA] = content;
     }
   } else if (at_name == "pir::StrAttribute") {
     VLOG(8) << "Get StrAttribute name.";
     json[ID] = builtin_dialect + pir::StrAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<std::string>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<std::string>();
     }
   } else if (at_name == "paddle::dialect::IntArrayAttribute") {
     VLOG(8) << "Get IntArrayAttribute name.";
     json[ID] = op_dialect + paddle::dialect::IntArrayAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      json[DATA] = action["default"].as<std::vector<int64_t>>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      json[DATA] = action["data"].as<std::vector<int64_t>>();
     }
   } else if (at_name == "paddle::dialect::ScalarAttribute") {
     VLOG(8) << "Get ScalarAttribute name.";
     json[ID] = op_dialect + paddle::dialect::ScalarAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      // Now use string vector to save scalar attribute.
-      // TODO(czy): support more scalar type.
-      json[DATA] = action["default"].as<std::vector<std::string>>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      YAML::Node scalar_value = action["data"][0];
+      json[DATA] = BuildScalarAttribute(scalar_value);
     }
   } else if (at_name == "paddle::dialect::DataTypeAttribute") {
     VLOG(8) << "Get DataTypeAttribute name.";
     json[ID] = op_dialect + paddle::dialect::DataTypeAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
-      // DataTypeAttribute patch use string to represent DataType.
-      // See DataTypeToString for the mapping.
-      json[DATA] = action["default"].as<std::string>();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      // DataTypeAttribute yaml patch use phi::DataType::xxx to represent
+      // DataType. Then convert it to string in json patch. See DataTypeToString
+      // for the mapping.
+      phi::DataType dtype =
+          YamlStringToDataType(action["data"].as<std::string>());
+      json[DATA] = DataTypeToString(dtype);
     }
   } else if (at_name == "paddle::dialect::PlaceAttribute") {
     VLOG(8) << "Get PlaceAttribute name.";
     json[ID] = op_dialect + paddle::dialect::PlaceAttribute::name();
-    if (!action.IsScalar() && action["default"].IsDefined()) {
+    if (!action.IsScalar() && action["data"].IsDefined()) {
       Json content = Json::array();
-      YAML::Node place_value = action["default"];
+      YAML::Node place_value = action["data"];
       content.push_back(place_value[1].as<int8_t>());       // allocation_type
       content.push_back(place_value[1].as<int8_t>());       // device_id
       content.push_back(place_value[2].as<std::string>());  // device_type
       json[DATA] = content;
+    }
+  } else if (at_name == "paddle::dialect::DataLayoutAttribute") {
+    VLOG(8) << "Get DataLayoutAttribute name.";
+    json[ID] = op_dialect + paddle::dialect::DataLayoutAttribute::name();
+    if (!action.IsScalar() && action["data"].IsDefined()) {
+      std::string data_layout = action["data"].as<std::string>();
+      json[DATA] = YamlStringToDataLayoutString(data_layout);
     }
   } else {  // TODO(czy): support more attribute type.
     PADDLE_THROW(common::errors::InvalidArgument(
         "Unknown Attr %s in the GetAttrJson.", at_name));
   }
   return json;
+}
+
+std::string YamlStringToDataLayoutString(const std::string &layout) {
+  if (layout == "phi::DataLayout::kNHWC") {
+    return "NHWC";
+  } else if (layout == "phi::DataLayout::kNCHW") {
+    return "NCHW";
+  } else if (layout == "phi::DataLayout::kAnyLayout") {
+    return "Undefined(AnyLayout)";
+  } else if (layout == "phi::DataLayout::kMKLDNN") {
+    return "ONEDNN";
+  } else if (layout == "phi::DataLayout::SPARSE_COO") {
+    return "SPARSE_COO";
+  } else if (layout == "phi::DataLayout::SPARSE_CSR") {
+    return "SPARSE_CSR";
+  } else if (layout == "phi::DataLayout::kNDHWC") {
+    return "NDHWC";
+  } else if (layout == "phi::DataLayout::kNCDHW") {
+    return "NCDHW";
+  } else if (layout == "phi::DataLayout::PSTRING_UNION") {
+    return "PSTRING_UNION";
+  } else if (layout == "phi::DataLayout::STRIDED") {
+    return "STRIDED";
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unknown Data Layout type ", layout, "."));
+  }
+}
+
+phi::DataType YamlStringToDataType(const std::string &type) {
+  phi::DataType dtype = phi::DataType::UNDEFINED;
+  if (type == "phi::DataType::UNDEFINED") {
+    dtype = phi::DataType::UNDEFINED;
+  } else if (type == "phi::DataType::BOOL") {
+    dtype = phi::DataType::BOOL;
+  } else if (type == "phi::DataType::INT8") {
+    dtype = phi::DataType::INT8;
+  } else if (type == "phi::DataType::UINT8") {
+    dtype = phi::DataType::UINT8;
+  } else if (type == "phi::DataType::INT16") {
+    dtype = phi::DataType::INT16;
+  } else if (type == "phi::DataType::UINT16") {
+    dtype = phi::DataType::UINT16;
+  } else if (type == "phi::DataType::INT32") {
+    dtype = phi::DataType::INT32;
+  } else if (type == "phi::DataType::UINT32") {
+    dtype = phi::DataType::UINT32;
+  } else if (type == "phi::DataType::INT64") {
+    dtype = phi::DataType::INT64;
+  } else if (type == "phi::DataType::UINT64") {
+    dtype = phi::DataType::UINT64;
+  } else if (type == "phi::DataType::FLOAT8_E4M3FN") {
+    dtype = phi::DataType::FLOAT8_E4M3FN;
+  } else if (type == "phi::DataType::FLOAT8_E5M2") {
+    dtype = phi::DataType::FLOAT8_E5M2;
+  } else if (type == "phi::DataType::BFLOAT16") {
+    dtype = phi::DataType::BFLOAT16;
+  } else if (type == "phi::DataType::FLOAT16") {
+    dtype = phi::DataType::FLOAT16;
+  } else if (type == "phi::DataType::FLOAT32") {
+    dtype = phi::DataType::FLOAT32;
+  } else if (type == "phi::DataType::FLOAT64") {
+    dtype = phi::DataType::FLOAT64;
+  } else if (type == "phi::DataType::COMPLEX64") {
+    dtype = phi::DataType::COMPLEX64;
+  } else if (type == "phi::DataType::COMPLEX128") {
+    dtype = phi::DataType::COMPLEX128;
+  } else if (type == "phi::DataType::PSTRING") {
+    dtype = phi::DataType::PSTRING;
+  } else {
+    dtype = phi::DataType::UNDEFINED;
+  }
+  return dtype;
+}
+
+Json BuildScalarAttribute(const YAML::Node &action) {
+  Json content = Json::array();
+  phi::DataType dtype = YamlStringToDataType(action["type"].as<std::string>());
+  content.push_back(DataTypeToString(dtype));
+  if (dtype == phi::DataType::FLOAT32) {
+    content.push_back(action["data"].as<float>());
+  } else if (dtype == phi::DataType::INT32) {
+    content.push_back(action["data"].as<int32_t>());
+  } else if (dtype == phi::DataType::FLOAT64) {
+    content.push_back(action["data"].as<double>());
+  } else if (dtype == phi::DataType::INT8) {
+    content.push_back(action["data"].as<int8_t>());
+  } else if (dtype == phi::DataType::FLOAT16 ||
+             dtype == phi::DataType::UINT16 ||
+             dtype == phi::DataType::BFLOAT16) {
+    content.push_back(action["data"].as<uint16_t>());
+  } else if (dtype == phi::DataType::INT16) {
+    content.push_back(action["data"].as<int16_t>());
+  } else if (dtype == phi::DataType::INT64) {
+    content.push_back(action["data"].as<int64_t>());
+  } else if (dtype == phi::DataType::UINT8) {
+    content.push_back(action["data"].as<uint8_t>());
+  } else if (dtype == phi::DataType::UINT32) {
+    content.push_back(action["data"].as<uint32_t>());
+  } else if (dtype == phi::DataType::UINT64) {
+    content.push_back(action["data"].as<uint64_t>());
+  } else if (dtype == phi::DataType::BOOL) {
+    content.push_back(action["data"].as<bool>());
+  } else if (dtype == phi::DataType::COMPLEX64) {
+    // complex value is represented as a list of two float/double values in
+    // yaml.
+    content.push_back(action["data"][0].as<float>());
+    content.push_back(action["data"][1].as<float>());
+  } else if (dtype == phi::DataType::COMPLEX128) {
+    content.push_back(action["data"][0].as<double>());
+    content.push_back(action["data"][1].as<double>());
+  } else if (dtype == phi::DataType::PSTRING) {
+    content.push_back(action["data"].as<std::string>());
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Unknown DataType %s in the BuildScalarAttribute.", dtype));
+  }
+  return content;
 }
 
 Json BuildTypeJsonPatch(const YAML::Node &action) {
@@ -247,15 +382,15 @@ Json GetTypeJson(const YAML::Node &action) {
     VLOG(8) << "Get VectorType name.";
     json[ID] = builtin_dialect + pir::VectorType::name();
     json[DATA] = Json::array();
-    for (size_t i = 0; i < action["default"].size(); i++) {
-      YAML::Node array_value = action["default"][i];
+    for (size_t i = 0; i < action["data"].size(); i++) {
+      YAML::Node array_value = action["data"][i];
       json[DATA].push_back(BuildTypeJsonPatch(array_value));
     }
   } else if (type_name == "pir::DenseTensorType") {
     VLOG(8) << "Get DenseTensorType name.";
     json[ID] = builtin_dialect + pir::DenseTensorType::name();
     Json content = Json::array();
-    YAML::Node tensor_value = action["default"];
+    YAML::Node tensor_value = action["data"];
     content.push_back(BuildTypeJsonPatch(tensor_value[0]));
 
     content.push_back(tensor_value[1].as<std::vector<int>>());  // Dims
@@ -394,7 +529,7 @@ Json ParseOpPatches(const YAML::Node &root) {
                  action_name == "modify_output_attr_name") {
         VLOG(8) << "Patch for modify attr name.";
         std::string old_name = action["object"].as<std::string>();
-        std::string new_name = action["default"].as<std::string>();
+        std::string new_name = action["data"].as<std::string>();
         Json j_attr;
         j_attr[NAME] = old_name;
         j_attr[NEW_NAME] = new_name;
@@ -423,7 +558,7 @@ Json ParseOpPatches(const YAML::Node &root) {
         j_patch[PATCH][OPRESULTS][UPDATE].push_back(j_type);
       } else if (action_name == "modify_name") {
         VLOG(8) << "Patch for modify_name";
-        std::string op_name = action["default"].as<std::string>();
+        std::string op_name = action["data"].as<std::string>();
         GetCompressOpName(&op_name);
         j_patch[PATCH][NEW_NAME] = op_name;
       }

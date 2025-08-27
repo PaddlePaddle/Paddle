@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_uint16_to_float,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -188,7 +192,8 @@ class TestUniformRandomOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestUniformRandomFP16Op(TestUniformRandomOp):
     def init_dtype(self):
@@ -201,7 +206,6 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 
 class TestUniformRandomOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -253,20 +257,8 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
 
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -312,7 +304,6 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpApi(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         paddle.seed(10)
@@ -350,7 +341,6 @@ class TestUniformRandomOpApi(unittest.TestCase):
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         startup_program = base.Program()
@@ -409,7 +399,6 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         paddle.enable_static()
         _seed = 10
@@ -438,20 +427,8 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -475,20 +452,8 @@ class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
 
 
 class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        return places
-
     def test_check_output(self):
-        for place in self.get_places():
+        for place in get_places():
             self.check_with_place(place)
 
     def check_with_place(self, place):
@@ -523,7 +488,6 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()
@@ -557,7 +521,6 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
 
 
 class TestUniformAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.uniform([2, 3], min=-5.0, max=5.0)
         paddle.tensor.uniform([2, 3], min=-5.0, max=5.0)
@@ -570,7 +533,6 @@ class TestUniformAlias(unittest.TestCase):
 
 
 class TestUniformOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = Program()

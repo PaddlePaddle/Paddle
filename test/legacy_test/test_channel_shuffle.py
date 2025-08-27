@@ -252,7 +252,6 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 
 class TestChannelShuffleError(unittest.TestCase):
-
     def test_error_functional(self):
         def error_input():
             with paddle.base.dygraph.guard():
@@ -332,7 +331,7 @@ class TestChannelShuffleBF16OP(OpTest):
         n, c, h, w = 2, 9, 4, 4
         self.python_api = paddle.nn.functional.channel_shuffle
         self.dtype = np.uint16
-        self.use_mkldnn = False
+        self.use_onednn = False
 
         if self.format == "NCHW":
             shape = [n, c, h, w]

@@ -34,7 +34,7 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of index_select should be in range [0, %d), but got %d.",
           x_ndim,
           axis));
@@ -85,7 +85,7 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
       true,
-      phi::errors::InvalidArgument(
+      common::errors::InvalidArgument(
           "The axis of index_select should be in range [0, %d), but got %d.",
           x_ndim,
           axis));
@@ -98,10 +98,12 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
                         out_grad_ndim));
   // now use forward spmd rule to reduce complexity without actual cost eval.
   SpmdInfo fwd_spmd_info = IndexSelectInferSpmd(x, index, axis);
-  TensorDistAttr x_dist_attr_dst = paddle::get<0>(fwd_spmd_info.first[0]);
-  TensorDistAttr index_dist_attr_dst = paddle::get<0>(fwd_spmd_info.first[1]);
-  TensorDistAttr out_grad_dist_attr_dst =
-      paddle::get<0>(fwd_spmd_info.second[0]);
+  const TensorDistAttr& x_dist_attr_dst =
+      PADDLE_GET_CONST(TensorDistAttr, fwd_spmd_info.first[0]);
+  const TensorDistAttr& index_dist_attr_dst =
+      PADDLE_GET_CONST(TensorDistAttr, fwd_spmd_info.first[1]);
+  const TensorDistAttr& out_grad_dist_attr_dst =
+      PADDLE_GET_CONST(TensorDistAttr, fwd_spmd_info.second[0]);
 
   TensorDistAttr x_grad_dist_attr_dst = x_dist_attr_dst;
   x_grad_dist_attr_dst.clean_partial_status();

@@ -41,6 +41,8 @@
 #include "paddle/fluid/platform/onednn_helper.h"
 #endif
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle::framework {
 
 IfInstruction::IfInstruction(size_t id,
@@ -117,7 +119,7 @@ IfInstruction::IfInstruction(size_t id,
       outputs.emplace(value, GetValueIds(value, *value_exec_info));
     }
     if (value.use_count() > 0) {
-      VLOG(6) << "value " << i << " use conutn != 0";
+      VLOG(6) << "value " << i << " use count != 0";
       is_last_op = false;
     }
   }
@@ -216,6 +218,10 @@ void IfInstruction::SetInputHooks(const std::vector<PirHookFunc>& hookfuncs) {
 }
 
 void IfInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction begin");
+  }
+
   bool cond = true;
   if (cond_var_->IsType<phi::DenseTensor>()) {
     auto& cond_tensor = cond_var_->Get<phi::DenseTensor>();
@@ -249,7 +255,7 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(true_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(true_branch_inter_->GetPlace());
 #endif
     true_branch_inter_->Run({}, false);
   } else {
@@ -258,11 +264,15 @@ void IfInstruction::Run() {
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
-    paddle::platform::DontClearMKLDNNCache(false_branch_inter_->GetPlace());
+    paddle::platform::DontClearONEDNNCache(false_branch_inter_->GetPlace());
 #endif
     false_branch_inter_->Run({}, false);
   }
   // copy output
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("IfInstruction finish");
+  }
 }
 
 }  // namespace paddle::framework

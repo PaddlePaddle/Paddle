@@ -546,6 +546,7 @@
   output : Tensor(x_grad), Tensor(filter_grad)
   infer_meta :
     func : Conv2dTransposeGradInferMeta
+    spmd_rule : Conv2dTransposeGradInferSpmd
   kernel :
     func : conv2d_transpose_grad
     data_type : x
@@ -570,6 +571,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
+    spmd_rule : Conv3dGradInferSpmd
   kernel :
     func : conv3d_grad
     data_type : input
@@ -791,6 +793,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [input, filter]
+    spmd_rule : DepthwiseConv2dGradInferSpmd
   kernel :
     func : depthwise_conv2d_grad
     data_type : input
@@ -1187,6 +1190,18 @@
     func : flash_attn_v3_grad
     data_type : q
 
+- backward_op : flash_attn_v3_varlen_grad
+  forward : flash_attn_v3_varlen(Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor qv, Tensor q_descale, Tensor k_descale, Tensor v_descale, int max_seqlen_q, int max_seqlen_k, float softmax_scale, bool causal, int window_size_left, int window_size_right, float softcap, int num_splits, bool manual_set_pack_gqa, bool pack_gqa, int sm_margin) -> Tensor(out), Tensor(softmax_lse)
+  args : (Tensor q, Tensor k, Tensor v, Tensor out, Tensor softmax_lse, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor seqused_q, Tensor seqused_k, Tensor out_grad, float softmax_scale, int max_seqlen_q, int max_seqlen_k, bool causal, int window_size_left, int window_size_right, float softcap, int sm_margin)
+  optional : seqused_q, seqused_k
+  output : Tensor(q_grad), Tensor(k_grad), Tensor(v_grad)
+  infer_meta :
+    func : FlashAttnV3VarlenGradInferMeta
+    param : [q, k, v]
+  kernel :
+    func : flash_attn_v3_varlen_grad
+    data_type : q
+
 - backward_op : flash_attn_varlen_qkvpacked_grad
   forward : flash_attn_varlen_qkvpacked (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor fixed_seed_offset, Tensor attn_mask, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "", bool varlen_padded = true) -> Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
   args : (Tensor qkv, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor out, Tensor softmax_lse, Tensor seed_offset, Tensor attn_mask, Tensor out_grad, Scalar max_seqlen_q, Scalar max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool varlen_padded = true)
@@ -1385,6 +1400,12 @@
   kernel :
     func : gammaln_grad
 
+- backward_op : gather_double_grad
+  forward : gather_grad(Tensor x, Tensor index, Tensor grad_out, Scalar axis=0) -> Tensor(grad_x)
+  args : (Tensor index, Tensor grad_x_grad, Scalar axis)
+  output : Tensor(grad_out_grad)
+  invoke: gather(grad_x_grad, index, axis)
+
 - backward_op : gather_grad
   forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
@@ -1395,8 +1416,8 @@
   kernel :
     data_type: out_grad
     func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
   no_need_buffer : x
+  backward : gather_double_grad
 
 - backward_op : gather_nd_double_grad
   forward : gather_nd_grad (Tensor x, Tensor index, Tensor grad_out) -> Tensor(grad_x)
@@ -1684,24 +1705,44 @@
     data_type : out_grad
   inplace : (out_grad -> x_grad)
   backward : index_add_double_grad
+  no_need_buffer: add_value
+
+- backward_op : index_elementwise_get_double_grad
+  forward : index_elementwise_get_grad (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate, bool is_combined) -> Tensor(x_grad)
+  args : (Tensor[] index, Tensor x_grad_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true, bool is_combined = false)
+  output : Tensor(out_grad_grad)
+  invoke : index_elementwise_get(x_grad_grad, index, input_dims, input_strides, index_dims, index_stride, slice_offset, accumulate, is_combined)
 
 - backward_op : index_elementwise_get_grad
-  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride)
+  forward : index_elementwise_get (Tensor x, Tensor[] index, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset, bool accumulate, bool is_combined) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_stride, int64_t slice_offset = 0, bool accumulate = true, bool is_combined = false)
   output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwiseGetGradInferMeta
   kernel :
     func : index_elementwise_get_grad
+  backward: index_elementwise_get_double_grad
 
 - backward_op : index_elementwise_put_grad
-  forward : index_elementwise_put (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
-  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
-  output : Tensor(x_grad), Tensor(value_grad)
+  forward : index_elementwise_put (Tensor x, Tensor[] index, Scalar value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad)
   infer_meta :
     func : IndexElementwisePutGradInferMeta
   kernel :
     func : index_elementwise_put_grad
+    data_type : out_grad
+  data_transform :
+    skip_transform : index
+
+- backward_op : index_elementwise_put_with_tensor_grad
+  forward : index_elementwise_put_with_tensor (Tensor x, Tensor[] index, Tensor value, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset) -> Tensor(out)
+  args : (Tensor x, Tensor[] index, Tensor value, Tensor out_grad, int64_t[] input_dims, int64_t[] input_strides, int64_t[] index_dims, int64_t[] index_strides, int64_t slice_offset)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : IndexElementwisePutWithTensorGradInferMeta
+  kernel :
+    func : index_elementwise_put_with_tensor_grad
     data_type : out_grad
   data_transform :
     skip_transform : index
@@ -1724,12 +1765,14 @@
   output : Tensor(x_grad), Tensor(value_grad)
   infer_meta :
     func : IndexPutGradInferMeta
+    spmd_rule : IndexPutGradInferSpmd
   kernel :
     func : index_put_grad
     data_type : out_grad
   data_transform :
     skip_transform : indices
   backward : index_put_double_grad
+  no_need_buffer: x, value
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
@@ -1780,7 +1823,7 @@
   no_need_buffer : x
 
 - backward_op : instance_norm_double_grad
-  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
+  forward : instance_norm_grad(Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, float epsilon) -> Tensor(grad_x), Tensor(grad_scale), Tensor(grad_bias)
   args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor grad_y, Tensor grad_x_grad, Tensor grad_scale_grad, Tensor grad_bias_grad, float epsilon)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(grad_y_grad)
   infer_meta :
@@ -1792,7 +1835,7 @@
 
 - backward_op : instance_norm_grad
   forward : instance_norm(Tensor x, Tensor scale, Tensor bias, float epsilon) -> Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  args : (Tensor x, Tensor scale, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
+  args : (Tensor x, Tensor scale, Tensor bias, Tensor saved_mean, Tensor saved_variance, Tensor y_grad, float epsilon=1e-5)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :
     func : InstanceNormGradInferMeta
@@ -1800,9 +1843,10 @@
   kernel :
     func : instance_norm_grad
     data_type : x
-  optional : scale
+  optional : scale, bias
+  no_need_buffer : bias
   backward : instance_norm_double_grad
-  composite: instance_norm_grad(x, scale, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
+  composite: instance_norm_grad(x, scale, bias, saved_mean, saved_variance, y_grad, epsilon, x_grad, scale_grad, bias_grad)
 
 - backward_op : inverse_grad
   forward : inverse(Tensor x) -> Tensor(out)
@@ -1836,8 +1880,8 @@
     data_type : out_grad
 
 - backward_op : kthvalue_grad
-  forward : kthvalue(Tensor x, int k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int k, int axis, bool keepdim)
+  forward : kthvalue(Tensor x, int64_t k, int axis, bool keepdim) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int64_t k, int axis, bool keepdim)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2164,6 +2208,12 @@
   no_need_buffer : x, value
   backward: masked_fill_double_grad
 
+- backward_op : masked_select_double_grad
+  forward: masked_select_grad (Tensor x, Tensor mask, Tensor grad_out) -> Tensor(grad_x)
+  args : (Tensor mask, Tensor grad_x_grad)
+  output : Tensor(grad_out_grad)
+  invoke : masked_select(grad_x_grad, mask)
+
 - backward_op : masked_select_grad
   forward : masked_select (Tensor x, Tensor mask) -> Tensor(out)
   args : (Tensor x, Tensor mask, Tensor out_grad)
@@ -2175,6 +2225,7 @@
     func : masked_select_grad
     data_type : x
   no_need_buffer : x
+  backward: masked_select_double_grad
 
 - backward_op : match_matrix_tensor_grad
   forward: match_matrix_tensor(Tensor x, Tensor y, Tensor w, int dim_t = 1) -> Tensor (out), Tensor (tmp)
@@ -2225,6 +2276,16 @@
     func : MaxPoolWithIndexGradInferMeta
   kernel :
     func : max_pool3d_with_index_grad
+
+- backward_op : max_with_index_grad
+  forward : max_with_index (Tensor x, Scalar dim, bool keepdim, bool flatten) -> Tensor(values), Tensor(indices)
+  args : (Tensor x, Tensor values, Tensor indices, Tensor values_grad, Scalar dim, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : max_with_index_grad
 
 - backward_op : maxout_grad
   forward : maxout(Tensor x, int groups, int axis) -> Tensor(out)
@@ -2289,6 +2350,16 @@
     func : meshgrid_grad
     data_type : out_grad
 
+- backward_op : min_with_index_grad
+  forward : min_with_index (Tensor x, Scalar dim, bool keepdim, bool flatten) -> Tensor(values), Tensor(indices)
+  args : (Tensor x, Tensor values, Tensor indices, Tensor values_grad, Scalar dim, bool keepdim)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : min_with_index_grad
+
 - backward_op : mish_grad
   forward : mish (Tensor x, float lambda) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, float lambda)
@@ -2311,6 +2382,16 @@
   kernel :
     func : mode_grad
 
+- backward_op : moe_combine_auto_grad
+  forward : moe_combine_auto (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
+  output : Tensor(x_grad), Tensor(combine_weights_grad), Tensor(scatter_index_grad)
+  infer_meta :
+    func : MoeCombineAutoGradInferMeta
+    spmd_rule : MoECombineGradInferSpmd
+  kernel :
+    func : moe_combine_auto_grad
+
 - backward_op : moe_combine_grad
   forward : moe_combine (Tensor x, Tensor combine_weights, Tensor scatter_index) -> Tensor(y)
   args : (Tensor x, Tensor combine_weights, Tensor scatter_index, Tensor y_grad)
@@ -2319,6 +2400,28 @@
     func : MoeCombineGradInferMeta
   kernel :
     func : moe_combine_grad
+
+- backward_op : moe_combine_no_weight_grad
+  forward : moe_combine_no_weight (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15) -> Tensor(y)
+  args : (Tensor x, Tensor combine_weight, Tensor scatter_index, Tensor y_grad, float epsilon = 1.0e-15)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : moe_combine_no_weight_grad
+  no_need_buffer : x
+
+- backward_op : moe_gate_dispatch_auto_grad
+  forward : moe_gate_dispatch_auto (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad) -> Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  args : (Tensor combine_weights, Tensor scatter_index, Tensor expert_id, Tensor y_grad, Tensor combine_weights_grad, int64_t k, int64_t capacity, bool use_pad)
+  output : Tensor(x_grad), Tensor(gate_logits_grad)
+  infer_meta :
+    func : MoeGateDispatchAutoGradInferMeta
+    spmd_rule : MoEGateDispatchGradInferSpmd
+  kernel :
+    func : moe_gate_dispatch_grad
+    data_type : y_grad
 
 - backward_op : moe_gate_dispatch_grad
   forward : moe_gate_dispatch (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad) -> Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
@@ -2864,6 +2967,17 @@
   args : (Tensor out_grad, IntArray axis)
   output : Tensor(x_grad)
   invoke : reverse(out_grad, axis)
+
+- backward_op : rint_grad
+  forward : rint(Tensor x) -> Tensor(out)
+  args : (Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
+  kernel :
+    func : rint_grad
+  inplace : (out_grad -> x_grad)
 
 - backward_op : rms_norm_grad
   forward : rms_norm (Tensor x, Tensor bias, Tensor residual, Tensor norm_weight, Tensor norm_bias, float epsilon, int begin_norm_axis, float quant_scale, int quant_round_type, float quant_max_bound, float quant_min_bound) -> Tensor(out), Tensor(residual_out), Tensor(inv_var)
@@ -3566,6 +3680,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [arr]
+    spmd_rule : TakeAlongAxisGradInferSpmd
   kernel :
     func : take_along_axis_grad
   backward : take_along_axis_double_grad
@@ -3836,6 +3951,7 @@
   kernel :
     func : view_dtype_grad
     data_type : out_grad
+  no_need_buffer: input
 
 - backward_op : warpctc_grad
   forward : warpctc (Tensor logits, Tensor label, Tensor logits_length, Tensor labels_length, int blank = 0, bool norm_by_times = false) -> Tensor(loss), Tensor(warpctcgrad)

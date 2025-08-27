@@ -82,7 +82,7 @@ extern MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
 template <typename DeviceContext>
 class Blas {
  public:
-  explicit Blas(const DeviceContext& context) : context_(context) {}
+  explicit Blas(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
 
   template <typename T>
   void GEMM(CBLAS_TRANSPOSE transA,
@@ -181,7 +181,7 @@ class Blas {
              const T* alpha,
              const char* matdescra,
              const T* val,
-             const int* indx,
+             const int* index,
              const int* pntrb,
              const int* pntre,
              const T* b,
@@ -436,7 +436,7 @@ class Blas {
 #endif
 
  private:
-  const DeviceContext& context_;
+  const DeviceContext& dev_ctx_;
 };
 
 template <typename DeviceContext, typename T>

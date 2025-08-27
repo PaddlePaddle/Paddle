@@ -186,7 +186,7 @@ std::vector<paddle::Tensor> RunBackward(
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           common::errors::Fatal(
-              "Detected size mismatch between tensors and grad_tensors"
+              "Detected size mismatch between tensors and grad_tensors, "
               "grad_tensors should either have "
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
@@ -419,7 +419,7 @@ std::vector<paddle::Tensor> RunBackward(
           PADDLE_ENFORCE(
               node_in_degree_map[next_node] >= 0,
               common::errors::Fatal(
-                  "Detected in-degree value smaller than zero. For Node: %s"
+                  "Detected in-degree value smaller than zero. For Node: %s, "
                   "Node's in-degree cannot be negative.",
                   next_node->name()));
 

@@ -245,6 +245,7 @@ const std::unordered_set<std::string> SpecialOps = {
     paddle::dialect::DataOp::name(),
     pir::ShadowOutputOp::name(),
     paddle::dialect::IfOp::name(),
+    paddle::dialect::CudaGraphOp::name(),
     paddle::dialect::PyLayerOp::name(),
     paddle::dialect::WhileOp::name(),
     pir::StackCreateOp::name(),
@@ -689,6 +690,14 @@ void HandleForSpecialOp(pir::Operation* op,
       auto while_op_out_value = while_op->result(i);
       BuildValue(while_op_out_value, var_name_prefix, value_exe_info);
     }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  } else if (op->isa<paddle::dialect::CudaGraphOp>()) {
+    auto cuda_graph_op = op->dyn_cast<paddle::dialect::CudaGraphOp>();
+    for (size_t i = 0; i < cuda_graph_op->num_results(); ++i) {
+      auto out_value = cuda_graph_op->result(i);
+      BuildValue(out_value, var_name_prefix, value_exe_info);
+    }
+#endif
   } else if (op->isa<pir::StackCreateOp>()) {
     auto stack_create_op = op->dyn_cast<pir::StackCreateOp>();
     auto stack_value = stack_create_op.stack();

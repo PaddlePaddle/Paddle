@@ -24,8 +24,10 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/core/dense_tensor.h"
+#if !defined(PADDLE_WITH_CUDA) || !defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
+#endif
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
@@ -255,12 +257,13 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
                                               CompoundFunctor compound_functor,
-                                              int h,
-                                              int w,
+                                              int64_t h,
+                                              int64_t w,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
-  int gird_size = h;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), w);
+  int64_t gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<T,
                                           CompoundFunctor,
                                           BcastY,
@@ -329,14 +332,15 @@ template <typename T,
 static void FusedElemwiseAndActBroadcast2CUDA(gpuStream_t stream,
                                               const T *x,
                                               const T *y,
-                                              int pre,
-                                              int n,
-                                              int post,
+                                              int64_t pre,
+                                              int64_t n,
+                                              int64_t post,
                                               CompoundFunctor compound_functor,
                                               T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
+  int64_t gird_size = n;
 
   FusedElemwiseAndActBroadcast2CUDAKernel<T,
                                           CompoundFunctor,
@@ -395,7 +399,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  size_t pre, n, post;
+  int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
@@ -1082,17 +1087,18 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
     const T *intermediate_out,
     const T *out,
     const T *dout,
-    int pre,
-    int n,
-    int post,
+    int64_t pre,
+    int64_t n,
+    int64_t post,
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op,
     T *dx,
     T *dy,
     T *dintermediate) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
-  int gird_size = n;
+  int64_t block_size =
+      std::min(static_cast<int64_t>(ELEMWISE_MAX_BLOCK_DIM), pre * post);
+  int64_t gird_size = n;
   FusedElemwiseAndActGradBroadcast2CUDAKernel<T,
                                               DX_OP,
                                               DY_OP,
@@ -1145,7 +1151,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = phi::funcs::TrimTrailingSingularDims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post, is_run_common_broadcast;
+  size_t pre, n, post;
+  int is_run_common_broadcast;
   phi::funcs::GetMidDims(
       x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   const T *x_data = nullptr;

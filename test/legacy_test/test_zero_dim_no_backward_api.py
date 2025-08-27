@@ -17,11 +17,11 @@
 # 0D Tensor's shape is always [], numel is 1
 # which can be created by paddle.rand([])
 
-import os
 import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
+from op_test import get_devices
 
 import paddle
 
@@ -175,6 +175,18 @@ class TestNoBackwardAPI(unittest.TestCase):
         for i in range(len(res)):
             self.assertEqual(emb.numpy()[i], res[i])
 
+    def test_embedding_alias(self):
+        ids = paddle.full(shape=[], fill_value=1, dtype='int64')
+        w0 = paddle.arange(3, 9).reshape((3, 2)).astype(paddle.float32)
+        w = paddle.to_tensor(w0, stop_gradient=False)
+        emb = paddle.nn.functional.embedding(
+            input=ids, weight=w, sparse=True, name="embedding"
+        )
+        self.assertEqual(emb.shape, [2])
+        res = [5.0, 6.0]
+        for i in range(len(res)):
+            self.assertEqual(emb.numpy()[i], res[i])
+
     def test_one_hot_label(self):
         label = paddle.full(shape=[], fill_value=2, dtype='int64')
         one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
@@ -182,16 +194,7 @@ class TestNoBackwardAPI(unittest.TestCase):
         self.assertEqual(one_hot_label.numpy()[2], 1)
 
     def test_unique_consecutive(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_devices():
             paddle.set_device(place)
             x = paddle.rand([])
             y, inverse, counts = paddle.unique_consecutive(
@@ -208,16 +211,7 @@ class TestNoBackwardAPI(unittest.TestCase):
             self.assertEqual(counts.shape, [1])
 
     def test_unique(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        for place in places:
+        for place in get_devices():
             paddle.set_device(place)
             x = paddle.rand([])
             y, index, inverse, counts = paddle.unique(

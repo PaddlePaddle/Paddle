@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import static, tensor
@@ -33,11 +34,7 @@ class TestMultiplyApi(unittest.TestCase):
             )
             res = tensor.multiply(x, y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -194,11 +191,7 @@ class TestMultiplyInplaceApi(TestMultiplyApi):
             )
             res = x.multiply_(y)
 
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             outs = exe.run(
                 paddle.static.default_main_program(),
@@ -235,7 +228,6 @@ class TestMultiplyInplaceError(unittest.TestCase):
 
 
 class TestMultiplyApiZeroSize(TestMultiplyApi):
-
     # only support the 0 size tensor
     def _test_grad(self, x_data, y_data):
         paddle.disable_static()
@@ -288,6 +280,87 @@ class TestMultiplyApiZeroSize3(TestMultiplyApiZeroSize):
     def init_shapes(self):
         self.x_shape = [5, 0]
         self.y_shape = [5, 1]
+
+
+class TestMultiplyApiBF16(unittest.TestCase):
+    # Now only check the successful run of multiply with bfloat16 and backward.
+    def setUp(self):
+        paddle.device.set_device('cpu')
+
+    def test_multiply(self):
+        self.x_shape = [1, 1024, 32, 128]
+        self.y_shape = [1, 1024, 1, 128]
+        x = paddle.rand(self.x_shape, dtype='bfloat16')
+        x.stop_gradient = False
+        y = paddle.rand(self.y_shape, dtype='bfloat16')
+        y.stop_gradient = False
+        res = paddle.multiply(x, y)
+        loss = res.sum()
+        loss.backward()
+        assert x.grad is not None
+        assert x.grad.dtype == paddle.bfloat16
+        assert y.grad is not None
+        assert y.grad.dtype == paddle.bfloat16
+
+
+class TestMultiplyOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.rand(3, 4).astype(np.float32)
+        self.y_np = np.random.rand(3, 4).astype(np.float32)
+        self.test_types = [
+            # "decorator_input",
+            # "decorator_other",
+            # "decorator_both",
+            "out",
+            # "out_decorator",
+        ]
+
+    def do_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        y = paddle.to_tensor(self.y_np, stop_gradient=False)
+        if test_type == 'raw':
+            result = paddle.multiply(x, y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_input':
+            result = paddle.multiply(input=x, y=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_other':
+            result = paddle.multiply(x, other=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'decorator_both':
+            result = paddle.multiply(input=x, other=y)
+            result.mean().backward()
+            return result, x.grad, y.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.multiply(x, y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.multiply(input=x, other=y, out=out)
+            out.mean().backward()
+            return out, x.grad, y.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        out_std, x_grad_std, y_grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, x_grad, y_grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            np.testing.assert_allclose(
+                x_grad.numpy(), x_grad_std.numpy(), rtol=1e-20
+            )
+            np.testing.assert_allclose(
+                y_grad.numpy(), y_grad_std.numpy(), rtol=1e-20
+            )
 
 
 if __name__ == '__main__':
