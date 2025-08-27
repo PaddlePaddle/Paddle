@@ -53,7 +53,7 @@ void SetAllocatorStreamForGPUContext(cudaStream_t stream,
 void PreAlloc(paddle::Tensor tensor, cudaStream_t stream) {
   int64_t numel = tensor.numel();
   auto alloc_size = FLAGS_deep_ep_comm_prealloc_in_mb * 1000000;
-  std::cout << "alloc once here, size: " << alloc_size << " numel: " numel
+  std::cout << "alloc once here, size: " << alloc_size << " numel: " << numel
             << std::endl;
   std::cout << tensor.place() << "\t" << stream << std::endl;
   paddle::memory::allocation::AllocatorFacade::Instance()
