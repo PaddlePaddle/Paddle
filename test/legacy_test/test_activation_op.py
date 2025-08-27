@@ -6171,7 +6171,7 @@ def create_test_act_stride_class(base_class, api_name, paddle_api, numpy_api):
         def init_input(self):
             self.strided_input_type = "transpose"
             self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
-            self.perm = []  # 零维tensor的perm应该是空列表
+            self.perm = []
             self.x_trans = np.transpose(self.x, self.perm)
 
     cls_name = "{}_{}_{}".format(
