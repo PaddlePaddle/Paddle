@@ -225,8 +225,9 @@ class TestAutoTuneTransposeOp(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda(),
-    "core is not compiled with CUDA",
+    not paddle.base.core.is_compiled_with_cuda()
+    and paddle.device.cuda.get_device_capability()[0] < 9.0,
+    "core is not compiled with CUDA or not support native fp8",
 )
 class TestFP8FastTranspose(unittest.TestCase):
     def setUp(self):
