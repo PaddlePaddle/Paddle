@@ -692,7 +692,7 @@ void dispatch_fp8_fast_transpose_kernel(const phi::GPUContext& d,
   grid.y = M / BLOCK_TILE_SIZE;  // not for un-aligned
   grid.x = N / BLOCK_TILE_SIZE;  // not for un-aligned
 
-  fp8_fast_transpose_kernel<<<grid, block>>>(
+  fp8_fast_transpose_kernel<<<grid, block, 0, d.stream()>>>(
       input, output, B, M, N, static_cast<size_t>(M) * static_cast<size_t>(N));
 }
 
