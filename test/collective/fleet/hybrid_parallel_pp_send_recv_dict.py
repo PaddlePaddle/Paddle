@@ -157,7 +157,6 @@ class CrossEntropyLossPipe(nn.loss.CrossEntropyLoss):
             logits = logits["out"]
         if isinstance(label, dict):
             label = label["label"]
-        print(f"{logits=}, {label=}")
         return super().forward(logits, label)
 
     def build_schedule_node(self):
