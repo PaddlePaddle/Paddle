@@ -125,12 +125,16 @@ class FunctionArgs {
                                std::to_string(sizeof...(Types)) + ", got " +
                                std::to_string(args_.size()));
     }
-    return to_tuple_impl<Types...>(std::index_sequence_for<Types...>{});
+    return to_tuple_impl<Types...>(
+        std::make_index_sequence<sizeof...(Types)>{});
   }
 
   size_t size() const { return args_.size(); }
 
   bool empty() const { return args_.empty(); }
+
+  const IValue& operator[](size_t index) const { return args_[index]; }
+  IValue& operator[](size_t index) { return args_[index]; }
 
   const torch::IValue& get_value(size_t index) const {
     if (index >= args_.size()) {
@@ -202,14 +206,7 @@ class FunctionResult {
 };
 
 template <typename T>
-struct function_traits : public function_traits<decltype(&T::operator())> {};
-
-// For Reference and Pointer types, delegate to the underlying type
-template <typename T>
-struct function_traits<T&> : public function_traits<T> {};
-
-template <typename T>
-struct function_traits<T*> : public function_traits<T> {};
+struct function_traits;
 
 // Basic function type
 template <typename R, typename... Args>
@@ -223,7 +220,7 @@ struct function_traits<R(Args...)> {
     using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
   };
 
-  // Common function call interface
+  // Generic function call interface
   template <typename F>
   static IValue call_function(F&& func, const FunctionArgs& args) {
     if (args.size() != sizeof...(Args)) {
@@ -251,12 +248,33 @@ struct function_traits<R(Args...)> {
   }
 };
 
-// Function pointer specialization - inherits from basic function type
+// Function pointer specialization
 template <typename R, typename... Args>
 struct function_traits<R (*)(Args...)> : public function_traits<R(Args...)> {};
 
-// Member function pointer specialization - adjust to include 'this' as first
-// argument
+// Reference to function type specialization
+template <typename R, typename... Args>
+struct function_traits<R (&)(Args...)> : public function_traits<R(Args...)> {};
+
+// Const function type specialization
+template <typename R, typename... Args>
+struct function_traits<R(Args...) const> : public function_traits<R(Args...)> {
+};
+
+// Const function pointer specialization
+template <typename R, typename... Args>
+struct function_traits<R (*const)(Args...)>
+    : public function_traits<R(Args...)> {};
+
+// Common Reference and Pointer types
+template <typename T>
+struct function_traits<T&>
+    : public function_traits<std::remove_reference_t<T>> {};
+
+template <typename T>
+struct function_traits<T*> : public function_traits<T> {};
+
+// Member function pointer specialization
 template <typename C, typename R, typename... Args>
 struct function_traits<R (C::*)(Args...)>
     : public function_traits<R(C&, Args...)> {
@@ -328,7 +346,8 @@ struct function_traits<R (C::*)(Args...) const>
 
 template <typename Func>
 IValue invoke_function(Func&& func, const FunctionArgs& args) {
-  using traits = function_traits<std::decay_t<Func>>;
+  using traits =
+      function_traits<std::remove_cv_t<std::remove_reference_t<Func>>>;
   return traits::call_function(std::forward<Func>(func), args);
 }
 
@@ -336,7 +355,8 @@ template <typename Func, typename Class>
 IValue invoke_member_function(Func&& func,
                               Class* instance,
                               const FunctionArgs& args) {
-  using traits = function_traits<std::decay_t<Func>>;
+  using traits =
+      function_traits<std::remove_cv_t<std::remove_reference_t<Func>>>;
   return traits::call_method(func, instance, args);
 }
 
@@ -346,25 +366,6 @@ class CppFunction {
 
   CppFunction() : func_(nullptr) {}
 
-  // template <typename Func>
-  // explicit CppFunction(Func&& f) {
-  //   using FuncTraits = function_traits<std::decay_t<Func>>;
-  //   using ReturnType = typename FuncTraits::return_type;
-  //   using ArgsTuple = typename FuncTraits::args_tuple;
-
-  //   func_ = [f = std::forward<Func>(f)](
-  //               const FunctionArgs& args) -> FunctionResult {
-  //     if constexpr (std::is_void_v<ReturnType>) {
-  //       call_with_args_impl<ArgsTuple>(
-  //           f, args, std::make_index_sequence<FuncTraits::arity>{});
-  //       return FunctionResult::void_result();
-  //     } else {
-  //       auto result = call_with_args_impl<ArgsTuple>(
-  //           f, args, std::make_index_sequence<FuncTraits::arity>{});
-  //       return FunctionResult(result);
-  //     }
-  //   };
-  // }
   // Constructor for lambda or function object
   explicit CppFunction(std::function<IValue(const FunctionArgs&)> func)
       : func_([func](const FunctionArgs& args) -> FunctionResult {
@@ -386,7 +387,8 @@ class CppFunction {
           (std::is_pointer_v<std::decay_t<Func>> &&
            std::is_function_v<std::remove_pointer_t<std::decay_t<Func>>>)>* =
           nullptr)
-      : func_([f](const FunctionArgs& args) -> FunctionResult {
+      : func_([f = std::forward<Func>(f)](
+                  const FunctionArgs& args) -> FunctionResult {
           try {
             auto result = invoke_function(f, args);
             return FunctionResult(result);
@@ -470,7 +472,7 @@ struct ClassRegistration {
         qualified_name(ns + "::" + name) {}
 };
 
-// 全局类注册表
+// Global class registry
 class ClassRegistry {
  public:
   static ClassRegistry& instance() {
@@ -1186,7 +1188,6 @@ class TorchLibraryInit {
                    std::optional<DispatchKey> dispatch_key,
                    const char* file,
                    uint32_t line) {
-    // 立即执行初始化（模拟 PyTorch 的静态初始化行为）
     Library lib(kind, ns, dispatch_key, file, line);
     fn(lib);
   }

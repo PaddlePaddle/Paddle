@@ -107,18 +107,6 @@ TORCH_LIBRARY(example_library, m) {
       .def_static("addValues", &TestClass::addValues);
 }
 
-TORCH_LIBRARY_IMPL(example_library, CPU, m) {
-  m.impl("mymuladd", &mymuladd_cpu);
-}
-
-TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
-  m.def("int_add", &generic_add<int>);
-}
-
-TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
-  m.def("string_concat", &generic_add<std::string>);
-}
-
 TEST(test_torch_library, TestLibraryOperators) {
   auto qualified_name = "example_library::mymuladd";
   auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
@@ -201,6 +189,18 @@ TEST(test_torch_library, TestLibraryClasses) {
   ASSERT_EQ(sum, 12);
 }
 
+TORCH_LIBRARY_IMPL(example_library, CPU, m) {
+  m.impl("mymuladd", &mymuladd_cpu);
+}
+
+TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
+  m.def("int_add", &generic_add<int>);
+}
+
+TORCH_LIBRARY_FRAGMENT(example_library_fragment, m) {
+  m.def("string_concat", &generic_add<std::string>);
+}
+
 TEST(test_torch_library, TestFragmentOperators) {
   auto qualified_name_int_add = "example_library_fragment::int_add";
   auto* op_int_add =
@@ -232,4 +232,162 @@ TEST(test_torch_library, TestFragmentOperators) {
   ASSERT_TRUE(string_result.get_value().is_string());
   std::string concatenated_string = string_result.get_value().to_string();
   ASSERT_EQ(concatenated_string, "Hello, World!");
+}
+
+at::Tensor cast_with_scalar_type(at::Tensor input, c10::ScalarType dtype) {
+  return input.toType(dtype);
+}
+
+TORCH_LIBRARY(example_library_with_scalar_type_input, m) {
+  m.def("cast_with_scalar_type", &cast_with_scalar_type);
+}
+
+TEST(test_torch_library, TestScalarTypeInput) {
+  auto qualified_name =
+      "example_library_with_scalar_type_input::cast_with_scalar_type";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
+  function_args.add_arg(torch::IValue(at::kDouble));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_tensor());
+  auto result_tensor = result.get_value().to_tensor();
+  ASSERT_EQ(result_tensor.dtype(), at::kDouble);
+}
+
+int fn_with_int_const(int const x) { return x + 1; }
+
+TORCH_LIBRARY(example_library_with_int_const, m) {
+  m.def("fn_with_int_const", &fn_with_int_const);
+}
+
+TEST(test_torch_library, TestIntConst) {
+  auto qualified_name = "example_library_with_int_const::fn_with_int_const";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(3));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_int());
+  int value = result.get_value().to_int();
+  ASSERT_EQ(value, 4);
+}
+
+int fn_with_optional_input(torch::optional<int64_t> x) {
+  if (x.has_value()) {
+    return x.value() + 1;
+  } else {
+    return -1;
+  }
+}
+
+TORCH_LIBRARY(example_library_with_optional_input, m) {
+  m.def("fn_with_optional_input", &fn_with_optional_input);
+}
+
+TEST(test_torch_library, TestOptionalInput) {
+  auto qualified_name =
+      "example_library_with_optional_input::fn_with_optional_input";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  // Test with value
+  torch::FunctionArgs function_args_with_value;
+  function_args_with_value.add_arg(torch::IValue(int64_t(5)));
+  auto result_with_value =
+      impl_it->second.call_with_args(function_args_with_value);
+  ASSERT_TRUE(result_with_value.get_value().is_int());
+  int value_with_value = result_with_value.get_value().to_int();
+  ASSERT_EQ(value_with_value, 6);
+
+  // Test without value (nullopt)
+  torch::FunctionArgs function_args_without_value;
+  function_args_without_value.add_arg(torch::IValue());
+  auto result_without_value =
+      impl_it->second.call_with_args(function_args_without_value);
+  ASSERT_TRUE(result_without_value.get_value().is_int());
+  int value_without_value = result_without_value.get_value().to_int();
+  ASSERT_EQ(value_without_value, -1);
+}
+
+int fn_with_arrayref_input(c10::ArrayRef<int64_t> x) {
+  int sum = 0;
+  for (const auto& val : x) {
+    sum += val;
+  }
+  return sum;
+}
+
+TORCH_LIBRARY(example_library_with_arrayref_input, m) {
+  m.def("fn_with_arrayref_input", &fn_with_arrayref_input);
+}
+
+TEST(test_torch_library, TestArrayRefInput) {
+  auto qualified_name =
+      "example_library_with_arrayref_input::fn_with_arrayref_input";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(std::vector<int64_t>({1, 2, 3, 4})));
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_int());
+  int value = result.get_value().to_int();
+  ASSERT_EQ(value, 10);
+}
+
+int fn_with_mix_optional_arrayref_input(
+    c10::optional<c10::ArrayRef<int64_t>> x) {
+  if (x.has_value()) {
+    int sum = 0;
+    for (const auto& val : x.value()) {
+      sum += val;
+    }
+    return sum;
+  } else {
+    return -1;
+  }
+}
+
+TORCH_LIBRARY(example_library_with_mix_optional_arrayref_input, m) {
+  m.def("fn_with_mix_optional_arrayref_input",
+        &fn_with_mix_optional_arrayref_input);
+}
+
+TEST(test_torch_library, TestMixOptionalArrayRefInput) {
+  auto qualified_name =
+      "example_library_with_mix_optional_arrayref_input::"
+      "fn_with_mix_optional_arrayref_input";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  // Test with value
+  torch::FunctionArgs function_args_with_value;
+  function_args_with_value.add_arg(
+      torch::IValue(std::vector<int64_t>({1, 2, 3, 4})));
+  auto result_with_value =
+      impl_it->second.call_with_args(function_args_with_value);
+  ASSERT_TRUE(result_with_value.get_value().is_int());
+  int value_with_value = result_with_value.get_value().to_int();
+  ASSERT_EQ(value_with_value, 10);
+
+  // Test without value (nullopt)
+  torch::FunctionArgs function_args_without_value;
+  function_args_without_value.add_arg(torch::IValue());
+  auto result_without_value =
+      impl_it->second.call_with_args(function_args_without_value);
+  ASSERT_TRUE(result_without_value.get_value().is_int());
+  int value_without_value = result_without_value.get_value().to_int();
+  ASSERT_EQ(value_without_value, -1);
 }

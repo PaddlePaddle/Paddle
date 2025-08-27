@@ -14,15 +14,13 @@
 
 #pragma once
 
-// #include <torch/autograd.h>
-#include <c10/util/Optional.h>
-#include <torch/cuda.h>
-// #include <torch/data.h>
-// #include <torch/enum.h>
-// #include <torch/nn.h>
-// #include <torch/optim.h>
-// #include <torch/serialize.h>
-#include <torch/sparse.h>
-// #include <torch/special.h>
-#include <torch/types.h>
-// #include <torch/utils.h>
+#include <optional>
+
+namespace c10 {
+// Aliases from C++17 std::optional
+using std::bad_optional_access;
+using std::make_optional;
+using std::nullopt;
+using std::nullopt_t;
+using std::optional;
+}  // namespace c10

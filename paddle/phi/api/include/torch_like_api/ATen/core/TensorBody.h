@@ -61,6 +61,11 @@ class PADDLE_API Tensor : public TensorBase {
     return compat::_PD_PhiDDimToIntArrayRef(tensor_.dims());
   }
 
+  Tensor toType(ScalarType t) const {
+    return Tensor(paddle::experimental::cast(
+        tensor_, compat::_PD_AtenScalarTypeToPhiDataType(t)));
+  }
+
   int64_t numel() const { return tensor_.numel(); }
 
   c10::ScalarType dtype() const {  // Should we use `TypeMeta` here?

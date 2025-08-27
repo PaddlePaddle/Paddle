@@ -18,6 +18,8 @@
 #include <torch/library.h>
 
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/op_function_common.h"
+#include "paddle/phi/api/include/torch_like_api/compat/scalar_type_conversion.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
@@ -123,6 +125,9 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
     return torch::IValue(py::cast<std::string>(obj));
   } else if (paddle::pybind::PyCheckTensor(obj.ptr())) {
     return torch::IValue(paddle::pybind::CastPyArg2Tensor(obj.ptr(), 0));
+  } else if (paddle::pybind::PyObject_CheckDataType(obj.ptr())) {
+    return torch::IValue(compat::_PD_PhiDataTypeToAtenScalarType(
+        paddle::pybind::CastPyArg2DataType(obj.ptr(), "to_ivalue", 0)));
   } else {
     try {
       auto val = py::cast<int>(obj);

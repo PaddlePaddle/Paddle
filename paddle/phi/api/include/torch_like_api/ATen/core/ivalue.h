@@ -61,7 +61,23 @@ intrusive_ptr<T> make_intrusive(Args&&... args) {
   return intrusive_ptr<T>::make(std::forward<Args>(args)...);
 }
 
-enum class TypeTag { None = 0, Bool, Int, Double, String, Tensor, CustomClass };
+template <typename T>
+struct _fake_type {};
+
+enum class TypeTag {
+  None = 0,
+  Bool,
+  Int,
+  Double,
+  String,
+  Tensor,
+  GenericList,
+  CustomClass
+};
+
+class IValue;  // Forward declaration
+
+using GenericList = std::vector<IValue>;
 
 class IValue {
  private:
@@ -75,10 +91,12 @@ class IValue {
   };
 
  public:
-  IValue() : tag_(TypeTag::None), value_() {}
+  IValue() : tag_(TypeTag::None), value_(std::monostate{}) {}
 
-  IValue(bool val) : tag_(TypeTag::Bool), value_(val) {}      // NOLINT
-  IValue(int val) : tag_(TypeTag::Int), value_(val) {}        // NOLINT
+  IValue(bool val) : tag_(TypeTag::Bool), value_(val) {}  // NOLINT
+  IValue(int val)                                         // NOLINT
+      : tag_(TypeTag::Int), value_(static_cast<int64_t>(val)) {}
+  IValue(int64_t val) : tag_(TypeTag::Int), value_(val) {}    // NOLINT
   IValue(double val) : tag_(TypeTag::Double), value_(val) {}  // NOLINT
   IValue(const std::string& val)                              // NOLINT
       : tag_(TypeTag::String), value_(val) {}
@@ -87,10 +105,61 @@ class IValue {
   IValue(const char* val)  // NOLINT
       : tag_(TypeTag::String), value_(std::string(val)) {}
   IValue(at::Tensor val) : tag_(TypeTag::Tensor), value_(val) {}  // NOLINT
+  IValue(ScalarType val)                                          // NOLINT
+      : tag_(TypeTag::Int),
+        value_(static_cast<std::underlying_type_t<ScalarType>>(val)) {}
   template <typename T>
   IValue(intrusive_ptr<T> ptr)  // NOLINT
       : tag_(TypeTag::CustomClass),
         value_(CustomClassWrapper(ptr.get_shared(), typeid(T).name())) {}
+
+  template <typename T,
+            typename = std::enable_if_t<std::is_constructible_v<IValue, T>>>
+  IValue(const std::vector<T>& vec)  // NOLINT
+      : tag_(TypeTag::GenericList) {
+    GenericList generic_list;
+    generic_list.reserve(vec.size());
+    for (const auto& item : vec) {
+      generic_list.emplace_back(IValue(item));
+    }
+    value_ = std::move(generic_list);
+  }
+
+  template <typename T,
+            typename = std::enable_if_t<std::is_constructible_v<IValue, T>>>
+  IValue(std::vector<T>&& vec)  // NOLINT
+      : tag_(TypeTag::GenericList) {
+    GenericList generic_list;
+    generic_list.reserve(vec.size());
+    for (auto&& item : vec) {
+      generic_list.emplace_back(IValue(std::move(item)));
+    }
+    value_ = std::move(generic_list);
+  }
+
+  template <typename T,
+            typename = std::enable_if_t<std::is_constructible_v<IValue, T>>>
+  IValue(ArrayRef<T> arr) : IValue(arr.vec()) {}  // NOLINT
+
+  template <typename T>
+  IValue(const std::optional<T>& opt) {  // NOLINT
+    if (opt.has_value()) {
+      *this = IValue(*opt);
+    } else {
+      tag_ = TypeTag::None;
+      value_ = std::monostate{};
+    }
+  }
+
+  template <typename T>
+  IValue(std::optional<T>&& opt) {  // NOLINT
+    if (opt.has_value()) {
+      *this = IValue(std::move(*opt));
+    } else {
+      tag_ = TypeTag::None;
+      value_ = std::monostate{};
+    }
+  }
 
   IValue(const IValue& other) = default;
   IValue(IValue&& other) = default;
@@ -102,6 +171,7 @@ class IValue {
   bool is_int() const { return tag_ == TypeTag::Int; }
   bool is_double() const { return tag_ == TypeTag::Double; }
   bool is_string() const { return tag_ == TypeTag::String; }
+  bool is_list() const { return tag_ == TypeTag::GenericList; }
   bool is_tensor() const { return tag_ == TypeTag::Tensor; }
   bool is_custom_class() const { return tag_ == TypeTag::CustomClass; }
 
@@ -110,9 +180,9 @@ class IValue {
     return std::get<bool>(value_);
   }
 
-  int to_int() const {
+  int64_t to_int() const {
     if (!is_int()) throw std::runtime_error("Not an int");
-    return std::get<int>(value_);
+    return std::get<int64_t>(value_);
   }
 
   double to_double() const {
@@ -125,43 +195,35 @@ class IValue {
     return std::get<std::string>(value_);
   }
 
+  const GenericList& to_list() const {
+    if (!is_list()) throw std::runtime_error("Not a list");
+    return std::get<GenericList>(value_);
+  }
+
+  GenericList& to_list() {
+    if (!is_list()) throw std::runtime_error("Not a list");
+    return std::get<GenericList>(value_);
+  }
+
   at::Tensor to_tensor() const {
     if (!is_tensor()) throw std::runtime_error("Not a tensor");
     return std::get<at::Tensor>(value_);
+  }
+
+  at::ScalarType to_scalar_type() const {
+    if (!is_int()) throw std::runtime_error("Not an int");
+    return static_cast<at::ScalarType>(std::get<int64_t>(value_));
   }
 
   template <typename T>
   intrusive_ptr<T> to_custom_class() const {
     if (!is_custom_class()) throw std::runtime_error("Not a custom class");
     const auto& wrapper = std::get<CustomClassWrapper>(value_);
-    auto typed_ptr = std::dynamic_pointer_cast<T>(wrapper.ptr);
-    if (!typed_ptr) {
-      throw std::runtime_error("Custom class type mismatch");
+    auto casted = std::dynamic_pointer_cast<T>(wrapper.ptr);
+    if (!casted) {
+      throw std::runtime_error("Cannot cast custom class to requested type");
     }
-    return intrusive_ptr<T>(typed_ptr);
-  }
-
-  template <typename T>
-  auto get() const -> std::conditional_t<
-      std::is_same_v<T, std::remove_cv_t<std::remove_reference_t<T>>>,
-      T,
-      T> {
-    using BaseT = std::remove_cv_t<std::remove_reference_t<T>>;
-
-    if constexpr (is_intrusive_ptr_v<BaseT>) {
-      using ElementType = typename BaseT::element_type;
-      return to_custom_class<ElementType>();
-    } else if constexpr (std::is_same_v<BaseT, IValue>) {
-      return *this;
-    } else {
-      BaseT result;
-      if (try_convert_to<BaseT>(result)) {
-        return result;
-      }
-      std::ostringstream oss;
-      oss << "Cannot convert " << type_string() << " to " << typeid(T).name();
-      throw std::runtime_error(oss.str());
-    }
+    return intrusive_ptr<T>(casted);
   }
 
  private:
@@ -180,7 +242,7 @@ class IValue {
       out = std::get<bool>(value_);
       return true;
     } else if (is_int()) {
-      out = (std::get<int>(value_) != 0);
+      out = (std::get<int64_t>(value_) != 0);
       return true;
     } else if (is_double()) {
       out = (std::get<double>(value_) != 0.0);
@@ -191,7 +253,7 @@ class IValue {
 
   bool try_to_int(int& out) const {  // NOLINT
     if (is_int()) {
-      out = std::get<int>(value_);
+      out = static_cast<int>(std::get<int64_t>(value_));
       return true;
     } else if (is_double()) {
       double val = std::get<double>(value_);
@@ -210,7 +272,7 @@ class IValue {
       out = std::get<double>(value_);
       return true;
     } else if (is_int()) {
-      out = static_cast<double>(std::get<int>(value_));
+      out = static_cast<double>(std::get<int64_t>(value_));
       return true;
     }
     return false;
@@ -228,6 +290,29 @@ class IValue {
     if (is_tensor()) {
       out = std::get<at::Tensor>(value_);
       return true;
+    }
+    return false;
+  }
+
+  bool try_to_scalar_type(at::ScalarType& out) const {  // NOLINT
+    if (is_int()) {
+      out = static_cast<at::ScalarType>(std::get<int64_t>(value_));
+      return true;
+    }
+    return false;
+  }
+
+  template <typename T>
+  bool try_to_optional_type(std::optional<T>& out) const {  // NOLINT
+    if (is_none()) {
+      out = std::nullopt;
+      return true;
+    } else {
+      T value;
+      if (try_convert_to<T>(value)) {
+        out = value;
+        return true;
+      }
     }
     return false;
   }
@@ -262,19 +347,16 @@ class IValue {
     } else if constexpr (std::is_same_v<BaseType, at::Tensor>) {
       return try_to_tensor(
           const_cast<at::Tensor&>(reinterpret_cast<const at::Tensor&>(out)));
-    } else if constexpr (is_intrusive_ptr_v<BaseType>) {
-      using ElementType = typename BaseType::element_type;
-      std::shared_ptr<CustomClassHolder> base_ptr;
-      if (try_to_custom_class(base_ptr, typeid(ElementType).name())) {
-        auto typed_ptr = std::dynamic_pointer_cast<ElementType>(base_ptr);
-        if (typed_ptr) {
-          out = intrusive_ptr<ElementType>(typed_ptr);
-          return true;
-        }
-      }
-      return false;
+    } else if constexpr (std::is_same_v<BaseType, at::ScalarType>) {
+      return try_to_scalar_type(const_cast<at::ScalarType&>(
+          reinterpret_cast<const at::ScalarType&>(out)));
     } else {
-      return false;
+      try {
+        out = this->to<BaseType>();
+        return true;
+      } catch (const std::exception&) {
+        return false;
+      }
     }
   }
 
@@ -282,6 +364,16 @@ class IValue {
     if (!is_custom_class()) throw std::runtime_error("Not a custom class");
     const auto& wrapper = std::get<CustomClassWrapper>(value_);
     return wrapper.class_name;
+  }
+
+  template <typename T>
+  T to() && {
+    return generic_to(std::move(*this), _fake_type<T>{});
+  }
+
+  template <typename T>
+  T to() const& {
+    return generic_to(*this, _fake_type<T>{});
   }
 
   std::string type_string() const {
@@ -298,6 +390,8 @@ class IValue {
         return "String";
       case TypeTag::Tensor:
         return "Tensor";
+      case TypeTag::GenericList:
+        return "List";
       case TypeTag::CustomClass:
         return "CustomClass(" + get_custom_class_name() + ")";
       default:
@@ -312,7 +406,7 @@ class IValue {
       case TypeTag::Bool:
         return std::get<bool>(value_) ? "true" : "false";
       case TypeTag::Int:
-        return std::to_string(std::get<int>(value_));
+        return std::to_string(std::get<int64_t>(value_));
       case TypeTag::Double:
         return std::to_string(std::get<double>(value_));
       case TypeTag::String:
@@ -320,6 +414,16 @@ class IValue {
       case TypeTag::Tensor: {
         const auto& tensor = std::get<at::Tensor>(value_);
         return "Tensor(" + std::to_string(tensor.numel()) + " elements)";
+      }
+      case TypeTag::GenericList: {
+        const auto& list = std::get<GenericList>(value_);
+        std::string result = "[";
+        for (size_t i = 0; i < list.size(); ++i) {
+          if (i > 0) result += ", ";
+          result += list[i].to_repr();
+        }
+        result += "]";
+        return result;
       }
       case TypeTag::CustomClass: {
         const auto& wrapper = std::get<CustomClassWrapper>(value_);
@@ -338,12 +442,73 @@ class IValue {
   TypeTag tag_;
   std::variant<std::monostate,
                bool,
-               int,
+               int64_t,
                double,
                std::string,
                at::Tensor,
+               GenericList,
                CustomClassWrapper>
       value_;
+  template <typename T>
+  friend T generic_to(const IValue& ivalue, _fake_type<T>);
 };
+
+template <>
+inline bool generic_to(const IValue& ivalue, _fake_type<bool>) {
+  return ivalue.to_bool();
+}
+
+template <>
+inline int generic_to(const IValue& ivalue, _fake_type<int>) {
+  return static_cast<int>(ivalue.to_int());
+}
+
+template <>
+inline int64_t generic_to(const IValue& ivalue, _fake_type<int64_t>) {
+  return ivalue.to_int();
+}
+
+template <>
+inline double generic_to(const IValue& ivalue, _fake_type<double>) {
+  return ivalue.to_double();
+}
+
+template <>
+inline std::string generic_to(const IValue& ivalue, _fake_type<std::string>) {
+  return ivalue.to_string();
+}
+
+template <typename T>
+std::vector<T> generic_to(const IValue& ivalue, _fake_type<std::vector<T>>) {
+  auto list = ivalue.to_list();
+  std::vector<T> result;
+  result.reserve(list.size());
+  for (const auto& item : list) {
+    result.push_back(item.to<T>());
+  }
+  return result;
+}
+
+template <typename T>
+ArrayRef<T> generic_to(const IValue& ivalue, _fake_type<ArrayRef<T>>) {
+  static thread_local std::vector<T> temp_storage;
+  temp_storage = ivalue.to<std::vector<T>>();
+  return ArrayRef<T>(temp_storage);
+}
+
+template <typename T>
+std::optional<T> generic_to(const IValue& ivalue,
+                            _fake_type<std::optional<T>>) {
+  if (ivalue.is_none()) {
+    return std::nullopt;
+  }
+  return std::optional<T>(ivalue.to<T>());
+}
+
+template <typename T>
+intrusive_ptr<T> generic_to(const IValue& ivalue,
+                            _fake_type<intrusive_ptr<T>>) {
+  return ivalue.to_custom_class<T>();
+}
 
 }  // namespace torch
