@@ -961,8 +961,6 @@ def tensor(
             [[(1+1j), (2+0j)],
              [(3+2j), (4+0j)]])
     """
-    if isinstance(device, str) and "cuda" in device:
-        device = device.replace("cuda", "gpu")
     stop_gradient = not requires_grad
     place = _get_paddle_place(device)
     if place is None:
