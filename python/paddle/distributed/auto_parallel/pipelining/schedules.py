@@ -222,7 +222,14 @@ class _PipelineSchedule(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -359,7 +366,14 @@ class PipelineScheduleSingle(_PipelineSchedule):
             self._stage._prepare_backward_infra(self._n_microbatches, loss)
         self._stage_initialized = True
 
-    def step(self, *args, target=None, losses: list | None = None, **kwargs):
+    def step(
+        self,
+        *args,
+        target=None,
+        losses: list | None = None,
+        return_output: bool = False,
+        **kwargs,
+    ):
         """
         Run one iteration of the pipeline schedule with *whole-batch* input.
         Will chunk the input into microbatches automatically, and go through the
@@ -387,10 +401,10 @@ class PipelineScheduleSingle(_PipelineSchedule):
         self._step_microbatches(args_split, kwargs_split, targets_split, losses)
 
         # Return merged results per original format
-        if self._stage.is_last:
-            return self._merge_outputs(self._stage.output_chunks)
-        else:
-            return None
+        if return_output:
+            if self._stage.is_last:
+                return self._merge_outputs(self._stage.output_chunks)
+        return None
 
 
 def _batch_p2p(p2p_ops: list[dist.P2POp], desc: str | None = None):
