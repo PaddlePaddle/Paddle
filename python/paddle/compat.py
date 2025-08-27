@@ -23,4 +23,13 @@ from .tensor.compat import (
 )
 from .tensor.compat_softmax import softmax
 
-__all__ = ['softmax', 'split', 'sort', 'Unfold', 'min', 'max', 'median', 'nanmedian']
+__all__ = [
+    'softmax',
+    'split',
+    'sort',
+    'Unfold',
+    'min',
+    'max',
+    'median',
+    'nanmedian',
+]
