@@ -15,6 +15,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from paddle._C_ops import (  # noqa: F401
+    cos,
+    floor,
+    rsqrt,
+    sin,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from .. import _C_ops
@@ -474,62 +480,6 @@ def ceil(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def cos(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Cosine Operator. Computes cosine of x element-wise.
-
-    Input range is `(-inf, inf)` and output range is `[-1,1]`.
-
-    .. math::
-       out = cos(x)
-
-    Args:
-        x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Cos operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.cos(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.92106098, 0.98006660, 0.99500418, 0.95533651])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.cos(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'cos',
-        )
-        helper = LayerHelper('cos', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='cos', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def cosh(x: Tensor, name: str | None = None) -> Tensor:
     """
     Cosh Activation Operator.
@@ -686,58 +636,6 @@ def expm1(x: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
-def floor(x: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Floor Activation Operator. Computes floor of x element-wise.
-
-    .. math::
-        out = \\lfloor x \\rfloor
-
-    Args:
-        x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Floor operator, a Tensor with shape same as input
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.floor(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-1., -1.,  0.,  0.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.floor(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'floor',
-        )
-        helper = LayerHelper('floor', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='floor', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def reciprocal(x: Tensor, name: str | None = None) -> Tensor:
     """
 
@@ -865,60 +763,6 @@ def round_(x, decimals=0, name=None):
     return _C_ops.round_(x, decimals)
 
 
-def rsqrt(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Rsqrt Activation Operator.
-
-    Please make sure input is legal in case of numeric errors.
-
-    .. math::
-       out = \\frac{1}{\\sqrt{x}}
-
-    Args:
-        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Rsqrt operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
-            >>> out = paddle.rsqrt(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [3.16227770, 2.23606801, 1.82574177, 1.58113885])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.rsqrt(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'rsqrt',
-        )
-        helper = LayerHelper('rsqrt', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='rsqrt', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
     """
     Sigmoid Activation.
@@ -971,60 +815,6 @@ def sigmoid(x: Tensor, name: str | None = None) -> Tensor:
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type='sigmoid', inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
-def sin(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Sine Activation Operator.
-
-    .. math::
-       out = sin(x)
-
-    Args:
-        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. Output of Sin operator, a Tensor with shape same as input
-            (integer types are autocasted into float32).
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = paddle.sin(x)
-            >>> print(out)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sin(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'sin',
-        )
-        helper = LayerHelper('sin', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='sin', inputs={"X": x}, outputs={"Out": out})
         return out
 
 

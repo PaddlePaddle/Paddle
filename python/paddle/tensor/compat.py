@@ -603,12 +603,14 @@ def min(
     """
 
     Computes the minimum of tensor elements. There are mainly 3 cases (functionalities):
+
     1. paddle.compat.min(input: Tensor): reduce min over all dims, return a single value Tensor
     2. paddle.compat.min(input: Tensor, dim: int (cannot be None), keepdim=False): reduce min over the given dim,
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.min(input: Tensor, other: Tensor): see `paddle.minimum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+
     1. Case 1: the same as `min`
     2. Case 2: NOT evenly distributing the gradient for equal minimum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> min(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
@@ -628,7 +630,7 @@ def min(
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
-            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+            value is False. Note that if `dim` does not appear in neither (`*args`) or (`**kwargs`), this parameter cannot be passed alone
         other (Tensor, optional): the other tensor to perform `paddle.minimum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
@@ -637,11 +639,11 @@ def min(
 
 
     Returns:
-        - For case 1: a single value Tensor (0-dim)
-        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+        - For case 1. A single value Tensor (0-dim)
+        - For case 2. A named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
             while indices is always an int64 Tensor, with exactly the same shape as `values`.
             MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
-        - For case 3: see `paddle.minimum`
+        - For case 3. See `paddle.minimum` (:ref:`api_paddle_minimum`)
 
 
     Examples:
@@ -755,12 +757,14 @@ def max(
     """
 
     Computes the maximum of tensor elements. There are mainly 3 cases (functionalities):
+
     1. paddle.compat.max(input: Tensor): reduce max over all dims, return a single value Tensor
     2. paddle.compat.max(input: Tensor, dim: int (cannot be None), keepdim=False): reduce max over the given dim,
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.max(input: Tensor, other: Tensor): see `paddle.maximum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+
     1. Case 1: the same as `max`
     2. Case 2: NOT evenly distributing the gradient for equal maximum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> max(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
@@ -780,7 +784,7 @@ def max(
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
-            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+            value is False. Note that if `dim` does not appear in neither (`*args`) or (`**kwargs`), this parameter cannot be passed alone
         other (Tensor, optional): the other tensor to perform `paddle.maximum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
@@ -789,11 +793,11 @@ def max(
 
 
     Returns:
-        - For case 1: a single value Tensor (0-dim)
-        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+        - For case 1. A single value Tensor (0-dim)
+        - For case 2. A named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
             while indices is always an int64 Tensor, with exactly the same shape as `values`.
             MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
-        - For case 3: see `paddle.maximum`
+        - For case 3. See `paddle.maximum` (:ref:`api_paddle_maximum`)
 
 
     Examples:
