@@ -175,7 +175,7 @@ void MedianGradKernel(const Context& dev_ctx,
                                          out_grad,
                                          mode,
                                          evenly,
-                                         x_grad);
+                                         &tmp_x_grad);
 
     dev_ctx.template Alloc<T>(x_grad);
     funcs::PostprocessMedianGradKernel<T, Context>(
