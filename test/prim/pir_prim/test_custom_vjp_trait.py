@@ -36,17 +36,16 @@ def get_gelu_program_pir():
 
 
 def get_multiply_program_pir():
-    with paddle.pir_utils.OldIrGuard():
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x = paddle.static.data('x', [2, 3, 3], dtype='float32')
-            y = paddle.static.data('y', [2, 3, 3], dtype='float32')
-            out = paddle.multiply(x, y)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x = paddle.static.data('x', [2, 3, 3], dtype='float32')
+        y = paddle.static.data('y', [2, 3, 3], dtype='float32')
+        out = paddle.multiply(x, y)
+    # pir_program = pir.translate_to_pir(main_program.desc)
+    return main_program
 
 
 class TestCustomVjpTrait(unittest.TestCase):
