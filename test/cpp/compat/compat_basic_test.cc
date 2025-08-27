@@ -20,8 +20,10 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/SymInt.h>
 #include <c10/core/TensorOptions.h>
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAFunctions.h>
 #include <c10/cuda/CUDAGuard.h>
+#endif
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/common/float16.h"
@@ -166,7 +168,7 @@ TEST(tensor_clone_test, BasicClone) {
   ASSERT_EQ(a.device().type(), b.device().type());
 }
 
-TEST(conversion_basic_test, BasicCase) {
+TEST(compat_basic_test, BasicCase) {
   at::Tensor a =
       at::ones({2, 3}, at::TensorOptions().dtype(at::kFloat).device(at::kCPU));
   at::Tensor b = at::full({2, 3}, 2, at::kFloat);
@@ -192,6 +194,8 @@ TEST(conversion_basic_test, BasicCase) {
               << std::endl;
     ASSERT_EQ(result_ptr[i], 12);
   }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
   {
     // for test empty_cuda:
     at::Tensor bb =
@@ -254,6 +258,7 @@ TEST(conversion_basic_test, BasicCase) {
               << (num_tokens_per_rank.device().type() == at::kCUDA)
               << std::endl;
   }
+#endif
   {
     int a = 10, b = 20, c = 30;
     int* p[] = {&a, &b, &c};  // int* array[3]
@@ -262,7 +267,7 @@ TEST(conversion_basic_test, BasicCase) {
     torch::Tensor t =
         torch::from_blob(pp, {3}, torch::TensorOptions().dtype(torch::kInt64));
 
-    // 取出原始 int**
+    // Get original int**
     int** restored = reinterpret_cast<int**>(t.data_ptr<int64_t>());
     std::cout << *restored[0] << ", " << *restored[1] << ", " << *restored[2]
               << std::endl;

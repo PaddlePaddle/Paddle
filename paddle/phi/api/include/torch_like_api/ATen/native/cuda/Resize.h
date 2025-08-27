@@ -14,4 +14,6 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <c10/cuda/CUDAGuard.h>
+#endif

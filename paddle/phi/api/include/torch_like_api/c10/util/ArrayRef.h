@@ -21,6 +21,12 @@
 #include "paddle/phi/common/int_array.h"
 
 namespace c10 {
+
+// For constexpr functions, we need a special check that doesn't use std::string
+// This throws an exception at runtime if the condition is false
+#define TORCH_CHECK_CONSTEXPR(COND, MSG) \
+  ((COND) ? void(0) : throw std::runtime_error(MSG))
+
 template <typename T>
 class ArrayRef {
  private:
@@ -112,14 +118,15 @@ class ArrayRef {
 
   /// front - Get the first element.
   constexpr const T& front() const {
-    TORCH_CHECK(!empty(),
-                "ArrayRef: attempted to access front() of empty list");
+    TORCH_CHECK_CONSTEXPR(
+        !empty(), "ArrayRef: attempted to access front() of empty list");
     return Data[0];
   }
 
   /// back - Get the last element.
   constexpr const T& back() const {
-    TORCH_CHECK(!empty(), "ArrayRef: attempted to access back() of empty list");
+    TORCH_CHECK_CONSTEXPR(!empty(),
+                          "ArrayRef: attempted to access back() of empty list");
     return Data[Length - 1];
   }
 
@@ -130,20 +137,13 @@ class ArrayRef {
 
   /// slice(n, m) - Take M elements of the array starting at element N
   constexpr ArrayRef<T> slice(size_t N, size_t M) const {
-    TORCH_CHECK(N + M <= size(),
-                "ArrayRef: invalid slice, N = ",
-                N,
-                "; M = ",
-                M,
-                "; size = ",
-                size());
+    TORCH_CHECK_CONSTEXPR(N + M <= size(), "ArrayRef: invalid slice");
     return ArrayRef<T>(data() + N, M);
   }
 
   /// slice(n) - Chop off the first N elements of the array.
   constexpr ArrayRef<T> slice(size_t N) const {
-    TORCH_CHECK(
-        N <= size(), "ArrayRef: invalid slice, N = ", N, "; size = ", size());
+    TORCH_CHECK_CONSTEXPR(N <= size(), "ArrayRef: invalid slice");
     return slice(N, size() - N);
   }
 
@@ -151,11 +151,7 @@ class ArrayRef {
 
   /// Vector compatibility
   constexpr const T& at(size_t Index) const {
-    TORCH_CHECK(Index < Length,
-                "ArrayRef: invalid index Index = ",
-                Index,
-                "; Length = ",
-                Length);
+    TORCH_CHECK_CONSTEXPR(Index < Length, "ArrayRef: invalid index");
     return Data[Index];
   }
 

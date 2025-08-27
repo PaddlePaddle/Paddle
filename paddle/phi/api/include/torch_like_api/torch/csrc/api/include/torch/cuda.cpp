@@ -23,7 +23,12 @@
 namespace torch::cuda {
 
 c10::DeviceIndex device_count() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   return phi::backends::gpu::GetGPUDeviceCount();
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit device count."));
+#endif
 }
 
 bool is_available() {
