@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -176,7 +177,7 @@ class AOAEngine:
             sub_slices = []
             for aidx, src_sl, dst_sl, pp_list in tensor.slices:
                 if pp_list is not None:
-                    src_sl = self.postprocess_transpose(list(src_sl), pp_list)
+                    src_sl = postprocess_transpose(list(src_sl), pp_list)
 
                 dst_start = (
                     dst_sl[axis].start if dst_sl[axis].start is not None else 0
@@ -206,7 +207,7 @@ class AOAEngine:
                         inter_begin - start, inter_begin - start + length
                     )
                     if pp_list is not None:
-                        sub_src_sl = self.postprocess_transpose(
+                        sub_src_sl = postprocess_transpose(
                             list(sub_src_sl), pp_list, reverse=True
                         )
                         sub_slices.append(
@@ -256,17 +257,19 @@ class AOAEngine:
             curr += t.shape[axis]
         return TensorDesc(slices, tuple(shape))
 
-    def transpose(self, tensor: TensorDesc, transpose: str) -> TensorDesc:
+    def transpose(self, tensor: TensorDesc, permutation: str) -> TensorDesc:
         slices = []
-        tensor_shape = transpose_list(tensor.shape, eval(transpose))
+        tensor_shape = transpose_list(
+            tensor.shape, ast.literal_eval(permutation)
+        )
         for aidx, src_sl, dst_sl, pp_list in tensor.slices:
-            trans_dst_sl = transpose_list(dst_sl, eval(transpose))
+            trans_dst_sl = transpose_list(dst_sl, ast.literal_eval(permutation))
             if pp_list is not None:
                 new_pp_list = pp_list.copy()
-                new_pp_list.append(transpose)
+                new_pp_list.append(permutation)
                 slices.append((aidx, src_sl, trans_dst_sl, new_pp_list))
             else:
-                slices.append((aidx, src_sl, trans_dst_sl, [transpose]))
+                slices.append((aidx, src_sl, trans_dst_sl, [permutation]))
         return TensorDesc(slices, tensor_shape)
 
     def cast(self, tensor: TensorDesc, dtype: str) -> TensorDesc:
@@ -406,7 +409,7 @@ class AOAEngine:
             else:
                 # Compute corresponding src_slice for the intersection
                 if pp_list is not None:
-                    sl_src = self.postprocess_transpose(list(sl_src), pp_list)
+                    sl_src = postprocess_transpose(list(sl_src), pp_list)
                 src_slice = []
                 for i in range(ndim):
                     dst = sl_dst[i]
@@ -424,7 +427,7 @@ class AOAEngine:
                     )
                     src_slice.append(slice(src_inter_start, src_inter_stop, 1))
                 if pp_list is not None:
-                    src_slice = self.postprocess_transpose(
+                    src_slice = postprocess_transpose(
                         list(src_slice), pp_list, reverse=True
                     )
                     results.append(
@@ -493,23 +496,23 @@ class AOAEngine:
             )
         return shard_mappings
 
-    def postprocess_transpose(
-        self,
-        li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
-        postprocess_list: list[str],
-        reverse: bool = False,
-    ) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
-        result = li
-        if reverse:
-            for pp in list(reversed(postprocess_list)):
-                if pp.startswith("["):
-                    reversed_transpose = np.argsort(eval(pp)).tolist()
-                    result = transpose_list(result, reversed_transpose)
-        else:
-            for pp in postprocess_list:
-                if pp.startswith("["):
-                    result = transpose_list(result, eval(pp))
-        return result
+
+def postprocess_transpose(
+    li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
+    postprocess_list: list[str],
+    reverse: bool = False,
+) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
+    result = li
+    if reverse:
+        for pp in list(reversed(postprocess_list)):
+            if pp.startswith("["):
+                reversed_transpose = np.argsort(ast.literal_eval(pp)).tolist()
+                result = transpose_list(result, reversed_transpose)
+    else:
+        for pp in postprocess_list:
+            if pp.startswith("["):
+                result = transpose_list(result, ast.literal_eval(pp))
+    return result
 
 
 def transpose_list(

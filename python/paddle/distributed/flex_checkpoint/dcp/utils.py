@@ -23,6 +23,9 @@ import numpy as np
 
 import paddle
 
+from ..aoa.aoa_engine import (
+    postprocess_transpose,
+)
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -239,7 +242,9 @@ def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
     return True, overlap_offset, overlap_shape, desc_starts, shard_starts
 
 
-def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
+def assign_sharded_slice(
+    src_desc, src_shard, dst_desc, dst_shard, postprocess_list=None
+):
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
         get_overlap_region(
             src_desc.global_offset,
@@ -259,24 +264,48 @@ def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
     )
 
     assert src_has or dst_has, "no overlap!"
-    assert overlap_shape == overlap_shape2, (
-        f"overlap shape mismatch: {overlap_shape} vs {overlap_shape2}"
-    )
-    axes = list(range(len(overlap_shape)))
+    if overlap_shape != overlap_shape2:
+        assert postprocess_list is not None, (
+            "only post transpose operation could make overlap shape mismatch"
+        )
+        transposed_src_overlap_shape = postprocess_transpose(
+            overlap_shape, postprocess_list
+        )
 
-    src_tensor_slice = paddle.slice(
-        src_shard.local_tensor,
-        axes=axes,
-        starts=src_shard_starts,
-        ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
-    )
+        assert transposed_src_overlap_shape == overlap_shape2, (
+            f"overlap shape mismatch: {transposed_src_overlap_shape} vs {overlap_shape2}"
+        )
+        axes = list(range(len(transposed_src_overlap_shape)))
 
-    dst_tensor_slice = paddle.slice(
-        dst_shard.local_tensor,
-        axes=axes,
-        starts=dst_shard_starts,
-        ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
-    )
+        src_tensor_slice = paddle.slice(
+            src_shard.local_tensor,
+            axes=axes,
+            starts=src_shard_starts,
+            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+        )
+
+        dst_tensor_slice = paddle.slice(
+            dst_shard.local_tensor,
+            axes=axes,
+            starts=dst_shard_starts,
+            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
+        )
+    else:
+        axes = list(range(len(overlap_shape)))
+
+        src_tensor_slice = paddle.slice(
+            src_shard.local_tensor,
+            axes=axes,
+            starts=src_shard_starts,
+            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+        )
+
+        dst_tensor_slice = paddle.slice(
+            dst_shard.local_tensor,
+            axes=axes,
+            starts=dst_shard_starts,
+            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
+        )
 
     paddle.assign(src_tensor_slice, dst_tensor_slice)
 
