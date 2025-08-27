@@ -1234,8 +1234,7 @@ def full_like(
             raise RuntimeError(f"Pinning memory is not supported for {device}")
 
     if in_dynamic_or_pir_mode():
-        if in_dynamic_mode():
-            tensor = _C_ops.full_like(x, fill_value, dtype, device)
+        tensor = _C_ops.full_like(x, fill_value, dtype, device)
         if requires_grad is True:
             tensor.stop_gradient = False
         if pin_memory and in_dynamic_mode():
