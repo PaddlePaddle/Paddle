@@ -86,7 +86,6 @@ class TestSlogDet(unittest.TestCase):
                 st_f = paddle.jit.to_static(
                     paddle.compat.slogdet,
                     full_graph=True,
-                    backend=None,
                 )
                 sign, logabsdet = st_f(x)
                 self.assertTrue(hasattr(out, "sign"))
@@ -105,7 +104,6 @@ class TestSlogDet(unittest.TestCase):
                 st_f = paddle.jit.to_static(
                     paddle.compat.slogdet,
                     full_graph=True,
-                    backend=None,
                     input_spec=[
                         paddle.static.InputSpec(
                             shape=[-1] * len(shape), dtype=dtype
