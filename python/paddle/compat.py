@@ -14,8 +14,12 @@
 
 from .tensor.compat import (
     Unfold,
+    max,
+    median,
+    min,
+    nanmedian,
     sort,
     split,
 )
 
-__all__ = ['split', 'sort', 'Unfold']
+__all__ = ['split', 'sort', 'Unfold', 'min', 'max', 'median', 'nanmedian']

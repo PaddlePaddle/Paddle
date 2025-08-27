@@ -1126,6 +1126,9 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     if len('${FLASHATTN_V3_LIBRARIES}') > 1:
         package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_V3_LIBRARIES}')]
         shutil.copy('${FLASHATTN_V3_LIBRARIES}', libs_path)
+    if len('${FLASHMASK_V2_LIBRARIES}') > 1:
+        package_data['paddle.libs']+=[os.path.basename('${FLASHMASK_V2_LIBRARIES}')]
+        shutil.copy('${FLASHMASK_V2_LIBRARIES}', libs_path)
 
 if '${WITH_DISTRIBUTE}' == 'ON' and '${WITH_NVSHMEM}' == 'ON':
     package_data['paddle.libs']+=[

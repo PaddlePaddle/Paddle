@@ -66,6 +66,70 @@ class TestTopkOp(OpTest):
         self.check_grad({'X'}, 'Out', check_cinn=self.check_cinn)
 
 
+class TestTopkOutAPI(unittest.TestCase):
+    def test_out_in_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[1, 4, 5, 7], [2, 6, 2, 5]]).astype('float32'),
+            stop_gradient=False,
+        )
+        k = 2
+
+        def run_case(case):
+            out_values = paddle.zeros_like(x[:, :k])
+            out_indices = paddle.zeros([x.shape[0], k], dtype='int64')
+            out_values.stop_gradient = False
+            out_indices.stop_gradient = False
+
+            if case == 'return':
+                values, indices = paddle.topk(x, k)
+            elif case == 'input_out':
+                paddle.topk(x, k, out=(out_values, out_indices))
+                values, indices = out_values, out_indices
+            elif case == 'both_return':
+                values, indices = paddle.topk(
+                    x, k, out=(out_values, out_indices)
+                )
+            elif case == 'both_input_out':
+                _ = paddle.topk(x, k, out=(out_values, out_indices))
+                values, indices = out_values, out_indices
+            else:
+                raise AssertionError
+
+            ref_values, ref_indices = paddle._C_ops.topk(x, k, -1, True, True)
+            np.testing.assert_allclose(
+                values.numpy(), ref_values.numpy(), rtol=1e-6, atol=1e-6
+            )
+            np.testing.assert_allclose(
+                indices.numpy(), ref_indices.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+            loss = (values.mean() + indices.float().mean()).mean()
+            loss.backward()
+            return values.numpy(), indices.numpy(), x.grad.numpy()
+
+        # run four scenarios
+        v1, i1, g1 = run_case('return')
+        x.clear_gradient()
+        v2, i2, g2 = run_case('input_out')
+        x.clear_gradient()
+        v3, i3, g3 = run_case('both_return')
+        x.clear_gradient()
+        v4, i4, g4 = run_case('both_input_out')
+
+        np.testing.assert_allclose(v1, v2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(v1, v3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(v1, v4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(i1, i2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(i1, i3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(i1, i4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g4, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

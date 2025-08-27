@@ -80,6 +80,9 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -88,6 +91,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
@@ -215,6 +219,9 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -223,6 +230,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
@@ -317,7 +325,7 @@ add_doc_and_signature(
               [0.50000000, 0.33333333]],
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
-    """,
+""",
     """
 def amax(
     x: Tensor,
@@ -345,6 +353,7 @@ add_doc_and_signature(
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
     Keyword Args:
         out (Tensor|optional): The output tensor.
 
@@ -353,6 +362,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
@@ -389,17 +399,184 @@ add_doc_and_signature(
             Tensor(shape=[2, 1], dtype=bool, place=Place(cpu), stop_gradient=True,
             [[False],
              [True ]])
-
-    """,
+""",
     """
-    def all(
+def all(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
 ) -> Tensor
+""",
+)
+add_doc_and_signature(
+    "argmax",
+    """
+    Computes the indices of the max elements of the input tensor's
+    element along the provided axis.
+
+    Args:
+        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+            int32, int64, uint8.
+        axis (int|None, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
+        dtype (str|np.dtype, optional): Data type of the output tensor which can
+                    be int32, int64. The default value is ``int64`` , and it will
+                    return the int64 indices.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[5,8,9,5],
+            ...                       [0,0,1,7],
+            ...                       [6,9,2,4]])
+            >>> out1 = paddle.argmax(x)
+            >>> print(out1.numpy())
+            2
+            >>> out2 = paddle.argmax(x, axis=0)
+            >>> print(out2.numpy())
+            [2 2 0 1]
+            >>> out3 = paddle.argmax(x, axis=-1)
+            >>> print(out3.numpy())
+            [2 3 1]
+            >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
+            >>> print(out4.numpy())
+            [[2 2 0 1]]
+    """,
+    """
+    def argmax(
+    x: Tensor,
+    axis: int | None = None,
+    keepdim: bool = False,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> Tensor
     """,
 )
+add_doc_and_signature(
+    "argmin",
+    """
+    Computes the indices of the min elements of the input tensor's
+    element along the provided axis.
+
+    Args:
+        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
+            int32, int64, uint8.
+        axis (int|None, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
+            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
+        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
+        dtype (str|np.dtype, optional): Data type of the output tensor which can
+                    be int32, int64. The default value is 'int64', and it will
+                    return the int64 indices.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x =  paddle.to_tensor([[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]])
+            >>> out1 = paddle.argmin(x)
+            >>> print(out1.numpy())
+            4
+            >>> out2 = paddle.argmin(x, axis=0)
+            >>> print(out2.numpy())
+            [1 1 1 2]
+            >>> out3 = paddle.argmin(x, axis=-1)
+            >>> print(out3.numpy())
+            [0 0 2]
+            >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
+            >>> print(out4.numpy())
+            [[1 1 1 2]]
+    """,
+    """
+    def argmin(
+    x: Tensor,
+    axis: int | None = None,
+    keepdim: bool = False,
+    dtype: DTypeLike = "int64",
+    name: str | None = None,
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "logsumexp",
+    r"""
+    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
+
+    .. math::
+       logsumexp(x) = \log\sum exp(x)
+
+    Args:
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32,
+            float64, uint8, int8, int16, int32, int64, which have no more than
+            4 dimensions.
+        axis (int|list|tuple|None, optional): The axis along which to perform
+            logsumexp calculations. ``axis`` should be int, list(int) or
+            tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
+            is calculated along all element(s) of ``axis`` . ``axis`` or
+            element(s) of ``axis`` should be in range [-D, D), where D is the
+            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
+            less than 0, it works the same way as :math:`axis + D` . If
+            ``axis`` is None, logsumexp is calculated along all elements of
+            ``x``. Default is None.
+        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
+            in the output Tensor. If ``keep_dim`` is True, the dimensions of
+            the output Tensor is the same as ``x`` except in the reduced
+            dimensions(it is of size 1 in this case). Otherwise, the shape of
+            the output Tensor is squeezed in ``axis`` . Default is False.
+        name (str|None, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+    Returns:
+        Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
+        type as ``x`` (integer types are autocasted into float32).
+
+    Examples:
+
+    .. code-block:: python
+
+        >>> import paddle
+
+        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
+        >>> out1 = paddle.logsumexp(x)
+        >>> out1
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+        3.46912265)
+        >>> out2 = paddle.logsumexp(x, 1)
+        >>> out2
+        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+        [2.15317822, 3.15684605])
+
+    """,
+    """
+def logsumexp(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+    """,
+)
+
 
 # zhengsheng
 add_doc_and_signature(
@@ -451,9 +628,9 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
-
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isinf(x)
             >>> out
@@ -487,6 +664,7 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
+
             >>> # type: ignore
             >>> import paddle
 
@@ -499,6 +677,71 @@ add_doc_and_signature(
     """
 def isnan(
     x: Tensor,
+    name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "roll",
+    """
+    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
+    roll beyond the last position are re-introduced at the first according to 'shifts'.
+    If a axis is not specified,
+    the tensor will be flattened before rolling and then restored to the original shape.
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``roll(input=tensor_x, dim=1)`` is equivalent to ``roll(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): The x tensor as input.
+            alias: ``input``.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `x` tensor are shifted.
+        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
+            alias: ``dim``.
+        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
+                For more information, please refer to :ref:`api_guide_Name` .
+    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
+    different shapes through the roll operation.
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
+        :width: 700
+        :align: center
+        :alt: legend of roll API
+
+    Returns:
+        Tensor, A Tensor with same data type as `x`.
+
+    Examples:
+        .. code-block:: python
+            >>> # type: ignore
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
+            ...                       [4.0, 5.0, 6.0],
+            ...                       [7.0, 8.0, 9.0]])
+            >>> out_z1 = paddle.roll(x, shifts=1)
+            >>> print(out_z1.numpy())
+            [[9. 1. 2.]
+             [3. 4. 5.]
+             [6. 7. 8.]]
+            >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
+            >>> print(out_z2.numpy())
+            [[7. 8. 9.]
+             [1. 2. 3.]
+             [4. 5. 6.]]
+            >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
+            >>> print(out_z3.numpy())
+            [[3. 1. 2.]
+             [6. 4. 5.]
+             [9. 7. 8.]]
+    """,
+    """
+def roll(
+    x: Tensor,
+    shifts: int | Sequence[int],
+    axis: int | Sequence[int] | None = None,
     name: str | None = None,
 ) -> Tensor
 """,
@@ -537,6 +780,7 @@ add_doc_and_signature(
         .. code-block:: python
 
             >>> import paddle
+
             >>> # type: ignore
 
             >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
@@ -587,52 +831,304 @@ add_doc_and_signature(
     ) -> Tensor
     """,
 )
+add_doc_and_signature(
+    "expand_as",
+    """
+
+    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
+
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
+
+    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
+        :width: 800
+        :alt: expand_as API
+        :align: center
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        y (Tensor): The input tensor that gives the shape to expand to.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data_x = paddle.to_tensor([1, 2, 3], 'int32')
+            >>> data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
+            >>> out = paddle.expand_as(data_x, data_y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3],
+             [1, 2, 3]])
+    """,
+    """
+    def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor
+    """,
+)
 
 # shenwei
 
+# zhouxin
 add_doc_and_signature(
-    "sigmoid",
-    r"""
-    Sigmoid Activation.
+    "greater_than",
+    """
+    Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
-    .. math::
-       out = \\frac{1}{1 + e^{-x}}
+    Note:
+        The output has no gradient.
 
     Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
-            uint8, int8, int16, int32, int64, complex64 or complex128.
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
+    Returns:
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.greater_than(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, True ])
+    """,
+    """
+    def greater_than(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "sin",
+    """
+    Sine Activation Operator.
+
+    .. math::
+       out = sin(x)
+
+    Args:
+        x (Tensor): Input of Sin operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64 or complex128. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    Keyword Args:
-        out (Tensor|optional): The output tensor.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
-        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
+        Tensor. Output of Sin operator, a Tensor with shape same as input
             (integer types are autocasted into float32).
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.nn.functional as F
 
             >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            >>> out = F.sigmoid(x)
+            >>> out = paddle.sin(x)
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
+            [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """,
     """
-    def sigmoid(
-        x: paddle.Tensor,
-        name: str | None = None,
-        *,
-        out: Tensor | None = None,
-    ) -> paddle.Tensor
+def sin(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
     """,
 )
 
-# zhouxin
+add_doc_and_signature(
+    "sign",
+    """
+    Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
 
+    Args:
+        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
+            >>> out = paddle.sign(x=x)
+            >>> out
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [ 1.,  0., -1.,  1.])
+    """,
+    """
+def sign(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "log",
+    r"""
+    Calculates the natural log of the given input Tensor, element-wise.
+
+    .. math::
+
+        Out = \ln(x)
+
+    Args:
+        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128. Alias: ``input``.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        out (Tensor, optional): The output Tensor. If set, the result will be stored in this tensor. Default is None.
+
+
+    Returns:
+        Tensor: The natural log of the input Tensor computed element-wise.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = [[2, 3, 4], [7, 8, 9]]
+            >>> x = paddle.to_tensor(x, dtype='float32')
+            >>> print(paddle.log(x))
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.69314718, 1.09861231, 1.38629436],
+             [1.94591010, 2.07944155, 2.19722462]])
+    """,
+    """
+def log(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "rsqrt",
+    """
+    Rsqrt Activation Operator.
+
+    Please make sure input is legal in case of numeric errors.
+
+    .. math::
+       out = \\frac{1}{\\sqrt{x}}
+
+    Args:
+        x (Tensor): Input of Rsqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Rsqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.rsqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [3.16227770, 2.23606801, 1.82574177, 1.58113885])
+    """,
+    """
+def rsqrt(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "cos",
+    """
+    Cosine Operator. Computes cosine of x element-wise.
+
+    Input range is `(-inf, inf)` and output range is `[-1,1]`.
+
+    .. math::
+       out = cos(x)
+
+    Args:
+        x (Tensor): Input of Cos operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64, complex64, complex128. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Cos operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.cos(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.92106098, 0.98006660, 0.99500418, 0.95533651])
+    """,
+    """
+def cos(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "floor",
+    """
+    Floor Activation Operator. Computes floor of x element-wise.
+
+    .. math::
+        out = \\lfloor x \\rfloor
+
+    Args:
+        x (Tensor): Input of Floor operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64. Alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor. Output of Floor operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.floor(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1., -1.,  0.,  0.])
+    """,
+    """
+def floor(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+    """,
+)
 # hehongyu
 
 # lousiyu
@@ -782,7 +1278,259 @@ def triu(
 ) -> Tensor
 """,
 )
+
+add_doc_and_signature(
+    "bmm",
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dimensional and share the same batch size.
+
+    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Tensor): The input Tensor.
+        y (Tensor): The input Tensor.
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically. Default: None.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor: The product Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # In imperative mode:
+            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+            ...                     [2.0, 2.0, 2.0]],
+            ...                     [[3.0, 3.0, 3.0],
+            ...                     [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            >>> out = paddle.bmm(x, y)
+            >>> print(out)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[6. , 6. ],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+
+    """,
+    """
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 # lihaoyang
+add_doc_and_signature(
+    "logical_and",
+    r"""
+    Compute element-wise logical AND on ``x`` and ``y``, and return ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x \&\& y
+
+    Note:
+        ``paddle.logical_and`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``other`` can be used as an alias for ``y``.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``input``.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``other``.
+        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True])
+            >>> y = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_and(x, y)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, True , False])
+""",
+    """
+def logical_and(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "logical_or",
+    """
+    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = x || y
+
+    Note:
+        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``other`` can be used as an alias for ``y``.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``input``.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``other``.
+        out(Tensor|None, optional): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
+            >>> res = paddle.logical_or(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True , True ],
+             [True , False]])
+""",
+    """
+def logical_or(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "logical_not",
+    """
+    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = !x
+
+    Note:
+        ``paddle.logical_not`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+
+    Args:
+        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, bfloat16, float16, float32, or float64, complex64, complex128.
+            alias: ``input``.
+        out(Tensor|None): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
+        name(str|None, optional): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_not(x)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , False, True ])
+""",
+    """
+def logical_not(
+    x: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "logical_xor",
+    r"""
+    ``logical_xor`` operator computes element-wise logical XOR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
+    Each element of ``out`` is calculated by
+
+    .. math::
+
+        out = (x || y) \&\& !(x \&\& y)
+
+    Note:
+        ``paddle.logical_xor`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    .. note::
+        Alias Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``other`` can be used as an alias for ``y``.
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``input``.
+        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64, complex128.
+            alias: ``other``.
+        out(Tensor|None, optional): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
+            >>> res = paddle.logical_xor(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[False, True ],
+             [True , False]])
+""",
+    """
+def logical_xor(
+    x: Tensor, y: Tensor, out: Tensor | None = None, name: str | None = None
+) -> Tensor
+""",
+)
+
+# lihaoyang08
 
 # lubingxin
 

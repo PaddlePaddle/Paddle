@@ -17,11 +17,20 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.communication.group import Group
+
+
+@dataclass(frozen=True)
+class ShardedWeightDesc:
+    key: str
+    local_shape: tuple[int, ...]
+    global_shape: tuple[int, ...]
+    global_offset: tuple[int, ...]
 
 
 class ShardedWeight:
@@ -137,7 +146,7 @@ def make_tp_sharded_weight_for_checkpoint(
     Returns:
         A ShardedWeight configured for tensor parallel checkpointing.
     """
-    from ...fleet.fleet import get_hybrid_communicate_group
+    from paddle.distributed.fleet import get_hybrid_communicate_group
 
     hcg = get_hybrid_communicate_group()
     tensor_parallel_group = hcg.get_model_parallel_group()

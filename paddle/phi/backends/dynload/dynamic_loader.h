@@ -38,6 +38,7 @@ void* GetWarpCTCDsoHandle();
 void* GetWarpRNNTDsoHandle();
 void* GetFlashAttnDsoHandle();
 void* GetFlashAttnV3DsoHandle();
+void* GetFlashMaskV2DsoHandle();
 void* GetNCCLDsoHandle();
 void* GetFLAGCXDsoHandle();
 void* GetTensorRtDsoHandle();

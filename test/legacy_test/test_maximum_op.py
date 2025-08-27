@@ -299,5 +299,119 @@ class ApiMaximumTest(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseMaximumOp_Stride(unittest.TestCase):
+    def setUp(self):
+        self.python_api = paddle.maximum
+        self.public_python_api = paddle.maximum
+        self.place = core.CUDAPlace(0)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_dynamic_api(self):
+        self.init_dtype()
+        self.init_input_output()
+        paddle.disable_static()
+        self.y_trans = paddle.to_tensor(self.y_trans, place=self.place)
+        self.x = paddle.to_tensor(self.x, place=self.place)
+        self.y = paddle.to_tensor(self.y, place=self.place)
+        if self.strided_input_type == "transpose":
+            y_trans_tmp = paddle.transpose(self.y_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            y_trans_tmp = paddle.as_strided(
+                self.y_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        res = paddle.maximum(self.x, y_trans_tmp)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.out, rtol=1e-05)
+
+
+class TestElementwiseMaximumOp_Stride1(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMaximumOp_Stride2(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMaximumOp_Stride3(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMaximumOp_Stride4(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMaximumOp_Stride5(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.maximum(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestElementwiseMaximumOp_Stride_ZeroDim1(TestElementwiseMaximumOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseMaximumOp_Stride_ZeroSize1(
+    TestElementwiseMaximumOp_Stride
+):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.maximum(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
 if __name__ == '__main__':
     unittest.main()
