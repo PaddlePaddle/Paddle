@@ -1062,8 +1062,8 @@ def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
     # set backend to bkcl, and process_group_bkcl will internally invoke
     # flagcx to perform communication tasks
     if backend == "flagcx" and core.is_compiled_with_xpu():
-            os.environ['PADDLE_DISTRI_BACKEND'] = "bkcl"
-            backend = "bkcl"
+        os.environ['PADDLE_DISTRI_BACKEND'] = "bkcl"
+        backend = "bkcl"
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
     if not (
