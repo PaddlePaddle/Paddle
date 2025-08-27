@@ -80,6 +80,9 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -216,6 +219,9 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -825,10 +831,88 @@ add_doc_and_signature(
     ) -> Tensor
     """,
 )
+add_doc_and_signature(
+    "expand_as",
+    """
+
+    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
+
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
+
+    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
+        :width: 800
+        :alt: expand_as API
+        :align: center
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        y (Tensor): The input tensor that gives the shape to expand to.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data_x = paddle.to_tensor([1, 2, 3], 'int32')
+            >>> data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
+            >>> out = paddle.expand_as(data_x, data_y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3],
+             [1, 2, 3]])
+    """,
+    """
+    def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor
+    """,
+)
 
 # shenwei
 
 # zhouxin
+add_doc_and_signature(
+    "greater_than",
+    """
+    Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
+    Note:
+        The output has no gradient.
+
+    Args:
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
+    Returns:
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.greater_than(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, True ])
+    """,
+    """
+    def greater_than(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
+
 add_doc_and_signature(
     "sin",
     """
@@ -1045,7 +1129,6 @@ def floor(
 ) -> Tensor
     """,
 )
-
 # hehongyu
 
 # lousiyu

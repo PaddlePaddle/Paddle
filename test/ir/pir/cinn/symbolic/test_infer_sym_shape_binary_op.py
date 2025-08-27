@@ -23,7 +23,6 @@ from test_infer_sym_shape_utils import (
 )
 
 import paddle
-from paddle import _C_ops
 from paddle.static import InputSpec
 
 sys.path.append(dirname(dirname(__file__)))
@@ -74,7 +73,8 @@ class ExpandAsNet(paddle.nn.Layer):
         self.target_shape = target_shape
 
     def forward(self, x):
-        return _C_ops.expand_as(x, None, self.target_shape)
+        y = paddle.empty(shape=self.target_shape)
+        return paddle.expand_as(x, y)
 
 
 class ExpandAsOpInferSymbolicShapeTest(TestBase):
