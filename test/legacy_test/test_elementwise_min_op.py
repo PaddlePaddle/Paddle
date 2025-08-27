@@ -546,15 +546,19 @@ class TestMinimumOutAndAlias(unittest.TestCase):
             x = paddle.static.data('X', [5, 7], 'float32')
             y = paddle.static.data('Y', [5, 7], 'float32')
             z = paddle.minimum(input=x, other=y)
-        ref = np.minimum(x, y)
+
+        x_data = np.random.random([5, 7]).astype('float32')
+        y_data = np.random.random([5, 7]).astype('float32')
+        ref = np.minimum(x_data, y_data)
+
         exe = paddle.static.Executor(paddle.CPUPlace())
         exe.run(paddle.static.default_startup_program())
         out = exe.run(
             paddle.static.default_main_program(),
-            feed={'X': x, 'Y': y},
+            feed={'X': x_data, 'Y': y_data},
             fetch_list=[z],
         )
-        np.testing.assert_allclose(out, ref, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(out[0], ref, rtol=1e-6, atol=1e-6)
 
 
 if __name__ == '__main__':

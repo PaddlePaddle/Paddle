@@ -4681,6 +4681,13 @@
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
+  python_api:
+    name : [paddle.roll, paddle.Tensor.roll]
+    args_alias:
+      axis : [dims]
+      use_default_mapping : True
+    pre_process:
+      func : RollPreProcess(x, shifts, axis)
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
