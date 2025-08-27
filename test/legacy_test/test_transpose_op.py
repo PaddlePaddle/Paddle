@@ -224,6 +224,10 @@ class TestAutoTuneTransposeOp(OpTest):
         )
 
 
+@unittest.skipIf(
+    not paddle.base.core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
 class TestFP8FastTranspose(unittest.TestCase):
     def setUp(self):
         self.dtype = paddle.float8_e4m3fn
@@ -250,6 +254,7 @@ class TestFP8FastTranspose(unittest.TestCase):
                 gold = np.transpose(np_data, case["perm"])
                 out = paddle.transpose(x, case["perm"]).contiguous()
                 np.testing.assert_equal(out.numpy(), gold)
+        paddle.enable_static()
 
 
 class TestAutoTuneTransposeFP16Op(OpTest):
