@@ -32,19 +32,25 @@ class MyPyLayer(paddle.autograd.PyLayer):
 
 
 class TestMain(unittest.TestCase):
-    def test_main(self):
+    def prepare(self, need_inplace=True):
         if paddle.is_compiled_with_rocm() or not paddle.is_compiled_with_cuda():
-            return
+            return False
 
         if platform.system().lower() == "windows":
-            return
+            return False
 
         paddle.set_flags(
             {
                 "FLAGS_print_offload_info": 1,
-                "FLAGS_offload_inplace_tensor": True,
+                "FLAGS_offload_inplace_tensor": need_inplace,
+                "FLAGS_gpu_allocator_retry_time": 1,
             }
         )
+        return True
+
+    def test_offload_1(self):
+        if not self.prepare():
+            return
         H = 10240
         model = paddle.nn.Linear(H, H)
         enable_activation_offload(model, enable=True, retry_times=1000)
@@ -66,8 +72,25 @@ class TestMain(unittest.TestCase):
 
         func(1)
         func(25)
-        enable_activation_offload(model, enable=False)
         paddle.core.offload_cached_size()
+        enable_activation_offload(model, enable=False)
+
+    def test_offload_2(self):
+        if not self.prepare(need_inplace=False):
+            return
+
+        model = paddle.nn.Linear(10, 10)
+        enable_activation_offload(model, enable=True, retry_times=1000)
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        x += 1
+        paddle.nn.functional.relu_(x)
+        y = x[3:5]
+        y *= y
+
+        with self.assertRaises(MemoryError):
+            paddle.empty([1024, 1024, 1024, 1024])
+        enable_activation_offload(model, enable=False)
 
 
 if __name__ == "__main__":
