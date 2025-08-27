@@ -497,6 +497,8 @@ from .to_string import set_printoptions  # noqa: F401
 # API alias
 div = divide
 div_ = divide_
+swapdims = transpose
+swapaxes = transpose
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -728,6 +730,8 @@ tensor_method_func = [
     'stack',
     'strided_slice',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
     'permute',
     'cauchy_',
