@@ -11,3 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .tensor.compat import (
+    Unfold,
+    max,
+    median,
+    min,
+    nanmedian,
+    slogdet,
+    sort,
+    split,
+)
+
+__all__ = [
+    'slogdet',
+    'split',
+    'sort',
+    'Unfold',
+    'min',
+    'max',
+    'median',
+    'nanmedian',
+]
