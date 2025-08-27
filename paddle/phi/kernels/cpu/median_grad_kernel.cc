@@ -23,28 +23,6 @@
 namespace phi {
 
 template <typename T>
-void CalcMedianMeanGrad(int64_t pre_dim,
-                        int64_t stride,
-                        const int64_t* m_data,
-                        T* dx_data,
-                        const T* dout_data) {
-  int64_t i = 0;
-  int64_t offset = 0;
-  for (i = 0; i < pre_dim; i++) {
-    if (m_data[2 * i] >= 0) {
-      if (m_data[2 * i] == m_data[2 * i + 1]) {
-        dx_data[offset + m_data[2 * i]] = dout_data[i];
-      } else {
-        dx_data[offset + m_data[2 * i]] = dout_data[i] / static_cast<T>(2.0);
-        dx_data[offset + m_data[2 * i + 1]] =
-            dout_data[i] / static_cast<T>(2.0);
-      }
-    }
-    offset += stride;
-  }
-}
-
-template <typename T>
 void CalcMedianMinGrad(int64_t pre_dim,
                        int64_t stride,
                        const int64_t* m_data,
@@ -124,11 +102,7 @@ void CalcMedianGradKernel_CPU(const Context& dev_ctx,
   int64_t stride = x_dim[static_cast<int>(rank - 1)];
   int64_t pre_dim = numel / stride;
   if (!evenly) {
-    if (mode == "avg") {
-      CalcMedianMeanGrad(pre_dim, stride, m_index, dx_data, dout_data);
-    } else {
-      CalcMedianMinGrad(pre_dim, stride, m_index, dx_data, dout_data);
-    }
+    CalcMedianMinGrad(pre_dim, stride, m_index, dx_data, dout_data);
   } else {
     CalcMedianGradEvenly(
         pre_dim, stride, x, m_data, m_index, dx_data, dout_data);

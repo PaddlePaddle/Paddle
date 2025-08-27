@@ -643,8 +643,6 @@ def median(
 
     if axis is None:
         axis = []
-    elif isinstance(axis, tuple):
-        axis = list(axis)
     elif isinstance(axis, int):
         axis = [axis]
 

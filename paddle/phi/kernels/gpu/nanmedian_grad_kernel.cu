@@ -78,7 +78,7 @@ __global__ void KernelNanmedianGradEvenly(const T* medians_ptr,
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
 
-    if (median_index_ptr[2 * index] >= 0) {
+    if (median_index_ptr[2 * index] >= 0 && !isnan(medians_ptr[index])) {
       x[offset + median_index_ptr[2 * index]] = medians_ptr[index];
 
       x[offset + median_index_ptr[2 * index + 1]] = medians_ptr[index];
