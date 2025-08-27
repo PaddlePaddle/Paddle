@@ -3178,6 +3178,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
+    url_suffix="torch/torch.max",
 )
 def max(
     x: Tensor,
@@ -3342,6 +3343,7 @@ def max(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
+    url_suffix="torch/torch.min",
 )
 def min(
     x: Tensor,

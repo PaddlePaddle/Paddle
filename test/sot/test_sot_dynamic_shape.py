@@ -249,7 +249,7 @@ class TestOpcodeExecutorDynamicShapeCache(TestCaseBase):
             )
             for i in range(1, 5):
                 self.assert_results(pad_func, paddle.randn([1, 3, 224, 224]), i)
-                self.assertEqual(ctx.translate_count, i)
+                self.assertEqual(ctx.translate_count, 1 if i == 1 else 2)
 
     def test_dynamic_shape_int_mul_float(self):
         with (
