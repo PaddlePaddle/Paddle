@@ -122,50 +122,49 @@ class TestUnittedEmbedding(AmpTestBase):
 
     def test_compare_o1_and_o2_master_grad(self):
         def _run(place, exe, x_np, max_iters, level):
-            with paddle.pir_utils.IrGuard():
-                (
-                    main_program,
-                    startup_program,
-                    optimizer,
-                    feed_vars,
-                    fetch_vars,
-                ) = build_unitted_embedding_model(
-                    True,
-                    "float16",
-                    level,
-                )
+            (
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+            ) = build_unitted_embedding_model(
+                True,
+                "float16",
+                level,
+            )
 
-                seed = 0
-                paddle.seed(seed)
-                np.random.seed(seed)
-                random.seed(seed)
+            seed = 0
+            paddle.seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
 
-                losses = self.run_program(
-                    main_program,
-                    startup_program,
-                    optimizer,
-                    feed_vars,
-                    fetch_vars,
-                    place,
-                    exe,
-                    x_np,
-                    max_iters,
-                    "float16",
-                    level,
-                )
-                return losses
+            losses = self.run_program(
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+                place,
+                exe,
+                x_np,
+                max_iters,
+                "float16",
+                level,
+            )
+            return losses
 
-            max_iters = 5
-            x = self._generate_feed_x()
-            if paddle.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
-            elif paddle.device.is_compiled_with_xpu():
-                place = paddle.device.XPUPlace(0)
-            else:
-                raise ValueError("Only support CUDA or XPU Place.")
-            with paddle.pir_utils.OldIrGuard():
-                exe = paddle.static.Executor(place)
-                losses_o2 = _run(place, exe, x, max_iters, 'O2')
+        max_iters = 5
+        x = self._generate_feed_x()
+        if paddle.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        with paddle.pir_utils.OldIrGuard():
+            exe = paddle.static.Executor(place)
+            losses_o2 = _run(place, exe, x, max_iters, 'O2')
 
     def test_pir_compare_o1_and_o2_master_grad(self):
         def _run(data, level, use_promote=False):
