@@ -140,6 +140,14 @@ class TestTensorCreation(unittest.TestCase):
                     self.assertEqual(x.dtype, dtype)
 
     def test_randn(self):
+        # randn has extra arg: pin_memory
+        pin_memorys = [False]
+        if (
+            paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_xpu()
+        ):
+            pin_memorys.append(True)
+
         types = [
             None,
             "float32",
@@ -147,19 +155,33 @@ class TestTensorCreation(unittest.TestCase):
             "float64",
             paddle.float64,
         ]
-        for device, requires_grad, dtype in product(
-            self.devices, self.requires_grads, types
+        for device, requires_grad, dtype, pin_memory in product(
+            self.devices, self.requires_grads, types, pin_memorys
         ):
+            if device not in [
+                "gpu",
+                "gpu:0",
+                paddle.CUDAPlace(0)
+                if paddle.device.is_compiled_with_cuda()
+                else None,
+                paddle.XPUPlace(0)
+                if paddle.device.is_compiled_with_xpu()
+                else None,
+            ]:
+                pin_memory = False
             with dygraph_guard():
                 x = paddle.randn(
                     [2],
                     dtype=dtype,
                     requires_grad=requires_grad,
                     device=device,
+                    pin_memory=pin_memory,
                 )
-                if isinstance(device, paddle.framework.core.Place):
-                    self.assertEqual(x.place, device)
-                self.assertEqual(x.stop_gradient, not requires_grad)
+                if (
+                    isinstance(device, paddle.framework.core.Place)
+                    and not pin_memory
+                ):
+                    self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
 
@@ -171,6 +193,7 @@ class TestTensorCreation(unittest.TestCase):
                     out=None,
                     device=None,
                     requires_grad=False,
+                    pin_memory=False,
                 ):
                     return paddle.randn(
                         shape,
@@ -179,6 +202,7 @@ class TestTensorCreation(unittest.TestCase):
                         out=out,
                         device=device,
                         requires_grad=requires_grad,
+                        pin_memory=pin_memory,
                     )
 
                 st_f = paddle.jit.to_static(
@@ -190,6 +214,7 @@ class TestTensorCreation(unittest.TestCase):
                     dtype=dtype,
                     requires_grad=requires_grad,
                     device=device,
+                    pin_memory=pin_memory,
                 )
                 if isinstance(device, paddle.framework.core.Place):
                     self.assertEqual(x.place, device)
