@@ -115,9 +115,10 @@ else:
         Original Usage Example:
         9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
         """
-        device = "cpu"
         if 'device' in kwargs:
             device = kwargs.pop('device')
+        else:
+            device = "cpu"
         device = framework._get_paddle_place(device)
         if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
             original_init(
