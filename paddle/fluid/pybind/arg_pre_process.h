@@ -30,11 +30,14 @@ using Value = pir::Value;
 using IntArray = paddle::experimental::IntArray;
 using IntVector = std::vector<int64_t>;
 
-void SumPreProcess(Tensor *x, IntArray *axis);
-void SumPreProcess(Value *x, Value *axis);
+void SumPreProcess(Tensor* x, IntArray* axis);
+void SumPreProcess(Value* x, Value* axis);
 
-void LogsumexpPreProcess(Tensor *x, std::vector<int> *axis, bool *reduce_all);
-void LogsumexpPreProcess(Value *x, std::vector<int> *axis, bool *reduce_all);
+void RollPreProcess(Tensor* x, IntArray* shifts, IntVector* axis);
+void RollPreProcess(Value* x, Value* shifts, IntVector* axis);
+
+void LogsumexpPreProcess(Tensor* x, std::vector<int>* axis, bool* reduce_all);
+void LogsumexpPreProcess(Value* x, std::vector<int>* axis, bool* reduce_all);
 }  // namespace pybind
 
 }  // namespace paddle

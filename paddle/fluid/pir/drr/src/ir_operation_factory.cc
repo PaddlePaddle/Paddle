@@ -274,6 +274,12 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          std::string onednn_data_type = "";
+          if (attrs.find("onednn_data_type") != attrs.end()) {
+            onednn_data_type = attrs.at("onednn_data_type")
+                                   .dyn_cast<pir::StrAttribute>()
+                                   .AsString();
+          }
 
           PADDLE_ENFORCE_EQ(attrs.find("fuse_relu") != attrs.end(),
                             true,
@@ -323,6 +329,7 @@ void OperationFactory::RegisterManualOpCreator() {
               is_test,
               force_fp32_output,
               mkldnn_data_type,
+              onednn_data_type,
               fuse_relu,
               fuse_activation,
               fuse_alpha,
