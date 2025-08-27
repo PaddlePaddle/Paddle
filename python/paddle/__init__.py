@@ -155,7 +155,6 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
-from .compat import softmax
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
@@ -211,6 +210,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,

@@ -705,10 +705,6 @@ class TestSoftmaxCompatibility(unittest.TestCase):
 
 class TestSoftmaxAPI_CompatibleWithTorch1(TestSoftmaxAPI):
     # paddle.nn.functional.softmax(x, axis=-1, dtype=None, name=None)
-    # paddle.Tensor.softmax(int axis, dtype = None)
-    # torch.Tensor.softmax(int dim, torch.dtype dtype = None)
-    # torch.special.softmax(input, dim, *, dtype=None)
-    # paddle.special.softmax(x, axis, *, dtype=None)
     def setUp(self):
         self.place = get_device_place()
         self.executed_api()
@@ -735,33 +731,6 @@ class TestSoftmaxAPI_CompatibleWithTorch1(TestSoftmaxAPI):
                     for rr in res:
                         np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
 
-                func = paddle.special.softmax
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data('X', x_np.shape, 'float32')
-                    out1 = func(x=x, axis=-1)
-                    out2 = func(x, -1)
-                    out3 = func(input=x, dim=-1)
-                    exe = paddle.static.Executor(self.place)
-                    res = exe.run(
-                        feed={'X': x_np},
-                        fetch_list=[out1, out2, out3],
-                    )
-                    for rr in res:
-                        np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
-
-                func = paddle.Tensor.softmax
-                with paddle.static.program_guard(paddle.static.Program()):
-                    x = paddle.static.data('X', x_np.shape, 'float32')
-                    out1 = func(x=x, axis=-1)
-                    out2 = func(x, -1)
-                    out3 = func(input=x, dim=-1)
-                    exe = paddle.static.Executor(self.place)
-                    res = exe.run(
-                        feed={'X': x_np}, fetch_list=[out1, out2, out3]
-                    )
-                    for rr in res:
-                        np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
-
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
         for x_np, out_ref in zip(self.x_np_list, self.out_ref_list):
@@ -782,51 +751,17 @@ class TestSoftmaxAPI_CompatibleWithTorch1(TestSoftmaxAPI):
                 out_ref = ref_softmax(x_np, axis=-1, dtype=np.float64)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
-            func = paddle.special.softmax
-            x = paddle.to_tensor(x_np)
-            out1 = func(x=x, axis=-1)
-            x = paddle.to_tensor(x_np)
-            out2 = func(x, -1)
-            x = paddle.to_tensor(x_np)
-            out3 = func(input=x, dim=-1)
-            for r in [out1, out2, out3]:
-                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
-
-            # explicitly use float32 for ROCm, as MIOpen does not yet support float64
-            if core.is_compiled_with_rocm():
-                out = func(x, -1, dtype=np.float32)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float32)
-            else:
-                out = func(x, -1, dtype=np.float64)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float64)
-            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-
-            func = paddle.Tensor.softmax
-            x = paddle.to_tensor(x_np)
-            out1 = func(x=x, axis=-1)
-            x = paddle.to_tensor(x_np)
-            out2 = func(x, -1)
-            x = paddle.to_tensor(x_np)
-            out2 = func(input=x, dim=-1)
-            for r in [out1, out2]:
-                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
-
-            # explicitly use float32 for ROCm, as MIOpen does not yet support float64
-            if core.is_compiled_with_rocm():
-                out = func(x, -1, dtype=np.float32)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float32)
-            else:
-                out = func(x, -1, dtype=np.float64)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float64)
-            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
-
         paddle.enable_static()
 
 
 class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
-    # torch.nn.functional.softmax(input, dim=None, _stacklevel=3, dtype=None)
     # paddle.softmax(Tensor input, int dim, dtype = None, *, Tensor out = None)
-    # torch.softmax(Tensor input, int dim, torch.dtype dtype = None, *, Tensor out = None)
+    # paddle.Tensor.softmax(dim, dtype = None)
+    # paddle.special.softmax(input, dim, *, dtype=None)
+    # torch.nn.functional.softmax(input, dim=None, _stacklevel=3, dtype=None)
+    # torch.softmax(Tensor input, int dim, dtype = None, *, Tensor out = None)
+    # torch.Tensor.softmax(int dim, dtype = None)
+    # torch.special.softmax(input, dim, *, dtype=None)
     def _get_softmax_dim(self, ndim: int) -> int:
         if ndim == 0 or ndim == 1 or ndim == 3:
             ret = 0
@@ -864,15 +799,37 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
                 func = paddle.softmax
                 with paddle.static.program_guard(paddle.static.Program()):
                     x = paddle.static.data('X', x_np.shape, 'float32')
-                    result1 = paddle.zeros(shape=x_np.shape, dtype='float32')
-                    result2 = paddle.zeros(shape=x_np.shape, dtype='float32')
-                    out1 = func(input=x, dim=None, out=result1)
-                    out2 = func(x, None, out=result2)
+                    # pir can not support out
+                    out1 = func(input=x, dim=None, out=None)
+                    out2 = func(x, out=None)
                     exe = paddle.static.Executor(self.place)
                     res = exe.run(
                         feed={'X': x_np},
-                        fetch_list=[out1, out2, result1, result2],
+                        fetch_list=[out1, out2],
                     )
+                    for rr in res:
+                        np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
+
+                func = paddle.special.softmax
+                with paddle.static.program_guard(paddle.static.Program()):
+                    x = paddle.static.data('X', x_np.shape, 'float32')
+                    out1 = func(input=x, dim=None)
+                    out2 = func(x)
+                    exe = paddle.static.Executor(self.place)
+                    res = exe.run(
+                        feed={'X': x_np},
+                        fetch_list=[out1, out2],
+                    )
+                    for rr in res:
+                        np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
+
+                func = paddle.Tensor.softmax
+                with paddle.static.program_guard(paddle.static.Program()):
+                    x = paddle.static.data('X', x_np.shape, 'float32')
+                    out1 = func(input=x, dim=None)
+                    out2 = func(x)
+                    exe = paddle.static.Executor(self.place)
+                    res = exe.run(feed={'X': x_np}, fetch_list=[out1, out2])
                     for rr in res:
                         np.testing.assert_allclose(out_ref, rr, rtol=1e-05)
 
@@ -910,17 +867,75 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
             out1 = func(input=x, dim=None, out=result1)
             x = paddle.to_tensor(x_np)
             result2 = paddle.zeros(shape=x_np.shape, dtype='float32')
-            out2 = func(x, None, out=result2)
+            out2 = func(x, out=result2)
             for r in [out1, out2, result1, result2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
             # explicitly use float32 for ROCm, as MIOpen does not yet support float64
             if core.is_compiled_with_rocm():
-                out = func(x, -1, dtype=np.float32)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float32)
+                out = func(x, dtype=np.float32)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float32,
+                )
             else:
-                out = func(x, -1, dtype=np.float64)
-                out_ref = ref_softmax(x_np, axis=-1, dtype=np.float64)
+                out = func(x, dtype=np.float64)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float64,
+                )
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+            func = paddle.special.softmax
+            x = paddle.to_tensor(x_np)
+            out1 = func(input=x, dim=None)
+            x = paddle.to_tensor(x_np)
+            out2 = func(x)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+            # explicitly use float32 for ROCm, as MIOpen does not yet support float64
+            if core.is_compiled_with_rocm():
+                out = func(x, dtype=np.float32)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float32,
+                )
+            else:
+                out = func(x, dtype=np.float64)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float64,
+                )
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+            func = paddle.Tensor.softmax
+            x = paddle.to_tensor(x_np)
+            out1 = func(input=x, dim=None)
+            x = paddle.to_tensor(x_np)
+            out2 = func(x)
+            for r in [out1, out2]:
+                np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
+
+            # explicitly use float32 for ROCm, as MIOpen does not yet support float64
+            if core.is_compiled_with_rocm():
+                out = func(x, dtype=np.float32)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float32,
+                )
+            else:
+                out = func(x, dtype=np.float64)
+                out_ref = ref_softmax(
+                    x_np,
+                    axis=self._get_softmax_dim(x_np.ndim),
+                    dtype=np.float64,
+                )
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()

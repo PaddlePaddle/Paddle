@@ -31,6 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
+from .compat_softmax import softmax as softmax
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -481,7 +482,6 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .softmax import softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -493,8 +493,6 @@ from .stat import (  # noqa: F401
     var,
 )
 from .to_string import set_printoptions  # noqa: F401
-
-__all__ = ['softmax']
 
 # API alias
 div = divide
