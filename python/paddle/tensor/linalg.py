@@ -1358,7 +1358,7 @@ def norm(
                 name=name,
             )
     if out is not None:
-        paddle.assign(output, out=out)
+        paddle.assign(output, output=out)
     return output
 
 
