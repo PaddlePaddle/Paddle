@@ -70,8 +70,6 @@ class LinearPipe(nn.Linear):
         self.use_dict = use_dict
 
     def forward(self, input):
-        if isinstance(input, list):
-            input = input[0]
         if self.use_dict:
             if isinstance(input, dict):
                 input = input['x']
@@ -86,10 +84,10 @@ class LinearPipe(nn.Linear):
 
 class CrossEntropyLossPipe(nn.loss.CrossEntropyLoss):
     def forward(self, logits, label):
-        if isinstance(logits, list):
-            logits = logits[0]
         if isinstance(logits, dict):
             logits = logits["x"]
+        if isinstance(label, dict):
+            label = label["label"]
         return super().forward(logits, label)
 
     def build_schedule_node(self):
@@ -227,7 +225,9 @@ class TestDistPPTraining(unittest.TestCase):
 
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
 
-            loss_c = model_c.train_batch([img, label], optimizer_c, scheduler_c)
+            loss_c = model_c.train_batch(
+                [{"x": img}, {"label": label}], optimizer_c, scheduler_c
+            )
 
             np.testing.assert_allclose(
                 loss_a.numpy(), loss_b.numpy(), rtol=5e-5
