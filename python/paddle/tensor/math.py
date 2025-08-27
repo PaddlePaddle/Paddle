@@ -4643,12 +4643,12 @@ def cumprod(
     if dim is None:
         dim = -1
         x = x.flatten(0, len(x.shape) - 1)
-    if dtype is None and paddle.is_tensor(x):
-        dtype = x.dtype
-    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-    if dtype is not None and x.dtype != dtype:
-        x = cast_(x, dtype)
+
+    if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast_(x, dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
@@ -4788,10 +4788,7 @@ def prod(
             [24.  , 1680.])
 
     """
-    if dtype is None:
-        if paddle.is_tensor(x):
-            dtype = x.dtype
-    else:
+    if dtype is not None:
         check_dtype(
             dtype,
             'dtype',
@@ -4807,7 +4804,7 @@ def prod(
             ],
             'prod',
         )
-        if x.dtype != dtype:
+        if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)
 
     # axis is 0-size tensor.
