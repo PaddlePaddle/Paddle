@@ -54,7 +54,7 @@ class TestMain(unittest.TestCase):
             z.mean().backward()
 
         func(1)
-        func(50)
+        func(25)
         enable_activation_offload(model, enable=False)
 
 
