@@ -2195,7 +2195,7 @@ PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
 
 /**
  * Allocator related FLAG
- * Name: deep_ep_comm_prealloc_in_mb
+ * Name: FLAGS_deep_ep_comm_prealloc_in_mb
  * Since Version: 3.2
  * Value Range: int64, default=0
  * Example:
