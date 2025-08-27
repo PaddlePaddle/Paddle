@@ -6061,167 +6061,237 @@ create_test_act_bf16_class(
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestElementwiseBaseOp_Stride(OpTest):
-    no_need_check_grad = True
-
+class TestUnaryElementwiseOp_Stride(unittest.TestCase):
     def setUp(self):
-        self.transpose_api = paddle.transpose
-        self.as_stride_api = paddle.as_strided
-        self.init_func()
-        self.init_dtype()
-        self.init_input_output()
+        self.place = core.CUDAPlace(0)
+        self.dtype = np.float64
+        self.init_api()
+        self.init_input()
 
-        self.inputs_stride = {
-            'X': self.x_trans,
-        }
-
-        self.inputs = {
-            'X': self.x,
-        }
-
-        self.outputs = {'Out': self.out}
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
-    def init_func(self):
-        self.op_type = "cos"
+    def init_api(self):
+        self.paddle_api = paddle.cos
         self.numpy_api = np.cos
-        self.python_api = paddle.cos
-        self.public_python_api = paddle.cos
 
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.unary_check_strided_forward = True
-        self.check_output_with_place(
-            place,
-        )
-
-    def init_input_output(self):
+    def init_input(self):
         self.strided_input_type = "transpose"
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.perm = [1, 0]
         self.x_trans = np.transpose(self.x, self.perm)
-        self.out = self.numpy_api(self.x)
 
-    def test_check_grad(self):
-        pass
-
-
-class TestElementwiseSinOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "sin"
-        self.numpy_api = np.sin
-        self.python_api = paddle.sin
-        self.public_python_api = paddle.sin
-
-
-class TestElementwiseTanOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "tan"
-        self.numpy_api = np.tan
-        self.python_api = paddle.tan
-        self.public_python_api = paddle.tan
+    def test_dygraph_api_arithmetic(self):
+        paddle.disable_static()
+        x_trans = paddle.to_tensor(self.x_trans)
+        if self.strided_input_type == "transpose":
+            x_non_conti = paddle.transpose(x_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            x_non_conti = paddle.as_strided(
+                x_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        out = self.paddle_api(x_non_conti)
+        out_ref = self.numpy_api(self.x)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        paddle.enable_static()
 
 
-class TestElementwiseAcosOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
+def create_test_act_stride_class(base_class, api_name, paddle_api, numpy_api):
+    class TestStride1(base_class):
+        def init_api(self):
+            self.paddle_api = paddle_api
+            self.numpy_api = numpy_api
 
-    def init_func(self):
-        self.op_type = "acos"
-        self.numpy_api = np.arccos
-        self.python_api = paddle.acos
-        self.public_python_api = paddle.acos
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype(
+                self.dtype
+            )
+            self.perm = [0, 1, 3, 2]
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(base_class.__name__, api_name, "Stride1")
+    TestStride1.__name__ = cls_name
+    globals()[cls_name] = TestStride1
+
+    class TestStride2(base_class):
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(
+                self.dtype
+            )
+            self.perm = [0, 2, 1, 3]
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(base_class.__name__, api_name, "Stride2")
+    TestStride2.__name__ = cls_name
+    globals()[cls_name] = TestStride2
+
+    class TestStride3(base_class):
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(
+                self.dtype
+            )
+            self.perm = [0, 1, 3, 2]
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(base_class.__name__, api_name, "Stride3")
+    TestStride3.__name__ = cls_name
+    globals()[cls_name] = TestStride3
+
+    class TestStride4(base_class):
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(
+                self.dtype
+            )
+            self.perm = [1, 0, 2, 3]
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(base_class.__name__, api_name, "Stride4")
+    TestStride4.__name__ = cls_name
+    globals()[cls_name] = TestStride4
+
+    class TestStride5(base_class):
+        def init_input(self):
+            self.strided_input_type = "as_stride"
+            self.x = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(
+                self.dtype
+            )
+            self.x_trans = self.x
+            self.x = self.x[:, 0:1, :, 0:1]
+            self.shape_param = [23, 1, 13, 1]
+            self.stride_param = [520, 260, 20, 1]
+
+    cls_name = "{}_{}_{}".format(base_class.__name__, api_name, "Stride5")
+    TestStride5.__name__ = cls_name
+    globals()[cls_name] = TestStride5
+
+    class TestStrideZeroDim1(base_class):
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+            self.perm = []  # 零维tensor的perm应该是空列表
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(
+        base_class.__name__, api_name, "StrideZeroDim1"
+    )
+    TestStrideZeroDim1.__name__ = cls_name
+    globals()[cls_name] = TestStrideZeroDim1
+
+    class TestStrideZeroSize1(base_class):
+        def init_input(self):
+            self.strided_input_type = "transpose"
+            self.x = np.random.rand(1, 0, 2).astype('float32')
+            self.perm = [2, 1, 0]
+            self.x_trans = np.transpose(self.x, self.perm)
+
+    cls_name = "{}_{}_{}".format(
+        base_class.__name__, api_name, "StrideZeroSize1"
+    )
+    TestStrideZeroSize1.__name__ = cls_name
+    globals()[cls_name] = TestStrideZeroSize1
 
 
-class TestElementwiseAsinOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "asin"
-        self.numpy_api = np.arcsin
-        self.python_api = paddle.asin
-        self.public_python_api = paddle.asin
-
-
-class TestElementwiseAtanOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "atan"
-        self.numpy_api = np.arctan
-        self.python_api = paddle.atan
-        self.public_python_api = paddle.atan
-
-
-class TestElementwiseSinhOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "sinh"
-        self.numpy_api = np.sinh
-        self.python_api = paddle.sinh
-        self.public_python_api = paddle.sinh
-
-
-class TestElementwiseCoshOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "cosh"
-        self.numpy_api = np.cosh
-        self.python_api = paddle.cosh
-        self.public_python_api = paddle.cosh
-
-
-class TestElementwiseAsinhOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "asinh"
-        self.numpy_api = np.arcsinh
-        self.python_api = paddle.asinh
-        self.public_python_api = paddle.asinh
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Cos", paddle.cos, np.cos
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Sin", paddle.sin, np.sin
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Tan", paddle.tan, np.tan
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Acos", paddle.acos, np.arccos
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Asin", paddle.asin, np.arcsin
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Atan", paddle.atan, np.arctan
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Sinh", paddle.sinh, np.sinh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Cosh", paddle.cosh, np.cosh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Tanh", paddle.tanh, np.tanh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Asinh", paddle.asinh, np.arcsinh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Acosh", paddle.acosh, np.arccosh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Atanh", paddle.atanh, np.arctanh
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Square", paddle.square, np.square
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Sqrt", paddle.sqrt, np.sqrt
+)
 
 
-class TestElementwiseAtanhOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
+def rsqrt_ref(x):
+    out = 1.0 / np.sqrt(x)
+    return out
 
-    def init_func(self):
-        self.op_type = "atanh"
-        self.numpy_api = np.arctanh
-        self.python_api = paddle.atanh
-        self.public_python_api = paddle.atanh
+
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Rsqrt", paddle.rsqrt, rsqrt_ref
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Reciprocal",
+    paddle.reciprocal,
+    np.reciprocal,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Floor", paddle.floor, np.floor
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Ceil", paddle.ceil, np.ceil
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Log", paddle.log, np.log
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Log2", paddle.log2, np.log2
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Log10", paddle.log10, np.log10
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Log1p", paddle.log1p, np.log1p
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Exp", paddle.exp, np.exp
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Log1p", paddle.expm1, np.expm1
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Round", paddle.round, np.round
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Abs", paddle.abs, np.abs
+)
 
 
 def relu_ref(x):
-    x[np.abs(x) < 0.005] = 0.02
     out = np.maximum(x, 0)
     return out
 
 
-class TestElementwiseReluOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "relu"
-        self.numpy_api = relu_ref
-        self.python_api = paddle.nn.functional.relu
-        self.public_python_api = paddle.nn.functional.relu
-
-
-class TestElementwiseTanhOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "tanh"
-        self.numpy_api = np.tanh
-        self.python_api = paddle.tanh
-        self.public_python_api = paddle.tanh
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Relu", paddle.nn.functional.relu, relu_ref
+)
 
 
 def silu_ref(x_np):
@@ -6229,54 +6299,9 @@ def silu_ref(x_np):
     return out
 
 
-class TestElementwiseSiluOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "silu"
-        self.numpy_api = silu_ref
-        self.python_api = F.silu
-        self.public_python_api = F.silu
-
-
-class TestElementwiseReciprocalOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "reciprocal"
-        self.numpy_api = np.reciprocal
-        self.python_api = paddle.reciprocal
-        self.public_python_api = paddle.reciprocal
-
-
-class TestElementwiseSquareOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "square"
-        self.numpy_api = np.square
-        self.python_api = paddle.square
-        self.public_python_api = paddle.square
-
-
-class TestElementwiseSqrtOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "sqrt"
-        self.numpy_api = np.sqrt
-        self.python_api = paddle.sqrt
-        self.public_python_api = paddle.sqrt
-
-
-# class TestElementwiseSoftSignOp_Stride(TestElementwiseBaseOp_Stride):
-#     no_need_check_grad = True
-
-#     def init_func(self):
-#         self.op_type = "softsign"
-#         self.numpy_api = ref_softsign
-#         self.python_api = paddle.nn.functional.softsign
-#         self.public_python_api = paddle.nn.functional.softsign
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Silu", paddle.nn.functional.silu, silu_ref
+)
 
 
 def ref_sigmoid(x):
@@ -6284,14 +6309,12 @@ def ref_sigmoid(x):
     return out
 
 
-class TestElementwiseSigmoidOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
-
-    def init_func(self):
-        self.op_type = "sigmoid"
-        self.numpy_api = ref_sigmoid
-        self.python_api = paddle.nn.functional.sigmoid
-        self.public_python_api = paddle.nn.functional.sigmoid
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Sigmoid",
+    paddle.nn.functional.sigmoid,
+    ref_sigmoid,
+)
 
 
 def ref_log_sigmoid(x):
@@ -6299,35 +6322,114 @@ def ref_log_sigmoid(x):
     return out
 
 
-class TestElementwiseLogSigmoidOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "LogSigmoid",
+    paddle.nn.functional.log_sigmoid,
+    ref_log_sigmoid,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Softsign",
+    paddle.nn.functional.softsign,
+    ref_softsign,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "LeakyRelu",
+    paddle.nn.functional.leaky_relu,
+    ref_leaky_relu,
+)
 
-    def init_func(self):
-        self.op_type = "logsigmoid"
-        self.numpy_api = ref_log_sigmoid
-        self.python_api = paddle.nn.functional.log_sigmoid
-        self.public_python_api = paddle.nn.functional.log_sigmoid
+
+def ref_hardshrink_v2(x, threshold=0.5):
+    out = np.copy(x)
+    out[(out >= -threshold) & (out <= threshold)] = 0
+    return out
 
 
-class TestElementwiseFloorOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Hardshrink",
+    paddle.nn.functional.hardshrink,
+    ref_hardshrink_v2,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Softshrink",
+    paddle.nn.functional.softshrink,
+    ref_softshrink,
+)
 
-    def init_func(self):
-        self.op_type = "floor"
-        self.numpy_api = np.floor
-        self.python_api = paddle.floor
-        self.public_python_api = paddle.floor
+
+def ref_elu(x, alpha=1):
+    out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
+    return out_ref.astype(x.dtype)
 
 
-class TestElementwiseCeilOp_Stride(TestElementwiseBaseOp_Stride):
-    no_need_check_grad = True
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Elu", paddle.nn.functional.elu, ref_elu
+)
 
-    def init_func(self):
-        self.op_type = "ceil"
-        self.numpy_api = np.ceil
-        self.python_api = paddle.ceil
-        self.public_python_api = paddle.ceil
 
+def ref_celu(x, alpha=1):
+    out_ref = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x / alpha) - 1))
+    return out_ref.astype(x.dtype)
+
+
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Celu", paddle.nn.functional.celu, ref_celu
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride, "Mish", paddle.nn.functional.mish, ref_mish
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Hardtanh",
+    paddle.nn.functional.hardtanh,
+    ref_hardtanh,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Softplus",
+    paddle.nn.functional.softplus,
+    ref_softplus,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Hardsigmoid",
+    paddle.nn.functional.hardsigmoid,
+    ref_hardsigmoid,
+)
+
+
+def ref_selu(
+    x,
+    scale=1.0507009873554804934193349852946,
+    alpha=1.6732632423543772848170429916717,
+):
+    out = np.copy(x)
+    out_flat = out.flatten()
+    for i in range(out_flat.size):
+        if out_flat[i] < 0:
+            out_flat[i] = alpha * np.exp(out_flat[i]) - alpha
+        out_flat[i] = scale * out_flat[i]
+    out = out_flat.reshape(x.shape)
+    return out
+
+
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Hardtanh",
+    paddle.nn.functional.selu,
+    ref_selu,
+)
+create_test_act_stride_class(
+    TestUnaryElementwiseOp_Stride,
+    "Hardswish",
+    paddle.nn.functional.hardswish,
+    ref_hardswish,
+)
 
 if __name__ == "__main__":
     unittest.main()
