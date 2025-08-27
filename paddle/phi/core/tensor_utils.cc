@@ -1032,26 +1032,4 @@ std::vector<double> GetVectorFromTensor<double>(const phi::DenseTensor* x) {
   return _GetVectorFromTensor<double>(x);
 }
 
-template <>
-std::vector<phi::dtype::float16> GetVectorFromTensor<phi::dtype::float16>(
-    const phi::DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP16) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be float16, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
-  }
-  return _GetVectorFromTensor<phi::dtype::float16>(x);
-}
-
-template <>
-std::vector<phi::dtype::bfloat16> GetVectorFromTensor<phi::dtype::bfloat16>(
-    const phi::DenseTensor* x) {
-  if (phi::TransToProtoVarType(x->dtype()) != ProtoDataType::FP64) {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "The dtype of Tensor must be bfloat16, but received: %s",
-        phi::TransToProtoVarType(x->dtype())));
-  }
-  return _GetVectorFromTensor<phi::dtype::bfloat16>(x);
-}
-
 }  // namespace phi
