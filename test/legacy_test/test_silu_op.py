@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 import paddle.base.dygraph as dg
@@ -329,6 +329,56 @@ class SiluOpDefaultTestComplex_64(SiluOpDefaultTest):
 class SiluOpDefaultTestComplex_128(SiluOpDefaultTest):
     def init_dtype(self):
         self.dtype = np.complex128
+
+
+class TestSiluAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        self.shape = [10, 10]
+        self.x_np = np.random.random(self.shape).astype(np.float32)
+        self.place = get_places()
+        self.x_feed = copy.deepcopy(self.x_np)
+
+    def test_api_static(self):
+        paddle.enable_static()
+
+        def run(place, inplace):
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape)
+                out = F.silu(x, inplace)
+                exe = paddle.static.Executor(self.place[0])
+                res = exe.run(
+                    feed={
+                        'X': self.x_feed,
+                    },
+                    fetch_list=[out],
+                )
+            target = copy.deepcopy(self.x_np)
+            out_ref = silu(target)
+
+            for out in res:
+                np.testing.assert_allclose(out, out_ref, rtol=0.001)
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
+
+    def test_api_dygraph(self):
+        def run(place, inplace):
+            paddle.disable_static(place)
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = F.silu(x_tensor, inplace)
+
+            target = copy.deepcopy(self.x_np)
+            out_ref = silu(target)
+
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place, True)
+            run(place, False)
 
 
 if __name__ == '__main__':
