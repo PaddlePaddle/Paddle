@@ -21,6 +21,7 @@ from codegen_utils import (
     GetForwardFunctionName,
     GetInplacedFunctionName,
     IsVectorTensorType,
+    ParsePythonAPIInfoFromYAML,
 )
 
 args_default_mapping = {
@@ -39,6 +40,8 @@ skipped_forward_api_names = {
     "multiply_grad",
     "pull_sparse_v2_grad",
 }
+# The python api info which not in ops.yaml
+python_api_info_from_yaml = {}
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -799,6 +802,16 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 # Generate Python-C Function Registration
                 self.python_c_function_reg_str += python_c_inplace_func_reg_str
 
+    def InitAndParsePythonAPIInfo(self):
+        global python_api_info_from_yaml
+        if self.forward_api_name in python_api_info_from_yaml.keys():
+            self.python_api_info = python_api_info_from_yaml[
+                self.forward_api_name
+            ]
+        if len(self.python_api_info) > 0:
+            self.need_parse_python_api_args = True
+            self.ParsePythonAPIInfo()
+
     def run(self, no_input_out_tensor=False):
         # Initialized is_forward_only
         self.CollectIsForwardOnly()
@@ -811,11 +824,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-
-        if len(self.python_api_info) > 0:
-            self.need_parse_python_api_args = True
-            self.ParsePythonAPIInfo()
-
+        self.InitAndParsePythonAPIInfo()
         if SkipAPIGeneration(self.forward_api_name):
             return False
 
@@ -905,6 +914,7 @@ def ParseArguments():
         description='Eager Code Generator Args Parser'
     )
     parser.add_argument('--api_yaml_path', type=str)
+    parser.add_argument('--python_api_info_yaml_path', type=str)
     parser.add_argument('--source_path', type=str)
     parser.add_argument('--header_path', type=str)
 
@@ -941,10 +951,14 @@ def GeneratePythonCFile(filepath, python_c_str):
 if __name__ == "__main__":
     args = ParseArguments()
     api_yaml_paths = args.api_yaml_path.split(",")
-
     generated_python_c_functions = ""
     generated_python_c_registration = ""
     generated_python_c_functions_header = ""
+    python_api_info_yaml_path = args.python_api_info_yaml_path
+
+    python_api_info_from_yaml = ParsePythonAPIInfoFromYAML(
+        python_api_info_yaml_path
+    )
     for i in range(len(api_yaml_paths)):
         api_yaml_path = api_yaml_paths[i]
 
@@ -970,7 +984,6 @@ if __name__ == "__main__":
     python_c_str = GeneratePythonCWrappers(
         generated_python_c_functions, generated_python_c_registration
     )
-
     source_path = args.source_path
     header_path = args.header_path
     for path in [source_path, header_path]:

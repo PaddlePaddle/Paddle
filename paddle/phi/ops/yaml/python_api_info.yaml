@@ -1,0 +1,9 @@
+- op : amin
+  name : [paddle.amin,paddle.Tensor.amin]
+  args_alias :
+    use_default_mapping : True
+
+- op : amax
+  name : [paddle.amax,paddle.Tensor.amax]
+  args_alias :
+    use_default_mapping : True

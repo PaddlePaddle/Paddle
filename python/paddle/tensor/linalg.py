@@ -21,12 +21,14 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import bmm  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -61,6 +63,7 @@ __all__ = []
 K_DEFAULT_DIM = 9
 
 
+@transpose_decorator()
 def transpose(
     x: Tensor, perm: Sequence[int], name: str | None = None
 ) -> Tensor:
@@ -70,8 +73,13 @@ def transpose(
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim0`` & ``dim1`` can replace ``perm``.
+        For example, ``transpose(input=x, dim0=0, dim1=1)`` is equivalent to ``transpose(x=x, perm=[1, 0, 2])``.
+
     Args:
         x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float16, bfloat16, float32, float64, int8, int16, int32, int64, uint8, uint16, complex64, complex128.
+            alias: ``input``.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str|None, optional): The name of this layer. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -259,6 +267,8 @@ def matmul(
     transpose_x: bool = False,
     transpose_y: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Applies matrix multiplication to two tensors. `matmul` follows
@@ -306,6 +316,7 @@ def matmul(
         transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
         transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
         name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output Tensor.
@@ -353,7 +364,7 @@ def matmul(
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y)
+        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
     else:
         attrs = {
             'trans_x': transpose_x,
@@ -1173,6 +1184,7 @@ def norm(
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
+    dtype: paddle._typing.DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1240,6 +1252,7 @@ def norm(
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
+        dtype (DTypeLike | None, optional): The data type of the output tensor. If specified, the input tensor is casted to `dtype` while performing the operation. Default value is None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1311,13 +1324,25 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-
-    # calculate vector norm, where axis is None, int or list with only one integer
-    if axis is None or (isinstance(axis, int)):
-        # 'fro' is used to adapt previous usage
-        if p is None or p == 'fro':
-            p = 2.0
-        if isinstance(p, (int, float)):
+    if dtype is not None:
+        x = x.astype(dtype)
+    if isinstance(p, str):
+        if p == "fro" and (axis is None or isinstance(axis, int)):
+            return vector_norm(
+                x,
+                p=2,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        if axis is None:
+            axis = list(range(x.ndim))
+        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+    else:
+        p = 2.0 if p is None else p
+        if isinstance(axis, list) and len(axis) == 2:
+            return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
+        else:
             return vector_norm(
                 x,
                 p=p,
@@ -1325,21 +1350,6 @@ def norm(
                 keepdim=keepdim,
                 name=name,
             )
-        else:
-            raise ValueError(
-                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
-            )
-
-    # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
-        if p is None:
-            p = 'fro'
-        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
-
-    else:
-        raise ValueError(
-            f"except axis type int or list (length of list <=2), found {axis}"
-        )
 
 
 def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:
@@ -2537,70 +2547,6 @@ def matrix_rank(
                 attrs=attrs,
             )
             return out
-
-
-def bmm(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Applies batched matrix multiplication to two tensors.
-
-    Both of the two input tensors must be three-dimensional and share the same batch size.
-
-    If x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
-
-    Args:
-        x (Tensor): The input Tensor.
-        y (Tensor): The input Tensor.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
-
-    Returns:
-        Tensor: The product Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # In imperative mode:
-            >>> # size x: (2, 2, 3) and y: (2, 3, 2)
-            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-            ...                     [2.0, 2.0, 2.0]],
-            ...                     [[3.0, 3.0, 3.0],
-            ...                     [4.0, 4.0, 4.0]]])
-            >>> y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-            ...                     [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-            >>> out = paddle.bmm(x, y)
-            >>> print(out)
-            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[[6. , 6. ],
-              [12., 12.]],
-             [[45., 45.],
-              [60., 60.]]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.bmm(x, y)
-    else:
-        x_shape = x.shape
-        y_shape = y.shape
-        if not len(x_shape) == len(y_shape) == 3:
-            raise ValueError(
-                f"x and y should be 3-dimensional. But received x's dimension: {x_shape}, y's dimension: {y_shape}"
-            )
-        if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
-            raise ValueError(
-                f"x's width must be equal with y's height. But received x's shape: {x_shape}, y's shape: {y_shape}"
-            )
-        if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
-            raise ValueError(
-                f"x's batch (shape[0]) must be equal with y's batch (shape[0]). But received x's shape: {x_shape}, y's shape: {y_shape}"
-            )
-        helper = LayerHelper('bmm', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out}
-        )
-        return out
 
 
 def histogram(

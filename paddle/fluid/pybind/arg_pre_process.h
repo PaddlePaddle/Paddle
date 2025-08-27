@@ -15,9 +15,19 @@
 #pragma once
 
 #include <Python.h>
+#include <vector>
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/pir/include/core/value.h"
 
 namespace paddle {
 
-namespace pybind {}  // namespace pybind
+namespace pybind {
+using Value = pir::Value;
+
+void LogsumexpPreProcess(Tensor *x, std::vector<int> *axis, bool *reduce_all);
+void LogsumexpPreProcess(Value *x, std::vector<int> *axis, bool *reduce_all);
+}  // namespace pybind
 
 }  // namespace paddle

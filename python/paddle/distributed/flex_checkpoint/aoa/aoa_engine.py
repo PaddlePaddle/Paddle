@@ -18,20 +18,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-
-
-@dataclass(frozen=True)
-class ShardedWeightDesc:
-    key: str
-    local_shape: tuple[int, ...]
-    global_shape: tuple[int, ...]
-    global_offset: tuple[int, ...]
-
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
@@ -60,7 +52,7 @@ class ShardMappingEntry:
 ShardMapping = list[ShardMappingEntry]
 
 
-class AoAShardInfoContext:
+class AOAShardInfoContext:
     def __init__(
         self,
         source_state_shard_info: _ShardInfo,
@@ -68,6 +60,13 @@ class AoAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.optim_state_name = [
+            ".w_0",
+            ".moment1_0 ",
+            ".moment2_0",
+            ".beta1_pow_acc_0",
+            ".beta2_pow_acc_0",
+        ]
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
         return self.destination_state_shard_info.keys()
@@ -97,17 +96,33 @@ class AoAShardInfoContext:
             raise KeyError(
                 f"src_state_key '{src_state_key}' not in  source_state_shard_info"
             )
-        return len(self.source_state_shard_info[src_state_key])
+        new_state_key = src_state_key
+        for state_name in self.optim_state_name:
+            if state_name in src_state_key:
+                new_state_key = src_state_key.replace(state_name, "")
+                break
+
+        return len(self.source_state_shard_info[new_state_key])
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
         if dst_state_key not in self.destination_state_shard_info:
             raise KeyError(
                 f"dst_state_key '{dst_state_key}' not in destination_state_shard_info"
             )
-        return len(self.destination_state_shard_info[dst_state_key])
+        for state_name in self.optim_state_name:
+            if state_name in dst_state_key:
+                new_state_key = dst_state_key.replace(state_name, "")
+                break
+        new_state_key = dst_state_key
+        shard_infos = self.destination_state_shard_info[new_state_key]
+        global_offset_set = set()
+        for shard_info in shard_infos:
+            global_offset_set.add(shard_info.global_offset)
+
+        return len(global_offset_set)
 
 
-class AoAEngine:
+class AOAEngine:
     def __init__(
         self,
         aoa_config: dict[str, list[str]],
@@ -117,7 +132,7 @@ class AoAEngine:
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
-        self.context = AoAShardInfoContext(
+        self.context = AOAShardInfoContext(
             source_state_shard_info, destination_state_shard_info
         )
         self.lexer = Lexer(self.context)
@@ -310,13 +325,9 @@ class AoAEngine:
         assert len(local_slice) == len(tensor.shape)
         ndim = len(tensor.shape)
 
-        def slice_intersect(a: slice, b: slice, dim_len: int):
-            a_start, a_stop, a_step = a.indices(dim_len)
-            b_start, b_stop, b_step = b.indices(dim_len)
-            if a_step != 1 or b_step != 1:
-                raise NotImplementedError("Only support step size of 1")
-            start = max(a_start, b_start)
-            stop = min(a_stop, b_stop)
+        def slice_intersect(a: slice, b: slice):
+            start = max(a.start, b.start)
+            stop = min(a.stop, b.stop)
             if start >= stop:
                 return None
             return slice(start, stop, 1)
@@ -324,9 +335,7 @@ class AoAEngine:
         for src_key, sl_src, sl_dst in tensor.slices:
             intersection = []
             for i in range(ndim):
-                inter = slice_intersect(
-                    local_slice[i], sl_dst[i], tensor.shape[i]
-                )
+                inter = slice_intersect(local_slice[i], sl_dst[i])
                 if inter is None:
                     break
                 intersection.append(inter)
@@ -336,11 +345,11 @@ class AoAEngine:
                 for i in range(ndim):
                     dst = sl_dst[i]
                     src = sl_src[i]
-                    dim_len = tensor.shape[i]
-                    dst_start, _, _ = dst.indices(dim_len)
-                    src_start, _, _ = src.indices(dim_len)
-                    inter_start, inter_stop, _ = intersection[i].indices(
-                        dim_len
+                    dst_start = dst.start
+                    src_start = src.start
+                    inter_start, inter_stop = (
+                        intersection[i].start,
+                        intersection[i].stop,
                     )
                     offset = inter_start - dst_start
                     src_inter_start = src_start + offset
@@ -382,12 +391,15 @@ class AoAEngine:
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
             source_sharded_weight = ShardedWeightDesc(
-                src_key, src_local_shape, src_global_shape, src_global_offset
+                src_key,
+                src_local_shape,
+                tuple(src_global_shape),
+                src_global_offset,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
-                target_global_shape,
+                tuple(target_global_shape),
                 tgt_global_offset,
             )
 
