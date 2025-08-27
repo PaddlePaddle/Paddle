@@ -141,7 +141,10 @@ enum class PADDLE_API ScalarType : int8_t {
 #define DEFINE_ST_ENUM_VAL_(_1, _2, n) n,
   AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(DEFINE_ST_ENUM_VAL_)
 #undef DEFINE_ENUM_ST_ENUM_VAL_
-      Undefined,
+#define DEFINE_ST_ENUM_VAL_FOR_QINTS_(_1, n) n,
+      AT_FORALL_QINT_TYPES(DEFINE_ST_ENUM_VAL_FOR_QINTS_)
+#undef DEFINE_ST_ENUM_VAL_FOR_QINTS_
+          Undefined,
   NumOptions
 };
 namespace impl {
