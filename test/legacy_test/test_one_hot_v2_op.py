@@ -289,11 +289,11 @@ class TestOneHotAPI_Compatibility(unittest.TestCase):
         paddle.enable_static()
         self.places = get_places()
         self.shape = [5]
-        self.dtype = 'int'
+        self.dtype = 'int32'
         self.init_data()
 
     def init_data(self):
-        self.np_input = np.random.randint(0, 8, self.shape)
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
         self.num_classes = self.np_input.max() + 1
         self.np_out = np.eye(self.num_classes)[self.np_input]
 
