@@ -3658,13 +3658,18 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : mean
-  args : (Tensor x, IntArray axis={}, bool keepdim=false)
+  args : (Tensor x, IntArray axis={}, bool keepdim=false, DataType dtype=DataType::UNDEFINED)
+  python_api:
+    name : [paddle.mean,paddle.Tensor.mean]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : MeanInferMeta
     spmd_rule : ReductionMeanInferSpmdDynamic
   kernel :
     func : mean
+    data_type : x
   backward : mean_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 

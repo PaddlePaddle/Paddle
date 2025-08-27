@@ -28,6 +28,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    const IntArray& dims,
                    bool keep_dim,
                    bool reduce_all,
+                   DataType out_dtype UNUSED,
                    DenseTensor* out) {
   if (x.numel() == 0) {
     phi::Full<T, Context>(

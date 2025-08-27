@@ -4179,6 +4179,45 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
   ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
 }
 
+void MeanRawInferMeta(const MetaTensor& x,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DataType dtype,
+                      MetaTensor* out,
+                      MetaConfig config) {
+  DDim out_dim;
+  if (config.is_runtime || !axis.FromTensor()) {
+    out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+  }
+
+  DataType out_dtype;
+  if (dtype != DataType::UNDEFINED) {
+    out_dtype = dtype;
+  } else {
+    out_dtype = x.dtype();
+  }
+
+  out->set_dims(out_dim);
+  out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
+}
+
+void MeanInferMeta(const MetaTensor& x,
+                   const IntArray& axis,
+                   bool keep_dim,
+                   DataType dtype,
+                   MetaTensor* out,
+                   MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  MeanRawInferMeta(x, axis, keep_dim, reduce_all, dtype, out, config);
+}
+
 void StrictReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
                                            const IntArray& axis,
                                            bool keep_dim,

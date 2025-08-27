@@ -468,6 +468,21 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void MeanRawInferMeta(const MetaTensor& x,
+                      const IntArray& axis,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DataType dtype,
+                      MetaTensor* out,
+                      MetaConfig config = MetaConfig());
+
+void MeanInferMeta(const MetaTensor& x,
+                   const IntArray& axis,
+                   bool keep_dim,
+                   DataType dtype,
+                   MetaTensor* out,
+                   MetaConfig config = MetaConfig());
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,

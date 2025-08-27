@@ -140,7 +140,8 @@ SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
 
 SpmdInfo ReductionMeanInferSpmdDynamic(const DistMetaTensor& x,
                                        const IntArray& axis,
-                                       bool keep_dim) {
+                                       bool keep_dim,
+                                       DataType dtype) {
   return ReductionInferSpmdBase(
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAvg));
 }

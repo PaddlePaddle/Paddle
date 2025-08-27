@@ -2328,7 +2328,7 @@
   invoke : mean(grad_x_grad, axis, keepdim)
 
 - backward_op : mean_grad
-  forward: mean (Tensor x,  IntArray axis={},  bool keepdim=false) -> Tensor(out)
+  forward: mean (Tensor x,  IntArray axis={},  bool keepdim=false, DataType dtype=DataType::UNDEFINED) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, IntArray axis={},  bool keepdim=false, bool reduce_all=false)
   output : Tensor(x_grad)
   infer_meta :

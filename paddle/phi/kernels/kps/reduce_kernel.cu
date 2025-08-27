@@ -130,17 +130,48 @@ void MeanRawKernel(const Context& dev_ctx,
                    const IntArray& dims,
                    bool keep_dim,
                    bool reduce_all,
+                   DataType out_dtype,
                    DenseTensor* out) {
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    if (std::is_integral<T>::value) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    } else {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    }
     return;
   }
 
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  DataType final_dtype =
+      (out_dtype == DataType::UNDEFINED) ? x.dtype() : out_dtype;
+
+  if (std::is_integral<T>::value) {
+    using ComputeType = float;
+    const DataType compute_dtype = phi::DataType::FLOAT32;
+
+    DenseTensor x_compute = phi::Cast<T, Context>(dev_ctx, x, compute_dtype);
+
+    DenseTensor out_compute;
+    out_compute.Resize(out->dims());
+    dev_ctx.template Alloc<ComputeType>(&out_compute);
+
+    phi::Reduce<ComputeType, kps::AddFunctor, kps::IdentityFunctor, true>(
+        dev_ctx,
+        x_compute,
+        reduce_all,
+        dims.GetData(),
+        keep_dim,
+        compute_dtype,
+        &out_compute);
+
+    phi::CastKernel<ComputeType, Context>(
+        dev_ctx, out_compute, final_dtype, out);
+
+  } else {
+    phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
+        dev_ctx, x, reduce_all, dims.GetData(), keep_dim, final_dtype, out);
+  }
 }
 
 template <typename T, typename Context>

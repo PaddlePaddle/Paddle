@@ -21,6 +21,7 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import mean
 from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -30,10 +31,9 @@ from paddle.utils.decorator_utils import (
     param_two_alias_one_default,
 )
 
-from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.data_feeder import check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
-from .math import _get_reduce_axis_with_tensor
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -44,113 +44,6 @@ _Interpolation: TypeAlias = Literal[
     'linear', 'higher', 'lower', 'midpoint', 'nearest'
 ]
 __all__ = []
-
-
-def mean(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the mean of the input tensor's elements along ``axis``.
-
-    Args:
-        x (Tensor): The input Tensor with data type bool, bfloat16, float16, float32,
-            float64, int32, int64, complex64, complex128.
-        axis (int|list|tuple|None, optional): The axis along which to perform mean
-            calculations. ``axis`` should be int, list(int) or tuple(int). If
-            ``axis`` is a list/tuple of dimension(s), mean is calculated along
-            all element(s) of ``axis`` . ``axis`` or element(s) of ``axis``
-            should be in range [-D, D), where D is the dimensions of ``x`` . If
-            ``axis`` or element(s) of ``axis`` is less than 0, it works the
-            same way as :math:`axis + D` . If ``axis`` is None, mean is
-            calculated over all elements of ``x``. Default is None.
-        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keepdim`` is True, the dimensions of
-            the output Tensor is the same as ``x`` except in the reduced
-            dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor, results of average along ``axis`` of ``x``, with the same data
-        type as ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[[1., 2., 3., 4.],
-            ...                        [5., 6., 7., 8.],
-            ...                        [9., 10., 11., 12.]],
-            ...                       [[13., 14., 15., 16.],
-            ...                        [17., 18., 19., 20.],
-            ...                        [21., 22., 23., 24.]]])
-            >>> out1 = paddle.mean(x)
-            >>> print(out1.numpy())
-            12.5
-            >>> out2 = paddle.mean(x, axis=-1)
-            >>> print(out2.numpy())
-            [[ 2.5  6.5 10.5]
-             [14.5 18.5 22.5]]
-            >>> out3 = paddle.mean(x, axis=-1, keepdim=True)
-            >>> print(out3.numpy())
-            [[[ 2.5]
-              [ 6.5]
-              [10.5]]
-             [[14.5]
-              [18.5]
-              [22.5]]]
-            >>> out4 = paddle.mean(x, axis=[0, 2])
-            >>> print(out4.numpy())
-            [ 8.5 12.5 16.5]
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.mean(x, axis, keepdim)
-    else:
-        reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-        check_variable_and_dtype(
-            x,
-            'x/input',
-            [
-                'bool',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'mean/reduce_mean',
-        )
-        check_type(
-            axis, 'axis/dim', (int, list, tuple, Variable), 'mean/reduce_mean'
-        )
-        if isinstance(axis, (list, tuple)):
-            for item in axis:
-                check_type(
-                    item,
-                    'elements of axis/dim',
-                    (int, Variable),
-                    'mean/reduce_mean',
-                )
-
-        helper = LayerHelper('mean', **locals())
-
-        attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='reduce_mean',
-            inputs={'X': x},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-        return out
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})

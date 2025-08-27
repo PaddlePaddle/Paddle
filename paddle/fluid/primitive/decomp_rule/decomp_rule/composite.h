@@ -35,8 +35,12 @@ Tensor any_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
-Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
+Tensor mean_decomp(const Tensor& x,
+                   const IntArray& axis,
+                   bool keepdim,
+                   const DataType& dtype) {
   auto x_tmp = ConvertToMT<T>(x);
+  auto out_dtype = dtype == DataType::UNDEFINED ? x.dtype() : dtype;
 
   std::vector<int64_t> x_dim = x_tmp.shape();
   int64_t axis_size = axis.size();
@@ -82,7 +86,7 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 
   Tensor res = sum_x / value;
 
-  return ConvertToOrig<T>(res, x.dtype());
+  return ConvertToOrig<T>(res, out_dtype);
 }
 
 static void check_valid_type(const DataType& dtype) {
@@ -289,7 +293,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor batch_mean;
   Tensor inv_std;
   if (!use_run_stat) {
-    batch_mean = mean_decomp<T>(x_cast, reduce_axes, true);
+    batch_mean = mean_decomp<T>(x_cast, reduce_axes, true, x_cast.dtype());
     auto batch_var = variance<T>(x_cast, reduce_axes, true);
     inv_std = rsqrt<T>(batch_var + eps);
 
@@ -556,10 +560,10 @@ std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp(
   for (int i = begin_norm_axis; i < x_dims.size(); i++) {
     reduce_axis.push_back(static_cast<int64_t>(i));
   }
-  auto mean_ = mean_decomp<T>(x_cast, reduce_axis, true);
+  auto mean_ = mean_decomp<T>(x_cast, reduce_axis, true, x_cast.dtype());
   auto difference = x_cast - mean_;
   auto var_tmp1 = difference * difference;
-  auto variance = mean_decomp<T>(var_tmp1, reduce_axis, true);
+  auto variance = mean_decomp<T>(var_tmp1, reduce_axis, true, var_tmp1.dtype());
   auto var_tmp3 =
       variance + full_scalar<T>(epsilon, variance.dtype(), variance.place());
   auto rsqrt_var = rsqrt<T>(var_tmp3);
@@ -800,12 +804,15 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
 
     // out = (x - mean(x)) / sqrt(var + epsilon))
     // var = mean((x-mean(x))^2)
-    auto mean_ =
-        reduce_axes_empty ? x_cast : mean_decomp<T>(x_cast, axis, true);
+    auto mean_ = reduce_axes_empty
+                     ? x_cast
+                     : mean_decomp<T>(x_cast, axis, true, x_cast.dtype());
     auto difference = x_cast - mean_;
     auto var_tmp1 = difference * difference;
     auto variance =
-        reduce_axes_empty ? var_tmp1 : mean_decomp<T>(var_tmp1, axis, true);
+        reduce_axes_empty
+            ? var_tmp1
+            : mean_decomp<T>(var_tmp1, axis, true, var_tmp1.dtype());
     auto var_shape = shape64<T>(variance);
     auto var_tmp3 =
         variance + full_scalar<T>(epsilon, variance.dtype(), variance.place());
@@ -854,9 +861,10 @@ std::tuple<Tensor, Tensor, Tensor> instance_norm_decomp(
   const std::vector<int64_t> rdims{1};
 
   auto x_arr = reshape<T>(x_cast, shape);
-  auto mean_ = mean_decomp<T>(x_arr, rdims, true);
+  auto mean_ = mean_decomp<T>(x_arr, rdims, true, x_arr.dtype());
   auto difference = x_arr - mean_;
-  auto variance = mean_decomp<T>(difference * difference, rdims, true);
+  auto variance =
+      mean_decomp<T>(difference * difference, rdims, true, difference.dtype());
   auto var_tmp3 = variance + epsilon;
   auto rsqrt_var = rsqrt<T>(var_tmp3);
   auto out = difference * rsqrt_var;
@@ -1024,8 +1032,10 @@ std::tuple<Tensor, Tensor, Tensor> group_norm_decomp(
   auto x_dim = x_cast.shape();
   x_cast = decomp_helper.Split(x_cast);
 
-  auto mean_ = mean_decomp<T>(x_cast, c_axis, true);
-  auto var_tmp_ = mean_decomp<T>(x_cast * x_cast, c_axis, true) - mean_ * mean_;
+  auto mean_ = mean_decomp<T>(x_cast, c_axis, true, x_cast.dtype());
+  auto var_tmp_ =
+      mean_decomp<T>(x_cast * x_cast, c_axis, true, x_cast.dtype()) -
+      mean_ * mean_;
   auto var_ = maximum<T>(var_tmp_, full<T>({}, 0, var_tmp_.dtype()));
   auto var_inv = rsqrt<T>(var_ + full_scalar<T>(epsilon, var_.dtype()));
   auto out = (x_cast - mean_) * var_inv;
@@ -1288,7 +1298,7 @@ Tensor kldiv_loss_decomp(const Tensor& x,
     }
   }
   if (reduction == "mean") {
-    return mean_decomp<T>(loss, {}, false);
+    return mean_decomp<T>(loss, {}, false, loss.dtype());
   }
   if (reduction == "sum") {
     return sum<T>(loss);
@@ -1505,7 +1515,7 @@ std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
     reduce_axis.push_back(static_cast<int64_t>(i));
   }
   auto pow = x_cast * x_cast;
-  auto var = mean_decomp<T>(pow, reduce_axis, true);
+  auto var = mean_decomp<T>(pow, reduce_axis, true, pow.dtype());
   auto rsqrt_var =
       rsqrt<T>(var + full_scalar<T>(epsilon, var.dtype(), var.place()));
   auto out = x_cast * rsqrt_var;

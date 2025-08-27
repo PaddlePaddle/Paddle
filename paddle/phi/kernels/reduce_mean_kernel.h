@@ -25,6 +25,7 @@ void MeanRawKernel(const Context& dev_ctx,
                    const IntArray& dims,
                    bool keep_dim,
                    bool reduce_all,
+                   DataType out_dtype,
                    DenseTensor* out);
 
 template <typename T, typename Context>
@@ -32,17 +33,19 @@ void MeanKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const IntArray& dims,
                 bool keep_dim,
+                DataType out_dtype,
                 DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Mean(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& axis,
-                 bool keep_dim) {
+                 bool keep_dim,
+                 DataType dtype) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  SumRawInferMeta(x, axis, keep_dim, false, x.dtype(), &meta_out);
-  MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, &dense_out);
+  MeanInferMeta(x, axis, keep_dim, dtype, &meta_out);
+  MeanKernel<T, Context>(dev_ctx, x, axis, keep_dim, dtype, &dense_out);
   return dense_out;
 }
 

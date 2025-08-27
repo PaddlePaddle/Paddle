@@ -38,7 +38,8 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
 // use dynamic infer_spmd invoke static infer_spmd function.
 SpmdInfo ReductionMeanInferSpmdDynamic(const DistMetaTensor& x,
                                        const IntArray& axis,
-                                       bool keep_dim);
+                                       bool keep_dim,
+                                       DataType dtype);
 
 SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,

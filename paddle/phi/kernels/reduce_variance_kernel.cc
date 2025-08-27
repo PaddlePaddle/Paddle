@@ -27,12 +27,13 @@ void VarianceKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& dims,
                     bool keep_dim,
                     DenseTensor* out) {
-  DenseTensor temp_mean = Mean<T, Context>(dev_ctx, x, dims, true);
+  DenseTensor temp_mean = Mean<T, Context>(dev_ctx, x, dims, true, x.dtype());
   DenseTensor temp_differences = Subtract<T, Context>(dev_ctx, x, temp_mean);
   DenseTensor temp_pow =
       Multiply<T, Context>(dev_ctx, temp_differences, temp_differences);
 
-  MeanKernel<T, Context>(dev_ctx, temp_pow, dims, keep_dim, out);
+  MeanKernel<T, Context>(
+      dev_ctx, temp_pow, dims, keep_dim, temp_pow.dtype(), out);
 }
 }  // namespace phi
 

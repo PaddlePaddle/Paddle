@@ -196,10 +196,12 @@ phi::DataType StrDtype2TensorDtype(const std::string& np_dtype) {
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
 bool PyObject_CheckIRValue(PyObject* obj) {
+  if (obj == nullptr) return false;
   return PyObject_TypeCheck(obj, g_ir_value_pytype);
 }
 
 bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
+  if (obj == nullptr) return false;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -235,6 +237,7 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
 }
 
 bool PyObject_CheckIRVectorOfValueOrLong(PyObject* obj) {
+  if (obj == nullptr) return false;
   if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
     return false;
   }
