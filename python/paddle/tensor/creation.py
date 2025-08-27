@@ -1155,6 +1155,7 @@ def full_like(
     *,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
 
@@ -1178,6 +1179,7 @@ def full_like(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: Tensor which is created according to ``x``, ``fill_value`` and ``dtype``.
@@ -1211,20 +1213,39 @@ def full_like(
     if device is None:
         device = x.place
 
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(
+                f"Pinning memory is not supported for {device}., "
+                f"{in_dynamic_mode()}, "
+                f"device = {device}, {type(device)}"
+            )
+
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
-            tensor = _C_ops.full_like(
-                x, fill_value, dtype, _get_paddle_place(device)
-            )
-        else:
-            tensor = _C_ops.full_like(
-                x,
-                fill_value,
-                dtype,
-                core.Place() if device is None else _get_paddle_place(device),
-            )
+            tensor = _C_ops.full_like(x, fill_value, dtype, device)
         if requires_grad is True:
             tensor.stop_gradient = False
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         return tensor
     else:
         helper = LayerHelper("full_like", **locals())
@@ -1396,6 +1417,7 @@ def ones(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Create a Tensor of specified :attr:`shape` and :attr:`dtype` and fill it with 1.
@@ -1412,6 +1434,7 @@ def ones(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: A Tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements are 1.
@@ -1451,6 +1474,7 @@ def ones(
         out=out,
         device=device,
         requires_grad=requires_grad,
+        pin_memory=pin_memory,
         name=name,
     )
 
@@ -1463,6 +1487,7 @@ def ones_like(
     *,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Returns a Tensor filled with the value 1, with the same shape and
@@ -1485,6 +1510,7 @@ def ones_like(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: A Tensor filled with the value 1, with the same shape and
@@ -1510,6 +1536,7 @@ def ones_like(
         dtype=dtype,
         name=name,
         device=device,
+        pin_memory=pin_memory,
         requires_grad=requires_grad,
     )
 
@@ -1523,6 +1550,7 @@ def zeros(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
@@ -1549,6 +1577,7 @@ def zeros(
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
         name(str|None, optional): The default value is None.  Normally there is no need for user to set this
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -1588,6 +1617,7 @@ def zeros(
         out=out,
         device=device,
         requires_grad=requires_grad,
+        pin_memory=pin_memory,
         name=name,
     )
 
@@ -1600,6 +1630,7 @@ def zeros_like(
     *,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Returns a Tensor filled with the value 0, with the same shape and
@@ -1622,6 +1653,7 @@ def zeros_like(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: A Tensor filled with the value 0, with the same shape and
@@ -1649,6 +1681,7 @@ def zeros_like(
         name=name,
         device=device,
         requires_grad=requires_grad,
+        pin_memory=pin_memory,
     )
 
 
@@ -1662,6 +1695,7 @@ def eye(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
 
@@ -1686,6 +1720,7 @@ def eye(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: An identity Tensor or DenseTensor of shape [num_rows, num_columns].
@@ -1725,20 +1760,43 @@ def eye(
     else:
         num_columns = num_rows
 
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(
+                f"Pinning memory is not supported for {device}., "
+                f"{in_dynamic_mode()}, "
+                f"device = {device}, {type(device)}"
+            )
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.eye(
             num_rows,
             num_columns,
             dtype,
-            (
-                _get_paddle_place(device)
-                if device is not None
-                else _current_expected_place()
-            ),
+            device,
             out=out,
         )
         if requires_grad is True:
             tensor.stop_gradient = False
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         return tensor
     else:
         helper = LayerHelper("eye", **locals())
@@ -1784,6 +1842,7 @@ def full(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
 
@@ -1809,6 +1868,7 @@ def full(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: Tensor which is created according to ``shape``, ``fill_value`` and ``dtype``.
@@ -1866,6 +1926,31 @@ def full(
             dtype = "complex128"
         else:
             dtype = paddle.get_default_dtype()
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(
+                f"Pinning memory is not supported for {device}., "
+                f"{in_dynamic_mode()}, "
+                f"device = {device}, {type(device)}"
+            )
 
     tensor = fill_constant(
         shape=shape,
@@ -1877,6 +1962,8 @@ def full(
     )
     if requires_grad is True:
         tensor.stop_gradient = False
+    if pin_memory and in_dynamic_mode():
+        tensor = tensor.pin_memory()
     return tensor
 
 
@@ -1889,6 +1976,7 @@ def arange(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
     name: str | None = None,
 ) -> paddle.Tensor:
     """
@@ -1922,6 +2010,7 @@ def arange(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1985,20 +2074,44 @@ def arange(
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(
+                f"Pinning memory is not supported for {device}., "
+                f"{in_dynamic_mode()}, "
+                f"device = {device}, {type(device)}"
+            )
+
     if is_value_input and in_pir_mode():
         tensor = _C_ops.arange(
             start,
             end,
             step,
             dtype,
-            (
-                _get_paddle_place(device)
-                if device is not None
-                else _current_expected_place()
-            ),
+            device,
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         return tensor
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
@@ -2049,6 +2162,8 @@ def arange(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         return tensor
     else:
         check_dtype(
@@ -2956,6 +3071,7 @@ def empty_like(
     *,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> paddle.Tensor:
     """
     Returns a Tensor with uninitialized data which has identical shape of ``x`` and ``dtype``.
@@ -2976,6 +3092,7 @@ def empty_like(
             if None, uses the current device for the default tensor type (see paddle.device.set_device()).
             device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor: Tensor which is created according to ``x`` and ``dtype``, and is uninitialized.
@@ -3000,6 +3117,32 @@ def empty_like(
         device = x.place
     dtype = convert_dtype(dtype)
 
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(
+                f"Pinning memory is not supported for {device}., "
+                f"{in_dynamic_mode()}, "
+                f"device = {device}, {type(device)}"
+            )
+
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
             x_shape = x.shape
@@ -3009,14 +3152,12 @@ def empty_like(
         tensor = _C_ops.empty(
             x_shape,
             convert_np_dtype_to_dtype_(dtype),
-            (
-                _get_paddle_place(device)
-                if device is not None
-                else _current_expected_place()
-            ),
+            device,
         )
         if requires_grad is True:
             tensor.stop_gradient = False
+        if pin_memory and in_dynamic_mode():
+            tensor = tensor.pin_memory()
         return tensor
 
     else:
