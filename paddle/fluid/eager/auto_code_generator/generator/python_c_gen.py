@@ -891,7 +891,9 @@ class PythonCGenerator(GeneratorBase):
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace
             )
-            status = f_generator.run(no_input_out_tensor)
+            status = f_generator.run(
+                no_input_out_tensor, no_parse_python_api_info
+            )
 
             if status:
                 self.python_c_functions_str += (
