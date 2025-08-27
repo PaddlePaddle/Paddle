@@ -745,6 +745,7 @@ def load_state_dict(
     offload: bool = False,
     mw_name_compatibility: bool = True,
     aoa_config: dict[str, list[str]] | None = None,
+    safetensors: bool = False,
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -757,6 +758,8 @@ def load_state_dict(
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU.
         mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
+        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        safetensors(bool): Whether to use safetensors format. Default is False.
     Example:
         .. code-block:: python
 
@@ -790,6 +793,7 @@ def load_state_dict(
             unique_id,
             offload,
             mw_name_compatibility,
+            safetensors,
         )
         return
 
@@ -809,6 +813,7 @@ def load_state_dict(
             unique_id,
             offload,
             mw_name_compatibility,
+            safetensors,
         )
         return
 
@@ -834,6 +839,8 @@ def load_state_dict(
             coordinator_rank,
             unique_id,
             offload,
+            mw_name_compatibility,
+            safetensors,
         )
 
     _finish_unflatten(flat_shards, padding_info)
@@ -851,6 +858,7 @@ def load_state_dict_impl(
     unique_id: int | None = None,
     offload: bool = False,
     mw_name_compatibility: bool = True,
+    safetensors: bool = False,
 ) -> None:
     with paddle.base.dygraph.guard():
         assert isinstance(state_dict, dict), (
@@ -935,14 +943,18 @@ def load_state_dict_impl(
         for file in local_load_files:
             if offload:
                 state_dict_numpy = paddle.load(
-                    os.path.join(path, file), return_numpy=True
+                    os.path.join(path, file),
+                    return_numpy=True,
+                    safetensors=safetensors,
                 )
                 source_state_dict[file] = {
                     key: paddle.to_tensor(value, place=paddle.CPUPlace())
                     for key, value in state_dict_numpy.items()
                 }
             else:
-                source_state_dict[file] = paddle.load(os.path.join(path, file))
+                source_state_dict[file] = paddle.load(
+                    os.path.join(path, file), safetensors=safetensors
+                )
 
         _load_state_dict(
             flat_state_dict,
@@ -1139,8 +1151,13 @@ def compute_global_shape(local_tensor_indices):
 
 
 def load_merged_state_dict(
-    path: str, prefix=None, unique_id=None, offload=False
-):
+    path: str,
+    prefix: str | None = None,
+    unique_id: int | None = None,
+    offload: bool = False,
+    aoa_config: dict[str, list[str]] | None = None,
+    safetensors: bool = False,
+) -> dict[str, paddle.Tensor]:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict.
 
@@ -1149,7 +1166,8 @@ def load_merged_state_dict(
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
-
+        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        safetensors(bool): Whether to use safetensors format. Default is False.
     Returns:
         dict: Merged state_dict.
 
@@ -1170,7 +1188,7 @@ def load_merged_state_dict(
             >>> import paddle
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
-            >>> unsharded_state_dict = dist.checkpoint.utils.merge_state_dict(ckpt_path) # load unsharded checkpoint
+            >>> unsharded_state_dict = dist.load_merged_state_dict(ckpt_path)  # load unsharded checkpoint
             >>> print(f"unsharded_state_dict:{unsharded_state_dict}")
             unsharded_state_dict:{'w1':
             [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
@@ -1204,11 +1222,17 @@ def load_merged_state_dict(
                 t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
                 if offload:
                     t = t.cpu()
-                state_dict_to_save[tensor_key] = t.cpu()
+                state_dict_to_save[tensor_key] = t
             else:
                 continue
 
-    load_state_dict(state_dict_to_save, path, offload=offload)
+    load_state_dict(
+        state_dict_to_save,
+        path,
+        offload=offload,
+        aoa_config=aoa_config,
+        safetensors=safetensors,
+    )
 
     # Update dictionary keys in place
     for key in list(

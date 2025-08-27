@@ -496,3 +496,45 @@ def expand_decorator():
         return wrapper
 
     return decorator
+
+
+def index_select_decorator():
+    """
+    Usage Example:
+    PyTorch: index_select(input, dim, index)
+        torch.index_select(input=input_tensor, dim=1, index=indices)
+        torch.index_select(input_tensor, 1, indices)
+    Paddle: index_select(x, index, axis=0)
+        paddle.index_select(x=input_tensor, index=indices, axis=1)
+        paddle.index_select(input_tensor, indices, axis=1)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) >= 2 and isinstance(args[1], int):
+                if len(args) < 3 and "index" not in kwargs:
+                    raise TypeError(
+                        "index_select() missing 1 required argument: 'index'"
+                    )
+                input_tensor = args[0]
+                dim_or_axis = args[1]
+                if "x" not in kwargs:
+                    kwargs["x"] = input_tensor
+                if "axis" not in kwargs:
+                    kwargs["axis"] = dim_or_axis
+                if len(args) > 2 and "index" not in kwargs:
+                    kwargs["index"] = args[2]
+                    args = args[3:]
+                else:
+                    args = args[2:]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
