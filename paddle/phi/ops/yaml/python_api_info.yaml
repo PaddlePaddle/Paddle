@@ -18,6 +18,11 @@
   args_alias :
     use_default_mapping : True
 
+- op : greater_than
+  name : [paddle.greater_than, paddle.Tensor.greater_than]
+  args_alias :
+    use_default_mapping : True
+
 - op : expand_as
   name : [paddle.expand_as,paddle.Tensor.expand_as]
   args_alias :
