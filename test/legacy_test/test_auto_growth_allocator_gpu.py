@@ -154,6 +154,20 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(out["try_alloc_ok"][0], True)
         self.assertEqual(out["try_alloc_ok"][1], False)
 
+    def test_auto_growth_allocator_v2(self):
+        if not base.is_compiled_with_cuda():
+            return
+        flags = {
+            "FLAGS_use_auto_growth_v2": True,
+            "FLAGS_large_pool_pre_alloc_in_mb": 6,
+        }
+        plan = [
+            {"op": "init"},
+        ]
+        out = _run_test_case(plan, flags)
+        r0 = out["reserved"][0]
+        self.assertLessEqual(r0, int(6 * MiB), msg=f"r0={r0}")
+
 
 if __name__ == "__main__":
     unittest.main()

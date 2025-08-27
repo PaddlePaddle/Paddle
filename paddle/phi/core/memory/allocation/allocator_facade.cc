@@ -941,13 +941,14 @@ class AllocatorFacadePrivate {
     if (FLAGS_small_pool_size_in_mb <= 0) {
       return;
     }
-    const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
     if (FLAGS_use_auto_growth_v2 || FLAGS_use_cuda_malloc_async_allocator ||
         FLAGS_use_virtual_memory_auto_growth) {
       VLOG(6) << "PreAlloc is not implemented for "
                  "AutoGrowthBestFitAllocatorV2, CUDAMallocAsyncAllocator or "
                  "VirtualMemoryAutoGrowthBestFitAllocator.";
+      return;
     }
+    const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
     auto it = allocators_.find(p);
     PADDLE_ENFORCE_NE(it,
                       allocators_.end(),
