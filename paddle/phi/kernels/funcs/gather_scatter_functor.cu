@@ -223,7 +223,7 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
     // there was no atomic primitives for assign), and for other ops,
     // unordered atomic access is used
     reduce_op(static_cast<tensor_t*>(self_data + replace_index_self),
-              static_cast<tensor_t*>(src_data + replace_index_src));
+              static_cast<const tensor_t*>(src_data + replace_index_src));
   } else {
     bool is_op_done = false;
     phi::CudaAtomicMin(aux_buffer + replace_index_self, tid);
@@ -336,13 +336,14 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
 }
 
 template <typename index_t>
-__global__ void PickWinnersScatterKernel(const index_t* __restrict__ index_data,
-                                         const int64_t* __restrict__ shape_strides,
-                                         int* __restrict__ winners,
-                                         int64_t self_select_dim_size,
-                                         int64_t numel,
-                                         int dim,
-                                         int ndim) {
+__global__ void PickWinnersScatterKernel(
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int* __restrict__ winners,
+    int64_t self_select_dim_size,
+    int64_t numel,
+    int dim,
+    int ndim) {
   extern __shared__ int64_t
       smem_shape_strides[];  // no more than 27 int64_t, won't affect occupancy
 
@@ -362,14 +363,14 @@ __global__ void PickWinnersScatterKernel(const index_t* __restrict__ index_data,
   // index matrix has different shape with self matrix or src matrix.
   int64_t replace_index_self = 0;
   ComputeOffset<false>(smem_shape_strides,
-                                 input_strides,
-                                 nullptr,
-                                 &replace_index_self,
-                                 nullptr,
-                                 tid,
-                                 ndim,
-                                 dim,
-                                 index);
+                       input_strides,
+                       nullptr,
+                       &replace_index_self,
+                       nullptr,
+                       tid,
+                       ndim,
+                       dim,
+                       index);
 
   atomicMax(&winners[replace_index_self], static_cast<int>(tid));
 }
@@ -404,14 +405,14 @@ __global__ void ScatterWriteByWinnersKernel(
 
   int64_t replace_index_self = 0, replace_index_src = 0;
   ComputeOffset<true>(smem_shape_strides,
-                                 src_strides,
-                                 input_strides,
-                                 &replace_index_src,
-                                 &replace_index_self,
-                                 tid,
-                                 ndim,
-                                 dim,
-                                 index);
+                      src_strides,
+                      input_strides,
+                      &replace_index_src,
+                      &replace_index_self,
+                      tid,
+                      ndim,
+                      dim,
+                      index);
   if (static_cast<int>(tid) == winners[replace_index_self]) {
     *(self_data + replace_index_self) = *(src_data + replace_index_src);
   }
@@ -501,23 +502,23 @@ struct gpu_gather_scatter_functor {
       // Stage 1: Get the last index to be assigned the same dst.
       PickWinnersScatterKernel<index_t>
           <<<grid, block, shared_mem_bytes, stream>>>(index_data,
-                                       shape_strides,
-                                       winners,
-                                       self_select_dim_size,
-                                       index_size,
+                                                      shape_strides,
+                                                      winners,
+                                                      self_select_dim_size,
+                                                      index_size,
                                                       dim,
                                                       ndim);
       // Stage 2: Only the max tid in stage 1 can write src to dst.
       ScatterWriteByWinnersKernel<tensor_t, index_t, func_t>
           <<<grid, block, shared_mem_bytes, stream>>>(self_data,
-                                       index_data,
-                                       src_data,
-                                       shape_strides,
-                                       winners,
-                                       self_select_dim_size,
-                                       index_size,
-                                       dim,
-                                       ndim);
+                                                      index_data,
+                                                      src_data,
+                                                      shape_strides,
+                                                      winners,
+                                                      self_select_dim_size,
+                                                      index_size,
+                                                      dim,
+                                                      ndim);
     } else if (method_name == "scatter_mean_gpu") {
       // TODO(heqianyue): the original impl is too wasteful, this can be
       // optimized
@@ -550,11 +551,7 @@ struct gpu_gather_scatter_functor {
                                                       atomic_cnt_buffer);
     } else {
       if (include_self) {
-        GatherScatterGPUKernel<tensor_t,
-                               index_t,
-                               func_t,
-                               is_scatter_like,
-                               true>
+        GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like, true>
             <<<grid, block, shared_mem_bytes, stream>>>(self_data,
                                                         index_data,
                                                         shape_strides,
