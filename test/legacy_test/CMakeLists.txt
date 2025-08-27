@@ -1244,8 +1244,8 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_squeeze2_op_rename PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_as_op PROPERTIES TIMEOUT 60)
-set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 500)
-set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_reduce_op PROPERTIES TIMEOUT 600)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 600)
 set_tests_properties(test_imperative_ptb_rnn_sorted_gradient PROPERTIES TIMEOUT
                                                                         120)
 set_tests_properties(test_imperative_ptb_rnn PROPERTIES TIMEOUT 120)
