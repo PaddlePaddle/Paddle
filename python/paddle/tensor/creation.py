@@ -1233,11 +1233,7 @@ def full_like(
         ):
             device = core.XPUPinnedPlace()
         else:
-            raise RuntimeError(
-                f"Pinning memory is not supported for {device}., "
-                f"{in_dynamic_mode()}, "
-                f"device = {device}, {type(device)}"
-            )
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
 
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
@@ -1780,11 +1776,7 @@ def eye(
         ):
             device = core.XPUPinnedPlace()
         else:
-            raise RuntimeError(
-                f"Pinning memory is not supported for {device}., "
-                f"{in_dynamic_mode()}, "
-                f"device = {device}, {type(device)}"
-            )
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
     if in_dynamic_or_pir_mode():
         tensor = _C_ops.eye(
             num_rows,
@@ -1946,11 +1938,7 @@ def full(
         ):
             device = core.XPUPinnedPlace()
         else:
-            raise RuntimeError(
-                f"Pinning memory is not supported for {device}., "
-                f"{in_dynamic_mode()}, "
-                f"device = {device}, {type(device)}"
-            )
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
 
     tensor = fill_constant(
         shape=shape,
@@ -2094,11 +2082,7 @@ def arange(
         ):
             device = core.XPUPinnedPlace()
         else:
-            raise RuntimeError(
-                f"Pinning memory is not supported for {device}., "
-                f"{in_dynamic_mode()}, "
-                f"device = {device}, {type(device)}"
-            )
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
 
     if is_value_input and in_pir_mode():
         tensor = _C_ops.arange(
@@ -3002,9 +2986,7 @@ def empty(
                 device = core.XPUPinnedPlace()
             else:
                 raise RuntimeError(
-                    f"Pinning memory is not supported for {device}., "
-                    f"{in_dynamic_mode()}, "
-                    f"device = {device}, {type(device)}"
+                    f"Pinning memory is not supported for {device}"
                 )
         tensor = _C_ops.empty(
             shape,
@@ -3137,11 +3119,7 @@ def empty_like(
         ):
             device = core.XPUPinnedPlace()
         else:
-            raise RuntimeError(
-                f"Pinning memory is not supported for {device}., "
-                f"{in_dynamic_mode()}, "
-                f"device = {device}, {type(device)}"
-            )
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
 
     if in_dynamic_or_pir_mode():
         if in_dynamic_mode():
