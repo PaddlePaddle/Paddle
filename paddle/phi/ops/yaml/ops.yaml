@@ -5335,6 +5335,12 @@
 
 - op : sum
   args : (Tensor x, IntArray axis={}, DataType dtype=DataType::UNDEFINED, bool keepdim=false)
+  python_api:
+    name : [paddle.sum, paddle.Tensor.sum]
+    args_alias:
+      use_default_mapping : True
+    pre_process:
+      func : SumPreProcess(x, axis)
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
