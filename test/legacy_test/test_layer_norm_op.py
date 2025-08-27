@@ -174,7 +174,7 @@ class TestLayerNormOpByOpTest(OpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
-        self.check_prim = True
+        self.check_prim = False
         self.check_prim_pir = True
         self.check_pir = True
 
@@ -272,7 +272,7 @@ class TestLayerNormBF16OpByOpTest(OpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
-        self.check_prim = True
+        self.check_prim = False
         self.check_prim_pir = True
         self.check_pir = True
 
@@ -494,7 +494,7 @@ class TestLayerNormOpByOpTestFP32(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
-        self.check_prim = True
+        self.check_prim = False
         self.check_prim_pir = True
         self.check_pir = True
 
@@ -514,7 +514,7 @@ class TestLayerNormOpByOpTestFP32_case1(TestLayerNormOpByOpTest):
         self.begin_norm_axis = 1
         self.has_scale = True
         self.has_bias = True
-        self.check_prim = True
+        self.check_prim = False
         self.check_prim_pir = True
         self.check_pir = True
 

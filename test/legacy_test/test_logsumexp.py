@@ -396,5 +396,82 @@ class TestLogsumexpOutAndParamDecorator(unittest.TestCase):
             )
 
 
+class TestLogsumexpAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_ref_out = ref_logsumexp(
+            self.np_input, axis=[0, 1], keepdim=True, reduce_all=True
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.logsumexp(x, [0, 1], True)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.logsumexp(x, dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.logsumexp([0, 1], True)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.logsumexp(dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.logsumexp(x, [0, 1], True, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = self.np_ref_out
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.logsumexp(x, [0, 1], True)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
+            # Key words args for torch
+            out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
+            # Combined args and kwargs
+            out4 = paddle.logsumexp(x, dim=[0, 1], keepdim=True)
+            # Tensor method args
+            out5 = x.logsumexp([0, 1], True)
+            # Tensor method kwargs
+            out6 = x.logsumexp(dim=[0, 1], keepdim=True)
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = self.np_ref_out
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 if __name__ == '__main__':
     unittest.main()

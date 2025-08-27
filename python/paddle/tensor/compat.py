@@ -544,12 +544,14 @@ def min(
     """
 
     Computes the minimum of tensor elements. There are mainly 3 cases (functionalities):
+
     1. paddle.compat.min(input: Tensor): reduce min over all dims, return a single value Tensor
     2. paddle.compat.min(input: Tensor, dim: int (cannot be None), keepdim=False): reduce min over the given dim,
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.min(input: Tensor, other: Tensor): see `paddle.minimum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+
     1. Case 1: the same as `min`
     2. Case 2: NOT evenly distributing the gradient for equal minimum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> min(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
@@ -569,7 +571,7 @@ def min(
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
-            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+            value is False. Note that if `dim` does not appear in neither (`*args`) or (`**kwargs`), this parameter cannot be passed alone
         other (Tensor, optional): the other tensor to perform `paddle.minimum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
@@ -578,11 +580,11 @@ def min(
 
 
     Returns:
-        - For case 1: a single value Tensor (0-dim)
-        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+        - For case 1. A single value Tensor (0-dim)
+        - For case 2. A named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
             while indices is always an int64 Tensor, with exactly the same shape as `values`.
             MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
-        - For case 3: see `paddle.minimum`
+        - For case 3. See `paddle.minimum` (:ref:`api_paddle_minimum`)
 
 
     Examples:
@@ -696,12 +698,14 @@ def max(
     """
 
     Computes the maximum of tensor elements. There are mainly 3 cases (functionalities):
+
     1. paddle.compat.max(input: Tensor): reduce max over all dims, return a single value Tensor
     2. paddle.compat.max(input: Tensor, dim: int (cannot be None), keepdim=False): reduce max over the given dim,
         returns a named tuple MinMaxRetType(values: Tensor, indices: Tensor)
     3. paddle.compat.max(input: Tensor, other: Tensor): see `paddle.maximum`
 
     Special warning: the gradient behavior is NOT well-documented by PyTorch, the actual behavior should be:
+
     1. Case 1: the same as `max`
     2. Case 2: NOT evenly distributing the gradient for equal maximum elements! PyTorch actually only propagates to the elements with indices,
         for example: Tensor([1, 1, 1]) -> max(..., dim=0) -> values=Tensor(0, ...), indices=Tensor(0), the gradient for input tensor won't be
@@ -721,7 +725,7 @@ def max(
         keepdim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the `input` unless :attr:`keepdim` is true, default
-            value is False. Note that if `dim` does not appear in neither (*args) or (**kwargs), this parameter cannot be passed alone
+            value is False. Note that if `dim` does not appear in neither (`*args`) or (`**kwargs`), this parameter cannot be passed alone
         other (Tensor, optional): the other tensor to perform `paddle.maximum` with. This Tensor should
             have the same or broadcast-able shape as the `input`. Note that (`dim` & `keepdim`) and `other` are mutually exclusive
             meaning that trying to composite both will result in TypeError
@@ -730,11 +734,11 @@ def max(
 
 
     Returns:
-        - For case 1: a single value Tensor (0-dim)
-        - For case 2: a named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
+        - For case 1. A single value Tensor (0-dim)
+        - For case 2. A named tuple MinMaxRetType(values: Tensor, indices: Tensor), `values` has the same data type as the `input`,
             while indices is always an int64 Tensor, with exactly the same shape as `values`.
             MinMaxRetType can be used (indexed, packed, unpacked) in the same way as a regular tuple
-        - For case 3: see `paddle.maximum`
+        - For case 3. See `paddle.maximum` (:ref:`api_paddle_maximum`)
 
 
     Examples:
@@ -829,3 +833,149 @@ def max(
         else:
             paddle.assign(ret, out)
     return ret
+
+
+MedianRetType = MinMaxRetType
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.median",
+    correct_name="paddle.median",
+)
+def median(
+    input: Tensor,
+    dim: int | None = None,
+    keepdim: bool = False,
+    *,
+    out: tuple[Tensor, Tensor] | Tensor | None = None,
+) -> Tensor | MedianRetType:
+    """
+    Returns the median of the values in input.
+
+    Args:
+        input (Tensor): The input tensor.
+        dim (int|None, optional): The dimension to reduce. If None, computes the median over all elements. Default is None.
+        keepdim (bool, optional): Whether the output tensor has dim retained or not. Default is False.
+        out (Tensor|tuple[Tensor, Tensor], optional): If provided, the result will be written into this tensor.
+            For global median (dim=None), out must be a single tensor.
+            For median along a dimension (dim specified, including dim=-1), out must be a tuple of two tensors (values, indices).
+
+    Returns:
+        Tensor|MedianRetType: If dim is None, returns a single tensor. If dim is specified (including dim=-1),
+        returns a named tuple MedianRetType(values: Tensor, indices: Tensor).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+            >>> result = paddle.compat.median(x)
+            >>> print(result)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 5)
+
+            >>> ret = paddle.compat.median(x, dim=1)
+            >>> print(ret.values)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [2, 5, 8])
+            >>> print(ret.indices)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [1, 1, 1])
+
+            >>> # Using out parameter
+            >>> out_values = paddle.zeros([3], dtype='int64')
+            >>> out_indices = paddle.zeros([3], dtype='int64')
+            >>> paddle.compat.median(x, dim=1, out=(out_values, out_indices))
+            >>> print(out_values)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [2, 5, 8])
+    """
+    if dim is None:
+        _check_out_status(out, False)
+        result = paddle.median(input, axis=dim, keepdim=keepdim, mode='min')
+        if out is not None:
+            paddle.assign(result, out)
+            return out
+        return result
+    else:
+        _check_out_status(out, True)
+        values, indices = paddle.median(
+            input, axis=dim, keepdim=keepdim, mode='min'
+        )
+        if out is not None:
+            paddle.assign(values, out[0])
+            paddle.assign(indices, out[1])
+            return MedianRetType(values=out[0], indices=out[1])
+        return MedianRetType(values=values, indices=indices)
+
+
+@ForbidKeywordsDecorator(
+    illegal_keys={"x", "axis"},
+    func_name="paddle.compat.nanmedian",
+    correct_name="paddle.nanmedian",
+)
+def nanmedian(
+    input: Tensor,
+    dim: int | None = None,
+    keepdim: bool = False,
+    *,
+    out: tuple[Tensor, Tensor] | Tensor | None = None,
+) -> Tensor | MedianRetType:
+    """
+    Returns the median of the values in input, ignoring NaN values.
+
+    Args:
+        input (Tensor): The input tensor.
+        dim (int|None, optional): The dimension to reduce. If None, computes the nanmedian over all elements. Default is None.
+        keepdim (bool, optional): Whether the output tensor has dim retained or not. Default is False.
+        out (Tensor|tuple[Tensor, Tensor], optional): If provided, the result will be written into this tensor.
+            For global nanmedian (dim=None), out must be a single tensor.
+            For nanmedian along a dimension (dim specified, including dim=-1), out must be a tuple of two tensors (values, indices).
+
+    Returns:
+        Tensor|MedianRetType: The median values, ignoring NaN. If dim is None, returns a single tensor. If dim is specified (including dim=-1),
+        returns a named tuple MedianRetType(values: Tensor, indices: Tensor).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> x = paddle.to_tensor([[1, float('nan'), 3], [4, 5, 6], [float('nan'), 8, 9]], dtype='float32')
+            >>> result = paddle.compat.nanmedian(x)
+            >>> print(result)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True, 5.0)
+
+            >>> ret = paddle.compat.nanmedian(x, dim=1)
+            >>> print(ret.values)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
+            >>> print(ret.indices)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True, [0, 1, 1])
+
+            >>> # Using out parameter
+            >>> out_values = paddle.zeros([3], dtype='float32')
+            >>> out_indices = paddle.zeros([3], dtype='int64')
+            >>> paddle.compat.nanmedian(x, dim=1, out=(out_values, out_indices))
+            >>> print(out_values)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True, [1.0, 5.0, 8.0])
+    """
+    if dim is None:
+        _check_out_status(out, False)
+        result = paddle.nanmedian(input, axis=dim, keepdim=keepdim, mode='min')
+        if out is not None:
+            paddle.assign(result, out)
+            return out
+        return result
+    else:
+        _check_out_status(out, True)
+        values, indices = paddle.nanmedian(
+            input, axis=dim, keepdim=keepdim, mode='min'
+        )
+        # This conversion is needed because PyTorch returns index 0 for all-nan rows,
+        # while PaddlePaddle returns index -1 for all-nan rows
+        indices = paddle.maximum(indices, paddle.zeros_like(indices))
+
+        if out is not None:
+            paddle.assign(values, out[0])
+            paddle.assign(indices, out[1])
+            return MedianRetType(values=out[0], indices=out[1])
+        return MedianRetType(values=values, indices=indices)

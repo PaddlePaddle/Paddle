@@ -216,6 +216,10 @@ function(copy_part_of_third_party TARGET DST)
       ${TARGET}
       SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_V3_LIBRARIES}
       DSTS ${dst_dir} ${dst_dir}/lib)
+    copy(
+      ${TARGET}
+      SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHMASK_V2_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
   endif()
 
   if(NOT PROTOBUF_FOUND OR WIN32)

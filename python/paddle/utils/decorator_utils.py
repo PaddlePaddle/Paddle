@@ -392,6 +392,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 self.warn_msg,
                 category=Warning,
             )
+            self.warn_msg = None
         return args, kwargs
 
 
@@ -501,30 +502,21 @@ def transpose_decorator():
             if ("input" in kwargs) and ("x" not in kwargs):
                 kwargs["x"] = kwargs.pop("input")
 
-            has_dim0 = "dim0" in kwargs or (
-                len(args) > 1 and isinstance(args[1], int)
-            )
-            if has_dim0:
-                dim0 = kwargs.pop(
-                    "dim0",
-                    args[1]
-                    if (len(args) > 1 and isinstance(args[1], int))
-                    else None,
-                )
-                dim1 = kwargs.pop(
-                    "dim1",
-                    args[2]
-                    if (len(args) > 2 and isinstance(args[2], int))
-                    else None,
-                )
+            dim0 = kwargs.pop("dim0", kwargs.pop("axis0", None))
+            dim1 = kwargs.pop("dim1", kwargs.pop("axis1", None))
 
-                if dim0 is not None and dim1 is not None:
-                    ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
-                    perm = list(range(ndim))
-                    perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
-                    kwargs["perm"] = perm
-                    if len(args) > 1:
-                        args = (args[0],)
+            if dim0 is None and len(args) > 1 and isinstance(args[1], int):
+                dim0 = args[1]
+            if dim1 is None and len(args) > 2 and isinstance(args[2], int):
+                dim1 = args[2]
+
+            if dim0 is not None and dim1 is not None:
+                ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
+                perm = list(range(ndim))
+                perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
+                kwargs["perm"] = perm
+                if len(args) > 1:
+                    args = (args[0],)
 
             return func(*args, **kwargs)
 
@@ -555,6 +547,48 @@ def expand_decorator():
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def index_select_decorator():
+    """
+    Usage Example:
+    PyTorch: index_select(input, dim, index)
+        torch.index_select(input=input_tensor, dim=1, index=indices)
+        torch.index_select(input_tensor, 1, indices)
+    Paddle: index_select(x, index, axis=0)
+        paddle.index_select(x=input_tensor, index=indices, axis=1)
+        paddle.index_select(input_tensor, indices, axis=1)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) >= 2 and isinstance(args[1], int):
+                if len(args) < 3 and "index" not in kwargs:
+                    raise TypeError(
+                        "index_select() missing 1 required argument: 'index'"
+                    )
+                input_tensor = args[0]
+                dim_or_axis = args[1]
+                if "x" not in kwargs:
+                    kwargs["x"] = input_tensor
+                if "axis" not in kwargs:
+                    kwargs["axis"] = dim_or_axis
+                if len(args) > 2 and "index" not in kwargs:
+                    kwargs["index"] = args[2]
+                    args = args[3:]
+                else:
+                    args = args[2:]
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

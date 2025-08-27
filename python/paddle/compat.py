@@ -15,10 +15,12 @@
 from .tensor.compat import (
     Unfold,
     max,
+    median,
     min,
+    nanmedian,
     sort,
     split,
 )
 from .tensor.compat_softmax import softmax
 
-__all__ = ['softmax', 'split', 'sort', 'Unfold', 'min', 'max']
+__all__ = ['softmax', 'split', 'sort', 'Unfold', 'min', 'max', 'median', 'nanmedian']

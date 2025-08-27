@@ -30,6 +30,10 @@ from paddle._C_ops import (  # noqa: F401
     isfinite,
     isinf,
     isnan,
+    log,
+    logsumexp,
+    sign,
+    sin,
 )
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
@@ -96,7 +100,6 @@ from .ops import (  # noqa: F401
     rsqrt_,
     sigmoid,
     sigmoid_,
-    sin,
     sin_,
     sinh,
     sinh_,
@@ -167,61 +170,6 @@ def _get_reduce_axis_with_tensor(axis, x):
         if paddle.utils._contain_var(axis):
             axis = paddle.utils._convert_to_tensor_list(axis)
     return reduce_all, axis
-
-
-def log(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the natural log of the given input Tensor, element-wise.
-
-    .. math::
-
-        Out = \ln(x)
-
-    Args:
-        x (Tensor): Input Tensor. Must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-
-    Returns:
-        Tensor: The natural log of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = [[2, 3, 4], [7, 8, 9]]
-            >>> x = paddle.to_tensor(x, dtype='float32')
-            >>> print(paddle.log(x))
-            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.69314718, 1.09861231, 1.38629436],
-             [1.94591010, 2.07944155, 2.19722462]])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log", inputs={"X": x}, outputs={"Out": out})
-        return out
 
 
 @inplace_apis_in_dygraph_only
@@ -535,7 +483,13 @@ def scale_(
 
 
 @ParamAliasDecorator({"x": ["input"], "y": ["exponent"]})
-def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
+def pow(
+    x: Tensor,
+    y: float | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Compute the power of Tensor elements. The equation is:
 
@@ -557,6 +511,7 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         exponent: An alias for ``y`` , with identical behavior.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
@@ -591,9 +546,9 @@ def pow(x: Tensor, y: float | Tensor, name: str | None = None) -> Tensor:
     # in dynamic graph mode
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
-            return _C_ops.pow(x, y)
+            return _C_ops.pow(x, y, out=out)
         elif isinstance(y, (paddle.Tensor, Variable, paddle.pir.Value)):
-            return _C_ops.elementwise_pow(x, y)
+            return _C_ops.elementwise_pow(x, y, out=out)
         else:
             raise TypeError(
                 f"y must be scalar, Tensor(in dygraph mode), Value(in pir mode) but received: {type(y)}"
@@ -1044,6 +999,31 @@ def divide(
         if in_dynamic_or_pir_mode():
             tmp = _C_ops.divide(x, y)
             res = _C_ops.trunc(tmp, out=out)
+
+            if x.dtype in (
+                paddle.uint8,
+                paddle.int8,
+                paddle.int16,
+                paddle.int32,
+                paddle.int64,
+            ) and y.dtype in (
+                paddle.uint8,
+                paddle.int8,
+                paddle.int16,
+                paddle.int32,
+                paddle.int64,
+            ):
+                if x.dtype == paddle.int64 or y.dtype == paddle.int64:
+                    target_dtype = paddle.int64
+                elif x.dtype == paddle.int32 or y.dtype == paddle.int32:
+                    target_dtype = paddle.int32
+                elif x.dtype == paddle.int16 or y.dtype == paddle.int16:
+                    target_dtype = paddle.int16
+                elif x.dtype == paddle.int8 or y.dtype == paddle.int8:
+                    target_dtype = paddle.int8
+                else:
+                    target_dtype = paddle.uint8
+                _C_ops.cast_(res, target_dtype)
         else:
             tmp = _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -1095,8 +1075,24 @@ def divide_(
     if rounding_mode is None:
         res = _C_ops.divide_(x, y)
     elif rounding_mode == "trunc":
+        x_dtype = x.dtype
+        y_dtype = y.dtype
         tmp = _C_ops.divide_(x, y)
         res = _C_ops.trunc_(tmp)
+        if x_dtype in (
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+        ) and y_dtype in (
+            paddle.uint8,
+            paddle.int8,
+            paddle.int16,
+            paddle.int32,
+            paddle.int64,
+        ):
+            _C_ops.cast_(res, x_dtype)
     elif rounding_mode == "floor":
         res = _C_ops.floor_divide_(x, y)
     else:
@@ -1264,7 +1260,9 @@ floor_mod_.__doc__ = r"""
     """
 
 
-def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def multiply(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     multiply two tensors element-wise. The equation is:
 
@@ -1283,6 +1281,7 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
@@ -1310,7 +1309,7 @@ def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.multiply(x, y)
+        return _C_ops.multiply(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
@@ -3156,95 +3155,6 @@ def outer(
         return out
 
 
-def logsumexp(
-    x: Tensor,
-    axis: int | Sequence[int] | None = None,
-    keepdim: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    r"""
-    Calculates the log of the sum of exponentials of ``x`` along ``axis`` .
-
-    .. math::
-       logsumexp(x) = \log\sum exp(x)
-
-    Args:
-        x (Tensor): The input Tensor with data type bfloat16, float16, float32,
-            float64, uint8, int8, int16, int32, int64, which have no more than
-            4 dimensions.
-        axis (int|list|tuple|None, optional): The axis along which to perform
-            logsumexp calculations. ``axis`` should be int, list(int) or
-            tuple(int). If ``axis`` is a list/tuple of dimension(s), logsumexp
-            is calculated along all element(s) of ``axis`` . ``axis`` or
-            element(s) of ``axis`` should be in range [-D, D), where D is the
-            dimensions of ``x`` . If ``axis`` or element(s) of ``axis`` is
-            less than 0, it works the same way as :math:`axis + D` . If
-            ``axis`` is None, logsumexp is calculated along all elements of
-            ``x``. Default is None.
-        keepdim (bool, optional): Whether to reserve the reduced dimension(s)
-            in the output Tensor. If ``keep_dim`` is True, the dimensions of
-            the output Tensor is the same as ``x`` except in the reduced
-            dimensions(it is of size 1 in this case). Otherwise, the shape of
-            the output Tensor is squeezed in ``axis`` . Default is False.
-        name (str|None, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output Tensor. If set, the result will be
-            stored in this Tensor.
-
-    Returns:
-        Tensor, results of logsumexp along ``axis`` of ``x``, with the same data
-        type as ``x`` (integer types are autocasted into float32).
-
-    Examples:
-
-    .. code-block:: python
-
-        >>> import paddle
-
-        >>> x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        >>> out1 = paddle.logsumexp(x)
-        >>> out1
-        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-        3.46912265)
-        >>> out2 = paddle.logsumexp(x, 1)
-        >>> out2
-        Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-        [2.15317822, 3.15684605])
-
-    """
-    reduce_all, axis = _get_reduce_axis(axis, x)
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.logsumexp(x, axis, keepdim, reduce_all, out=out)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'uint16',
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-            ],
-            'logsumexp',
-        )
-
-        helper = LayerHelper('logsumexp', **locals())
-        attrs = {'axis': axis, 'keepdim': keepdim, 'reduce_all': reduce_all}
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type='logsumexp', inputs={'X': x}, outputs={'Out': out}, attrs=attrs
-        )
-        return out
-
-
 def inverse(x: Tensor, name: str | None = None) -> Tensor:
     """
     Takes the inverse of the square matrix. A square matrix is a matrix with
@@ -3306,6 +3216,7 @@ def inverse(x: Tensor, name: str | None = None) -> Tensor:
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.max",
     correct_name="paddle.compat.max",
+    url_suffix="torch/torch.max",
 )
 def max(
     x: Tensor,
@@ -3470,6 +3381,7 @@ def max(
     illegal_keys={"input", "dim", "other"},
     func_name="paddle.min",
     correct_name="paddle.compat.min",
+    url_suffix="torch/torch.min",
 )
 def min(
     x: Tensor,
@@ -4850,57 +4762,6 @@ def prod(
             outputs={'Out': out},
             attrs={'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all},
         )
-        return out
-
-
-def sign(x: Tensor, name: str | None = None) -> Tensor:
-    """
-    Returns sign of every element in `x`: For real numbers, 1 for positive, -1 for negative and 0 for zero. For complex numbers, the return value is a complex number with unit magnitude. If a complex number element is zero, the result is 0+0j.
-
-    Args:
-        x (Tensor): The input tensor. The data type can be uint8, int8, int16, int32, int64, bfloat16, float16, float32, float64, complex64 or complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: The output sign tensor with identical shape and data type to the input :attr:`x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([3.0, 0.0, -2.0, 1.7], dtype='float32')
-            >>> out = paddle.sign(x=x)
-            >>> out
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [ 1.,  0., -1.,  1.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.sign(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint8',
-                'int8',
-                'int16',
-                'int32',
-                'int64',
-                'float16',
-                'bfloat16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            'sign',
-        )
-        helper = LayerHelper("sign", **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-        helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
-
         return out
 
 

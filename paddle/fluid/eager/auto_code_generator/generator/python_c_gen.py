@@ -91,10 +91,11 @@ PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
     '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
 PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
-
+PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetOptionalTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
 )
+CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    {} = {}("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{},mesh);\n'
 
 CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE = """
     const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -458,16 +459,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     )
             else:
                 if is_optional:
-                    get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                    if need_parse_python_api_args:
+                        keywords = _get_keywords(name, args_alias_map)
+                        get_eager_tensor_str += PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
                             name,
-                            "GetOptionalTensorFromArgs",
                             forward_api_name,
                             name,
                             pos,
+                            keywords,
                             "true",
                         )
-                    )
+                    else:
+                        get_eager_tensor_str += (
+                            PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "true",
+                            )
+                        )
                 else:
                     input_single_tensor_names = (
                         input_single_tensor_names + ", " + name
@@ -621,14 +633,26 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         )
                 else:
                     if is_optional:
-                        optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                            name,
-                            "GetOptionalTensorFromArgs",
-                            forward_api_name,
-                            name,
-                            pos,
-                            "true",
-                        )
+                        if need_parse_python_api_args:
+                            keywords = _get_keywords(name, args_alias_map)
+                            optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgsOrKWArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                keywords,
+                                "true",
+                            )
+                        else:
+                            optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "true",
+                            )
             if len(input_single_tensor_names) > 0:
                 convert_to_dist_str += CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE.format(
                     input_names=input_names,
