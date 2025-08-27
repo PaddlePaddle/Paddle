@@ -124,28 +124,28 @@ else:
                 self, paddle.empty(shape=[0], dtype='float32'), place=device
             )
             return
-        try:
+        if 'data' in kwargs:  # case 7,8
+            data = kwargs.pop('data')
+            original_init(
+                self, paddle.tensor(data, dtype='float32'), place=device
+            )
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            # case 5, 6
+            original_init(
+                self, paddle.tensor(args[0], dtype='float32'), place=device
+            )
+        elif (
+            builtins.all(isinstance(arg, int) for arg in args)
+            and len(kwargs) == 0
+        ):
+            # case 3, 4
+            original_init(
+                self,
+                paddle.empty(shape=list(args), dtype='float32'),
+                place=device,
+            )
+        else:
             original_init(self, *args, **kwargs)
-        except Exception as e:
-            if 'data' in kwargs:  # case 7,8
-                data = kwargs.pop('data')
-                original_init(
-                    self, paddle.tensor(data, dtype='float32'), place=device
-                )
-            elif len(args) == 1 and isinstance(args[0], (list, tuple)):
-                # case 5, 6
-                original_init(
-                    self, paddle.tensor(args[0], dtype='float32'), place=device
-                )
-            elif builtins.all(isinstance(arg, int) for arg in args):
-                # case 3, 4
-                original_init(
-                    self,
-                    paddle.empty(shape=list(args), dtype='float32'),
-                    place=device,
-                )
-            else:
-                raise e
 
     Tensor.__init__ = new_init
 
