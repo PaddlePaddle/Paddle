@@ -24,8 +24,8 @@ namespace funcs {
 class TensorAssign {
  public:
   template <typename tensor_t>
-  constexpr void operator()(tensor_t* self_data,
-                            const tensor_t* src_data) const {
+  constexpr void operator()(tensor_t* __restrict__ self_data,
+                            const tensor_t* __restrict__ src_data) const {
     *self_data = *src_data;
   }
 };
@@ -34,8 +34,8 @@ static TensorAssign tensor_assign;
 class ReduceAdd {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data,
-                             const tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* __restrict__ self_data,
+                             const tensor_t* __restrict__ src_data) const {
     phi::CudaAtomicAdd(self_data, *src_data);
   }
 };
@@ -54,8 +54,8 @@ static ReduceMul reduce_mul;
 class ReduceMax {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data,
-                             const tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* __restrict__ self_data,
+                             const tensor_t* __restrict__ src_data) const {
     phi::CudaAtomicMax(self_data, *src_data);
   }
 };
@@ -64,8 +64,8 @@ static ReduceMax reduce_max;
 class ReduceMin {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data,
-                             const tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* __restrict__ self_data,
+                             const tensor_t* __restrict__ src_data) const {
     phi::CudaAtomicMin(self_data, *src_data);
   }
 };
@@ -93,15 +93,16 @@ struct DivMod {
 // TODO(heqianyue): remove force inline?
 // TODO(heqianyue): maybe use int32 to optimize?
 template <bool compute_self>
-__device__ __forceinline__ void ComputeOffset(const int64_t* index_shape,
-                                              const int64_t* src_stride,
-                                              const int64_t* input_stride,
-                                              int64_t* src_offset,
-                                              int64_t* input_offset,
-                                              int64_t tid,
-                                              const int ndim,
-                                              const int dim_to_put,
-                                              const int64_t idx_on_dim = 0) {
+__device__ __forceinline__ void ComputeOffset(
+    const int64_t* __restrict__ index_shape,
+    const int64_t* __restrict__ src_stride,
+    const int64_t* __restrict__ input_stride,
+    int64_t* __restrict__ src_offset,
+    int64_t* __restrict__ input_offset,
+    int64_t tid,
+    const int ndim,
+    const int dim_to_put,
+    const int64_t idx_on_dim = 0) {
   // TODO(heqianyue): maybe smaller tensors can use int32
   // TODO(heqianyue): use fast divmod to optimize the speed of div and mod
   int64_t _input_offset = 0, _src_offset = 0;
@@ -141,23 +142,28 @@ __device__ __forceinline__ void ComputeOffset(const int64_t* index_shape,
  *
  * We need a ComputeOffset as offset remapper, since both the shape of src
  * tensor and input self tensor can be bigger than the shape of index tensor
+ *
+ * @note these kernels are all marked with __restrict__, since inherently
+ * there will be no pointer aliases for normal uses. Therefore, please
+ * avoid using the following kernels for INPLACE ops
  */
 template <typename tensor_t,
           typename index_t,
           typename func_t,
           bool is_scatter_like = true,
           bool include_self = false>
-__global__ void GatherScatterGPUKernel(tensor_t* self_data,
-                                       const index_t* index_data,
-                                       const int64_t* shape_strides,
-                                       const tensor_t* src_data,
-                                       int64_t self_select_dim_size,
-                                       int64_t src_select_dim_size,
-                                       int64_t numel,
-                                       int dim,
-                                       int ndim,
-                                       const func_t& reduce_op,
-                                       int* aux_buffer = nullptr) {
+__global__ void GatherScatterGPUKernel(
+    tensor_t* __restrict__ self_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    const tensor_t* __restrict__ src_data,
+    int64_t self_select_dim_size,
+    int64_t src_select_dim_size,
+    int64_t numel,
+    int dim,
+    int ndim,
+    const func_t& reduce_op,
+    int* __restrict__ aux_buffer = nullptr) {
   extern __shared__ int64_t
       smem_shape_strides[];  // no more than 27 int64_t, won't affect occupancy
 
@@ -243,19 +249,20 @@ template <typename tensor_t,
           typename index_t,
           typename func_t,
           bool is_scatter_like = true>
-__global__ void ScatterMeanGPUKernel(tensor_t* self_data,
-                                     const index_t* index_data,
-                                     const int64_t* shape_strides,
-                                     const tensor_t* src_data,
-                                     int64_t self_select_dim_size,
-                                     int64_t src_select_dim_size,
-                                     int64_t numel,
-                                     int dim,
-                                     int ndim,
-                                     const func_t& reduce_op,
-                                     bool include_self = true,
-                                     int* aux_buffer = nullptr,
-                                     int* atomic_cnt_buffer = nullptr) {
+__global__ void ScatterMeanGPUKernel(
+    tensor_t* __restrict__ self_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    const tensor_t* __restrict__ src_data,
+    int64_t self_select_dim_size,
+    int64_t src_select_dim_size,
+    int64_t numel,
+    int dim,
+    int ndim,
+    const func_t& reduce_op,
+    bool include_self = true,
+    int* __restrict__ aux_buffer = nullptr,
+    int* __restrict__ atomic_cnt_buffer = nullptr) {
   extern __shared__ int64_t
       smem_shape_strides[];  // no more than 27 int64_t, won't affect occupancy
 
@@ -725,12 +732,13 @@ void gpu_scatter_min_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterInputGradGPUKernel(tensor_t* grad_data,
-                                          const index_t* index_data,
-                                          const int64_t* shape_strides,
-                                          int dim,
-                                          int ndim,
-                                          int64_t numel) {
+__global__ void ScatterInputGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel) {
   // no more than 18 int64_t, different from forward kernels
   // the backward kernel does not require src, so src_strides are not needed
   extern __shared__ int64_t smem_shape_strides[];
@@ -820,15 +828,16 @@ void gpu_scatter_input_grad_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMulInputGradGPUKernel(tensor_t* grad_data,
-                                             const index_t* index_data,
-                                             const tensor_t* out_data,
-                                             const tensor_t* x_data,
-                                             const int64_t* shape_strides,
-                                             int dim,
-                                             int ndim,
-                                             int64_t numel,
-                                             int* aux_buffer) {
+__global__ void ScatterMulInputGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const tensor_t* __restrict__ out_data,
+    const tensor_t* __restrict__ x_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -861,17 +870,18 @@ __global__ void ScatterMulInputGradGPUKernel(tensor_t* grad_data,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMinMaxInputGradGPUKernel(tensor_t* grad_data,
-                                                const index_t* index_data,
-                                                const tensor_t* out_data,
-                                                const tensor_t* x_data,
-                                                const tensor_t* value_data,
-                                                const tensor_t* self_data,
-                                                const int64_t* shape_strides,
-                                                int dim,
-                                                int ndim,
-                                                int64_t numel,
-                                                int* aux_buffer) {
+__global__ void ScatterMinMaxInputGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const tensor_t* __restrict__ out_data,
+    const tensor_t* __restrict__ x_data,
+    const tensor_t* __restrict__ value_data,
+    const tensor_t* __restrict__ self_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -921,12 +931,12 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
     const std::string& reduce,
     bool include_self UNUSED,
     const phi::DeviceContext& dev_ctx) {
-  auto* index_data = index.data<index_t>();
   auto* grad_data = grad.data<tensor_t>();
+  auto* index_data = index.data<index_t>();
   auto* out_data = out.data<tensor_t>();
   auto* x_data = x.data<tensor_t>();
   auto* value_data = value.data<tensor_t>();
-  auto* self_data = self.data<tensor_t>();
+  const auto* self_data = self.data<tensor_t>();
 
   auto index_dims = index.dims();
 
@@ -1007,14 +1017,15 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMeanInputGradGPUKernel(tensor_t* grad_data,
-                                              const index_t* index_data,
-                                              const int64_t* shape_strides,
-                                              int dim,
-                                              int ndim,
-                                              int64_t numel,
-                                              int64_t grad_numel,
-                                              int* aux_buffer) {
+__global__ void ScatterMeanInputGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    int64_t grad_numel,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1121,14 +1132,15 @@ void gpu_scatter_mean_input_grad_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterValueGradGPUKernel(tensor_t* grad_data,
-                                          const tensor_t* self_data,
-                                          const index_t* index_data,
-                                          const int64_t* shape_strides,
-                                          int dim,
-                                          int ndim,
-                                          int64_t numel,
-                                          int* aux_buffer) {
+__global__ void ScatterValueGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const tensor_t* __restrict__ self_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1230,14 +1242,15 @@ void gpu_scatter_value_grad_kernel(phi::DenseTensor self,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMeanValueGradGPUKernel(tensor_t* grad_data,
-                                              const tensor_t* self_data,
-                                              const index_t* index_data,
-                                              const int64_t* shape_strides,
-                                              int dim,
-                                              int ndim,
-                                              int64_t numel,
-                                              int* aux_buffer) {
+__global__ void ScatterMeanValueGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const tensor_t* __restrict__ self_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1271,13 +1284,14 @@ __global__ void ScatterMeanValueGradGPUKernel(tensor_t* grad_data,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterAddValueGradGPUKernel(tensor_t* grad_data,
-                                             const tensor_t* self_data,
-                                             const index_t* index_data,
-                                             const int64_t* shape_strides,
-                                             int dim,
-                                             int ndim,
-                                             int64_t numel) {
+__global__ void ScatterAddValueGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const tensor_t* __restrict__ self_data,
+    const index_t* __restrict__ index_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1316,7 +1330,7 @@ void gpu_scatter_add_mean_value_grad_kernel(
     const std::string& reduce,
     bool include_self,
     const phi::DeviceContext& dev_ctx UNUSED) {
-  auto* self_data = self.data<tensor_t>();
+  const auto* self_data = self.data<tensor_t>();
   auto* index_data = index.data<index_t>();
   auto* grad_data = grad.data<tensor_t>();
 
@@ -1388,15 +1402,16 @@ void gpu_scatter_add_mean_value_grad_kernel(
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMulValueGradGPUKernel(tensor_t* grad_data,
-                                             const index_t* index_data,
-                                             const tensor_t* self_data,
-                                             const tensor_t* value_data,
-                                             const tensor_t* out_data,
-                                             const int64_t* shape_strides,
-                                             int dim,
-                                             int ndim,
-                                             int64_t numel) {
+__global__ void ScatterMulValueGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const tensor_t* __restrict__ self_data,
+    const tensor_t* __restrict__ value_data,
+    const tensor_t* __restrict__ out_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1426,18 +1441,19 @@ __global__ void ScatterMulValueGradGPUKernel(tensor_t* grad_data,
 }
 
 template <typename tensor_t, typename index_t>
-__global__ void ScatterMinMaxValueGradGPUKernel(tensor_t* grad_data,
-                                                const index_t* index_data,
-                                                const tensor_t* self_data,
-                                                const tensor_t* value_data,
-                                                const tensor_t* out_data,
-                                                const tensor_t* x_data,
-                                                const int64_t* shape_strides,
-                                                int dim,
-                                                int ndim,
-                                                int64_t numel,
-                                                bool include_self,
-                                                int* aux_buffer) {
+__global__ void ScatterMinMaxValueGradGPUKernel(
+    tensor_t* __restrict__ grad_data,
+    const index_t* __restrict__ index_data,
+    const tensor_t* __restrict__ self_data,
+    const tensor_t* __restrict__ value_data,
+    const tensor_t* __restrict__ out_data,
+    const tensor_t* __restrict__ x_data,
+    const int64_t* __restrict__ shape_strides,
+    int dim,
+    int ndim,
+    int64_t numel,
+    bool include_self,
+    int* __restrict__ aux_buffer) {
   extern __shared__ int64_t smem_shape_strides[];
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -1488,7 +1504,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(
     const std::string& reduce,
     bool include_self,
     const phi::DeviceContext& dev_ctx) {
-  auto* self_data = self.data<tensor_t>();
+  const auto* self_data = self.data<tensor_t>();
   auto* index_data = index.data<index_t>();
   auto* grad_data = grad.data<tensor_t>();
   auto* out_data = out.data<tensor_t>();
