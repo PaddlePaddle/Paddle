@@ -418,15 +418,19 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
     const std::string& block_id,
     const int rd_thread,
     const int vectorize_factor) {
-  int threads_axis = 1;
-  int vectorize_axis = 2;
+  int threads_axis = 2;
+  int vectorize_axis = 3;
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
+    VLOG(6) << "YUHAN!!! Split loops[1] " << loops[1] << "to (" << rd_thread
+            << ", " << vectorize_factor << ")";
     sch->Split(loops[1], {rd_thread, vectorize_factor});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
   } else {
     sch->Split(loops[1], {-1, rd_thread});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
     loops = sch->GetLoops(block_id);
   }
 
@@ -440,6 +444,7 @@ void ReduceRegionWithReduceBlockVectorizeTilingSchedule(
 
   const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
     sch->Bind(loops[0], "blockIdx.x");
+    sch->Bind(loops[1], "threadIdx.y");
     sch->Bind(loops[threads_axis], "threadIdx.x");
   };
 
@@ -457,6 +462,7 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
   auto loops = sch->GetLoops(block_id);
   if (ContainsVectorizableAxis(sch, loops.size() - 1, block_id)) {
     sch->Split(loops[1], std::vector<int>{rd_thread, vectorize_factor});
+    sch->Split(loops[0], std::vector<int>{-1, 8});
 
     // set vectorize schedule primitives
     loops = sch->GetLoops(block_id);
@@ -464,6 +470,7 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     sch->Vectorize(loops[vectorize_axis], vectorize_factor);
     const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
       sch->Bind(loops[0], "blockIdx.x");
+      sch->Bind(loops[1], "threadIdx.y");
       auto threadsIdx_x_axis = vectorize_axis - 1;
       sch->Bind(loops[threadsIdx_x_axis], "threadIdx.x");
     };
@@ -473,6 +480,7 @@ void ReduceRegionWithSpatialBlockVectorizeTilingSchedule(
     sch->Split(loops[1], std::vector<int>{-1, rd_thread});
     const auto DoBind = [&](const std::vector<ir::Expr>& loops) {
       sch->Bind(loops[0], "blockIdx.x");
+      sch->Bind(loops[1], "threadIdx.y");
       auto threadsIdx_x_axis = loops.size() - 1;
       sch->Bind(loops[threadsIdx_x_axis], "threadIdx.x");
     };

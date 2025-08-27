@@ -326,11 +326,10 @@ bool ReduceRegionCanVectorize(
     const int factor) {
   const int64_t spatial_numel = base_info->spatial_numel;
   const int64_t reduce_numel = base_info->reduce_numel;
-  if (warp_nums < 4 && spatial_numel > 1) return false;
-
+  // if (warp_nums < 4 && spatial_numel > 1) return false;
   int rd_thread_num = warp_nums * kWarpSize;
-  if ((warp_nums > 1 || spatial_numel < warp_nums * 64) &&
-      CheckThreadDimensionCanVectorize(
+  // if ((warp_nums > 1 || spatial_numel < warp_nums * 64) &&
+  if (CheckThreadDimensionCanVectorize(
           rd_thread_num, reduce_numel, factor, true) &&
       CheckSmUtilization(
           base_info, sm_config, spatial_numel * factor, rd_thread_num)) {

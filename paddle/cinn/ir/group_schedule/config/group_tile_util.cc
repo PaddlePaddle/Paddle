@@ -15,6 +15,7 @@
 #include "paddle/cinn/ir/group_schedule/config/group_tile_util.h"
 #include "paddle/cinn/hlir/framework/pir/trivial_op_impl.h"
 #include "paddle/cinn/ir/ir_analyzer/ir_analyzer.h"
+#include "paddle/cinn/ir/schedule/impl/ir_schedule.h"
 
 namespace cinn {
 
@@ -205,24 +206,211 @@ bool CheckBroadcastTensorIsContinuous(
   return false;
 }
 
+// 检查常量是否是 2/4 的整数倍（满足 float2/float4 对齐）
+bool IsAlignedConstant(int value, int alignment = 4) {
+  return (value % alignment) == 0;
+}
+
+// 辅助函数：递归提取加法表达式的所有项
+void ExtractAddTerms(const ir::Expr& expr, std::vector<ir::Expr>* terms) {
+  if (expr.As<ir::Add>()) {
+    ExtractAddTerms(expr.As<ir::Add>()->a(), terms);
+    ExtractAddTerms(expr.As<ir::Add>()->b(), terms);
+  } else {
+    terms->push_back(expr);
+  }
+}
+
+// 检查表达式是否是线性组合（如 j*C3 + k + C4）
+bool IsLinearOffsetExpr(
+    const ir::Expr& expr,
+    const ir::Var& outer_iter,
+    const ir::Var& inner_iter,
+    const std::unordered_map<ir::Var, ir::Expr>& iter_var2value,
+    bool* has_outer = nullptr,     // 是否找到 outer_iter（j）
+    bool* has_inner = nullptr,     // 是否找到 inner_iter（k）
+    bool* has_constant = nullptr,  // 是否找到常量项（C4）
+    int* outer_coeff = nullptr,    // outer_iter 的系数（C3）
+    int* constant_term = nullptr   // 常量项的值（C4）
+) {
+  // 1. 简化表达式
+  std::vector<Var> replaced;
+  std::vector<Expr> candidates;
+  for (auto iter : iter_var2value) {
+    replaced.push_back(iter.first);
+    candidates.push_back(iter.second);
+  }
+  ir::Expr simplified = expr;
+  ReplaceExpr(&simplified, replaced, candidates);
+  simplified = optim::ArithSimplify(expr, IndexExpr::OptLevel::kLevel3);
+
+  // 2. 提取所有加法项（支持嵌套加法结构）
+  std::vector<ir::Expr> terms;
+  ExtractAddTerms(simplified, &terms);  // 递归提取加法项
+
+  for (const ir::Expr& term : terms) {
+    // 情况1：term 是 j*C3 乘法项）
+    if (term.As<ir::Mul>() && term.As<ir::Mul>()->b().is_constant()) {
+      ir::Expr var = term.As<ir::Mul>()->a();
+      ir::Expr coeff = term.As<ir::Mul>()->b();
+      if (var.is_var() && iter_var2value.count(var.as_var_ref())) {
+        ir::Expr iter_value = iter_var2value.at(var.as_var_ref());
+        if (iter_value.is_var() && iter_value.as_var_ref() == outer_iter) {
+          *has_outer = true;
+          *outer_coeff = coeff.get_constant();
+          continue;
+        }
+      } else if (var.is_var() && !iter_var2value.count(var.as_var_ref()) &&
+                 var.as_var_ref() == outer_iter) {
+        // i0_43, i1_39 = axis.bind(i, ((j * 128) + j_0))
+        *has_outer = true;
+        *outer_coeff = coeff.get_constant();
+        continue;
+      }
+    }
+
+    // 情况2：term 是 k（变量项）
+    if (term.is_var() && iter_var2value.count(term.as_var_ref())) {
+      ir::Expr iter_value = iter_var2value.at(term.as_var_ref());
+      if (iter_value.is_var() && iter_value.as_var_ref() == inner_iter) {
+        *has_inner = true;
+        continue;
+      } else if (!iter_value.is_var()) {
+        /* iter_value 不是变量，而是一个表达式，例如：
+        serial for (i, 0ll, 32768ll)
+        {
+            serial for (j_1, 0, 16)
+            {
+                serial for (j_2, 0, 128)
+                {
+                    ScheduleBlock(var_45)
+                    {
+                        i0_88, i1_80 = axis.bind(i, ((j_1 * 128) + j_2))
+                        {
+                            var_45[i0_88, i1_80];
+                        }
+                    }
+                }
+            }
+        }
+        */
+        if (IsLinearOffsetExpr(iter_value,
+                               outer_iter,
+                               inner_iter,
+                               iter_var2value,
+                               has_outer,
+                               has_inner,
+                               has_constant,
+                               outer_coeff,
+                               constant_term)) {
+          continue;
+        }
+      }
+    } else if (term.is_var() && !iter_var2value.count(term.as_var_ref()) &&
+               term.as_var_ref() == inner_iter) {
+      // i0_43, i1_39 = axis.bind(i, ((j * 128) + j_0))
+      *has_inner = true;
+      continue;
+    }
+
+    // 情况3：term 是常量 C4
+    if (term.is_constant()) {
+      *has_constant = true;
+      *constant_term = term.get_constant();
+      continue;
+    }
+
+    // 其他情况：非法项
+    return false;
+  }
+
+  // // 必须包含 outer_iter 和 inner_iter
+  // if (!has_outer || !has_inner) {
+  //   VLOG(6) << "YUHAN!!! Missing outer or inner iter in linear combo";
+  //   return false;
+  // }
+
+  // 调试输出
+  VLOG(6) << "YUHAN!!! Found linear combo: " << *outer_coeff << "*"
+          << outer_iter << " + " << inner_iter;
+  if (*has_constant) {
+    VLOG(6) << " + " << *constant_term;
+  }
+
+  return true;
+}
+
 bool CheckTensorIsContinuous(
     const std::vector<Expr>& indices,
     const std::vector<ir::Var>& for_iters,
     const std::unordered_map<ir::Var, ir::Expr>& iter_var2value) {
-  for (int i = 0; i < indices.size(); ++i) {
-    ir::Expr index = indices[i];
-    index = optim::ArithSimplify(index);
-    if (!index.is_var()) return false;
-    ir::Var iter_var = index.as_var_ref();
-    if (!iter_var2value.count(iter_var)) {
-      return false;
-    }
-    ir::Expr iter_value = iter_var2value.at(iter_var);
-    if (!iter_value.as_var()) return false;
-    if (for_iters[i] != iter_value.as_var_ref()) {
-      return false;
-    }
+  /* After reshapeOp and Inline
+  for i in range(C1):
+    for j in range(C2):
+      for k in range(C3):
+          A[i][j][k]; // one on one
+          B[i][C3*j + k + C4]; // After reshapeOp -> Linear
+          D[i][j]; // k axis is reduecd
+          E[i][C5][C6]; // need broadcast
+  */
+  // 检查最后一维的偏移表达式
+  ir::Expr offset_expr = indices.back();
+  std::vector<Var> replaced;
+  std::vector<Expr> candidates;
+  for (auto iter : iter_var2value) {
+    replaced.push_back(iter.first);
+    candidates.push_back(iter.second);
   }
+  ReplaceExpr(&offset_expr, replaced, candidates);
+  offset_expr = optim::ArithSimplify(offset_expr, IndexExpr::OptLevel::kLevel3);
+
+  ir::Expr offset_expr_plusone = offset_expr;
+  ReplaceExpr(&offset_expr_plusone,
+              {for_iters[for_iters.size() - 1]},
+              {Add::Make(for_iters[for_iters.size() - 1], Expr(1))});
+
+  auto diff = optim::ArithSimplify(Sub::Make(offset_expr_plusone, offset_expr),
+                                   IndexExpr::OptLevel::kLevel3);
+  if (!diff.is_constant()) {
+    return false;
+  }
+  if (diff.get_constant() != 0 && diff.get_constant() != 1) {
+    return false;
+  }
+  // 条件2：C3 和 C4 必须是 2/4 的整数倍
+  // if (!IsAlignedConstant(outer_coeff, 2) &&
+  //     !IsAlignedConstant(outer_coeff) &&
+  //     !IsAlignedConstant(constant_term, 2) &&
+  //     !IsAlignedConstant(constant_term)) {
+  //   VLOG(6) << "YUHAN!! Coefficient not aligned (required 2/4 multiple)";
+  //   return false;
+  // }
+
+  // 条件3：检查越界（假设已知张量形状为 shape[]）
+  const ir::_Var_* var_ptr = for_iters.back().get();
+  ir::Expr ub = var_ptr->upper_bound;
+  ir::Expr lb = var_ptr->lower_bound;
+  ir::Expr extent_mod4 = optim::ArithSimplify(
+      Mod::Make(Sub::Make(ub, lb), Expr(4)), IndexExpr::OptLevel::kLevel3);
+  ir::Expr extent_mod2 = optim::ArithSimplify(
+      Mod::Make(Sub::Make(ub, lb), Expr(2)), IndexExpr::OptLevel::kLevel3);
+  if (!extent_mod4.is_constant() || extent_mod4.get_constant() != 0) {
+    VLOG(6) << "YUHAN!! Extent not aligned (required 4 multiple)";
+    return false;
+  }
+  if (!extent_mod2.is_constant() || extent_mod2.get_constant() != 0) {
+    VLOG(6) << "YUHAN!! Extent not aligned (required 2 multiple)";
+    return false;
+  }
+  // if (lb.get_constant() != 0 || outer_coeff != ub.get_constant()) {
+  //   VLOG(6) << "YUHAN!! ub.get_constant() is" << ub.get_constant() <<
+  // ", C3 is" << outer_coeff;
+  //   return false;
+  // }
+  // if (C3 * (/* C2 */) + (/* C3 */) >= inner_dim_size) {
+  //   VLOG(6) << "YUHAN!! Offset access out of bounds";
+  //   return false;
+  // }
   return true;
 }
 
