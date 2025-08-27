@@ -51,6 +51,7 @@ class TestClearParamStorage(unittest.TestCase):
         optimizer = DygraphShardingOptimizerV2(optimizer, hcg)
         optimizer.clear_param_storage("_w")
         optimizer.clear_param_storage("_b")
+        optimizer.clear_param_storage(None)
         optimizer.reset_param_storage()
 
 
