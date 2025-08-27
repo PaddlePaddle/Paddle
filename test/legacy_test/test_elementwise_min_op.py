@@ -542,7 +542,10 @@ class TestMinimumOutAndAlias(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program()):
+        startup_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
             x = paddle.static.data('X', [5, 7], 'float32')
             y = paddle.static.data('Y', [5, 7], 'float32')
             z = paddle.minimum(input=x, other=y)
@@ -552,9 +555,9 @@ class TestMinimumOutAndAlias(unittest.TestCase):
         ref = np.minimum(x_data, y_data)
 
         exe = paddle.static.Executor(paddle.CPUPlace())
-        exe.run(paddle.static.default_startup_program())
+        exe.run(startup_prog)
         out = exe.run(
-            paddle.static.default_main_program(),
+            main_prog,
             feed={'X': x_data, 'Y': y_data},
             fetch_list=[z],
         )
