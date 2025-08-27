@@ -267,19 +267,18 @@ class TestPaddleNarrowMultiDim(TestNarrowBase):
         self.length = 1
 
 
-# TODO(Difers) Address the 0-size issue in the as_strided operator.”
-# class TestPaddleNarrowEmptyTensor(TestNarrowBase):
-#     def setUp(self):
-#         self.input_np = np.empty((0, 4), dtype='float32')
-#         self.input_shape = self.input_np.shape
-#         self.input_dtype = 'float32'
-#         self.op_static = lambda x: paddle.narrow(x, dim=0, start=0, length=0)
-#         self.op_dygraph = lambda x: paddle.narrow(x, dim=0, start=0, length=0)
-#         self.expected = lambda x: x[0:0, :]
-#         self.places = [None, paddle.CPUPlace()]
-#         self.dim = 0
-#         self.start = 0
-#         self.length = 0
+class TestPaddleNarrowEmptyTensor(TestNarrowBase):
+    def setUp(self):
+        self.input_np = np.empty((0, 4), dtype='float32')
+        self.input_shape = self.input_np.shape
+        self.input_dtype = 'float32'
+        self.op_static = lambda x: paddle.narrow(x, dim=0, start=0, length=0)
+        self.op_dygraph = lambda x: paddle.narrow(x, dim=0, start=0, length=0)
+        self.expected = lambda x: x[0:0, :]
+        self.places = [None, paddle.CPUPlace()]
+        self.dim = 0
+        self.start = 0
+        self.length = 0
 
 
 @unittest.skipIf(paddle.device.get_device().startswith("xpu"), "Skip on XPU")
