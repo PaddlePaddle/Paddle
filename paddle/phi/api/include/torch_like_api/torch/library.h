@@ -1130,7 +1130,7 @@ class Library {
   }
 
   template <class CurClass>
-  class_<CurClass> class_(const std::string& className) {
+  ::torch::class_<CurClass> class_(const std::string& className) {
     return ::torch::class_<CurClass>(ns_, className);
   }
 

@@ -13,9 +13,42 @@
 // limitations under the License.
 
 #pragma once
+#include <cstdint>
+#include <exception>
+#include <memory>
+#include <string>
+#include <variant>
+#include <vector>
+
+#include "paddle/common/enforce.h"
+#include "paddle/common/errors.h"
 #include "paddle/common/exception.h"
+#include "paddle/common/macros.h"
 
 namespace c10 {
-#define TORCH_CHECK PD_CHECK
-#define TORCH_INTERNAL_ASSERT PD_CHECK
+#define TORCH_CHECK(COND, ...) PD_CHECK(COND, ##__VA_ARGS__);
+#define TORCH_INTERNAL_ASSERT(COND, ...) PD_CHECK(COND, ##__VA_ARGS__);
 }  // namespace c10
+
+enum class C10ErrorType {
+  NotImplementedError,
+  Error,
+};
+
+constexpr auto NotImplementedError = C10ErrorType::NotImplementedError;
+constexpr auto Error = C10ErrorType::Error;
+
+inline void C10ThrowImpl(C10ErrorType err_type, const std::string& msg) {
+  switch (err_type) {
+    case C10ErrorType::NotImplementedError:
+      PADDLE_THROW(common::errors::Unimplemented(msg));
+      break;
+    case C10ErrorType::Error:
+      PADDLE_THROW(common::errors::InvalidArgument(msg));
+      break;
+    default:
+      PADDLE_THROW(common::errors::Fatal("Unknown error type: " + msg));
+  }
+}
+
+#define C10_THROW_ERROR(err_type, msg) C10ThrowImpl(err_type, msg)
