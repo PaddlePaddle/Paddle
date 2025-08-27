@@ -31,7 +31,7 @@ def get_ir_program():
         with paddle.static.program_guard(main_program, start_program):
             x_s = paddle.static.data('x', [4, 4], x.dtype)
             x_s.stop_gradient = False
-            y_s = paddle.matmul(x_s, x_s)
+            y_s = paddle.divide(x_s, x_s)
             z_s = paddle.add(y_s, y_s)
             k_s = paddle.tanh(z_s)
             q_s = paddle.unsqueeze(k_s, [2])
@@ -65,45 +65,45 @@ class TestPybind(unittest.TestCase):
     def test_operation(self):
         pir_program = get_ir_program()
         ops = pir_program.global_block().ops
-        matmul_op = ops[1]
+        divide_op = ops[1]
         add_op = ops[2]
         tanh_op = ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
         self.assertEqual(tanh_op.num_results(), 1)
-        self.assertEqual(len(matmul_op.get_input_names()), 2)
-        self.assertEqual(len(matmul_op.get_attr_names()), 2)
-        self.assertEqual(len(matmul_op.get_output_names()), 1)
+        self.assertEqual(len(divide_op.get_input_names()), 2)
+        self.assertEqual(len(divide_op.get_attr_names()), 0)
+        self.assertEqual(len(divide_op.get_output_names()), 1)
         # test operand.index
-        self.assertEqual(matmul_op.operand(0).index(), 0)
-        self.assertEqual(matmul_op.operand(1).index(), 1)
+        self.assertEqual(divide_op.operand(0).index(), 0)
+        self.assertEqual(divide_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
         self.assertEqual(add_op.operand(1).index(), 1)
         self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
+        divide_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         tanh_op = pir_program.global_block().ops[3]
 
         self.assertEqual(
-            matmul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
+            divide_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
         )
-        self.assertEqual(matmul_op.result(0).shape, [4, 4])
+        self.assertEqual(divide_op.result(0).shape, [4, 4])
         self.assertEqual(
-            matmul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
+            divide_op.results()[0].get_defining_op().name(), "pd_op.divide"
         )
         self.assertEqual(
-            matmul_op.result(0).get_defining_op().name(), "pd_op.matmul"
+            divide_op.result(0).get_defining_op().name(), "pd_op.divide"
         )
-        matmul_op.result(0).stop_gradient = True
-        self.assertEqual(matmul_op.result(0).stop_gradient, True)
+        divide_op.result(0).stop_gradient = True
+        self.assertEqual(divide_op.result(0).stop_gradient, True)
 
         # test opresult hash
         result_set = ValueSet()
-        for opresult in matmul_op.results():
+        for opresult in divide_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
         self.assertTrue(add_op.operands()[0].source() in result_set)
@@ -115,7 +115,7 @@ class TestPybind(unittest.TestCase):
         )
         # test value == opresult
         self.assertTrue(
-            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+            add_op.operands_source()[0].is_same(divide_op.results()[0])
         )
         # test opresult print
         self.assertTrue(
@@ -127,7 +127,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult == opresult
         self.assertTrue(
-            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+            add_op.operands()[0].source().is_same(divide_op.results()[0])
         )
 
         # test opresult print
@@ -137,10 +137,10 @@ class TestPybind(unittest.TestCase):
         self.assertTrue(
             'tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
         )
-        add_op.replace_all_uses_with(matmul_op.results())
+        add_op.replace_all_uses_with(divide_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
-            "pd_op.matmul",
+            "pd_op.divide",
         )
 
         self.assertEqual(add_op.result(0).use_empty(), True)
@@ -152,10 +152,10 @@ class TestPybind(unittest.TestCase):
 
     def test_type(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
+        divide_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         self.assertEqual(
-            matmul_op.result(0).type() == add_op.result(0).type(), True
+            divide_op.result(0).type() == add_op.result(0).type(), True
         )
         add_op.result(0).set_type(
             paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
@@ -174,13 +174,15 @@ class TestPybind(unittest.TestCase):
                 conv_data = paddle.static.data(
                     'conv_data', [None, 3, 32, 32], dtype='float32'
                 )
-                conv2d_out = paddle.static.nn.conv2d(
-                    input=conv_data,
-                    num_filters=2,
-                    filter_size=3,
+                conv2d_out = paddle.nn.Conv2D(
+                    in_channels=3,
+                    out_channels=2,
+                    kernel_size=3,
                     stride=3,
-                    act="relu",
-                )
+                    padding=0,
+                    data_format="NCHW",
+                )(conv_data)
+                conv2d_out = paddle.nn.functional.relu(conv2d_out)
                 full_out = paddle.tensor.fill_constant(
                     shape=[4, 4], dtype="float32", value=2
                 )
@@ -204,14 +206,14 @@ class TestPybind(unittest.TestCase):
 
     def test_operands(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
-        operands = matmul_op.operands()
+        divide_op = pir_program.global_block().ops[1]
+        operands = divide_op.operands()
         self.assertEqual(len(operands), 2)
 
     def test_results(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
-        results = matmul_op.results()
+        divide_op = pir_program.global_block().ops[1]
+        results = divide_op.results()
         self.assertEqual(len(results), 1)
 
     def test_get_output_intermediate_status(self):
