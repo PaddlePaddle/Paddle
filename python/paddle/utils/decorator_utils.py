@@ -538,3 +538,38 @@ def index_select_decorator():
         return wrapper
 
     return decorator
+
+
+def sum_decorator():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("dim" in kwargs) and ("axis" not in kwargs):
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) == 3:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                else:
+                    kwargs["dtype"] = args[2]
+                args = ()
+            elif len(args) == 4:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                    kwargs["dtype"] = args[3]
+                else:
+                    kwargs["dtype"] = args[2]
+                    kwargs["keepdim"] = args[3]
+                args = ()
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
