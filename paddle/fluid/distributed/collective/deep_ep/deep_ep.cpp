@@ -36,7 +36,7 @@
 #include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 
-COMMON_DECLARE_bool(deep_ep_comm_prealloc_in_mb);
+COMMON_DECLARE_int64(deep_ep_comm_prealloc_in_mb);
 
 namespace deep_ep {
 std::once_flag pre_alloc_once_flag;
