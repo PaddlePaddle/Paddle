@@ -21,13 +21,13 @@ from paddle.incubate.tensor.manipulation import enable_activation_offload
 
 class MyPyLayer(paddle.autograd.PyLayer):
     @staticmethod
-    def forward(ctx, x):
-        ctx.save_for_backward(x)
+    def forward(ctx, x, *args):
+        ctx.save_for_backward(x, args)
         return x * x / 2
 
     @staticmethod
     def backward(ctx, y_grad):
-        (x,) = ctx.saved_tensor()
+        x, args = ctx.saved_tensor()
         return x * y_grad
 
 
@@ -39,7 +39,12 @@ class TestMain(unittest.TestCase):
         if platform.system().lower() == "windows":
             return
 
-        paddle.set_flags({"FLAGS_print_offload_info": 1})
+        paddle.set_flags(
+            {
+                "FLAGS_print_offload_info": 1,
+                "FLAGS_offload_inplace_tensor": True,
+            }
+        )
         H = 10240
         model = paddle.nn.Linear(H, H)
         enable_activation_offload(model, enable=True, retry_times=1000)
@@ -49,7 +54,9 @@ class TestMain(unittest.TestCase):
             for _ in range(num_loop):
                 x = paddle.randn([H, H])
                 y = model(x)
-                tmp = MyPyLayer.apply(y)
+                empty_tensor = paddle.empty((0, 200))
+                empty_tensor._clear_to_zero_allocation()
+                tmp = MyPyLayer.apply(y, paddle.empty((0, 10)), empty_tensor)
                 if z is None:
                     z = tmp
                 else:
@@ -60,6 +67,7 @@ class TestMain(unittest.TestCase):
         func(1)
         func(25)
         enable_activation_offload(model, enable=False)
+        paddle.core.offload_cached_size()
 
 
 if __name__ == "__main__":

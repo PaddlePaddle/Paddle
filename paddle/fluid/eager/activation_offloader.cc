@@ -74,9 +74,7 @@ void ReloadFunctor::Reload() {
   offloader_->Remove(tensor_);
   auto dense_tensor = tensor_.lock();
   size_t memory_size = GetMemorySize(dense_tensor);
-  if (memory_size == 0) {
-    return;
-  }
+  if (memory_size == 0) return;
   auto dst_place = offloader_->Place();
   if (dense_tensor->place() != dst_place) {
     if (FLAGS_print_offload_info) {
@@ -120,15 +118,9 @@ paddle::optional<ReloadFunctor> ActivationOffloaderWithPlace::Add(
     const paddle::Tensor &activation) {
   size_t memory_size;
   auto dense_tensor = GetDenseTensorImpl(activation, &memory_size);
-  if (memory_size == 0) {
-    return paddle::none;
-  }
-  if (skip_tensors_.count(dense_tensor) > 0) {
-    return paddle::none;
-  }
-  if (dense_tensor->place() != place_) {
-    return paddle::none;
-  }
+  if (memory_size == 0) return paddle::none;
+  if (skip_tensors_.count(dense_tensor) > 0) return paddle::none;
+  if (dense_tensor->place() != place_) return paddle::none;
   if (!dense_tensor->meta().is_contiguous()) {
     VLOG(7) << "Offload skip non-contiguous tensor "
             << GetTensorMetaString(dense_tensor)
@@ -337,10 +329,7 @@ ActivationOffloaderWithPlace *ActivationOffloader::GetOrCreateOffloader(
 
 size_t ActivationOffloader::Offload(phi::Place place, size_t size) {
   auto *offloader = GetOrCreateOffloader(place);
-  if (offloader != nullptr) {
-    return offloader->Offload(size);
-  }
-  return 0;
+  return offloader != nullptr ? offloader->Offload(size) : 0;
 }
 
 size_t ActivationOffloader::CachedSize() const {
