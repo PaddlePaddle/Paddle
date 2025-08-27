@@ -503,6 +503,11 @@ class Test_Embedding(unittest.TestCase):
             )
             assert layer.weight.stop_gradient
 
+    def test_padding_idx(self):
+        with dygraph_guard():
+            layer = self.api(32, 16, padding_idx=2)
+            assert layer._padding_idx == layer.padding_idx
+
 
 if __name__ == '__main__':
     unittest.main()

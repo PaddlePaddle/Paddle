@@ -1866,6 +1866,10 @@ class Embedding(Layer):
             with paddle.no_grad():
                 self.weight[padding_idx] = 0.0
 
+    @property
+    def padding_idx(self):
+        return self._padding_idx
+
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
