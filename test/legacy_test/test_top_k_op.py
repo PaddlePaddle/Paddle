@@ -93,6 +93,10 @@ class TestTopkOutAPI(unittest.TestCase):
             elif case == 'both_input_out':
                 _ = paddle.topk(x, k, out=(out_values, out_indices))
                 values, indices = out_values, out_indices
+            elif case == 'struct_return':
+                res = paddle.topk(x, k)
+                values = res.values
+                indices = res.indices
             else:
                 raise AssertionError
 
@@ -108,7 +112,7 @@ class TestTopkOutAPI(unittest.TestCase):
             loss.backward()
             return values.numpy(), indices.numpy(), x.grad.numpy()
 
-        # run four scenarios
+        # run five scenarios
         v1, i1, g1 = run_case('return')
         x.clear_gradient()
         v2, i2, g2 = run_case('input_out')
@@ -116,16 +120,21 @@ class TestTopkOutAPI(unittest.TestCase):
         v3, i3, g3 = run_case('both_return')
         x.clear_gradient()
         v4, i4, g4 = run_case('both_input_out')
+        x.clear_gradient()
+        v5, i5, g5 = run_case('struct_return')
 
         np.testing.assert_allclose(v1, v2, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(v1, v3, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(v1, v4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(v1, v5, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(i1, i2, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(i1, i3, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(i1, i4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(i1, i5, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(g1, g2, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(g1, g3, rtol=1e-6, atol=1e-6)
         np.testing.assert_allclose(g1, g4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(g1, g5, rtol=1e-6, atol=1e-6)
 
         paddle.enable_static()
 

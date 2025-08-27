@@ -836,7 +836,9 @@ def max(
     return ret
 
 
-MedianRetType = MinMaxRetType
+class MedianRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
 
 
 @ForbidKeywordsDecorator(
