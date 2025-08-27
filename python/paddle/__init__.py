@@ -867,12 +867,15 @@ clamp = clip
 ger = outer
 div = divide
 div_ = divide_
+eq = equal
+gt = greater_than
 swapdims = transpose
 swapaxes = transpose
 
-
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',

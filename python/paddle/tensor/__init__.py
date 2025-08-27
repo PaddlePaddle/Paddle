@@ -499,6 +499,7 @@ from .to_string import set_printoptions  # noqa: F401
 div = divide
 div_ = divide_
 mul_ = multiply_
+take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
 
@@ -831,6 +832,7 @@ tensor_method_func = [
     'moveaxis',
     'repeat_interleave',
     'take_along_axis',
+    'take_along_dim',
     'scatter_reduce',
     'put_along_axis',
     'scatter_add',
