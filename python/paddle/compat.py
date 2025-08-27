@@ -11,14 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .tensor.compat import (
-    Unfold,
-    max,
-    min,
-    slogdet,
-    sort,
-    split,
-)
-
-__all__ = ['split', 'sort', 'slogdet', 'Unfold', 'min', 'max']
