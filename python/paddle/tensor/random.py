@@ -1246,9 +1246,9 @@ def rand_like(
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    tensor = uniform(
-        input.shape, dtype=dtype, min=0.0, max=1.0, name=name, place=device
-    )
+    tensor = paddle.rand(input.shape, dtype=dtype, name=name)
+    if device is not None:
+        tensor = tensor.to(device)
     if requires_grad:
         tensor.stop_gradient = False
     return tensor
@@ -1466,8 +1466,6 @@ def uniform(
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
-    *,
-    place: PlaceLike | None = None,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -1500,9 +1498,6 @@ def uniform(
             time. Default is 0.
         name(str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-        place(PlaceLike|None, optional): The desired device of returned tensor.
-            if None, uses the current device for the default tensor type (see paddle.device.set_device()).
-            device will be the CPU for CPU tensor types and the current CUDA device for CUDA tensor types. Default: None.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform
@@ -1567,11 +1562,7 @@ def uniform(
             float(min),
             float(max),
             seed,
-            (
-                _get_paddle_place(place)
-                if place is not None
-                else _current_expected_place()
-            ),
+            _current_expected_place(),
         )
     elif in_pir_mode():
         check_type(
@@ -1593,11 +1584,7 @@ def uniform(
             min,
             max,
             seed,
-            (
-                _get_paddle_place(place)
-                if place is not None
-                else _current_expected_place()
-            ),
+            _current_expected_place(),
         )
     else:
         check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
