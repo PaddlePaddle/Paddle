@@ -21,7 +21,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/pir/include/core/value.h"
-
+#include "paddle/utils/optional.h"
 namespace paddle {
 
 namespace pybind {
@@ -32,6 +32,13 @@ using IntVector = std::vector<int64_t>;
 
 void SumPreProcess(Tensor* x, IntArray* axis);
 void SumPreProcess(Value* x, Value* axis);
+
+void ExpandAsPreProcess(paddle::Tensor* x,
+                        paddle::optional<paddle::Tensor>* y,
+                        std::vector<int64_t>* target_shape);
+void ExpandAsPreProcess(Value* x,
+                        paddle::optional<pir::Value>* y,
+                        std::vector<int64_t>* target_shape);
 
 void RollPreProcess(Tensor* x, IntArray* shifts, IntVector* axis);
 void RollPreProcess(Value* x, Value* shifts, IntVector* axis);

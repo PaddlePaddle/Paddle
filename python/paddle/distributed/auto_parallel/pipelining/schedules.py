@@ -26,6 +26,9 @@ from typing import (
     NamedTuple,
 )
 
+from paddle import nn
+from paddle.distributed.auto_parallel.pipelining.stage import PipelineStage
+
 if TYPE_CHECKING:
     from .stage import _PipelineStageBase
 
@@ -526,6 +529,104 @@ class ScheduleFThenB(PipelineScheduleSingle):
 
         # Synchronize the gradients of shared parameters.
         self._stage._sync_shared_param_grads()
+
+
+class PipelineChunk(nn.Layer):
+    def __init__(self, layers=None, is_first=False, is_last=False):
+        super().__init__()
+        assert not (is_first and is_last), (
+            "Pipeline stage cannot be both first and last."
+        )
+        self.layers = layers
+        self.is_first = is_first
+        self.is_last = is_last
+
+    def forward(self, *args, **kwargs):
+        if self.is_first:
+            input_ids = kwargs.get("input_ids")
+            attention_mask = kwargs.get("attention_mask")
+            position_ids = kwargs.get("position_ids")
+            outputs = (input_ids, attention_mask, position_ids)
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            return outputs
+        elif self.is_last:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+        else:
+            outputs = args
+            # decoder layers
+            for idx, (decoder_layer) in enumerate(self.layers):
+                outputs = decoder_layer(outputs)
+        return outputs
+
+
+def _manual_model_split(model, stage_idx, group, mode, pp_degree):
+    num_hidden_layers = model.config.num_hidden_layers
+    virtual_pp_degree = model.config.virtual_pp_degree if mode == "VPP" else 1
+    chunk_size = num_hidden_layers // virtual_pp_degree // pp_degree
+    chunk_num = virtual_pp_degree * pp_degree
+    layer_lists = model.layers
+
+    def _build_stage(model, stage_idx, group):
+        new_model = None
+        if stage_idx == 0:
+            new_model = PipelineChunk(
+                layer_lists[:chunk_size], is_first=True, is_last=False
+            )
+        elif stage_idx == chunk_num - 1:
+            new_model = PipelineChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=True,
+            )
+        else:
+            new_model = PipelineChunk(
+                layer_lists[
+                    stage_idx * chunk_size : (stage_idx + 1) * chunk_size
+                ],
+                is_first=False,
+                is_last=False,
+            )
+        stage = PipelineStage(new_model, stage_idx, chunk_num, group=group)
+        return stage
+
+    stages = []
+    for i in range(virtual_pp_degree):
+        stage = _build_stage(model, stage_idx + i * pp_degree, group)
+        stages.append(stage)
+    return stages
+
+
+def get_pipeline_schedule(model, acc_steps, loss_fn, mode, pp_degree, group):
+    assert mode in [
+        "VPP",
+        "1F1B",
+        "FThenB",
+    ], (
+        f"Invalid pipeline schedule mode: {mode}, must be one of ['VPP', '1F1B', 'FThenB']"
+    )
+    stages = _manual_model_split(model, group.rank, group, mode, pp_degree)
+    if mode == "VPP":
+        schedule = ScheduleVPP(
+            stages, n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    elif mode == "1F1B":
+        schedule = Schedule1F1B(
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    else:
+        schedule = ScheduleFThenB(
+            stages[0], n_microbatches=acc_steps, loss_fn=loss_fn
+        )
+    return schedule
 
 
 class Schedule1F1B(PipelineScheduleSingle):

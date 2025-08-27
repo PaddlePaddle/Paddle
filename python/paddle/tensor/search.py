@@ -22,7 +22,11 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    index_select_decorator,
+    param_one_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_variable_and_dtype
@@ -182,8 +186,14 @@ def argsort(
         return ids
 
 
+@index_select_decorator()
 def index_select(
-    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -192,11 +202,23 @@ def index_select(
     of dimensions as the original ``x`` tensor. The dim-th dimension has the same
     size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
+    .. note::
+        Alias and Order Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim`` can be used as an alias for ``axis``.
+        3. This API also supports the PyTorch argument order ``(input, dim, index)`` for positional arguments, which will be converted to the Paddle order ``(x, index, axis)``.
+        For example, ``paddle.index_select(input=x, dim=1, index=idx)`` is equivalent to ``paddle.index_select(x=x, axis=1, index=idx)``, and ``paddle.index_select(x, 1, idx)`` is equivalent to ``paddle.index_select(x, idx, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
+            alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+            alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.
@@ -223,7 +245,7 @@ def index_select(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.index_select(x, index, axis)
+        return _C_ops.index_select(x, index, axis, out=out)
     else:
         helper = LayerHelper("index_select", **locals())
         check_variable_and_dtype(

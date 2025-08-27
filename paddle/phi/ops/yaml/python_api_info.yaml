@@ -8,6 +8,12 @@
   args_alias :
     use_default_mapping : True
 
+- op : expand_as
+  name : [paddle.expand_as,paddle.Tensor.expand_as]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : ExpandAsPreProcess(x,y,target_shape)
 - op : logical_and
   name : [paddle.logical_and, paddle.Tensor.logical_and]
   args_alias:
