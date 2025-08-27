@@ -5222,6 +5222,10 @@
 
 - op : sqrt
   args : (Tensor x)
+  python_api :
+    name : [paddle.sqrt,paddle.Tensor.sqrt]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

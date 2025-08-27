@@ -1283,6 +1283,43 @@ def floor(
     """,
 )
 # hehongyu
+add_doc_and_signature(
+    "sqrt",
+    """
+    Sqrt Activation Operator.
+
+    .. math::
+       out=\\sqrt{x}=x^{1/2}
+
+    Args:
+        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Sqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.sqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.31622776, 0.44721359, 0.54772258, 0.63245553])
+    """,
+    """
+def sqrt(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+    """,
+)
 
 # lousiyu
 
