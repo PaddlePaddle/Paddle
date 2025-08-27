@@ -21,6 +21,11 @@ from utils import dygraph_guard
 import paddle
 
 
+@unittest.skipIf(
+    paddle.device.is_compiled_with_cuda()
+    and paddle.device.is_compiled_with_rocm(),
+    reason="Skip dcu for error occurs when running on dcu",
+)
 class TestSlogDet(unittest.TestCase):
     def setUp(self) -> None:
         self.shapes = [
@@ -43,11 +48,6 @@ class TestSlogDet(unittest.TestCase):
         grad_x = grad_logabsdet * x_inv_T
         return grad_x
 
-    @unittest.skipIf(
-        paddle.device.is_compiled_with_cuda()
-        and paddle.device.is_compiled_with_rocm(),
-        reason="Skip dcu for error occurs when running on dcu",
-    )
     def test_compat_slogdet(self):
         with dygraph_guard():
             for shape, dtype in product(self.shapes, self.dtypes):
@@ -136,7 +136,7 @@ class TestSlogDet(unittest.TestCase):
 
         sign, logabsdet = paddle.compat.slogdet(x, out=(sign_, logabsdet_))
 
-        # skip until multiple outputs are supported
+        # skip until multiple outputs are supported for out
         # self.assertEqual(sign_.data_ptr(), sign.data_ptr())
         # self.assertEqual(logabsdet_.data_ptr(), logabsdet.data_ptr())
 
