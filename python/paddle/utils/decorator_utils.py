@@ -396,7 +396,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
         return args, kwargs
 
 
-class ForbidKeywordsIgnoreOneParamDecorator(DecoratorBase):
+class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected and one argument is ignored"""
 
     def __init__(
@@ -421,14 +421,8 @@ class ForbidKeywordsIgnoreOneParamDecorator(DecoratorBase):
 
                 In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
         """
-        super().__init__()
-        self.illegal_keys = illegal_keys
+        super().__init__(illegal_keys, func_name, correct_name, url_suffix)
         self.ignore_param = ignore_param
-        self.func_name = func_name
-        self.correct_name = correct_name
-        self.warn_msg = None
-        if url_suffix:
-            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
