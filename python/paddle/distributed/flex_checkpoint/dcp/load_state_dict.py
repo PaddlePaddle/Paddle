@@ -17,6 +17,7 @@ from __future__ import annotations
 import copy
 import math
 import os
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -27,17 +28,24 @@ from paddle.base.framework import (
 from paddle.distributed.communication.group import is_initialized
 from paddle.distributed.fleet.utils.log_util import logger
 
+from ..aoa.aoa_engine import (
+    AOAEngine,
+)
 from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .sharded_weight import (
     ShardedWeight,
+    ShardedWeightDesc,
 )
 from .utils import (
+    assign_sharded_slice,
+    build_shard_desc,
     check_unique_id,
     compute_local_shape_and_global_offset,
     flat_range_in_min_slice,
     flatten_state_dict,
     get_max_id,
     is_sharded_state_dict,
+    merge_shard_info_list,
     minimal_nd_slice,
 )
 
@@ -54,6 +62,7 @@ class ReadItem:
     cur_offset: tuple[int]
     storage_offset: tuple[int]
     lengths: tuple[int]
+    global_offset: tuple[int, ...] | None
 
 
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
@@ -105,13 +114,17 @@ def get_rank_to_files(
     necessary_files = []
     mw_name_compatibility_mapping = {}
 
+    state_dict_param_names = {
+        key if isinstance(key, str) else key[0] for key in state_dict.keys()
+    }
+
     for metadata in metadata_list:
         for local_tensor_index, file_name in metadata.storage_metadata.items():
             assert local_tensor_index not in tensor_key_list, (
                 f"Duplicate tensor_key:{local_tensor_index} found. Check whether the metadata."
             )
             tensor_key_list.append(local_tensor_index.tensor_key)
-            if local_tensor_index.tensor_key in state_dict:
+            if local_tensor_index.tensor_key in state_dict_param_names:
                 necessary_files.append(file_name)
 
     all_necessary_files = []
@@ -156,7 +169,7 @@ def get_rank_to_files(
     ), (
         f"The checkpoint files are not complete. Please check the checkpoint directory. global_data_files_set:{global_data_files_set}, necessary_data_files_set:{global_necessary_files_set}"
     )
-    missing_keys = set(state_dict.keys()) - set(tensor_key_list)
+    missing_keys = set(state_dict_param_names) - set(tensor_key_list)
     if len(missing_keys) > 0:
         if mw_name_compatibility:
             mw_name_compatibility_mapping = _modify_mw_name_for_compatibility(
@@ -462,8 +475,10 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
             storage_state_dict_metadata[tensor_key] += local_tensor_metadata
 
     read_items = []
+    global_shape = None
     logger.debug(f"storage_state_dict_metadata:{storage_state_dict_metadata}")
     for tensor_key, val in state_dict.items():
+        tensor_name = None
         if isinstance(val, paddle.Tensor):
             if val.is_dist():
                 # when val is scalar, the shape is []
@@ -479,6 +494,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                     if len(val.shape) > 0
                     else ((), ())
                 )
+                global_shape = tuple(val.shape)
                 if local_shape is None or global_offset is None:
                     continue
             else:
@@ -486,7 +502,9 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                 global_offset = (
                     tuple([0] * len(val.shape)) if len(val.shape) > 0 else ()
                 )
+                global_shape = local_shape
             dtype = str(val.dtype).split(".")[1]
+            tensor_name = tensor_key
         elif isinstance(val, ShardedWeight):
             local_shape, global_offset = (
                 (val.local_shape, val.global_offset)
@@ -494,20 +512,23 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                 else ((), ())
             )
             dtype = str(val.local_tensor.dtype).split(".")[1]
-
+            tensor_name = (
+                tensor_key[0] if isinstance(tensor_key, tuple) else tensor_key
+            )
         else:
             raise ValueError(
                 f"Only support paddle.Tensor., val type:{type(val)}"
             )
 
         cur_chunk_metadata = LocalTensorMetadata(
-            global_offset, local_shape, dtype
+            global_offset, local_shape, dtype, global_shape
         )
-        assert tensor_key in storage_state_dict_metadata, (
+        assert tensor_name in storage_state_dict_metadata, (
             f"tensor_key:{tensor_key} not found in storage_state_dict_metadata:{storage_state_dict_metadata}."
         )
+
         for storage_local_tensor_metadata in storage_state_dict_metadata[
-            tensor_key
+            tensor_name
         ]:
             if not_overlap(cur_chunk_metadata, storage_local_tensor_metadata):
                 continue
@@ -515,7 +536,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                 cur_chunk_metadata, storage_local_tensor_metadata
             )
             storage_local_tensor_index = LocalTensorIndex(
-                tensor_key,
+                tensor_name,
                 tuple(storage_local_tensor_metadata.global_offset),
             )
             read_items.append(
@@ -526,6 +547,7 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
                     tuple(cur_offsets),
                     tuple(storage_offsets),
                     tuple(lengths),
+                    global_offset,
                 )
             )
 
@@ -539,6 +561,179 @@ def get_read_items(metadata_list, state_dict, process_group, use_dist):
         for item in items:
             global_read_items.append(item)
     return global_read_items
+
+
+def _split_flat_shards(state_dict):
+    flat_shards, nonflat_shards = {}, {}
+    for key, shard in state_dict.items():
+        if getattr(shard, "is_flattened", False):
+            flat_shards[key] = shard
+        else:
+            nonflat_shards[key] = shard
+    return flat_shards, nonflat_shards
+
+
+def _unflatten_shards(flat_shards):
+    load_dict, padding_info = {}, {}
+    for key, flat_shard in flat_shards.items():
+        local_shape = flat_shard.local_shape
+        flat_start, flat_end = (
+            flat_shard.flattened_range.start,
+            flat_shard.flattened_range.stop,
+        )
+        min_slices, _, _ = minimal_nd_slice(local_shape, flat_start, flat_end)
+        min_flat_start, min_flat_end = flat_range_in_min_slice(
+            local_shape, min_slices, flat_start, flat_end
+        )
+        min_shape = tuple(e - s for s, e in min_slices)
+        min_offset = tuple(
+            g_off + s[0]
+            for g_off, s in zip(flat_shard.global_offset, min_slices)
+        )
+        min_numel = math.prod(min_shape)
+        flat_numel = flat_end - flat_start
+
+        if min_numel == flat_numel:
+            tensor = flat_shard.local_tensor.reshape_(min_shape)
+            load_dict[key] = ShardedWeight(
+                key=key,
+                local_tensor=tensor,
+                local_shape=min_shape,
+                global_shape=flat_shard.global_shape,
+                global_offset=min_offset,
+                is_flattened=False,
+                flattened_range=None,
+            )
+        else:
+            pad_tensor = paddle.zeros(
+                min_shape, dtype=flat_shard.local_tensor.dtype
+            )
+            load_dict[key] = ShardedWeight(
+                key=key,
+                local_tensor=pad_tensor,
+                local_shape=min_shape,
+                global_shape=flat_shard.global_shape,
+                global_offset=min_offset,
+                is_flattened=False,
+                flattened_range=None,
+            )
+            padding_info[key] = {
+                "src": pad_tensor,
+                "flat_shard": flat_shard,
+                "slice_range": (min_flat_start, min_flat_end),
+                "min_shape": min_shape,
+            }
+    return load_dict, padding_info
+
+
+def _handle_aoa(
+    load_dict,
+    path,
+    process_group,
+    coordinator_rank,
+    unique_id,
+    offload,
+    aoa_config,
+):
+    metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
+    assert len(metadata_files) == 1, "Only support one metadata file now."
+    metadata = paddle.load(os.path.join(path, metadata_files[0]))
+    state_dict_metadata = metadata.state_dict_metadata
+
+    source_state_shard_info = {
+        param_name: [
+            ShardedWeightDesc(
+                key=param_name,
+                local_shape=tuple(meta.local_shape),
+                global_shape=tuple(meta.global_shape),
+                global_offset=tuple(meta.global_offset),
+            )
+            for meta in local_tensor_metas
+        ]
+        for param_name, local_tensor_metas in state_dict_metadata.items()
+    }
+    destination_state_shard_info = defaultdict(list)
+    for key, val in load_dict.items():
+        desc = build_shard_desc(val)
+        destination_state_shard_info[key].append(desc)
+    dst_sharded_shard_info_list = []
+    paddle.distributed.all_gather_object(
+        dst_sharded_shard_info_list,
+        dict(destination_state_shard_info),
+        process_group,
+    )
+    destination_state_shard_info = merge_shard_info_list(
+        dst_sharded_shard_info_list
+    )
+
+    aoa_engine = AOAEngine(
+        source_state_shard_info=source_state_shard_info,
+        destination_state_shard_info=destination_state_shard_info,
+        aoa_config=aoa_config,
+    )
+
+    src_desc_to_sharded_tensor = {}
+    dst_to_src_desc_mapping = {}
+    new_load_dict = {}
+
+    for param_name, tgt_shard in load_dict.items():
+        tgt_desc = build_shard_desc(tgt_shard)
+        shard_mappings = aoa_engine.find_shard_sources(tgt_desc)
+        for mapping in shard_mappings:
+            src_desc = mapping.source_slice
+            dst_desc = mapping.target_slice
+            idx = (src_desc.key, tuple(src_desc.global_offset))
+            if len(shard_mappings) == 1:
+                assert (
+                    src_desc.local_shape == dst_desc.local_shape
+                    and src_desc.global_shape == dst_desc.global_shape
+                    and src_desc.global_offset == dst_desc.global_offset
+                )
+                new_load_dict[idx] = ShardedWeight(
+                    key=src_desc.key,
+                    local_tensor=tgt_shard.local_tensor,
+                    local_shape=src_desc.local_shape,
+                    global_shape=src_desc.global_shape,
+                    global_offset=src_desc.global_offset,
+                )
+            else:
+                local_tensor = paddle.empty(
+                    src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
+                )
+                new_load_dict[idx] = ShardedWeight(
+                    key=src_desc.key,
+                    local_tensor=local_tensor,
+                    local_shape=src_desc.local_shape,
+                    global_shape=src_desc.global_shape,
+                    global_offset=src_desc.global_offset,
+                )
+                src_desc_to_sharded_tensor[src_desc] = new_load_dict[idx]
+                dst_to_src_desc_mapping[dst_desc] = src_desc
+
+    load_state_dict_impl(
+        new_load_dict,
+        path,
+        process_group,
+        coordinator_rank,
+        unique_id,
+        offload,
+    )
+
+    for dst_desc, src_desc in dst_to_src_desc_mapping.items():
+        src_tensor = src_desc_to_sharded_tensor[src_desc]
+        dst_tensor = load_dict[dst_desc.key]
+        assign_sharded_slice(src_desc, src_tensor, dst_desc, dst_tensor)
+
+
+def _finish_unflatten(flat_shards, padding_info):
+    for key, info in padding_info.items():
+        src_tensor = info["src"]
+        flat_shard = info["flat_shard"]
+        start, end = info["slice_range"]
+        src_flat = src_tensor.flatten()
+        paddle.assign(src_flat[start:end], flat_shard.local_tensor)
+    for key, flat_shard in flat_shards.items():
+        flat_shard.local_tensor.flatten_()
 
 
 def load_state_dict(
@@ -586,109 +781,7 @@ def load_state_dict(
             [24, 25, 26, 27, 28, 29, 30, 31]])}
             >>> # doctest: -SKIP
     """
-    if is_sharded_state_dict(state_dict):
-        use_dist = True if paddle.distributed.get_world_size() > 1 else False
-        if use_dist:
-            flat_shards, nonflat_shards = {}, {}
-            for key, shard in state_dict.items():
-                if getattr(shard, "is_flattened", False):
-                    flat_shards[key] = shard
-                else:
-                    nonflat_shards[key] = shard
-
-            load_dict = {}
-            padding_info = {}
-
-            for key, flat_shard in flat_shards.items():
-                local_shape = flat_shard.local_shape
-                flat_start, flat_end = (
-                    flat_shard.flattened_range.start,
-                    flat_shard.flattened_range.stop,
-                )
-                min_slices, _, _ = minimal_nd_slice(
-                    local_shape, flat_start, flat_end
-                )
-                min_flat_start, min_flat_end = flat_range_in_min_slice(
-                    local_shape, min_slices, flat_start, flat_end
-                )
-                min_shape = tuple(e - s for s, e in min_slices)
-                min_offset = tuple(
-                    g_off + s[0]
-                    for g_off, s in zip(flat_shard.global_offset, min_slices)
-                )
-                min_numel = math.prod(min_shape)
-                flat_numel = flat_end - flat_start
-
-                if min_numel == flat_numel:
-                    tensor = flat_shard.local_tensor.reshape_(min_shape)
-                    load_dict[key] = ShardedWeight(
-                        key=key,
-                        local_tensor=tensor,
-                        local_shape=min_shape,
-                        global_shape=flat_shard.global_shape,
-                        global_offset=min_offset,
-                        is_flattened=False,
-                        flattened_range=None,
-                    )
-                else:
-                    pad_tensor = paddle.zeros(
-                        min_shape, dtype=flat_shard.local_tensor.dtype
-                    )
-                    load_dict[key] = ShardedWeight(
-                        key=key,
-                        local_tensor=pad_tensor,
-                        local_shape=min_shape,
-                        global_shape=flat_shard.global_shape,
-                        global_offset=min_offset,
-                        is_flattened=False,
-                        flattened_range=None,
-                    )
-                    padding_info[key] = {
-                        "src": pad_tensor,
-                        "flat_shard": flat_shard,
-                        "slice_range": (min_flat_start, min_flat_end),
-                        "min_shape": min_shape,
-                    }
-
-            load_dict.update(nonflat_shards)
-
-            load_state_dict_impl(
-                load_dict,
-                path,
-                process_group,
-                coordinator_rank,
-                unique_id,
-                offload,
-            )
-
-            for key, info in padding_info.items():
-                src_tensor = info["src"]
-                flat_shard = info["flat_shard"]
-                start, end = info["slice_range"]
-                src_flat = src_tensor.flatten()
-                paddle.assign(src_flat[start:end], flat_shard.local_tensor)
-
-            for key, flat_shard in flat_shards.items():
-                flat_shard.local_tensor.flatten_()
-        else:
-            load_dict = {}
-            for key, val in state_dict.items():
-                assert val.local_shape == val.global_shape, (
-                    f"{key} is not replicated !"
-                )
-                load_dict[key] = val.local_tensor
-
-            load_state_dict_impl(
-                load_dict,
-                path,
-                process_group,
-                coordinator_rank,
-                unique_id,
-                offload,
-                mw_name_compatibility,
-            )
-
-    else:
+    if not is_sharded_state_dict(state_dict):
         load_state_dict_impl(
             state_dict,
             path,
@@ -698,10 +791,60 @@ def load_state_dict(
             offload,
             mw_name_compatibility,
         )
+        return
+
+    use_dist = paddle.distributed.get_world_size() > 1
+    if not use_dist:
+        load_dict = {}
+        for key, val in state_dict.items():
+            assert val.local_shape == val.global_shape, (
+                f"{key} is not replicated!"
+            )
+            load_dict[key] = val
+        load_state_dict_impl(
+            load_dict,
+            path,
+            process_group,
+            coordinator_rank,
+            unique_id,
+            offload,
+            mw_name_compatibility,
+        )
+        return
+
+    flat_shards, nonflat_shards = _split_flat_shards(state_dict)
+    load_dict, padding_info = _unflatten_shards(flat_shards)
+    load_dict.update(nonflat_shards)
+
+    if aoa_config is not None:
+        _handle_aoa(
+            load_dict,
+            path,
+            process_group,
+            coordinator_rank,
+            unique_id,
+            offload,
+            aoa_config,
+        )
+    else:
+        load_state_dict_impl(
+            load_dict,
+            path,
+            process_group,
+            coordinator_rank,
+            unique_id,
+            offload,
+        )
+
+    _finish_unflatten(flat_shards, padding_info)
 
 
 def load_state_dict_impl(
-    state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
+    state_dict: (
+        dict[str, Tensor]
+        | dict[str, ShardedWeight]
+        | dict[tuple[str, tuple[int, ...]], ShardedWeight]
+    ),
     path: str,
     process_group: Group | None = None,
     coordinator_rank: int = 0,
@@ -713,7 +856,13 @@ def load_state_dict_impl(
         assert isinstance(state_dict, dict), (
             "The state_dict should be a dictionary."
         )
-        flat_state_dict, mapping = flatten_state_dict(state_dict)
+        first_key = next(iter(state_dict), None)
+        if isinstance(first_key, tuple):
+            flat_state_dict = state_dict
+            mapping = {}
+        else:
+            flat_state_dict, mapping = flatten_state_dict(state_dict)
+
         if len(flat_state_dict) > 0:
             for val in flat_state_dict.values():
                 assert isinstance(val, (paddle.Tensor, ShardedWeight)), (
@@ -756,7 +905,6 @@ def load_state_dict_impl(
                 mw_name_compatibility,
             )
         )
-
         if len(missing_keys) > 0:
             logger.warning(
                 f"The following keys:{missing_keys} are not found in checkpoint path: {path}."
@@ -818,7 +966,11 @@ def load_state_dict_impl(
 
 
 def _load_state_dict(
-    target_state_dict: dict[str : Tensor | ShardedWeight],
+    target_state_dict: (
+        dict[str, Tensor]
+        | dict[str, ShardedWeight]
+        | dict[tuple[str, tuple[int, ...]], ShardedWeight]
+    ),
     source_state_dict: dict[str : dict[str:Tensor]],
     metadata_list,
     process_group=None,
@@ -838,7 +990,6 @@ def _load_state_dict(
         read_items = get_read_items(
             metadata_list, target_state_dict, process_group, use_dist
         )
-
         copied_target_state_dict = {}
         for key, value in target_state_dict.items():
             if isinstance(value, ShardedWeight):
@@ -846,13 +997,22 @@ def _load_state_dict(
             else:
                 copied_target_state_dict[key] = value
 
-        state_dict_in_cpu = []
+        state_dict_in_cpu = {}
         idx = 0
+        assert not any(
+            isinstance(k, tuple) for k in copied_target_state_dict
+        ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
+            "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
+        )
+
         for item in read_items:
-            key = item.local_tensor_index.tensor_key
+            if any(isinstance(k, tuple) for k in copied_target_state_dict):
+                key = (item.local_tensor_index.tensor_key, item.global_offset)
+            else:
+                key = item.local_tensor_index.tensor_key
             if key in copied_target_state_dict:
                 if copied_target_state_dict[key].place.is_cpu_place():
-                    state_dict_in_cpu.append(key)
+                    state_dict_in_cpu[key] = copied_target_state_dict[key]
                     copied_target_state_dict[key] = copied_target_state_dict[
                         key
                     ].cuda()
@@ -898,22 +1058,14 @@ def _load_state_dict(
                     storage_chunk_tensor = storage_local_tensor
             # The read item rank need to be assigned
             if item.rank == paddle.distributed.get_rank():
-                assert (
-                    item.local_tensor_index.tensor_key
-                    in copied_target_state_dict
-                ), f"item:{item}, state_dict:{copied_target_state_dict}"
+                assert key in copied_target_state_dict, (
+                    f"item:{item}, state_dict:{copied_target_state_dict}"
+                )
 
                 cur_local_tensor = (
-                    copied_target_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]._local_value()
-                    if use_dist
-                    and copied_target_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ].is_dist()
-                    else copied_target_state_dict[
-                        item.local_tensor_index.tensor_key
-                    ]
+                    copied_target_state_dict[key]._local_value()
+                    if use_dist and copied_target_state_dict[key].is_dist()
+                    else copied_target_state_dict[key]
                 )
 
                 cur_offsets = item.cur_offset
@@ -958,18 +1110,20 @@ def _load_state_dict(
                         tmp_tensor, src=src_rank, group=process_group
                     )
                     paddle.assign(tmp_tensor, cur_chunk_tensor)
-            if (
-                key in state_dict_in_cpu
-                and idx + 1 < len(read_items)
-                and read_items[idx + 1].local_tensor_index.tensor_key != key
+            if key in state_dict_in_cpu and (
+                (
+                    idx + 1 < len(read_items)
+                    and read_items[idx + 1].local_tensor_index.tensor_key != key
+                )
+                or idx + 1 == len(read_items)
             ):
-                copied_target_state_dict[key] = copied_target_state_dict[
-                    key
-                ].cpu()
+                paddle.assign(
+                    copied_target_state_dict[key].cpu(), state_dict_in_cpu[key]
+                )
             idx = idx + 1
 
-        if use_dist:
-            paddle.distributed.barrier(process_group)
+            if use_dist:
+                paddle.distributed.barrier(process_group)
 
 
 def compute_global_shape(local_tensor_indices):

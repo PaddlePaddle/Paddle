@@ -23,6 +23,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -1967,6 +1968,9 @@ def rot90(
         return flip(transpose(x, axes_list), axes[1])
 
 
+@ParamAliasDecorator(
+    {"x": ["input"], "start_axis": ["start_dim"], "stop_axis": ["end_dim"]}
+)
 def flatten(
     x: Tensor, start_axis: int = 0, stop_axis: int = -1, name: str | None = None
 ) -> Tensor:
@@ -2005,11 +2009,18 @@ def flatten(
           We get:
             Out.shape = (3 * 100 * 100 * 4)
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, the parameter name ``start_dim`` can be used as an alias for ``start_axis`` , and the parameter name ``end_dim`` can be used as an alias for ``stop_axis``.
+        For example, ``flatten(input=tensor_x, start_dim=0, end_dim=-1)`` is equivalent to ``flatten(x=tensor_x, start_axis=0, stop_axis=-1)``.
+
     Args:
         x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
                       float64, int8, int32, int64, uint8.
+            alias: ``input``.
         start_axis (int): the start axis to flatten
+            alias: ``start_dim``.
         stop_axis (int): the stop axis to flatten
+            alias: ``end_dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2181,119 +2192,6 @@ def flatten_(
 
     if in_dynamic_mode():
         return _C_ops.flatten_(x, start_axis, stop_axis)
-
-
-def roll(
-    x: Tensor,
-    shifts: int | Sequence[int],
-    axis: int | Sequence[int] | None = None,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
-    roll beyond the last position are re-introduced at the first according to 'shifts'.
-    If a axis is not specified,
-    the tensor will be flattened before rolling and then restored to the original shape.
-
-    Args:
-        x (Tensor): The x tensor as input.
-        shifts (int|list|tuple): The number of places by which the elements
-                           of the `x` tensor are shifted.
-        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
-        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
-                For more information, please refer to :ref:`api_guide_Name` .
-
-    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
-    different shapes through the roll operation.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
-        :width: 700
-        :align: center
-        :alt: legend of roll API
-
-    Returns:
-        Tensor, A Tensor with same data type as `x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
-            ...                       [4.0, 5.0, 6.0],
-            ...                       [7.0, 8.0, 9.0]])
-            >>> out_z1 = paddle.roll(x, shifts=1)
-            >>> print(out_z1.numpy())
-            [[9. 1. 2.]
-             [3. 4. 5.]
-             [6. 7. 8.]]
-            >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
-            >>> print(out_z2.numpy())
-            [[7. 8. 9.]
-             [1. 2. 3.]
-             [4. 5. 6.]]
-            >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
-            >>> print(out_z3.numpy())
-            [[3. 1. 2.]
-             [6. 4. 5.]
-             [9. 7. 8.]]
-    """
-    origin_shape = x.shape
-    if type(shifts) == int:
-        shifts = [shifts]
-    if type(axis) == int:
-        axis = [axis]
-
-    len_origin_shape = len(origin_shape)
-    if axis is not None:
-        for i in range(len(axis)):
-            if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
-                raise ValueError(
-                    f"axis is out of range, it should be in range [{-len_origin_shape}, {len_origin_shape}), but received {axis}"
-                )
-    else:
-        axis = []
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.roll(x, shifts, axis)
-    else:
-        check_variable_and_dtype(
-            x,
-            'dtype',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'uint16',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'roll',
-        )
-        helper = LayerHelper("roll", **locals())
-        check_type(axis, 'axis', (list, tuple), 'roll')
-
-        out = helper.create_variable_for_type_inference(x.dtype)
-
-        if isinstance(shifts, Variable):
-            helper.append_op(
-                type='roll',
-                inputs={'X': x, "ShiftsTensor": shifts},
-                outputs={'Out': out},
-                attrs={'axis': axis},
-            )
-        else:
-            check_type(shifts, 'shifts', (list, tuple), 'roll')
-            helper.append_op(
-                type='roll',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs={'axis': axis, 'shifts': shifts},
-            )
-        return out
 
 
 @ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})

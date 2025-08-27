@@ -399,6 +399,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 self.warn_msg,
                 category=Warning,
             )
+            self.warn_msg = None
         return args, kwargs
 
 
