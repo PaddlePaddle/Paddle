@@ -89,9 +89,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_amp_o2_pass_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
   py_test_modules(test_pass_bf16_deprecated MODULES test_pass_bf16_deprecated)
-  py_test_modules(test_pass_base_list_deprecated MODULES
-                  test_pass_base_list_deprecated)
-  set_tests_properties(test_pass_base_list_deprecated PROPERTIES TIMEOUT 40)
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout
   py_test_modules(test_serialization_deprecated MODULES
                   test_serialization_deprecated)
