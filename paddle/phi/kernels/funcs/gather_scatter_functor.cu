@@ -24,7 +24,8 @@ namespace funcs {
 class TensorAssign {
  public:
   template <typename tensor_t>
-  constexpr void operator()(tensor_t* self_data, tensor_t* src_data) const {
+  constexpr void operator()(tensor_t* self_data,
+                            const tensor_t* src_data) const {
     *self_data = *src_data;
   }
 };
@@ -33,7 +34,8 @@ static TensorAssign tensor_assign;
 class ReduceAdd {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* self_data,
+                             const tensor_t* src_data) const {
     phi::CudaAtomicAdd(self_data, *src_data);
   }
 };
@@ -42,7 +44,8 @@ static ReduceAdd reduce_add;
 class ReduceMul {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* self_data,
+                             const tensor_t* src_data) const {
     phi::CudaAtomicMul(self_data, *src_data);
   }
 };
@@ -51,7 +54,8 @@ static ReduceMul reduce_mul;
 class ReduceMax {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* self_data,
+                             const tensor_t* src_data) const {
     phi::CudaAtomicMax(self_data, *src_data);
   }
 };
@@ -60,7 +64,8 @@ static ReduceMax reduce_max;
 class ReduceMin {
  public:
   template <typename tensor_t>
-  __device__ void operator()(tensor_t* self_data, tensor_t* src_data) const {
+  __device__ void operator()(tensor_t* self_data,
+                             const tensor_t* src_data) const {
     phi::CudaAtomicMin(self_data, *src_data);
   }
 };
@@ -145,7 +150,7 @@ template <typename tensor_t,
 __global__ void GatherScatterGPUKernel(tensor_t* self_data,
                                        const index_t* index_data,
                                        const int64_t* shape_strides,
-                                       tensor_t* src_data,
+                                       const tensor_t* src_data,
                                        int64_t self_select_dim_size,
                                        int64_t src_select_dim_size,
                                        int64_t numel,
@@ -230,7 +235,7 @@ __global__ void GatherScatterGPUKernel(tensor_t* self_data,
     __syncthreads();
     if (!is_op_done)
       reduce_op(static_cast<tensor_t*>(self_data + replace_index_self),
-                static_cast<tensor_t*>(src_data + replace_index_src));
+                static_cast<const tensor_t*>(src_data + replace_index_src));
   }
 }
 
@@ -241,7 +246,7 @@ template <typename tensor_t,
 __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
                                      const index_t* index_data,
                                      const int64_t* shape_strides,
-                                     tensor_t* src_data,
+                                     const tensor_t* src_data,
                                      int64_t self_select_dim_size,
                                      int64_t src_select_dim_size,
                                      int64_t numel,
@@ -316,7 +321,7 @@ __global__ void ScatterMeanGPUKernel(tensor_t* self_data,
   }
 
   reduce_op(static_cast<tensor_t*>(self_data + replace_index_self),
-            static_cast<tensor_t*>(src_data + replace_index_src));
+            static_cast<const tensor_t*>(src_data + replace_index_src));
 
   // So this is the culprit
   phi::CudaAtomicMax(aux_buffer + replace_index_self, tid);
@@ -429,8 +434,8 @@ struct gpu_gather_scatter_functor {
       return;
     }
     auto* self_data = self.data<tensor_t>();
-    auto* index_data = index.data<index_t>();
-    auto* src_data = src.data<tensor_t>();
+    const auto* index_data = index.data<index_t>();
+    const auto* src_data = src.data<tensor_t>();
     int64_t self_size = self.numel();
     int64_t index_size = index.numel();
     int64_t src_size = src.numel();
@@ -544,17 +549,33 @@ struct gpu_gather_scatter_functor {
                                                       aux_buffer,
                                                       atomic_cnt_buffer);
     } else {
-      if (include_self == false) {
+      if (include_self) {
+        GatherScatterGPUKernel<tensor_t,
+                               index_t,
+                               func_t,
+                               is_scatter_like,
+                               true>
+            <<<grid, block, shared_mem_bytes, stream>>>(self_data,
+                                                        index_data,
+                                                        shape_strides,
+                                                        src_data,
+                                                        self_select_dim_size,
+                                                        src_select_dim_size,
+                                                        index_size,
+                                                        dim,
+                                                        ndim,
+                                                        reduce_op,
+                                                        nullptr);
+      } else {
         aux_tensor.Resize({self_size});
         dev_ctx.Alloc<int>(&aux_tensor);
-        phi::funcs::set_constant(dev_ctx, &aux_tensor, self_size + 1);
+        phi::funcs::set_constant(dev_ctx, &aux_tensor, index_size + 1);
 
         int* aux_buffer = aux_tensor.data<int>();
         GatherScatterGPUKernel<tensor_t,
                                index_t,
                                func_t,
                                is_scatter_like,
-                               false,
                                false>
             <<<grid, block, shared_mem_bytes, stream>>>(self_data,
                                                         index_data,
@@ -567,24 +588,6 @@ struct gpu_gather_scatter_functor {
                                                         ndim,
                                                         reduce_op,
                                                         aux_buffer);
-      } else {
-        GatherScatterGPUKernel<tensor_t,
-                               index_t,
-                               func_t,
-                               is_scatter_like,
-                               true,
-                               false>
-            <<<grid, block, shared_mem_bytes, stream>>>(self_data,
-                                                        index_data,
-                                                        shape_strides,
-                                                        src_data,
-                                                        self_select_dim_size,
-                                                        src_select_dim_size,
-                                                        index_size,
-                                                        dim,
-                                                        ndim,
-                                                        reduce_op,
-                                                        nullptr);
       }
     }
   }
