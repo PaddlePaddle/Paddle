@@ -1779,6 +1779,7 @@ class CpuBfloat16PatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
       op_attrs.emplace("fuse_relu", pat.Attr("fuse_relu"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
@@ -1947,6 +1948,7 @@ class CpuBfloat16DequantPatternFour_one : public paddle::drr::DrrPatternBase {
       op_attrs.emplace("fuse_activation", pat.Attr("fuse_activation"));
       op_attrs.emplace("fuse_relu", pat.Attr("fuse_relu"));
       op_attrs.emplace("mkldnn_data_type", pat.Attr("mkldnn_data_type"));
+      op_attrs.emplace("onednn_data_type", pat.Attr("onednn_data_type"));
       op_attrs.emplace("force_fp32_output", pat.Attr("force_fp32_output"));
       op_attrs.emplace("is_test", pat.Attr("is_test"));
       op_attrs.emplace("data_format", pat.Attr("data_format"));
