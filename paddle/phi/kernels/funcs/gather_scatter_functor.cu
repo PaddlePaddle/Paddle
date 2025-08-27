@@ -1002,17 +1002,17 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
     phi::funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
     ScatterMinMaxInputGradGPUKernel<tensor_t, index_t>
-        <<<grid, block, 0, stream>>>(grad_data,
-                                     index_data,
-                                     out_data,
-                                     x_data,
-                                     value_data,
-                                     self_data,
-                                     shape_strides,
-                                     dim,
-                                     ndim,
-                                     index.numel(),
-                                     aux_buffer);
+        <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
+                                                    index_data,
+                                                    out_data,
+                                                    x_data,
+                                                    value_data,
+                                                    self_data,
+                                                    shape_strides,
+                                                    dim,
+                                                    ndim,
+                                                    index.numel(),
+                                                    aux_buffer);
   }
 }
 
