@@ -28,7 +28,7 @@
 namespace paddle {
 namespace pybind {
 bool CheckBool(PyObject* obj) {
-  if (obj == Py_None || obj == Py_False || obj == Py_True) {
+  if (obj == Py_False || obj == Py_True) {
     return true;
   }
   return false;
@@ -63,39 +63,22 @@ void ArgSumMapper(PyObject* args,
 
   PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
       args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
-  PyObject* py_obj_2 = GetItemFromArgsOrKWArgs(
-      args, 3, kwargs, {"keepdim", "dtype"}, nargs, &remaining_kwargs);
-
-  if (py_obj_1 == nullptr && py_obj_2 == nullptr) {
-    // No parameters, use default values
+  PyObject* py_obj_2 = nullptr;
+  if (py_obj_1 == nullptr) {
     *dtype = phi::DataType::UNDEFINED;
     *keepdim = false;
-  } else if (py_obj_1 != nullptr && py_obj_2 == nullptr) {
-    // There is only one parameter, it needs to be determined whether it is
-    // dtype or keepdim
-    if (CheckBool(py_obj_1)) {
-      *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
-      *dtype = phi::DataType::UNDEFINED;
-    } else {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
-      *keepdim = false;
-    }
   } else {
-    // Both parameters are not null ptr
     bool is_keepdim1 = CheckBool(py_obj_1);
-    bool is_keepdim2 = CheckBool(py_obj_2);
-
-    if (is_keepdim1 && !is_keepdim2) {
+    if (is_keepdim1) {
       *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
       *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
-    } else if (!is_keepdim1 && is_keepdim2) {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
-      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
     } else {
-      // Both are judged as keepdim, or neither is
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Invalid arguments for paddle.sum(): One of the last two arguments "
-          "must be a boolean (keepdim), and the other must be a dtype."));
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
+      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
     }
   }
 
@@ -122,13 +105,6 @@ void ArgSumMapper(PyObject* args,
   // Parse Attributes
   PyObject* axis_obj = GetItemFromArgsOrKWArgs(
       args, 1, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
-  PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
-      args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
-  PyObject* py_obj_2 = GetItemFromArgsOrKWArgs(
-      args, 3, kwargs, {"keepdim", "dtype"}, nargs, &remaining_kwargs);
-
-  // Parse input_out if needed
-  Check_PIR_not_support_out(kwargs);
 
   // Check for mutable attrs
   if (axis_obj && PyObject_CheckIRValue(axis_obj)) {
@@ -147,38 +123,32 @@ void ArgSumMapper(PyObject* args,
         axis_tmp, phi::DataType::INT64, phi::CPUPlace());
   }
 
-  if (py_obj_1 == nullptr && py_obj_2 == nullptr) {
-    // No parameters, use default values
+  PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
+  PyObject* py_obj_2 = nullptr;
+  if (py_obj_1 == nullptr) {
     *dtype = phi::DataType::UNDEFINED;
     *keepdim = false;
-  } else if (py_obj_1 != nullptr && py_obj_2 == nullptr) {
-    // There is only one parameter, it needs to be determined whether it is
-    // dtype or keepdim
-    if (CheckBool(py_obj_1)) {
-      *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
-      *dtype = phi::DataType::UNDEFINED;
-    } else {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
-      *keepdim = false;
-    }
   } else {
-    // Both parameters are not null ptr
     bool is_keepdim1 = CheckBool(py_obj_1);
-    bool is_keepdim2 = CheckBool(py_obj_2);
-
-    if (is_keepdim1 && !is_keepdim2) {
+    if (is_keepdim1) {
       *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
       *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
-    } else if (!is_keepdim1 && is_keepdim2) {
-      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
-      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
     } else {
-      // Both are judged as keepdim, or neither is
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "Invalid arguments for paddle.sum(): One of the last two arguments "
-          "must be a boolean (keepdim), and the other must be a dtype."));
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
+      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
     }
   }
+
+  // Parse input_out if needed
+  Check_PIR_not_support_out(kwargs);
+
+  // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
 
 void ArgMaxMinMapper(PyObject* args,

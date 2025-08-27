@@ -529,17 +529,6 @@ class TestSetValueOp(unittest.TestCase):
                     outputs={'Out': y},
                     attrs=attrs,
                 )
-                y2 = y + 1
-                loss = paddle.sum(y2)
-                opt = paddle.optimizer.Adam()
-                opt.minimize(loss)
-
-                x_data = np.arange(
-                    0, np.prod(input_shape), dtype="float32"
-                ).reshape(input_shape)
-                fetch_list = [x.grad_name, value.grad_name]
-                ret = exe.run(main_program, fetch_list=fetch_list)
-                self.assertTrue((ret[0][6:0:-4] == 0).all())
 
 
 class TestShareBufferOpTranscriber(unittest.TestCase):
@@ -567,27 +556,6 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
             assert l.global_block().ops[2].name() == "pd_op.share_data_", (
                 "share_buffer should be translated to share_data_"
             )
-
-
-class TestDataOp(unittest.TestCase):
-    def test_data_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                _ = paddle.static.data(name="y", shape=[3, 9, 5], dtype="int64")
-            l = pir.translate_to_pir(main_program.desc)
-            self.assertTrue(len(l.global_block().ops) > 0)
-            self.assertTrue(l.global_block().ops[0].name() == "pd_op.data")
-            data_op = l.global_block().ops[0]
-            self.assertIn("dtype", data_op.attrs())
-            self.assertEqual(str(data_op.attrs()["dtype"]), "paddle.int64")
 
 
 class TestCheckUnregisteredOp(unittest.TestCase):

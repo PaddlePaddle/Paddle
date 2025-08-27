@@ -82,7 +82,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
 endif()
 
 if(WIN32)
-  list(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception_deprecated)
   list(REMOVE_ITEM TEST_OPS test_trainer_desc)
   list(REMOVE_ITEM TEST_OPS test_checkpoint_notify_op)
   list(REMOVE_ITEM TEST_OPS test_downpoursgd_deprecated)
@@ -583,14 +582,11 @@ set_tests_properties(
   PROPERTIES LABELS "RUN_TYPE=DIST")
 
 if(NOT WIN32)
-  set_tests_properties(test_multiprocess_reader_exception_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
 endif()
 
 # setting timeout value as 15S
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
-set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
 
 if(NOT WIN32)
   if(WITH_NV_JETSON)

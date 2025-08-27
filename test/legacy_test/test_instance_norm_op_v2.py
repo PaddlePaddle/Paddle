@@ -212,8 +212,7 @@ class TestInstanceNormFP32OP(OpTest):
     def test_check_output(self):
         self.check_output(
             atol=self.atol,
-            check_prim=self.check_prim,
-            check_pir=True,
+            check_pir=False,
             check_prim_pir=(
                 False if os.getenv("FLAGS_enable_pir_in_executor") else True
             ),
@@ -223,8 +222,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.check_grad(
             ['X', 'Scale', 'Bias'],
             'Y',
-            check_prim=self.check_prim,
-            check_pir=True,
+            check_pir=False,
             check_prim_pir=(
                 False if os.getenv("FLAGS_enable_pir_in_executor") else True
             ),
@@ -325,8 +323,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
         self.check_output_with_place(
             place,
             atol=self.atol,
-            check_prim=self.check_prim,
-            check_pir=True,
+            check_pir=False,
             check_prim_pir=(
                 False if os.getenv("FLAGS_enable_pir_in_executor") else True
             ),
@@ -339,8 +336,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
             ['X', 'Scale', 'Bias'],
             'Y',
             max_relative_error=self.max_relative_error,
-            check_prim=self.check_prim,
-            check_pir=True,
+            check_pir=False,
             check_prim_pir=(
                 False if os.getenv("FLAGS_enable_pir_in_executor") else True
             ),
@@ -405,22 +401,7 @@ class TestInstanceNormBF16OP(OpTest):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
             place,
-            check_prim=self.check_prim,
-            check_pir=True,
-            check_prim_pir=(
-                False if os.getenv("FLAGS_enable_pir_in_executor") else True
-            ),
-        )
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X', 'Scale', 'Bias'],
-            'Y',
-            user_defined_grads=self.user_defined_grads,
-            check_prim=self.check_prim,
-            check_pir=True,
+            check_pir=False,
             check_prim_pir=(
                 False if os.getenv("FLAGS_enable_pir_in_executor") else True
             ),

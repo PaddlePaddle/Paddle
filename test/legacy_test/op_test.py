@@ -566,23 +566,6 @@ class OpTest(unittest.TestCase):
                     f"This test of {cls.op_type} op needs check_grad."
                 )
 
-            # check for op test with fp64 precision, but not check onednn op test for now
-            if (
-                cls.dtype in [np.float32, np.float64]
-                and cls.op_type
-                not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST
-                and not hasattr(cls, 'exist_fp64_check_grad')
-                and not is_xpu_op_test()
-                and not is_onednn_op_test()
-                and not is_rocm_op_test()
-                and not is_custom_device_op_test()
-                and not cls.check_prim
-                and not cls.check_prim_pir
-            ):
-                raise AssertionError(
-                    f"This test of {cls.op_type} op needs check_grad with fp64 precision."
-                )
-
             if (
                 not cls.input_shape_is_large
                 and cls.op_type

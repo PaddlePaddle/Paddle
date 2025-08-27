@@ -304,7 +304,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_multihead_attention',
     'test_multiplex_op',
     'test_multiprocess_reader_exception',
-    'test_multiprocess_reader_exception_deprecated',
     'test_name_scope',
     'test_nce',
     'test_nearest_interp_v2_op',

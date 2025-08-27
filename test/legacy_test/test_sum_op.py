@@ -1055,6 +1055,10 @@ class TestSumOp_Compatibility(unittest.TestCase):
                     )
                     self.assertEqual(paddle_result7.dtype, dtype_input)
 
+                    paddle_result8 = paddle.sum(
+                        x_paddle, self.axis, keepdim=False, name="sum-nzs"
+                    )
+
 
 if __name__ == "__main__":
     enable_static()
