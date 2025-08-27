@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 import paddle
@@ -33,6 +34,9 @@ class MyPyLayer(paddle.autograd.PyLayer):
 class TestMain(unittest.TestCase):
     def test_main(self):
         if paddle.is_compiled_with_rocm() or not paddle.is_compiled_with_cuda():
+            return
+
+        if platform.system().lower() == "windows":
             return
 
         paddle.set_flags({"FLAGS_print_offload_info": 1})
