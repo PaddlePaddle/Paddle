@@ -409,6 +409,18 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     bool dispensable = false,
     const phi::distributed::ProcessMesh* mesh = nullptr);
 
+paddle::optional<paddle::Tensor> GetOptionalTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
+
 paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   const std::string& arg_name,
                                   PyObject* args,
