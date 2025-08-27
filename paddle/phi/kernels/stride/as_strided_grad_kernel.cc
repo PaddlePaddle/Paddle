@@ -38,13 +38,13 @@ void AsStridedGradKernel(const Context& dev_ctx,
   }
   dev_ctx.Alloc(input_grad, input_grad->dtype());
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  if (out_grad.numel() == 0) {
-    return;
-  }
   PD_VISIT_ALL_TYPES(input_grad->dtype(), "AsStridedGradKernel", ([&] {
                        phi::StridedTensorFill<data_t>(
                            *input_grad, 0, input_grad);
                      }));
+  if (out_grad.numel() == 0) {
+    return;
+  }
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   AsStridedKernel<Context>(dev_ctx, *input_grad, dims, stride, offset, &tmp);

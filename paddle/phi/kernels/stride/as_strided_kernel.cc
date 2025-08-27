@@ -37,12 +37,12 @@ void CheckInBoundsForMemory(const std::vector<int64_t>& dims,
     }
     size += strides[i] * (dims[i] - 1);
   }
-  size_t size_bytes = (size + offset) * phi::SizeOf(dtype);
+  size_t size_bytes = size * phi::SizeOf(dtype) + offset;
   size = 1;
   for (int i = 0; i < input.dims().size(); i++) {
     size += input.strides()[i] * (input.dims()[i] - 1);
   }
-  size_t memory_size = (size + input.offset()) * phi::SizeOf(dtype);
+  size_t memory_size = size * phi::SizeOf(dtype) + input.offset();
   if (input.numel() == 0) {
     memory_size = 0;
   }
