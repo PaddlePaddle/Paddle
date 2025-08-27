@@ -1253,6 +1253,7 @@ def norm(
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor, optional): The output tensor. Ignored out = None.
         dtype (DTypeLike | None, optional): The data type of the output tensor. If specified, the input tensor is casted to `dtype` while performing the operation. Default value is None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
