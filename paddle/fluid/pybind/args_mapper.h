@@ -16,8 +16,28 @@
 
 #include <Python.h>
 #include <vector>
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/pir/include/core/value.h"
 namespace paddle {
 
-namespace pybind {}  // namespace pybind
+namespace pybind {
+void ArgMaxMinMapper(PyObject* args,
+                     PyObject* kwargs,
+                     Tensor* x,
+                     paddle::experimental::Scalar* axis,
+                     bool* keepdims,
+                     bool* flatten,
+                     phi::DataType* dtype);
+void ArgMaxMinMapper(PyObject* args,
+                     PyObject* kwargs,
+                     pir::Value* x,
+                     pir::Value* axis,
+                     bool* keepdims,
+                     bool* flatten,
+                     phi::DataType* dtype);
+
+}  // namespace pybind
 
 }  // namespace paddle

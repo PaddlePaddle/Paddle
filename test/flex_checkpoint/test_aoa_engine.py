@@ -15,13 +15,13 @@
 import unittest
 
 from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
-    AoAEngine,
+    AOAEngine,
     ShardedWeightDesc,
     ShardMappingEntry,
 )
 
 
-class TestAoAEngine(unittest.TestCase):
+class TestAOAEngine(unittest.TestCase):
     def test_aoa_spilt_merge(self):
         # ------------------------------------------------------
         # 1. Define source tensor shards (s0 and s1).
@@ -79,7 +79,7 @@ class TestAoAEngine(unittest.TestCase):
         }
 
         # ------------------------------------------------------
-        # 4. AoA statements define axis mapping for concatenation and splitting:
+        # 4. AOA statements define axis mapping for concatenation and splitting:
         #    - "s" is formed by concatenating s0 and s1 along axis 1 (columns).
         #    - d0 and d1 are obtained by splitting "s" along axis 0 (rows).
         aoa_statements = [
@@ -88,8 +88,8 @@ class TestAoAEngine(unittest.TestCase):
         ]
 
         # ------------------------------------------------------
-        # 5. Create the AoAEngine with this configuration
-        aoa_engine = AoAEngine(
+        # 5. Create the AOAEngine with this configuration
+        aoa_engine = AOAEngine(
             aoa_config={"aoa_statements": aoa_statements},
             source_state_shard_info=source_state_shard_info,
             destination_state_shard_info=destination_state_shard_info,
