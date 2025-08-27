@@ -226,9 +226,9 @@ def _make_rule_from_white_lists_dict(
 
 
 def _get_list_index(in_pass):
-    assert (
-        in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST
-    ), f"Pass {in_pass.name} is not in _PASS_PROCESS_ORDER_LIST"
+    assert in_pass.name in PassBase._PASS_PROCESS_ORDER_LIST, (
+        f"Pass {in_pass.name} is not in _PASS_PROCESS_ORDER_LIST"
+    )
     return PassBase._PASS_PROCESS_ORDER_LIST.index(in_pass.name)
 
 

@@ -63,12 +63,12 @@ class TestDtensorFromLocalAPI:
             if mesh is None and placements is None:
                 assert not grad.is_dist(), "grad.is_dist() is not False"
             else:
-                assert (
-                    grad.process_mesh == mesh
-                ), "grad.process_mesh is not equal to mesh"
-                assert (
-                    grad.placements == placements
-                ), "grad.placements is not equal to placements"
+                assert grad.process_mesh == mesh, (
+                    "grad.process_mesh is not equal to mesh"
+                )
+                assert grad.placements == placements, (
+                    "grad.placements is not equal to placements"
+                )
 
         return _check_mesh
 

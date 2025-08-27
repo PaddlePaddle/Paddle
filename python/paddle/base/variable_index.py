@@ -147,9 +147,9 @@ def _setitem_for_tensor_array(var, item, value):
 
     from .framework import Variable
 
-    assert (
-        not paddle.in_dynamic_mode()
-    ), "setitem for tensor_array must be called in static graph mode."
+    assert not paddle.in_dynamic_mode(), (
+        "setitem for tensor_array must be called in static graph mode."
+    )
     if isinstance(item, (Variable, paddle.pir.Value, int)):
         from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write

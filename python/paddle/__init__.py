@@ -138,6 +138,7 @@ from . import (
     hub as hub,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
 )
@@ -212,7 +213,17 @@ from .tensor.attribute import (
     shape,
 )
 from .tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
     MmapStorage,
+    ShortTensor,
     arange,
     assign,
     cauchy_,
@@ -234,6 +245,8 @@ from .tensor.creation import (
     ones,
     ones_like,
     polar,
+    range,
+    tensor as as_tensor,
     to_tensor,
     tril,
     tril_,
@@ -262,6 +275,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -347,6 +361,7 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
     ravel,
     repeat_interleave,
@@ -357,8 +372,11 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -568,6 +586,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -612,6 +631,9 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.softmax import (
+    softmax,
+)
 from .tensor.stat import (
     mean,
     median,
@@ -627,6 +649,34 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
+
+
+class _TensorMethodOrModule:
+    def __init__(self):
+        import paddle.tensor as tensor_module
+
+        from .tensor.creation import tensor as tensor_api
+
+        self.module = tensor_module
+        self.method = tensor_api
+
+    def __call__(self, *args, **kwargs):
+        return self.method(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+    def __repr__(self):
+        return repr(self.method)
+
+    def __str__(self):
+        return str(self.method)
+
+    def __dir__(self):
+        return dir(self.module)
+
+
+tensor = _TensorMethodOrModule()  # noqa: F811
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -810,8 +860,23 @@ nan = math.nan
 pi = math.pi
 e = math.e
 
+# API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+div = divide
+div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
+
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -888,6 +953,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -923,7 +989,18 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     'crop',
     'ParamAttr',
     'stanh',
@@ -937,6 +1014,7 @@ __all__ = [
     'squeeze',
     'squeeze_',
     'to_tensor',
+    'as_tensor',
     'gather_nd',
     'isin',
     'isinf',
@@ -994,6 +1072,7 @@ __all__ = [
     'pdist',
     'unbind',
     'meshgrid',
+    'range',
     'arange',
     'load',
     'numel',
@@ -1055,10 +1134,14 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1106,7 +1189,10 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
@@ -1168,6 +1254,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1199,12 +1287,16 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1265,6 +1357,7 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
 import os
 

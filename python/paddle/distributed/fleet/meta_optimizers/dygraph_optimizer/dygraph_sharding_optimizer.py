@@ -27,6 +27,10 @@ from paddle.distributed.communication.reduce import (
     ReduceOp,
     is_avg_reduce_op_supported,
 )
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    ShardedWeight,
+)
 from paddle.framework.recall_error import (
     SHARDING_PAD_NON_ZERO_ERROR,
     check_naninf,
@@ -104,9 +108,9 @@ class DygraphShardingOptimizer:
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
         )
-        assert (
-            not self.enable_fuse_optimizer_states
-        ), "enable_fuse_optimizer_states is not supported on sharding optimizer V1 now."
+        assert not self.enable_fuse_optimizer_states, (
+            "enable_fuse_optimizer_states is not supported on sharding optimizer V1 now."
+        )
 
         if self.use_reduce_avg and (not is_avg_reduce_op_supported()):
             self.use_reduce_avg = False
@@ -116,9 +120,9 @@ class DygraphShardingOptimizer:
 
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
-            assert (
-                not pp_overlap
-            ), "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
+            assert not pp_overlap, (
+                "Can not enable pp's sharding_comm_overlap and sharding's tensor_fusion at the same time."
+            )
 
         self._use_main_grad = hasattr(self._parameter_list[0], "main_grad")
         self._rank2decay = {}
@@ -135,9 +139,9 @@ class DygraphShardingOptimizer:
             paddle.is_compiled_with_xpu()
             and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
-            assert (
-                not self.comm_overlap
-            ), "comm overlap not support when use xpu cdnn_cluster parallel."
+            assert not self.comm_overlap, (
+                "comm overlap not support when use xpu cdnn_cluster parallel."
+            )
 
         try:
             # The fp32 params such as layer_norm_0.w_0 will be at the end of param_list.
@@ -285,9 +289,9 @@ class DygraphShardingOptimizer:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
             numel = reduce(lambda x, y: x * y, param.shape, 1)
-            assert (
-                numel > 0
-            ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
+            assert numel > 0, (
+                f"param [{param.name}] should larger than 0, but it is [{numel}]"
+            )
             sizes[rank] += numel
 
         return mapping
@@ -319,9 +323,9 @@ class DygraphShardingOptimizer:
             return None
 
         if hasattr(param, "main_grad"):
-            assert (
-                param._grad_ivar() is None
-            ), "param.grad should be None when using main_grad"
+            assert param._grad_ivar() is None, (
+                "param.grad should be None when using main_grad"
+            )
             return param.main_grad
 
         return param._grad_ivar()
@@ -483,9 +487,9 @@ class DygraphShardingOptimizer:
     def _set_broadcast_overlap(self, broadcast_overlap, layers=None):
         self._broadcast_overlap = broadcast_overlap
         if self._broadcast_overlap:
-            assert (
-                layers is not None
-            ), "To Enable Stage1 Optimizer Broadcast Overlap Forward, layers cannot be None"
+            assert layers is not None, (
+                "To Enable Stage1 Optimizer Broadcast Overlap Forward, layers cannot be None"
+            )
             self._layers = layers
             warnings.warn(
                 r"Setting overlap broadcast implies that `paddle.device.cuda.synchronize()` must be manually invoked before calling `paddle.save()` and prior to inference"
@@ -621,8 +625,7 @@ class DygraphShardingOptimizerV2:
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
-        self.clear_color = None
-
+        self.clear_color = []
         self._parameter_list = optimizer._parameter_list
 
         # param name -> slice_param
@@ -696,29 +699,29 @@ class DygraphShardingOptimizerV2:
             paddle.is_compiled_with_xpu()
             and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
         ):
-            assert (
-                not self.comm_overlap
-            ), "comm overlap not support when use xpu cdnn_cluster parallel."
+            assert not self.comm_overlap, (
+                "comm overlap not support when use xpu cdnn_cluster parallel."
+            )
 
         # Ensure acc_steps is greater than 0 when comm_overlap is used
         if self.comm_overlap:
-            assert (
-                acc_steps > 0
-            ), "acc_steps should be larger than 0 when using comm_overlap in sharding"
+            assert acc_steps > 0, (
+                "acc_steps should be larger than 0 when using comm_overlap in sharding"
+            )
 
         # Ensure pp_overlap and comm_overlap are not both True
-        assert not (
-            self.pp_overlap and self.comm_overlap
-        ), "pp_overlap and comm_overlap should not be True at the same time"
+        assert not (self.pp_overlap and self.comm_overlap), (
+            "pp_overlap and comm_overlap should not be True at the same time"
+        )
 
         # Determine the use of pipeline parallelism
         self._use_pipeline_parallel = strategy.hybrid_configs["pp_degree"] > 1
 
         # Ensure pipeline parallel and comm_overlap are not used together
         if self._use_pipeline_parallel:
-            assert (
-                not self.comm_overlap
-            ), "You should not use pipeline parallel and comm_overlap at the same time"
+            assert not self.comm_overlap, (
+                "You should not use pipeline parallel and comm_overlap at the same time"
+            )
 
         # Register reduce overlap hook if comm_overlap is used without pp_overlap
         if not self.pp_overlap and self.comm_overlap:
@@ -830,7 +833,7 @@ class DygraphShardingOptimizerV2:
                         self.param2bucket[p.name] = [buffer]
 
     def clear_param_storage(self, color):
-        self.clear_color = color
+        self.clear_color.append(color)
         if color in self._color_to_comm_buffer_list.keys():
             for comm_buffer in self._color_to_comm_buffer_list[color]:
                 for param in comm_buffer.params:
@@ -848,12 +851,13 @@ class DygraphShardingOptimizerV2:
                 comm_buffer._clear_param_storage()
 
     def reset_param_storage(self):
-        color = self.clear_color
-        if color is None:
-            return
-        if color in self._color_to_comm_buffer_list.keys():
-            for comm_buffer in self._color_to_comm_buffer_list[color]:
-                comm_buffer._reset_param_storage()
+        for color in self.clear_color:
+            if color is None:
+                continue
+
+            if color in self._color_to_comm_buffer_list.keys():
+                for comm_buffer in self._color_to_comm_buffer_list[color]:
+                    comm_buffer._reset_param_storage()
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -935,9 +939,9 @@ class DygraphShardingOptimizerV2:
             for k, v in comm_buffer._sharding_param_grad_view.items():
                 pad_tensor = v._get_padding()
                 if pad_tensor is not None:
-                    assert paddle.all(
-                        pad_tensor == 0
-                    ).item(), f"{SHARDING_PAD_NON_ZERO_ERROR}. The padding of Tensor {k} is not zero"
+                    assert paddle.all(pad_tensor == 0).item(), (
+                        f"{SHARDING_PAD_NON_ZERO_ERROR}. The padding of Tensor {k} is not zero"
+                    )
         if self._enable_timer:
             self.timers("check-padding-zero").stop()
 
@@ -1227,3 +1231,131 @@ class DygraphShardingOptimizerV2:
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)
+
+    def sharded_state_dict(
+        self,
+        model_sharded_state_dict: ShardedStateDict,
+    ) -> ShardedStateDict:
+        """
+        Build a sharded state dictionary from optimizer state and model sharding information.
+
+        Args:
+            model_sharded_state_dict: Sharded model state dictionary
+
+        Returns:
+            Dictionary mapping parameter names to ShardedWeight objects
+        """
+
+        _FP32_MASTER = "fp32_master_0"
+        _optimizer_scalar_name = [
+            "beta1_pow_acc_0",
+            "beta2_pow_acc_0",
+        ]
+        _optimizer_non_scaler_name = [
+            "moment1_0",
+            "moment2_0",
+            "velocity_0",
+        ]
+
+        def _generate_base_static_name(vname):
+            if _FP32_MASTER in vname:
+                return tuple(vname.split("_" + _FP32_MASTER + "_", 1))
+            for name in _optimizer_scalar_name + _optimizer_non_scaler_name:
+                if vname.endswith(name):
+                    return vname[: -(len(name) + 1)], name
+            raise ValueError(f"Cannot split variable name: {vname}.")
+
+        def _create_sharded_weight(
+            unified_name, tensor, sharded_param, is_padded, flattened_range
+        ):
+            if int(tensor.numel()) == 1:  # Handle scalar parameters
+                return ShardedWeight(
+                    key=unified_name,
+                    local_tensor=tensor,
+                    local_shape=tensor.shape,
+                    global_shape=tensor.shape,
+                    global_offset=(0,),
+                )
+            else:
+                if is_padded:
+                    local_tensor = paddle.slice(
+                        tensor,
+                        axes=[0],
+                        starts=[0],
+                        ends=[flattened_range.stop - flattened_range.start],
+                    )
+                else:
+                    local_tensor = tensor
+                return ShardedWeight(
+                    key=unified_name,
+                    local_tensor=local_tensor,
+                    local_shape=sharded_param.local_shape,
+                    global_shape=sharded_param.global_shape,
+                    global_offset=sharded_param.global_offset,
+                    is_flattened=True,
+                    flattened_range=flattened_range,
+                )
+
+        param_slice_info = {}
+        padded_param = set()
+        for buffer in self._comm_buffer_list:
+            for (
+                param_name,
+                grad_view,
+            ) in buffer._sharding_param_grad_view.items():
+                numel = grad_view._param.numel().item()
+                param_begin = grad_view._param_begin
+                param_end = grad_view._param_end
+                index = grad_view._index
+                padding_begin = index + numel
+                flattened_range = slice(
+                    param_begin - index,
+                    max(
+                        min(padding_begin - index, param_end - index),
+                        param_begin - index,
+                    ),
+                )
+                if param_end > padding_begin:
+                    padded_param.add(param_name)
+
+                param_slice_info[param_name] = flattened_range
+
+        optim_state_dict = self.state_dict()
+        master_weights = optim_state_dict.pop("master_weights", None)
+        optim_state_dict.pop("LR_Scheduler", None)
+
+        static_to_struct = {
+            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
+        }
+
+        sharded_state = {}
+
+        for param_key, tensor in optim_state_dict.items():
+            base_name, optim_state_type = _generate_base_static_name(param_key)
+            struct_name = static_to_struct[base_name]
+            sharded_param = model_sharded_state_dict[struct_name]
+            unified_name = f"{struct_name}.{optim_state_type}"
+            flattened_range = param_slice_info[base_name]
+            is_padded = base_name in padded_param
+
+            sharded_state[unified_name] = _create_sharded_weight(
+                unified_name, tensor, sharded_param, is_padded, flattened_range
+            )
+
+        if master_weights:
+            for weight_key, tensor in master_weights.items():
+                struct_name = static_to_struct[weight_key]
+                sharded_param = model_sharded_state_dict[struct_name]
+                unified_name = f"{struct_name}.w_0"
+                flattened_range = param_slice_info[weight_key]
+                is_padded = weight_key in padded_param
+
+                sharded_state[unified_name] = _create_sharded_weight(
+                    unified_name,
+                    tensor,
+                    sharded_param,
+                    is_padded,
+                    flattened_range,
+                )
+
+        return sharded_state

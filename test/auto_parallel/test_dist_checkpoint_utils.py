@@ -21,8 +21,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.checkpoint.load_state_dict import get_checkpoint_files
-from paddle.distributed.checkpoint.utils import (
+from paddle.distributed.flex_checkpoint.dcp.load_state_dict import (
+    get_checkpoint_files,
+    get_rank_to_files,
+)
+from paddle.distributed.flex_checkpoint.dcp.utils import (
     flatten_state_dict,
     unflatten_state_dict,
 )
@@ -132,7 +135,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
@@ -152,7 +155,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
@@ -173,7 +176,7 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
             rank_to_files,
             missing_keys,
             mw_name_compatibility_mapping,
-        ) = dist.checkpoint.load_state_dict.get_rank_to_files(
+        ) = get_rank_to_files(
             metadata_list,
             local_load_files,
             new_state_dict,
@@ -187,6 +190,23 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         self.assertTrue("w4" in missing_keys)
 
         ckpt_dir_tmp.cleanup()
+
+
+class TestDistCheckpointMerge(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=4, timeout=50, nnode=1)
+        self._default_envs = {}
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_merge_checkpoint(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_flexcheckpoint_merge.py",
+                user_defined_envs=envs,
+            )
 
 
 if __name__ == "__main__":

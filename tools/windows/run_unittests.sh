@@ -24,7 +24,6 @@ disable_wingpu_test="^test_model$|\
 ^test_generator_dataloader_deprecated$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
-^test_program_prune_backward_deprecated$|\
 ^test_decoupled_py_reader_data_check_deprecated$|\
 ^test_fleet_base_single$|\
 ^test_multiprocess_dataloader_iterable_dataset_dynamic$|\
@@ -65,8 +64,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_memory_efficient_attention$|\
 ^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
-^test_train_step_resnet18_adam$|\
-^test_train_step_resnet18_sgd$|\
 ^test_elementwise_add_mkldnn_op$|\
 ^test_comp_high_grad$|\
 ^test_multi_precision_fp16_train$|\
@@ -432,7 +429,6 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_vision_models$|\
 ^test_dygraph_multi_forward$|\
 ^test_imperative_transformer_sorted_gradient$|\
-^test_program_prune_backward_deprecated$|\
 ^test_imperative_resnet$|\
 ^test_imperative_resnet_sorted_gradient$|\
 ^test_imperative_se_resnext$|\

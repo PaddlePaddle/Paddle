@@ -59,9 +59,9 @@ class Pipeline1F1BPass(PipelinePassBase):
         pp_degree = self.get_attr("pp_degree")
 
         job_list = []
-        assert (
-            pp_degree <= num_micro_batches
-        ), "Num of micro batches should larger than or equal to pp degree."
+        assert pp_degree <= num_micro_batches, (
+            "Num of micro batches should larger than or equal to pp degree."
+        )
 
         micro_batch_in_warmup = pp_degree - pp_stage
         micro_batch_in_1f1b = num_micro_batches - micro_batch_in_warmup
@@ -113,9 +113,9 @@ class Pipeline1F1BPass(PipelinePassBase):
 
     def _partial_pir_programs(self, program):
         enable_send_recv_overlap = self.get_attr("enable_send_recv_overlap")
-        assert (
-            not enable_send_recv_overlap
-        ), "PIR does not support 1F1B with enable_send_recv_overlap yet."
+        assert not enable_send_recv_overlap, (
+            "PIR does not support 1F1B with enable_send_recv_overlap yet."
+        )
 
         self._overlap_send_recv(program)
         forward_complete_op_role(program)
