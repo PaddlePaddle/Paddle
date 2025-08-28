@@ -360,14 +360,12 @@ void HardSwishStrideKernel(const Context &dev_ctx,
 
 template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
-
 template <typename T>
 struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
   __device__ __forceinline__ phi::dtype::Real<T> operator()(const T x) const {
     return abs(x);
   }
 };
-
 template <typename T>
 struct CudaAbsFunctor<
     T,
@@ -375,7 +373,6 @@ struct CudaAbsFunctor<
                      std::is_same<T, phi::dtype::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
 };
-
 template <typename T>
 struct CudaAbsFunctor<
     T,
@@ -503,7 +500,6 @@ REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asinh, AsinhStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acosh, AcoshStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atanh, AtanhStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tanh, TanhStrideKernel)
-
 REGISTER_ACTIVATION_STRIDE_KERNEL(hardtanh, HardTanhStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, LeakyReluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(mish, MishStrideKernel)
@@ -520,7 +516,6 @@ REGISTER_ACTIVATION_STRIDE_KERNEL(elu, EluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(hardsigmoid, HardSigmoidStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(selu, SeluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(hardswish, HardSwishStrideKernel)
-
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(reciprocal,
                                                ReciprocalStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sqrt, SqrtStrideKernel)
