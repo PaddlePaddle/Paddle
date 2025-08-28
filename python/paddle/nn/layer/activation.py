@@ -1263,6 +1263,7 @@ class Silu(Layer):
     Where :math:`x` is the input Tensor.
 
     Parameters:
+        inplace (bool, optional): Whether to use inplace operation. Default: False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Shape:
@@ -1280,17 +1281,29 @@ class Silu(Layer):
             >>> print(out)
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+
+            >>> m = paddle.nn.Silu(True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
+            >>> print(x)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
-    def __init__(self, name: str | None = None) -> str:
+    def __init__(self, inplace: bool = False, name: str | None = None) -> str:
         super().__init__()
         self._name = name
+        self._inplace = inplace
 
     def forward(self, x: Tensor) -> Tensor:
-        return F.silu(x, self._name)
+        return F.silu(x, self._inplace, self._name)
 
     def extra_repr(self) -> str:
-        name_str = f'name={self._name}' if self._name else ''
+        name_str = f'inplace={self._inplace}' + (
+            f', name={self._name}' if self._name else ''
+        )
         return name_str
 
 

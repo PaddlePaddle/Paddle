@@ -280,5 +280,76 @@ class TestMaxMinAmaxAminAPI_ZeroSize2(TestMaxMinAmaxAminAPI):
         self.keepdim = True
 
 
+class TestAmaxAminOutAPI(unittest.TestCase):
+    def _run_api(self, api, x, case):
+        out_buf = paddle.zeros([], dtype=x.dtype)
+        out_buf.stop_gradient = False
+        if case == 'return':
+            y = api(x)
+        elif case == 'input_out':
+            api(x, out=out_buf)
+            y = out_buf
+        elif case == 'both_return':
+            y = api(x, out=out_buf)
+        elif case == 'both_input_out':
+            _ = api(x, out=out_buf)
+            y = out_buf
+        else:
+            raise AssertionError
+        return y
+
+    def test_amax_out_in_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[0.1, 0.9, 0.9, 0.9], [0.9, 0.9, 0.6, 0.7]]).astype(
+                'float64'
+            ),
+            stop_gradient=False,
+        )
+        ref = paddle._C_ops.amax(x, None, False)
+        outs = []
+        grads = []
+        for case in ['return', 'input_out', 'both_return', 'both_input_out']:
+            y = self._run_api(paddle.amax, x, case)
+            np.testing.assert_allclose(
+                y.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+            loss = (y * 2).mean()
+            loss.backward()
+            outs.append(y.numpy())
+            grads.append(x.grad.numpy())
+            x.clear_gradient()
+        for i in range(1, 4):
+            np.testing.assert_allclose(outs[0], outs[i], rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(grads[0], grads[i], rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+    def test_amin_out_in_dygraph(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.array([[0.2, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.7]]).astype(
+                'float64'
+            ),
+            stop_gradient=False,
+        )
+        ref = paddle._C_ops.amin(x, None, False)
+        outs = []
+        grads = []
+        for case in ['return', 'input_out', 'both_return', 'both_input_out']:
+            y = self._run_api(paddle.amin, x, case)
+            np.testing.assert_allclose(
+                y.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+            loss = (y * 2).mean()
+            loss.backward()
+            outs.append(y.numpy())
+            grads.append(x.grad.numpy())
+            x.clear_gradient()
+        for i in range(1, 4):
+            np.testing.assert_allclose(outs[0], outs[i], rtol=1e-6, atol=1e-6)
+            np.testing.assert_allclose(grads[0], grads[i], rtol=1e-6, atol=1e-6)
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -91,7 +91,6 @@ if(NOT WITH_GPU)
        test_incubate_cross_entropy_with_softmax_bwd_w_downcast)
   list(REMOVE_ITEM TEST_OPS test_incubate_embedding_grad)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
@@ -462,6 +461,7 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_index_put_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -626,6 +626,8 @@ if(WITH_GPU
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
 endif()
+py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
+                FLAGS_use_stride_compute_kernel=1)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
                 FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
@@ -865,8 +867,6 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
-  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 1500)
-  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
@@ -874,8 +874,6 @@ else()
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
-  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
@@ -1063,8 +1061,6 @@ set(TEST_CINN_OPS
     test_mean_op
     test_clip_op
     test_gather_op
-    test_batch_norm_op_prim_nchw
-    test_batch_norm_op_prim_nhwc
     test_dropout_op
     test_tile_op
     test_sum_op

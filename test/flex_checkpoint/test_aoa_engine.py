@@ -124,7 +124,7 @@ class TestAOAEngine(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry]
         queries.append(query)
@@ -156,7 +156,7 @@ class TestAOAEngine(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry]
         queries.append(query)
@@ -234,12 +234,12 @@ class TestAOAEngine(unittest.TestCase):
         shard_mapping_entry0 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc0,
             source_slice=src_sharded_weight_desc0,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         shard_mapping_entry1 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc1,
             source_slice=src_sharded_weight_desc1,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry0, shard_mapping_entry1]
         queries.append(query)

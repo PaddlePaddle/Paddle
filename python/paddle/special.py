@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .tensor.compat_softmax import softmax
 from .tensor.math import logsumexp
 
 __all__ = [
     "logsumexp",
+    "softmax",
 ]

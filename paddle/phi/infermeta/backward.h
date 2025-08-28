@@ -454,6 +454,15 @@ PADDLE_API void MaxPoolWithIndexGradInferMeta(
     bool ceil_mode,
     MetaTensor* dx);
 
+PADDLE_API void MedianGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& median_data,
+                                    const MetaTensor& median_index,
+                                    const MetaTensor& out_grad,
+                                    const IntArray& axes,
+                                    bool keep_dim,
+                                    const std::string& mode,
+                                    MetaTensor* x_grad);
+
 PADDLE_API void MeshgridGradInferMeta(
     const std::vector<const MetaTensor*>& inputs,
     const std::vector<const MetaTensor*>& outputs_grad,
@@ -496,6 +505,7 @@ PADDLE_API void MoeCombineAutoGradInferMeta(
     MetaTensor* grad_x,
     MetaTensor* grad_combine_weights_helper,
     MetaTensor* grad_scatter_index);
+
 // Tensor combine_weights_out, Tensor scatter_index, Tensor scatter_index_rev,
 // Tensor expert_offset, Tensor expert_offset_local, Tensor y_grad, Tensor
 // combine_weights_out_grad, int64_t k, int64_t capacity, bool use_pad, int64_t
@@ -538,6 +548,7 @@ PADDLE_API void MultiplexGradInferMeta(const MetaTensor& ids,
                                        std::vector<MetaTensor*> ins_grad);
 
 PADDLE_API void NanmedianGradInferMeta(const MetaTensor& x,
+                                       const MetaTensor& median_data,
                                        const MetaTensor& median_index,
                                        const MetaTensor& out_grad,
                                        const IntArray& axes,

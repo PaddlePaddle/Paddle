@@ -19,6 +19,7 @@ import numpy as np
 from op_test import get_devices
 
 import paddle
+from paddle.base import core
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -1193,6 +1194,58 @@ class TestIndexPutPrim(unittest.TestCase):
                     )
         finally:
             paddle.framework.core._set_prim_all_enabled(False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseMaximumOp_Stride(unittest.TestCase):
+    def setUp(self):
+        self.is_all_false = False
+        self.init_dtype_type()
+        self.setPlace()
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
+        self.x_trans_np = np.transpose(self.x_np, self.perm)
+        self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
+        self.indices_np = gen_indices_np(
+            self.x_shape,
+            self.indices_shapes,
+            self.index_type_np,
+            self.is_all_false,
+        )
+
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.perm = [1, 0]
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
+        self.accumulate = False
+
+    def setPlace(self):
+        self.place = core.CUDAPlace(0)
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        paddle.device.set_device(self.place)
+        self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
+        self.x_trans_pd = paddle.to_tensor(self.x_trans_np, dtype=self.dtype_pd)
+        self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
+        self.indices_pd = [
+            paddle.to_tensor(indice) for indice in self.indices_np
+        ]
+        self.indices_pd = tuple(self.indices_pd)
+        self.x_non_conti = paddle.transpose(self.x_trans_pd, self.perm)
+        ref_res = compute_index_put_ref(
+            self.x_np, self.indices_np, self.value_np, self.accumulate
+        )
+        pd_res = paddle.index_put(
+            self.x_non_conti, self.indices_pd, self.value_pd, self.accumulate
+        )
+        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
 if __name__ == '__main__':

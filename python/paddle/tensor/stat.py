@@ -620,7 +620,8 @@ def median(
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    is_flatten = False
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
     dims = len(x.shape)
     if dims == 0:
         assert axis in [
@@ -628,7 +629,11 @@ def median(
             0,
             None,
         ], 'when input 0-D, axis can only be [-1, 0] or default None'
-        is_flatten = True
+    elif axis is not None:
+        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
+            raise ValueError(
+                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
+            )
 
     if mode not in ('avg', 'min'):
         raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
@@ -636,120 +641,21 @@ def median(
     if axis is None:
         is_flatten = True
 
-    if is_flatten:
-        x = paddle.flatten(x)
-        axis = 0
-    else:
-        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-            raise ValueError(
-                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
-            )
-        if axis < 0:
-            axis += dims
-    sz = x.shape[axis]
-    kth = sz >> 1
-    # Use `sort` when:
-    # 1. The axis is not the last dimension (memory non-contiguous)
-    # 2. The axis size exceeds 10000 (heuristic threshold for performance crossover)
-    # Rationale:
-    # - `paddle.topk` in non-contiguous dimensions has O(N*k) complexity (k=n/2 for median → O(n²)). in paddle/phi/kernels/gpu/top_k_kernel.cu
-    # - `paddle.sort` has guaranteed O(n log n) complexity regardless of axis
-    use_sort = (axis != dims - 1) and (sz > 10000)
-    if use_sort:
-        sorted_x = paddle.sort(x, axis=axis, stable=True)
-        tensor_topk = paddle.slice(
-            sorted_x, axes=[axis], starts=[0], ends=[kth + 1]
-        )
-        if need_idx:
-            idx = paddle.argsort(x, axis=axis, stable=True)
-            idx = paddle.slice(idx, axes=[axis], starts=[0], ends=[kth + 1])
-    else:
-        tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    if mode == 'avg':
-        dtype = (
-            'float64'
-            if x.dtype
-            in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
-            else 'float32'
-        )
-        if sz & 1 == 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            ) + paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
-        else:
-            out_tensor = paddle.cast(
-                paddle.slice(
-                    tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-                ),
-                dtype=dtype,
-            )
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
-            axis=axis,
-            keepdim=True,
-        )
-    else:  # mode == 'min'
-        if sz & 1 == 0 and kth != 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth - 1], ends=[kth]
-                )
-        else:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth], ends=[kth + 1]
-                )
-        # if contain nan on axis, return nan for that axis
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=x.dtype) * x,
-            axis=axis,
-            keepdim=True,
-        ).astype(x.dtype)
-        if need_idx:
-            # replace index using the first nan value's index on axis for out_idx
-            # topk is not stable on cpu device, use argsort instead
-            x_isnan = paddle.isnan(x).astype("int64")
-            x_all_zero = paddle.zeros_like(x_isnan)
-            index_along_axis = paddle.argsort(
-                x_all_zero, axis=axis, stable=True
-            )
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
 
-            # find the index of the leading one in x_isnan
-            cumsum = x_isnan.cumsum(axis=axis)
-            x_isnan = x_isnan * paddle.where(cumsum > 1, 0, 1)
+    if mode == "avg" and not x.dtype == paddle.float64:
+        x = x.astype(paddle.float32)
 
-            nan_index = paddle.sum(
-                index_along_axis * x_isnan, axis=axis, keepdim=True
-            )
-            nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
-            out_idx = (
-                out_idx * paddle.logical_not(nan_index_mask).astype('int64')
-                + nan_index
-            )
-
-    if is_flatten:
-        if keepdim:
-            out_tensor = out_tensor.reshape([1] * dims)
-        else:
-            out_tensor = out_tensor.reshape([])
-    else:
-        if not keepdim:
-            out_tensor = out_tensor.squeeze(axis)
+    out, indices = _C_ops.median(x, axis, keepdim, mode)
+    indices.stop_gradient = True
 
     if mode == 'min' and need_idx:
-        if not keepdim:
-            out_idx = out_idx.squeeze(axis)
-        return out_tensor, out_idx
-    return out_tensor
+        return out, indices
+    else:
+        return out
 
 
 def _compute_quantile(

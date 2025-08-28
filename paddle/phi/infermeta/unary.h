@@ -495,6 +495,13 @@ PADDLE_API void MaxPoolV2InferMeta(const MetaTensor& x,
 
 PADDLE_API void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+PADDLE_API void MedianInferMeta(const MetaTensor& x,
+                                const IntArray& axes,
+                                bool keep_dim,
+                                const std::string& mode,
+                                MetaTensor* out,
+                                MetaTensor* median_index);
+
 PADDLE_API void ModeInferMeta(const MetaTensor& x,
                               int axis,
                               bool keepdim,
