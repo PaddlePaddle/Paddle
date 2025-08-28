@@ -184,6 +184,7 @@ class TestMedianAvg(unittest.TestCase):
         self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
         self.assertRaises(ValueError, paddle.median, x, 2, False, 'max')
+        self.assertRaises(ValueError, paddle.median, x, [], False, 'max')
 
     def test_nan(self):
         paddle.disable_static()
