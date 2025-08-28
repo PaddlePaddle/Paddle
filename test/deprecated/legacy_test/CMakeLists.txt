@@ -66,7 +66,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
@@ -626,9 +625,8 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 120)
 endif()
 
-set(TEST_CINN_OPS
-    test_slice_op_deprecated test_layer_norm_op_deprecated
-    test_instance_norm_op_deprecated test_group_norm_op_deprecated)
+set(TEST_CINN_OPS test_slice_op_deprecated test_layer_norm_op_deprecated
+                  test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -694,4 +692,3 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
-set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)
