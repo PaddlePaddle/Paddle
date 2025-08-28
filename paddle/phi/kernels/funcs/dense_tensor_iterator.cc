@@ -16,15 +16,6 @@
 
 namespace phi {
 
-static bool judge_valid_stride(std::vector<int64_t> tmp_stride) {
-  for (size_t i = 0; i < tmp_stride.size(); i++) {
-    if (tmp_stride[i] == 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void DenseOperandInfo::tensor(DenseTensor*&& tensor) {
   tensor_base_ = std::move(tensor);
 }
@@ -148,8 +139,7 @@ std::vector<int64_t> DenseTensorIteratorBase::invert_perm(
 void DenseTensorIteratorBase::allocate_or_resize_outputs() {
   for (auto i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
-    bool valid_stride =
-        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
+    bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
     if (!op.tensor().initialized() || op.will_resize || !valid_stride) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
@@ -190,8 +180,7 @@ void DenseTensorIterator::set_output_raw_strided(int64_t output_idx,
                                                  std::vector<int64_t> sizes,
                                                  std::vector<int64_t> strides) {
   auto& op = operands_[output_idx];
-  bool valid_stride =
-      judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
+  bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
   if (!op.tensor().initialized() || !valid_stride) {
     if (strides.empty()) {
       auto meta = op.tensor().meta();
@@ -354,8 +343,7 @@ void DenseTensorIteratorBase::compute_shape(
   bool has_scalars = false;
   bool has_tensors = false;
   for (auto& op : operands_) {
-    bool valid_stride =
-        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
+    bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
     if (!op.tensor().initialized() || !valid_stride) continue;
     if (config.resize_outputs_ && op.is_output) continue;
     auto shape = common::vectorize<int64_t>(op.tensor().dims());
@@ -380,8 +368,7 @@ void DenseTensorIteratorBase::compute_shape(
 void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
-    bool valid_stride =
-        judge_valid_stride(common::vectorize<int64_t>(op.tensor().strides()));
+    bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
     if (op.tensor().initialized() && !op.will_resize && valid_stride) {
       std::vector<int64_t> original_shape =
           config.static_shape_ ? shape_

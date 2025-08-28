@@ -244,8 +244,8 @@ from .tensor.creation import (
     ones_like,
     polar,
     range,
+    tensor as as_tensor,
     to_tensor,
-    to_tensor as as_tensor,
     tril,
     tril_,
     tril_indices,
@@ -864,12 +864,17 @@ concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
 ger = outer
-
 div = divide
 div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
 
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -1182,6 +1187,8 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
     'permute',
     'cauchy_',

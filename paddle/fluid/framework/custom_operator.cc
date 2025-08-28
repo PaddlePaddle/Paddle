@@ -1283,11 +1283,11 @@ RegisterOperatorWithMetaInfoMap(const paddle::OpMetaInfoMap& op_meta_info_map,
   std::unordered_map<std::string, std::vector<OpMetaInfo>> diff_map;
   for (auto& pair : meta_info_map) {
     VLOG(3) << "Custom Operator: pair first -> op name: " << pair.first;
-
-    // Register PIR op
-
+    auto& inplace_map = OpMetaInfoHelper::GetInplaceMap(pair.second[0]);
+    auto postfix = inplace_map.empty() ? "" : "_";
+    // Custom dialect register
     if (custom_dialect->HasRegistered(paddle::framework::kCustomDialectPrefix +
-                                      pair.first)) {
+                                      pair.first + postfix)) {
       VLOG(3) << "The operator `" << pair.first
               << "` has been registered. "
                  "Therefore, we will not repeat the registration here.";
