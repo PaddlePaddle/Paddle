@@ -5021,6 +5021,10 @@
 
 - op : sigmoid
   args : (Tensor x)
+  python_api:
+    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
+    args_alias:
+      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5062,12 +5066,13 @@
 
 - op : silu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
+  inplace : (x -> out)
   backward : silu_grad
   interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
   traits: pir::UnaryElementWiseTrait

@@ -577,7 +577,6 @@ else()
   set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 250)
 endif()
 
-set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
