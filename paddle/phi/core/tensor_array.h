@@ -27,7 +27,7 @@ class TensorArray : public TensorBase,
  public:
   /// \brief Construct a TensorArray.
   /// \param vec The vector DenseTensor used to init TensorArray.
-  explicit TensorArray(const std::vector<DenseTensor>& vec);
+  PADDLE_API explicit TensorArray(const std::vector<DenseTensor>& vec);
 
   explicit TensorArray(size_t n) {
     for (size_t i = 0; i < n; i++) {
@@ -66,13 +66,13 @@ class TensorArray : public TensorBase,
   TEST_API DataType dtype() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_type(const DataType dtype);
+  PADDLE_API void set_type(const DataType dtype);
 #endif
 
   TEST_API DataLayout layout() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_layout(const DataLayout layout);
+  PADDLE_API void set_layout(const DataLayout layout);
 #endif
 
   /// \brief This overridden function is not used in TensorArray.
@@ -111,11 +111,11 @@ class TensorArray : public TensorBase,
   /// \brief Add the tensor to the end of TensorArray
   TEST_API void push_back(const DenseTensor& tensor);
 
-  void emplace_back();
+  PADDLE_API void emplace_back();
 
-  void emplace_back(const DenseTensor& tensor);
+  PADDLE_API void emplace_back(const DenseTensor& tensor);
 
-  void pop(size_t i);
+  PADDLE_API void pop(size_t i);
 
   /// \brief Return the last tensor in TensorArray
   DenseTensor& back() { return tensors_.back(); }

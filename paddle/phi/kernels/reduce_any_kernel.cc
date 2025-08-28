@@ -38,7 +38,10 @@ void AnyKernel(const Context& dev_ctx,
   bool reduce_all = recompute_reduce_all(x, dims);
   AnyRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_ANY_KERNEL(bool, CPUContext)
+INSTANTIATE_ANY_KERNEL(bool, GPUContext)
+#endif
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;

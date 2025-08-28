@@ -73,7 +73,7 @@ class OpBase {
     return *op_;
   }
 
-  void ClearBackwardTrace();
+  PADDLE_API void ClearBackwardTrace();
 
   NameVarMap<VariableWrapper>* GetMutableOutsMap() { return &outs_; }
 
@@ -83,7 +83,7 @@ class OpBase {
 
   const NameVarMap<VariableWrapper>& GetOutsMap() const { return outs_; }
 
-  void SetType(const std::string& type);
+  PADDLE_API void SetType(const std::string& type);
 
   void CheckAttrs() {
     auto& info = Info();

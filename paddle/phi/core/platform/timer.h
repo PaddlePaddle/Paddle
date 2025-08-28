@@ -39,14 +39,14 @@ class Timer {
   TEST_API void Start();
   TEST_API void Pause();
   // Resume will get current system time
-  void Resume();
-  int Count();
+  PADDLE_API void Resume();
+  PADDLE_API int Count();
   // return elapsed time in us
-  double ElapsedUS();
+  PADDLE_API double ElapsedUS();
   // return elapsed time in ms
   TEST_API double ElapsedMS();
   // return elapsed time in sec
-  double ElapsedSec();
+  PADDLE_API double ElapsedSec();
 
  private:
   struct timeval _start;

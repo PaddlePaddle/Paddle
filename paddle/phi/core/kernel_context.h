@@ -35,7 +35,7 @@ namespace phi {
  *       its constructor can only take the members it needs as parameters,
  *       not Scope, RuntimeContext, etc. as parameters
  */
-class KernelContext {
+class PADDLE_API KernelContext {
  public:
   KernelContext() = default;
   explicit KernelContext(DeviceContext* dev_ctx) : dev_ctx_(dev_ctx) {}

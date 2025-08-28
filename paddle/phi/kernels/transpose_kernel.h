@@ -68,5 +68,12 @@ DenseTensor TransposeLast2Dim(const Context& dev_ctx, const DenseTensor& x) {
   std::swap(axis[rank - 1], axis[rank - 2]);
   return Transpose<T, Context>(dev_ctx, x, axis);
 }
-
+#ifdef _WIN32
+#define INSTANTIATE_TRANSPOSE_KERNEL(type, context)        \
+  template PADDLE_API void TransposeKernel<type, context>( \
+      const context&,                                      \
+      const DenseTensor&,                                  \
+      const std::vector<int>&,                             \
+      DenseTensor*);
+#endif
 }  // namespace phi

@@ -231,7 +231,7 @@ class TEST_API TensorDistAttr {
 
  private:
   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
-  class DimMapProxy final {
+  class PADDLE_API DimMapProxy final {
    public:
     DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d,
                 const ProcessMesh& process_mesh)
@@ -278,7 +278,8 @@ inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
   return os;
 }
 
-bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
+PADDLE_API bool operator==(const TensorDistAttr& lhs,
+                           const TensorDistAttr& rhs);
 
 inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return !operator==(lhs, rhs);

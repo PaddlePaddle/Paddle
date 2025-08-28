@@ -93,7 +93,7 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.offset == rhs.offset) && (lhs.strides == rhs.strides);
 }
 
-struct StringTensorMeta {
+struct PADDLE_API StringTensorMeta {
   StringTensorMeta() = default;
   explicit StringTensorMeta(const DDim& dims);
   /// \brief Test whether the metadata is valid. Does not throw exceptions.

@@ -43,6 +43,22 @@ PHI_DEFINE_bool(enable_record_op_info,
 
 namespace phi {
 
+#ifdef _WIN32
+inline ProfilerState ProfilerHelper::g_state = ProfilerState::kDisabled;
+inline bool ProfilerHelper::g_enable_nvprof_hook = false;
+inline thread_local uint64_t ProfilerHelper::g_thread_id;
+inline uint32_t ProfilerHelper::g_next_thread_id = 0;
+inline std::mutex ProfilerHelper::g_all_event_lists_mutex;
+inline std::list<std::shared_ptr<EventList<Event>>>
+    ProfilerHelper::g_all_event_lists;
+inline thread_local std::shared_ptr<EventList<Event>>
+    ProfilerHelper::g_event_list;
+inline std::list<std::shared_ptr<EventList<MemEvent>>>
+    ProfilerHelper::g_all_mem_event_lists;
+inline thread_local std::shared_ptr<EventList<MemEvent>>
+    ProfilerHelper::g_mem_event_list;
+inline std::mutex ProfilerHelper::g_all_mem_event_lists_mutex;
+#else
 ProfilerState ProfilerHelper::g_state = ProfilerState::kDisabled;
 bool ProfilerHelper::g_enable_nvprof_hook = false;
 thread_local uint64_t ProfilerHelper::g_thread_id;
@@ -55,6 +71,7 @@ std::list<std::shared_ptr<EventList<MemEvent>>>
 thread_local std::shared_ptr<EventList<MemEvent>>
     ProfilerHelper::g_mem_event_list;
 std::mutex ProfilerHelper::g_all_mem_event_lists_mutex;
+#endif
 
 Event::Event(EventType type,
              std::string name,

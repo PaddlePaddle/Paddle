@@ -69,7 +69,7 @@ class OpKernelType {
   virtual ~OpKernelType() {}
 
   struct Hash {
-    size_t operator()(const OpKernelType& key) const;
+    PADDLE_API size_t operator()(const OpKernelType& key) const;
   };
 
   size_t hash_key() const { return Hash()(*this); }
@@ -78,7 +78,7 @@ class OpKernelType {
     return hash_key() < o.hash_key();
   }
 
-  bool operator==(const OpKernelType& o) const;
+  PADDLE_API bool operator==(const OpKernelType& o) const;
 
   bool operator!=(const OpKernelType& o) const { return !(*this == o); }
 

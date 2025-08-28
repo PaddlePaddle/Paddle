@@ -44,5 +44,9 @@ void Add(const Context& dev_ctx,
   ElementwiseInferMeta(x, y, &meta_out);
   AddKernel<T, Context>(dev_ctx, x, y, dense_out);
 }
-
+#ifdef _WIN32
+#define INSTANTIATE_ADD_KERNEL(type, context)      \
+  template TEST_API void AddKernel<type, context>( \
+      const context&, const DenseTensor&, const DenseTensor&, DenseTensor*);
+#endif
 }  // namespace phi

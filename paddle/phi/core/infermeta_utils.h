@@ -37,16 +37,16 @@ class InferMetaContext {
   InferMetaContext() = default;
   explicit InferMetaContext(MetaConfig config) : config_(config) {}
 
-  void SetMetaConfig(MetaConfig config);
+  PADDLE_API void SetMetaConfig(MetaConfig config);
   TEST_API const MetaConfig& GetMetaConfig() const;
 
-  void EmplaceBackInput(MetaTensor input);
+  PADDLE_API void EmplaceBackInput(MetaTensor input);
   TEST_API void EmplaceBackOutput(MetaTensor output);
   TEST_API void EmplaceBackAttr(Attribute attr);
 
-  void EmplaceBackInputs(
+  PADDLE_API void EmplaceBackInputs(
       paddle::small_vector<MetaTensor, phi::kInputSmallVectorSize> inputs);
-  void EmplaceBackOutputs(
+  PADDLE_API void EmplaceBackOutputs(
       paddle::small_vector<MetaTensor, phi::kOutputSmallVectorSize> outputs);
 
   void UpdataInput(size_t idx, MetaTensor input) { inputs_[idx] = input; }
@@ -67,7 +67,7 @@ class InferMetaContext {
 
   TEST_API const Attribute& AttrAt(size_t idx) const;
 
-  const std::pair<int, int>& InputRangeAt(size_t idx) const;
+  PADDLE_API const std::pair<int, int>& InputRangeAt(size_t idx) const;
   TEST_API const std::pair<int, int>& OutputRangeAt(size_t idx) const;
 
   size_t InputsSize() const { return inputs_.size(); }

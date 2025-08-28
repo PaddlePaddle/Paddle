@@ -336,12 +336,12 @@ void Copy<phi::Place, phi::XPUPlace>(phi::Place dst_place,
 }
 
 template <>
-void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                  void* dst,
-                                  phi::Place src_place,
-                                  const void* src,
-                                  size_t num,
-                                  void* stream) {
+PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                             void* dst,
+                                             phi::Place src_place,
+                                             const void* src,
+                                             size_t num,
+                                             void* stream) {
   if (dst_place.GetType() == phi::AllocationType::CPU) {
     phi::CPUPlace place_dst;
     if (src_place.GetType() == phi::AllocationType::XPU) {
@@ -641,12 +641,12 @@ TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
 }
 
 template <>
-void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
-                                        void* dst,
-                                        phi::GPUPlace src_place,
-                                        const void* src,
-                                        size_t num,
-                                        void* stream) {
+PADDLE_API void Copy<phi::GPUPlace, phi::GPUPlace>(phi::GPUPlace dst_place,
+                                                   void* dst,
+                                                   phi::GPUPlace src_place,
+                                                   const void* src,
+                                                   size_t num,
+                                                   void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
@@ -816,12 +816,12 @@ void Copy<phi::GPUPlace, phi::GPUPinnedPlace>(phi::GPUPlace dst_place,
 
 // NOTE: only for CPUPlace、CUDAPlace and CUDAPinnedPlace.
 template <>
-void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                  void* dst,
-                                  phi::Place src_place,
-                                  const void* src,
-                                  size_t num,
-                                  void* stream) {
+PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                             void* dst,
+                                             phi::Place src_place,
+                                             const void* src,
+                                             size_t num,
+                                             void* stream) {
   if (src_place.GetType() == phi::AllocationType::CPU &&
       dst_place.GetType() == phi::AllocationType::CPU) {
     phi::CPUPlace place_dst, place_src;
@@ -953,12 +953,12 @@ void Copy<phi::GPUPlace, phi::Place>(phi::GPUPlace dst_place,
 
 // NOTE: only for (CUDAPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace)
 template <>
-void Copy<phi::Place, phi::GPUPlace>(phi::Place dst_place,
-                                     void* dst,
-                                     phi::GPUPlace src_place,
-                                     const void* src,
-                                     size_t num,
-                                     void* stream) {
+PADDLE_API void Copy<phi::Place, phi::GPUPlace>(phi::Place dst_place,
+                                                void* dst,
+                                                phi::GPUPlace src_place,
+                                                const void* src,
+                                                size_t num,
+                                                void* stream) {
   Copy(dst_place,
        dst,
        phi::Place(src_place.GetType(), src_place.GetDeviceId()),
@@ -980,12 +980,13 @@ void Copy<phi::GPUPinnedPlace, phi::Place>(phi::GPUPinnedPlace dst_place,
 
 // NOTE: only for (CUDAPinnedPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace)
 template <>
-void Copy<phi::Place, phi::GPUPinnedPlace>(phi::Place dst_place,
-                                           void* dst,
-                                           phi::GPUPinnedPlace src_place,
-                                           const void* src,
-                                           size_t num,
-                                           void* stream) {
+PADDLE_API void Copy<phi::Place, phi::GPUPinnedPlace>(
+    phi::Place dst_place,
+    void* dst,
+    phi::GPUPinnedPlace src_place,
+    const void* src,
+    size_t num,
+    void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 
@@ -1012,11 +1013,11 @@ void Copy<phi::Place, phi::GPUPinnedPlace>(phi::Place dst_place,
 
 // NOTE: Only for CPUPlace, XPUPlace and PinnedPlace.
 template <>
-void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                  void* dst,
-                                  phi::Place src_place,
-                                  const void* src,
-                                  size_t num) {
+PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                             void* dst,
+                                             phi::Place src_place,
+                                             const void* src,
+                                             size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
           << dst_place;
@@ -1149,12 +1150,12 @@ TEST_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
     !defined(PADDLE_WITH_HIP)
 
 template <>
-void Copy<phi::Place, phi::Place>(phi::Place dst_place,
-                                  void* dst,
-                                  phi::Place src_place,
-                                  const void* src,
-                                  size_t num,
-                                  void* stream) {
+PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
+                                             void* dst,
+                                             phi::Place src_place,
+                                             const void* src,
+                                             size_t num,
+                                             void* stream) {
   if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
       dst_place.GetType() == phi::AllocationType::CUSTOM) {
     phi::CPUPlace place_src;

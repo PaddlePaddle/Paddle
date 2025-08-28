@@ -1,6 +1,16 @@
-cc_test(device_mesh_test SRCS device_mesh_test.cc)
-
-cc_test(process_mesh_test SRCS process_mesh_test.cc)
+if(WIN32)
+  cc_test(
+    device_mesh_test
+    SRCS device_mesh_test.cc
+    DEPS type_info)
+  cc_test(
+    process_mesh_test
+    SRCS process_mesh_test.cc
+    DEPS type_info)
+else()
+  cc_test(device_mesh_test SRCS device_mesh_test.cc)
+  cc_test(process_mesh_test SRCS process_mesh_test.cc)
+endif()
 
 cc_test(
   dist_attr_test
@@ -56,7 +66,14 @@ if(WITH_DISTRIBUTE)
 
 endif()
 
-cc_test(
-  dist_mapper_test
-  SRCS dist_mapper_test.cc
-  DEPS phi)
+if(WIN32)
+  cc_test(
+    dist_mapper_test
+    SRCS dist_mapper_test.cc
+    DEPS type_info)
+else()
+  cc_test(
+    dist_mapper_test
+    SRCS dist_mapper_test.cc
+    DEPS phi)
+endif()

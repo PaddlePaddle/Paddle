@@ -29,14 +29,14 @@ limitations under the License. */
 namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void SetAllowTF32Cublas(bool active);
+PADDLE_API void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
-bool AllowTF32Cublas();
+PADDLE_API bool AllowTF32Cublas();
 extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
-void SetAllowTF32Cudnn(bool active);
+PADDLE_API void SetAllowTF32Cudnn(bool active);
 /*Get the global variable allow_tf32_cudnn value*/
-bool AllowTF32Cudnn();
+PADDLE_API bool AllowTF32Cudnn();
 #endif  // PADDLE_WITH_CUDA
 
 template <typename Place>

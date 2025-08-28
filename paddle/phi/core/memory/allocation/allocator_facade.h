@@ -61,12 +61,13 @@ class AllocatorFacade {
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
-  const std::shared_ptr<Allocator>& GetZeroAllocator(const phi::Place& place);
+  PADDLE_API const std::shared_ptr<Allocator>& GetZeroAllocator(
+      const phi::Place& place);
 
   // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(const phi::Place& place, size_t size);
   // Allocate a unique allocation.
-  AllocationPtr Alloc(const phi::Place& place, size_t size);
+  PADDLE_API AllocationPtr Alloc(const phi::Place& place, size_t size);
   // Release unused memory pool.
   uint64_t Release(const phi::Place& place);
 
@@ -81,8 +82,8 @@ class AllocatorFacade {
   bool InSameStream(const std::shared_ptr<Allocation>& allocation,
                     const phi::Stream& stream);
 
-  bool IsStreamSafeCUDAAllocatorUsed();
-  bool IsCUDAMallocAsyncAllocatorUsed();
+  PADDLE_API bool IsStreamSafeCUDAAllocatorUsed();
+  PADDLE_API bool IsCUDAMallocAsyncAllocatorUsed();
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.

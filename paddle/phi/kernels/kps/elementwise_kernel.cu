@@ -211,7 +211,14 @@ void NextafterKernel(const Context& dev_ctx,
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::NextafterFunctor<T>());
 }
-
+#ifdef _WIN32
+INSTANTIATE_ADD_KERNEL(float, GPUContext)
+INSTANTIATE_ADD_KERNEL(double, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::float16, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::bfloat16, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, GPUContext)
+#endif
 }  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

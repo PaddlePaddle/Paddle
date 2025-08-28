@@ -53,7 +53,7 @@ class TEST_API CustomRegisteredDeviceMap {
   std::unordered_map<size_t, std::string> registered_device_type_;
 };
 
-const char* AllocationTypeStr(AllocationType type);
+PADDLE_API const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
 class TEST_API Place {
@@ -202,9 +202,9 @@ class CustomPlace : public Place {
   }
 };
 
-TEST_API std::ostream& operator<<(std::ostream&, const Place&);
+PADDLE_API std::ostream& operator<<(std::ostream&, const Place&);
 
-Place GetPinnedPlace(const Place& place);
+PADDLE_API Place GetPinnedPlace(const Place& place);
 
 using PlaceList = std::vector<Place>;
 
@@ -217,17 +217,17 @@ class PlaceHelper {
 };
 #endif
 
-TEST_API bool is_gpu_place(const Place&);
-bool is_xpu_place(const Place&);
-bool is_ipu_place(const Place&);
-TEST_API bool is_cpu_place(const Place&);
-bool is_cuda_pinned_place(const Place&);
-bool is_xpu_pinned_place(const Place&);
-bool is_custom_place(const Place& p);
-bool is_accelerat_place(const Place& p);
-bool places_are_same_class(const Place&, const Place&);
-bool is_same_place(const Place&, const Place&);
-bool is_accelerat_allocation_type(AllocationType type);
+PADDLE_API bool is_gpu_place(const Place&);
+PADDLE_API bool is_xpu_place(const Place&);
+PADDLE_API bool is_ipu_place(const Place&);
+PADDLE_API bool is_cpu_place(const Place&);
+PADDLE_API bool is_cuda_pinned_place(const Place&);
+PADDLE_API bool is_xpu_pinned_place(const Place&);
+PADDLE_API bool is_custom_place(const Place& p);
+PADDLE_API bool is_accelerat_place(const Place& p);
+PADDLE_API bool places_are_same_class(const Place&, const Place&);
+PADDLE_API bool is_same_place(const Place&, const Place&);
+PADDLE_API bool is_accelerat_allocation_type(AllocationType type);
 }  // namespace phi
 
 namespace paddle {

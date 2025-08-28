@@ -28,7 +28,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class RetryAllocator : public Allocator {
+class PADDLE_API RetryAllocator : public Allocator {
  public:
   RetryAllocator(std::shared_ptr<Allocator> allocator, size_t retry_ms)
       : underlying_allocator_(std::move(allocator)), retry_time_(retry_ms) {
