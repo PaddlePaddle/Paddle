@@ -49,14 +49,14 @@ class AllocatorFacade {
   const AllocatorFacade& operator=(const AllocatorFacade& o) = delete;
   ~AllocatorFacade();
 
-  TEST_API static AllocatorFacade& Instance();
+  PADDLE_API static AllocatorFacade& Instance();
 
   AllocatorFacadePrivate* GetPrivate() const;
 
-  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place);
 
-  TEST_API const std::shared_ptr<Allocator>& GetAutoGrowthAllocator(
+  PADDLE_API const std::shared_ptr<Allocator>& GetAutoGrowthAllocator(
       const phi::Place& place);
 
   void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
@@ -91,12 +91,12 @@ class AllocatorFacade {
   bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
   void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, gpuStream_t stream);
   gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) const;
   void SetDefaultStream(const phi::GPUPlace& place, gpuStream_t stream);
 #elif defined(PADDLE_WITH_XPU)
-  TEST_API const std::shared_ptr<Allocator>& GetAllocator(
+  PADDLE_API const std::shared_ptr<Allocator>& GetAllocator(
       const phi::Place& place, XPUStream stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, XPUStream stream);
   void SetDefaultStream(const phi::XPUPlace& place, XPUStream stream);

@@ -46,7 +46,7 @@ class CustomRegisteredDeviceMap {
   PADDLE_API size_t
   GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
 
-  PADDLE_API `std::string GetGlobalDeviceType(size_t device_type_id_);
+  PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
 
  private:
   CustomRegisteredDeviceMap() = default;
