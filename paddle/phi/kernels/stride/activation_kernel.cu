@@ -27,6 +27,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/selu_kernel.h"
+#include "paddle/phi/kernels/stride/elementwise_stride_base.cu.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -37,107 +38,6 @@ COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
 
 namespace phi {
-
-template <typename Functor,
-          typename OutT,
-          int Arity,
-          int NumOuts,
-          int VecSize,
-          int vt>
-__global__ void UnaryElementwiseKernel(
-    Array<const _ptr_ char *__restrict__, Arity> ins,
-    Array<_ptr_ OutT *, NumOuts> outs,
-    uint32_t numel,
-    int read_lens,
-    Functor func,
-    funcs::OffsetCalculator<Arity + NumOuts> offset_calc) {
-  int64_t tid = THREAD_ID_X;
-  int64_t nv = BLOCK_NUM_X * vt;
-  int64_t idx = nv * BLOCK_ID_X + tid;
-#pragma unroll
-  for (int i = 0; i < vt; i++) {
-    if (idx < numel) {
-      auto offsets = offset_calc.get(idx);
-      using Traits = phi::funcs::FunctionTraits<Functor>;
-      using ArgsT = typename Traits::ArgsTuple;
-      __simd__ ArgsT args[VecSize];
-      __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
-      std::get<0>(args[idx]) =
-          *(reinterpret_cast<const _ptr_ std::tuple_element_t<0, ArgsT> *>(
-              reinterpret_cast<const _ptr_ char *>(ins[0]) + offsets[1]));
-      funcs::SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
-                                                VecSize,
-                                                Functor,
-                                                ArgsT,
-                                                Arity>()(
-          func, args, result, read_lens);
-      char *out_ptr = reinterpret_cast<char *>(outs[0]) + offsets[0];
-      *reinterpret_cast<OutT *>(out_ptr) =
-          *reinterpret_cast<const OutT *>(&(result[0]));
-      idx += BLOCK_NUM_X;
-    }
-  }
-}
-
-template <typename OutT, typename Context, typename Functor, int NumOuts = 1>
-void UnaryStrideElementwiseKernel(const Context &dev_ctx,
-                                  const std::vector<const DenseTensor *> &ins,
-                                  std::vector<DenseTensor *> *outs,
-                                  Functor func) {
-  using Traits = phi::funcs::FunctionTraits<Functor>;
-  const int Arity = Traits::arity;
-  bool have_0_size = false;
-  for (int i = 0; i < outs->size(); ++i) {
-    if (outs->at(i)->numel() == 0) {
-      have_0_size = true;
-    }
-    if (i > 0) {
-      PADDLE_ENFORCE_EQ(
-          (*outs)[i]->dims(),
-          (*outs)[0]->dims(),
-          common::errors::InvalidArgument(
-              "The shape of each output tensor shall be identical yet, "
-              "but %dth output tensor`s shape is not.",
-              i));
-    }
-    dev_ctx.template Alloc<OutT>((*outs)[i]);
-  }
-  if (have_0_size) {
-    return;
-  }
-  int max_rank = 0;
-  int min_rank = phi::DDim::kMaxRank;
-  for (auto *in : ins) {
-    max_rank = std::max(max_rank, in->dims().size());
-    min_rank = std::min(min_rank, in->dims().size());
-  }
-  if (ins.size() == 1) {
-    max_rank = std::max(max_rank, (*outs)[0]->dims().size());
-  }
-  int axis = max_rank - min_rank;
-  auto classifier =
-      funcs::BroadcastTypeClassifier<OutT, Functor, Arity, NumOuts>(
-          ins, outs, axis);
-  DenseTensorIteratorConfig config;
-  config.add_output(*((*outs)[0]));
-  config.add_const_input(*(ins[0]));
-  DenseTensorIterator iter = config.build();
-  const int &numel = iter.numel();
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<2>(iter);
-  constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
-  auto stream = dev_ctx.stream();
-  auto threads = 128;
-  auto blocks = (numel + 128 * unroll_factor - 1) / (128 * unroll_factor);
-  int vec_size = 1;
-  UnaryElementwiseKernel<Functor, OutT, Arity, NumOuts, 1, unroll_factor>
-      <<<blocks, threads, 0, stream>>>(classifier.ins_data,
-                                       classifier.outs_data,
-                                       numel,
-                                       vec_size,
-                                       func,
-                                       offset_calc);
-}
-
 template <typename T, typename Context, typename Functor>
 void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
                                         const DenseTensor &x,
@@ -147,20 +47,6 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
   std::vector<DenseTensor *> outputs = {out};
   dev_ctx.template Alloc<T>(out);
   UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
-}
-
-template <typename Context>
-phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
-                                   const phi::DenseTensor &tensor) {
-  phi::DenseTensor dense_out;
-  phi::MetaTensor meta_input(tensor);
-  phi::MetaTensor meta_out(&dense_out);
-  UnchangedInferMeta(meta_input, &meta_out);
-  PD_VISIT_ALL_TYPES(tensor.dtype(), "Tensor2Contiguous", ([&] {
-                       phi::ContiguousKernel<data_t, Context>(
-                           dev_ctx, tensor, &dense_out);
-                     }));
-  return dense_out;
 }
 
 #define DEFINE_CUDA_ACTIVATION_STRIDE_OP(name, functor_class)                 \
@@ -566,6 +452,35 @@ PD_REGISTER_KERNEL(abs,
                      phi::dtype::complex<float>,                  \
                      phi::dtype::complex<double>) {}
 
+#define REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(exp, func) \
+  PD_REGISTER_KERNEL(exp,                                 \
+                     GPU,                                 \
+                     STRIDED,                             \
+                     phi::func,                           \
+                     float,                               \
+                     double,                              \
+                     int,                                 \
+                     int64_t,                             \
+                     phi::dtype::float16,                 \
+                     phi::dtype::bfloat16,                \
+                     phi::dtype::complex<float>,          \
+                     phi::dtype::complex<double>) {}
+
+#define REGISTER_ACTIVATION_FLOOR_STRIDE_KERNEL(floor, func) \
+  PD_REGISTER_KERNEL(floor,                                  \
+                     GPU,                                    \
+                     STRIDED,                                \
+                     phi::func,                              \
+                     float,                                  \
+                     double,                                 \
+                     uint8_t,                                \
+                     int8_t,                                 \
+                     int16_t,                                \
+                     int,                                    \
+                     int64_t,                                \
+                     phi::dtype::float16,                    \
+                     phi::dtype::bfloat16) {}
+
 #define REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, func) \
   PD_REGISTER_KERNEL(leaky_relu,                            \
                      GPU,                                   \
@@ -587,154 +502,37 @@ REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cosh, CoshStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(asinh, AsinhStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(acosh, AcoshStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(atanh, AtanhStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(silu, SiluStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(reciprocal,
-                                               ReciprocalStrideKernel)
-PD_REGISTER_KERNEL(square,
-                   GPU,
-                   STRIDED,
-                   phi::SquareStrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tanh, TanhStrideKernel)
 
-REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sqrt, SqrtStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL(rsqrt, RsqrtStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL(hardtanh, HardTanhStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, LeakyReluStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL(mish, MishStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(silu, SiluStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(softplus, SoftplusStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(softsign, SoftsignStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sigmoid, SigmoidStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(logsigmoid,
                                                LogSigmoidStrideKernel)
-
-PD_REGISTER_KERNEL(floor,
-                   GPU,
-                   STRIDED,
-                   phi::FloorStrideKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(ceil,
-                   GPU,
-                   STRIDED,
-                   phi::CeilStrideKernel,
-                   float,
-                   double,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(log,
-                   GPU,
-                   STRIDED,
-                   phi::LogStrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(log2,
-                   GPU,
-                   STRIDED,
-                   phi::Log2StrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(log10,
-                   GPU,
-                   STRIDED,
-                   phi::Log10StrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(log1p,
-                   GPU,
-                   STRIDED,
-                   phi::Log1pStrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-PD_REGISTER_KERNEL(exp,
-                   GPU,
-                   STRIDED,
-                   phi::ExpStrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(expm1,
-                   GPU,
-                   STRIDED,
-                   phi::Expm1StrideKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
-REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, LeakyReluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(hard_shrink, HardShrinkStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(softshrink, SoftShrinkStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(celu, CeluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(elu, EluStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL(mish, MishStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL(hardtanh, HardTanhStrideKernel)
-REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(softplus, SoftplusStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(hardsigmoid, HardSigmoidStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL(selu, SeluStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(hardswish, HardSwishStrideKernel)
 
-PD_REGISTER_KERNEL(round,
-                   GPU,
-                   STRIDED,
-                   phi::RoundStrideKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(reciprocal,
+                                               ReciprocalStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sqrt, SqrtStrideKernel)
+REGISTER_ACTIVATION_STRIDE_KERNEL(rsqrt, RsqrtStrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(square, SquareStrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(log, LogStrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(log2, Log2StrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(log10, Log10StrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(log1p, Log1pStrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(exp, ExpStrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(expm1, Expm1StrideKernel)
+REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(round, RoundStrideKernel)
+REGISTER_ACTIVATION_FLOOR_STRIDE_KERNEL(floor, FloorStrideKernel)
+REGISTER_ACTIVATION_FLOOR_STRIDE_KERNEL(ceil, CeilStrideKernel)
 #endif
