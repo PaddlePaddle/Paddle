@@ -8280,10 +8280,12 @@ def _get_paddle_place(place):
 
     if not isinstance(place, str):
         raise ValueError(
-            "place only support string which is 'Place' and so on."
+            f"place only support string which is 'Place' and so on, but got {place}"
         )
 
     place = place.lower()
+    if place.startswith("cuda"):
+        place = place.replace("cuda", "gpu")
     if place == "cpu":
         return core.CPUPlace()
 
