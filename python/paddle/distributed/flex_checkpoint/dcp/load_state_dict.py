@@ -726,7 +726,7 @@ def _handle_aoa(
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
         src_tensor = src_desc_to_sharded_tensor[src_desc]
         dst_tensor = load_dict[dst_desc.key]
-        postprocess_list = src_desc_to_postprocess_list[src_desc]
+        postprocess_list = src_desc_to_postprocess_list.get(src_desc, None)
         assign_sharded_slice(
             src_desc, src_tensor, dst_desc, dst_tensor, postprocess_list
         )
