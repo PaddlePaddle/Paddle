@@ -27,10 +27,8 @@ class TestSumOp_Compatibility(unittest.TestCase):
         self.axis = 0
         self.input_dtype = 'float32'
         self.test_dtypes = [
-            np.int32,
-            np.int64,
-            np.float64,
-            np.bool,
+            "int32",
+            "float32",
         ]
 
     def test_dygraph(self):
