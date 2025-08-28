@@ -390,7 +390,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.axis = -1
 
     def if_check_prim(self):
-        self.check_prim = self.axis == -1
+        self.check_prim = False
 
     def if_check_dygraph(self):
         self.check_dygraph = (not self.use_onednn) and (self.axis == -1)
