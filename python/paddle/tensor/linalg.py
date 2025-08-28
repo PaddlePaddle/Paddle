@@ -1043,7 +1043,6 @@ def norm(
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
-    *,
     out: paddle.Tensor | None = None,
     dtype: paddle._typing.DTypeLike | None = None,
     name: str | None = None,
