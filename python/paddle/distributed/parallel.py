@@ -97,7 +97,9 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
+                paddle.reshape(
+                    x=g_var, shape=[np.prod(g_var.shape, dtype="int64")]
+                )
             )
         coalesced_grad = paddle.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
@@ -125,7 +127,9 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             origin_grad_vars,
             grad_shapes,
         ) in coalesced_grads_and_grad_vars:
-            grad_var_len = [np.prod(g_shape) for g_shape in grad_shapes]
+            grad_var_len = [
+                np.prod(g_shape, dtype="int64") for g_shape in grad_shapes
+            ]
             attrs = ()
             attrs += ('sections', grad_var_len)
             attrs += ('axis', 0)
@@ -149,7 +153,9 @@ def build_groups(
         var_dtype = var.dtype
         if isinstance(var_dtype, core.DataType):
             var_dtype = paddle.pir.core.datatype_to_vartype[var_dtype]
-        bytes = np.prod(var.shape) * core.size_of_dtype(var_dtype)
+        bytes = np.prod(var.shape, dtype="int64") * core.size_of_dtype(
+            var_dtype
+        )
         if memory_counter < group_size and dtype == var.dtype:
             memory_counter += bytes
         else:
@@ -210,7 +216,9 @@ def sync_params_buffers(
                 coalesced_var, src=src_rank, group=comm_group, sync_op=True
             )
         for coalesced_var, origin_vars, var_shapes in coalesced_vars:
-            var_len = [np.prod(v_shape) for v_shape in var_shapes]
+            var_len = [
+                np.prod(v_shape, dtype="int64") for v_shape in var_shapes
+            ]
             paddle.base.framework._dygraph_tracer().trace_op(
                 type='split',
                 inputs={'X': coalesced_var},
