@@ -90,7 +90,6 @@ class TestTanhVjp(unittest.TestCase):
 
 class TestMeanVjp(unittest.TestCase):
     def test_mean_vjp1(self):
-        # with paddle.pir_utils.OldIrGuard():
         main_program, start_program = (
             paddle.static.Program(),
             paddle.static.Program(),
