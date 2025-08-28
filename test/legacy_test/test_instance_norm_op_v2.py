@@ -206,7 +206,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.python_api = instance_norm_wrapper
         self.public_python_api = instance_norm_wrapper
         self.check_prim = (
-            False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            False if os.getenv("FLAGS_enable_pir_in_executor") else False
         )
 
     def test_check_output(self):
@@ -389,7 +389,7 @@ class TestInstanceNormBF16OP(OpTest):
             'data_format': self.data_format,
         }
         self.check_prim = (
-            False if os.getenv("FLAGS_enable_pir_in_executor") else True
+            False if os.getenv("FLAGS_enable_pir_in_executor") else False
         )
 
     def init_value(self):

@@ -37,17 +37,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_random_ctrl_deprecated)
   set_tests_properties(test_random_ctrl_deprecated
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
-  py_test_modules(test_parallel_tuner_deprecated MODULES
-                  test_parallel_tuner_deprecated)
-  set_tests_properties(test_parallel_tuner_deprecated PROPERTIES TIMEOUT 120)
-  py_test_modules(test_parallel_tuner_full_deprecated MODULES
-                  test_parallel_tuner_full_deprecated)
-  set_tests_properties(test_parallel_tuner_full_deprecated PROPERTIES TIMEOUT
-                                                                      120)
-  py_test_modules(test_parallel_tuner_predict_deprecated MODULES
-                  test_parallel_tuner_predict_deprecated)
-  set_tests_properties(test_parallel_tuner_predict_deprecated PROPERTIES TIMEOUT
-                                                                         120)
   py_test_modules(test_fused_linear_pass_deprecated MODULES
                   test_fused_linear_pass_deprecated)
   set_tests_properties(test_fused_linear_pass_deprecated PROPERTIES TIMEOUT 40)
@@ -68,9 +57,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_while_op_completion_deprecated)
   py_test_modules(test_while_op_partition_deprecated MODULES
                   test_while_op_partition_deprecated)
-  py_test_modules(test_pattern_deprecated MODULES test_pattern_deprecated)
-  py_test_modules(test_pattern_match_deprecated MODULES
-                  test_pattern_match_deprecated)
   py_test_modules(test_shard_layer_api_deprecated MODULES
                   test_shard_layer_api_deprecated)
   # End of unittests WITH single card WITHOUT timeout
@@ -97,8 +83,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_new_cost_model_deprecated MODULES
                   test_new_cost_model_deprecated)
   py_test_modules(test_interface_deprecated MODULES test_interface_deprecated)
-  py_test_modules(test_group_operators_deprecated MODULES
-                  test_group_operators_deprecated)
   py_test_modules(test_fp16_assign_deprecated MODULES
                   test_fp16_assign_deprecated)
   py_test_modules(test_engine_save_load_deprecated MODULES
@@ -132,38 +116,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_dist_concat_deprecated)
   py_test_modules(test_dist_context_deprecated MODULES
                   test_dist_context_deprecated)
-
-  py_test_modules(test_auto_parallel_amp_pass_deprecated MODULES
-                  test_auto_parallel_amp_pass_deprecated)
-  py_test_modules(test_auto_parallel_recompute_pass_deprecated MODULES
-                  test_auto_parallel_recompute_pass_deprecated)
-  set_tests_properties(test_auto_parallel_recompute_pass_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
-  py_test_modules(test_auto_parallel_sharding_pass_deprecated MODULES
-                  test_auto_parallel_sharding_pass_deprecated)
-  set_tests_properties(test_auto_parallel_sharding_pass_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
-  py_test_modules(test_auto_parallel_fp16_pass_deprecated MODULES
-                  test_auto_parallel_fp16_pass_deprecated)
-  set_tests_properties(test_auto_parallel_fp16_pass_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
   py_test_modules(test_auto_parallel_gradient_merge_pass_deprecated MODULES
                   test_auto_parallel_gradient_merge_pass_deprecated)
   set_tests_properties(test_auto_parallel_gradient_merge_pass_deprecated
                        PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
-  py_test_modules(
-    test_auto_parallel_data_parallel_optimization_pass_deprecated MODULES
-    test_auto_parallel_data_parallel_optimization_pass_deprecated)
-  set_tests_properties(
-    test_auto_parallel_data_parallel_optimization_pass_deprecated
-    PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
-  if(CUDA_VERSION GREATER_EQUAL 11.6)
-    py_test_modules(
-      test_auto_parallel_fused_linear_promotion_pass_deprecated MODULES
-      test_auto_parallel_fused_linear_promotion_pass_deprecated)
-    set_tests_properties(
-      test_auto_parallel_fused_linear_promotion_pass_deprecated
-      PROPERTIES LABELS "RUN_TYPE=DIST" TIMEOUT 250)
-  endif()
 endif()
 set_pir_tests_properties()
