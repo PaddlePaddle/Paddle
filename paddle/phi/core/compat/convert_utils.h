@@ -31,7 +31,7 @@ PADDLE_API const std::string& TransToPhiKernelName(
 PADDLE_API const std::string& TransToFluidOpName(
     const std::string& phi_kernel_name);
 
-TEST_API Backend TransToPhiBackend(const phi::Place& place);
+PADDLE_API Backend TransToPhiBackend(const phi::Place& place);
 PADDLE_API phi::Place TransToPhiPlace(const Backend& backend,
                                       bool set_device_id = true);
 

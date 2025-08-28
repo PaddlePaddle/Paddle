@@ -58,7 +58,7 @@ class OneDNNContextThreadLocals {
     PADDLE_API void set_cur_input_shape_str(std::string input_shape_str);
     PADDLE_API void set_cur_input_shape_cache_capacity(
         int input_shape_cache_capacity);
-    TEST_API void set_cur_paddle_data_layout(DataLayout dl);
+    PADDLE_API void set_cur_paddle_data_layout(DataLayout dl);
     PADDLE_API DataLayout get_cur_paddle_data_layout(void);
     void log_lib_version(void);
     const dnnl::engine& get_engine(void) { return cur_engine; }
@@ -78,7 +78,7 @@ class OneDNNContextThreadLocals {
   static constexpr size_t kONEDNNSessionID_Default = 0;
   // onednn session id for cache clearing mode
   static constexpr size_t kONEDNNSessionID_CacheClearing = -1;
-  TEST_API static Body& fetch();
+  PADDLE_API static Body& fetch();
 };
 
 class OneDNNContext : public CPUContext {
@@ -115,7 +115,7 @@ class OneDNNContext : public CPUContext {
   const dnnl::engine& GetEngine() const { return tls().get_engine(); }
 
   // Remove all entries from the blob map
-  TEST_API void ResetBlobMap(void* ptr);
+  PADDLE_API void ResetBlobMap(void* ptr);
 
   // Prevent next ResetBlobMap()
   PADDLE_API void BlockNextCacheClearing();
@@ -127,7 +127,7 @@ class OneDNNContext : public CPUContext {
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
   // Calculate number of oneDNN objects cached
-  TEST_API unsigned int GetCachedObjectsNumber(void) const;
+  PADDLE_API unsigned int GetCachedObjectsNumber(void) const;
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;

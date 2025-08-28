@@ -82,7 +82,7 @@ class ShardStatus final : public PlacementStatus {
   int64_t co_shard_order_{0};
 };
 
-class TEST_API TensorDistAttr {
+class PADDLE_API TensorDistAttr {
  public:
   TensorDistAttr() = default;
 

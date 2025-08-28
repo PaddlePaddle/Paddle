@@ -418,11 +418,11 @@ class MemoryUtils {
 
 namespace memory_utils {
 
-TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place,
-                                        size_t size,
-                                        const phi::Stream& stream);
+PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place,
+                                          size_t size,
+                                          const phi::Stream& stream);
 
-TEST_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API Allocator::AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
                                         size_t size,
@@ -454,7 +454,7 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
-TEST_API void InitDevices();
+PADDLE_API void InitDevices();
 
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*

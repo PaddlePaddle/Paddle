@@ -92,7 +92,7 @@ typedef enum {
 } cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction
-TEST_API bool MayIUse(const cpu_isa_t cpu_isa);
+PADDLE_API bool MayIUse(const cpu_isa_t cpu_isa);
 }  // namespace cpu
 }  // namespace backends
 }  // namespace phi
