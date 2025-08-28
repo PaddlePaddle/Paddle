@@ -1870,6 +1870,10 @@ class Embedding(Layer):
     def padding_idx(self):
         return self._padding_idx
 
+    @padding_idx.setter
+    def padding_idx(self, value):
+        self._padding_idx = value
+
     @param_one_alias(["x", "input"])
     def forward(self, x: Tensor) -> Tensor:
         return F.embedding(
