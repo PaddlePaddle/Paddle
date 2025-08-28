@@ -178,7 +178,7 @@ def array_macro(tokens, expression, context):
 @macro(name='fused_qkv_old_macro', priority=4)
 def fused_qkv_old_macro(tokens, expression, context):
     FUSED_QKV_OLD_TAG = "fused_qkv_old"
-    if FUSED_QKV_OLD_TAG not in expression:
+    if not any(tkn.value == FUSED_QKV_OLD_TAG for tkn in tokens):
         return expression
 
     attn_head_num = None
@@ -338,7 +338,7 @@ def fused_qkv_old_macro(tokens, expression, context):
 @macro(name='fused_ffn_macro', priority=4)
 def fused_ffn_macro(tokens, expression, context):
     FUSED_FFN_TAG = "fused_ffn"
-    if FUSED_FFN_TAG not in expression:
+    if not any(tkn.value == FUSED_FFN_TAG for tkn in tokens):
         return expression
     assert len(tokens) == 6 and tokens[4].value == FUSED_FFN_TAG, (
         "Invalid tokens for FUSED_FFN operation ！"
@@ -429,8 +429,9 @@ def transpose_macro(tokens, expression, context):
 @macro(name='fused_qkv', priority=4)
 def fused_qkv(tokens, expression, context):
     FUSED_QKV_TAG = "fused_qkv"
-    if FUSED_QKV_TAG not in expression:
+    if not any(tkn.value == FUSED_QKV_TAG for tkn in tokens):
         return expression
+
     attn_head_num = num_heads = None
     num_key_value_groups = None
     fused_qkv_pos = None
