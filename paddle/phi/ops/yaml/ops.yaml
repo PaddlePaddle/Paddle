@@ -3659,10 +3659,6 @@
 
 - op : mean
   args : (Tensor x, IntArray axis={}, bool keepdim=false, DataType dtype=DataType::UNDEFINED)
-  python_api:
-    name : [paddle.mean,paddle.Tensor.mean]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : MeanInferMeta
