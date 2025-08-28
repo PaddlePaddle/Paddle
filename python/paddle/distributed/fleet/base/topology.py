@@ -1137,9 +1137,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         )
         context_comm_list = []
         for ranks in sharding_comm_list:
-            assert (
-                len(ranks) // self._cp_sharding_degree == self._cp_degree
-            ), f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            assert len(ranks) // self._cp_sharding_degree == self._cp_degree, (
+                f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            )
             for i in range(self._cp_sharding_degree):
                 sub_ranks = ranks[
                     i * self._cp_degree : (i + 1) * self._cp_degree
@@ -1153,9 +1153,9 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         )
         context_comm_list = []
         for ranks in sharding_comm_list:
-            assert (
-                len(ranks) // self._cp_sharding_degree == self._cp_degree
-            ), f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            assert len(ranks) // self._cp_sharding_degree == self._cp_degree, (
+                f'sharding comm list {len(ranks)} size must divided by cp_sharding_degree {self._cp_sharding_degree}'
+            )
             for i in range(self._cp_degree):
                 sub_ranks = ranks[i :: self._cp_degree]
                 context_comm_list.append(sub_ranks)
