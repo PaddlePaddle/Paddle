@@ -403,7 +403,10 @@ class IValue {
           reinterpret_cast<const at::ScalarType&>(out)));
     } else {
       try {
-        out = this->to<BaseType>();
+        // Handle const types by removing const and using const_cast
+        using NonConstType = std::remove_const_t<T>;
+        NonConstType temp = this->to<BaseType>();
+        const_cast<NonConstType&>(out) = std::move(temp);
         return true;
       } catch (const std::exception&) {
         return false;

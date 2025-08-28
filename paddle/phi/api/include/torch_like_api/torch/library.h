@@ -114,6 +114,13 @@ class FunctionArgs {
       if (arg.template try_convert_to<NonConstType>(temp_result)) {
         return temp_result;
       }
+    } else if constexpr (std::is_const_v<std::remove_reference_t<ReturnType>>) {
+      // Handle const types by using underlying non-const type for conversion
+      using NonConstType = std::remove_const_t<ReturnType>;
+      NonConstType temp_result;
+      if (arg.template try_convert_to<NonConstType>(temp_result)) {
+        return static_cast<ReturnType>(temp_result);
+      }
     } else {
       ReturnType result;
       if (arg.template try_convert_to<ReturnType>(result)) {
@@ -248,11 +255,13 @@ struct function_traits<R(Args...)> {
   static IValue call_function_impl(F&& func,
                                    const FunctionArgs& args,
                                    std::index_sequence<I...>) {
+    auto args_without_ref =
+        std::make_tuple(args.template get<std::remove_reference_t<Args>>(I)...);
     if constexpr (std::is_void_v<R>) {
-      func(args.get<Args>(I)...);
+      func(std::get<I>(args_without_ref)...);
       return IValue();
     } else {
-      auto result = func(args.get<Args>(I)...);
+      auto result = func(std::get<I>(args_without_ref)...);
       return IValue(result);
     }
   }
@@ -308,12 +317,14 @@ struct function_traits<R (C::*)(Args...)>
                                  C* instance,
                                  const FunctionArgs& args,
                                  std::index_sequence<I...>) {
+    // Skip args[0] which is 'this'
+    auto args_without_ref = std::make_tuple(
+        args.template get<std::remove_reference_t<Args>>(I + 1)...);
     if constexpr (std::is_void_v<R>) {
-      (instance->*func)(
-          args.get<Args>(I + 1)...);  // Skip args[0] which is 'this'
+      (instance->*func)(std::get<I>(args_without_ref)...);
       return IValue();
     } else {
-      auto result = (instance->*func)(args.get<Args>(I + 1)...);
+      auto result = (instance->*func)(std::get<I>(args_without_ref)...);
       return IValue(result);
     }
   }

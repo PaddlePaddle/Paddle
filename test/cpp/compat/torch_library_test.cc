@@ -556,3 +556,30 @@ TEST(test_torch_library, TestTupleReturn) {
   auto third_tensor_tuple_3 = tuple_val_3[2].to_tensor();
   ASSERT_EQ(third_tensor_tuple_3.size(0), 4);
 }
+
+// Test for const reference parameters fix
+void fn_with_const_ref_param(const int& x, const std::string& str) {
+  // Simple function to test const reference parameter handling
+}
+
+TORCH_LIBRARY(example_library_const_ref_fix, m) {
+  m.def("fn_with_const_ref_param", &fn_with_const_ref_param);
+}
+
+TEST(test_torch_library, TestConstRefParameterFix) {
+  auto qualified_name =
+      "example_library_const_ref_fix::fn_with_const_ref_param";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  // Test with const reference parameters
+  torch::FunctionArgs function_args;
+  function_args.add_arg(torch::IValue(42));
+  function_args.add_arg(torch::IValue(std::string("test")));
+
+  // This should not throw compilation errors
+  auto result = impl_it->second.call_with_args(function_args);
+  ASSERT_TRUE(result.get_value().is_none());  // void function returns None
+}
