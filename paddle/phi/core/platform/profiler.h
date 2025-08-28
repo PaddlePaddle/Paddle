@@ -183,12 +183,12 @@ using phi::PushEvent;
 PADDLE_API std::vector<std::vector<Event>> GetAllEvents();
 
 // Enable the profiling function.
-TEST_API void EnableProfiler(ProfilerState state);
+PADDLE_API void EnableProfiler(ProfilerState state);
 // Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
 // of all threads.
-TEST_API void ResetProfiler();
-TEST_API void DisableProfiler(EventSortingKey sorted_key,
-                              const std::string& profile_path);
+PADDLE_API void ResetProfiler();
+PADDLE_API void DisableProfiler(EventSortingKey sorted_key,
+                                const std::string& profile_path);
 // Disable profiler but return events instead of print it.
 void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
                             std::vector<std::vector<Event>>* time_events,

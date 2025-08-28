@@ -329,9 +329,9 @@ PADDLE_API void DropoutNdInferMeta(const MetaTensor& x,
                                    MetaTensor* out,
                                    MetaTensor* mask);
 
-TEST_API void ElementwiseInferMeta(const MetaTensor& x,
-                                   const MetaTensor& y,
-                                   MetaTensor* out);
+PADDLE_API void ElementwiseInferMeta(const MetaTensor& x,
+                                     const MetaTensor& y,
+                                     MetaTensor* out);
 
 PADDLE_API void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                                         const MetaTensor& y_meta,

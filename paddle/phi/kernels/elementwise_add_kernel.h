@@ -19,10 +19,10 @@
 
 namespace phi {
 template <typename T, typename Context>
-TEST_API void AddKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& y,
-                        DenseTensor* out);
+PADDLE_API void AddKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Add(const Context& dev_ctx,
@@ -45,8 +45,8 @@ void Add(const Context& dev_ctx,
   AddKernel<T, Context>(dev_ctx, x, y, dense_out);
 }
 #ifdef _WIN32
-#define INSTANTIATE_ADD_KERNEL(type, context)      \
-  template TEST_API void AddKernel<type, context>( \
+#define INSTANTIATE_ADD_KERNEL(type, context)        \
+  template PADDLE_API void AddKernel<type, context>( \
       const context&, const DenseTensor&, const DenseTensor&, DenseTensor*);
 #endif
 }  // namespace phi

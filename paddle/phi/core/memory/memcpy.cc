@@ -116,7 +116,7 @@ void Copy<phi::CustomPlace, phi::CustomPlace>(phi::CustomPlace dst_place,
 #endif  // PADDLE_WITH_CUSTOM_DEVICE
 
 template <>
-TEST_API void Copy<phi::CPUPlace, phi::CPUPlace>(
+PADDLE_API void Copy<phi::CPUPlace, phi::CPUPlace>(
     phi::CPUPlace, void* dst, phi::CPUPlace, const void* src, size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
@@ -374,7 +374,7 @@ void Copy<phi::CPUPlace, phi::XPUPinnedPlace>(phi::CPUPlace dst_place,
 }
 
 template <>
-TEST_API void Copy<phi::XPUPinnedPlace, phi::CPUPlace>(
+PADDLE_API void Copy<phi::XPUPinnedPlace, phi::CPUPlace>(
     phi::XPUPinnedPlace dst_place,
     void* dst,
     phi::CPUPlace src_place,
@@ -555,12 +555,12 @@ inline void SyncCUDAStream() {
 // https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
 
 template <>
-TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
-                                                 void* dst,
-                                                 phi::GPUPlace src_place,
-                                                 const void* src,
-                                                 size_t num,
-                                                 void* stream) {
+PADDLE_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
+                                                   void* dst,
+                                                   phi::GPUPlace src_place,
+                                                   const void* src,
+                                                   size_t num,
+                                                   void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(src_place.device);
@@ -598,12 +598,12 @@ TEST_API void Copy<phi::CPUPlace, phi::GPUPlace>(phi::CPUPlace dst_place,
 }
 
 template <>
-TEST_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
-                                                 void* dst,
-                                                 phi::CPUPlace src_place,
-                                                 const void* src,
-                                                 size_t num,
-                                                 void* stream) {
+PADDLE_API void Copy<phi::GPUPlace, phi::CPUPlace>(phi::GPUPlace dst_place,
+                                                   void* dst,
+                                                   phi::CPUPlace src_place,
+                                                   const void* src,
+                                                   size_t num,
+                                                   void* stream) {
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);
@@ -712,7 +712,7 @@ void Copy<phi::CPUPlace, phi::GPUPinnedPlace>(phi::CPUPlace dst_place,
 }
 
 template <>
-TEST_API void Copy<phi::GPUPinnedPlace, phi::CPUPlace>(
+PADDLE_API void Copy<phi::GPUPinnedPlace, phi::CPUPlace>(
     phi::GPUPinnedPlace dst_place,
     void* dst,
     phi::CPUPlace src_place,
@@ -915,23 +915,23 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 
 // NOTE: only for (CPUPlace, CUDAPlace and CUDAPinnedPlace) -> (CPUPlace).
 template <>
-TEST_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
-                                              void* dst,
-                                              phi::Place src_place,
-                                              const void* src,
-                                              size_t num,
-                                              void* stream) {
+PADDLE_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
+                                                void* dst,
+                                                phi::Place src_place,
+                                                const void* src,
+                                                size_t num,
+                                                void* stream) {
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, stream);
 }
 
 // NOTE: only for (CPUPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace).
 template <>
-TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                              void* dst,
-                                              phi::CPUPlace src_place,
-                                              const void* src,
-                                              size_t num,
-                                              void* stream) {
+PADDLE_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                                void* dst,
+                                                phi::CPUPlace src_place,
+                                                const void* src,
+                                                size_t num,
+                                                void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 
@@ -1128,21 +1128,21 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 
 // NOTE: Only for (CPUPlace) -> (CPUPlace and PinnedPlace).
 template <>
-TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                              void* dst,
-                                              phi::CPUPlace src_place,
-                                              const void* src,
-                                              size_t num) {
+PADDLE_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                                void* dst,
+                                                phi::CPUPlace src_place,
+                                                const void* src,
+                                                size_t num) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num);
 }
 
 // NOTE: Only for (CPUPlace and PinnedPlace) -> (CPUPlace).
 template <>
-TEST_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
-                                              void* dst,
-                                              phi::Place src_place,
-                                              const void* src,
-                                              size_t num) {
+PADDLE_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
+                                                void* dst,
+                                                phi::Place src_place,
+                                                const void* src,
+                                                size_t num) {
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num);
 }
 
@@ -1175,23 +1175,23 @@ PADDLE_API void Copy<phi::Place, phi::Place>(phi::Place dst_place,
 }
 
 template <>
-TEST_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
-                                              void* dst,
-                                              phi::Place src_place,
-                                              const void* src,
-                                              size_t num,
-                                              void* stream) {
+PADDLE_API void Copy<phi::CPUPlace, phi::Place>(phi::CPUPlace dst_place,
+                                                void* dst,
+                                                phi::Place src_place,
+                                                const void* src,
+                                                size_t num,
+                                                void* stream) {
   Copy(phi::Place(dst_place.GetType()), dst, src_place, src, num, stream);
 }
 
 // NOTE: only for (CPUPlace) -> (CPUPlace, CUDAPlace and CUDAPinnedPlace).
 template <>
-TEST_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
-                                              void* dst,
-                                              phi::CPUPlace src_place,
-                                              const void* src,
-                                              size_t num,
-                                              void* stream) {
+PADDLE_API void Copy<phi::Place, phi::CPUPlace>(phi::Place dst_place,
+                                                void* dst,
+                                                phi::CPUPlace src_place,
+                                                const void* src,
+                                                size_t num,
+                                                void* stream) {
   Copy(dst_place, dst, phi::Place(src_place.GetType()), src, num, stream);
 }
 #endif

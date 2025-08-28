@@ -32,10 +32,10 @@ namespace platform {
 PADDLE_API int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-TEST_API int GetGPUDeviceCount();
+PADDLE_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
-TEST_API int GetGPUComputeCapability(int id);
+PADDLE_API int GetGPUComputeCapability(int id);
 
 //! Get the runtime version of the ith GPU
 int GetGPURuntimeVersion(int id);
@@ -56,7 +56,7 @@ int GetGPUMaxThreadsPerMultiProcessor(int id);
 int GetGPUMaxThreadsPerBlock(int id);
 
 //! Get the current GPU device id in system.
-TEST_API int GetCurrentDeviceId();
+PADDLE_API int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<unsigned int, 3> GetGpuMaxGridDimSize(int);
@@ -68,7 +68,7 @@ PADDLE_API std::vector<int> GetSelectedDevices();
 PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
 //! Set the GPU device id for next execution.
-TEST_API void SetDeviceId(int device_id);
+PADDLE_API void SetDeviceId(int device_id);
 
 //! Get the memory usage of current GPU device.
 PADDLE_API void GpuMemoryUsage(size_t *available, size_t *total);

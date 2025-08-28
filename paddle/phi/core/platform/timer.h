@@ -35,16 +35,16 @@ class Timer {
   // Reset() will be called during initialization
   // all timing variables will be set 0 in Reset()
   Timer() { Reset(); }
-  TEST_API void Reset();
-  TEST_API void Start();
-  TEST_API void Pause();
+  PADDLE_API void Reset();
+  PADDLE_API void Start();
+  PADDLE_API void Pause();
   // Resume will get current system time
   PADDLE_API void Resume();
   PADDLE_API int Count();
   // return elapsed time in us
   PADDLE_API double ElapsedUS();
   // return elapsed time in ms
-  TEST_API double ElapsedMS();
+  PADDLE_API double ElapsedMS();
   // return elapsed time in sec
   PADDLE_API double ElapsedSec();
 

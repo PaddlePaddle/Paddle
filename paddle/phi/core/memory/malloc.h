@@ -37,7 +37,7 @@ using phi::Allocation;
 PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
     const phi::Place& place, size_t size);
 
-TEST_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
 PADDLE_API extern uint64_t Release(const phi::Place& place);
 

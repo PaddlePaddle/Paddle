@@ -47,7 +47,7 @@ using LoD = LegacyLoD;
 /// \brief The meta data of dense tensor. Take the structure type
 /// and use all default operations.
 ///
-struct TEST_API DenseTensorMeta {
+struct PADDLE_API DenseTensorMeta {
   DenseTensorMeta();
   DenseTensorMeta(DataType dtype, const DDim& dims);
   DenseTensorMeta(DataType dtype, const DDim& dims, const DDim& stride);

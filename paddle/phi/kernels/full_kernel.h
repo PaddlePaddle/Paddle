@@ -97,8 +97,8 @@ void FullIntArrayKernel(const Context& dev_ctx,
                         DataType dtype,
                         DenseTensor* out);
 #ifdef _WIN32
-#define INSTANTIATE_FULL_KERNEL(type, context)      \
-  template TEST_API void FullKernel<type, context>( \
+#define INSTANTIATE_FULL_KERNEL(type, context)        \
+  template PADDLE_API void FullKernel<type, context>( \
       const context&, const IntArray&, const Scalar&, DataType, DenseTensor*);
 #endif
 }  // namespace phi
