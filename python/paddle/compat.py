@@ -22,9 +22,11 @@ from .tensor.compat import (
     sort,
     split,
 )
+from .tensor.compat_softmax import softmax
 
 __all__ = [
     'slogdet',
+    'softmax',
     'split',
     'sort',
     'Unfold',

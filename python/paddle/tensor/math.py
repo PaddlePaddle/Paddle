@@ -32,6 +32,8 @@ from paddle._C_ops import (  # noqa: F401
     isnan,
     log,
     logsumexp,
+    maximum,
+    minimum,
     sign,
     sin,
 )
@@ -852,10 +854,10 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [-0.30685282, -0.68673831, -0.87307199])
     """
     log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
-    maximum = paddle.maximum(x, y)
-    if maximum.dtype == paddle.int32 or maximum.dtype == paddle.int64:
-        maximum = maximum.astype(log_1p.dtype)
-    return log_1p + maximum
+    _maximum = paddle.maximum(x, y)
+    if _maximum.dtype == paddle.int32 or _maximum.dtype == paddle.int64:
+        _maximum = _maximum.astype(log_1p.dtype)
+    return log_1p + _maximum
 
 
 def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
@@ -1446,130 +1448,6 @@ def _divide_with_axis(x, y, axis=-1, name=None):
     else:
         op_type = 'elementwise_div'
         return _elementwise_op(LayerHelper(op_type, **locals()))
-
-
-def maximum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
-
-    .. math::
-        out = max(x, y)
-
-    Note:
-        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
-            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
-            >>> res = paddle.maximum(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3, 4],
-             [7, 8]])
-
-            >>> x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-            >>> y = paddle.to_tensor([3, 0, 4])
-            >>> res = paddle.maximum(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[3, 2, 4],
-             [3, 2, 4]])
-
-            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
-            >>> res = paddle.maximum(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [2. , nan, nan])
-
-            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
-            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
-            >>> res = paddle.maximum(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [5.  , 3.  , inf.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.maximum(x, y)
-    else:
-        return _elementwise_op(LayerHelper('elementwise_max', **locals()))
-
-
-def minimum(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
-
-    .. math::
-        out = min(x, y)
-
-    Note:
-        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
-            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
-            >>> res = paddle.minimum(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[1, 2],
-             [5, 6]])
-
-            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            >>> y = paddle.to_tensor([3, 0, 4])
-            >>> res = paddle.minimum(x, y)
-            >>> print(res)
-            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[1, 0, 3],
-              [1, 0, 3]]])
-
-            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
-            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
-            >>> res = paddle.minimum(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1. , nan, nan])
-
-            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
-            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
-            >>> res = paddle.minimum(x, y)
-            >>> print(res)
-            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [ 1.  , -inf.,  5.  ])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.minimum(x, y)
-    else:
-        return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
 def fmax(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:

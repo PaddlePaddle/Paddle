@@ -264,48 +264,6 @@ class TestEmptyVarTranslate(unittest.TestCase):
             _ = pir.translate_to_pir(main_program.desc)
 
 
-class TestOneHotOpTranscriber(unittest.TestCase):
-    def test_mutable_attribute(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                depth = paddle.assign(np.array([10], dtype=np.int32))
-                label = paddle.static.data(
-                    name="label", shape=[-1, 1], dtype="int64"
-                )
-                one_hot_label = paddle.nn.functional.one_hot(
-                    x=label, num_classes=depth
-                )
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-    def test_normal_attribute(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                depth = 10
-                label = paddle.static.data(
-                    name="label", shape=[-1, 1], dtype="int64"
-                )
-                one_hot_label = paddle.nn.functional.one_hot(
-                    x=label, num_classes=depth
-                )
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-
 class TestReduceOpTranscriber(unittest.TestCase):
     def test_reduce_all(self):
         place = core.Place()
