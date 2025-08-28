@@ -42,7 +42,8 @@ __device__ void BlockLoad(const InT* input,
     const uint32_t local_off_M = threadIdx.y + i * 16;
     const uint32_t off_m = blockIdx.x * 128 + local_off_M;
     const uint32_t off_k = blockIdx.y * 128 + threadIdx.x * VecSize;
-    const size_t offset = off_m * K + off_k;
+    const size_t offset =
+        static_cast<size_t>(off_m) * static_cast<size_t>(K) + off_k;
 
     float scale;
     if constexpr (need_dequant) {
@@ -53,15 +54,17 @@ __device__ void BlockLoad(const InT* input,
 
 #pragma unroll
     for (uint32_t j = 0; j < 4; j += VecSize) {
-      const size_t idx = offset + j * 32;
-      using LoadT = VecType<InT, VecSize>;
-      LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
+      if (off_k + j * 32 < K) {
+        const size_t idx = offset + j * 32;
+        using LoadT = VecType<InT, VecSize>;
+        LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
 #pragma unroll
-      for (uint32_t k = 0; k < VecSize; k++) {
-        if constexpr (need_dequant) {
-          x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
-        } else {
-          x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
+        for (uint32_t k = 0; k < VecSize; k++) {
+          if constexpr (need_dequant) {
+            x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
+          } else {
+            x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
+          }
         }
       }
     }
