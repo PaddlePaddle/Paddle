@@ -212,6 +212,9 @@ void NextafterKernel(const Context& dev_ctx,
       dev_ctx, inputs, &outputs, funcs::NextafterFunctor<T>());
 }
 #ifdef _WIN32
+#define INSTANTIATE_ADD_KERNEL(type, context)      \
+  template TEST_API void AddKernel<type, context>( \
+      const context&, const DenseTensor&, const DenseTensor&, DenseTensor*);
 INSTANTIATE_ADD_KERNEL(float, GPUContext)
 INSTANTIATE_ADD_KERNEL(double, GPUContext)
 INSTANTIATE_ADD_KERNEL(phi::dtype::float16, GPUContext)
