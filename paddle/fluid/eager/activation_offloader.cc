@@ -252,12 +252,7 @@ void ActivationOffloaderWithPlace::Remove(
   --(iter->second);
   if (iter->second == 0) {
     activations_.erase(iter);
-    if (VLOG_IS_ON(10)) {
-      auto shared_t = tensor.lock();
-      if (shared_t != nullptr) {
-        VLOG(10) << "Remove " << GetTensorMetaString(shared_t);
-      }
-    }
+    VLOG(10) << "Remove " << GetTensorMetaString(tensor.lock());
   }
 }
 

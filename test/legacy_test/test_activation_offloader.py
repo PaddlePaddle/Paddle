@@ -88,6 +88,10 @@ class TestMain(unittest.TestCase):
         y = x[3:5]
         y *= y
 
+        z = paddle.randn([10, 10])
+        model(z)
+        assert paddle.core.offload_cached_size() > 0
+
         with self.assertRaises(MemoryError):
             paddle.empty([1024, 1024, 1024, 1024])
         enable_activation_offload(model, enable=False)
