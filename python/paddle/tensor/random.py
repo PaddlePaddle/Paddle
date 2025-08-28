@@ -971,6 +971,7 @@ def randn(
     out: paddle.Tensor | None = None,
     device: PlaceLike | None = None,
     requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a standard
@@ -992,6 +993,7 @@ def randn(
         out(Tensor, optional): The output tensor.
         device(PlaceLike|None, optional): The desired device of returned tensor.
         requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a standard
@@ -1050,7 +1052,28 @@ def randn(
                (0.16270922124385834-1.3086302280426025j),
                (0.9428746104240417+0.06869460642337799j)]])
     """
-    return standard_normal(
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
+    tensor = standard_normal(
         shape,
         dtype,
         name,
@@ -1058,6 +1081,9 @@ def randn(
         device=device,
         requires_grad=requires_grad,
     )
+    if pin_memory and in_dynamic_mode():
+        tensor = tensor.pin_memory()
+    return tensor
 
 
 def randn_like(

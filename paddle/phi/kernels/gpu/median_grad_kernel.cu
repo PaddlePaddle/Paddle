@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/nanmedian_grad_kernel.h"
+#include "paddle/phi/kernels/median_grad_kernel.h"
 
+#include <math.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -31,11 +32,11 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void KernelNanmedianMeanGrad(const int64_t* medians_ptr,
-                                        const T* out_grad_ptr,
-                                        T* dx_data,
-                                        int64_t stride,
-                                        int64_t pre_dim) {
+__global__ void KernelMedianMeanGrad(const int64_t* medians_ptr,
+                                     const T* out_grad_ptr,
+                                     T* dx_data,
+                                     int64_t stride,
+                                     int64_t pre_dim) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
 
@@ -53,11 +54,11 @@ __global__ void KernelNanmedianMeanGrad(const int64_t* medians_ptr,
 }
 
 template <typename T>
-__global__ void KernelNanmedianMinGrad(const int64_t* medians_ptr,
-                                       const T* out_grad_ptr,
-                                       T* dx_data,
-                                       int64_t stride,
-                                       int64_t pre_dim) {
+__global__ void KernelMedianMinGrad(const int64_t* medians_ptr,
+                                    const T* out_grad_ptr,
+                                    T* dx_data,
+                                    int64_t stride,
+                                    int64_t pre_dim) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
 
@@ -68,16 +69,15 @@ __global__ void KernelNanmedianMinGrad(const int64_t* medians_ptr,
 }
 
 template <typename T>
-__global__ void KernelNanmedianGradEvenly(const T* medians_ptr,
-                                          const int64_t* median_index_ptr,
-                                          const T* out_grad_ptr,
-                                          T* x,
-                                          T* dx_data,
-                                          int64_t stride,
-                                          int64_t pre_dim) {
+__global__ void KernelMedianGradEvenly(const T* medians_ptr,
+                                       const int64_t* median_index_ptr,
+                                       const T* out_grad_ptr,
+                                       T* x,
+                                       T* dx_data,
+                                       int64_t stride,
+                                       int64_t pre_dim) {
   CUDA_KERNEL_LOOP(index, pre_dim) {
     int64_t offset = index * stride;
-
     if (median_index_ptr[2 * index] >= 0 &&
         !isnan(static_cast<float>(medians_ptr[index]))) {
       x[offset + median_index_ptr[2 * index]] = medians_ptr[index];
@@ -88,14 +88,14 @@ __global__ void KernelNanmedianGradEvenly(const T* medians_ptr,
 }
 
 template <typename T, typename Context>
-void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& median_data,
-                                 const DenseTensor& median_index,
-                                 const DenseTensor& out_grad,
-                                 const std::string& mode,
-                                 const bool evenly,
-                                 DenseTensor* x_grad) {
+void CalcMedianGradKernel_GPU(const Context& dev_ctx,
+                              const DenseTensor& x,
+                              const DenseTensor& median_data,
+                              const DenseTensor& median_index,
+                              const DenseTensor& out_grad,
+                              const std::string& mode,
+                              const bool evenly,
+                              DenseTensor* x_grad) {
   T* dx_data = dev_ctx.template Alloc<T>(x_grad);
   if (!dx_data) return;
 
@@ -116,11 +116,11 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
   int64_t pre_dim = numel / stride;
   if (!evenly) {
     if (mode == "avg") {
-      KernelNanmedianMeanGrad<T>
+      KernelMedianMeanGrad<T>
           <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
               m_index, out_grad_ptr, dx_data, stride, pre_dim);
     } else {  // mode == "min"
-      KernelNanmedianMinGrad<T>
+      KernelMedianMinGrad<T>
           <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
               m_index, out_grad_ptr, dx_data, stride, pre_dim);
     }
@@ -131,7 +131,7 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(&tmp_x);
     T* tmp_x_data = tmp_x.data<T>();
     if (mode == "avg") {
-      KernelNanmedianGradEvenly<T>
+      KernelMedianGradEvenly<T>
           <<<GET_BLOCKS(pre_dim), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
               m_data,
               m_index,
@@ -150,15 +150,15 @@ void CalcNanMedianGradKernel_GPU(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void NanmedianGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& median_data,
-                         const DenseTensor& median_index,
-                         const DenseTensor& out_grad,
-                         const IntArray& axes,
-                         bool keepdim UNUSED,
-                         const std::string& mode,
-                         DenseTensor* x_grad) {
+void MedianGradKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& median_data,
+                      const DenseTensor& median_index,
+                      const DenseTensor& out_grad,
+                      const IntArray& axes,
+                      bool keepdim UNUSED,
+                      const std::string& mode,
+                      DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
@@ -169,27 +169,27 @@ void NanmedianGradKernel(const Context& dev_ctx,
   if ((axes.size() == 0) || rank <= 1) {
     tmp_x = x;
     tmp_x.Resize({x.numel()});
-    CalcNanMedianGradKernel_GPU<T, Context>(dev_ctx,
-                                            tmp_x,
-                                            median_data,
-                                            median_index,
-                                            out_grad,
-                                            mode,
-                                            evenly,
-                                            x_grad);
+    CalcMedianGradKernel_GPU<T, Context>(dev_ctx,
+                                         tmp_x,
+                                         median_data,
+                                         median_index,
+                                         out_grad,
+                                         mode,
+                                         evenly,
+                                         x_grad);
   } else {
     funcs::PreprocessMedianKernel<T, Context>(dev_ctx, x, axes, &tmp_x);
 
     DenseTensor tmp_x_grad;
     tmp_x_grad.Resize(x_grad->dims());
-    CalcNanMedianGradKernel_GPU<T, Context>(dev_ctx,
-                                            tmp_x,
-                                            median_data,
-                                            median_index,
-                                            out_grad,
-                                            mode,
-                                            evenly,
-                                            &tmp_x_grad);
+    CalcMedianGradKernel_GPU<T, Context>(dev_ctx,
+                                         tmp_x,
+                                         median_data,
+                                         median_index,
+                                         out_grad,
+                                         mode,
+                                         evenly,
+                                         &tmp_x_grad);
     dev_ctx.template Alloc<T>(x_grad);
     funcs::PostprocessMedianGradKernel<T, Context>(
         dev_ctx, &tmp_x_grad, axes, x_grad);
@@ -198,10 +198,10 @@ void NanmedianGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nanmedian_grad,
+PD_REGISTER_KERNEL(median_grad,
                    GPU,
                    ALL_LAYOUT,
-                   phi::NanmedianGradKernel,
+                   phi::MedianGradKernel,
                    float,
                    double,
                    int,

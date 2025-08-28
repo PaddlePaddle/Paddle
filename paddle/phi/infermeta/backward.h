@@ -446,6 +446,15 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    bool ceil_mode,
                                    MetaTensor* dx);
 
+void MedianGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& median_data,
+                         const MetaTensor& median_index,
+                         const MetaTensor& out_grad,
+                         const IntArray& axes,
+                         bool keep_dim,
+                         const std::string& mode,
+                         MetaTensor* x_grad);
+
 void MeshgridGradInferMeta(const std::vector<const MetaTensor*>& inputs,
                            const std::vector<const MetaTensor*>& outputs_grad,
                            std::vector<MetaTensor*> inputs_grad);
@@ -525,6 +534,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
                             std::vector<MetaTensor*> ins_grad);
 
 void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_data,
                             const MetaTensor& median_index,
                             const MetaTensor& out_grad,
                             const IntArray& axes,

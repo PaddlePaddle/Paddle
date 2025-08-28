@@ -222,6 +222,8 @@ def _convert_to_place(device: PlaceLike) -> PlaceLike:
         return device  # return directly if not a string
 
     lower_device = device.lower()
+    if lower_device.startswith("cuda"):
+        lower_device = lower_device.replace("cuda", "gpu")
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
             ","

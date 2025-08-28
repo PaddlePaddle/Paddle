@@ -31,6 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
+from .compat_softmax import softmax as softmax
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -376,6 +377,7 @@ from .math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -481,7 +483,6 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -497,6 +498,7 @@ from .to_string import set_printoptions  # noqa: F401
 # API alias
 div = divide
 div_ = divide_
+mul_ = multiply_
 take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
@@ -922,8 +924,6 @@ tensor_method_func = [
     'softmax',
 ]
 
-mul = multiply
-mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [

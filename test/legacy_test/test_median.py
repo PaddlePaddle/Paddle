@@ -141,6 +141,12 @@ class TestMedianAvg(unittest.TestCase):
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
         self.check_numpy_res(res_pd.numpy(False), res_np)
 
+    def dygraph_single_test_median_cpu(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        res_pd = paddle.median(paddle.to_tensor(x).to('cpu'), axis, keepdims)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
+
     def test_median_static(self):
         h = 3
         w = 4
@@ -178,7 +184,7 @@ class TestMedianAvg(unittest.TestCase):
         self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
         self.assertRaises(ValueError, paddle.median, x, 2, False, 'max')
-        self.assertRaises(ValueError, paddle.median, paddle.to_tensor([]))
+        self.assertRaises(ValueError, paddle.median, x, [], False, 'max')
 
     def test_nan(self):
         paddle.disable_static()
@@ -193,6 +199,26 @@ class TestMedianAvg(unittest.TestCase):
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
+
+    def test_all_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+            ]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
 
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
@@ -474,6 +500,53 @@ class TestMedianAlias(unittest.TestCase):
         ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array(
+            [
+                [1.0, 2.0, 3.0, np.nan],
+                [5.0, 6.0, 7.0, 8.0],
+                [1.0, 3.0, 3.0, 5.0],
+            ]
+        )
+        np_grad = np.array(
+            [[0.0, 0.0, 0.0, 1.0], [0, 0.5, 0.5, 0], [0, 0.5, 0.5, 0]]
+        )
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor, axis=-1)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_all_nan_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([np.nan, np.nan, np.nan, np.nan])
+        np_grad = np.array([1, 0, 0, 0])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor, axis=0, mode="min")
+        dx = paddle.grad(y[0], x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_none_dim_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 0.0, 2.0, 0.0]])
+        np_grad = np.array([[0.2, 0.2, 0.2, 0.2], [0.2, 0, 0, 0]])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_zero_size_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor)
+        np_y = np.array([np.nan])
+        np.testing.assert_allclose(np_y, y, rtol=1e-05, equal_nan=True)
 
 
 if __name__ == '__main__':

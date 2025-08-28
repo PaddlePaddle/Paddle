@@ -722,8 +722,10 @@ class PythonCCodeGen(CodeGen):
         need_check_params_count = False
         self.need_parse_python_api_args = False
         self.use_custom_args_mapper = False
-
-        if op_name in python_api_info_from_yaml.keys():
+        # Do not parse sparse op's python_api_info
+        if (
+            not op_info.is_sparse_op
+        ) and op_name in python_api_info_from_yaml.keys():
             python_api_info = python_api_info_from_yaml[op_name]
         if python_api_info is not None:
             self.need_parse_python_api_args = True

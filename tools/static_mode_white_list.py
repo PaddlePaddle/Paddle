@@ -538,7 +538,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_matmul_mkldnn_op',
     'test_matmul_bf16_mkldnn_op',
     'test_matmul_v2_mkldnn_op',
-    'test_mul_int8_mkldnn_op',
+    'test_mul_int8_onednn_op',
     'test_multi_gru_mkldnn_op',
     'test_multi_gru_fuse_pass',
     'test_multi_gru_seq_fuse_pass',

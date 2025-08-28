@@ -27,7 +27,6 @@ test_complex_op
 test_complex_simplenet
 test_complex_sum_layer
 test_complex_view_op
-test_composite_batch_norm_deprecated
 test_composite_batch_norm_grad_deprecated
 test_composite_gelu_deprecated
 test_composite_gelu_grad_deprecated

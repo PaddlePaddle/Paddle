@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,13 +20,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NanmedianGradKernel(const Context& dev_ctx,
-                         const DenseTensor& x,
-                         const DenseTensor& median_data,
-                         const DenseTensor& median_index,
-                         const DenseTensor& out_grad,
-                         const IntArray& axes,
-                         bool keep_dim,
-                         const std::string& mode,
-                         DenseTensor* x_grad);
+void MedianKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& axes,
+                  bool keep_dim,
+                  const std::string& mode,
+                  DenseTensor* out,
+                  DenseTensor* medians);
 }  // namespace phi
