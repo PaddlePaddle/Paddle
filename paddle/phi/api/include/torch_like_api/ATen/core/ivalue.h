@@ -14,12 +14,16 @@
 
 #pragma once
 #include <ATen/core/TensorBody.h>
+#include <cstddef>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
+#include <vector>
 
 namespace torch {
 
@@ -72,12 +76,26 @@ enum class TypeTag {
   String,
   Tensor,
   GenericList,
-  CustomClass
+  CustomClass,
+  Tuple
 };
 
 class IValue;  // Forward declaration
 
 using GenericList = std::vector<IValue>;
+
+// Separate tuple wrapper to avoid ambiguity with GenericList
+struct GenericTuple {
+  std::vector<IValue> elements;
+
+  GenericTuple() = default;
+  GenericTuple(std::vector<IValue> elems)  // NOLINT
+      : elements(std::move(elems)) {}
+
+  size_t size() const { return elements.size(); }
+  IValue& operator[](size_t idx) { return elements[idx]; }
+  const IValue& operator[](size_t idx) const { return elements[idx]; }
+};
 
 class IValue {
  private:
@@ -161,6 +179,28 @@ class IValue {
     }
   }
 
+  // Variadic template constructor for tuple of any number of tensors or
+  // IValue-convertible types
+  template <typename... Args>
+  IValue(const std::tuple<Args...>& tuple_val)  // NOLINT
+      : tag_(TypeTag::Tuple) {
+    static_assert(sizeof...(Args) > 0, "Tuple must have at least one element");
+    std::vector<IValue> elements;
+    elements.reserve(sizeof...(Args));
+    tuple_to_ivalue_vector(
+        tuple_val, elements, std::index_sequence_for<Args...>{});
+    value_ = GenericTuple(std::move(elements));
+  }
+
+  // Helper function to convert tuple elements to IValue vector using index
+  // sequence
+  template <typename Tuple, std::size_t... I>
+  void tuple_to_ivalue_vector(const Tuple& tuple_val,
+                              std::vector<IValue>& elements,  // NOLINT
+                              std::index_sequence<I...>) {
+    (elements.emplace_back(std::get<I>(tuple_val)), ...);
+  }
+
   IValue(const IValue& other) = default;
   IValue(IValue&& other) = default;
   IValue& operator=(const IValue& other) = default;
@@ -174,6 +214,7 @@ class IValue {
   bool is_list() const { return tag_ == TypeTag::GenericList; }
   bool is_tensor() const { return tag_ == TypeTag::Tensor; }
   bool is_custom_class() const { return tag_ == TypeTag::CustomClass; }
+  bool is_tuple() const { return tag_ == TypeTag::Tuple; }
 
   bool to_bool() const {
     if (!is_bool()) throw std::runtime_error("Not a bool");
@@ -208,6 +249,16 @@ class IValue {
   at::Tensor to_tensor() const {
     if (!is_tensor()) throw std::runtime_error("Not a tensor");
     return std::get<at::Tensor>(value_);
+  }
+
+  const GenericTuple& to_tuple() const {
+    if (!is_tuple()) throw std::runtime_error("Not a tuple");
+    return std::get<GenericTuple>(value_);
+  }
+
+  GenericTuple& to_tuple() {
+    if (!is_tuple()) throw std::runtime_error("Not a tuple");
+    return std::get<GenericTuple>(value_);
   }
 
   at::ScalarType to_scalar_type() const {
@@ -447,7 +498,8 @@ class IValue {
                std::string,
                at::Tensor,
                GenericList,
-               CustomClassWrapper>
+               CustomClassWrapper,
+               GenericTuple>
       value_;
   template <typename T>
   friend T generic_to(const IValue& ivalue, _fake_type<T>);

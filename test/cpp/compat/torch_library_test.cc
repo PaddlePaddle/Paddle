@@ -419,3 +419,140 @@ TEST(test_torch_library, TestOptionalTensorConstRefInput) {
   function_args_without_value.add_arg(torch::IValue());
   impl_it->second.call_with_args(function_args_without_value);
 }
+
+// Function that returns a list of two tensors (instead of tuple)
+std::vector<at::Tensor> return_tensor_list(const at::Tensor& input, int dim) {
+  // Simply create two tensors of different sizes as demonstration
+  auto first_part = at::ones({2}, input.options());
+  auto second_part = at::ones({2}, input.options());
+
+  return {first_part, second_part};
+}
+
+// Function that actually returns std::tuple<Tensor, Tensor>
+std::tuple<at::Tensor, at::Tensor> return_tensor_tuple(const at::Tensor& input,
+                                                       int dim) {
+  // Create two tensors and return as tuple
+  auto first_part = at::ones({2}, input.options());
+  auto second_part =
+      at::ones({3}, input.options());  // Different size to verify
+
+  return std::make_tuple(first_part, second_part);
+}
+
+// Function that actually returns std::tuple<Tensor, Tensor>
+std::tuple<at::Tensor, at::Tensor, at::Tensor> return_tensor_tuple_3(
+    const at::Tensor& input, int dim) {
+  // Create two tensors and return as tuple
+  auto first_part = at::ones({2}, input.options());
+  auto second_part =
+      at::ones({3}, input.options());  // Different size to verify
+  auto third_part = at::ones({4}, input.options());
+
+  return std::make_tuple(first_part, second_part, third_part);
+}
+
+TORCH_LIBRARY(example_library_with_tuple_return, m) {
+  m.def("split_tensor_list", &return_tensor_list);
+  m.def("split_tensor_tuple", &return_tensor_tuple);
+  m.def("split_tensor_tuple_3", &return_tensor_tuple_3);
+}
+
+TEST(test_torch_library, TestTupleReturn) {
+  // Test vector<Tensor> return (list)
+  auto qualified_name_list =
+      "example_library_with_tuple_return::split_tensor_list";
+  auto* op_list =
+      torch::OperatorRegistry::instance().find_operator(qualified_name_list);
+  ASSERT_NE(op_list, nullptr);
+  auto impl_it_list = op_list->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it_list, op_list->implementations.end());
+
+  // Create a test tensor [0, 1, 2, 3] with shape [4]
+  std::vector<float> data = {0.0f, 1.0f, 2.0f, 3.0f};
+  auto input_tensor = at::from_blob(data.data(), {4}, at::kFloat).clone();
+
+  torch::FunctionArgs function_args_list;
+  function_args_list.add_arg(torch::IValue(input_tensor));
+  function_args_list.add_arg(torch::IValue(0));  // split along dimension 0
+
+  auto result_list = impl_it_list->second.call_with_args(function_args_list);
+
+  // Verify the result is a GenericList (vector of tensors)
+  ASSERT_TRUE(result_list.get_value().is_list());
+
+  auto list_val = result_list.get_value().to_list();
+  ASSERT_EQ(list_val.size(), 2);
+
+  // Check first tensor should have size [2]
+  auto first_tensor_list = list_val[0].to_tensor();
+  ASSERT_EQ(first_tensor_list.size(0), 2);
+
+  // Check second tensor should have size [2]
+  auto second_tensor_list = list_val[1].to_tensor();
+  ASSERT_EQ(second_tensor_list.size(0), 2);
+
+  // Test std::tuple<Tensor, Tensor> return (tuple)
+  auto qualified_name_tuple =
+      "example_library_with_tuple_return::split_tensor_tuple";
+  auto* op_tuple =
+      torch::OperatorRegistry::instance().find_operator(qualified_name_tuple);
+  ASSERT_NE(op_tuple, nullptr);
+  auto impl_it_tuple = op_tuple->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it_tuple, op_tuple->implementations.end());
+
+  torch::FunctionArgs function_args_tuple;
+  function_args_tuple.add_arg(torch::IValue(input_tensor));
+  function_args_tuple.add_arg(torch::IValue(0));  // split along dimension 0
+
+  auto result_tuple = impl_it_tuple->second.call_with_args(function_args_tuple);
+
+  // Verify the result is a tuple
+  ASSERT_TRUE(result_tuple.get_value().is_tuple());
+
+  auto tuple_val = result_tuple.get_value().to_tuple();
+  ASSERT_EQ(tuple_val.size(), 2);
+
+  // Check first tensor should have size [2]
+  auto first_tensor_tuple = tuple_val[0].to_tensor();
+  ASSERT_EQ(first_tensor_tuple.size(0), 2);
+
+  // Check second tensor should have size [3] (different from first)
+  auto second_tensor_tuple = tuple_val[1].to_tensor();
+  ASSERT_EQ(second_tensor_tuple.size(0), 3);
+
+  // Test std::tuple<Tensor, Tensor, Tensor> return (tuple)
+  auto qualified_name_tuple_3 =
+      "example_library_with_tuple_return::split_tensor_tuple_3";
+  auto* op_tuple_3 =
+      torch::OperatorRegistry::instance().find_operator(qualified_name_tuple_3);
+  ASSERT_NE(op_tuple_3, nullptr);
+  auto impl_it_tuple_3 =
+      op_tuple_3->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it_tuple_3, op_tuple_3->implementations.end());
+
+  torch::FunctionArgs function_args_tuple_3;
+  function_args_tuple_3.add_arg(torch::IValue(input_tensor));
+  function_args_tuple_3.add_arg(torch::IValue(0));  // split along dimension 0
+
+  auto result_tuple_3 =
+      impl_it_tuple_3->second.call_with_args(function_args_tuple_3);
+
+  // Verify the result is a tuple
+  ASSERT_TRUE(result_tuple_3.get_value().is_tuple());
+
+  auto tuple_val_3 = result_tuple_3.get_value().to_tuple();
+  ASSERT_EQ(tuple_val_3.size(), 3);
+
+  // Check first tensor should have size [2]
+  auto first_tensor_tuple_3 = tuple_val_3[0].to_tensor();
+  ASSERT_EQ(first_tensor_tuple_3.size(0), 2);
+
+  // Check second tensor should have size [3] (different from first)
+  auto second_tensor_tuple_3 = tuple_val_3[1].to_tensor();
+  ASSERT_EQ(second_tensor_tuple_3.size(0), 3);
+
+  // Check third tensor should have size [4] (different from first and second)
+  auto third_tensor_tuple_3 = tuple_val_3[2].to_tensor();
+  ASSERT_EQ(third_tensor_tuple_3.size(0), 4);
+}
