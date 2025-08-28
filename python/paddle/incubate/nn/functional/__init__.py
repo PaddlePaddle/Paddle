@@ -24,6 +24,10 @@ from .build_src_rank_and_local_expert_id import (
     build_src_rank_and_local_expert_id,
 )
 from .cal_aux_loss import cal_aux_loss
+from .cross_entropy_with_softmax_bwd_w_downcast import (
+    cross_entropy_with_softmax_bwd_w_downcast,
+)
+from .embedding_grad_add_to import embedding_grad_add_to_
 from .expand_modality_expert_id import expand_modality_expert_id
 from .fp8 import (
     fp8_gemm_blockwise,
@@ -74,7 +78,9 @@ from .variable_length_memory_efficient_attention import (
 )
 
 __all__ = [
+    'embedding_grad_add_to_',
     'fp8_gemm_blockwise',
+    'cross_entropy_with_softmax_bwd_w_downcast',
     'fp8_quant_blockwise',
     'fused_act_dequant',
     'fused_multi_head_attention',

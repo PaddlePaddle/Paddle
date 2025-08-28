@@ -1147,7 +1147,7 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.4.40; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparse-cu12==12.5.9.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cusparselt-cu12==0.7.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
-                    "nvidia-nccl-cu12==2.26.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.27.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
@@ -1530,6 +1530,11 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+        if len(env_dict.get("FLASHMASK_V2_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHMASK_V2_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHMASK_V2_LIBRARIES"), libs_path)
 
     if (
         env_dict.get("WITH_DISTRIBUTE") == 'ON'

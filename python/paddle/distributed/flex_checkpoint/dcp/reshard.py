@@ -27,45 +27,37 @@ if TYPE_CHECKING:
     from .sharded_weight import ShardedStateDict
 
 
+def _check_1d_cover(intervals, global_range):
+    intervals = sorted(intervals)
+    pos = global_range[0]
+    for start, end in intervals:
+        if start > pos or end <= start:
+            return False
+        pos = end
+    return pos >= global_range[1]
+
+
 def check_shard_cover(shard_blocks, global_ranges):
     """
     shard_blocks: List of tuples, each tuple (start0, end0, start1, end1, ...)
     global_ranges: List of (start, end) for each dimension, e.g. [(0, 10), (0, 10)]
     """
-    valid = True
     ndim = len(global_ranges)
     if ndim == 1:
         intervals = [(s[0], s[1]) for s in shard_blocks]
-        intervals.sort()
-        pos = global_ranges[0][0]
-        for start, end in intervals:
-            if start > pos:
-                return False
-            if end <= start:
-                return False
-            pos = end
-        if pos != global_ranges[0][1]:
-            return False
-        return True
+        return _check_1d_cover(intervals, global_ranges[0])
     else:
         grouped = {}
         for block in shard_blocks:
             k = (block[0], block[1])
             grouped.setdefault(k, []).append(block[2:])
-        keys = sorted(grouped.keys())
-        pos = global_ranges[0][0]
-        for start, end in keys:
-            if start != pos:
-                return False
-            if end <= start:
-                return False
-            pos = end
-        if pos != global_ranges[0][1]:
+        keys = list(grouped.keys())
+        if not _check_1d_cover(keys, global_ranges[0]):
             return False
-        for (start, end), sub_blocks in grouped.items():
+        for sub_blocks in grouped.values():
             if not check_shard_cover(sub_blocks, global_ranges[1:]):
                 return False
-    return True
+        return True
 
 
 def validate_sharded_state_dict_integrity(state_dict_shard_info):
@@ -184,6 +176,16 @@ def check_src_dst_state_dict_validity(
             raise ValueError(f"Inconsistent global_shape for {key}!")
 
 
+def merge_global_shard_info(global_shard_info):
+    merged = {}
+    for rank_shard_info in global_shard_info:
+        for key, tensor_shard_info in rank_shard_info.items():
+            if key not in merged:
+                merged[key] = []
+            merged[key].append(tensor_shard_info)
+    return merged
+
+
 def reshard_sharded_state_dict(
     src_sharded_state_dict: ShardedStateDict,
     dst_sharded_state_dict: ShardedStateDict,
@@ -210,12 +212,9 @@ def reshard_sharded_state_dict(
         group=process_group,
     )
 
-    src_state_dict_shard_info = {}
-    for rank_shard_info in global_src_state_dict_shard_info:
-        for key, tensor_shard_info in rank_shard_info.items():
-            if key not in src_state_dict_shard_info:
-                src_state_dict_shard_info[key] = []
-            src_state_dict_shard_info[key].append(tensor_shard_info)
+    src_state_dict_shard_info = merge_global_shard_info(
+        global_src_state_dict_shard_info
+    )
 
     # check validity
     check_src_state_dict_validity(src_state_dict_shard_info)
@@ -238,12 +237,9 @@ def reshard_sharded_state_dict(
         group=process_group,
     )
 
-    dst_state_dict_shard_info = {}
-    for rank_shard_info in global_dst_state_dict_shard_info:
-        for key, tensor_shard_info in rank_shard_info.items():
-            if key not in dst_state_dict_shard_info:
-                dst_state_dict_shard_info[key] = []
-            dst_state_dict_shard_info[key].append(tensor_shard_info)
+    dst_state_dict_shard_info = merge_global_shard_info(
+        global_dst_state_dict_shard_info
+    )
 
     # check validity
     check_dst_state_dict_validity(dst_state_dict_shard_info)
