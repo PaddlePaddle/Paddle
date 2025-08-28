@@ -149,7 +149,24 @@ class FakeMicroDataset:
                 else:
                     output.append(None)
             return tuple(output)
-
+        elif isinstance(inputs, dict):
+            output_dict = {}
+            for key, data in inputs.items():
+                if isinstance(data, list):
+                    assert len(data) == self._acc_steps, (
+                        f"length of data should be {self._acc_steps}, but it is {len(data)}"
+                    )
+                    output_dict[key] = (
+                        data[micro_step].detach()
+                        if data[micro_step] is not None
+                        else None
+                    )
+                elif data is not None:
+                    self._check_data_valid(data)
+                    output_dict[key] = data[begin:end, :].detach()
+                else:
+                    output_dict[key] = None
+            return output_dict
         elif isinstance(inputs, list):
             assert len(inputs) == self._acc_steps, (
                 f"length of data should be {self._acc_steps}, but it is {len(inputs)}"
@@ -263,6 +280,8 @@ class PipelineParallel(MetaParallelBase):
         self.use_moe_sharding_parallel = (
             self._hcg.get_moe_sharding_parallel_world_size() > 1
         )
+
+        self.use_dict_in_pp = True
 
         self.total_loss = None
 
@@ -1306,6 +1325,9 @@ class PipelineParallel(MetaParallelBase):
         if isinstance(micro_batch_data, (tuple, list)):
             for data in micro_batch_data:
                 self._check_micro_batch_data_valid(data)
+        elif isinstance(micro_batch_data, dict):
+            for value in micro_batch_data.values():
+                self._check_micro_batch_data_valid(value)
         elif micro_batch_data is not None:
             assert isinstance(micro_batch_data, paddle.Tensor)
 
@@ -3482,16 +3504,30 @@ def dict_to_tuple_helper(output_tensor):
 
 
 def convert_tensor_dict_to_tuple(output_tensor_dict):
+    output_tensor = []
     for key, tensor in output_tensor_dict.items():
-        tensor.key = key
+        if isinstance(tensor, (list, tuple)):
+            for idx, t in enumerate(tensor):
+                t.key = key + " " + str(idx)
+                output_tensor.append(t)
+        else:  # single tensor
+            tensor.key = key
+            output_tensor.append(tensor)
 
-    return tuple(output_tensor_dict.values())
+    return tuple(output_tensor)
 
 
 def convert_tensor_tuple_to_dict(input_tensor_tuple):
     input_tensor_dict = {}
     for tensor in input_tensor_tuple:
         key = tensor.key
-        input_tensor_dict[key] = tensor
+        if " " in key:
+            real_key, _ = key.split(" ")
+            if real_key in input_tensor_dict.keys():
+                input_tensor_dict[real_key].append(tensor)
+            else:
+                input_tensor_dict[real_key] = [tensor]
+        else:
+            input_tensor_dict[key] = tensor
         delattr(tensor, "key")
     return input_tensor_dict

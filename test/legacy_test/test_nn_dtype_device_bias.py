@@ -508,6 +508,9 @@ class Test_Embedding(unittest.TestCase):
             layer = self.api(32, 16, padding_idx=2)
             assert layer._padding_idx == layer.padding_idx
 
+            layer.padding_idx = 5
+            assert layer._padding_idx == 5
+
 
 if __name__ == '__main__':
     unittest.main()

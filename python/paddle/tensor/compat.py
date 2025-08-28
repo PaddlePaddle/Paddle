@@ -32,7 +32,6 @@ if TYPE_CHECKING:
         Size2,
     )
 
-
 from paddle import nn
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
@@ -836,7 +835,9 @@ def max(
     return ret
 
 
-MedianRetType = MinMaxRetType
+class MedianRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
 
 
 @ForbidKeywordsDecorator(
