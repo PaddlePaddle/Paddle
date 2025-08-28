@@ -426,7 +426,7 @@ def transpose_macro(tokens, expression, context):
     return results
 
 
-@macro(name='fused_qkv', priority=3)
+@macro(name='fused_qkv', priority=4)
 def fused_qkv(tokens, expression, context):
     FUSED_QKV_TAG = "fused_qkv"
     if FUSED_QKV_TAG not in expression:
