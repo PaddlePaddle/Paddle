@@ -1313,6 +1313,62 @@ floor_mod_.__doc__ = r"""
 #         return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
+def mul(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
+    """
+    multiply two tensors element-wise. The equation is:
+
+    .. math::
+        out = x * y
+
+    Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
+        ``paddle.mul`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> y = paddle.to_tensor([[5, 6], [7, 8]])
+            >>> res = paddle.mul(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 12],
+             [21, 32]])
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([2])
+            >>> res = paddle.mul(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 4, 6],
+              [2, 4, 6]]])
+
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.multiply(x, y, out=out)
+    else:
+        return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
+
+
+@param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
 def multiply_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
@@ -4108,6 +4164,8 @@ def cumsum(
     axis: int | None = None,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     The cumulative sum of the elements along a given axis.
@@ -4126,6 +4184,7 @@ def cumsum(
             alias: ``dim``.
         dtype (str|paddle.dtype|np.dtype|None, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64, int32, int64, complex64, complex128. By default, it is int64 if the input x is int8/int16/int32; otherwise, it is None. If it is not None, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
 
     Returns:
         Tensor, the result of cumsum operator.
@@ -4181,7 +4240,7 @@ def cumsum(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        return _C_ops.cumsum(x, axis, flatten, False, False)
+        return _C_ops.cumsum(x, axis, flatten, False, False, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -6107,6 +6166,8 @@ def diff(
     prepend: Tensor | None = None,
     append: Tensor | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Computes the n-th forward difference along the given axis.
@@ -6137,6 +6198,7 @@ def diff(
                                    It's dimensions must be equivalent to that of x,
                                    and its shapes must match x's shape except on axis.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
 
     Returns:
         Tensor: The output tensor with same dtype with x.
@@ -6190,7 +6252,9 @@ def diff(
             f"Diff expects input to be at least one-dimensional but got {n}"
         )
 
-    def _diff_handler(x, n=1, axis=-1, prepend=None, append=None, name=None):
+    def _diff_handler(
+        x, n=1, axis=-1, prepend=None, append=None, name=None, out=None
+    ):
         if axis < 0:
             axis = axis + len(x.shape)
         if axis > len(x.shape):
@@ -6240,9 +6304,9 @@ def diff(
             )
 
             if x.dtype == paddle.bool or x.dtype == core.DataType.BOOL:
-                return _C_ops.logical_xor(input_back, input_front)
+                return _C_ops.logical_xor(input_back, input_front, out=out)
             else:
-                return _C_ops.subtract(input_back, input_front)
+                return _C_ops.subtract(input_back, input_front, out=out)
         else:
             check_variable_and_dtype(
                 x,
@@ -6312,15 +6376,30 @@ def diff(
                 out = paddle.tensor.math.subtract(input_back, input_front)
             return out
 
-    out = _diff_handler(
-        x, n=1, axis=axis, prepend=prepend, append=append, name=name
+    last_out = _diff_handler(
+        x,
+        n=1,
+        axis=axis,
+        prepend=prepend,
+        append=append,
+        name=name,
+        out=out if n == 1 else None,
     )
     if n > 1:
-        for _ in range(n - 1):
-            out = _diff_handler(
-                out, n=1, axis=axis, prepend=None, append=None, name=name
+        for _ in range(n - 2):
+            last_out = _diff_handler(
+                last_out, n=1, axis=axis, prepend=None, append=None, name=name
             )
-    return out
+        last_out = _diff_handler(
+            last_out,
+            n=1,
+            axis=axis,
+            prepend=None,
+            append=None,
+            name=name,
+            out=out,
+        )
+    return last_out
 
 
 def angle(x: Tensor, name: str | None = None) -> Tensor:
