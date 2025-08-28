@@ -25,6 +25,7 @@ class LocalTensorMetadata:
     global_offset: tuple[int]
     local_shape: tuple[int]
     dtype: str
+    global_shape: tuple[int] | None = None
 
 
 @dataclass(frozen=True)
