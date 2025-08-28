@@ -31,12 +31,9 @@
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
-
 #endif
-
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
-
 namespace phi {
 template <typename T, typename Context, typename Functor>
 void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
@@ -48,7 +45,6 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
   dev_ctx.template Alloc<T>(out);
   UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
 }
-
 #define DEFINE_CUDA_ACTIVATION_STRIDE_OP(name, functor_class)                 \
   template <typename T, typename Context>                                     \
   void name##StrideKernel(                                                    \
@@ -84,7 +80,6 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
     LaunchUnaryElementwiseStrideKernel<T, Context>(                           \
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
-
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Cos, CudaCosFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Sin, CudaSinFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Tan, CudaTanFunctor)
@@ -108,9 +103,7 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Sigmoid, CudaSigmoidFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(LogSigmoid, CudaLogSigmoidFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Floor, CudaFloorFunctor)
 DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
-
 #undef DEFINE_CUDA_ACTIVATION_STRIDE_OP
-
 #define DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(name,          \
                                                                functor_class) \
   template <typename T, typename Context>                                     \
@@ -149,14 +142,12 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
     LaunchUnaryElementwiseStrideKernel<U, Context>(                           \
         dev_ctx, x_, funcs::functor_class<T>(), out);                         \
   }
-
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Log, CudaLogFunctor)
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Log2, CudaLog2Functor)
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Log10, CudaLog10Functor)
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Log1p, CudaLog1pFunctor)
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Exp, CudaExpFunctor)
 DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
-
 #undef DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP
 
 #define DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(                          \
@@ -199,7 +190,6 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
     *(attrs[0].second) = attr;                                                 \
     LaunchUnaryElementwiseStrideKernel<T, Context>(dev_ctx, x_, functor, out); \
   }
-
 DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(LeakyRelu,
                                              CudaLeakyReluFunctor,
                                              alpha)
@@ -273,9 +263,7 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_TWO_ATTRS(Selu,
                                              CudaSeluFunctor,
                                              scale,
                                              alpha)
-
 #undef DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS
-
 template <typename T, typename Context>
 void RoundStrideKernel(const Context &dev_ctx,
                        const DenseTensor &x,
@@ -314,7 +302,6 @@ void RoundStrideKernel(const Context &dev_ctx,
   *(attrs[0].second) = decimals;
   LaunchUnaryElementwiseStrideKernel<T, Context>(dev_ctx, x_, functor, out);
 }
-
 template <typename T, typename Context>
 void HardSwishStrideKernel(const Context &dev_ctx,
                            const DenseTensor &x,
@@ -357,7 +344,6 @@ void HardSwishStrideKernel(const Context &dev_ctx,
   *(attrs[2].second) = offset;
   LaunchUnaryElementwiseStrideKernel<T, Context>(dev_ctx, x_, functor, out);
 }
-
 template <typename T, typename Enable = void>
 struct CudaAbsFunctor;
 template <typename T>
@@ -382,7 +368,6 @@ struct CudaAbsFunctor<
     return std::abs(x);
   }
 };
-
 template <typename T, typename Context>
 void AbsStrideKernel(const Context &dev_ctx,
                      const DenseTensor &x,
@@ -419,9 +404,7 @@ void AbsStrideKernel(const Context &dev_ctx,
   LaunchUnaryElementwiseStrideKernel<phi::dtype::Real<T>, Context>(
       dev_ctx, x_, functor, out);
 }
-
 }  // namespace phi
-
 PD_REGISTER_KERNEL(abs,
                    GPU,
                    STRIDED,
@@ -436,7 +419,6 @@ PD_REGISTER_KERNEL(abs,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
-
 #define REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, func) \
   PD_REGISTER_KERNEL(cos,                                         \
                      GPU,                                         \
@@ -487,7 +469,6 @@ PD_REGISTER_KERNEL(abs,
                      double,                                \
                      phi::dtype::float16,                   \
                      phi::dtype::bfloat16) {}
-
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sin, SinStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tan, TanStrideKernel)
