@@ -988,6 +988,17 @@ class TestSumOp_Compatibility(unittest.TestCase):
                 )
                 np.testing.assert_allclose(paddle_result7, numpy_result)
 
+                paddle_result8 = paddle.sum(
+                    x_paddle, self.axis, dtype_input, False
+                )
+                np.testing.assert_allclose(paddle_result8, numpy_result)
+
+                paddle_result9 = paddle.sum(x_paddle, self.axis, False)
+                self.assertEqual(paddle_result9.dtype, paddle.float32)
+
+                paddle_result10 = paddle.sum(x_paddle, self.axis, dtype_input)
+                np.testing.assert_allclose(paddle_result10, numpy_result)
+
     def test_static(self):
         self.test_dtypes = [
             paddle.int32,
@@ -1054,6 +1065,19 @@ class TestSumOp_Compatibility(unittest.TestCase):
                         x_paddle, self.axis, False, dtype_input
                     )
                     self.assertEqual(paddle_result7.dtype, dtype_input)
+
+                    paddle_result8 = paddle.sum(
+                        x_paddle, self.axis, dtype_input, False
+                    )
+                    self.assertEqual(paddle_result8.dtype, dtype_input)
+
+                    paddle_result9 = paddle.sum(x_paddle, self.axis, False)
+                    self.assertEqual(paddle_result9.dtype, paddle.float32)
+
+                    paddle_result10 = paddle.sum(
+                        x_paddle, self.axis, dtype_input
+                    )
+                    self.assertEqual(paddle_result10.dtype, dtype_input)
 
 
 if __name__ == "__main__":
