@@ -1246,9 +1246,11 @@ def rand_like(
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    return paddle.rand(
+    return uniform(
         shape=input.shape,
         dtype=dtype,
+        min=0.0,
+        max=1.0,
         name=name,
         device=device,
         requires_grad=requires_grad,
