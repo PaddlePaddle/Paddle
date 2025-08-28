@@ -34,6 +34,7 @@ from paddle.utils.decorator_utils import (
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, convert_np_dtype_to_dtype_, core
+from .manipulation import cast_
 from .math import _get_reduce_axis_with_tensor
 
 if TYPE_CHECKING:
@@ -64,6 +65,7 @@ def mean(
     Args:
         x (Tensor): The input Tensor with data type bool, bfloat16, float16, float32,
             float64, int32, int64, complex64, complex128.
+            alias: ``input``
         axis (int|list|tuple|None, optional): The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
@@ -72,6 +74,7 @@ def mean(
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
             same way as :math:`axis + D` . If ``axis`` is None, mean is
             calculated over all elements of ``x``. Default is None.
+            alias: ``dim``
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -115,19 +118,20 @@ def mean(
             >>> out4 = paddle.mean(x, axis=[0, 2])
             >>> print(out4.numpy())
             [ 8.5 12.5 16.5]
+            >>> out5 = paddle.mean(x, dtype='float64')
+            >>> out5
+            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                12.50000000)
     """
-    if dtype is None:
-        dtype = x.dtype
-    elif not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-        dtype = convert_np_dtype_to_dtype_(dtype)
+    if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast_(x, dtype)
 
     if in_dynamic_or_pir_mode():
-        if dtype != x.dtype:
-            x = x.astype(dtype)
         return _C_ops.mean(x, axis, keepdim, out=out)
     else:
-        if dtype != x.dtype:
-            x = paddle.cast(x, dtype)
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         check_variable_and_dtype(
             x,

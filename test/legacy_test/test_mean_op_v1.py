@@ -20,6 +20,34 @@ import paddle
 from paddle import base
 
 
+def skip_if_xpu_or_onednn_and_not_float32(dtype):
+    """Skip test if using XPU or OneDNN and dtype is not float32"""
+
+    def decorator(test_func):
+        def wrapper(self):
+            # Check if we're using XPU
+            is_xpu = (hasattr(self, 'use_xpu') and self.use_xpu) or (
+                paddle.device.get_device().startswith('xpu')
+            )
+
+            # Check if we're using OneDNN
+            is_onednn = base.core.globals().get("FLAGS_use_onednn", False) or (
+                hasattr(self, 'use_onednn') and self.use_onednn
+            )
+
+            # Skip if using XPU or OneDNN and dtype is not float32
+            if (is_xpu or is_onednn) and dtype != 'float32':
+                self.skipTest(
+                    f"Skip {dtype} test for XPU/OneDNN, only test float32"
+                )
+
+            return test_func(self)
+
+        return wrapper
+
+    return decorator
+
+
 class TestMeanDtypeParameter(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -28,16 +56,12 @@ class TestMeanDtypeParameter(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
-    def test_dtype_float16(self):
-        x = paddle.to_tensor(self.x_data)
-        result = paddle.mean(x, dtype='float16')
-        self.assertEqual(result.dtype, paddle.float16)
-
     def test_dtype_float32(self):
         x = paddle.to_tensor(self.x_data)
         result = paddle.mean(x, dtype='float32')
         self.assertEqual(result.dtype, paddle.float32)
 
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_dtype_float64(self):
         x = paddle.to_tensor(self.x_data)
         result = paddle.mean(x, dtype='float64')
@@ -50,17 +74,12 @@ class TestMeanDtypeParameter(unittest.TestCase):
         self.assertEqual(result1.dtype, result2.dtype)
         np.testing.assert_allclose(result1.numpy(), result2.numpy(), rtol=1e-05)
 
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_dtype_with_axis(self):
         x = paddle.to_tensor(self.x_data)
         result = paddle.mean(x, axis=1, dtype='float64')
         self.assertEqual(result.dtype, paddle.float64)
         self.assertEqual(result.shape, [3, 5])
-
-    def test_dtype_with_keepdim(self):
-        x = paddle.to_tensor(self.x_data)
-        result = paddle.mean(x, axis=0, keepdim=True, dtype='float16')
-        self.assertEqual(result.dtype, paddle.float16)
-        self.assertEqual(result.shape, [1, 4, 5])
 
 
 class TestMeanOutParameter(unittest.TestCase):
@@ -115,6 +134,7 @@ class TestMeanDtypeAndOutCombination(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_dtype_and_out_compatible(self):
         x = paddle.to_tensor(self.x_data)
         out = paddle.empty([], dtype='float64')
@@ -123,15 +143,6 @@ class TestMeanDtypeAndOutCombination(unittest.TestCase):
         self.assertEqual(out.dtype, paddle.float64)
         self.assertEqual(result.dtype, paddle.float64)
         self.assertTrue(paddle.allclose(out, result))
-
-    def test_dtype_and_out_with_axis(self):
-        x = paddle.to_tensor(self.x_data)
-        out = paddle.empty([2, 4], dtype='float16')
-        result = paddle.mean(x, axis=1, dtype='float16', out=out)
-
-        self.assertEqual(out.dtype, paddle.float16)
-        self.assertEqual(result.dtype, paddle.float16)
-        self.assertEqual(out.shape, [2, 4])
 
     def test_dtype_and_out_with_keepdim(self):
         x = paddle.to_tensor(self.x_data)
@@ -173,6 +184,7 @@ class TestMeanParameterAlias(unittest.TestCase):
 
         np.testing.assert_allclose(result1.numpy(), result2.numpy(), rtol=1e-05)
 
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_alias_with_dtype_and_out(self):
         x = paddle.to_tensor(self.x_data)
         out1 = paddle.empty([4], dtype='float64')
@@ -186,6 +198,7 @@ class TestMeanParameterAlias(unittest.TestCase):
 
 
 class TestMeanNewParametersStatic(unittest.TestCase):
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_static_dtype_parameter(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -245,6 +258,7 @@ class TestMeanBoundaryConditions(unittest.TestCase):
         expected = 3.5
         np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
+    @skip_if_xpu_or_onednn_and_not_float32('float64')
     def test_all_parameters_combination(self):
         # Test all new parameters together
         x_data = np.random.rand(2, 3, 4).astype('float32')

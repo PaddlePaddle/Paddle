@@ -4530,9 +4530,7 @@ def cumprod_(
     if dim is None:
         dim = -1
         x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
-    if dtype is None:
-        dtype = x.dtype
-    else:
+    if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if x.dtype != dtype:
