@@ -1,0 +1,51 @@
+- op : amin
+  name : [paddle.amin,paddle.Tensor.amin]
+  args_alias :
+    use_default_mapping : True
+
+- op : amax
+  name : [paddle.amax,paddle.Tensor.amax]
+  args_alias :
+    use_default_mapping : True
+
+- op : maximum
+  name : [paddle.maximum,paddle.Tensor.maximum]
+  args_alias :
+    use_default_mapping : True
+
+- op : minimum
+  name : [paddle.minimum,paddle.Tensor.minimum]
+  args_alias :
+    use_default_mapping : True
+
+- op : greater_than
+  name : [paddle.greater_than, paddle.Tensor.greater_than]
+  args_alias :
+    use_default_mapping : True
+
+- op : expand_as
+  name : [paddle.expand_as,paddle.Tensor.expand_as]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : ExpandAsPreProcess(x,y,target_shape)
+
+- op : logical_and
+  name : [paddle.logical_and, paddle.Tensor.logical_and]
+  args_alias:
+    use_default_mapping : True
+
+- op : logical_or
+  name : [paddle.logical_or, paddle.Tensor.logical_or]
+  args_alias:
+   use_default_mapping : True
+
+- op : logical_xor
+  name : [paddle.logical_xor, paddle.Tensor.logical_xor]
+  args_alias:
+   use_default_mapping : True
+
+- op : logical_not
+  name : [paddle.logical_not, paddle.Tensor.logical_not]
+  args_alias:
+   use_default_mapping : True

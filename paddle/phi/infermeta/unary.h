@@ -66,6 +66,14 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
+void MinMaxWithIndexInferMeta(const MetaTensor& x,
+                              const Scalar& axis,
+                              bool keepdims,
+                              bool flatten,
+                              MetaTensor* val_out,
+                              MetaTensor* ind_out,
+                              MetaConfig config = MetaConfig());
+
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
                       bool descending,

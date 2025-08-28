@@ -819,6 +819,737 @@ void FlashAttnV3VarlenGradKernel(const Context &dev_ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashMaskV2GradBaseKernel(
+    const Context &dev_ctx,
+    const DenseTensor
+        &dout,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
+    const DenseTensor
+        &q,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
+    const DenseTensor
+        &k,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
+    const DenseTensor
+        &v,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
+    const DenseTensor
+        &out,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
+    const DenseTensor
+        &softmax_lse,  // (b, h, s_q) or (h, total_q) if there is cu_seqlens_q
+    const paddle::optional<DenseTensor>
+        &dq_,  // (b, s_q, h, d) or (total_q, h, d) if there is cu_seqlens_q
+    const paddle::optional<DenseTensor>
+        &dk_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
+    const paddle::optional<DenseTensor>
+        &dv_,  // (b, s_k, h_k, d) or (total_k, h_k, d) if there is cu_seqlens_k
+    const paddle::optional<DenseTensor> &cu_seqlens_q_,  // b+1
+    const paddle::optional<DenseTensor> &cu_seqlens_k_,  // b+1
+    const paddle::optional<DenseTensor>
+        &seqused_q_,  // b. If given, only this many elements of each batch
+                      // element's queries and outputs are used.
+    const paddle::optional<DenseTensor>
+        &seqused_k_,  // b. If given, only this many elements of each batch
+                      // element's keys are used.
+    const paddle::optional<DenseTensor> &startend_row_indices_,
+    int max_seqlen_q_,
+    int max_seqlen_k_,
+    float const softmax_scale,
+    bool is_causal,
+    int window_size_left,
+    int window_size_right,
+    float const softcap,
+    bool const deterministic,
+    int const sm_margin,
+    DenseTensor *dq,
+    DenseTensor *dk,
+    DenseTensor *dv,
+    DenseTensor *softmax_d,
+    DenseTensor *softmax_lse_log2,
+    DenseTensor *dq_accum,
+    DenseTensor *dk_accum,
+    DenseTensor *dv_accum) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+
+  // TODO(umiswing): support ampere
+  int device_id = dev_ctx.GetPlace().GetDeviceId();
+  auto dprops = paddle::platform::GetDeviceProperties(device_id);
+  const bool is_sm90 = dprops.major == 9 && dprops.minor == 0;
+  PADDLE_ENFORCE_EQ(is_sm90,
+                    true,
+                    common::errors::Unavailable(
+                        "FlashAttention-3 only supports Hopper GPUs."));
+
+  auto q_type = q.dtype();
+  PADDLE_ENFORCE_EQ(
+      (q_type == phi::DataType::FLOAT16 || q_type == phi::DataType::BFLOAT16),
+      true,
+      common::errors::InvalidArgument(
+          "FlashAttention-3 bwd only support fp16 and bf16 data type"));
+  PADDLE_ENFORCE_EQ(k.dtype(),
+                    q_type,
+                    common::errors::InvalidArgument(
+                        "query and key must have the same dtype"));
+  PADDLE_ENFORCE_EQ(v.dtype(),
+                    q_type,
+                    common::errors::InvalidArgument(
+                        "query and value must have the same dtype"));
+  PADDLE_ENFORCE_EQ(out.dtype(),
+                    q_type,
+                    common::errors::InvalidArgument(
+                        "query and out must have the same dtype"));
+  PADDLE_ENFORCE_EQ(dout.dtype(),
+                    q_type,
+                    common::errors::InvalidArgument(
+                        "query and dout must have the same dtype"));
+
+  CHECK_DEVICE(q);
+  CHECK_DEVICE(k);
+  CHECK_DEVICE(v);
+  CHECK_DEVICE(out);
+  CHECK_DEVICE(dout);
+  CHECK_DEVICE(softmax_lse);
+
+  PADDLE_ENFORCE_EQ(q.strides()[q.strides().size() - 1],
+                    1,
+                    common::errors::InvalidArgument(
+                        "Input tensor must have contiguous last dimension"));
+  PADDLE_ENFORCE_EQ(k.strides()[k.strides().size() - 1],
+                    1,
+                    common::errors::InvalidArgument(
+                        "Input tensor must have contiguous last dimension"));
+  PADDLE_ENFORCE_EQ(v.strides()[v.strides().size() - 1],
+                    1,
+                    common::errors::InvalidArgument(
+                        "Input tensor must have contiguous last dimension"));
+  PADDLE_ENFORCE_EQ(out.strides()[out.strides().size() - 1],
+                    1,
+                    common::errors::InvalidArgument(
+                        "out tensor must have contiguous last dimension"));
+  PADDLE_ENFORCE_EQ(dout.strides()[dout.strides().size() - 1],
+                    1,
+                    common::errors::InvalidArgument(
+                        "dout tensor must have contiguous last dimension"));
+
+  DenseTensor cu_seqlens_q;
+  bool const is_varlen_q = cu_seqlens_q_.is_initialized();
+  if (is_varlen_q) {
+    cu_seqlens_q = cu_seqlens_q_.get();
+    CHECK_DEVICE(cu_seqlens_q);
+    CHECK_CONTIGUOUS(cu_seqlens_q);
+    PADDLE_ENFORCE_EQ(cu_seqlens_q.dtype(),
+                      phi::DataType::INT32,
+                      common::errors::InvalidArgument(
+                          "cu_seqlens_q must have dtype paddle.int32"));
+    PADDLE_ENFORCE_GT(
+        max_seqlen_q_,
+        0,
+        common::errors::InvalidArgument(
+            "max_seqlen_q must be provided if cu_seqlens_q is provided"));
+  }
+  DenseTensor cu_seqlens_k;
+  bool const is_varlen_k = cu_seqlens_k_.is_initialized();
+  if (is_varlen_k) {
+    cu_seqlens_k = cu_seqlens_k_.get();
+    CHECK_DEVICE(cu_seqlens_k);
+    CHECK_CONTIGUOUS(cu_seqlens_k);
+    PADDLE_ENFORCE_EQ(cu_seqlens_k.dtype(),
+                      phi::DataType::INT32,
+                      common::errors::InvalidArgument(
+                          "cu_seqlens_k must have dtype paddle.int32"));
+    PADDLE_ENFORCE_GT(
+        max_seqlen_k_,
+        0,
+        common::errors::InvalidArgument(
+            "max_seqlen_k must be provided if cu_seqlens_k is provided"));
+  }
+  // This is what we will template on
+  bool const is_varlen = is_varlen_q || is_varlen_k ||
+                         seqused_q_.is_initialized() ||
+                         seqused_k_.is_initialized();
+#ifdef FLASHATTENTION_DISABLE_VARLEN
+  PADDLE_ENFORCE_EQ(!is_varlen,
+                    true,
+                    common::errors::Unavailable(
+                        "This flash attention build does not support varlen."));
+#endif
+
+  auto const sizes = q.dims();
+  int const batch_size = !is_varlen_q ? sizes[0] : cu_seqlens_q.dims()[0] - 1;
+  int const seqlen_q = !is_varlen_q ? sizes[1] : max_seqlen_q_;
+  int const total_q = !is_varlen_q ? batch_size * sizes[1] : sizes[0];
+  int const num_heads = q.dims()[q.dims().size() - 2];
+  int const head_size = q.dims()[q.dims().size() - 1];
+  int const seqlen_k = !is_varlen_k ? k.dims()[1] : max_seqlen_k_;
+  int const total_k = !is_varlen_k ? batch_size * k.dims()[1] : k.dims()[0];
+  int const num_heads_k = k.dims()[k.dims().size() - 2];
+  PADDLE_ENFORCE_EQ(
+      head_size % 8,
+      0,
+      common::errors::InvalidArgument("head_size should be a multiple of 8"));
+  int const max_headdim = get_max_headdim();
+  PADDLE_ENFORCE_LE(
+      head_size,
+      max_headdim,
+      common::errors::InvalidArgument(
+          "FlashAttention forward only supports head dimension at most %d",
+          max_headdim));
+  PADDLE_ENFORCE_EQ(
+      num_heads % num_heads_k,
+      0,
+      common::errors::InvalidArgument(
+          "Number of heads in key/value must divide number of heads in query"));
+
+  // This needs to go before kBlockM & kBlockN since we rely on the correct
+  // window_size and is_causal to set kBlockM
+  if (window_size_left >= seqlen_k - 1) {
+    window_size_left = -1;
+  }
+  if (window_size_right >= seqlen_q - 1) {
+    window_size_right = -1;
+  }
+  if (is_causal) {
+    window_size_right = 0;
+  }
+  // There's a case where is_causal=false, window_size=(-1, 0). Then
+  // set_params_bprop will set params.is_causal=true. If we don't have is_causal
+  // here matching params.is_causal, we might get the wrong kBlockM (and cause
+  // IMA).
+  is_causal = window_size_left < 0 && window_size_right == 0;
+
+  int const arch = dprops.major * 10 + dprops.minor;
+  int const head_size_rounded = round_up_headdim(head_size);
+  // Very important that these match the kernel configs
+  bool const is_local =
+      (window_size_left >= 0 || window_size_right >= 0) && !is_causal;
+  bool const is_flashmask = startend_row_indices_.is_initialized();
+  int const kBlockM_sm90 =
+      head_size_rounded <= 64
+          ? (is_flashmask && !is_causal)
+                ? 64
+                : (is_causal && softcap || is_flashmask > 0.0 ? 96 : 128)
+          : (head_size_rounded <= 96
+                 ? 64
+                 : (head_size_rounded <= 128
+                        ? (is_flashmask && !is_causal)
+                              ? 64
+                              : (is_causal || is_local || is_flashmask ||
+                                         softcap > 0.0
+                                     ? 64
+                                     : 80)
+                        : 64));
+  int const kBlockM_sm80 = head_size_rounded <= 64 ? 128 : 64;
+  int const kBlockM_sm86 = head_size_rounded <= 192 ? 64 : 32;
+  int const kBlockM =
+      arch >= 90 ? kBlockM_sm90
+                 : (arch == 86 || arch == 89 ? kBlockM_sm86 : kBlockM_sm80);
+  int const kBlockN_sm90 =
+      head_size_rounded <= 64 && (is_flashmask && !is_causal) ? 96
+      : head_size_rounded <= 128 ? (is_flashmask && !is_causal) ? 64 : 128
+                                 : (head_size_rounded <= 192 ? 96 : 80);
+  int const kBlockN_sm80 =
+      head_size_rounded <= 128 ? 128 : (head_size_rounded <= 192 ? 80 : 64);
+  int const kBlockN_sm86 =
+      head_size_rounded <= 64
+          ? 128
+          : (head_size_rounded <= 96
+                 ? 128
+                 : (head_size_rounded <= 128
+                        ? 96
+                        : (head_size_rounded <= 192 ? 64 : 64)));
+  int const kBlockN =
+      arch >= 90 ? kBlockN_sm90
+                 : (arch == 86 || arch == 89 ? kBlockN_sm86 : kBlockN_sm80);
+  auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
+  int const seqlen_q_rounded = round_multiple(seqlen_q, kBlockM);
+  int const seqlen_k_rounded = round_multiple(seqlen_k, kBlockN);
+  int const total_q_padded_rounded =
+      round_multiple(total_q + batch_size * kBlockM, kBlockM);
+  int const total_k_padded_rounded =
+      round_multiple(total_k + batch_size * kBlockN, kBlockN);
+
+  if (!is_varlen_q) {
+    CHECK_SHAPE(q, batch_size, seqlen_q, num_heads, head_size);
+    CHECK_SHAPE(out, batch_size, seqlen_q, num_heads, head_size);
+    CHECK_SHAPE(dout, batch_size, seqlen_q, num_heads, head_size);
+  } else {
+    CHECK_SHAPE(q, total_q, num_heads, head_size);
+    CHECK_SHAPE(out, total_q, num_heads, head_size);
+    CHECK_SHAPE(dout, total_q, num_heads, head_size);
+    CHECK_SHAPE(cu_seqlens_q, batch_size + 1);
+  }
+  if (!is_varlen_k) {
+    CHECK_SHAPE(k, batch_size, seqlen_k, num_heads_k, head_size);
+    CHECK_SHAPE(v, batch_size, seqlen_k, num_heads_k, head_size);
+  } else {
+    CHECK_SHAPE(k, total_k, num_heads_k, head_size);
+    CHECK_SHAPE(v, total_k, num_heads_k, head_size);
+    CHECK_SHAPE(cu_seqlens_k, batch_size + 1);
+  }
+
+  if (seqused_q_.is_initialized()) {
+    auto seqused_q = seqused_q_.get();
+    PADDLE_ENFORCE_EQ(
+        seqused_q.dtype(),
+        phi::DataType::INT32,
+        common::errors::InvalidArgument("seqused_q must have dtype int32"));
+    CHECK_DEVICE(seqused_q);
+    CHECK_CONTIGUOUS(seqused_q);
+    CHECK_SHAPE(seqused_q, batch_size);
+  }
+  if (seqused_k_.is_initialized()) {
+    auto seqused_k = seqused_k_.get();
+    PADDLE_ENFORCE_EQ(
+        seqused_k.dtype(),
+        phi::DataType::INT32,
+        common::errors::InvalidArgument("seqused_k must have dtype int32"));
+    CHECK_DEVICE(seqused_k);
+    CHECK_CONTIGUOUS(seqused_k);
+    CHECK_SHAPE(seqused_k, batch_size);
+  }
+
+  if (dq_.is_initialized()) {
+    *dq = dq_.get();
+    PADDLE_ENFORCE_EQ(
+        dq->dtype(),
+        q_type,
+        common::errors::InvalidArgument("dq must have the same dtype as q"));
+    CHECK_DEVICE((*dq));
+    PADDLE_ENFORCE_EQ(dq->strides()[dq->strides().size() - 1],
+                      1,
+                      common::errors::InvalidArgument(
+                          "dq must have contiguous last dimension"));
+    if (!is_varlen_q) {
+      CHECK_SHAPE((*dq), batch_size, seqlen_q, num_heads, head_size);
+    } else {
+      CHECK_SHAPE((*dq), total_q, num_heads, head_size);
+    }
+  } else {
+    *dq = phi::EmptyLike<T, Context>(dev_ctx, q);
+  }
+  if (dk_.is_initialized()) {
+    *dk = dk_.get();
+    PADDLE_ENFORCE_EQ(
+        dk->dtype(),
+        q_type,
+        common::errors::InvalidArgument("dk must have the same dtype as q"));
+    CHECK_DEVICE((*dk));
+    PADDLE_ENFORCE_EQ(dk->strides()[dk->strides().size() - 1],
+                      1,
+                      common::errors::InvalidArgument(
+                          "dk must have contiguous last dimension"));
+    if (!is_varlen_k) {
+      CHECK_SHAPE((*dk), batch_size, seqlen_k, num_heads_k, head_size);
+    } else {
+      CHECK_SHAPE((*dk), total_k, num_heads_k, head_size);
+    }
+  } else {
+    *dk = phi::EmptyLike<T, Context>(dev_ctx, k);
+  }
+  if (dv_.is_initialized()) {
+    *dv = dv_.get();
+    PADDLE_ENFORCE_EQ(
+        dv->dtype(),
+        q_type,
+        common::errors::InvalidArgument("dv must have the same dtype as q"));
+    CHECK_DEVICE((*dv));
+    PADDLE_ENFORCE_EQ(dv->strides()[dv->strides().size() - 1],
+                      1,
+                      common::errors::InvalidArgument(
+                          "dv must have contiguous last dimension"));
+    if (!is_varlen_k) {
+      CHECK_SHAPE((*dv), batch_size, seqlen_k, num_heads_k, head_size);
+    } else {
+      CHECK_SHAPE((*dv), total_k, num_heads_k, head_size);
+    }
+  } else {
+    *dv = phi::EmptyLike<T, Context>(dev_ctx, v);
+  }
+
+  // Otherwise the kernel will be launched from cuda:0 device
+  // Cast to char to avoid compiler warning about narrowing
+
+  // Need softmax_d to have total_q_padded_rounded since we want its address to
+  // be aligned by 16/8 bytes for TMA / LDG.64
+  if (!is_varlen) {
+    if (softmax_d) {
+      // Need softmax_d to have seqlen_q_rounded since we want its address to be
+      // aligned by 16/8 bytes for TMA / LDG.64
+      softmax_d->Resize(
+          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+    }
+    if (softmax_lse_log2) {
+      softmax_lse_log2->Resize(
+          common::make_ddim({batch_size, num_heads, seqlen_q_rounded}));
+    }
+  } else {
+    if (softmax_d) {
+      softmax_d->Resize(common::make_ddim({num_heads, total_q_padded_rounded}));
+    }
+    if (softmax_lse_log2) {
+      softmax_lse_log2->Resize(
+          common::make_ddim({num_heads, total_q_padded_rounded}));
+    }
+  }
+  if (softmax_d) {
+    dev_ctx.template Alloc<float>(softmax_d);
+  }
+  if (softmax_lse_log2) {
+    dev_ctx.template Alloc<float>(softmax_lse_log2);
+  }
+  if (dq_accum) {
+    if (!is_varlen) {
+      dq_accum->Resize(common::make_ddim(
+          {batch_size, num_heads, seqlen_q_rounded * head_size_rounded}));
+    } else {
+      dq_accum->Resize(common::make_ddim(
+          {num_heads, total_q_padded_rounded * head_size_rounded}));
+    }
+    dev_ctx.template Alloc<float>(dq_accum);
+  }
+  if (num_heads_k != num_heads) {  // MQA / GQA
+    if (!is_varlen) {
+      if (dk_accum) {
+        dk_accum->Resize(common::make_ddim(
+            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+      }
+      if (dv_accum) {
+        dv_accum->Resize(common::make_ddim(
+            {batch_size, num_heads_k, seqlen_k_rounded * head_size_rounded}));
+      }
+    } else {
+      if (dk_accum) {
+        dk_accum->Resize(common::make_ddim(
+            {num_heads_k, total_k_padded_rounded, head_size_rounded}));
+      }
+      if (dv_accum) {
+        dv_accum->Resize(common::make_ddim(
+            {num_heads_k, total_k_padded_rounded, head_size_rounded}));
+      }
+    }
+    if (dk_accum) {
+      dev_ctx.template Alloc<float>(dk_accum);
+    }
+    if (dv_accum) {
+      dev_ctx.template Alloc<float>(dv_accum);
+    }
+    phi::funcs::SetConstant<Context, float> set_zero;
+
+    if (dk_accum) {
+      set_zero(dev_ctx, dk_accum, float{0});
+    }
+    if (dv_accum) {
+      set_zero(dev_ctx, dv_accum, float{0});
+    }
+  }
+
+  FlashMask_bwd_params *params_handle = get_flashmask_bwd_params_handle();
+  dynload::flashmaskv2_clear_bwd_params_handle(params_handle);
+  set_flashmaskv2_params_dgrad(
+      params_handle,
+      batch_size,
+      seqlen_q,
+      seqlen_k,
+      seqlen_q_rounded,
+      seqlen_k_rounded,
+      num_heads,
+      num_heads_k,
+      head_size,
+      head_size_rounded,
+      q,
+      k,
+      v,
+      out,
+      dout,
+      dq,
+      dk,
+      dv,
+      !is_varlen_q ? nullptr : cu_seqlens_q.data(),
+      !is_varlen_k ? nullptr : cu_seqlens_k.data(),
+      seqused_q_.is_initialized() ? const_cast<void *>(seqused_q_.get().data())
+                                  : nullptr,
+      seqused_k_.is_initialized() ? const_cast<void *>(seqused_k_.get().data())
+                                  : nullptr,
+      dq_accum ? dq_accum->data() : nullptr,
+      num_heads_k != num_heads && dk_accum ? dk_accum->data() : nullptr,
+      num_heads_k != num_heads && dv_accum ? dv_accum->data() : nullptr,
+      const_cast<void *>(softmax_lse.data()),
+      softmax_d ? const_cast<void *>(softmax_d->data()) : nullptr,
+      /*p_dropout=*/0.f,
+      softmax_scale,
+      window_size_left,
+      window_size_right,
+      dprops,
+      softcap,
+      deterministic,
+      sm_margin);
+  dynload::flashmaskv2_bwd_params_set_total_q(params_handle, total_q);
+  dynload::flashmaskv2_bwd_params_set_total_k(params_handle, total_k);
+  dynload::flashmaskv2_bwd_params_set_softmax_lse_log2_ptr(
+      params_handle, softmax_lse_log2 ? softmax_lse_log2->data() : nullptr);
+  dynload::flashmaskv2_bwd_params_set_dv(
+      params_handle,
+      head_size);  // We don't support hdim_v being
+                   // different from hdim_qk for now
+
+  // auto tile_count_semaphore = (params.is_causal || params.is_local) ?
+  // paddle::zeros({1}, opts.dtype(torch::kInt32)) : torch::empty({1},
+  // opts.dtype(torch::kInt32)); params.tile_count_semaphore =
+  // tile_count_semaphore.data_ptr<int>(); Will be zero'ed out in the backward
+  // preprocess kernel
+  DenseTensor dq_semaphore = phi::Empty<int32_t>(
+      dev_ctx, {(seqlen_q + kBlockM - 1) / kBlockM, batch_size, num_heads});
+  dynload::flashmaskv2_bwd_params_set_dq_semaphore(params_handle,
+                                                   dq_semaphore.data<int>());
+  if (num_heads_k != num_heads &&
+      dynload::flashmaskv2_bwd_params_get_deterministic(params_handle)) {
+    // TODO(tridao): do we need to zero them out?
+    DenseTensor dk_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    DenseTensor dv_semaphore = phi::Empty<int32_t>(
+        dev_ctx, {(seqlen_k + kBlockN - 1) / kBlockN, batch_size, num_heads_k});
+    dynload::flashmaskv2_bwd_params_set_dk_semaphore(params_handle,
+                                                     dk_semaphore.data<int>());
+    dynload::flashmaskv2_bwd_params_set_dv_semaphore(params_handle,
+                                                     dv_semaphore.data<int>());
+  }
+  // flashmask
+  DenseTensor startend_row_indices;
+  if (is_flashmask) startend_row_indices = startend_row_indices_.get();
+  DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,
+      ut_start_row_indices, ut_end_row_indices;
+  if (is_flashmask) {
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.dtype(),
+        phi::DataType::INT32,
+        common::errors::InvalidArgument(
+            "flashmask_attention startend_row_indices must be INT32 type"));
+    PADDLE_ENFORCE_EQ(
+        startend_row_indices.dims().size(),
+        4,
+        common::errors::InvalidArgument(
+            "flashmask_attention receive startend_row_indices with dim "
+            "[batch_size, num_heads,seq_len, mask_bounds]"));
+    PADDLE_ENFORCE_EQ(startend_row_indices.dims()[3] == 1 ||
+                          startend_row_indices.dims()[3] == 2 ||
+                          startend_row_indices.dims()[3] == 4,
+                      true,
+                      common::errors::InvalidArgument(
+                          "flashmask_attention startend_row_indices "
+                          "mask_bounds must in [1,2,4]"));
+
+    auto flashmask_maxmin_shape = startend_row_indices.dims();
+    // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
+    // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
+    // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
+    flashmask_maxmin_shape[2] =
+        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    flashmask_maxmin_shape[3] = 8;
+
+    flashmask_maxmin.set_type(phi::DataType::INT32);
+    flashmask_maxmin.Resize(flashmask_maxmin_shape);
+    dev_ctx.template Alloc<int32_t>(&flashmask_maxmin);
+
+    lt_start_row_indices =
+        phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {0}, {1});
+    if (startend_row_indices.dims()[3] == 2) {
+      if (!is_causal) {
+        ut_end_row_indices =
+            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+      } else {
+        lt_end_row_indices =
+            phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+      }
+    } else if (startend_row_indices.dims()[3] == 4) {
+      ut_end_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {3}, {4});
+      lt_end_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {1}, {2});
+      ut_start_row_indices =
+          phi::Slice<int32_t>(dev_ctx, startend_row_indices, {3}, {2}, {3});
+    }
+  }
+
+  if (is_flashmask) {
+    if (lt_start_row_indices.initialized())
+      dynload::flashmaskv2_bwd_params_set_lt_start_ptr(
+          params_handle,
+          const_cast<int32_t *>(lt_start_row_indices.data<int32_t>()));
+    else
+      dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
+
+    if (lt_end_row_indices.initialized())
+      dynload::flashmaskv2_bwd_params_set_lt_end_ptr(
+          params_handle,
+          const_cast<int32_t *>(lt_end_row_indices.data<int32_t>()));
+    else
+      dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);
+
+    if (ut_start_row_indices.initialized())
+      dynload::flashmaskv2_bwd_params_set_ut_start_ptr(
+          params_handle,
+          const_cast<int32_t *>(ut_start_row_indices.data<int32_t>()));
+    else
+      dynload::flashmaskv2_bwd_params_set_ut_start_ptr(params_handle, nullptr);
+
+    if (ut_end_row_indices.initialized())
+      dynload::flashmaskv2_bwd_params_set_ut_end_ptr(
+          params_handle,
+          const_cast<int32_t *>(ut_end_row_indices.data<int32_t>()));
+    else
+      dynload::flashmaskv2_bwd_params_set_ut_end_ptr(params_handle, nullptr);
+
+    if (flashmask_maxmin.initialized())
+      dynload::flashmaskv2_bwd_params_set_flashmask_maxmin_ptr(
+          params_handle,
+          const_cast<int32_t *>(flashmask_maxmin.data<int32_t>()));
+    else
+      dynload::flashmaskv2_bwd_params_set_flashmask_maxmin_ptr(params_handle,
+                                                               nullptr);
+
+    dynload::flashmaskv2_bwd_params_set_h_flashmask(
+        params_handle, startend_row_indices.dims()[1]);
+    dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(
+        params_handle, num_heads / startend_row_indices.dims()[1]);
+  } else {
+    dynload::flashmaskv2_bwd_params_set_lt_start_ptr(params_handle, nullptr);
+    dynload::flashmaskv2_bwd_params_set_lt_end_ptr(params_handle, nullptr);
+    dynload::flashmaskv2_bwd_params_set_ut_start_ptr(params_handle, nullptr);
+    dynload::flashmaskv2_bwd_params_set_ut_end_ptr(params_handle, nullptr);
+    dynload::flashmaskv2_bwd_params_set_flashmask_maxmin_ptr(params_handle,
+                                                             nullptr);
+    dynload::flashmaskv2_bwd_params_set_h_flashmask(params_handle, 0);
+    dynload::flashmaskv2_bwd_params_set_h_h_flashmask_ratio(params_handle, 0);
+  }
+
+#ifdef FLASHATTENTION_DISABLE_LOCAL
+  PADDLE_ENABLE_EQ(
+      !dynload::flashmaskv2_bwd_params_get_is_local(params_handle),
+      true,
+      "This flash attention build does not support local attention.");
+#endif
+#ifdef FLASHATTENTION_DISABLE_SOFTCAP
+  PADDLE_ENABLE_EQ(
+      dynload::flashmaskv2_bwd_params_get_softcap(params_handle),
+      0.0,
+      "This flash attention build does not support tanh softcapping.");
+#endif
+
+  if (total_q > 0 && total_k > 0 && num_heads_k > 0) {
+    dynload::flashmaskv2_run_mha_bwd(params_handle, dev_ctx.stream());
+  } else if (total_k > 0 && num_heads_k > 0) {
+    // If seqlen_q == 0, then we have an empty tensor. We need to set the output
+    // to 0.
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(dev_ctx, dk, T{0});
+    set_zero(dev_ctx, dv, T{0});
+    if (softmax_d) {
+      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      set_zero_fp32(dev_ctx, softmax_d, float{0});
+    }
+  } else if (total_q > 0 && num_heads_k > 0) {
+    phi::funcs::SetConstant<Context, T> set_zero;
+    set_zero(dev_ctx, dq, T{0});
+    if (softmax_d) {
+      phi::funcs::SetConstant<Context, float> set_zero_fp32;
+      set_zero_fp32(dev_ctx, softmax_d, float{0});
+    }
+  }
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
+template <typename T, typename Context>
+void FlashMaskV2GradKernel(
+    const Context &dev_ctx,
+    const DenseTensor &q,
+    const DenseTensor &k,
+    const DenseTensor &v,
+    const DenseTensor &out,
+    const DenseTensor &softmax_lse,
+    const DenseTensor &startend_row_indices,  // TODO(xiehaoyang): remove this
+    const DenseTensor &out_grad,
+    float const softmax_scale,
+    bool is_causal,
+    DenseTensor *dq,
+    DenseTensor *dk,
+    DenseTensor *dv) {
+#ifdef PADDLE_WITH_FLASHATTN_V3
+
+  PADDLE_ENFORCE_EQ(
+      q.dims()[q.dims().size() - 1],
+      v.dims()[v.dims().size() - 1],
+      common::errors::InvalidArgument("head_dim_q != head_dim_v (%d != %d)",
+                                      q.dims()[q.dims().size() - 1],
+                                      v.dims()[v.dims().size() - 1]));
+
+  // umiswing: fake grad tensor for FlashAttnV3GradBaseKernel
+  DenseTensor softmax_d;
+  DenseTensor softmax_lse_log2;
+  DenseTensor dq_accum;
+  DenseTensor dk_accum;
+  DenseTensor dv_accum;
+  FlashMaskV2GradBaseKernel<T, Context>(dev_ctx,
+                                        out_grad,
+                                        q,
+                                        k,
+                                        v,
+                                        out,
+                                        softmax_lse,
+                                        paddle::none,  // dq_
+                                        paddle::none,  // dk_
+                                        paddle::none,  // dv_
+                                        paddle::none,
+                                        paddle::none,
+                                        paddle::none,
+                                        paddle::none,
+                                        startend_row_indices,
+                                        0,  // max_seqlen_q,
+                                        0,  // max_seqlen_k,
+                                        softmax_scale,
+                                        is_causal,
+                                        -1,     // window_size_left,
+                                        -1,     // window_size_right,
+                                        0,      // softcap,
+                                        false,  // deterministic,
+                                        0,      // sm_margin,
+                                        dq,
+                                        dk,
+                                        dv,
+                                        &softmax_d,
+                                        &softmax_lse_log2,
+                                        &dq_accum,
+                                        &dk_accum,
+                                        &dv_accum);
+
+  // umiswing: some branch in upstream fa3 could have padded the head dimension
+  PADDLE_ENFORCE_EQ(
+      dq->dims()[dq->dims().size() - 1],
+      out_grad.dims()[out_grad.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dq != head dimension of out_grad (%d != %d)",
+          dq->dims()[dq->dims().size() - 1],
+          out_grad.dims()[out_grad.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dk->dims()[dk->dims().size() - 1],
+      out_grad.dims()[out_grad.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dk != head dimension of out_grad (%d != %d)",
+          dk->dims()[dk->dims().size() - 1],
+          out_grad.dims()[out_grad.dims().size() - 1]));
+
+  PADDLE_ENFORCE_EQ(
+      dv->dims()[dv->dims().size() - 1],
+      out_grad.dims()[out_grad.dims().size() - 1],
+      common::errors::InvalidArgument(
+          "head dimension of dv != head dimension of out_grad (%d != %d)",
+          dv->dims()[dv->dims().size() - 1],
+          out_grad.dims()[out_grad.dims().size() - 1]));
+
+#else
+  RaiseNotSupportedError();
+#endif
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flash_attn_v3_grad,
@@ -832,5 +1563,12 @@ PD_REGISTER_KERNEL(flash_attn_v3_varlen_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3VarlenGradKernel,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(flashmask_attention_v2_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashMaskV2GradKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

@@ -43,7 +43,7 @@ class TestTranspose2Unsqueeze2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axis": transpose_axis,
-                "use_mkldnn": True,
+                "use_onednn": True,
             },
         )
 
@@ -102,7 +102,7 @@ class TestElementwiseMulUnsqueeze2OneDNNFusePass(PassAutoScanTest):
             type='elementwise_mul',
             inputs={'X': ['eltwise_X'], 'Y': ['eltwise_Y']},
             outputs={'Out': ['eltwise_output']},
-            attrs={"use_mkldnn": True},
+            attrs={"use_onednn": True},
         )
 
         unsqueeze2_op = OpConfig(

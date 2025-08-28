@@ -2950,6 +2950,70 @@ void ModeInferMeta(const MetaTensor& x,
   indices->set_dtype(DataType::INT64);
 }
 
+void MinMaxWithIndexInferMeta(const MetaTensor& x,
+                              const Scalar& axis,
+                              bool keepdims,
+                              bool flatten,
+                              MetaTensor* val_out,
+                              MetaTensor* ind_out,
+                              MetaConfig config) {
+  DataType val_dtype = x.dtype();
+
+  // axis.FromTensor will never be true for this op
+  auto int_axis = axis.to<int64_t>();
+  const auto& x_dims = x.dims();
+
+  auto x_rank = x.dims().size();
+  if (x_rank > 0) {
+    PADDLE_ENFORCE_GE(int_axis,
+                      -x_rank,
+                      common::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -Rank(X)(%d).",
+                          int_axis,
+                          -x_rank));
+    PADDLE_ENFORCE_LT(
+        int_axis,
+        x_rank,
+        common::errors::InvalidArgument(
+            "'axis'(%d) must be less than Rank(X)(%d) of Input(X).",
+            int_axis,
+            x_rank));
+  } else {
+    // 0-dim tensor
+    PADDLE_ENFORCE_EQ(int_axis == 0 || int_axis == -1,
+                      true,
+                      common::errors::InvalidArgument(
+                          "'axis'(%d) must be 0 or -1 if input tensor is "
+                          "0-dim.",
+                          int_axis));
+  }
+
+  if (int_axis < 0) int_axis += x_rank;
+
+  std::vector<int64_t> vec;
+  if (flatten) {
+    if (keepdims) {  // NOLINT
+      vec = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec = {};
+    }
+  } else {
+    for (int64_t i = 0; i < int_axis; i++)
+      vec.emplace_back(x_dims[static_cast<int>(i)]);
+    if (keepdims) {
+      vec.emplace_back(static_cast<int64_t>(1));
+    }
+    for (int64_t i = int_axis + 1; i < x_rank; i++)
+      vec.emplace_back(x_dims[static_cast<int>(i)]);
+  }
+
+  val_out->set_dims(common::make_ddim(vec));
+  val_out->set_dtype(val_dtype);
+  ind_out->set_dims(common::make_ddim(vec));
+  ind_out->set_dtype(DataType::INT64);
+}
+
 void MultinomialInferMeta(const MetaTensor& x,
                           const Scalar& num_samples,
                           bool replacement,

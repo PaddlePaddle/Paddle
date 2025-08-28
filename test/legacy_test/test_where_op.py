@@ -1136,6 +1136,24 @@ class TestWhereAlias(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestWhereOut(unittest.TestCase):
+    def setUp(self):
+        self.cond_np = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        self.x_np = np.random.random([2, 3, 5]).astype('float32')
+        self.y_np = np.random.random([2, 3, 5]).astype('float32')
+
+    def test_api_with_dygraph(self):
+        paddle.disable_static()
+        cond = paddle.to_tensor(self.cond_np)
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        out_holder = paddle.zeros_like(cond)
+        out_ref = paddle.where(cond, x, y)
+
+        paddle.where(cond, x, y, out=out_holder)
+        np.testing.assert_allclose(out_holder, out_ref, rtol=1e-20)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

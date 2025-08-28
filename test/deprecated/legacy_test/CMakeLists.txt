@@ -40,7 +40,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
@@ -67,7 +66,6 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
@@ -147,7 +145,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
@@ -186,10 +183,6 @@ list(REMOVE_ITEM TEST_OPS decorator_helper)
 # decorator_helper is a helper python file, not a test
 
 if(APPLE)
-  if(NOT WITH_DISTRIBUTE)
-    list(REMOVE_ITEM TEST_OPS test_desc_clone_deprecated)
-    list(REMOVE_ITEM TEST_OPS test_program_code_deprecated)
-  endif()
   message(
     WARNING
       "These tests has been disabled in OSX before being fixed:\n test_fuse_elewise_add_act_pass_deprecated \n test_dist_se_resnext_*"
@@ -389,7 +382,6 @@ function(parallel_bash_test_modules TARGET_NAME)
 endfunction()
 
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type_deprecated)
-list(REMOVE_ITEM TEST_OPS test_layers_deprecated)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_api)
 list(REMOVE_ITEM TEST_OPS test_basic_gru_unit_op)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
@@ -498,9 +490,6 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_partitioner_deprecated MODULES
         test_auto_parallel_partitioner_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_partitioner_gpt_deprecated MODULES
-        test_auto_parallel_partitioner_gpt_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_searcher_deprecated MODULES
                       test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_deprecated MODULES
@@ -577,21 +566,9 @@ py_test_modules(
   FLAGS_cudnn_batchnorm_spatial_persistent=1
   FLAGS_conv_workspace_size_limit=1000)
 
-if(NOT WIN32)
-  # TODO: fix these unittests failure on Windows
-  py_test_modules(test_layers_deprecated MODULES test_layers_deprecated ENVS
-                  FLAGS_cudnn_deterministic=1)
-endif()
-
 set_tests_properties(
   test_dataloader_keep_order_deprecated test_dataloader_unkeep_order_deprecated
   PROPERTIES LABELS "RUN_TYPE=DIST")
-
-if(NOT WIN32)
-  set_tests_properties(test_multiprocess_reader_exception_deprecated
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-  set_tests_properties(test_layers_deprecated PROPERTIES TIMEOUT 120)
-endif()
 
 # setting timeout value as 15S
 set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
@@ -619,11 +596,8 @@ else()
 endif()
 
 set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_sgd_op_deprecated PROPERTIES TIMEOUT 250)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
-set_tests_properties(test_program_prune_backward_deprecated PROPERTIES TIMEOUT
-                                                                       120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
@@ -650,9 +624,8 @@ if(WITH_DISTRIBUTE
                        PROPERTIES TIMEOUT 120)
 endif()
 
-set(TEST_CINN_OPS
-    test_slice_op_deprecated test_layer_norm_op_deprecated
-    test_instance_norm_op_deprecated test_group_norm_op_deprecated)
+set(TEST_CINN_OPS test_slice_op_deprecated test_layer_norm_op_deprecated
+                  test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -718,4 +691,3 @@ set_tests_properties(test_apply_pass_to_program_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_conv3d_layer_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_attribute_var_deprecated PROPERTIES TIMEOUT 100)
 set_tests_properties(test_inference_api_deprecated PROPERTIES TIMEOUT 100)
-set_tests_properties(test_group_norm_op_deprecated PROPERTIES TIMEOUT 1000)

@@ -67,6 +67,7 @@ int TensorDtype2NumpyDtype(phi::DataType dtype);
 bool PyObject_CheckStr(PyObject* obj);
 bool PyObject_CheckIRValue(PyObject* obj);
 bool PyObject_CheckIRVectorOfValue(PyObject* obj);
+bool PyObject_CheckIRVectorOfValueOrLong(PyObject* obj);
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos);
 int CastPyArg2AttrInt(PyObject* obj, ssize_t arg_pos);
 int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
@@ -100,6 +101,11 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                                                 const std::string& op_type,
                                                 size_t arg_pos,
                                                 bool dispensable = false);
+std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
+    PyObject* obj,
+    const std::string& op_type,
+    size_t arg_pos,
+    bool dispensable = false);
 paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
     PyObject* obj,
     const std::string& op_type,
@@ -403,6 +409,18 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     bool dispensable = false,
     const phi::distributed::ProcessMesh* mesh = nullptr);
 
+paddle::optional<paddle::Tensor> GetOptionalTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable = false,
+    const phi::distributed::ProcessMesh* mesh = nullptr);
+
 paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   const std::string& arg_name,
                                   PyObject* args,
@@ -479,7 +497,7 @@ class TensorListBufferAllocator {
     bool is_available;
     std::vector<paddle::Tensor> buffer;
     TensorListBuffer() = default;
-    explicit TensorListBuffer(ssize_t len) : buffer(len), is_available(true) {}
+    explicit TensorListBuffer(ssize_t len) : is_available(true), buffer(len) {}
   };
 
   using MapType =

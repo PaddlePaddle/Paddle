@@ -243,10 +243,6 @@
 
 - op : amax
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api :
-    name : [paddle.amax,paddle.Tensor.amax]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -257,10 +253,6 @@
 
 - op : amin
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api :
-    name : [paddle.amin,paddle.Tensor.amin]
-    args_alias :
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -282,6 +274,10 @@
 
 - op : any
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
+  python_api:
+    name : [paddle.any, paddle.Tensor.any]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -346,6 +342,10 @@
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmax, paddle.Tensor.argmax]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -358,6 +358,10 @@
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
+  python_api :
+    name : [paddle.argmin, paddle.Tensor.argmin]
+    args_mapper :
+      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -782,7 +786,12 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  output : Tensor
+  python_api :
+    name : [paddle.bmm, paddle.Tensor.bmm]
+    args_alias:
+      x : [input]
+      y : [mat2]
+  output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
   kernel :
@@ -1209,6 +1218,10 @@
 
 - op : cos
   args : (Tensor x)
+  python_api:
+    name: [paddle.cos, paddle.Tensor.cos]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1280,6 +1293,15 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
+- op : cross_entropy_with_softmax_bwd_w_downcast
+  args : (Tensor label, Tensor softmax, Tensor loss_grad)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxBwdWithDowncastInferMeta
+  kernel :
+    func : cross_entropy_with_softmax_bwd_w_downcast
+    data_type : softmax
 
 - op : ctc_align
   args: (Tensor input, Tensor input_length, int blank = 0, bool merge_repeated = true,
@@ -1702,6 +1724,18 @@
   backward : elu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
+
+- op : embedding_grad_add_to
+  args : (Tensor token_indices, Tensor main_grad_, Tensor out_grad)
+  output : Tensor(main_grad_out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [main_grad_]
+  kernel :
+    func : embedding_grad_add_to
+    param : [token_indices, main_grad_, out_grad]
+    data_type : main_grad_
+  inplace : (main_grad_ -> main_grad_out)
 
 - op : embedding_with_scaled_gradient
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
@@ -2142,6 +2176,17 @@
   backward : flashmask_attention_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : flashmask_attention_v2
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal)
+  output : Tensor(out), Tensor(softmax_lse)
+  infer_meta :
+    func : FlashMaskV2InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flashmask_attention_v2
+    data_type : q
+  backward : flashmask_attention_v2_grad
+
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
   output : Tensor(out)
@@ -2168,6 +2213,10 @@
 
 - op : floor
   args : (Tensor x)
+  python_api:
+    name: [paddle.floor, paddle.Tensor.floor]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2948,6 +2997,10 @@
 
 - op : isfinite
   args : (Tensor x)
+  python_api:
+    name : [paddle.isfinite, paddle.Tensor.isfinite]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -2959,6 +3012,10 @@
 
 - op : isinf
   args : (Tensor x)
+  python_api:
+    name : [paddle.isinf, paddle.Tensor.isinf]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -2970,6 +3027,10 @@
 
 - op : isnan
   args : (Tensor x)
+  python_api:
+    name : [paddle.isnan, paddle.Tensor.isnan]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3152,6 +3213,10 @@
 
 - op : log
   args : (Tensor x)
+  python_api:
+    name: [paddle.log, paddle.Tensor.log]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3331,7 +3396,13 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logsumexp
-  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
+  args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
+  python_api:
+    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
+    args_alias:
+      use_default_mapping : True
+    pre_process:
+      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -3565,6 +3636,17 @@
   backward : max_pool3d_with_index_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : max_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : max_with_index
+    data_type : x
+  backward : max_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)
@@ -3672,6 +3754,17 @@
     func : meshgrid
     data_type : inputs
   backward : meshgrid_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : min_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : min_with_index
+    data_type : x
+  backward : min_with_index_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : mish
@@ -4599,6 +4692,13 @@
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
+  python_api:
+    name : [paddle.roll, paddle.Tensor.roll]
+    args_alias:
+      axis : [dims]
+      use_default_mapping : True
+    pre_process:
+      func : RollPreProcess(x, shifts, axis)
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
@@ -4650,6 +4750,10 @@
 
 - op : rsqrt
   args : (Tensor x)
+  python_api:
+    name: [paddle.sqrt, paddle.Tensor.rsqrt]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4942,6 +5046,10 @@
 
 - op : sign
   args : (Tensor x)
+  python_api :
+    name: [paddle.sign, paddle.Tensor.sign]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -4966,6 +5074,10 @@
 
 - op : sin
   args : (Tensor x)
+  python_api :
+    name: [paddle.sin, paddle.Tensor.sin]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5110,6 +5222,10 @@
 
 - op : sqrt
   args : (Tensor x)
+  python_api :
+    name : [paddle.sqrt,paddle.Tensor.sqrt]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5464,7 +5580,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
+  python_api :
+    name : [paddle.tril, paddle.Tensor.tril]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -5503,7 +5623,11 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
+  python_api :
+    name : [paddle.triu, paddle.Tensor.triu]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
