@@ -1246,12 +1246,13 @@ def rand_like(
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
-    tensor = paddle.rand(input.shape, dtype=dtype, name=name)
-    if device is not None:
-        tensor = tensor.to(device)
-    if requires_grad:
-        tensor.stop_gradient = False
-    return tensor
+    return paddle.rand(
+        shape=input.shape,
+        dtype=dtype,
+        name=name,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 def normal(
@@ -1466,6 +1467,10 @@ def uniform(
     max: float = 1.0,
     seed: int = 0,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -1556,14 +1561,23 @@ def uniform(
 
     if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        return _C_ops.uniform(
+        place = (
+            _current_expected_place()
+            if device is None
+            else _get_paddle_place(device)
+        )
+        tensor = _C_ops.uniform(
             shape,
             dtype,
             float(min),
             float(max),
             seed,
-            _current_expected_place(),
+            place,
+            out=out,
         )
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     elif in_pir_mode():
         check_type(
             shape, 'shape', (list, tuple, paddle.pir.Value), 'uniform/rand'
@@ -1578,14 +1592,23 @@ def uniform(
         if isinstance(max, int):
             max = float(max)
 
-        return _C_ops.uniform(
+        place = (
+            _current_expected_place()
+            if device is None
+            else _get_paddle_place(device)
+        )
+        tensor = _C_ops.uniform(
             shape,
             dtype,
             min,
             max,
             seed,
-            _current_expected_place(),
+            place,
+            out=out,
         )
+        if requires_grad is True:
+            tensor.stop_gradient = False
+        return tensor
     else:
         check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')
         check_dtype(dtype, 'dtype', supported_dtypes, 'uniform/rand')
@@ -2086,8 +2109,15 @@ def randperm(
         return out
 
 
+@size_args_decorator
 def rand(
-    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -2104,6 +2134,9 @@ def rand(
         name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform
@@ -2148,7 +2181,16 @@ def rand(
              [0.27029657, 0.03963696, 0.42487794]])
             >>> # doctest: -SKIP
     """
-    return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+    return uniform(
+        shape,
+        dtype,
+        min=0.0,
+        max=1.0,
+        name=name,
+        out=out,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 @param_one_alias(["lam", "lambd"])
