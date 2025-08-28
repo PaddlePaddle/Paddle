@@ -68,7 +68,7 @@ class AOAShardInfoContext:
         self.destination_state_shard_info = destination_state_shard_info
         self.optim_state_name = [
             ".w_0",
-            ".moment1_0 ",
+            ".moment1_0",
             ".moment2_0",
             ".beta1_pow_acc_0",
             ".beta2_pow_acc_0",
@@ -115,11 +115,13 @@ class AOAShardInfoContext:
             raise KeyError(
                 f"dst_state_key '{dst_state_key}' not in destination_state_shard_info"
             )
+
+        new_state_key = dst_state_key
         for state_name in self.optim_state_name:
             if state_name in dst_state_key:
                 new_state_key = dst_state_key.replace(state_name, "")
                 break
-        new_state_key = dst_state_key
+
         shard_infos = self.destination_state_shard_info[new_state_key]
         global_offset_set = set()
         for shard_info in shard_infos:
@@ -149,9 +151,7 @@ class AOAEngine:
         self.input_vars = self.build_input_vars()
         self.output_vars = {}
         self.need_remove_input_vars = set()
-        self.need_remove_output_vars = set()
-        self.need_transpose_output_vars = set()
-        self.need_transpose_input_vars = {}
+        self.need_add_output_vars = set()
 
         self.shape_propagation()
 
@@ -341,22 +341,22 @@ class AOAEngine:
                 if rvar.name == "_":
                     self.need_remove_input_vars.add(lvar.name)
                 elif lvar.name == "_":
-                    self.need_remove_output_vars.add(rvar.name)
+                    self.need_add_output_vars.add(rvar.name)
                 else:
                     if attrs:
                         for attr in attrs:
                             in_ref = _get_var_ref(lvar)
-                            if attr.key == "transpose":
+                            if attr.key == "perm":
                                 if attr.value == "[]":
                                     ndim = len(in_ref.shape)
-                                    transpose = str(
-                                        list(range(ndim - 1, -1, -1))
-                                    )
+                                    perm = str(list(range(ndim - 1, -1, -1)))
                                 else:
-                                    transpose = attr.value
-                                result = self.transpose(in_ref, transpose)
+                                    perm = attr.value
+                                result = self.transpose(in_ref, perm)
                             elif attr.key == "dtype":
                                 result = self.cast(in_ref, attr.value)
+                            elif attr.key == "axis":
+                                pass
                             else:
                                 raise ValueError(
                                     f"Unsupported attribute: {attr}"
@@ -369,19 +369,16 @@ class AOAEngine:
                                 in self.context.get_all_dst_state_keys()
                             ):
                                 self.output_vars[out_name] = result
-                    else:
-                        intermediate_vars[rvar.name] = _get_var_ref(lvar)
-                        if rvar.name in self.context.get_all_dst_state_keys():
-                            self.output_vars[rvar.name] = intermediate_vars[
-                                rvar.name
-                            ]
             else:
                 raise SyntaxError(f'Unexpected statement: {stmt}')
 
         for name in self.destination_state_shard_info.keys():
             if name not in self.output_vars:
-                assert name in self.input_vars
-                self.output_vars[name] = self.input_vars[name]
+                if name in self.need_add_output_vars:
+                    self.output_vars[name] = None
+                else:
+                    assert name in self.input_vars
+                    self.output_vars[name] = self.input_vars[name]
 
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
@@ -486,6 +483,14 @@ class AOAEngine:
                 tuple(target_global_shape),
                 tgt_global_offset,
             )
+
+            if source_sharded_weight.key in self.need_remove_input_vars:
+                mapping_entry = ShardMappingEntry(
+                    target_sharded_weight,
+                    source_sharded_weight,
+                    [],
+                )
+                continue
 
             shard_mappings.append(
                 ShardMappingEntry(
