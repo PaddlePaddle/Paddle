@@ -106,9 +106,19 @@ class FunctionArgs {
     using ReturnType = std::
         conditional_t<std::is_reference_v<T>, std::remove_reference_t<T>, T>;
 
-    ReturnType result;
-    if (arg.template try_convert_to<ReturnType>(result)) {
-      return result;
+    // Handle const references by creating a temporary object
+    if constexpr (std::is_const_v<std::remove_reference_t<T>> &&
+                  std::is_reference_v<T>) {
+      using NonConstType = std::remove_const_t<std::remove_reference_t<T>>;
+      NonConstType temp_result;
+      if (arg.template try_convert_to<NonConstType>(temp_result)) {
+        return temp_result;
+      }
+    } else {
+      ReturnType result;
+      if (arg.template try_convert_to<ReturnType>(result)) {
+        return result;
+      }
     }
 
     std::ostringstream oss;

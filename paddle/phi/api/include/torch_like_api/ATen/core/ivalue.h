@@ -478,6 +478,11 @@ inline std::string generic_to(const IValue& ivalue, _fake_type<std::string>) {
   return ivalue.to_string();
 }
 
+template <>
+inline at::Tensor generic_to(const IValue& ivalue, _fake_type<at::Tensor>) {
+  return ivalue.to_tensor();
+}
+
 template <typename T>
 std::vector<T> generic_to(const IValue& ivalue, _fake_type<std::vector<T>>) {
   auto list = ivalue.to_list();

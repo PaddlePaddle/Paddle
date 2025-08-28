@@ -391,3 +391,31 @@ TEST(test_torch_library, TestMixOptionalArrayRefInput) {
   int value_without_value = result_without_value.get_value().to_int();
   ASSERT_EQ(value_without_value, -1);
 }
+
+void fn_with_optional_tensor_const_ref_input(
+    torch::optional<at::Tensor> const& x) {}
+
+TORCH_LIBRARY(example_library_with_optional_tensor_const_ref_input, m) {
+  m.def("fn_with_optional_tensor_const_ref_input",
+        &fn_with_optional_tensor_const_ref_input);
+}
+
+TEST(test_torch_library, TestOptionalTensorConstRefInput) {
+  auto qualified_name =
+      "example_library_with_optional_tensor_const_ref_input::"
+      "fn_with_optional_tensor_const_ref_input";
+  auto* op = torch::OperatorRegistry::instance().find_operator(qualified_name);
+  ASSERT_NE(op, nullptr);
+  auto impl_it = op->implementations.find(torch::DispatchKey::CPU);
+  ASSERT_NE(impl_it, op->implementations.end());
+
+  // Test with value
+  torch::FunctionArgs function_args_with_value;
+  function_args_with_value.add_arg(torch::IValue(at::ones({2, 2}, at::kFloat)));
+  impl_it->second.call_with_args(function_args_with_value);
+
+  // Test without value (nullopt)
+  torch::FunctionArgs function_args_without_value;
+  function_args_without_value.add_arg(torch::IValue());
+  impl_it->second.call_with_args(function_args_without_value);
+}
