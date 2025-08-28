@@ -26,39 +26,42 @@ def main():
     parser.add_argument(
         "--out", required=True, help="path to write JSON result"
     )
+    parser.add_argument("--log", help="optional debug log path")
     args = parser.parse_args()
 
     flags_json = os.environ.get("FLAGS_JSON")
     if flags_json:
-        try:
-            cfg = json.loads(flags_json)
-            for k, v in cfg.items():
-                os.environ[k] = str(v)
-        except Exception as e:
-            _write_out(
-                args.out,
-                {
-                    "error": f"parse FLAGS_JSON failed: {e}",
-                    "reserved": [],
-                    "allocated": [],
-                    "try_alloc_ok": [],
-                },
-            )
-            sys.exit(1)
+        cfg = json.loads(flags_json)
+        for k, v in cfg.items():
+            os.environ[k] = str(v)
+
+    lf = open(args.log, "a", encoding="utf-8") if args.log else None
+
+    def dbg(msg: str):
+        if lf:
+            lf.write(msg + "\n")
+            lf.flush()
+        else:
+            print(msg, file=sys.stderr, flush=True)
 
     import paddle
     from paddle import base
 
     result = {
+        "device": "none",
         "reserved": [],
         "allocated": [],
         "try_alloc_ok": [],
-        "error": "",
     }
 
     if not base.is_compiled_with_cuda():
-        _write_out(args.out, result)
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(json.dumps(result))
+        if lf:
+            lf.close()
         return
+
+    result["device"] = "cuda"
 
     def max_reserved():
         return int(paddle.device.cuda.max_memory_reserved())
@@ -66,59 +69,48 @@ def main():
     def max_allocated():
         return int(paddle.device.cuda.max_memory_allocated())
 
-    try:
-        plan = json.loads(args.plan)
-    except Exception as e:
-        result["error"] = f"parse plan failed: {e}"
-        _write_out(args.out, result)
-        sys.exit(2)
+    # dump effective FLAGS_*
+    eff = {k: v for k, v in os.environ.items() if k.startswith("FLAGS_")}
+    dbg("[flags] " + json.dumps(eff, sort_keys=True))
 
+    plan = json.loads(args.plan)
     holds = []
 
-    def append_stats():
-        result["reserved"].append(max_reserved())
-        result["allocated"].append(max_allocated())
-
-    try:
-        for step in plan:
-            op = step.get("op")
-            if op == "init":
-                _ = paddle.rand([1])
-            elif op == "alloc_small":
-                mb_per_block = float(
-                    step.get("mb_per_block", step.get("mb", 0.5))
-                )
-                blocks = int(step.get("blocks", 1))
-                elems = max(1, int((mb_per_block * MiB) // 4))  # float32
-                for _ in range(blocks):
-                    holds.append(paddle.rand([elems]))
-            elif op == "alloc_large":
-                mb = float(step.get("mb", 8))
-                elems = max(1, int((mb * MiB) // 4))
+    for i, step in enumerate(plan):
+        op = step.get("op")
+        if op == "init":
+            _ = paddle.rand([1])
+        elif op == "alloc_small":
+            mb_per_block = float(step.get("mb_per_block", 0.5))
+            blocks = int(step.get("blocks", 4))
+            elems = max(1, int((mb_per_block * MiB) // 4))
+            for _ in range(blocks):
                 holds.append(paddle.rand([elems]))
-            elif op == "try_alloc":
-                mb = float(step.get("mb", 0))
-                elems = max(1, int((mb * MiB) // 4))
-                ok = True
-                try:
-                    holds.append(paddle.rand([elems]))
-                except Exception:
-                    ok = False
-                result["try_alloc_ok"].append(ok)
-            append_stats()
+        elif op == "alloc_large":
+            mb = float(step.get("mb", 8))
+            elems = max(1, int((mb * MiB) // 4))
+            holds.append(paddle.rand([elems]))
+        elif op == "try_alloc":
+            mb = float(step.get("mb", 0))
+            elems = max(1, int((mb * MiB) // 4))
+            ok = True
+            try:
+                holds.append(paddle.rand([elems]))
+            except Exception:
+                ok = False
+            result["try_alloc_ok"].append(ok)
 
-        _write_out(args.out, result)
-    except Exception as e:
-        result["error"] = f"runtime error: {e}"
-        _write_out(args.out, result)
-        sys.exit(3)
+        r = max_reserved()
+        a = max_allocated()
+        result["reserved"].append(r)
+        result["allocated"].append(a)
+        dbg(f"[step {i}] op={op} reserved={r} allocated={a}")
 
+    with open(args.out, "w", encoding="utf-8") as f:
+        f.write(json.dumps(result))
 
-def _write_out(path, obj):
-    tmp = f"{path}.tmp"
-    with open(tmp, "w") as f:
-        json.dump(obj, f)
-    os.replace(tmp, path)
+    if lf:
+        lf.close()
 
 
 if __name__ == "__main__":

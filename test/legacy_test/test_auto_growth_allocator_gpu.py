@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 
 import paddle
 from paddle import base
@@ -32,28 +33,70 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = cuda_visible_devices
     env["FLAGS_JSON"] = json.dumps(flags)
+    env.setdefault("PYTHONUNBUFFERED", "1")
 
-    with tempfile.TemporaryDirectory() as td:
-        out_path = os.path.join(td, "result.json")
-        p = subprocess.run(
-            [
-                sys.executable,
-                script,
-                "--plan",
-                json.dumps(plan),
-                "--out",
-                out_path,
-            ],
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-        if p.returncode != 0:
-            raise RuntimeError(
-                f"probe failed:\nSTDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
+    keep = os.environ.get("AG_KEEP_OUT", "").strip()
+    if keep:
+        if keep == "1":
+            out_dir = os.path.join(os.getcwd(), "_ag_out")
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(
+                out_dir, f"ag_{os.getpid()}_{uuid.uuid4().hex}.json"
             )
-        with open(out_path, "r") as f:
-            return json.load(f)
+        elif keep.endswith(".json"):
+            os.makedirs(
+                os.path.dirname(os.path.abspath(keep)) or ".", exist_ok=True
+            )
+            out_path = os.path.abspath(keep)
+        else:
+            out_dir = os.path.abspath(keep)
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(
+                out_dir, f"ag_{os.getpid()}_{uuid.uuid4().hex}.json"
+            )
+    else:
+        fd, out_path = tempfile.mkstemp(prefix="ag_", suffix=".json")
+        os.close(fd)
+
+    log_path = out_path + ".log" if keep else None
+
+    cmd = [
+        sys.executable,
+        script,
+        "--plan",
+        json.dumps(plan),
+        "--out",
+        out_path,
+    ]
+    if log_path:
+        cmd += ["--log", log_path]
+
+    if env.get("AG_TEE", "") == "1":
+        p = subprocess.run(cmd, env=env, text=True)
+    else:
+        p = subprocess.run(cmd, env=env, capture_output=True, text=True)
+
+    if p.returncode != 0:
+        raise RuntimeError(
+            f"probe failed:\nSTDOUT:\n{p.stdout}\nSTDERR:\n{p.stderr}"
+        )
+
+    with open(out_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not keep:
+        try:
+            os.remove(out_path)
+            if log_path:
+                os.remove(log_path)
+        except Exception:
+            pass
+    else:
+        sys.stderr.write(f"[AG_KEEP_OUT] {out_path}\n")
+        if log_path:
+            sys.stderr.write(f"[AG_KEEP_OUT] {log_path}\n")
+
+    return data
 
 
 class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
@@ -163,10 +206,27 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         }
         plan = [
             {"op": "init"},
+            {"op": "alloc_large", "mb": 20},
         ]
         out = _run_test_case(plan, flags)
         r0 = out["reserved"][0]
         self.assertLessEqual(r0, int(6 * MiB), msg=f"r0={r0}")
+
+    def test_trace_flag(self):
+        if not base.is_compiled_with_cuda():
+            return
+        flags = {
+            "FLAGS_small_pool_size_in_mb": 1,
+            "FLAGS_large_pool_pre_alloc_in_mb": 5,
+            "FLAGS_free_idle_chunk": True,
+            "FLAGS_free_when_no_cache_hit": True,
+            "FLAGS_print_allocator_trace_info": True,
+        }
+        plan = [
+            {"op": "init"},
+            {"op": "alloc_small", "mb": 1},
+        ]
+        out = _run_test_case(plan, flags)
 
 
 if __name__ == "__main__":
