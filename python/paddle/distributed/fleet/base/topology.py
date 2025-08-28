@@ -1221,7 +1221,6 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
     def build_context_group(self, topo, nccl_config=None):
         group_nccl_comm_init_option = 0
         parallel_groups = self.split_context_comm_list(topo)
-        print('build_context_group', parallel_groups)
         for group in parallel_groups:
             comm_group = paddle.distributed.new_group(
                 ranks=group,
