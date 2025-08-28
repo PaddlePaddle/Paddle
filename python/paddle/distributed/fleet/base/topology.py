@@ -1203,14 +1203,12 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
 
         uf = UnionFind()
 
-        # 处理所有通信组 - 每组只需将后续元素与第一个元素union
         for group in cp_comm_list + mp_comm_list:
             if len(group) > 1:
                 first = group[0]
                 for i in range(1, len(group)):
                     uf.union(first, group[i])
 
-        # 获取连通分量并排序
         cp_tp_comm_list = uf.get_components()
         for component in cp_tp_comm_list:
             component.sort()
