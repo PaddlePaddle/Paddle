@@ -237,7 +237,8 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
 }
 
 bool PyObject_CheckIRVectorOfValueOrLong(PyObject* obj) {
-  if (obj == nullptr || (!PyList_Check(obj) && !PyTuple_Check(obj))) {
+  if (obj == nullptr) return false;
+  if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
     return false;
   }
 
@@ -2413,6 +2414,8 @@ std::vector<pir::Value> CastPyArg2VectorOfValueOrLong(
     item = CastPyArg2ValuePreHook(item);
 
     if (PyObject_CheckIRValue(item)) {
+      // pir::Value val = ::pybind11::handle(item).cast<pir::Value>();
+      // paddle::dialect::SetStopGradient(&val);
       value_list.emplace_back(::pybind11::handle(item).cast<pir::Value>());
     } else if (PyObject_CheckLong(item)) {
       int64_t k_tmp = CastPyArg2Long(item, op_type, arg_pos);
