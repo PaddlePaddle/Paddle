@@ -5136,6 +5136,7 @@
   kernel :
     func : slogdet_v2
   backward : slogdet_v2_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
   args : (Tensor x, float beta = 1.0, float threshold = 20.0f)

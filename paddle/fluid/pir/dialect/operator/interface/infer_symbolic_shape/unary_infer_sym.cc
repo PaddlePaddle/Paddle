@@ -3374,6 +3374,7 @@ bool SlogdetOpInferSymbolicShape(
 
 bool SlogdetV2OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  std::cout << "call SlogdetV2OpInferSymbolicShape" << std::endl;
   const auto &x_shape_or_data =
       infer_context->GetShapeOrDataForValue(op->operand_source(0));
   const auto &x_shape = x_shape_or_data.shape();
