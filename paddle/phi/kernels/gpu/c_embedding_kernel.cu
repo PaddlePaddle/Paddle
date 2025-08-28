@@ -22,25 +22,25 @@ namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline int NumBlocks(const int64_t N) {
+  return static_cast<int>(std::min<int64_t>(
+      (N + kNumCUDAThreads - 1) / kNumCUDAThreads, kNumMaximumNumBlocks));
 }
 
 template <typename T, typename IndexT>
 __global__ void CEmbedding(T* out,
                            const T* table,
                            const IndexT* ids,
-                           const int rows,
-                           const int columns,
+                           const int64_t rows,
+                           const int64_t columns,
                            const int64_t N,
                            const int64_t start_idx,
                            const int64_t end_idx,
                            const int64_t limit,
                            const int64_t vocab_size) {
-  CUDA_KERNEL_LOOP(i, limit) {
-    size_t row = i / columns;
-    size_t col = i % columns;
+  CUDA_KERNEL_LOOP_TYPE(i, limit, int64_t) {
+    int64_t row = i / columns;
+    int64_t col = i % columns;
     auto id = ids[row];
 
     PADDLE_ENFORCE(
@@ -67,9 +67,9 @@ void CEmbeddingKernel(const Context& dev_ctx,
                       int64_t start_index,
                       int64_t vocab_size,
                       DenseTensor* out) {
-  size_t N = w.dims()[0];
-  size_t D = w.dims()[1];
-  size_t K = ids.numel();
+  int64_t N = w.dims()[0];
+  int64_t D = w.dims()[1];
+  int64_t K = ids.numel();
 
   const int64_t end_idx = start_index + N;
 
@@ -77,7 +77,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
   auto* output = dev_ctx.template Alloc<T>(out);
 
   auto limit = K * D;
-  int blocks = NumBlocks(limit);
+  auto blocks = NumBlocks(limit);
   int threads = kNumCUDAThreads;
 
   const auto& index_type = ids.dtype();

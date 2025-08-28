@@ -1430,7 +1430,7 @@ class PipelineParallel(MetaParallelBase):
                 t is not None
                 and isinstance(t, paddle.Tensor)
                 and t._is_initialized()
-                and t.inplace_version == 0
+                and (t.inplace_version == 0 or getattr(t, "pp_can_free", False))
             )
 
         if isinstance(output, (tuple, list)):
