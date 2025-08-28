@@ -346,7 +346,7 @@ class AOAEngine:
                     if attrs:
                         for attr in attrs:
                             in_ref = _get_var_ref(lvar)
-                            if attr.key == "perm":
+                            if attr.key == "permute":
                                 if attr.value == "[]":
                                     ndim = len(in_ref.shape)
                                     perm = str(list(range(ndim - 1, -1, -1)))
