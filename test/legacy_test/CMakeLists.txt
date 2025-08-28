@@ -1258,4 +1258,3 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)
-set_tests_properties(test_creation_and_Tensor_creation PROPERTIES TIMEOUT 100)
