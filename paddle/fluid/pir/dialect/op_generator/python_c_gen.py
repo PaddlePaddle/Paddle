@@ -687,8 +687,6 @@ class PythonCCodeGen(CodeGen):
         return custom_args_mapper_str
 
     def _gen_pre_process(self, pre_process):
-        if self.use_custom_args_mapper:
-            return DISABLE_TIPS
         pre_process_str = ""
         if pre_process is not None and self.need_parse_python_api_args:
             if "static_func" in pre_process.keys():

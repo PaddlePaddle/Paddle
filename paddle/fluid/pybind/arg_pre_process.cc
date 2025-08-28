@@ -136,6 +136,11 @@ void LogsumexpPreProcess(pir::Value* x,
   }
   return;
 }
+
+void SumPreProcess(Tensor* x, IntArray* axis) {}
+void SumPreProcess(Value* x, Value* axis) {
+  paddle::dialect::SetStopGradient(axis);
+}
 }  // namespace pybind
 
 }  // namespace paddle
