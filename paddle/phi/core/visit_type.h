@@ -397,10 +397,6 @@ namespace phi {
                            __VA_ARGS__)                                        \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT8_E5M2, phi::float8_e5m2, __VA_ARGS__)   \
-      PD_PRIVATE_CASE_TYPE(NAME,                                               \
-                           ::phi::DataType::FLOAT4_E2M1FN_X2,                  \
-                           phi::float4_e2m1fn_x2,                              \
-                           __VA_ARGS__)                                        \
       default:                                                                 \
         PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \
@@ -435,10 +431,6 @@ namespace phi {
                            __VA_ARGS__)                                        \
       PD_PRIVATE_CASE_TYPE(                                                    \
           NAME, ::phi::DataType::FLOAT8_E5M2, phi::float8_e5m2, __VA_ARGS__)   \
-      PD_PRIVATE_CASE_TYPE(NAME,                                               \
-                           ::phi::DataType::FLOAT4_E2M1FN_X2,                  \
-                           phi::float4_e2m1fn_x2,                              \
-                           __VA_ARGS__)                                        \
       default:                                                                 \
         PADDLE_THROW(common::errors::InvalidArgument(                          \
             "Invalid enum data type `%d`.", static_cast<int>(__dtype__)));     \

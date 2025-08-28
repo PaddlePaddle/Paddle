@@ -38,6 +38,7 @@ def bind_vartype():
     global bfloat16
     global float8_e4m3fn
     global float8_e5m2
+    global float4_e2m1fn_x2
     global complex64
     global complex128
     global bool
@@ -60,6 +61,7 @@ def bind_vartype():
     bfloat16 = VarDesc.VarType.BF16
     float8_e4m3fn = VarDesc.VarType.FP8_E4M3FN
     float8_e5m2 = VarDesc.VarType.FP8_E5M2
+    float4_e2m1fn_x2 = VarDesc.VarType.FP4_E2M1FN_X2
 
     complex64 = VarDesc.VarType.COMPLEX64
     complex128 = VarDesc.VarType.COMPLEX128
@@ -81,6 +83,7 @@ def bind_vartype():
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
     paddle.float8_e5m2 = float8_e5m2
+    paddle.float4_e2m1fn_x2 = float4_e2m1fn_x2
 
     paddle.complex64 = complex64
     paddle.complex128 = complex128
@@ -102,6 +105,7 @@ def bind_datatype():
     global bfloat16
     global float8_e4m3fn
     global float8_e5m2
+    global float4_e2m1fn_x2
     global complex64
     global complex128
     global bool
@@ -124,6 +128,7 @@ def bind_datatype():
     bfloat16 = DataType.BFLOAT16
     float8_e4m3fn = DataType.FLOAT8_E4M3FN
     float8_e5m2 = DataType.FLOAT8_E5M2
+    float4_e2m1fn_x2 = DataType.FLOAT4_E2M1FN_X2
 
     complex64 = DataType.COMPLEX64
     complex128 = DataType.COMPLEX128
@@ -145,6 +150,7 @@ def bind_datatype():
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
     paddle.float8_e5m2 = float8_e5m2
+    paddle.float4_e2m1fn_x2 = float4_e2m1fn_x2
 
     paddle.complex64 = complex64
     paddle.complex128 = complex128

@@ -50,8 +50,6 @@ namespace phi {
       callback, ::phi::dtype::complex<float>, DataType::COMPLEX64);    \
   _PhiForEachDataTypeHelper_(                                          \
       callback, ::phi::dtype::complex<double>, DataType::COMPLEX128);
-// _PhiForEachDataTypeHelper_(                                          \
-  //     callback, ::phi::dtype::float4_e2m1fn_x2, DataType::FLOAT4_E2M1FN_X2);\
 
 #define _PhiForEachDataTypeTiny_(callback)                    \
   _PhiForEachDataTypeHelper_(callback, int, DataType::INT32); \
