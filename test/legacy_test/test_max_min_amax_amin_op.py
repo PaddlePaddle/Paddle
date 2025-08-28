@@ -280,7 +280,6 @@ class TestMaxMinAmaxAminAPI_ZeroSize2(TestMaxMinAmaxAminAPI):
         self.keepdim = True
 
 
-
 class TestAmaxAPI_Compatibility(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -445,6 +444,8 @@ class TestAminAPI_Compatibility(unittest.TestCase):
                 np.testing.assert_allclose(out, ref_out)
             ref_out = np.amin(self.np_input)
             np.testing.assert_allclose(*fetches[-1:], ref_out)
+
+
 class TestAmaxAminOutAPI(unittest.TestCase):
     def _run_api(self, api, x, case):
         out_buf = paddle.zeros([], dtype=x.dtype)
