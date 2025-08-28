@@ -36,7 +36,7 @@
 #define _LINUX
 #endif
 
-USE_INT_STAT(STAT_total_feasign_num_in_mem);
+DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem);
 USE_INT_STAT(STAT_epoch_finish);
 COMMON_DECLARE_bool(graph_get_neighbor_id);
 COMMON_DECLARE_int32(gpugraph_storage_mode);

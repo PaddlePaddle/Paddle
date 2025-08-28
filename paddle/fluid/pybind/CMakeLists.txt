@@ -613,10 +613,18 @@ if(WITH_PYTHON)
   endif()
   set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
   if(WIN32)
-    cc_library(
-      ${SHARD_LIB_NAME} SHARED
-      SRCS ${PYBIND_SRCS}
-      DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} dynload_tensorrt)
+    if(WITH_GPU)
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS}
+             dynload_tensorrt)
+    else()
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    endif()
   else()
     cc_library(
       ${SHARD_LIB_NAME} SHARED

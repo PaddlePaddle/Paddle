@@ -265,9 +265,7 @@ class PDPattern {
   FRIEND_TEST(PDPattern, NewNode);
 #endif
 
-  PADDLE_API static std::string NewID() {
-    return "pdnode-" + std::to_string(id_++);
-  }
+  PADDLE_API static std::string NewID();
 
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;

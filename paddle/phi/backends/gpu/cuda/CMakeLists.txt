@@ -5,7 +5,7 @@ if(WITH_GPU)
     nv_library(
       gpu_event_timer
       SRCS gpu_event_timer.cc
-      DEPS glog)
+      DEPS glog phi)
   else()
     nv_library(
       gpu_event_timer

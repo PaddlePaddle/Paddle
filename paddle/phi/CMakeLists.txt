@@ -163,8 +163,7 @@ if(WITH_GPU)
     nv_library(
       phi ${PHI_BUILD_TYPE}
       SRCS ${PHI_CORE_SRCS} ${PHI_GPU_SRCS}
-      DEPS ${PHI_DEPS} gpu_event_timer cuda_graph_lib dynload_cudnn
-           dynload_cublas)
+      DEPS ${PHI_DEPS} cuda_graph_lib dynload_cudnn dynload_cublas)
   else()
     nv_library(
       phi_core ${PHI_BUILD_TYPE}

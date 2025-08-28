@@ -369,9 +369,7 @@ void GraphPatternDetector::RemoveOverlappedMatch(
   *subgraphs = result;
 }
 
-#ifdef _WIN32
 std::string PDPattern::NewID() { return "pdnode-" + std::to_string(id_++); }
-#endif
 
 std::string PDPattern::DotString() const {
   using inference::analysis::Dot;

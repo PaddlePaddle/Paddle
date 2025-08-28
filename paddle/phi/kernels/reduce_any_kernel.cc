@@ -40,7 +40,9 @@ void AnyKernel(const Context& dev_ctx,
 }
 #ifdef _WIN32
 INSTANTIATE_ANY_KERNEL(bool, CPUContext)
+#if defined(PADDLE_WITH_CUDA)
 INSTANTIATE_ANY_KERNEL(bool, GPUContext)
+#endif
 #endif
 }  // namespace phi
 
