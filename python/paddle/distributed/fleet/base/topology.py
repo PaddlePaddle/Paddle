@@ -817,7 +817,7 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         dense_group_names = [
             name
             for name in hybrid_group_names
-            if name not in ["moe_sharding", "sharding", "expert"]
+            if name not in ["moe_sharding", "sharding", "expert", "context"]
         ]
         pipe_idx = dense_group_names.index("pipe")
         if hybrid_group_names.index("pipe") > hybrid_group_names.index(
