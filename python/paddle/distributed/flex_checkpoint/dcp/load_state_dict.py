@@ -1285,7 +1285,7 @@ def divide_positions(m, n):
     return positions
 
 
-def load_merged_state_dict_and_save(
+def merge_sharded_state_dict(
     load_path: str,
     save_path: str,
     prefix: str | None = None,
@@ -1339,7 +1339,7 @@ def load_merged_state_dict_and_save(
             >>> import paddle.distributed as dist
             >>> ckpt_path = "./checkpoint"
             >>> save_path = "./merged_checkpoint"
-            >>> dist.load_merged_state_dict_and_save(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> dist.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
             >>> # doctest: -SKIP
     """
     if unique_id is None:
