@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Callable
 import paddle
 from paddle import base, in_dynamic_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from .. import functional as F
 from .layers import Layer
