@@ -1217,10 +1217,6 @@ class TorchLibraryInit {
 
 }  // namespace detail
 
-#define TORCH_CONCAT_IMPL(x, y) x##y
-#define TORCH_CONCAT(x, y) TORCH_CONCAT_IMPL(x, y)
-#define TORCH_UNIQUE_NAME(prefix) TORCH_CONCAT(prefix, __LINE__)
-
 // TORCH_LIBRARY
 #define TORCH_LIBRARY(ns, m)                                                   \
   static void TORCH_LIBRARY_init_##ns(torch::Library&);                        \
