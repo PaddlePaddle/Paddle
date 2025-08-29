@@ -19,7 +19,7 @@
 namespace phi {
 bool AddNCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
   for (size_t i = 0; i < dev_ctx->InputsSize(); i++) {
-    if (!DenseTensor::classof(dev_ctx->MutableIutputAt(i))) {
+    if (!DenseTensor::classof(dev_ctx->MutableInputAt(i))) {
       return false;
     }
   }

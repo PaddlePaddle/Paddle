@@ -44,6 +44,7 @@ class AutoGrowthBestFitAllocatorV2 : public AutoGrowthBestFitAllocator {
  private:
   phi::GPUPlace place_;
   bool is_first_switch_to_regular_{true};
+  std::map<std::pair<size_t, void *>, BlockIt> free_blocks_;
 };
 
 class AutoGrowthBestFitAllocatorV2State {

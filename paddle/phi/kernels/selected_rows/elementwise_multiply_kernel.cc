@@ -54,9 +54,6 @@ void MultiplyKernel(const Context& dev_ctx,
 
 }  // namespace phi::sr
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 PD_REGISTER_KERNEL(multiply_raw_sr,
                    CPU,
                    ALL_LAYOUT,
@@ -66,9 +63,9 @@ PD_REGISTER_KERNEL(multiply_raw_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(multiply_sr,
                    CPU,
                    ALL_LAYOUT,
@@ -78,9 +75,9 @@ PD_REGISTER_KERNEL(multiply_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(multiply_raw_sr,
@@ -92,10 +89,10 @@ PD_REGISTER_KERNEL(multiply_raw_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(multiply_sr,
                    GPU,
                    ALL_LAYOUT,
@@ -105,8 +102,8 @@ PD_REGISTER_KERNEL(multiply_sr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   complex64,
-                   complex128) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
