@@ -129,11 +129,12 @@ class IValue {
   IValue(at::Tensor val) : tag_(TypeTag::Tensor), value_(val) {}  // NOLINT
   IValue(ScalarType val)                                          // NOLINT
       : tag_(TypeTag::Int),
-        value_(static_cast<std::underlying_type_t<ScalarType>>(val)) {}
+        value_(static_cast<int64_t>(
+            static_cast<std::underlying_type_t<ScalarType>>(val))) {}
   template <typename T>
   IValue(intrusive_ptr<T> ptr)  // NOLINT
       : tag_(TypeTag::CustomClass),
-        value_(CustomClassWrapper(ptr.get_shared(), typeid(T).name())) {}
+        value_(CustomClassWrapper{ptr.get_shared(), typeid(T).name()}) {}
 
   template <typename T,
             typename = std::enable_if_t<std::is_constructible_v<IValue, T>>>
