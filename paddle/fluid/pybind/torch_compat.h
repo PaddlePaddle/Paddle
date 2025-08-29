@@ -17,6 +17,7 @@
 #include <pybind11/stl.h>
 #include <torch/library.h>
 
+#include "paddle/common/exception.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
 #include "paddle/phi/api/include/compat/utils/scalar_type_conversion.h"
@@ -66,8 +67,8 @@ inline py::object OperationInvoker::invoke_operator_from_python(
 
     return convert_result_to_python(result);
   } catch (const std::exception& e) {
-    throw std::runtime_error("Error in operator '" + qualified_name +
-                             "': " + e.what());
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Error in operator '%s': %s", qualified_name.c_str(), e.what()));
   }
 }
 
@@ -77,13 +78,15 @@ OperationInvoker::get_op_with_args(const std::string& qualified_name,
                                    const py::kwargs& kwargs) {
   auto* op = OperatorRegistry::instance().find_operator(qualified_name);
   if (!op) {
-    throw std::runtime_error("Operator " + qualified_name + " not found!");
+    PADDLE_THROW(common::errors::NotFound(
+        "Operator '%s' not found in the registry", qualified_name.c_str()));
   }
 
   auto impl_it = op->implementations.find(DispatchKey::CPU);
   if (impl_it == op->implementations.end()) {
-    throw std::runtime_error("No CPU implementation found for " +
-                             qualified_name);
+    PADDLE_THROW(common::errors::NotFound(
+        "No CPU implementation found for operator '%s'",
+        qualified_name.c_str()));
   }
 
   FunctionArgs function_args =
@@ -107,8 +110,9 @@ inline py::object OperationInvoker::to_py_object(const torch::IValue& value) {
     return py::reinterpret_borrow<py::object>(
         paddle::pybind::ToPyObject(value.to_tensor()._PD_GetInner()));
   } else {
-    throw std::runtime_error(
-        "Unknown torch::IValue type in toPyObject conversion");
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Conversion of torch::IValue to Python object for this type is not "
+        "implemented yet."));
   }
 }
 
@@ -128,6 +132,14 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
   } else if (paddle::pybind::PyObject_CheckDataType(obj.ptr())) {
     return torch::IValue(compat::_PD_PhiDataTypeToAtenScalarType(
         paddle::pybind::CastPyArg2DataType(obj.ptr(), "to_ivalue", 0)));
+  } else if (py::isinstance<py::list>(obj)) {
+    auto list = obj.cast<py::list>();
+    std::vector<torch::IValue> ivalue_list;
+    ivalue_list.reserve(list.size());
+    for (auto item : list) {
+      ivalue_list.push_back(to_ivalue(item));
+    }
+    return torch::IValue(ivalue_list);
   } else {
     try {
       auto val = py::cast<int>(obj);
@@ -141,10 +153,10 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
           auto val = py::cast<std::string>(obj);
           return torch::IValue(val);
         } catch (...) {
-          throw std::runtime_error(
-              "Cannot convert Python object to torch::IValue: unsupported "
-              "type " +
-              std::string(py::str(py::type::of(obj))));
+          PADDLE_THROW(common::errors::Unimplemented(
+              "Conversion of Python object to torch::IValue for type %s is not "
+              "implemented yet.",
+              std::string(py::str(py::type::of(obj))).c_str()));
         }
       }
     }
@@ -202,17 +214,6 @@ class CustomClassProxyInstance {
     if (ClassRegistry::instance().has_method(qualified_name_, method_name)) {
       return py::cpp_function(
           [this, method_name](py::args args, py::kwargs kwargs) -> py::object {
-            // std::vector<IValue> all_args;
-            // all_args.push_back(instance_);  // this pointer
-
-            // auto converted_args =
-            //     OperationInvoker::infer_and_convert_args_for_method(
-            //         qualified_name_, method_name, args, kwargs);
-
-            // for (auto& arg : converted_args) {
-            //   all_args.push_back(std::move(arg));
-            // }
-
             FunctionArgs function_args;
             function_args.add_arg(instance_);  // this pointer
             for (auto arg :
@@ -220,13 +221,6 @@ class CustomClassProxyInstance {
                      args, kwargs)) {
               function_args.add_arg(std::move(arg));
             }
-
-            // auto converted_args =
-            //     OperationInvoker::infer_and_convert_args_for_method(
-            //         qualified_name_, method_name, args, kwargs);
-            // for (auto& arg : all_args) {
-            //   function_args.add_arg(std::move(arg));
-            // }
 
             auto result = ClassRegistry::instance().call_method_with_args(
                 qualified_name_, method_name, function_args);
@@ -236,8 +230,9 @@ class CustomClassProxyInstance {
           py::name(method_name.c_str()));
     }
 
-    throw std::runtime_error("Method '" + method_name +
-                             "' not found in class " + qualified_name_);
+    PADDLE_THROW(common::errors::NotFound("Method '%s' not found in class %s",
+                                          method_name.c_str(),
+                                          qualified_name_.c_str()))
   }
 
   const IValue& get_instance() const { return instance_; }
@@ -255,14 +250,6 @@ class CustomClassProxy {
   // Create a new instance of the class
   py::object __call__(const py::args& args, const py::kwargs& kwargs) {
     try {
-      // auto converted_args =
-      // OperationInvoker::infer_and_convert_args_for_class(
-      //     qualified_name_, args, kwargs, true);
-
-      // FunctionArgs function_args;
-      // for (auto& arg : converted_args) {
-      //   function_args.add_arg(std::move(arg));
-      // }
       FunctionArgs function_args =
           OperationInvoker::convert_args_kwargs_to_function_args(args, kwargs);
 
@@ -276,11 +263,12 @@ class CustomClassProxy {
         // Create proxy object for the custom class instance
         return py::cast(CustomClassProxyInstance(qualified_name_, value));
       } else {
-        throw std::runtime_error("Constructor did not return an instance");
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "Constructor did not return an instance"));
       }
     } catch (const std::exception& e) {
-      throw std::runtime_error("Failed to construct " + qualified_name_ + ": " +
-                               e.what());
+      PADDLE_THROW(common::errors::PreconditionNotMet(
+          "Failed to construct %s: %s", qualified_name_.c_str(), e.what()));
     }
   }
 
@@ -288,7 +276,8 @@ class CustomClassProxy {
   py::object __getattr__(const std::string& method_name) {
     // Check if the method name is a dunder method
     if (method_name.size() >= 2 && method_name.substr(0, 2) == "__") {
-      throw py::attribute_error("'" + method_name + "' attribute not found");
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Dunder methods are not supported: %s", method_name.c_str()));
     }
 
     // Check if the class has the static method
@@ -297,14 +286,6 @@ class CustomClassProxy {
       return py::cpp_function(
           [this, method_name](py::args args, py::kwargs kwargs) -> py::object {
             // Convert args and kwargs to FunctionArgs
-            // auto converted_args =
-            //     OperationInvoker::infer_and_convert_args_for_class(
-            //         qualified_name_, args, kwargs, false, method_name);
-
-            // FunctionArgs function_args;
-            // for (auto& arg : converted_args) {
-            //   function_args.add_arg(std::move(arg));
-            // }
             FunctionArgs function_args =
                 OperationInvoker::convert_args_kwargs_to_function_args(args,
                                                                        kwargs);
@@ -319,8 +300,10 @@ class CustomClassProxy {
           py::name(method_name.c_str()));
     }
 
-    throw py::attribute_error("Static method '" + method_name +
-                              "' not found in class " + qualified_name_);
+    PADDLE_THROW(
+        common::errors::NotFound("Static method '%s' not found in class %s",
+                                 method_name.c_str(),
+                                 qualified_name_.c_str()));
   }
 
  private:
@@ -332,7 +315,8 @@ inline py::object get_custom_class_python_wrapper(
   std::string qualified_name = namespace_name + "::" + class_name;
 
   if (!ClassRegistry::instance().has_class(qualified_name)) {
-    throw std::runtime_error("Class " + qualified_name + " not registered!");
+    PADDLE_THROW(common::errors::NotFound(
+        "Class '%s' not found in the registry", qualified_name.c_str()));
   }
 
   return py::cast(CustomClassProxy(qualified_name));
