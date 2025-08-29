@@ -14,7 +14,7 @@
 
 import unittest
 
-import test_communication_api_base as test_base
+import collective.test_communication_api_base as test_base
 
 
 class TestLoadStateDictTranspose(test_base.CommunicationTestDistBase):
