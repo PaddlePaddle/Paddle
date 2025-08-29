@@ -179,6 +179,58 @@ class TestSoftmaxCoShard:
                     dist.Shard(2),
                 ],
             ),
+            SoftmaxGradTestCase(
+                [32, 48, 128],
+                -1,
+                [32, 48, 128],
+                [
+                    dist.Shard(0),
+                    dist.Shard(1),
+                    dist.Replicate(),
+                ],
+                [
+                    dist.Shard(1, shard_order=0),
+                    dist.Shard(1, shard_order=1),
+                    dist.Replicate(),
+                ],
+                [
+                    dist.Shard(1, shard_order=0),
+                    dist.Shard(1, shard_order=1),
+                    dist.Replicate(),
+                ],
+            ),
+            SoftmaxGradTestCase(
+                [32, 48, 128],
+                -1,
+                [32, 48, 128],
+                [dist.Shard(0), dist.Shard(1), dist.Replicate()],
+                [
+                    dist.Shard(0, shard_order=0),
+                    dist.Shard(0, shard_order=1),
+                    dist.Replicate(),
+                ],
+                [dist.Shard(0), dist.Shard(1), dist.Replicate()],
+            ),
+            SoftmaxGradTestCase(
+                [32, 48, 128],
+                1,
+                [32, 48, 128],
+                [
+                    dist.Shard(0),
+                    dist.Shard(1, shard_order=0),
+                    dist.Shard(1, shard_order=1),
+                ],
+                [
+                    dist.Shard(1, shard_order=0),
+                    dist.Shard(1, shard_order=1),
+                    dist.Replicate(),
+                ],
+                [
+                    dist.Shard(0, shard_order=0),
+                    dist.Shard(0, shard_order=1),
+                    dist.Shard(0, shard_order=2),
+                ],
+            ),
         ]
 
     def run_test_case_forward(self, test_case: SoftmaxTestCase):

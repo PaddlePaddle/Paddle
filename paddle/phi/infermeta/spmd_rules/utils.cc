@@ -162,7 +162,7 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     const std::vector<int64_t>& mesh_shape,
     const bool merge_conflicts) {
   // Merging Suggestions
-  // A struct : { "b" -> { [0], [1, 2], [-1] }, "i" -> { ... } }
+  // A struct : { "b" -> { [0], [1, 2], [1] }, "i" -> { ... } }
   std::unordered_map<std::string, std::vector<std::vector<int64_t>>>
       axis_to_suggestions;
   for (const auto& pair : tensor_axes_to_dim_pairs) {
@@ -177,17 +177,29 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
   for (auto& pair : axis_to_suggestions) {
     const std::string& axis = pair.first;
     auto& suggestions = pair.second;
-    // Sort by their parallelism in descending order
+    // Sort by their parallelism in descending order, construct a total order.
     std::sort(suggestions.begin(),
               suggestions.end(),
-              [](const auto& a, const auto& b) { return a.size() > b.size(); });
+              [](const auto& a, const auto& b) {
+                if (a.size() != b.size()) {
+                  return a.size() > b.size();
+                }
+                auto shards_a = calculate_total_shards(a, mesh_shape);
+                auto shards_b = calculate_total_shards(b, mesh_shape);
+                if (shards_a != shards_b) {
+                  return shards_a > shards_b;
+                }
+                return std::lexicographical_compare(
+                    a.begin(), a.end(), b.begin(), b.end());
+              });
 
     std::vector<int64_t> merged_vec;
+    std::vector<std::string> seen(mesh_shape.size(), 0);
     for (const auto& suggestion : suggestions) {
       for (const auto& dim : suggestion) {
-        if (std::find(merged_vec.begin(), merged_vec.end(), dim) ==
-            merged_vec.end()) {
+        if (!seen[dim]) {
           merged_vec.push_back(dim);
+          seen[dim] = 1;
         }
       }
     }
@@ -195,46 +207,17 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
   }
 
   // Iterative Conflict Resolution
-  bool conflicts_exist = true;
-  while (conflicts_exist) {
-    conflicts_exist = false;
-    std::string axis_to_prune = "";
-    int mesh_dim_to_remove = -1;
-
-    for (auto const& [axis, sharding_vec] : current_sharding) {
-      int64_t axis_size = axis_sizes.at(axis);
-      int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
-
-      if (total_shards > 1 && axis_size % total_shards != 0) {
-        conflicts_exist = true;
-        // int64_t max_mesh_dim_size = -1;
-        // int worst_mesh_dim = -1;
-        // for (int64_t mesh_dim : sharding_vec) {
-        //   // First reduce the max mesh dim size
-        //   if (mesh_shape[mesh_dim] > max_mesh_dim_size) {
-        //     max_mesh_dim_size = mesh_shape[mesh_dim];
-        //     worst_mesh_dim = mesh_dim;
-        //   }
-        // }
-        // axis_to_prune = axis;
-        // mesh_dim_to_remove = worst_mesh_dim;
-
-        // Note(ooooo): remove the last mesh_dim, it can keep the shard order
-        // and has a good parallelism. In the worst case, it also can hold the
-        // first parallelism.
-        if (!sharding_vec.empty()) {
-          mesh_dim_to_remove = sharding_vec.back();
-          axis_to_prune = axis;
-        }
-        break;
-      }
-    }
-    if (conflicts_exist && !axis_to_prune.empty()) {
-      auto& vec_to_modify = current_sharding.at(axis_to_prune);
-      vec_to_modify.erase(
-          std::remove(
-              vec_to_modify.begin(), vec_to_modify.end(), mesh_dim_to_remove),
-          vec_to_modify.end());
+  for (auto& [axis, sharding_vec] : current_sharding) {
+    const int64_t axis_size = axis_sizes.at(axis);
+    int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
+    while (total_shards > 1 && (axis_size % total_shards != 0) &&
+           !sharding_vec.empty()) {
+      // Note(ooooo): remove the last mesh_dim, it can keep the shard order
+      // and has a good parallelism. In the worst case, it also can hold the
+      // first parallelism.
+      const int64_t dim_to_remove = sharding_vec.back();
+      sharding_vec.pop_back();
+      total_shards /= mesh_shape.at(dim_to_remove);
     }
   }
   // Mesh Dimension Reuse Conflict
