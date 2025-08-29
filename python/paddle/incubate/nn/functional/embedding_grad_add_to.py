@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+import paddle
+from paddle import _C_ops, core
 
 # from ....framework import LayerHelper, in_dynamic_or_pir_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -32,8 +33,15 @@ def embedding_grad_add_to_(
     name: str | None = None,
 ) -> Tensor:
     if in_dynamic_or_pir_mode():
-        return _C_ops.embedding_grad_add_to_(
-            token_indices,
-            main_grad_,
-            out_grad,
-        )
+        if "embedding_grad_add_to_" not in core.fusion_op_fallback_list:
+            return _C_ops.embedding_grad_add_to_(
+                token_indices,
+                main_grad_,
+                out_grad,
+            )
+        else:
+            # Fallback to the plain implementation
+            d_embedding = paddle._C_ops.embedding_grad(
+                token_indices, main_grad_, out_grad, -1, False
+            )
+            return main_grad_.add_(d_embedding)

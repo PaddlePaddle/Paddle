@@ -645,3 +645,25 @@ def _check_prim_vjp_ops():
 
 
 _check_prim_vjp_ops()
+
+fusion_op_fallback_list = set()
+
+
+def _set_fusion_op_fallback_list(*args):
+    ops = set(args)
+    for item in ops:
+        if not isinstance(item, str):
+            raise TypeError("All items in set must be strings.")
+        fusion_op_fallback_list.add(item)
+
+
+def _check_fusion_op_fallback():
+    ops_org = os.getenv("FLAGS_fusion_op_fallback_list", "")
+    if ops_org:
+        ops = []
+        for item in ops_org.split(";"):
+            ops.append(item.strip())
+        _set_fusion_op_fallback_list(*ops)
+
+
+_check_fusion_op_fallback()

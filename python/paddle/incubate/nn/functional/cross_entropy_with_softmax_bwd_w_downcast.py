@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from paddle import _C_ops
+import paddle
+from paddle import _C_ops, core
 
 # from ....framework import LayerHelper, in_dynamic_or_pir_mode
 from paddle.base.framework import in_dynamic_or_pir_mode
@@ -32,8 +33,17 @@ def cross_entropy_with_softmax_bwd_w_downcast(
     name: str | None = None,
 ) -> Tensor:
     if in_dynamic_or_pir_mode():
-        return _C_ops.cross_entropy_with_softmax_bwd_w_downcast(
-            label,
-            softmax,
-            loss_grad,
-        )
+        if (
+            "cross_entropy_with_softmax_bwd_w_downcast"
+            not in core.fusion_op_fallback_list
+        ):
+            return _C_ops.cross_entropy_with_softmax_bwd_w_downcast(
+                label,
+                softmax,
+                loss_grad,
+            )
+        else:
+            # Fallback to the plain implementation
+            return _C_ops.cross_entropy_with_softmax_bwd(
+                label, softmax, loss_grad
+            ).cast(paddle.bfloat16)
