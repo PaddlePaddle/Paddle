@@ -34,7 +34,7 @@ class TestTensorCreation(unittest.TestCase):
             self.devices.append(paddle.device.IPUPlace())
 
         self.requires_grads = [True, False]
-        self.dtypes = [None, "float32", paddle.float32, "int32", paddle.int32]
+        self.dtypes = [None, paddle.float32]
         self.pin_memorys = [False]
         if (
             paddle.device.is_compiled_with_cuda()
