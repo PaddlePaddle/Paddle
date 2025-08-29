@@ -91,5 +91,5 @@ PD_REGISTER_KERNEL(swiglu_grad,
                    ALL_LAYOUT,
                    phi::SwiGluGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16){};
+                   phi::float16,
+                   phi::bfloat16){};

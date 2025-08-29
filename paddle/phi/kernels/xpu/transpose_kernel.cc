@@ -111,8 +111,8 @@ PD_REGISTER_KERNEL(transpose,
                    ALL_LAYOUT,
                    phi::TransposeKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::dtype::complex<float>,
 #endif

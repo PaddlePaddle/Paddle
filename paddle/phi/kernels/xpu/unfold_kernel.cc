@@ -89,4 +89,4 @@ void UnfoldKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    unfold, XPU, ALL_LAYOUT, phi::UnfoldKernel, float, phi::dtype::float16) {}
+    unfold, XPU, ALL_LAYOUT, phi::UnfoldKernel, float, phi::float16) {}
