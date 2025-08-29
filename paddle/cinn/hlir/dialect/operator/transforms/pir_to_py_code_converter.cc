@@ -203,8 +203,9 @@ phi::DenseTensor CallToBigDtype(const phi::DenseTensor& tensor) {
   // need to calculate the statistics.
   if (tensor.numel() <= kLimit || !tensor.IsInitialized()) {
     VLOG(10) << "tensor (dtype=" << tensor.dtype()
-             << ", numel=" << tensor.numel() << ", place=" << tensor.place()
-             << ") may not initialized!";
+             << ", numel=" << tensor.numel()
+             << ", IsInitialized=" << tensor.IsInitialized()
+             << ") may be not initialized!";
     return tensor;
   }
 
@@ -227,9 +228,9 @@ phi::DenseTensor CallToBigDtype(const phi::DenseTensor& tensor) {
     } else if (tensor.dtype() == phi::DataType::FLOAT8_E5M2) {
       out = phi::Cast<phi::dtype::float8_e5m2, phi::GPUContext>(
           *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else {
+      return tensor;
     }
-    VLOG(4) << "Cast to float, out.dtype=" << out.dtype()
-            << ", out.numel=" << out.numel();
 #else
     PADDLE_THROW(
         common::errors::Unavailable(("Paddle is not compiled with CUDA. Cannot "
@@ -246,7 +247,6 @@ void CallPhiStatKernel(const Context& dev_ctx,
                        const std::string& stat_type,
                        phi::DenseTensor* out) {
   out->Resize({1});
-  dev_ctx.template Alloc<T>(out);
   if (stat_type == "max") {
     phi::MaxKernel<T, Context>(dev_ctx, tensor, {}, false, out);
   } else if (stat_type == "min") {
@@ -286,8 +286,9 @@ phi::DenseTensor CalcTensorStat(const phi::DenseTensor& tensor,
   // need to calculate the statistics.
   if (tensor.numel() <= kLimit || !tensor.IsInitialized()) {
     VLOG(10) << "tensor (dtype=" << tensor.dtype()
-             << ", numel=" << tensor.numel() << ", place=" << tensor.place()
-             << ") may not initialized!";
+             << ", numel=" << tensor.numel()
+             << ", IsInitialized=" << tensor.IsInitialized()
+             << ") for stat_type=" << stat_type << " may be not initialized.";
     return out;
   }
 
@@ -312,6 +313,7 @@ phi::DenseTensor CalcTensorStat(const phi::DenseTensor& tensor,
     PADDLE_THROW(common::errors::Unavailable(
         "Unsupported place (only cpu and gpu are supported)."));
   }
+  return out;
 }
 
 std::string ShapeToString(const phi::DenseTensor& tensor) {
@@ -333,12 +335,10 @@ std::string TensorStatToString(const phi::DenseTensor& tensor,
   const auto& SerializeValue = [](const auto& data) {
     std::ostringstream ss;
     SerializeToPyObject(ss, data[0]);
-    VLOG(4) << "SerializeToPyObject: " << data[0];
     return ss.str();
   };
 
   phi::DenseTensor stat = CalcTensorStat(tensor, stat_type);
-  VLOG(4) << "stat.dtype=" << stat.dtype() << ", stat.numel()=" << stat.numel();
   return std::visit(
       ::common::Overloaded{
           [&](const std::monostate&) -> std::string { return "None"; },
@@ -385,8 +385,6 @@ std::string GetLoggingShapeAndDataForName(int64_t program_id,
                                           const phi::DenseTensor& tensor,
                                           const TensorDumpPolicy& policy) {
   phi::DenseTensor big_dtype_tensor = CallToBigDtype(tensor);
-  VLOG(4) << "name=" << name << ", dtype=" << tensor.dtype()
-          << ", numel=" << tensor.numel();
   std::ostringstream ss;
   ss << "class PirProgram_example_input_tensor_meta_" << GetRandomId() << ":";
   ss << "\n\tprogram_id = " << program_id;
