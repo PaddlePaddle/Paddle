@@ -148,7 +148,7 @@
   optional : fp32_fused_param, fp32_fused_grad, fp16_fused_param, fp16_fused_grad
   inplace: (param -> param_out), (grad -> grad_out)
 
-- op : embedding_grad_add_to_
+- op : embedding_grad_add_to
   args : (Tensor token_indices, Tensor main_grad_, Tensor out_grad)
   output : Tensor(main_grad_out)
   infer_meta :
