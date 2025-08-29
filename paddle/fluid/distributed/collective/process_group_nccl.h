@@ -92,6 +92,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config = nullptr);
   ~ProcessGroupNCCL();
 
+  void EraseStream(const phi::DenseTensor& tensor) const override;
+
   std::string GetBackendName() const override { return "NCCL"; }
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override;

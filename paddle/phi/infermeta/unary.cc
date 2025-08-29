@@ -2890,6 +2890,80 @@ void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void MedianInferMeta(const MetaTensor& x,
+                     const IntArray& axes,
+                     bool keep_dim,
+                     const std::string& mode,
+                     MetaTensor* out,
+                     MetaTensor* median_index) {
+  std::vector<int64_t> axis_list = axes.GetData();
+  auto x_dim = x.dims();
+  int64_t x_rank = x_dim.size();
+
+  std::vector<int64_t> out_dim;
+  if (axis_list.empty()) {
+    if (keep_dim) {
+      for (int64_t i = 0; i < x_rank; i++) {
+        out_dim.push_back(1);
+      }
+    }
+  } else {
+    std::vector<int64_t> formatted_axis;
+    for (auto& axis : axis_list) {
+      if (x_rank == 0) {
+        PADDLE_ENFORCE_EQ(axis == 0 || axis == -1,
+                          true,
+                          common::errors::InvalidArgument(
+                              "When input 0D Tensor, each element of the axis "
+                              "can only be -1, 0, None"));
+      } else {
+        PADDLE_ENFORCE_LT(axis,
+                          x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimension = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+        PADDLE_ENFORCE_GE(axis,
+                          -x_rank,
+                          errors::InvalidArgument(
+                              "each element of the axis should be in the "
+                              "range [ -dimension(X), dimension(X) ) "
+                              "which dimension = %d. But received axis = %d.",
+                              x_rank,
+                              axis));
+      }
+      if (axis < 0) axis += x_rank;
+      PADDLE_ENFORCE_EQ(
+          std::find(formatted_axis.begin(), formatted_axis.end(), axis),
+          formatted_axis.end(),
+          errors::InvalidArgument("Attr(axes) has duplicated elements: %d.",
+                                  static_cast<int>(axis)));
+
+      formatted_axis.push_back(axis);
+    }
+
+    for (int64_t i = 0; i < x_rank; i++) {
+      if (std::find(formatted_axis.begin(), formatted_axis.end(), i) ==
+          formatted_axis.end()) {
+        out_dim.push_back(x_dim[i]);  // NOLINT
+      } else if (keep_dim) {
+        out_dim.push_back(1);
+      }
+    }
+  }
+  out->set_dtype(x.dtype());
+  out->set_dims(make_ddim(out_dim));
+
+  auto median_dim = out_dim;
+  if (mode == "avg") {
+    median_dim.push_back(2);
+  }
+  median_index->set_dtype(DataType::INT64);
+  median_index->set_dims(make_ddim(median_dim));
+}
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,

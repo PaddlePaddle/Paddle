@@ -834,6 +834,20 @@ void* GetFlashAttnV3DsoHandle() {
 #endif
 }
 
+void* GetFlashMaskV2DsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashmaskv2.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashmaskv2.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashmaskv2.so");
+#endif
+}
+
 void* GetAfsApiDsoHandle() {
   std::string afsapi_dir = "";
   if (!s_py_site_pkg_path.path.empty()) {

@@ -647,6 +647,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -682,6 +683,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _new_empty_(
@@ -736,6 +738,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -771,6 +774,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _new_zeros_(
@@ -780,6 +784,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -815,6 +820,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _int_(self):
