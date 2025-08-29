@@ -1460,6 +1460,7 @@ class SavePartialSafetensors:
 
     def save_index_json(self):
         save_index_file = os.path.join(self.output_path, self.safe_index_name)
+        os.makedirs(os.path.dirname(save_index_file), exist_ok=True)
         with open(save_index_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(self.index, indent=2) + "\n")
         logger.info(f"Model index file saved in {save_index_file}.")

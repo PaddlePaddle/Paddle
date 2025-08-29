@@ -230,7 +230,7 @@ class TestDistCheckpoint:
 
         dist.save_state_dict(model.state_dict(), model_path, safetensors=False)
 
-        dist.load_merged_state_dict_and_save(
+        dist.flex_checkpoint.dcp.load_state_dict.load_merged_state_dict_and_save(
             model_path, single_path, offload=True, safetensors=False, file_num=2
         )
         assert self.count_files_in_temp_dir(single_path) == 3, (
