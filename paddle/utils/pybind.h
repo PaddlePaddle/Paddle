@@ -14,7 +14,9 @@
 
 #pragma once
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <ATen/core/TensorBody.h>
+#endif
 #include "paddle/phi/api/include/tensor.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
