@@ -187,9 +187,8 @@ class TestDistCheckpoint:
         self.dist_checkpoint(False, False)
 
     def count_files_in_temp_dir(self, single_path):
-        """统计 self.temp_dir 下的文件数量（不包括子目录）"""
         if not os.path.exists(single_path):
-            return 0  # 目录不存在则返回 0
+            return 0
         files = [
             f
             for f in os.listdir(single_path)
