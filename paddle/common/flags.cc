@@ -2140,6 +2140,16 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
 
+PHI_DEFINE_EXPORTED_int64(offload_retry_times, -1, "Offload retry times.");
+
+PHI_DEFINE_EXPORTED_bool(offload_inplace_tensor,
+                         true,
+                         "Whether to allow offload inplace tensor.");
+
+PHI_DEFINE_EXPORTED_bool(print_offload_info,
+                         false,
+                         "Whether to print the offload information.");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG

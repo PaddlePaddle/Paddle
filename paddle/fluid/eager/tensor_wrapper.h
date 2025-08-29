@@ -32,8 +32,13 @@
 #ifndef PADDLE_NO_PYTHON
 #include "paddle/fluid/eager/hooks.h"
 #endif
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/eager/activation_offloader.h"
+#endif
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+
+COMMON_DECLARE_int64(offload_retry_times);
 
 namespace egr {
 class TensorWrapper {
@@ -140,11 +145,24 @@ class TensorWrapper {
       intermediate_tensor_.set_autograd_meta(autograd_meta);
       weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
+
+#ifdef PADDLE_WITH_CUDA
+    if (FLAGS_offload_retry_times > 0) {
+      reload_functor_ =
+          ActivationOffloader::Instance()->Add(intermediate_tensor_);
+    }
+#endif
   }
 
   paddle::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermediate_tensor_.name()
             << " for wrapper";
+#ifdef PADDLE_WITH_CUDA
+    if (auto reload_functor_ptr = reload_functor_.get_ptr()) {
+      reload_functor_ptr->Reload();
+    }
+#endif
+
     if (!intermediate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
       return paddle::Tensor();
@@ -268,6 +286,9 @@ class TensorWrapper {
  private:
   bool no_need_buffer_ = false;
   paddle::Tensor intermediate_tensor_;
+#ifdef PADDLE_WITH_CUDA
+  paddle::optional<egr::ReloadFunctor> reload_functor_;
+#endif
   std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
 #ifndef PADDLE_NO_PYTHON

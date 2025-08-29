@@ -166,6 +166,15 @@ ProcessGroupNCCL::~ProcessGroupNCCL() {
   }
 }
 
+void ProcessGroupNCCL::EraseStream(const phi::DenseTensor& tensor) const {
+  if (!tensor.initialized()) return;
+  auto place = tensor.place();
+  auto iter = place_to_comm_ctx_.find(GetKeyFromPlace(place));
+  if (iter != place_to_comm_ctx_.end()) {
+    memory::EraseStream(tensor.Holder(), iter->second->stream());
+  }
+}
+
 void ProcessGroupNCCL::GroupStart() {
   NCCL_CHECK(phi::dynload::ncclGroupStart());
   ++s_group_call_counter;

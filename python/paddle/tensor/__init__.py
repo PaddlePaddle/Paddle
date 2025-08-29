@@ -31,6 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
+from .compat_softmax import softmax as softmax
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -482,7 +483,6 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,

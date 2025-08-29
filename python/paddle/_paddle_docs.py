@@ -874,6 +874,51 @@ add_doc_and_signature(
 
 # shenwei
 
+add_doc_and_signature(
+    "sigmoid",
+    r"""
+    Sigmoid Activation.
+
+    .. math::
+       out = \\frac{1}{1 + e^{-x}}
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``sigmoid(input=tensor_x)`` is equivalent to ``sigmoid(x=tensor_x)``.
+
+    Args:
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
+    """,
+    """
+    def sigmoid(
+        x: paddle.Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> paddle.Tensor
+    """,
+)
+
 # zhouxin
 add_doc_and_signature(
     "greater_than",

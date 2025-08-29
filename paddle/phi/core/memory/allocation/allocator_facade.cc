@@ -1243,7 +1243,7 @@ class AllocatorFacadePrivate {
         common::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = cuda_allocators_[p][stream];
-    allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+    allocator = std::make_shared<RetryAllocator>(allocator, p, retry_time);
   }
 
   void WrapStatAllocator(phi::GPUPlace p, gpuStream_t stream) {
@@ -1383,7 +1383,7 @@ class AllocatorFacadePrivate {
         common::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
-    allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+    allocator = std::make_shared<RetryAllocator>(allocator, p, retry_time);
   }
 
   void WrapStatAllocator(phi::XPUPlace p, XPUStream stream) {
@@ -1591,7 +1591,8 @@ class AllocatorFacadePrivate {
             "Retry time should be larger than 0, but got %d", retry_time));
     for (auto& pair : allocators_) {
       if (phi::is_gpu_place(pair.first) || phi::is_xpu_place(pair.first)) {
-        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+        pair.second = std::make_shared<RetryAllocator>(
+            pair.second, pair.first, retry_time);
       }
     }
   }

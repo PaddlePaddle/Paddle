@@ -262,6 +262,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -681,9 +682,6 @@ from .tensor.search import (
     topk,
     where,
     where_,
-)
-from .tensor.softmax import (
-    softmax,
 )
 from .tensor.stat import (
     mean,
