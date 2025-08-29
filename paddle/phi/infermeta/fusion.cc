@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
@@ -141,6 +142,47 @@ void LayerNormalizeReluXPUInferMeta(const MetaTensor& x,
   //   y->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void CrossEntropyWithSoftmaxBwdWithDowncastInferMeta(
+    const MetaTensor& label,
+    const MetaTensor& softmax,
+    const MetaTensor& loss_grad,
+    MetaTensor* logits_grad) {
+  int axis = -1;
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto softmax_rank = softmax_dims.size();
+  PADDLE_ENFORCE_EQ(
+      axis,
+      -1,
+      common::errors::InvalidArgument("Attr(axis) value should be -1"));
+  PADDLE_ENFORCE_EQ(
+      softmax.dtype(),
+      phi::DataType::FLOAT32,
+      common::errors::InvalidArgument("softmax dtype should be float32"));
+
+  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  for (int i = 0; i < softmax_rank; i++) {
+    if (i != axis) {
+      PADDLE_ENFORCE_EQ(
+          softmax_dims[i],
+          labels_dims[i],
+          common::errors::InvalidArgument(
+              "Input(Logits) and Input(Label) should in same shape in "
+              "dimensions except axis."));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      labels_dims[axis],
+      1UL,
+      common::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                      "the axis dimension of "
+                                      "Input(Label) should be 1."));
+
+  logits_grad->set_dims(softmax.dims());
+  logits_grad->set_dtype(phi::DataType::BFLOAT16);
 }
 
 void FusedMultiTransformerInferMeta(
