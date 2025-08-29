@@ -128,6 +128,14 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
   } else if (paddle::pybind::PyObject_CheckDataType(obj.ptr())) {
     return torch::IValue(compat::_PD_PhiDataTypeToAtenScalarType(
         paddle::pybind::CastPyArg2DataType(obj.ptr(), "to_ivalue", 0)));
+  } else if (py::isinstance<py::list>(obj)) {
+    auto list = obj.cast<py::list>();
+    std::vector<torch::IValue> ivalue_list;
+    ivalue_list.reserve(list.size());
+    for (auto item : list) {
+      ivalue_list.push_back(to_ivalue(item));
+    }
+    return torch::IValue(ivalue_list);
   } else {
     try {
       auto val = py::cast<int>(obj);
