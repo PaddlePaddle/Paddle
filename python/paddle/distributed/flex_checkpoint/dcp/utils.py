@@ -307,6 +307,11 @@ def assign_sharded_slice(
             ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
         )
 
+    if postprocess_list is not None:
+        for pp in postprocess_list:
+            if pp.startswith("["):
+                src_tensor_slice = paddle.transpose(src_tensor_slice, eval(pp))
+
     paddle.assign(src_tensor_slice, dst_tensor_slice)
 
 
