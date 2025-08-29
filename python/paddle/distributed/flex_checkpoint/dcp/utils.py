@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import ast
 import copy
 import os
 import re
@@ -284,12 +285,18 @@ def assign_sharded_slice(
             ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
         )
 
+        for ps in postprocess_list:
+            is_list, result = is_list_string(ps)
+            if is_list:
+                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
+
         dst_tensor_slice = paddle.slice(
             dst_shard.local_tensor,
             axes=axes,
             starts=dst_shard_starts,
             ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
         )
+
     else:
         axes = list(range(len(overlap_shape)))
 
@@ -306,11 +313,6 @@ def assign_sharded_slice(
             starts=dst_shard_starts,
             ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
         )
-
-    if postprocess_list is not None:
-        for pp in postprocess_list:
-            if pp.startswith("["):
-                src_tensor_slice = paddle.transpose(src_tensor_slice, eval(pp))
 
     paddle.assign(src_tensor_slice, dst_tensor_slice)
 
@@ -330,3 +332,11 @@ def build_shard_desc(val):
         global_shape=tuple(val.global_shape),
         global_offset=tuple(val.global_offset),
     )
+
+
+def is_list_string(s):
+    try:
+        result = ast.literal_eval(s)
+        return (True, result) if isinstance(result, list) else (False, None)
+    except:
+        return False, None

@@ -298,7 +298,6 @@ class AOAEngine:
             left_vars = stmt.left_vars
             right_vars = stmt.right_vars
             attrs = stmt.attrs
-
             if len(left_vars) > 1 or len(right_vars) > 1:
                 if not (len(attrs) == 1 and attrs[0].key == "axis"):
                     raise ValueError(
@@ -343,7 +342,7 @@ class AOAEngine:
                 elif lvar.name == "_":
                     self.need_add_output_vars.add(rvar.name)
                 else:
-                    if attrs:
+                    if len(attrs) > 0:
                         for attr in attrs:
                             in_ref = _get_var_ref(lvar)
                             if attr.key == "permute":
@@ -362,13 +361,18 @@ class AOAEngine:
                                     f"Unsupported attribute: {attr}"
                                 )
 
-                            out_name = rvar.name
-                            intermediate_vars[out_name] = result
+                            intermediate_vars[rvar.name] = result
                             if (
-                                out_name
+                                rvar.name
                                 in self.context.get_all_dst_state_keys()
                             ):
-                                self.output_vars[out_name] = result
+                                self.output_vars[rvar.name] = result
+                    else:
+                        in_ref = _get_var_ref(lvar)
+                        intermediate_vars[rvar.name] = in_ref
+                        if rvar.name in self.context.get_all_dst_state_keys():
+                            self.output_vars[rvar.name] = in_ref
+
             else:
                 raise SyntaxError(f'Unexpected statement: {stmt}')
 
