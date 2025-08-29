@@ -12,21 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
+from __future__ import annotations
 
-import ctypes
 import os
-from typing import Optional
+import subprocess
+import time
+from typing import Any
+
+import cuda.bindings.driver as cbd
+
+import paddle
+from paddle.utils.cpp_extension.cpp_extension import CUDA_HOME
 
 
 class Runtime:
     def __init__(self, path: str) -> None:
         self.path = path
         self.lib = None
-        self.args = None
-
+        self.kernel = None
         assert self.is_path_valid(self.path)
 
     @staticmethod
@@ -36,74 +42,132 @@ class Runtime:
             return False
 
         # Contains all necessary files
-        files = ["kernel.cu", "kernel.args", "kernel.so"]
+        files = ["kernel.cubin"]
         return all(os.path.exists(os.path.join(path, file)) for file in files)
 
-    def __call__(self, *args) -> int:
-        # Load SO file
-        if self.lib is None:
-            self.lib = ctypes.CDLL(os.path.join(self.path, "kernel.so"))
+    @staticmethod
+    def generate(kwargs: dict[str, Any]) -> str:
+        raise NotImplementedError
 
-        if len(args) == 9:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_int(args[5]),
-                ctypes.c_void_p(args[6].cuda_stream),
-                ctypes.c_int(args[7]),
-                ctypes.c_int(args[8]),
+    @staticmethod
+    def launch(kernel: cbd.CUkernel, kwargs: dict[str, Any]) -> cbd.CUresult:
+        raise NotImplementedError
+
+    def __call__(self, **kwargs) -> cbd.CUresult:
+        # Load CUBIN
+        if self.kernel is None:
+            start_time = time.time_ns()
+
+            # Load CUBIN
+            path = bytes(os.path.join(self.path, "kernel.cubin"), "utf-8")
+            result, self.lib = cbd.cuLibraryLoadFromFile(
+                path, [], [], 0, [], [], 0
+            )
+            assert result == cbd.CUresult.CUDA_SUCCESS, (
+                f"Failed to load library: {result}"
+            )
+
+            # Extract the kernel name
+            # TODO: use `cuda-bindings` API to do this (requires at least 12.8)
+            command = [f"{CUDA_HOME}/bin/cuobjdump", "-symbols", path]
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 0
+            illegal_names = [
+                "vprintf",
+                "__instantiate_kernel",
+                "__internal",
+                "__assertfail",
             ]
-        elif len(args) == 10:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_void_p(args[5].data_ptr()),
-                ctypes.c_int(args[6]),
-                ctypes.c_void_p(args[7].cuda_stream),
-                ctypes.c_int(args[8]),
-                ctypes.c_int(args[9]),
+            check_illegal = lambda line: any(
+                name in line for name in illegal_names
+            )
+            kernel_names = [
+                line.split()[-1]
+                for line in result.stdout.splitlines()
+                if line.startswith("STT_FUNC") and not check_illegal(line)
             ]
-        elif len(args) == 11:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_void_p(args[5].data_ptr()),
-                ctypes.c_int(args[6]),
-                ctypes.c_int(args[7]),
-                ctypes.c_void_p(args[8].cuda_stream),
-                ctypes.c_int(args[9]),
-                ctypes.c_int(args[10]),
-            ]
-        else:
-            raise ValueError("Invalid number of arguments")
-        return_code = ctypes.c_int(0)
-        self.lib.launch(*cargs, ctypes.byref(return_code))
+            assert len(kernel_names) == 1, (
+                f"Too many kernels in the library: {kernel_names}"
+            )
+
+            # Load kernel from the library
+            result, self.kernel = cbd.cuLibraryGetKernel(
+                self.lib, bytes(kernel_names[0], encoding="utf-8")
+            )
+            assert result == cbd.CUresult.CUDA_SUCCESS, (
+                f"Failed to load kernel: {result}"
+            )
+
+            end_time = time.time_ns()
+            elapsed_time = (end_time - start_time) / 1e6
+            if int(os.getenv("DG_JIT_DEBUG", 0)):
+                print(
+                    f"Loading JIT runtime {self.path} took {elapsed_time:.2f} ms."
+                )
+
+        # noinspection PyArgumentList
+        return self.launch(self.kernel, kwargs)
+
+    def __del__(self) -> None:
+        if self.lib is not None:
+            res = cbd.cuLibraryUnload(self.lib)[0]
+            if res != cbd.CUresult.CUDA_SUCCESS:
+                raise Exception(f"Failed to unload library {self.path}: {res}")
 
 
 class RuntimeCache:
     def __init__(self) -> None:
         self.cache = {}
 
-    def __getitem__(self, path: str) -> Optional['Runtime']:
+    def __setitem__(self, path: str, runtime: Runtime) -> None:
+        self.cache[path] = runtime
+
+    def get(
+        self,
+        path: str,
+        runtime_cls: type[Runtime],
+        name: str = "",
+        kwargs: dict[str, Any] | None = None,
+        force_enable_cache: bool = False,
+    ) -> Runtime | None:
         # In Python runtime
         if path in self.cache:
             return self.cache[path]
 
         # Already compiled
-        if os.path.exists(path) and Runtime.is_path_valid(path):
-            runtime = Runtime(path)
+        use_cache = force_enable_cache or not int(
+            os.getenv("DG_JIT_DISABLE_CACHE", 0)
+        )
+        if use_cache and os.path.exists(path) and Runtime.is_path_valid(path):
+            # Print heuristic for the first time
+            if name and (
+                int(os.getenv("DG_JIT_DEBUG", 0))
+                or int(os.getenv("DG_PRINT_CONFIGS", 0))
+            ):
+                simplified_kwargs = {}
+                for key, value in (
+                    kwargs.items() if kwargs is not None else {}.items()
+                ):
+                    value = (
+                        f"paddle.Tensor<{value.dtype}>"
+                        if isinstance(value, paddle.Tensor)
+                        else value
+                    )
+                    value = (
+                        "cuda.bindings.driver.CUtensorMap"
+                        if isinstance(value, cbd.CUtensorMap)
+                        else value
+                    )
+                    simplified_kwargs[key] = value
+                print(
+                    f"Put kernel {name} with {simplified_kwargs} into runtime cache"
+                )
+
+            runtime = runtime_cls(path)
             self.cache[path] = runtime
             return runtime
         return None
-
-    def __setitem__(self, path, runtime) -> None:
-        self.cache[path] = runtime

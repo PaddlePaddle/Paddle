@@ -16,6 +16,10 @@
 # Copyright (c) 2025 DeepSeek
 # Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
 
-from .compiler import build, get_nvcc_compiler  # noqa: F401
+from .compiler import (  # noqa: F401
+    NVCCCompiler,
+    NVRTCCompiler,
+    build,
+    get_nvcc_compiler,
+)
 from .runtime import Runtime  # noqa: F401
-from .template import cpp_format, generate  # noqa: F401
