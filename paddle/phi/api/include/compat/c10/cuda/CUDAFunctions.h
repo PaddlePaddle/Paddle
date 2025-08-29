@@ -15,7 +15,15 @@
 #pragma once
 
 #include <c10/core/Device.h>
-#include <cuda_runtime_api.h>
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>
+using gpuStream_t = cudaStream_t;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+using gpuStream_t = hipStream_t;
+#endif
 
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/device_event_base.h"
@@ -37,7 +45,7 @@ void device_synchronize() {
 #endif
 }
 
-void __inline__ stream_synchronize(cudaStream_t stream) {
+void __inline__ stream_synchronize(gpuStream_t stream) {
   phi::backends::gpu::GpuStreamSync(stream);
 }
 }  // namespace c10::cuda

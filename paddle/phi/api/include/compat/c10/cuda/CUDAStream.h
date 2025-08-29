@@ -27,19 +27,19 @@ using StreamId = int64_t;
 class CUDAStream {
  public:
   CUDAStream() = delete;
-  explicit CUDAStream(const cudaStream_t& stream) : raw_stream_(stream) {}
+  explicit CUDAStream(const gpuStream_t& stream) : raw_stream_(stream) {}
   StreamId id() const { return reinterpret_cast<StreamId>(raw_stream_); }
 
-  operator cudaStream_t() const { return raw_stream_; }
+  operator gpuStream_t() const { return raw_stream_; }
 
   // operator Stream() const { return unwrap(); }
 
   DeviceType device_type() const { return DeviceType::CUDA; }
 
-  const cudaStream_t& stream() const { return raw_stream_; }
+  const gpuStream_t& stream() const { return raw_stream_; }
 
  private:
-  cudaStream_t raw_stream_;
+  gpuStream_t raw_stream_;
 };
 
 inline CUDAStream getCurrentCUDAStream(c10::DeviceIndex device_index = -1) {

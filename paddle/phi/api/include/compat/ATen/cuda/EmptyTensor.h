@@ -17,12 +17,6 @@
 
 namespace at::detail {
 
-// using c10::Device;
-// using c10::IntArrayRef;
-// using c10::MemoryFormat;
-// using c10::ScalarType;
-// using c10::TensorOptions;
-
 using at::Tensor;
 at::Tensor empty_cuda(IntArrayRef size,
                       ScalarType dtype,
