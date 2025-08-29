@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import pir
 from paddle.autograd.backward_utils import ValueDict, ValueSet
 from paddle.autograd.ir_backward import grad
 
@@ -26,18 +25,16 @@ paddle.enable_static()
 
 def get_ir_program_0():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            k_s = paddle.tanh(x_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.tanh(x_s)
+    return main_program
 
 
 class TesBackward_1(unittest.TestCase):
@@ -140,21 +137,19 @@ class TesBackward_1(unittest.TestCase):
 
 def get_ir_program_1():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([2, 2])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
 
-            k_s = paddle.tanh(x_s)
-            z_x = paddle.tanh(x_s)
-            out = paddle.add(z_x, k_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+        k_s = paddle.tanh(x_s)
+        z_x = paddle.tanh(x_s)
+        out = paddle.add(z_x, k_s)
+    return main_program
 
 
 class TesBackward_2(unittest.TestCase):
@@ -214,6 +209,38 @@ class TesBackward_2(unittest.TestCase):
         ]
         for i, op in enumerate(pir_program.global_block().ops):
             self.assertEqual(op.name(), ops_name[i])
+
+
+def get_ir_program_2():
+    paddle.enable_static()
+    x = paddle.randn([2, 2])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        k_s = paddle.sum(x_s, axis=(-1,), keepdim=False)
+    return main_program
+
+
+class TestBackward_3(unittest.TestCase):
+    def test_basic_network(self):
+        pir_program = get_ir_program_2()
+        x = pir_program.global_block().ops[-1].operand(0).source()
+        sum_x = pir_program.global_block().ops[-1].result(0)
+        with (
+            paddle.pir_utils.IrGuard(),
+            paddle.pir.core.program_guard(pir_program),
+        ):
+            norm = paddle.tensor.fill_constant(
+                shape=[],
+                value=1.0,
+                dtype=sum_x.dtype,
+            )
+            res = paddle.divide(sum_x, norm)
+            input_grad = grad(res, x)
 
 
 class TestBackward_4(unittest.TestCase):

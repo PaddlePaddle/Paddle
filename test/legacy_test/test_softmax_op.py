@@ -790,7 +790,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
                 with paddle.static.program_guard(paddle.static.Program()):
                     x = paddle.static.data('X', x_np.shape, 'float32')
                     out1 = func(input=x, dim=None, _stacklevel=3)
-                    out2 = func(x)
+                    out2 = func(x, None, 3)
                     exe = paddle.static.Executor(self.place)
                     res = exe.run(feed={'X': x_np}, fetch_list=[out1, out2])
                     for rr in res:
@@ -840,7 +840,7 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
             x = paddle.to_tensor(x_np)
             out1 = func(input=x, dim=None, _stacklevel=3)
             x = paddle.to_tensor(x_np)
-            out2 = func(x)
+            out2 = func(x, None, 3)
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
@@ -939,6 +939,19 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
 
         paddle.enable_static()
+
+    def test_forbid_keywords(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', [2, 3], 'float32')
+            self.assertRaises(TypeError, compat.softmax, x=x, axis=-1)
+            self.assertRaises(TypeError, compat.softmax, x=x, dim=-1)
+            self.assertRaises(TypeError, compat.softmax, input=x, axis=-1)
+
+            if core.is_compiled_with_cuda():
+                compat.softmax(input=x, dim=-1)
 
 
 if __name__ == "__main__":
