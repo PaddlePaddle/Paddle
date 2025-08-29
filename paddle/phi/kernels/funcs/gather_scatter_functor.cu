@@ -872,7 +872,7 @@ __global__ void ScatterMinMaxInputGradGPUKernel(
     int ndim,
     int64_t numel,
     int* __restrict__ aux_buffer) {
-  COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 2, tid, 3)
+  COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
   if (out_data[replace_index] != x_data[replace_index]) {
     grad_data[replace_index] = 0;
   } else {
