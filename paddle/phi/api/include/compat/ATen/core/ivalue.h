@@ -86,6 +86,10 @@ enum class TypeTag {
 
 class IValue;  // Forward declaration
 
+// Forward declaration of generic_to template function
+template <typename T>
+T generic_to(const IValue& ivalue, _fake_type<T>);
+
 using GenericList = std::vector<IValue>;
 
 // Separate tuple wrapper to avoid ambiguity with GenericList
