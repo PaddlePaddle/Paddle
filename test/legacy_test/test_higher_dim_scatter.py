@@ -428,5 +428,151 @@ class TestNonBroadcastableMismatchedShapeCase(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "CPU scatter/gather kernel is not yet modified, coming soon and this skipping will be removed.",
+)
+class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
+    """Test case from issue 72803"""
+
+    def setUp(self):
+        self.x = np.array(
+            [
+                [1.6947253, 1.7280283, -1.1000537, -1.7621638, -0.46924523],
+                [-0.17813402, 0.9851728, 0.8784995, -0.35652128, 0.63679916],
+                [-0.2506482, 0.46839848, 1.6940045, 1.2753638, -1.5601108],
+                [-1.4223574, -0.30286825, -0.6940945, 0.4153872, -1.598482],
+            ],
+            dtype="float32",
+        )
+        self.indices = np.array(
+            [
+                [3, 2, 2, 2, 0],
+                [1, 1, 3, 1, 3],
+                [0, 0, 3, 2, 3],
+                [0, 1, 2, 0, 3],
+            ],
+            dtype="int64",
+        )
+        self.values = np.array(
+            [
+                [-0.3371469, -2.3898945, -0.6047427, -0.18021728, 1.0270963],
+                [-0.4792783, -0.06155855, -1.1657414, -0.22004248, -1.2116293],
+                [-1.2325171, -1.2428453, -0.53471214, 0.64549965, 0.3991431],
+                [-0.45945236, -0.2563897, -1.2712464, 1.7996459, -0.08381622],
+            ],
+            dtype="float32",
+        )
+        self.dout = np.array(
+            [
+                [-0.19797462, -0.98365456, 1.936407, -0.0050864, -1.0364918],
+                [1.0826564, -2.1047552, 0.9298107, 0.6769417, 0.9323797],
+                [-0.68968654, -0.5532966, 0.24068666, 0.5625817, 1.8991498],
+                [0.84938127, -0.5345554, -0.6814333, -1.0064939, 2.419181],
+            ],
+            dtype="float32",
+        )
+        self.ddx = np.array(
+            [
+                [0.3573612, -0.6587053, -1.0527273, 0.7391721, -0.16440763],
+                [-1.67882, -0.46170056, -0.81231886, 0.6644795, 1.0688623],
+                [-1.3970909, 0.17792162, 0.35944283, -0.00945398, -1.8379706],
+                [0.99883825, 0.47824964, -1.4997529, 0.80206966, -0.24591826],
+            ],
+            dtype="float32",
+        )
+        self.ddv = np.array(
+            [
+                [0.31652406, -0.41458955, -0.46466753, -0.23473991, 0.25190634],
+                [-1.3948212, -0.84799731, 0.5940094, 0.46881115, 0.4054867],
+                [-2.0037501, 0.087257907, 1.0091733, -0.002437128, 0.67401189],
+                [-0.10354018, 0.51002628, -2.5794835, -1.7636456, -0.59410858],
+            ],
+            dtype="float32",
+        )
+        self.gt_result = np.array(
+            [
+                [-1.6919695, -1.2428453, -1.1000537, 1.7996459, 1.0270963],
+                [-0.4792783, -0.31794825, 0.8784995, -0.22004248, 0.63679916],
+                [-0.2506482, -2.3898945, -1.8759892, 0.46528238, -1.5601108],
+                [-0.3371469, -0.30286825, -1.7004535, 0.4153872, -0.8963024],
+            ],
+            dtype="float32",
+        )
+        self.gt_dx = np.array(
+            [
+                [0.0, 0.0, 1.936407, 0.0, 0.0],
+                [0.0, 0.0, 0.9298107, 0.0, 0.9323797],
+                [-0.68968654, 0.0, 0.0, 0.0, 1.8991498],
+                [0.0, -0.5345554, 0.0, -1.0064939, 0.0],
+            ],
+            dtype="float32",
+        )
+        self.gt_dv = np.array(
+            [
+                [0.84938127, -0.5532966, 0.24068666, 0.5625817, -1.0364918],
+                [1.0826564, -2.1047552, -0.6814333, 0.6769417, 2.419181],
+                [-0.19797462, -0.98365456, -0.6814333, 0.5625817, 2.419181],
+                [-0.19797462, -2.1047552, 0.24068666, -0.0050864, 2.419181],
+            ],
+            dtype="float32",
+        )
+        self.gt_ddout = np.array(
+            [
+                [-2.1072903, 0.08725791, -1.0527273, -1.7636456, 0.25190634],
+                [-1.3948212, -0.33797103, -0.81231886, 0.46881115, 1.0688623],
+                [-1.3970909, -0.41458955, -3.044151, -0.23717704, -1.8379706],
+                [0.31652406, 0.47824964, 1.6031827, 0.80206966, 0.48538995],
+            ],
+            dtype="float32",
+        )
+
+    def test_2nd_grad(self):
+        x = paddle.to_tensor(self.x)
+        x.stop_gradient = False
+        include_self = False
+        axis = 0
+
+        indices = paddle.to_tensor(self.indices)
+
+        values = paddle.to_tensor(self.values)
+        values.stop_gradient = False
+
+        out = paddle.put_along_axis(
+            x,
+            indices,
+            values,
+            axis,
+            'add',
+            include_self=include_self,
+        )
+
+        dout = paddle.to_tensor(self.dout)
+        dout.stop_gradient = False
+
+        dx, dv = paddle.grad(
+            out,
+            [x, values],
+            dout,
+            create_graph=True,
+        )
+
+        ddx = paddle.to_tensor(self.ddx)
+        ddx.stop_gradient = False
+        ddv = paddle.to_tensor(self.ddv)
+        ddv.stop_gradient = False
+
+        ddout = paddle.grad(
+            [dx, dv],
+            dout,
+            [ddx, ddv],
+        )[0]
+
+        np.testing.assert_allclose(out.numpy(), self.gt_result, 1e-6, 1e-6)
+        np.testing.assert_allclose(dx.numpy(), self.gt_dx, 1e-6, 1e-6)
+        np.testing.assert_allclose(dv.numpy(), self.gt_dv, 1e-6, 1e-6)
+        np.testing.assert_allclose(ddout.numpy(), self.gt_ddout, 1e-6, 1e-6)
+
+
 if __name__ == '__main__':
     unittest.main()
