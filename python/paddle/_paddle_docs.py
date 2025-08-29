@@ -784,7 +784,7 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            # type: ignore
+            >>> # type: ignore
             >>> import paddle
 
             >>> # x is a Tensor with following elements:
