@@ -252,6 +252,17 @@ class TestTensorPatchMethod(unittest.TestCase):
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
 
+                x = paddle.empty(
+                    [2],
+                ).new_empty(
+                    *shape,
+                    dtype=dtype,
+                    requires_grad=requires_grad,
+                    device=device,
+                    pin_memory=pin_memory,
+                )
+                self.assertEqual(x.shape, shape)
+
                 def new_empty(
                     x, shape, dtype, requires_grad, device, pin_memory
                 ):
@@ -282,6 +293,30 @@ class TestTensorPatchMethod(unittest.TestCase):
                 self.assertEqual(x.stop_gradient, not requires_grad)
                 if isinstance(dtype, paddle.dtype):
                     self.assertEqual(x.dtype, dtype)
+
+                def new_empty_size_arg(
+                    x, shape, dtype, requires_grad, device, pin_memory
+                ):
+                    return x.new_empty(
+                        *shape,
+                        dtype=dtype,
+                        requires_grad=requires_grad,
+                        device=device,
+                        pin_memory=pin_memory,
+                    )
+
+                st_f = paddle.jit.to_static(
+                    new_empty_size_arg, full_graph=True, backend=None
+                )
+                x = st_f(
+                    paddle.randn([1]),
+                    shape,
+                    dtype=dtype,
+                    requires_grad=requires_grad,
+                    device=device,
+                    pin_memory=pin_memory,
+                )
+                self.assertEqual(x.shape, shape)
 
 
 class TestCreationOut(unittest.TestCase):
