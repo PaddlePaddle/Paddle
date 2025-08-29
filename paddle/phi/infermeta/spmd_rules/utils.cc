@@ -180,26 +180,26 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     // Sort by their parallelism in descending order, construct a total order.
     std::sort(suggestions.begin(),
               suggestions.end(),
-              [](const auto& a, const auto& b) {
-                if (a.size() != b.size()) {
-                  return a.size() > b.size();
-                }
-                auto shards_a = calculate_total_shards(a, mesh_shape);
-                auto shards_b = calculate_total_shards(b, mesh_shape);
-                if (shards_a != shards_b) {
-                  return shards_a > shards_b;
-                }
+              [&mesh_shape](const auto& a, const auto& b) {
+                const int64_t asz = static_cast<int64_t>(a.size());
+                const int64_t bsz = static_cast<int64_t>(b.size());
+                if (asz != bsz) return asz > bsz;
+
+                const int64_t ash = calculate_total_shards(a, mesh_shape);
+                const int64_t bsh = calculate_total_shards(b, mesh_shape);
+                if (ash != bsh) return ash > bsh;
+
                 return std::lexicographical_compare(
                     a.begin(), a.end(), b.begin(), b.end());
               });
 
     std::vector<int64_t> merged_vec;
-    std::vector<std::string> seen(mesh_shape.size(), 0);
+    std::unordered_set<int64_t> seen_dims;
     for (const auto& suggestion : suggestions) {
       for (const auto& dim : suggestion) {
-        if (!seen[dim]) {
+        if (seen_dims.find(dim) == seen_dims.end()) {
           merged_vec.push_back(dim);
-          seen[dim] = 1;
+          seen_dims.insert(dim);
         }
       }
     }
