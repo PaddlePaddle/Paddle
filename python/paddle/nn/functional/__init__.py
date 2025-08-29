@@ -306,6 +306,4 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
-    'moe_permute',
-    'moe_unpermute',
 ]
