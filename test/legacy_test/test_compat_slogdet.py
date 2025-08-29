@@ -49,79 +49,95 @@ class TestSlogDet(unittest.TestCase):
         return grad_x
 
     def test_compat_slogdet(self):
-        with dygraph_guard():
-            for shape, dtype in product(self.shapes, self.dtypes):
-                err_msg = f"shape = {shape}, dtype = {dtype}"
+        devices = [paddle.device.get_device()]
+        if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
+            devices.append("cpu")
+        for device in devices:
+            with paddle.device.device_guard(device), dygraph_guard():
+                for shape, dtype in product(self.shapes, self.dtypes):
+                    err_msg = f"shape = {shape}, dtype = {dtype}"
 
-                # test eager
-                x = paddle.randn(shape, dtype)
-                x.stop_gradient = False
-                out = paddle.compat.slogdet(x)
-                self.assertTrue(hasattr(out, "sign"))
-                self.assertTrue(hasattr(out, "logabsdet"))
-                sign, logabsdet = out
-                self.assertEqual(sign.dtype, x.dtype)
-                self.assertFalse(logabsdet.is_complex())
-                logdet_grad = paddle.randn_like(logabsdet)
-                sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
+                    # test eager
+                    x = paddle.randn(shape, dtype)
+                    x.stop_gradient = False
+                    out = paddle.compat.slogdet(x)
+                    self.assertTrue(hasattr(out, "sign"))
+                    self.assertTrue(hasattr(out, "logabsdet"))
+                    sign, logabsdet = out
+                    self.assertEqual(sign.dtype, x.dtype)
+                    self.assertFalse(logabsdet.is_complex())
+                    logdet_grad = paddle.randn_like(logabsdet)
+                    sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
 
-                np.testing.assert_allclose(
-                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
-                np.testing.assert_allclose(
-                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
+                    np.testing.assert_allclose(
+                        sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                    )
+                    np.testing.assert_allclose(
+                        logabsdet.numpy(),
+                        logdet_ref,
+                        1e-5,
+                        1e-5,
+                        err_msg=err_msg,
+                    )
 
-                (x_grad,) = paddle.grad(logabsdet, x, logdet_grad)
-                x_grad_ref = self.slogdet_backward(
-                    x.numpy(),
-                    sign.numpy(),
-                    logdet_grad.numpy()[..., None, None],
-                )
-                np.testing.assert_allclose(
-                    x_grad.numpy(), x_grad_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
+                    (x_grad,) = paddle.grad(logabsdet, x, logdet_grad)
+                    x_grad_ref = self.slogdet_backward(
+                        x.numpy(),
+                        sign.numpy(),
+                        logdet_grad.numpy()[..., None, None],
+                    )
+                    np.testing.assert_allclose(
+                        x_grad.numpy(), x_grad_ref, 1e-5, 1e-5, err_msg=err_msg
+                    )
 
-                # test pir
-                st_f = paddle.jit.to_static(
-                    paddle.compat.slogdet,
-                    full_graph=True,
-                )
-                sign, logabsdet = st_f(x)
-                self.assertTrue(hasattr(out, "sign"))
-                self.assertTrue(hasattr(out, "logabsdet"))
-                self.assertEqual(sign.dtype, x.dtype)
-                self.assertFalse(logabsdet.is_complex())
+                    # test pir
+                    st_f = paddle.jit.to_static(
+                        paddle.compat.slogdet,
+                        full_graph=True,
+                    )
+                    sign, logabsdet = st_f(x)
+                    self.assertTrue(hasattr(out, "sign"))
+                    self.assertTrue(hasattr(out, "logabsdet"))
+                    self.assertEqual(sign.dtype, x.dtype)
+                    self.assertFalse(logabsdet.is_complex())
 
-                np.testing.assert_allclose(
-                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
-                np.testing.assert_allclose(
-                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
+                    np.testing.assert_allclose(
+                        sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                    )
+                    np.testing.assert_allclose(
+                        logabsdet.numpy(),
+                        logdet_ref,
+                        1e-5,
+                        1e-5,
+                        err_msg=err_msg,
+                    )
 
-                # test pir + dynamic shape
-                st_f = paddle.jit.to_static(
-                    paddle.compat.slogdet,
-                    full_graph=True,
-                    input_spec=[
-                        paddle.static.InputSpec(
-                            shape=[-1] * len(shape), dtype=dtype
-                        ),
-                    ],
-                )
-                sign, logabsdet = st_f(x)
-                self.assertTrue(hasattr(out, "sign"))
-                self.assertTrue(hasattr(out, "logabsdet"))
-                self.assertEqual(sign.dtype, x.dtype)
-                self.assertFalse(logabsdet.is_complex())
+                    # test pir + dynamic shape
+                    st_f = paddle.jit.to_static(
+                        paddle.compat.slogdet,
+                        full_graph=True,
+                        input_spec=[
+                            paddle.static.InputSpec(
+                                shape=[-1] * len(shape), dtype=dtype
+                            ),
+                        ],
+                    )
+                    sign, logabsdet = st_f(x)
+                    self.assertTrue(hasattr(out, "sign"))
+                    self.assertTrue(hasattr(out, "logabsdet"))
+                    self.assertEqual(sign.dtype, x.dtype)
+                    self.assertFalse(logabsdet.is_complex())
 
-                np.testing.assert_allclose(
-                    sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
-                np.testing.assert_allclose(
-                    logabsdet.numpy(), logdet_ref, 1e-5, 1e-5, err_msg=err_msg
-                )
+                    np.testing.assert_allclose(
+                        sign.numpy(), sign_ref, 1e-5, 1e-5, err_msg=err_msg
+                    )
+                    np.testing.assert_allclose(
+                        logabsdet.numpy(),
+                        logdet_ref,
+                        1e-5,
+                        1e-5,
+                        err_msg=err_msg,
+                    )
 
     def test_error(self):
         x = paddle.randn([5], "float32")
