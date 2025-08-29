@@ -237,7 +237,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_imperative_gan',
     'test_imperative_gnn',
     'test_imperative_load_static_param',
-    'test_imperative_lod_tensor_to_selected_rows_deprecated',
     'test_imperative_optimizer',
     'test_imperative_ptb_rnn',
     'test_imperative_ptb_rnn_sorted_gradient',

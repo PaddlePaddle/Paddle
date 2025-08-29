@@ -22,12 +22,12 @@ KernelSignature RepeatInterleaveOpArgumentMapping(
     VLOG(3) << "sig------ repeat_interleave_with_tensor_index";
     return KernelSignature("repeat_interleave_with_tensor_index",
                            {"X", "RepeatsTensor"},
-                           {"dim"},
+                           {"dim", "output_size"},
                            {"Out"});
   } else {
     VLOG(3) << "sig ------repeat_interleave";
     return KernelSignature(
-        "repeat_interleave", {"X"}, {"Repeats", "dim"}, {"Out"});
+        "repeat_interleave", {"X"}, {"Repeats", "dim", "output_size"}, {"Out"});
   }
 }
 
@@ -37,13 +37,13 @@ KernelSignature RepeatInterleaveGradOpArgumentMapping(
     VLOG(3) << "sig ------repeat_interleave with tensor grad";
     return KernelSignature("repeat_interleave_with_tensor_index_grad",
                            {"X", "RepeatsTensor", "Out@GRAD"},
-                           {"dim"},
+                           {"dim", "output_size"},
                            {"X@GRAD"});
   } else {
     VLOG(3) << "sig repeat_interleave grad";
     return KernelSignature("repeat_interleave_grad",
                            {"X", "Out@GRAD"},
-                           {"Repeats", "dim"},
+                           {"Repeats", "dim", "output_size"},
                            {"X@GRAD"});
   }
 }

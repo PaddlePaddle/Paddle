@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Compatibility Note: The design of certain PaddlePaddle public APIs 
+# incorporates principles from PyTorch and NumPy, maintaining compatibility 
+# with PyTorch's API conventions in terms of function signatures and 
+# parameter semantics. It is important to clarify that these APIs are 
+# implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
 import typing
@@ -655,6 +661,7 @@ from .tensor.random import (
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,
@@ -1246,6 +1253,7 @@ __all__ = [
     'geometric_',
     'randn',
     'randn_like',
+    'rand_like',
     'strided_slice',
     'unique',
     'unique_consecutive',

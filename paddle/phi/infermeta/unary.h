@@ -669,6 +669,7 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
+                               int64_t output_size,
                                MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,

@@ -16,7 +16,6 @@ test_comp_batch_norm_grad_deprecated
 test_comp_eager_batch_norm_grad
 test_comp_eager_matmul_double_grad
 test_comp_eager_sin_double_grad
-test_comp_matmul_double_grad_deprecated
 test_compare_op
 test_complex_cast
 test_complex_elementwise_layers

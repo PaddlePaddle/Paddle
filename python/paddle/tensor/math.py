@@ -34,6 +34,7 @@ from paddle._C_ops import (  # noqa: F401
     logsumexp,
     maximum,
     minimum,
+    multiply,
     sign,
     sin,
 )
@@ -1261,60 +1262,6 @@ floor_mod_.__doc__ = r"""
     Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_floor_mod_`.
     """
-
-
-def multiply(
-    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
-) -> Tensor:
-    """
-    multiply two tensors element-wise. The equation is:
-
-    .. math::
-        out = x * y
-
-    Note:
-        Supported shape of :attr:`x` and :attr:`y` for this operator:
-        1. `x.shape` == `y.shape`.
-        2. `x.shape` could be the continuous subsequence of `y.shape`.
-        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
-
-    Args:
-        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
-            >>> y = paddle.to_tensor([[5, 6], [7, 8]])
-            >>> res = paddle.multiply(x, y)
-            >>> print(res)
-            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[5 , 12],
-             [21, 32]])
-            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
-            >>> y = paddle.to_tensor([2])
-            >>> res = paddle.multiply(x, y)
-            >>> print(res)
-            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [[[2, 4, 6],
-              [2, 4, 6]]])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.multiply(x, y, out=out)
-    else:
-        return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
