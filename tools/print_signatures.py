@@ -78,7 +78,7 @@ def md5(doc):
 
 ErrorSet = set()
 IdSet = set()
-skiplist = []
+skiplist = ["paddle.ops", "paddle.classes"]
 
 
 def visit_all_module(mod):
