@@ -32,7 +32,10 @@ from paddle.utils.decorator_utils import (
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, core
+from ..framework import (
+    LayerHelper,
+    core,
+)
 from .math import _get_reduce_axis_with_tensor
 
 if TYPE_CHECKING:
@@ -157,9 +160,12 @@ def mean(
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the variance of ``x`` along ``axis`` .
@@ -181,6 +187,9 @@ def var(
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
@@ -198,6 +207,13 @@ def var(
             >>> print(out2.numpy())
             [1.         4.3333335]
     """
+    if unbiased is not None and correction != 1:
+        raise ValueError("Only one of unbiased and correction may be given")
+
+    if unbiased is not None:
+        actual_correction = 1.0 if unbiased else 0.0
+    else:
+        actual_correction = float(correction)
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -205,21 +221,27 @@ def var(
 
     u = mean(x, axis, True, name)
     dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
-    out = paddle.sum(
+    out_tensor = paddle.sum(
         paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
     )
 
     n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
-        paddle.numel(out), "int64"
+        paddle.numel(out_tensor), "int64"
     )
     n = n.astype(dtype)
-    if unbiased:
-        one_const = paddle.ones([], x.dtype)
-        if paddle.in_dynamic_mode() and n <= one_const:
+
+    if actual_correction != 0:
+        corrected_n = n - actual_correction
+        corrected_n = paddle.maximum(
+            corrected_n, paddle.zeros_like(corrected_n)
+        )
+        if paddle.in_dynamic_mode() and paddle.any(corrected_n <= 0):
             warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
-        n = n - 1.0
-    n.stop_gradient = True
-    out /= n
+    else:
+        corrected_n = n
+
+    corrected_n.stop_gradient = True
+    out_tensor /= corrected_n
 
     def _replace_nan(out):
         indices = paddle.arange(out.numel(), dtype='int64')
@@ -229,12 +251,20 @@ def var(
         return out_nan
 
     if 0 in x.shape:
-        out = _replace_nan(out)
-    if len(x.shape) == 0 and not unbiased:
-        out = paddle.to_tensor(0, stop_gradient=out.stop_gradient)
-    if out.dtype != x.dtype:
-        return out.astype(x.dtype)
-    return out
+        out_tensor = _replace_nan(out_tensor)
+    if len(x.shape) == 0 and actual_correction == 0:
+        out_tensor = paddle.to_tensor(0, stop_gradient=out_tensor.stop_gradient)
+
+    if out_tensor.dtype != x.dtype:
+        result = out_tensor.astype(x.dtype)
+    else:
+        result = out_tensor
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+
+    return result
 
 
 def std(
@@ -620,7 +650,8 @@ def median(
     if not isinstance(x, (Variable, paddle.pir.Value)):
         raise TypeError("In median, the input x should be a Tensor.")
 
-    is_flatten = False
+    if isinstance(axis, (list, tuple)) and len(axis) == 0:
+        raise ValueError("Axis list should not be empty.")
     dims = len(x.shape)
     if dims == 0:
         assert axis in [
@@ -628,7 +659,11 @@ def median(
             0,
             None,
         ], 'when input 0-D, axis can only be [-1, 0] or default None'
-        is_flatten = True
+    elif axis is not None:
+        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
+            raise ValueError(
+                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
+            )
 
     if mode not in ('avg', 'min'):
         raise ValueError(f"Mode {mode} is not supported. Must be avg or min.")
@@ -636,120 +671,21 @@ def median(
     if axis is None:
         is_flatten = True
 
-    if is_flatten:
-        x = paddle.flatten(x)
-        axis = 0
-    else:
-        if not isinstance(axis, int) or not (axis < dims and axis >= -dims):
-            raise ValueError(
-                "In median, axis should be none or an integer in range [-rank(x), rank(x))."
-            )
-        if axis < 0:
-            axis += dims
-    sz = x.shape[axis]
-    kth = sz >> 1
-    # Use `sort` when:
-    # 1. The axis is not the last dimension (memory non-contiguous)
-    # 2. The axis size exceeds 10000 (heuristic threshold for performance crossover)
-    # Rationale:
-    # - `paddle.topk` in non-contiguous dimensions has O(N*k) complexity (k=n/2 for median → O(n²)). in paddle/phi/kernels/gpu/top_k_kernel.cu
-    # - `paddle.sort` has guaranteed O(n log n) complexity regardless of axis
-    use_sort = (axis != dims - 1) and (sz > 10000)
-    if use_sort:
-        sorted_x = paddle.sort(x, axis=axis, stable=True)
-        tensor_topk = paddle.slice(
-            sorted_x, axes=[axis], starts=[0], ends=[kth + 1]
-        )
-        if need_idx:
-            idx = paddle.argsort(x, axis=axis, stable=True)
-            idx = paddle.slice(idx, axes=[axis], starts=[0], ends=[kth + 1])
-    else:
-        tensor_topk, idx = paddle.topk(x, kth + 1, axis=axis, largest=False)
-    if mode == 'avg':
-        dtype = (
-            'float64'
-            if x.dtype
-            in [core.VarDesc.VarType.FP64, paddle.base.core.DataType.FLOAT64]
-            else 'float32'
-        )
-        if sz & 1 == 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            ) + paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            out_tensor = paddle.cast(out_tensor, dtype=dtype) / 2
-        else:
-            out_tensor = paddle.cast(
-                paddle.slice(
-                    tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-                ),
-                dtype=dtype,
-            )
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=dtype) * x.astype(dtype),
-            axis=axis,
-            keepdim=True,
-        )
-    else:  # mode == 'min'
-        if sz & 1 == 0 and kth != 0:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth - 1], ends=[kth]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth - 1], ends=[kth]
-                )
-        else:
-            out_tensor = paddle.slice(
-                tensor_topk, axes=[axis], starts=[kth], ends=[kth + 1]
-            )
-            if need_idx:
-                out_idx = paddle.slice(
-                    idx, axes=[axis], starts=[kth], ends=[kth + 1]
-                )
-        # if contain nan on axis, return nan for that axis
-        out_tensor = out_tensor + paddle.sum(
-            paddle.cast(paddle.isnan(x), dtype=x.dtype) * x,
-            axis=axis,
-            keepdim=True,
-        ).astype(x.dtype)
-        if need_idx:
-            # replace index using the first nan value's index on axis for out_idx
-            # topk is not stable on cpu device, use argsort instead
-            x_isnan = paddle.isnan(x).astype("int64")
-            x_all_zero = paddle.zeros_like(x_isnan)
-            index_along_axis = paddle.argsort(
-                x_all_zero, axis=axis, stable=True
-            )
+    if axis is None:
+        axis = []
+    elif isinstance(axis, int):
+        axis = [axis]
 
-            # find the index of the leading one in x_isnan
-            cumsum = x_isnan.cumsum(axis=axis)
-            x_isnan = x_isnan * paddle.where(cumsum > 1, 0, 1)
+    if mode == "avg" and not x.dtype == paddle.float64:
+        x = x.astype(paddle.float32)
 
-            nan_index = paddle.sum(
-                index_along_axis * x_isnan, axis=axis, keepdim=True
-            )
-            nan_index_mask = paddle.sum(x_isnan, axis=axis, keepdim=True)
-            out_idx = (
-                out_idx * paddle.logical_not(nan_index_mask).astype('int64')
-                + nan_index
-            )
-
-    if is_flatten:
-        if keepdim:
-            out_tensor = out_tensor.reshape([1] * dims)
-        else:
-            out_tensor = out_tensor.reshape([])
-    else:
-        if not keepdim:
-            out_tensor = out_tensor.squeeze(axis)
+    out, indices = _C_ops.median(x, axis, keepdim, mode)
+    indices.stop_gradient = True
 
     if mode == 'min' and need_idx:
-        if not keepdim:
-            out_idx = out_idx.squeeze(axis)
-        return out_tensor, out_idx
-    return out_tensor
+        return out, indices
+    else:
+        return out
 
 
 def _compute_quantile(

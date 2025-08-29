@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 from typing_extensions import overload
@@ -1043,6 +1043,11 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+class TopKRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
 @param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
@@ -1053,7 +1058,7 @@ def topk(
     name: str | None = None,
     *,
     out: tuple[Tensor, Tensor] | None = None,
-) -> tuple[Tensor, Tensor]:
+) -> TopKRetType:
     """
     Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
@@ -1129,8 +1134,8 @@ def topk(
             out_values, out_indices = out
             out_values = paddle.assign(values, output=out_values)
             out_indices = paddle.assign(indices, output=out_indices)
-            return out_values, out_indices
-        return values, indices
+            return TopKRetType(values=out_values, indices=out_indices)
+        return TopKRetType(values=values, indices=indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}

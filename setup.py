@@ -922,6 +922,7 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
+                "FA_JOB_POOLS_COMPILE",
             )
         }
     )

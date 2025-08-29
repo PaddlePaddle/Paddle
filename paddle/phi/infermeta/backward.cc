@@ -1135,6 +1135,19 @@ void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
   dx->share_meta(x);
 }
 
+void MedianGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& median_data,
+                         const MetaTensor& median_index,
+                         const MetaTensor& out_grad,
+                         const IntArray& axes,
+                         bool keep_dim,
+                         const std::string& mode,
+                         MetaTensor* x_grad) {
+  auto x_dims = x.dims();
+  x_grad->set_dims(x_dims);
+  x_grad->set_dtype(x.dtype());
+}
+
 void MemoryEfficientAttentionGradInferMeta(const MetaTensor& query,
                                            const MetaTensor& key,
                                            const MetaTensor& value,
@@ -1417,6 +1430,7 @@ void MultiplexGradInferMeta(const MetaTensor& ids,
 }
 
 void NanmedianGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& median_data,
                             const MetaTensor& median_index,
                             const MetaTensor& out_grad,
                             const IntArray& axes,

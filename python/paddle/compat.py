@@ -11,6 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# This file implements most of the public API compatible with PyTorch. 
+# Note that this file does not depend on PyTorch in any way. 
+# This is a standalone implementation.
 
 from .tensor.compat import (
     Unfold,
@@ -21,5 +25,15 @@ from .tensor.compat import (
     sort,
     split,
 )
+from .tensor.compat_softmax import softmax
 
-__all__ = ['split', 'sort', 'Unfold', 'min', 'max', 'median', 'nanmedian']
+__all__ = [
+    'softmax',
+    'split',
+    'sort',
+    'Unfold',
+    'min',
+    'max',
+    'median',
+    'nanmedian',
+]
