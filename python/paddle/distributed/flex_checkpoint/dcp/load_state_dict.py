@@ -1019,13 +1019,8 @@ def _load_state_dict(
         ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
             "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
         )
-        print("total ", len(read_items))
+        logger.info(f"readitem num: {len(read_items)}.")
         for item in read_items:
-            print(idx, " ", item)
-            print(
-                f"memory_allocated = {paddle.device.cuda.memory_allocated() / 1e6: .2f} MB"
-            )
-            print()
             if any(isinstance(k, tuple) for k in copied_target_state_dict):
                 key = (item.local_tensor_index.tensor_key, item.global_offset)
             else:
@@ -1143,7 +1138,6 @@ def _load_state_dict(
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
                 del t
-
             idx = idx + 1
 
             if use_dist:
