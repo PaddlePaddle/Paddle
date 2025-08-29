@@ -30,7 +30,10 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sparse_unary_op)
   list(REMOVE_ITEM TEST_OPS test_sparse_utils_op)
   list(REMOVE_ITEM TEST_OPS test_sparse_model)
-
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_pooling_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
   list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 endif()
 

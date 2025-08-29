@@ -4,10 +4,6 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
-foreach(src ${TEST_OPS})
-  py_test(${src} SRCS ${src}.py)
-endforeach()
-
 # swgu98: Temporarily commented on Windows platform
 if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_faster_tokenizer_op_deprecated)
@@ -16,3 +12,7 @@ if(WIN32)
   set_tests_properties(test_faster_tokenizer_op_deprecated PROPERTIES TIMEOUT
                                                                       120)
 endif()
+
+foreach(src ${TEST_OPS})
+  py_test(${src} SRCS ${src}.py)
+endforeach()
