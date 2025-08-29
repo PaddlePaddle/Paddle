@@ -4483,7 +4483,7 @@ def cumprod(
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if x.dtype != dtype:
-            x = cast_(x, dtype)
+            x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
