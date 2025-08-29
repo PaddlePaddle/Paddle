@@ -454,6 +454,7 @@ from .random import (  # noqa: F401
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,

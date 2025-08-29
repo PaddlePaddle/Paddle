@@ -32,7 +32,10 @@ from paddle.utils.decorator_utils import (
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, core
+from ..framework import (
+    LayerHelper,
+    core,
+)
 from .math import _get_reduce_axis_with_tensor
 
 if TYPE_CHECKING:
@@ -157,9 +160,12 @@ def mean(
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the variance of ``x`` along ``axis`` .
@@ -181,6 +187,9 @@ def var(
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
@@ -198,6 +207,13 @@ def var(
             >>> print(out2.numpy())
             [1.         4.3333335]
     """
+    if unbiased is not None and correction != 1:
+        raise ValueError("Only one of unbiased and correction may be given")
+
+    if unbiased is not None:
+        actual_correction = 1.0 if unbiased else 0.0
+    else:
+        actual_correction = float(correction)
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -205,21 +221,27 @@ def var(
 
     u = mean(x, axis, True, name)
     dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
-    out = paddle.sum(
+    out_tensor = paddle.sum(
         paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
     )
 
     n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
-        paddle.numel(out), "int64"
+        paddle.numel(out_tensor), "int64"
     )
     n = n.astype(dtype)
-    if unbiased:
-        one_const = paddle.ones([], x.dtype)
-        if paddle.in_dynamic_mode() and n <= one_const:
+
+    if actual_correction != 0:
+        corrected_n = n - actual_correction
+        corrected_n = paddle.maximum(
+            corrected_n, paddle.zeros_like(corrected_n)
+        )
+        if paddle.in_dynamic_mode() and paddle.any(corrected_n <= 0):
             warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
-        n = n - 1.0
-    n.stop_gradient = True
-    out /= n
+    else:
+        corrected_n = n
+
+    corrected_n.stop_gradient = True
+    out_tensor /= corrected_n
 
     def _replace_nan(out):
         indices = paddle.arange(out.numel(), dtype='int64')
@@ -229,12 +251,20 @@ def var(
         return out_nan
 
     if 0 in x.shape:
-        out = _replace_nan(out)
-    if len(x.shape) == 0 and not unbiased:
-        out = paddle.to_tensor(0, stop_gradient=out.stop_gradient)
-    if out.dtype != x.dtype:
-        return out.astype(x.dtype)
-    return out
+        out_tensor = _replace_nan(out_tensor)
+    if len(x.shape) == 0 and actual_correction == 0:
+        out_tensor = paddle.to_tensor(0, stop_gradient=out_tensor.stop_gradient)
+
+    if out_tensor.dtype != x.dtype:
+        result = out_tensor.astype(x.dtype)
+    else:
+        result = out_tensor
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+
+    return result
 
 
 def std(

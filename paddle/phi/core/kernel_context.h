@@ -118,9 +118,7 @@ class PADDLE_API KernelContext {
     return paddle::none;
   }
 
-  const TensorBase* MutableIutputAt(size_t idx) const {
-    return inputs_.at(idx);
-  }
+  const TensorBase* MutableInputAt(size_t idx) const { return inputs_.at(idx); }
 
   template <typename TensorType>
   TensorType* MutableOutputAt(size_t idx) {

@@ -612,6 +612,10 @@ def get_device_properties(
             "Please input appropriate device again!"
             "Example: 'metax_gpu:0'"
         )
+
+    if device_name == 'gpu':
+        return paddle.device.cuda.get_device_properties(device_id)
+
     if not core.is_compiled_with_custom_device(device_name):
         raise ValueError(
             f"PaddlePaddle is not compiled with support for '{device_name}' device. "

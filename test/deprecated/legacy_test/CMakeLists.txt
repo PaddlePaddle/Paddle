@@ -39,12 +39,9 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
@@ -71,7 +68,6 @@ if(NOT WITH_GPU)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_audio_logmel_feature test_audio_mel_feature)
-list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass_deprecated)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
@@ -144,12 +140,9 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   # TODO(shenliang03): batch_fc_op support CPU device in future
   # TODO(Yancey1989): parallel dygraph support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_mppp_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_dpmppp_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
@@ -487,9 +480,6 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS}
                     FLAGS_enable_pir_api=0)
     if(NOT WIN32)
-      py_test_modules(
-        test_auto_parallel_partitioner_deprecated MODULES
-        test_auto_parallel_partitioner_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_searcher_deprecated MODULES
                       test_auto_parallel_searcher_deprecated ENVS ${dist_ENVS})
       py_test_modules(test_auto_parallel_reshard_deprecated MODULES
@@ -497,12 +487,7 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_dist_tensor_deprecated MODULES
         test_auto_parallel_dist_tensor_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_reshard_mppp_deprecated MODULES
-        test_auto_parallel_reshard_mppp_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_reshard_dpmppp_deprecated MODULES
-        test_auto_parallel_reshard_dpmppp_deprecated ENVS ${dist_ENVS})
+
       py_test_modules(
         test_auto_parallel_cost_model_deprecated MODULES
         test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
@@ -543,11 +528,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
-  py_test_modules(test_fuse_gemm_epilogue_pass_deprecated MODULES
-                  test_fuse_gemm_epilogue_pass_deprecated)
-endif()
-
 if(WIN32)
   py_test_modules(
     test_feed_data_check_shape_type_deprecated MODULES
@@ -570,10 +550,6 @@ set_tests_properties(
   test_dataloader_keep_order_deprecated test_dataloader_unkeep_order_deprecated
   PROPERTIES LABELS "RUN_TYPE=DIST")
 
-# setting timeout value as 15S
-set_tests_properties(test_imperative_lod_tensor_to_selected_rows_deprecated
-                     PROPERTIES TIMEOUT 200)
-
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
 set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
 
@@ -595,7 +571,6 @@ else()
   set_tests_properties(test_layer_norm_op_deprecated PROPERTIES TIMEOUT 250)
 endif()
 
-set_tests_properties(test_argsort_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
                                                                      120)
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)

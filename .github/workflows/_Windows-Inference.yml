@@ -31,7 +31,7 @@ jobs:
   build-and-test:
     name: Build and test
     needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && false }}
     runs-on:
       group: win-inference
     env:

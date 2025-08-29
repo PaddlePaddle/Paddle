@@ -242,6 +242,8 @@ __all__ = [
     'max_unpool1d',
     'max_unpool2d',
     'max_unpool3d',
+    'moe_permute',
+    'moe_unpermute',
     'adaptive_avg_pool1d',
     'adaptive_avg_pool2d',
     'adaptive_avg_pool3d',
@@ -304,6 +306,4 @@ __all__ = [
     "flash_attention_v3_varlen",
     'flash_attn_varlen_qkvpacked',
     'group_norm',
-    'moe_permute',
-    'moe_unpermute',
 ]

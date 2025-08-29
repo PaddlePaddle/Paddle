@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/meta_tensor.h"
@@ -37,7 +38,7 @@ namespace phi {
 //
 // NOTE: The InferMeta Functions in this file are arranged in alphabetic order.
 
-std::vector<DDim> GetMetaTensorsDim(
+PADDLE_API std::vector<DDim> GetMetaTensorsDim(
     const std::vector<const MetaTensor*>& tensors);
 
 PADDLE_API void AdadeltaInferMeta(const MetaTensor& param,
@@ -566,7 +567,8 @@ PADDLE_API void MoePermuteInferMeta(const MetaTensor& X,
                                     const MetaTensor& expert_prob_topk,
                                     const int num_experts,
                                     const std::vector<int>& tokens_per_expert,
-                                    const int padding_multiplex,
+                                    const int padding_alignment,
+                                    const bool do_gather,
                                     MetaTensor* X_unzipped,
                                     MetaTensor* zipped_expertwise_rowmap,
                                     MetaTensor* token_prob_unzipped,
@@ -866,6 +868,29 @@ PADDLE_API void MomentumInferMeta(const MetaTensor& param,
                                   MetaTensor* param_out,
                                   MetaTensor* velocity_out,
                                   MetaTensor* master_param_out);
+PADDLE_API void MoePermuteInferMeta(const MetaTensor& X,
+                                    const MetaTensor& XScale,
+                                    const MetaTensor& expert_routemap_topk,
+                                    const MetaTensor& expert_prob_topk,
+                                    const int num_experts,
+                                    const std::vector<int>& tokens_per_expert,
+                                    const int padding_alignment,
+                                    const bool do_gather,
+                                    MetaTensor* X_unzipped,
+                                    MetaTensor* zipped_expertwise_rowmap,
+                                    MetaTensor* token_prob_unzipped,
+                                    MetaTensor* XScale_unzipped);
+
+PADDLE_API void MoeUnpermuteInferMeta(
+    const MetaTensor& unzipped_tokens,
+    const MetaTensor& zipped_expertwise_rowmap,
+    const MetaTensor& expert_routemap_topk,
+    const MetaTensor& unzipped_token_probs,
+    const int total_zipped_tokens_num,
+    const int num_experts,
+    const bool MP,
+    MetaTensor* zipped_tokens,
+    MetaTensor* zipped_probs_topk);
 
 PADDLE_API void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
                                   MetaTensor* out);

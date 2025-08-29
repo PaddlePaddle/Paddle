@@ -20,9 +20,6 @@
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -48,7 +45,7 @@ PD_REGISTER_KERNEL(all_raw,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }

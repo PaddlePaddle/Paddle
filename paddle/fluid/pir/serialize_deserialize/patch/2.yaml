@@ -57,15 +57,3 @@ op_patches:
         type : pir::ArrayAttribute
         data :
           - type: pir::Int64Attribute
-  - op_name : pd_op.repeat_interleave
-    actions:
-      - action : add_attr
-        object : output_size
-        type : pir::Int64Attribute
-        data : -1
-  - op_name : pd_op.repeat_interleave_with_tensor_index
-    actions:
-      - action : add_attr
-        object : output_size
-        type : pir::Int64Attribute
-        data : -1
