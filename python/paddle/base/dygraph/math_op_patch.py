@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.utils.decorator_utils import (
-    size_args_decorator,
+    size_args_decorator_patch,
 )
 
 from .. import core
@@ -315,7 +315,7 @@ def monkey_patch_math_tensor():
             pin_memory=pin_memory,
         )
 
-    @size_args_decorator
+    @size_args_decorator_patch
     def _new_empty_(
         var: Tensor,
         size: ShapeLike,
@@ -338,7 +338,7 @@ def monkey_patch_math_tensor():
             pin_memory=pin_memory,
         )
 
-    @size_args_decorator
+    @size_args_decorator_patch
     def _new_ones_(
         var: Tensor,
         size: ShapeLike,
@@ -362,7 +362,7 @@ def monkey_patch_math_tensor():
             pin_memory=pin_memory,
         )
 
-    @size_args_decorator
+    @size_args_decorator_patch
     def _new_zeros_(
         var: Tensor,
         size: ShapeLike,
