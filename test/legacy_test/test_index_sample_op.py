@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base
@@ -172,6 +172,41 @@ class TestIndexSampleOp_ZeroSize2(TestIndexSampleOp_ZeroSize):
         self.x_type = "float64"
         self.index_shape = (0, 0)
         self.index_type = "int32"
+
+
+class TestIndexSampleOpError(unittest.TestCase):
+    def test_errors(self):
+        places = get_places()
+        for place in places:
+            with base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.index_sample,
+                    x=paddle.rand([10, 0], dtype="float32"),
+                    index=paddle.randint(
+                        low=0, high=5, shape=[10, 1], dtype="int32"
+                    ),
+                )
+
+            with base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.index_sample,
+                    x=paddle.rand([10, 0], dtype="float32"),
+                    index=paddle.randint(
+                        low=0, high=5, shape=[10, 1], dtype="int64"
+                    ),
+                )
+
+            with base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.index_sample,
+                    x=paddle.to_tensor(
+                        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype="float32"
+                    ),
+                    index=paddle.to_tensor([[0, 1], [0, 4]], dtype="int64"),
+                )
 
 
 @unittest.skipIf(core.is_compiled_with_xpu(), "complex is not supported on XPU")

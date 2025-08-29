@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/index_sample_kernel.h"
 
 #include <algorithm>
+#include <limits>
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -31,6 +32,35 @@ namespace {
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define UINT32_MAX std::numeric_limits<uint32_t>::max()
 
+// Helper to check that indices are within [0, input_length) on CPU.
+template <typename IndexT, typename Context>
+inline void CheckIndexOnCPU(const Context& dev_ctx,
+                            const DenseTensor& index,
+                            int64_t input_length) {
+  DenseTensor index_tensor_cpu;
+  phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &index_tensor_cpu);
+  const IndexT* index_data_cpu = index_tensor_cpu.data<IndexT>();
+  for (int64_t i = 0; i < index.numel(); i++) {
+    PADDLE_ENFORCE_GE(
+        index_data_cpu[i],
+        0,
+        errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_length,
+            index_data_cpu[i]));
+    PADDLE_ENFORCE_LT(
+        index_data_cpu[i],
+        input_length,
+        errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            input_length,
+            index_data_cpu[i]));
+  }
+}
 }  // namespace
 
 template <typename T, typename SampleIndexT = int, typename ElementIndexT>
@@ -48,12 +78,6 @@ __global__ void IndexSampleForward(const SampleIndexT* index,
       ElementIndexT index_idx = index_j * index_length + index_i;
       ElementIndexT in_idx = index_j * input_length + index_i;
       SampleIndexT sample_idx = index[index_idx];
-      PADDLE_ENFORCE(sample_idx >= 0 && sample_idx < input_length,
-                     "Variable value (index) of OP(index_sample) "
-                     "expected >= 0 and < %ld, but got %ld. Please check input "
-                     "value.",
-                     input_length,
-                     sample_idx);
       out_data[index_idx] = in_data[in_idx - index_i + sample_idx];
     }
   }
@@ -86,6 +110,13 @@ void IndexSampleKernel(const Context& dev_ctx,
   size_t batch_size = input_dim[0];
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
+
+  if (index_type == DataType::INT64) {
+    CheckIndexOnCPU<int64_t>(
+        dev_ctx, index, static_cast<int64_t>(input_length));
+  } else if (index_type == DataType::INT32) {
+    CheckIndexOnCPU<int>(dev_ctx, index, static_cast<int64_t>(input_length));
+  }
 
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
