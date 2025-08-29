@@ -146,7 +146,7 @@ class TestFusedQkvOldMacro(TestMacro):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "layers.1.self_attn.qkv_proj.weight -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 2"
+        return "layers.1.self_attn.qkv_proj.weight -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
 
     def expected(self):
         return [
@@ -213,12 +213,31 @@ class TestFusedQKVMacro(TestMacro):
         self.start_macro_test()
 
 
+class TestFusedQKVMacro2(TestMacro):
+    def macro_name(self):
+        return "fused_qkv"
+
+    def source_code(self):
+        return "Q, K, V -> layers.1.self_attn.qkv_proj.weight, fused_qkv, num_heads = 8, num_key_value_groups = 8"
+
+    def expected(self):
+        return [
+            'Q -> Q0,Q1,Q2,Q3,Q4,Q5,Q6,Q7, axis=1',
+            'K -> K0,K1,K2,K3,K4,K5,K6,K7, axis=1',
+            'V -> V0,V1,V2,V3,V4,V5,V6,V7, axis=1',
+            'Q0,K0,V0,Q1,K1,V1,Q2,K2,V2,Q3,K3,V3,Q4,K4,V4,Q5,K5,V5,Q6,K6,V6,Q7,K7,V7 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
 class TestFusedQkvOldMacro2(TestMacro):
     def macro_name(self):
         return "fused_qkv_old_macro"
 
     def source_code(self):
-        return "Q,K,V -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 2"
+        return "Q,K,V -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
 
     def expected(self):
         return [
@@ -231,5 +250,81 @@ class TestFusedQkvOldMacro2(TestMacro):
         self.start_macro_test()
 
 
+class TestFusedQkvOldMacro3(TestMacro):
+    def macro_name(self):
+        return "fused_qkv_old_macro"
+
+    def source_code(self):
+        return "fused_qkv_old_test_name -> q_test_name ,k_test_name, v_test_name, fused_qkv_old, num_heads = 8, num_key_value_groups = 4 "
+
+    def expected(self):
+        return [
+            'fused_qkv_old_test_name -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7 -> q_test_name, axis=1',
+            'fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3 -> k_test_name, axis=1',
+            'fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3 -> v_test_name, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedQkvOldMacro4(TestMacro):
+    def macro_name(self):
+        return "fused_qkv_old_macro"
+
+    def source_code(self):
+        return "fused_qkv_old_test_name ->  layers.1.self_attn.qkv_proj.weight,fused_qkv_old, num_heads = 8, num_key_value_groups = 8 "
+
+    def expected(self):
+        return [
+            'fused_qkv_old_test_name -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7, axis=1',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_4,fused_qkv_old_tmp.K_5,fused_qkv_old_tmp.V_4,fused_qkv_old_tmp.V_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_6,fused_qkv_old_tmp.K_7,fused_qkv_old_tmp.V_6,fused_qkv_old_tmp.V_7 -> layers.1.self_attn.qkv_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedFfnMacro2(TestMacro):
+    def macro_name(self):
+        return "fused_ffn_macro"
+
+    def source_code(self):
+        return "layers.0.mlp.gate_up_fused_proj.weight -> layers.0.mlp.gate_proj.weight,layers.0.mlp.up_proj.weight, fused_ffn "
+
+    def expected(self):
+        return [
+            'layers.0.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.0.mlp.gate_proj.weight, axis=1',
+            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.0.mlp.up_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedFfnMacro3(TestMacro):
+    def macro_name(self):
+        return "fused_ffn_macro"
+
+    def source_code(self):
+        return "layers.0.mlp.gate_up_fused_proj.weight -> layers.0.mlp.gate_proj.weight,layers.0.mlp.up_proj.weight, fused_ffn "
+
+    def expected(self):
+        return [
+            'layers.0.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.0.mlp.gate_proj.weight, axis=1',
+            'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.0.mlp.up_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
 if __name__ == "__main__":
-    unittest.main()
+    # unittest.main()
+    lexer = Lexer(MacroContext())
+    statements = "layers.1.self_attn.qkv_proj.weight -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
+    stats = lexer.apply_macros(statements)
+    print("stats: ", stats)

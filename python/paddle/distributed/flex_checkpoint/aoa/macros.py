@@ -220,26 +220,20 @@ def fused_qkv_old_macro(tokens, expression, context):
     )
 
     results = []
-    num_key_value_heads = attn_head_num // num_key_value_groups
+    num_key_value_heads = num_key_value_groups
     if rarrow_pos == 1:
         src_qkv_weight_name = tokens[0].value
         if fused_qkv_old_pos > 4:
-            dst_qkv_weight_name = (
-                "".join(
-                    token.value if token.type == TokenType.IDENTIFIER else "_"
-                    for token in tokens[rarrow_pos + 1 : right_var_end_pos]
-                )
-                + ".fused_qkv_old_tmp"
-            )
+            dst_qkv_weight_name = None
         else:
-            dst_qkv_weight_name = tokens[0].value
+            dst_qkv_weight_name = tokens[2].value
 
         src_state_shard_num = context.get_src_state_shard_num(
             src_qkv_weight_name
         )
         dst_state_shard_num = (
             context.get_dst_state_shard_num(dst_qkv_weight_name)
-            if fused_qkv_old_pos == 4
+            if dst_qkv_weight_name is not None
             else 1
         )
 
@@ -270,20 +264,26 @@ def fused_qkv_old_macro(tokens, expression, context):
             ]
             if idx == 0:
                 mapping = f"{qkv_weight_name} -> {','.join(qkv_parts)}, axis=1"
-            else:
+                results.append(mapping)
+            elif qkv_weight_name is not None:
                 mapping = f"{','.join(qkv_parts)} -> {qkv_weight_name}, axis=1"
-            results.append(mapping)
+                results.append(mapping)
 
         if fused_qkv_old_pos > 4:
-            final_expr = (
-                f"{dst_qkv_weight_name}->"
-                + "".join(
-                    token.value
-                    for token in tokens[rarrow_pos + 1 : right_var_end_pos]
+
+            def _generate_expr(prefix, count, target_name):
+                elements = ",".join(
+                    f"fused_qkv_old_tmp.{prefix}_{i}" for i in range(count)
                 )
-                + ", axis=1"
-            )
-            results.append(final_expr)
+                return f"{elements} -> {target_name}, axis=1"
+
+            q_name = tokens[2].value
+            k_name = tokens[4].value
+            v_name = tokens[6].value
+
+            results.append(_generate_expr("Q", attn_head_num, q_name))
+            results.append(_generate_expr("K", num_key_value_heads, k_name))
+            results.append(_generate_expr("V", num_key_value_heads, v_name))
     elif rarrow_pos == 5:
         q_name = tokens[0].value
         k_name = tokens[2].value
@@ -330,7 +330,7 @@ def fused_qkv_old_macro(tokens, expression, context):
             results.append(mapping)
     else:
         raise ValueError(
-            f"Unsupported fused_qkv_old macro format: {expression}"
+            f"Unsupported fused_qkv_old macro format: {expression}."
         )
     return results
 
@@ -340,43 +340,119 @@ def fused_ffn_macro(tokens, expression, context):
     FUSED_FFN_TAG = "fused_ffn"
     if not any(tkn.value == FUSED_FFN_TAG for tkn in tokens):
         return expression
-    assert len(tokens) == 6 and tokens[4].value == FUSED_FFN_TAG, (
-        "Invalid tokens for FUSED_FFN operation ！"
-    )
-    src_ffn_weight_name = tokens[2].value
-    dst_ffn_weight_name = tokens[0].value
-    src_state_shard_num = context.get_src_state_shard_num(src_ffn_weight_name)
-    dst_state_shard_num = context.get_dst_state_shard_num(dst_ffn_weight_name)
-    splited_num = math.lcm(src_state_shard_num, dst_state_shard_num)
+    rarrow_pos = None
+    fused_ffn_pos = None
+    for idx, token in enumerate(tokens):
+        if token.type == TokenType.RARROW and rarrow_pos is None:
+            rarrow_pos = idx
+        elif (
+            token.type == TokenType.IDENTIFIER and token.value == FUSED_FFN_TAG
+        ):
+            fused_ffn_pos = idx
+    assert rarrow_pos is not None, "No -> found in expression."
+    assert fused_ffn_pos is not None, "No fused_ffn tag found in expression."
+    results = []
+    if rarrow_pos == 1:
+        src_ffn_weight_name = tokens[0].value
+        if fused_ffn_pos == 4:
+            dst_ffn_weight_name = tokens[2].value
+        else:
+            dst_ffn_weight_name = None
+        src_state_shard_num = context.get_src_state_shard_num(
+            src_ffn_weight_name
+        )
+        dst_state_shard_num = (
+            context.get_dst_state_shard_num(dst_ffn_weight_name)
+            if dst_ffn_weight_name is not None
+            else 1
+        )
+        splited_num = math.lcm(src_state_shard_num, dst_state_shard_num)
 
-    configs = [
-        (src_state_shard_num, src_ffn_weight_name),
-        (dst_state_shard_num, dst_ffn_weight_name),
-    ]
+        configs = [
+            (src_state_shard_num, src_ffn_weight_name),
+            (dst_state_shard_num, dst_ffn_weight_name),
+        ]
+        split_config = [("GATE", splited_num), ("UP", splited_num)]
 
-    split_config = [("GATE", splited_num), ("UP", splited_num)]
+        def gen_expr(tp_degree, splited_num, tp_rank, comp):
+            return ",".join(
+                f"fused_ffn_tmp.{comp}_{tp_rank * splited_num // tp_degree + idx}"
+                for idx in range(splited_num // tp_degree)
+            )
 
-    def gen_expr(tp_degree, splited_num, tp_rank, comp):
-        return ",".join(
-            f"fused_ffn_tmp.{comp}_{tp_rank * splited_num // tp_degree + idx}"
-            for idx in range(splited_num // tp_degree)
+        for idx, (tp_degree, ffn_weight_name) in enumerate(configs):
+            ffn_parts = [
+                gen_expr(tp_degree, n, tp_rank, c)
+                for tp_rank in range(tp_degree)
+                for c, n in split_config
+            ]
+            if idx == 0:
+                results.append(
+                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1"
+                )
+            elif ffn_weight_name is not None:
+                results.append(
+                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1"
+                )
+        if fused_ffn_pos > 4:
+
+            def _generate_expr(prefix, count, target_name):
+                elements = ",".join(
+                    f"fused_ffn_tmp.{prefix}_{i}" for i in range(count)
+                )
+                return f"{elements} -> {target_name}, axis=1"
+
+            gate_name = tokens[2].value
+            up_name = tokens[4].value
+
+            results.append(_generate_expr("GATE", splited_num, gate_name))
+            results.append(_generate_expr("UP", splited_num, up_name))
+
+    elif rarrow_pos == 3:
+        gate_name = tokens[0].value
+        up_name = tokens[2].value
+        dst_ffn_weight_name = tokens[4].value
+
+        fused_gate_up_tmp_name = f"{gate_name}.{up_name}.tmp"
+        results.append(
+            f"{gate_name},{up_name}  ->  {fused_gate_up_tmp_name}, axis=1"
+        )
+        dst_state_shard_num = context.get_dst_state_shard_num(
+            dst_ffn_weight_name
         )
 
-    results = []
-    for idx, (tp_degree, ffn_weight_name) in enumerate(configs):
-        ffn_parts = [
-            gen_expr(tp_degree, n, tp_rank, c)
-            for tp_rank in range(tp_degree)
-            for c, n in split_config
+        configs = [
+            (1, fused_gate_up_tmp_name),
+            (dst_state_shard_num, dst_ffn_weight_name),
         ]
-        if idx == 0:
-            results.append(
-                f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1"
+
+        split_config = [
+            ("GATE", dst_state_shard_num),
+            ("UP", dst_state_shard_num),
+        ]
+
+        def gen_expr(tp_degree, splited_num, tp_rank, comp):
+            return ",".join(
+                f"fused_ffn_tmp.{comp}_{tp_rank * splited_num // tp_degree + idx}"
+                for idx in range(splited_num // tp_degree)
             )
-        else:
-            results.append(
-                f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1"
-            )
+
+        for idx, (tp_degree, ffn_weight_name) in enumerate(configs):
+            ffn_parts = [
+                gen_expr(tp_degree, n, tp_rank, c)
+                for tp_rank in range(tp_degree)
+                for c, n in split_config
+            ]
+            if idx == 0:
+                results.append(
+                    f"{ffn_weight_name}  -> {','.join(ffn_parts)}, axis=1"
+                )
+            else:
+                results.append(
+                    f"{','.join(ffn_parts)} -> {ffn_weight_name}, axis=1"
+                )
+    else:
+        raise ValueError(f"Unsupported fused_ffn macro format: {expression}.")
     return results
 
 

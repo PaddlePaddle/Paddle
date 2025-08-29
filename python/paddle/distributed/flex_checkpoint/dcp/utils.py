@@ -21,8 +21,10 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import numpy as np
+from filelock import FileLock, Timeout
 
 import paddle
+from paddle.distributed.fleet.utils.log_util import logger
 
 from ..aoa.aoa_engine import (
     postprocess_transpose,
@@ -340,3 +342,29 @@ def is_list_string(s):
         return (True, result) if isinstance(result, list) else (False, None)
     except:
         return False, None
+
+
+def write_to_file_if_empty(data, path):
+    lock_path = f"{path}.lock"
+    lock = FileLock(lock_path)
+    try:
+        with lock.acquire(timeout=1):
+            if os.path.exists(path) and os.path.getsize(path) > 0:
+                logger.info(
+                    f"Process {os.getpid()} found the metadata file already written."
+                )
+                return
+            paddle.save(data, path)
+            logger.info(
+                f"Process {os.getpid()} successfully wrote the metadata to the file."
+            )
+    except Timeout:
+        logger.info(
+            f"Process {os.getpid()} could not acquire the lock and timed out to write the metadata, maybe another process is doing it."
+        )
+    finally:
+        try:
+            if os.path.exists(lock_path):
+                os.remove(lock_path)
+        except FileNotFoundError:
+            pass
