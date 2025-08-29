@@ -2539,7 +2539,69 @@ class CrossEntropyLoss(unittest.TestCase):
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
-    def test_cross_entropy_loss_alias(self):
+    def test_softmax_with_cross_entropy_alias(self):
+        self.numeric_stable_mode = False
+        self.soft_label = True
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+        self.axis = -1
+        self.ignore_index = -100  # should not be changed
+        self.N = 4
+        self.C = 3
+        self.shape = [self.N, self.C]
+        self.use_softmax = True
+        self.reduction = 'none'
+        self.weight = None
+        self.logits = getattr(
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
+        softmax = np.apply_along_axis(stable_softmax, self.axis, self.logits)
+
+        self.labels = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        self.labels /= np.sum(self.labels, axis=self.axis, keepdims=True)
+
+        expected = cross_entropy_soft(
+            softmax,
+            self.labels,
+            self.axis,
+            self.N,
+            weight=self.weight,
+            reduction=self.reduction,
+            ignore_index=self.ignore_index,
+        )
+
+        paddle.set_device("cpu")
+
+        paddle.disable_static()
+        paddle_loss_swce = paddle.nn.functional.softmax_with_cross_entropy(
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(self.labels),
+            soft_label=True,
+            axis=self.axis,
+        )
+
+        paddle_loss_ce = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(self.logits),
+            target=paddle.to_tensor(self.labels),
+            soft_label=True,
+            axis=self.axis,
+            weight=(
+                paddle.to_tensor(self.weight)
+                if self.weight is not None
+                else None
+            ),
+            reduction=self.reduction,
+        )
+
+        np.testing.assert_allclose(
+            paddle_loss_swce.numpy(), expected, rtol=1e-05
+        )
+        np.testing.assert_allclose(paddle_loss_ce.numpy(), expected, rtol=1e-05)
+
+    def test_cross_entropy_loss_soft_1d_alias(self):
         self.numeric_stable_mode = False
         self.soft_label = True
         self.dtype = (
@@ -2579,7 +2641,7 @@ class CrossEntropyLoss(unittest.TestCase):
         paddle.disable_static()
         paddle_loss_none_weight = paddle.nn.functional.cross_entropy(
             paddle.to_tensor(self.logits),
-            target=paddle.to_tensor(self.labels),
+            paddle.to_tensor(self.labels),
             soft_label=True,
             axis=self.axis,
             weight=(
