@@ -32,8 +32,8 @@ PD_REGISTER_KERNEL(slice_grad,
                    int8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(slice_array_grad,
                    CPU,
@@ -49,8 +49,8 @@ PD_REGISTER_KERNEL(slice_array_grad,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(slice_array_dense_grad,
                    CPU,
@@ -66,5 +66,5 @@ PD_REGISTER_KERNEL(slice_array_dense_grad,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

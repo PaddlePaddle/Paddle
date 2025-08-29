@@ -81,5 +81,5 @@ PD_REGISTER_KERNEL(gather,
                    int64_t,
                    bool,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

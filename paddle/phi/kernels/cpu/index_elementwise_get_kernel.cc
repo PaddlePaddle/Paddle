@@ -145,5 +145,5 @@ PD_REGISTER_KERNEL(index_elementwise_get,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

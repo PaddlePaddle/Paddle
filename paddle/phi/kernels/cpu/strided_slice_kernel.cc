@@ -33,8 +33,8 @@ PD_REGISTER_KERNEL(strided_slice_raw,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(strided_slice_array,
                    CPU,
@@ -50,5 +50,5 @@ PD_REGISTER_KERNEL(strided_slice_array,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

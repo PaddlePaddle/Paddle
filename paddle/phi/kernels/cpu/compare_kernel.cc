@@ -117,8 +117,8 @@ PD_REGISTER_KERNEL(equal_all,
                      int8_t,                              \
                      int16_t,                             \
                      int64_t,                             \
-                     phi::dtype::complex<float>,          \
-                     phi::dtype::complex<double>,         \
+                     phi::complex64,                      \
+                     phi::complex128,                     \
                      float,                               \
                      double,                              \
                      phi::float16,                        \

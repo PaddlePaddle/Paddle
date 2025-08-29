@@ -31,5 +31,5 @@ PD_REGISTER_KERNEL(tile,
                    int16_t,
                    uint8_t,
                    phi::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

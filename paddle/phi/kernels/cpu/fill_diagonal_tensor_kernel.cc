@@ -144,6 +144,6 @@ PD_REGISTER_KERNEL(fill_diagonal_tensor,
                    int8_t,
                    uint8_t,
                    phi::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    bool) {}

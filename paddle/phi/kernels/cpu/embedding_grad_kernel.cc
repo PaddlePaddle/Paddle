@@ -210,8 +210,8 @@ PD_REGISTER_KERNEL(embedding_grad,
                    double,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    CPU,
@@ -220,5 +220,5 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    float,
                    double,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

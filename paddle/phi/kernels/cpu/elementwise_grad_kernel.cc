@@ -220,8 +220,8 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    int,
                    int64_t,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(copysign_grad,
                    CPU,

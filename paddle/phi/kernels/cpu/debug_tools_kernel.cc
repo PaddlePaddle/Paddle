@@ -31,5 +31,5 @@ PD_REGISTER_KERNEL(check_model_nan_inf,
                    int64_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

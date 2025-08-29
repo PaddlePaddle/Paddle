@@ -95,8 +95,8 @@ void SumRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(sum_raw,
                    CPU,

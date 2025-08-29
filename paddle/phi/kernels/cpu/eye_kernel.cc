@@ -27,5 +27,5 @@ PD_REGISTER_KERNEL(eye,
                    int64_t,
                    int,
                    phi::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

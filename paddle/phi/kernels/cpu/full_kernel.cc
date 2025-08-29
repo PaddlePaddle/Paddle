@@ -57,8 +57,8 @@ void FullLikeKernel(const Context& dev_ctx,
     out->Resize(x.dims());
     return;
   }
-  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
-      !std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (!std::is_same<T, phi::complex64>::value &&
+      !std::is_same<T, phi::complex128>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
@@ -132,8 +132,8 @@ PD_REGISTER_KERNEL(full,
                    phi::dtype::float8_e5m2,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(full_like,
                    CPU,
@@ -149,8 +149,8 @@ PD_REGISTER_KERNEL(full_like,
                    bool,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -171,7 +171,7 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    bool,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

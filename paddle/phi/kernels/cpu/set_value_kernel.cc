@@ -248,8 +248,8 @@ PD_REGISTER_KERNEL(set_value,
                    int8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(set_value_with_tensor,
                    CPU,
                    ALL_LAYOUT,
@@ -264,5 +264,5 @@ PD_REGISTER_KERNEL(set_value_with_tensor,
                    int8_t,
                    phi::bfloat16,
                    phi::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

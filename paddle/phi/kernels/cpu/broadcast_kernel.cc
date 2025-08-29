@@ -64,5 +64,5 @@ PD_REGISTER_KERNEL(broadcast,
                    int16_t,
                    int64_t,
                    phi::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

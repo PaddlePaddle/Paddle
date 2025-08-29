@@ -129,8 +129,8 @@ void NextafterKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::bfloat16;
@@ -166,8 +166,8 @@ PD_REGISTER_KERNEL(remainder,
                    float,
                    double,
                    int,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide,
                    CPU,
@@ -191,8 +191,8 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    int,
                    int64_t,
                    phi::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(heaviside,
                    CPU,
                    ALL_LAYOUT,

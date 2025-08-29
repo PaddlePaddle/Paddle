@@ -54,7 +54,7 @@ PD_REGISTER_KERNEL(reduce_as_grad,
                    int64_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

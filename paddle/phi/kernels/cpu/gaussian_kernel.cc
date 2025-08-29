@@ -71,8 +71,8 @@ PD_REGISTER_KERNEL(gaussian,
                    phi::bfloat16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(gaussian_inplace,
                    CPU,
@@ -80,5 +80,5 @@ PD_REGISTER_KERNEL(gaussian_inplace,
                    phi::GaussianInplaceKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
