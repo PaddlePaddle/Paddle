@@ -232,7 +232,7 @@ class CustomClassProxyInstance {
 
     PADDLE_THROW(common::errors::NotFound("Method '%s' not found in class %s",
                                           method_name.c_str(),
-                                          qualified_name_.c_str()))
+                                          qualified_name_.c_str()));
   }
 
   const IValue& get_instance() const { return instance_; }
