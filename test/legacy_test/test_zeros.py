@@ -321,10 +321,12 @@ class TestCreationOut(unittest.TestCase):
     def test_zeros(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
-        y = paddle.zeros(x.shape, out=t)
+        y = paddle.zeros(x.shape, out=t, requires_grad=True)
         np.testing.assert_allclose(t.numpy(), np.zeros(x.shape))
         np.testing.assert_allclose(y.numpy(), np.zeros(x.shape))
         self.assertEqual(t.data_ptr(), y.data_ptr())
+        self.assertEqual(y.stop_gradient, False)
+        self.assertEqual(t.stop_gradient, False)
 
 
 if __name__ == '__main__':

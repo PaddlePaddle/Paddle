@@ -327,8 +327,10 @@ class TestCreationOut(unittest.TestCase):
     def test_empty(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
-        y = paddle.empty(x.shape, out=t)
+        y = paddle.empty(x.shape, out=t, requires_grad=True)
         self.assertEqual(t.data_ptr(), y.data_ptr())
+        self.assertEqual(y.stop_gradient, False)
+        self.assertEqual(t.stop_gradient, False)
 
 
 if __name__ == '__main__':

@@ -1792,6 +1792,8 @@ def eye(
         )
         if requires_grad is True:
             tensor.stop_gradient = False
+            if out is not None:
+                out.stop_gradient = False
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -1960,6 +1962,8 @@ def full(
     )
     if requires_grad is True:
         tensor.stop_gradient = False
+        if out is not None:
+            out.stop_gradient = False
     if pin_memory and in_dynamic_mode():
         tensor = tensor.pin_memory()
     return tensor
@@ -3013,6 +3017,8 @@ def empty(
             tensor = tensor.pin_memory()
         if requires_grad is True:
             tensor.stop_gradient = False
+            if out is not None:
+                out.stop_gradient = False
         return tensor
     else:
         helper = LayerHelper("empty", **locals())

@@ -116,10 +116,12 @@ class TestCreationOut(unittest.TestCase):
     def test_eye(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
-        y = paddle.eye(x.shape[0], x.shape[1], out=t)
+        y = paddle.eye(x.shape[0], x.shape[1], out=t, requires_grad=True)
         np.testing.assert_allclose(t.numpy(), np.eye(x.shape[0], x.shape[1]))
         np.testing.assert_allclose(y.numpy(), np.eye(x.shape[0], x.shape[1]))
         self.assertEqual(t.data_ptr(), y.data_ptr())
+        self.assertEqual(y.stop_gradient, False)
+        self.assertEqual(t.stop_gradient, False)
 
 
 if __name__ == '__main__':
