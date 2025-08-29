@@ -40,12 +40,6 @@ PD_REGISTER_KERNEL(
     variance, CPU, ALL_LAYOUT, phi::VarianceKernel, float, double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(variance,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::VarianceKernel,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    variance, GPU, ALL_LAYOUT, phi::VarianceKernel, float, double) {}
 #endif

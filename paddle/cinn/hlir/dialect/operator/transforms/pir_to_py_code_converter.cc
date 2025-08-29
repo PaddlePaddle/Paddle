@@ -197,6 +197,49 @@ TensorDataT GetTensorData(const phi::DenseTensor& tensor,
   return std::monostate{};
 }
 
+phi::DenseTensor CallToBigDtype(const phi::DenseTensor& tensor) {
+  int kLimit = FLAGS_logging_pir_py_code_int_tensor_element_limit;
+  // When tensor.numel() <= kLimit, all the data will be dumped, and there is no
+  // need to calculate the statistics.
+  if (tensor.numel() <= kLimit || !tensor.IsInitialized()) {
+    VLOG(10) << "tensor (dtype=" << tensor.dtype()
+             << ", numel=" << tensor.numel() << ", place=" << tensor.place()
+             << ") may not initialized!";
+    return tensor;
+  }
+
+  if (tensor.place().GetType() == phi::AllocationType::GPU ||
+      tensor.place().GetType() == phi::AllocationType::GPUPINNED) {
+    phi::DenseTensor out;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(tensor.place()));
+    // Low-precision floating point will be casted to float32 first.
+    if (tensor.dtype() == phi::DataType::FLOAT16) {
+      out = phi::Cast<phi::dtype::float16, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::BFLOAT16) {
+      out = phi::Cast<phi::dtype::bfloat16, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::FLOAT8_E4M3FN) {
+      out = phi::Cast<phi::dtype::float8_e4m3fn, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::FLOAT8_E5M2) {
+      out = phi::Cast<phi::dtype::float8_e5m2, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    }
+    VLOG(4) << "Cast to float, out.dtype=" << out.dtype()
+            << ", out.numel=" << out.numel();
+#else
+    PADDLE_THROW(
+        common::errors::Unavailable(("Paddle is not compiled with CUDA. Cannot "
+                                     "visit cuda or cuda_pinned place.")));
+#endif
+    return out;
+  }
+  return tensor;
+}
+
 template <typename T, typename Context>
 void CallPhiStatKernel(const Context& dev_ctx,
                        const phi::DenseTensor& tensor,
@@ -232,25 +275,6 @@ void CalcTensorStatWithContext(const Context& dev_ctx,
     CallPhiStatKernel<double, Context>(dev_ctx, tensor, stat_type, out);
   } else if (tensor.dtype() == phi::DataType::FLOAT32) {
     CallPhiStatKernel<float, Context>(dev_ctx, tensor, stat_type, out);
-  } else {
-    if constexpr (std::is_same_v<Context, phi::GPUContext>) {
-      // Low-precision floating point will be casted to float32 first.
-      phi::DenseTensor tmp = phi::EmptyLike<float, Context>(dev_ctx, tensor);
-      if (tensor.dtype() == phi::DataType::FLOAT16) {
-        phi::CastKernel<phi::dtype::float16, Context>(
-            dev_ctx, tensor, phi::DataType::FLOAT32, &tmp);
-      } else if (tensor.dtype() == phi::DataType::BFLOAT16) {
-        phi::CastKernel<phi::dtype::bfloat16, Context>(
-            dev_ctx, tensor, phi::DataType::FLOAT32, &tmp);
-      } else if (tensor.dtype() == phi::DataType::FLOAT8_E4M3FN) {
-        phi::CastKernel<phi::dtype::float8_e4m3fn, Context>(
-            dev_ctx, tensor, phi::DataType::FLOAT32, &tmp);
-      } else if (tensor.dtype() == phi::DataType::FLOAT8_E5M2) {
-        phi::CastKernel<phi::dtype::float8_e5m2, Context>(
-            dev_ctx, tensor, phi::DataType::FLOAT32, &tmp);
-      }
-      CallPhiStatKernel<float>(dev_ctx, tmp, stat_type, out);
-    }
   }
 }
 
@@ -261,9 +285,9 @@ phi::DenseTensor CalcTensorStat(const phi::DenseTensor& tensor,
   // When tensor.numel() <= kLimit, all the data will be dumped, and there is no
   // need to calculate the statistics.
   if (tensor.numel() <= kLimit || !tensor.IsInitialized()) {
-    VLOG(4) << "tensor (dtype=" << tensor.dtype()
-            << ", numel=" << tensor.numel() << ", place=" << tensor.place()
-            << ") may not initialized!";
+    VLOG(10) << "tensor (dtype=" << tensor.dtype()
+             << ", numel=" << tensor.numel() << ", place=" << tensor.place()
+             << ") may not initialized!";
     return out;
   }
 
@@ -305,22 +329,23 @@ std::string ShapeToString(const phi::DenseTensor& tensor) {
 }
 
 std::string TensorStatToString(const phi::DenseTensor& tensor,
-                               const TensorDumpPolicy& tensor_dump_policy,
                                const std::string& stat_type) {
   const auto& SerializeValue = [](const auto& data) {
     std::ostringstream ss;
     SerializeToPyObject(ss, data[0]);
+    VLOG(4) << "SerializeToPyObject: " << data[0];
     return ss.str();
   };
 
   phi::DenseTensor stat = CalcTensorStat(tensor, stat_type);
+  VLOG(4) << "stat.dtype=" << stat.dtype() << ", stat.numel()=" << stat.numel();
   return std::visit(
       ::common::Overloaded{
           [&](const std::monostate&) -> std::string { return "None"; },
           [&](const auto& data) -> std::string {
             return SerializeValue(data);
           }},
-      GetTensorData(stat, tensor_dump_policy));
+      GetTensorData(stat, TensorDumpPolicy{EnableDumpFloatData{}}));
 }
 
 std::string DataToString(const phi::DenseTensor& tensor,
@@ -359,24 +384,19 @@ std::string GetLoggingShapeAndDataForName(int64_t program_id,
                                           const std::string& name,
                                           const phi::DenseTensor& tensor,
                                           const TensorDumpPolicy& policy) {
+  phi::DenseTensor big_dtype_tensor = CallToBigDtype(tensor);
+  VLOG(4) << "name=" << name << ", dtype=" << tensor.dtype()
+          << ", numel=" << tensor.numel();
   std::ostringstream ss;
   ss << "class PirProgram_example_input_tensor_meta_" << GetRandomId() << ":";
   ss << "\n\tprogram_id = " << program_id;
   ss << "\n\tinput_name = " << std::quoted(name);
   ss << "\n\tshape = " << ShapeToString(tensor);
-  ss << "\n\tmean = "
-     << TensorStatToString(
-            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "mean");
-  ss << "\n\tstd = "
-     << TensorStatToString(
-            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "std");
-  ss << "\n\tmax_val = "
-     << TensorStatToString(
-            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "max");
-  ss << "\n\tmin_val = "
-     << TensorStatToString(
-            tensor, TensorDumpPolicy{EnableDumpFloatData{}}, "min");
-  ss << "\n\tdata = " << DataToString(tensor, policy);
+  ss << "\n\tmean = " << TensorStatToString(big_dtype_tensor, "mean");
+  ss << "\n\tstd = " << TensorStatToString(big_dtype_tensor, "std");
+  ss << "\n\tmax_val = " << TensorStatToString(big_dtype_tensor, "max");
+  ss << "\n\tmin_val = " << TensorStatToString(big_dtype_tensor, "min");
+  ss << "\n\tdata = " << DataToString(big_dtype_tensor, policy);
   ss << "\n\n";
   return ss.str();
 }
