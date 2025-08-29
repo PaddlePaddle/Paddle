@@ -213,7 +213,7 @@ class TestSoftmaxCoShard:
             ),
             SoftmaxGradTestCase(
                 [32, 48, 128],
-                1,
+                -1,
                 [32, 48, 128],
                 [
                     dist.Shard(0),
@@ -226,9 +226,9 @@ class TestSoftmaxCoShard:
                     dist.Replicate(),
                 ],
                 [
-                    dist.Shard(0, shard_order=0),
-                    dist.Shard(0, shard_order=1),
-                    dist.Shard(0, shard_order=2),
+                    dist.Shard(1, shard_order=0),
+                    dist.Shard(1, shard_order=1),
+                    dist.Shard(1, shard_order=2),
                 ],
             ),
         ]

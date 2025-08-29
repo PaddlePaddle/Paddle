@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
