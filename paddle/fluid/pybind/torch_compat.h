@@ -209,7 +209,7 @@ class CustomClassProxyInstance {
                            const IValue& instance)
       : qualified_name_(qualified_name), instance_(instance) {}
 
-  // 获取实例方法
+  // Get instance method
   py::object __getattr__(const std::string& method_name) {
     if (ClassRegistry::instance().has_method(qualified_name_, method_name)) {
       return py::cpp_function(
