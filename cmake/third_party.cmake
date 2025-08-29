@@ -514,60 +514,6 @@ if(WITH_BOX_PS)
   list(APPEND third_party_deps extern_box_ps)
 endif()
 
-if(WITH_PSCORE)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-
-  if(WITH_ARM_BRPC)
-    include(external/arm_brpc)
-    list(APPEND third_party_deps extern_arm_brpc)
-  else()
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
-  endif()
-
-  include(external/libmct) # download, build, install libmct
-  list(APPEND third_party_deps extern_libmct)
-
-  include(external/rocksdb) # download, build, install rocksdb
-  list(APPEND third_party_deps extern_rocksdb)
-
-  include(external/jemalloc) # download, build, install jemalloc
-  list(APPEND third_party_deps extern_jemalloc)
-
-  include(external/afs_api)
-  list(APPEND third_party_deps extern_afs_api)
-endif()
-
-if(WITH_RPC
-   AND NOT WITH_PSCORE
-   AND NOT WITH_PSLIB)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-
-  include(external/brpc)
-  list(APPEND third_party_deps extern_brpc)
-endif()
-
-if(WITH_DISTRIBUTE
-   AND NOT WITH_PSLIB
-   AND NOT WITH_PSCORE
-   AND NOT WITH_RPC)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-  include(external/brpc)
-  list(APPEND third_party_deps extern_brpc)
-endif()
-
 include(external/libuv)
 if(TARGET extern_libuv)
   list(APPEND third_party_deps extern_libuv)
