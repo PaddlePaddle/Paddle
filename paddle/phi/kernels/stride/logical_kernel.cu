@@ -27,28 +27,14 @@ COMMON_DECLARE_bool(use_stride_compute_kernel);
 namespace phi {
 
 template <typename T, typename Context, typename Functor>
-void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
-                                        const DenseTensor &x,
-                                        Functor func,
-                                        DenseTensor *out) {
+void LaunchLogicalNotStrideKernel(const Context &dev_ctx,
+                                  const DenseTensor &x,
+                                  Functor func,
+                                  DenseTensor *out) {
   std::vector<const DenseTensor *> inputs = {&x};
   std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  UnaryStrideElementwiseKernel<T, Context>(dev_ctx, inputs, &outputs, func);
-}
-
-template <typename T, typename Context, typename Functor>
-void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
-                                         const DenseTensor &x,
-                                         const DenseTensor &y,
-                                         Functor func,
-                                         int axis,
-                                         DenseTensor *out) {
-  std::vector<const DenseTensor *> inputs = {&x, &y};
-  std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
-      dev_ctx, inputs, &outputs, func, axis);
+  dev_ctx.template Alloc<bool>(out);
+  UnaryStrideElementwiseKernel<bool, Context>(dev_ctx, inputs, &outputs, func);
 }
 
 template <typename T, typename Context, typename Functor>
@@ -60,8 +46,7 @@ void LogicalKernelStrideImpl(const Context &dev_ctx,
   Functor binary_func;
   std::vector<const DenseTensor *> inputs = {&x, &y};
   std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
+  BinaryStrideBroadcastKernel<bool, Context>(
       dev_ctx, inputs, &outputs, binary_func, -1);
 }
 template <typename T, typename Context, typename Functor>
@@ -75,34 +60,10 @@ void InplaceLogicalKernelStrideImpl(const Context &dev_ctx,
   Functor binary_func;
   std::vector<const DenseTensor *> inputs = {&x, &y};
   std::vector<DenseTensor *> outputs = {out};
-  dev_ctx.template Alloc<T>(out);
-  BinaryStrideBroadcastKernel<T, Context>(
+  BinaryStrideBroadcastKernel<bool, Context>(
       dev_ctx, inputs, &outputs, binary_func, -1);
 }
-template <typename T, typename Context, typename Functor>
-void LogicalKernelImpl(const Context &dev_ctx,
-                       const DenseTensor &x,
-                       const DenseTensor &y,
-                       DenseTensor *out) {
-  dev_ctx.template Alloc<bool>(out);
-  Functor binary_func;
-  std::vector<const DenseTensor *> ins = {&x, &y};
-  std::vector<DenseTensor *> outs = {out};
-  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func);
-}
-template <typename T, typename Context, typename Functor>
-void InplaceLogicalKernelImpl(const Context &dev_ctx,
-                              const DenseTensor &x,
-                              const DenseTensor &y,
-                              DenseTensor *out) {
-  auto x_origin = x;
-  dev_ctx.template Alloc<bool>(out);
-  out->set_type(phi::DataType::BOOL);
-  Functor binary_func;
-  std::vector<const DenseTensor *> ins = {&x_origin, &y};
-  std::vector<DenseTensor *> outs = {out};
-  funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, binary_func);
-}
+
 #define DEFINE_CUDA_BINARY_LOGICAL_STRIDE_OP(name)                            \
   template <typename T, typename Context>                                     \
   void Logical##name##StrideKernel(const Context &dev_ctx,                    \
@@ -136,15 +97,7 @@ void InplaceLogicalKernelImpl(const Context &dev_ctx,
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
-      if (out->IsSharedWith(x_)) {                                            \
-        InplaceLogicalKernelImpl<T,                                           \
-                                 Context,                                     \
-                                 funcs::Logical##name##Functor<T>>(           \
-            dev_ctx, x_, y_, out);                                            \
-      } else {                                                                \
-        LogicalKernelImpl<T, Context, funcs::Logical##name##Functor<T>>(      \
-            dev_ctx, x_, y_, out);                                            \
-      }                                                                       \
+      phi::Logical##name##Kernel<T, Context>(dev_ctx, x_, y_, out);           \
       return;                                                                 \
     }                                                                         \
     if (!FLAGS_use_stride_compute_kernel) {                                   \
@@ -192,32 +145,16 @@ void LogicalNotStrideKernel(const Context &dev_ctx,
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
-    if (!out->IsSharedWith(x_)) {
-      dev_ctx.template Alloc<bool>(out);
-      funcs::LogicalNotFunctor<T> unary_func;
-      std::vector<const DenseTensor *> ins = {&x_};
-      std::vector<DenseTensor *> outs = {out};
-      funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
-    } else {
-      auto x_origin = x_;
-      out->set_type(phi::DataType::BOOL);
-      dev_ctx.template Alloc<bool>(out);
-      funcs::LogicalNotFunctor<T> unary_func;
-      std::vector<const DenseTensor *> ins = {&x_origin};
-      std::vector<DenseTensor *> outs = {out};
-      funcs::BroadcastKernel<bool>(dev_ctx, ins, &outs, unary_func);
-    }
-
+    phi::LogicalNotKernel<T, Context>(dev_ctx, x_, out);
     return;
   }
-  dev_ctx.template Alloc<bool>(out);
   if (!out->IsSharedWith(x_)) {
-    LaunchUnaryElementwiseStrideKernel<T, Context>(
+    LaunchLogicalNotStrideKernel<T, Context>(
         dev_ctx, x_, funcs::LogicalNotFunctor<T>(), out);
   } else {
     auto x_origin = x_;
     out->set_type(phi::DataType::BOOL);
-    LaunchUnaryElementwiseStrideKernel<T, Context>(
+    LaunchLogicalNotStrideKernel<T, Context>(
         dev_ctx, x_origin, funcs::LogicalNotFunctor<T>(), out);
   }
 }

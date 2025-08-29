@@ -80,12 +80,16 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, results of minimum on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Examples:
         .. code-block:: python
 
@@ -190,6 +194,8 @@ def amin(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -216,8 +222,12 @@ add_doc_and_signature(
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): Output tensor. If provided in dynamic graph, the result will
+            be written to this tensor and also returned. The returned tensor and `out` share memory
+            and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
         it's data type is the same as `x`.
@@ -326,6 +336,8 @@ def amax(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -400,6 +412,8 @@ def all(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -508,6 +522,159 @@ add_doc_and_signature(
     """,
 )
 
+add_doc_and_signature(
+    "matmul",
+    """
+    Applies matrix multiplication to two tensors. `matmul` follows
+    the complete broadcast rules,
+    and its behavior is consistent with `np.matmul`.
+
+    Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
+    achieve the `dot`, `matmul` and `batchmatmul`.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
+      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
+      for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
+
+    The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
+
+    - If both tensors are 1-dimensional, the dot product result is obtained.
+
+    - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
+
+    - If the `x` is 1-dimensional and the `y` is 2-dimensional,
+      a `1` is prepended to its dimension in order to conduct the matrix multiply.
+      After the matrix multiply, the prepended dimension is removed.
+
+    - If the `x` is 2-dimensional and `y` is 1-dimensional,
+      the matrix-vector product is obtained.
+
+    - If both arguments are at least 1-dimensional and at least one argument
+      is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
+      If the first argument is 1-dimensional, a 1 is prepended to its dimension
+      in order to conduct the batched matrix multiply and removed after.
+      If the second argument is 1-dimensional, a 1 is appended to its
+      dimension for the purpose of the batched matrix multiple and removed after.
+      The non-matrix (exclude the last two dimensions) dimensions are
+      broadcasted according the broadcast rule.
+      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
+      out will be a (j, k, n, p) tensor.
+
+    Args:
+        x (Tensor): The input tensor which is a Tensor.
+        y (Tensor): The input tensor which is a Tensor.
+        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
+        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
+        name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor: The output Tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # vector * vector
+            >>> x = paddle.rand([10])
+            >>> y = paddle.rand([10])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            []
+
+            >>> # matrix * vector
+            >>> x = paddle.rand([10, 5])
+            >>> y = paddle.rand([5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10]
+
+            >>> # batched matrix * broadcasted vector
+            >>> x = paddle.rand([10, 5, 2])
+            >>> y = paddle.rand([2])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 5]
+
+            >>> # batched matrix * batched matrix
+            >>> x = paddle.rand([10, 5, 2])
+            >>> y = paddle.rand([10, 2, 5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 5, 5]
+
+            >>> # batched matrix * broadcasted matrix
+            >>> x = paddle.rand([10, 1, 5, 2])
+            >>> y = paddle.rand([1, 3, 2, 5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 3, 5, 5]
+
+    """,
+    """    def matmul(
+    x: Tensor,
+    y: Tensor,
+    transpose_x: bool = False,
+    transpose_y: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor""",
+)
+add_doc_and_signature(
+    "multiply",
+    """
+    multiply two tensors element-wise. The equation is:
+
+    .. math::
+        out = x * y
+
+    Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> y = paddle.to_tensor([[5, 6], [7, 8]])
+            >>> res = paddle.multiply(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 12],
+             [21, 32]])
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([2])
+            >>> res = paddle.multiply(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 4, 6],
+              [2, 4, 6]]])
+
+    """,
+    """def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor""",
+)
 add_doc_and_signature(
     "logsumexp",
     r"""
@@ -825,10 +992,133 @@ add_doc_and_signature(
     ) -> Tensor
     """,
 )
+add_doc_and_signature(
+    "expand_as",
+    """
+
+    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
+
+    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
+
+    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
+
+    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
+        :width: 800
+        :alt: expand_as API
+        :align: center
+
+    Args:
+        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
+        y (Tensor): The input tensor that gives the shape to expand to.
+        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> data_x = paddle.to_tensor([1, 2, 3], 'int32')
+            >>> data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
+            >>> out = paddle.expand_as(data_x, data_y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[1, 2, 3],
+             [1, 2, 3]])
+    """,
+    """
+    def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor
+    """,
+)
 
 # shenwei
 
+add_doc_and_signature(
+    "sigmoid",
+    r"""
+    Sigmoid Activation.
+
+    .. math::
+       out = \\frac{1}{1 + e^{-x}}
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``sigmoid(input=tensor_x)`` is equivalent to ``sigmoid(x=tensor_x)``.
+
+    Args:
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64 or complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Keyword Args:
+        out (Tensor|optional): The output tensor.
+
+    Returns:
+        Tensor. Output of Sigmoid operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = F.sigmoid(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.40131235, 0.45016602, 0.52497917, 0.57444251])
+    """,
+    """
+    def sigmoid(
+        x: paddle.Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> paddle.Tensor
+    """,
+)
+
 # zhouxin
+add_doc_and_signature(
+    "greater_than",
+    """
+    Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
+    Note:
+        The output has no gradient.
+
+    Args:
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
+    Returns:
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.greater_than(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, True ])
+    """,
+    """
+    def greater_than(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+    ) -> Tensor
+    """,
+)
+
 add_doc_and_signature(
     "sin",
     """
@@ -1045,8 +1335,182 @@ def floor(
 ) -> Tensor
     """,
 )
-
 # hehongyu
+add_doc_and_signature(
+    "maximum",
+    """
+    Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
+
+    .. math::
+        out = max(x, y)
+
+    Note:
+        ``paddle.maximum`` supports broadcasting. If you want know more about broadcasting, please refer to  `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 4],
+             [7, 8]])
+
+            >>> x = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3, 2, 4],
+             [3, 2, 4]])
+
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2. , nan, nan])
+
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float32')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float32')
+            >>> res = paddle.maximum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [5.  , 3.  , inf.])
+    """,
+    """
+    def maximum(
+        x: Tensor,
+        y: Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "minimum",
+    """
+    Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
+
+    .. math::
+        out = min(x, y)
+
+    Note:
+        ``paddle.minimum`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
+
+    Returns:
+        Tensor. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [7, 8]])
+            >>> y = paddle.to_tensor([[3, 4], [5, 6]])
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2],
+             [5, 6]])
+
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([3, 0, 4])
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1, 0, 3],
+              [1, 0, 3]]])
+
+            >>> x = paddle.to_tensor([2, 3, 5], dtype='float32')
+            >>> y = paddle.to_tensor([1, float("nan"), float("nan")], dtype='float32')
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1. , nan, nan])
+
+            >>> x = paddle.to_tensor([5, 3, float("inf")], dtype='float64')
+            >>> y = paddle.to_tensor([1, -float("inf"), 5], dtype='float64')
+            >>> res = paddle.minimum(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [ 1.  , -inf.,  5.  ])
+    """,
+    """
+    def minimum(
+        x: Tensor,
+        y: Tensor,
+        name: str | None = None,
+        *,
+        out: Tensor | None = None,
+    ) -> Tensor
+    """,
+)
+
+add_doc_and_signature(
+    "sqrt",
+    """
+    Sqrt Activation Operator.
+
+    .. math::
+       out=\\sqrt{x}=x^{1/2}
+
+    Args:
+        x (Tensor): Input of Sqrt operator, an N-D Tensor, with data type float32, float64, float16, bfloat16
+            uint8, int8, int16, int32, int64.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor. Output of Sqrt operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([0.1, 0.2, 0.3, 0.4])
+            >>> out = paddle.sqrt(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.31622776, 0.44721359, 0.54772258, 0.63245553])
+    """,
+    """
+def sqrt(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+    """,
+)
 
 # lousiyu
 
@@ -1247,6 +1711,7 @@ def bmm(
 ) -> Tensor
 """,
 )
+
 
 # lihaoyang
 add_doc_and_signature(

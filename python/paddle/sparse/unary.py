@@ -623,9 +623,13 @@ def cast(
     assert in_dynamic_or_pir_mode(), (
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
-    if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
+    if index_dtype and not isinstance(
+        index_dtype, (core.VarDesc.VarType, core.DataType)
+    ):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
-    if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
+    if value_dtype and not isinstance(
+        value_dtype, (core.VarDesc.VarType, core.DataType)
+    ):
         value_dtype = convert_np_dtype_to_dtype_(value_dtype)
     return _C_ops.sparse_cast(x, index_dtype, value_dtype)
 

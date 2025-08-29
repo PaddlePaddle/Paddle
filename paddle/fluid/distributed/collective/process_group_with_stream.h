@@ -60,6 +60,10 @@ class ProcessGroupWithStream : public ProcessGroup {
   ProcessGroupWithStream(int rank, int size, int gid)
       : ProcessGroup(rank, size, gid) {}
 
+  virtual void EraseStream(const phi::DenseTensor& tensor) const {
+    PADDLE_THROW(phi::errors::Unimplemented("EraseStream is not implemented."));
+  }
+
   virtual ~ProcessGroupWithStream() = default;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(

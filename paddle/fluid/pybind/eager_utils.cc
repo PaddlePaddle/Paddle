@@ -196,10 +196,12 @@ phi::DataType StrDtype2TensorDtype(const std::string& np_dtype) {
 bool PyObject_CheckStr(PyObject* obj) { return PyUnicode_Check(obj); }
 
 bool PyObject_CheckIRValue(PyObject* obj) {
+  if (obj == nullptr) return false;
   return PyObject_TypeCheck(obj, g_ir_value_pytype);
 }
 
 bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
+  if (obj == nullptr) return false;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -235,6 +237,7 @@ bool PyObject_CheckIRVectorOfValue(PyObject* obj) {
 }
 
 bool PyObject_CheckIRVectorOfValueOrLong(PyObject* obj) {
+  if (obj == nullptr) return false;
   if (!PyList_Check(obj) && !PyTuple_Check(obj)) {
     return false;
   }
@@ -1403,6 +1406,48 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     bool dispensable,
     const phi::distributed::ProcessMesh* mesh) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (obj == nullptr || obj == Py_None) {
+    if (!dispensable) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be Tensor, but got None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    return paddle::none;
+  }
+
+  if (PyObject_TypeCheck(obj, p_tensor_type)) {
+    if (mesh) {
+      ConvertToDistTensor(&(reinterpret_cast<TensorObject*>(obj)->tensor),
+                          mesh);
+    }
+    return paddle::make_optional<paddle::Tensor>(
+        reinterpret_cast<TensorObject*>(obj)->tensor);
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be Tensor, but got %s",
+        op_type,
+        arg_name,
+        arg_idx,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+}
+
+paddle::optional<paddle::Tensor> GetOptionalTensorFromArgsOrKWArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    PyObject* kwargs,
+    const std::vector<std::string>& keywords,
+    const int nargs,
+    int* remaining_kwargs,
+    bool dispensable,
+    const phi::distributed::ProcessMesh* mesh) {
+  PyObject* obj = GetItemFromArgsOrKWArgs(
+      args, arg_idx, kwargs, keywords, nargs, remaining_kwargs);
 
   if (obj == nullptr || obj == Py_None) {
     if (!dispensable) {

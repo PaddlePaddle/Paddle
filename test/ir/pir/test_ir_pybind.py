@@ -22,22 +22,19 @@ paddle.enable_static()
 
 
 def get_ir_program():
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            y_s = paddle.matmul(x_s, x_s)
-            z_s = paddle.add(y_s, y_s)
-            k_s = paddle.tanh(z_s)
-            q_s = paddle.unsqueeze(k_s, [2])
-
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        y_s = x_s @ x_s
+        z_s = paddle.add(y_s, y_s)
+        k_s = paddle.tanh(z_s)
+        q_s = paddle.unsqueeze(k_s, [2])
+    return main_program
 
 
 class TestPybind(unittest.TestCase):
@@ -65,45 +62,45 @@ class TestPybind(unittest.TestCase):
     def test_operation(self):
         pir_program = get_ir_program()
         ops = pir_program.global_block().ops
-        matmul_op = ops[1]
+        mamul_op = ops[1]
         add_op = ops[2]
         tanh_op = ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
         self.assertEqual(tanh_op.num_results(), 1)
-        self.assertEqual(len(matmul_op.get_input_names()), 2)
-        self.assertEqual(len(matmul_op.get_attr_names()), 2)
-        self.assertEqual(len(matmul_op.get_output_names()), 1)
+        self.assertEqual(len(mamul_op.get_input_names()), 2)
+        self.assertEqual(len(mamul_op.get_attr_names()), 2)
+        self.assertEqual(len(mamul_op.get_output_names()), 1)
         # test operand.index
-        self.assertEqual(matmul_op.operand(0).index(), 0)
-        self.assertEqual(matmul_op.operand(1).index(), 1)
+        self.assertEqual(mamul_op.operand(0).index(), 0)
+        self.assertEqual(mamul_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
         self.assertEqual(add_op.operand(1).index(), 1)
         self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
+        mamul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         tanh_op = pir_program.global_block().ops[3]
 
         self.assertEqual(
-            matmul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
+            mamul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
         )
-        self.assertEqual(matmul_op.result(0).shape, [4, 4])
+        self.assertEqual(mamul_op.result(0).shape, [4, 4])
         self.assertEqual(
-            matmul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
+            mamul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
         )
         self.assertEqual(
-            matmul_op.result(0).get_defining_op().name(), "pd_op.matmul"
+            mamul_op.result(0).get_defining_op().name(), "pd_op.matmul"
         )
-        matmul_op.result(0).stop_gradient = True
-        self.assertEqual(matmul_op.result(0).stop_gradient, True)
+        mamul_op.result(0).stop_gradient = True
+        self.assertEqual(mamul_op.result(0).stop_gradient, True)
 
         # test opresult hash
         result_set = ValueSet()
-        for opresult in matmul_op.results():
+        for opresult in mamul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
         self.assertTrue(add_op.operands()[0].source() in result_set)
@@ -115,7 +112,7 @@ class TestPybind(unittest.TestCase):
         )
         # test value == opresult
         self.assertTrue(
-            add_op.operands_source()[0].is_same(matmul_op.results()[0])
+            add_op.operands_source()[0].is_same(mamul_op.results()[0])
         )
         # test opresult print
         self.assertTrue(
@@ -127,7 +124,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult == opresult
         self.assertTrue(
-            add_op.operands()[0].source().is_same(matmul_op.results()[0])
+            add_op.operands()[0].source().is_same(mamul_op.results()[0])
         )
 
         # test opresult print
@@ -137,7 +134,7 @@ class TestPybind(unittest.TestCase):
         self.assertTrue(
             'tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
         )
-        add_op.replace_all_uses_with(matmul_op.results())
+        add_op.replace_all_uses_with(mamul_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
             "pd_op.matmul",
@@ -152,10 +149,10 @@ class TestPybind(unittest.TestCase):
 
     def test_type(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
+        mamul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         self.assertEqual(
-            matmul_op.result(0).type() == add_op.result(0).type(), True
+            mamul_op.result(0).type() == add_op.result(0).type(), True
         )
         add_op.result(0).set_type(
             paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
@@ -165,53 +162,51 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(add_op.result(0).is_selected_row_type(), True)
 
     def test_attr(self):
-        with paddle.pir_utils.OldIrGuard():
-            main_program, start_program = (
-                paddle.static.Program(),
-                paddle.static.Program(),
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        with paddle.static.program_guard(main_program, start_program):
+            conv = paddle.nn.Conv2D(
+                in_channels=3,
+                out_channels=2,
+                kernel_size=3,
+                stride=3,
+                padding=0,
+                data_format="NCHW",
             )
-            with paddle.static.program_guard(main_program, start_program):
-                conv_data = paddle.static.data(
-                    'conv_data', [None, 3, 32, 32], dtype='float32'
-                )
-                conv2d_out = paddle.static.nn.conv2d(
-                    input=conv_data,
-                    num_filters=2,
-                    filter_size=3,
-                    stride=3,
-                    act="relu",
-                )
-                full_out = paddle.tensor.fill_constant(
-                    shape=[4, 4], dtype="float32", value=2
-                )
-
-            pir_program = pir.translate_to_pir(main_program.desc)
-            conv_attr = pir_program.global_block().ops[3].attrs()
-            full_attr = pir_program.global_block().ops[8].attrs()
-            self.assertEqual(conv_attr["stop_gradient"], [False])
-            self.assertEqual(conv_attr["dilations"], [1, 1])
-            self.assertEqual(conv_attr["data_format"], "NCHW")
-            self.assertEqual(conv_attr["strides"], [3, 3])
-            self.assertEqual(conv_attr["paddings"], [0, 0])
-            self.assertEqual(conv_attr["padding_algorithm"], "EXPLICIT")
-            self.assertEqual(conv_attr["groups"], 1)
-            self.assertEqual(
-                full_attr["dtype"], paddle.base.core.DataType.FLOAT32
+            conv_data = paddle.static.data(
+                'conv_data', [None, 3, 32, 32], dtype='float32'
             )
-            self.assertTrue(
-                isinstance(full_attr["place"], paddle.base.core.Place)
+            conv2d_out = conv(
+                conv_data,
             )
+            relu_out = paddle.nn.functional.relu(conv2d_out)
+            full_out = paddle.tensor.fill_constant(
+                shape=[4, 4], dtype="float32", value=2
+            )
+        conv_attr = main_program.global_block().ops[3].attrs()
+        full_attr = main_program.global_block().ops[8].attrs()
+        self.assertEqual(conv_attr["stop_gradient"], [False])
+        self.assertEqual(conv_attr["dilations"], [1, 1])
+        self.assertEqual(conv_attr["data_format"], "NCHW")
+        self.assertEqual(conv_attr["strides"], [3, 3])
+        self.assertEqual(conv_attr["paddings"], [0, 0])
+        self.assertEqual(conv_attr["padding_algorithm"], "EXPLICIT")
+        self.assertEqual(conv_attr["groups"], 1)
+        self.assertEqual(full_attr["dtype"], paddle.base.core.DataType.FLOAT32)
+        self.assertTrue(isinstance(full_attr["place"], paddle.base.core.Place))
 
     def test_operands(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
-        operands = matmul_op.operands()
+        mamul_op = pir_program.global_block().ops[1]
+        operands = mamul_op.operands()
         self.assertEqual(len(operands), 2)
 
     def test_results(self):
         pir_program = get_ir_program()
-        matmul_op = pir_program.global_block().ops[1]
-        results = matmul_op.results()
+        mamul_op = pir_program.global_block().ops[1]
+        results = mamul_op.results()
         self.assertEqual(len(results), 1)
 
     def test_get_output_intermediate_status(self):

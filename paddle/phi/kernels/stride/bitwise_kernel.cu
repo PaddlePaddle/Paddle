@@ -134,16 +134,8 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
       auto meta = out->meta();                                                \
       meta.strides = meta.calc_strides(out->dims());                          \
       out->set_meta(meta);                                                    \
-      dev_ctx.template Alloc<T>(out);                                         \
-      std::vector<const DenseTensor *> ins = {&x_, &y_};                      \
-      std::vector<DenseTensor *> outs = {out};                                \
-      if (is_arithmetic) {                                                    \
-        funcs::Bitwise##name##ArithmeticFunctor<T> func;                      \
-        funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, func);                 \
-      } else {                                                                \
-        funcs::Bitwise##name##LogicFunctor<T> func;                           \
-        funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, func);                 \
-      }                                                                       \
+      phi::Bitwise##name##Kernel<T, Context>(                                 \
+          dev_ctx, x_, y_, is_arithmetic, out);                               \
       return;                                                                 \
     }                                                                         \
     if (!FLAGS_use_stride_compute_kernel) {                                   \
@@ -193,12 +185,7 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
-    dev_ctx.template Alloc<T>(out);
-    std::vector<const DenseTensor *> ins = {&x_};
-    std::vector<DenseTensor *> outs = {out};
-    funcs::BitwiseNotFunctor<T> unary_func;
-    funcs::ElementwiseKernel<T, funcs::BitwiseNotFunctor<T>>(
-        dev_ctx, ins, &outs, unary_func);
+    phi::BitwiseNotKernel<T, Context>(dev_ctx, x_, out);
     return;
   }
   if (!FLAGS_use_stride_compute_kernel) {

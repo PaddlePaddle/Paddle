@@ -91,10 +91,11 @@ PARSE_PYTHON_C_TENSOR_REF_TEMPLATE = (
     '    auto& {} = {}("{}", "{}", args, {}, {});\n'
 )
 PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
-
+PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    auto {} = GetOptionalTensorFromArgsOrKWArgs("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{});\n'
 CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE = (
     '    {} = {}("{}", "{}", args, {}, {}, mesh);\n'
 )
+CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE = '    {} = {}("{}", "{}", args, {}, kwargs,{},nargs,&remaining_kwargs,{},mesh);\n'
 
 CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE = """
     const phi::distributed::ProcessMesh* mesh = nullptr;
@@ -458,16 +459,27 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     )
             else:
                 if is_optional:
-                    get_eager_tensor_str += (
-                        PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                    if need_parse_python_api_args:
+                        keywords = _get_keywords(name, args_alias_map)
+                        get_eager_tensor_str += PARSE_PYTHON_C_OPTIONAL_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
                             name,
-                            "GetOptionalTensorFromArgs",
                             forward_api_name,
                             name,
                             pos,
+                            keywords,
                             "true",
                         )
-                    )
+                    else:
+                        get_eager_tensor_str += (
+                            PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "true",
+                            )
+                        )
                 else:
                     input_single_tensor_names = (
                         input_single_tensor_names + ", " + name
@@ -621,14 +633,26 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                         )
                 else:
                     if is_optional:
-                        optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
-                            name,
-                            "GetOptionalTensorFromArgs",
-                            forward_api_name,
-                            name,
-                            pos,
-                            "true",
-                        )
+                        if need_parse_python_api_args:
+                            keywords = _get_keywords(name, args_alias_map)
+                            optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_FROM_ARGS_OR_KWARGS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgsOrKWArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                keywords,
+                                "true",
+                            )
+                        else:
+                            optional_and_vector_convert_code += CONVERT_TO_DISTTENSOR_AND_PARSE_PYTHON_C_TENSORS_TEMPLATE.format(
+                                name,
+                                "GetOptionalTensorFromArgs",
+                                forward_api_name,
+                                name,
+                                pos,
+                                "true",
+                            )
             if len(input_single_tensor_names) > 0:
                 convert_to_dist_str += CONVERT_INPUT_TENSORS_TO_DIST_TENSOR_WITH_SINGLE_TENSOR_TEMPLATE.format(
                     input_names=input_names,
@@ -812,7 +836,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             self.need_parse_python_api_args = True
             self.ParsePythonAPIInfo()
 
-    def run(self, no_input_out_tensor=False):
+    def run(self, no_input_out_tensor=False, no_parse_python_api_info=False):
         # Initialized is_forward_only
         self.CollectIsForwardOnly()
 
@@ -824,7 +848,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         # Initialized orig_forward_inputs_list, orig_forward_returns_list, orig_forward_attrs_list
         self.CollectOriginalForwardInfo()
-        self.InitAndParsePythonAPIInfo()
+        if not no_parse_python_api_info:
+            self.InitAndParsePythonAPIInfo()
         if SkipAPIGeneration(self.forward_api_name):
             return False
 
@@ -852,7 +877,9 @@ class PythonCGenerator(GeneratorBase):
         self.python_c_functions_reg_str = ""
         self.python_c_function_declare_str = ""
 
-    def GeneratePythonCFunctions(self, no_input_out_tensor=False):
+    def GeneratePythonCFunctions(
+        self, no_input_out_tensor=False, no_parse_python_api_info=False
+    ):
         namespace = self.namespace
 
         forward_api_list = self.forward_api_list
@@ -864,7 +891,9 @@ class PythonCGenerator(GeneratorBase):
             f_generator = PythonCSingleFunctionGenerator(
                 forward_api_content, namespace
             )
-            status = f_generator.run(no_input_out_tensor)
+            status = f_generator.run(
+                no_input_out_tensor, no_parse_python_api_info
+            )
 
             if status:
                 self.python_c_functions_str += (
@@ -892,7 +921,7 @@ class PythonCGenerator(GeneratorBase):
                 )
             )
 
-    def run(self, no_input_out_tensor=False):
+    def run(self, no_input_out_tensor=False, no_parse_python_api_info=False):
         # Infer namespace from yaml_path
         self.InferNameSpace()
 
@@ -900,7 +929,9 @@ class PythonCGenerator(GeneratorBase):
         self.ParseForwardYamlContents()
 
         # Code Generation
-        self.GeneratePythonCFunctions(no_input_out_tensor)
+        self.GeneratePythonCFunctions(
+            no_input_out_tensor, no_parse_python_api_info
+        )
 
         # Wrap with namespace
         self.AttachNamespace()
@@ -967,9 +998,10 @@ if __name__ == "__main__":
             or "strings" in api_yaml_path
             or "sparse" in api_yaml_path
         )
+        no_parse_python_api_info = "sparse" in api_yaml_path
 
         py_c_generator = PythonCGenerator(api_yaml_path)
-        py_c_generator.run(no_input_out_tensor)
+        py_c_generator.run(no_input_out_tensor, no_parse_python_api_info)
 
         generated_python_c_functions += (
             py_c_generator.python_c_functions_str + "\n"
@@ -995,3 +1027,4 @@ if __name__ == "__main__":
         header_path,
         PYTHON_C_H_TEMPLATE.format(body=generated_python_c_functions_header),
     )
+#

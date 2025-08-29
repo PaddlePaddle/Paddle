@@ -468,6 +468,13 @@ void MaxPoolV2InferMeta(const MetaTensor& x,
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out);
 
+void MedianInferMeta(const MetaTensor& x,
+                     const IntArray& axes,
+                     bool keep_dim,
+                     const std::string& mode,
+                     MetaTensor* out,
+                     MetaTensor* median_index);
+
 void ModeInferMeta(const MetaTensor& x,
                    int axis,
                    bool keepdim,
@@ -662,6 +669,7 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
+                               int64_t output_size,
                                MetaTensor* out);
 
 void ReshapeInferMeta(const MetaTensor& x,

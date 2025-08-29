@@ -625,8 +625,7 @@ class DygraphShardingOptimizerV2:
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
-        self.clear_color = None
-
+        self.clear_color = []
         self._parameter_list = optimizer._parameter_list
 
         # param name -> slice_param
@@ -834,7 +833,7 @@ class DygraphShardingOptimizerV2:
                         self.param2bucket[p.name] = [buffer]
 
     def clear_param_storage(self, color):
-        self.clear_color = color
+        self.clear_color.append(color)
         if color in self._color_to_comm_buffer_list.keys():
             for comm_buffer in self._color_to_comm_buffer_list[color]:
                 for param in comm_buffer.params:
@@ -852,12 +851,13 @@ class DygraphShardingOptimizerV2:
                 comm_buffer._clear_param_storage()
 
     def reset_param_storage(self):
-        color = self.clear_color
-        if color is None:
-            return
-        if color in self._color_to_comm_buffer_list.keys():
-            for comm_buffer in self._color_to_comm_buffer_list[color]:
-                comm_buffer._reset_param_storage()
+        for color in self.clear_color:
+            if color is None:
+                continue
+
+            if color in self._color_to_comm_buffer_list.keys():
+                for comm_buffer in self._color_to_comm_buffer_list[color]:
+                    comm_buffer._reset_param_storage()
 
     def clear_grad(self, set_to_zero=True):
         """
