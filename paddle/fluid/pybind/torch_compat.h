@@ -303,7 +303,7 @@ class CustomClassProxy {
     PADDLE_THROW(
         common::errors::NotFound("Static method '%s' not found in class %s",
                                  method_name.c_str(),
-                                 qualified_name_.c_str()))
+                                 qualified_name_.c_str()));
   }
 
  private:
