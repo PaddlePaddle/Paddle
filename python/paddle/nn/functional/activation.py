@@ -1776,12 +1776,11 @@ def log_softmax(
               [-12.31326640, -1.31326640 , -0.31326640 , -15.31326640],
               [-3.44018970 , -2.44018970 , -1.44018970 , -0.44018970 ]]])
     """
-
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_or_pir_mode():
-        if dtype is not None:
+        if dtype is not None and x.dtype != dtype:
             x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)
     else:
