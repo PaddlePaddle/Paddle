@@ -14,12 +14,18 @@
 
 #pragma once
 
-namespace compat {
-#ifndef TORCH_EXTENSION_NAME
-#define _EXPAND(x) x
-#define TORCH_EXTENSION_NAME _EXPAND(PADDLE_EXTENSION_NAME)
-#undef _EXPAND
+#define C10_CONCATENATE_IMPL(s1, s2) s1##s2
+#define C10_CONCATENATE(s1, s2) C10_CONCATENATE_IMPL(s1, s2)
+
+#define C10_MACRO_EXPAND(args) args
+
+#define C10_STRINGIZE_IMPL(x) #x
+#define C10_STRINGIZE(x) C10_STRINGIZE_IMPL(x)
+
+#ifdef __COUNTER__
+#define C10_UID __COUNTER__
+#define C10_ANONYMOUS_VARIABLE(str) C10_CONCATENATE(str, __COUNTER__)
+#else
+#define C10_UID __LINE__
+#define C10_ANONYMOUS_VARIABLE(str) C10_CONCATENATE(str, __LINE__)
 #endif
-#define UNSUPPORTED_FEATURE_IN_PADDLE(feature) \
-  std::cerr << "Unsupported feature in Paddle: " << feature << std::endl;
-}  // namespace compat

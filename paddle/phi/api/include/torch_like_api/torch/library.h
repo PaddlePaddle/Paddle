@@ -16,6 +16,7 @@
 
 #include <ATen/core/ivalue.h>
 
+#include <c10/macros/Macros.h>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -1221,44 +1222,47 @@ class TorchLibraryInit {
 #define TORCH_UNIQUE_NAME(prefix) TORCH_CONCAT(prefix, __LINE__)
 
 // TORCH_LIBRARY
-#define TORCH_LIBRARY(ns, m)                                               \
-  static void TORCH_UNIQUE_NAME(torch_library_init_)(torch::Library&);     \
-  static const torch::detail::TorchLibraryInit TORCH_UNIQUE_NAME(          \
-      torch_library_static_init_)(torch::Library::DEF,                     \
-                                  &TORCH_UNIQUE_NAME(torch_library_init_), \
-                                  #ns,                                     \
-                                  std::nullopt,                            \
-                                  __FILE__,                                \
-                                  __LINE__);                               \
-  void TORCH_UNIQUE_NAME(torch_library_init_)(torch::Library & m)  // NOLINT
+#define TORCH_LIBRARY(ns, m)                                                   \
+  static void TORCH_LIBRARY_init_##ns(torch::Library&);                        \
+  static const torch::detail::TorchLibraryInit TORCH_LIBRARY_static_init_##ns( \
+      torch::Library::DEF,                                                     \
+      &TORCH_LIBRARY_init_##ns,                                                \
+      #ns,                                                                     \
+      std::nullopt,                                                            \
+      __FILE__,                                                                \
+      __LINE__);                                                               \
+  void TORCH_LIBRARY_init_##ns(torch::Library& m)  // NOLINT
 
 // TORCH_LIBRARY_FRAGMENT
-#define TORCH_LIBRARY_FRAGMENT(ns, m)                                   \
-  static void TORCH_UNIQUE_NAME(torch_library_fragment_init_)(          \
-      torch::Library&);                                                 \
-  static const torch::detail::TorchLibraryInit TORCH_UNIQUE_NAME(       \
-      torch_library_fragment_static_init_)(                             \
-      torch::Library::FRAGMENT,                                         \
-      &TORCH_UNIQUE_NAME(torch_library_fragment_init_),                 \
-      #ns,                                                              \
-      std::nullopt,                                                     \
-      __FILE__,                                                         \
-      __LINE__);                                                        \
-  void TORCH_UNIQUE_NAME(torch_library_fragment_init_)(torch::Library & \
-                                                       m)  // NOLINT
+#define TORCH_LIBRARY_FRAGMENT(ns, m) _TORCH_LIBRARY_FRAGMENT(ns, m, C10_UID)
+#define _TORCH_LIBRARY_FRAGMENT(ns, m, uid)                        \
+  static void C10_CONCATENATE(TORCH_LIBRARY_FRAGMENT_init_##ns##_, \
+                              uid)(torch::Library&);               \
+  static const torch::detail::TorchLibraryInit C10_CONCATENATE(    \
+      TORCH_LIBRARY_FRAGMENT_static_init_##ns##_, uid)(            \
+      torch::Library::FRAGMENT,                                    \
+      &C10_CONCATENATE(TORCH_LIBRARY_FRAGMENT_init_##ns##_, uid),  \
+      #ns,                                                         \
+      std::nullopt,                                                \
+      __FILE__,                                                    \
+      __LINE__);                                                   \
+  void C10_CONCATENATE(TORCH_LIBRARY_FRAGMENT_init_##ns##_,        \
+                       uid)(torch::Library & m)  // NOLINT
 
 // TORCH_LIBRARY_IMPL
-#define TORCH_LIBRARY_IMPL(ns, key, m)                                      \
-  static void TORCH_UNIQUE_NAME(torch_library_impl_init_)(torch::Library&); \
-  static const torch::detail::TorchLibraryInit TORCH_UNIQUE_NAME(           \
-      torch_library_impl_static_init_)(                                     \
-      torch::Library::IMPL,                                                 \
-      &TORCH_UNIQUE_NAME(torch_library_impl_init_),                         \
-      #ns,                                                                  \
-      torch::DispatchKey::key,                                              \
-      __FILE__,                                                             \
-      __LINE__);                                                            \
-  void TORCH_UNIQUE_NAME(torch_library_impl_init_)(torch::Library &         \
-                                                   m)  // NOLINT
+#define TORCH_LIBRARY_IMPL(ns, k, m) _TORCH_LIBRARY_IMPL(ns, k, m, C10_UID)
+#define _TORCH_LIBRARY_IMPL(ns, k, m, uid)                           \
+  static void C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_, \
+                              uid)(torch::Library&);                 \
+  static const torch::detail::TorchLibraryInit C10_CONCATENATE(      \
+      TORCH_LIBRARY_IMPL_static_init_##ns##_##k##_, uid)(            \
+      torch::Library::IMPL,                                          \
+      &C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_, uid),  \
+      #ns,                                                           \
+      std::make_optional(torch::DispatchKey::k),                     \
+      __FILE__,                                                      \
+      __LINE__);                                                     \
+  void C10_CONCATENATE(TORCH_LIBRARY_IMPL_init_##ns##_##k##_,        \
+                       uid)(torch::Library & m)  // NOLINT
 
 }  // namespace torch
