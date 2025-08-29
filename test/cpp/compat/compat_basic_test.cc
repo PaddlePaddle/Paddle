@@ -111,18 +111,18 @@ TEST(TensorBaseTest, TypeDeviceAPIs) {
   ASSERT_EQ(options.device().type(), at::DeviceType::CPU);
 
   // Test with CUDA tensor if CUDA is available
-  // if (at::cuda::is_available()) {
-  // at::TensorBase cuda_tensor = at::ones({2, 3}, at::kFloat).cuda();
+  if (at::cuda::is_available()) {
+    at::TensorBase cuda_tensor = at::ones({2, 3}, at::kFloat).cuda();
 
-  // ASSERT_EQ(cuda_tensor.device().type(), at::DeviceType::CUDA);
-  // ASSERT_GE(cuda_tensor.get_device(), 0);
-  // ASSERT_FALSE(cuda_tensor.is_cpu());
-  // ASSERT_TRUE(cuda_tensor.is_cuda());
+    ASSERT_EQ(cuda_tensor.device().type(), at::DeviceType::CUDA);
+    ASSERT_GE(cuda_tensor.get_device(), 0);
+    ASSERT_FALSE(cuda_tensor.is_cpu());
+    ASSERT_TRUE(cuda_tensor.is_cuda());
 
-  // auto cuda_options = cuda_tensor.options();
-  // ASSERT_EQ(cuda_options.dtype(), at::kFloat);
-  // ASSERT_EQ(cuda_options.device().type(), at::DeviceType::CUDA);
-  // }
+    auto cuda_options = cuda_tensor.options();
+    ASSERT_EQ(cuda_options.dtype(), at::kFloat);
+    ASSERT_EQ(cuda_options.device().type(), at::DeviceType::CUDA);
+  }
 }
 
 TEST(TensorBaseTest, ModifyOperationAPIs) {
