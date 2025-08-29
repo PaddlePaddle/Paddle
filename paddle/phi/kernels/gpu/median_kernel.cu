@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/nanmedian_kernel.h"
-
+#include "paddle/phi/kernels/median_kernel.h"
 #include <thrust/device_ptr.h>
 #include <thrust/execution_policy.h>
 #include <thrust/extrema.h>
@@ -36,6 +35,7 @@
 constexpr int64_t ELEMWISE_MAX_BLOCK_DIM = 1024;
 
 namespace phi {
+
 template <typename T>
 __global__ void KernelNanCounts(const T* input,
                                 const int64_t numel,
@@ -299,7 +299,7 @@ void ProcessMedianKernel(const Context& dev_ctx,
     set_nan(dev_ctx, out, nan_val);
 
     phi::funcs::SetConstant<Context, int64_t> set_negatvie;
-    set_negatvie(dev_ctx, median_index, static_cast<int64_t>(numel / 2));
+    set_negatvie(dev_ctx, median_index, static_cast<int64_t>(0));
     return;
   }
 
@@ -389,13 +389,13 @@ void ProcessMedianKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void NanmedianKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& axes,
-                     bool keepdim,
-                     const std::string& mode,
-                     DenseTensor* out,
-                     DenseTensor* median_index) {
+void MedianKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& axes,
+                  bool keepdim,
+                  const std::string& mode,
+                  DenseTensor* out,
+                  DenseTensor* median_index) {
   if (x.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
@@ -416,14 +416,14 @@ void NanmedianKernel(const Context& dev_ctx,
   }
 
   ProcessMedianKernel<T, Context>(
-      dev_ctx, tmp_x, mode, true, out, median_index);
+      dev_ctx, tmp_x, mode, false, out, median_index);
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nanmedian,
+PD_REGISTER_KERNEL(median,
                    GPU,
                    ALL_LAYOUT,
-                   phi::NanmedianKernel,
+                   phi::MedianKernel,
                    float,
                    double,
                    int,

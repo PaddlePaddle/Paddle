@@ -3679,6 +3679,15 @@
   backward : mean_all_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : median
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
+  output : Tensor(out), Tensor(medians)
+  infer_meta :
+    func : MedianInferMeta
+  kernel :
+    func : median
+  backward : median_grad
+
 - op : memcpy_d2h
   args : (Tensor x, int dst_place_type)
   output : Tensor

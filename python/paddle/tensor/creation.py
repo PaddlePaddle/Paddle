@@ -3657,9 +3657,8 @@ def tril_indices(
             [[1, 2, 2, 3, 3, 3],
              [0, 0, 1, 0, 1, 2]])
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-
     if not isinstance(row, int) or row < 0:
         raise TypeError("row should be a non-negative int")
 
@@ -3738,7 +3737,8 @@ def triu_indices(
             [[0 0 0 0 1 1 1 1 2 2 2 3 3]
              [0 1 2 3 0 1 2 3 1 2 3 2 3]]
     """
-    if not isinstance(dtype, core.VarDesc.VarType):
+
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if not isinstance(row, int) or row < 0:

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/nanmedian_kernel.h"
+#include "paddle/phi/kernels/median_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -214,10 +214,10 @@ void ProcessMedianKernel(const Context& dev_ctx,
     for (i = 0; i < pre_dim; i++) {
       out_data[i] = std::numeric_limits<T>::quiet_NaN();
       if (mode == "avg") {
-        m_data[2 * i] = numel / 2;
-        m_data[2 * i + 1] = numel / 2 - 1;
+        m_data[2 * i] = 0;
+        m_data[2 * i + 1] = 1;
       } else {
-        m_data[i] = numel / 2;
+        m_data[i] = 0;
       }
     }
     return;
@@ -238,13 +238,13 @@ void ProcessMedianKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void NanmedianKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const IntArray& axes,
-                     bool keepdim UNUSED,
-                     const std::string& mode,
-                     DenseTensor* out,
-                     DenseTensor* median_index) {
+void MedianKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& axes,
+                  bool keepdim UNUSED,
+                  const std::string& mode,
+                  DenseTensor* out,
+                  DenseTensor* median_index) {
   if (x.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
@@ -269,18 +269,12 @@ void NanmedianKernel(const Context& dev_ctx,
   }
 
   ProcessMedianKernel<T, Context>(
-      dev_ctx, tmp_x, mode, true, out, median_index);
+      dev_ctx, tmp_x, mode, false, out, median_index);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nanmedian,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::NanmedianKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {
+PD_REGISTER_KERNEL(
+    median, CPU, ALL_LAYOUT, phi::MedianKernel, float, double, int, int64_t) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }
