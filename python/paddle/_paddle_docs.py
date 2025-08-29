@@ -750,10 +750,9 @@ def roll(
 add_doc_and_signature(
     "sum",
     """
-
     Computes the sum of tensor elements over the given dimension.
 
-    .. note::
+     .. note::
         Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
         For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
         Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
@@ -785,7 +784,9 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
+            # type: ignore
             >>> import paddle
+
             >>> # x is a Tensor with following elements:
             >>> #    [[0.2, 0.3, 0.5, 0.9]
             >>> #     [0.1, 0.2, 0.6, 0.7]]
@@ -824,11 +825,11 @@ add_doc_and_signature(
             >>> out6
             Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
             [16, 20])
+
             >>> # x is a Tensor with following elements:
             >>> #    [[True, True, True, True]
             >>> #     [False, False, False, False]]
             >>> # Each example is followed by the corresponding output tensor.
-
             >>> x = paddle.to_tensor([[True, True, True, True],
             ...                       [False, False, False, False]])
             >>> out7 = paddle.sum(x)
