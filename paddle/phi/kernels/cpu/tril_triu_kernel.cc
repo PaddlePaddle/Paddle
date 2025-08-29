@@ -25,7 +25,7 @@ PD_REGISTER_KERNEL(tril_triu,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
+                   phi::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -38,7 +38,7 @@ PD_REGISTER_KERNEL(triu,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
+                   phi::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -51,6 +51,6 @@ PD_REGISTER_KERNEL(tril,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
+                   phi::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

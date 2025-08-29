@@ -48,7 +48,7 @@ PD_REGISTER_KERNEL(multiply_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -61,7 +61,7 @@ PD_REGISTER_KERNEL(multiply_double_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}
 
@@ -74,6 +74,6 @@ PD_REGISTER_KERNEL(multiply_triple_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

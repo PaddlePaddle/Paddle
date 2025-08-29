@@ -26,6 +26,6 @@ PD_REGISTER_KERNEL(kron,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

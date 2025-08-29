@@ -65,8 +65,8 @@ PD_REGISTER_KERNEL(cast,
                    uint8_t,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

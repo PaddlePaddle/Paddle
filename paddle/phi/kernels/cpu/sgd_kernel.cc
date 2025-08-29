@@ -41,15 +41,15 @@ void sgd_dense_param_dense_grad_impl(const DenseTensor& param,
 }
 
 template <>
-void sgd_dense_param_dense_grad_impl<phi::dtype::bfloat16>(
+void sgd_dense_param_dense_grad_impl<phi::bfloat16>(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const DenseTensor& grad,
     DenseTensor* param_out) {
-  auto p = EigenVector<phi::dtype::bfloat16>::Flatten(param);
-  auto g = EigenVector<phi::dtype::bfloat16>::Flatten(grad);
-  auto o = EigenVector<phi::dtype::bfloat16>::Flatten(*param_out);
-  const auto* lr = learning_rate.data<phi::dtype::bfloat16>();
+  auto p = EigenVector<phi::bfloat16>::Flatten(param);
+  auto g = EigenVector<phi::bfloat16>::Flatten(grad);
+  auto o = EigenVector<phi::bfloat16>::Flatten(*param_out);
+  const auto* lr = learning_rate.data<phi::bfloat16>();
 
   o = p - lr[0] * g;
 }
@@ -82,7 +82,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
 }
 
 template <>
-void sgd_dense_param_sparse_grad_impl<phi::dtype::bfloat16>(
+void sgd_dense_param_sparse_grad_impl<phi::bfloat16>(
     const DenseTensor& param,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
@@ -93,9 +93,9 @@ void sgd_dense_param_sparse_grad_impl<phi::dtype::bfloat16>(
   const int64_t grad_val_height = static_cast<int64_t>(grad_rows.size());
   const auto grad_width = grad_value.numel() / grad_val_height;
 
-  const auto* grad_data = grad_value.data<phi::dtype::bfloat16>();
-  auto* out_data = param_out->data<phi::dtype::bfloat16>();
-  const auto* lr = learning_rate.data<phi::dtype::bfloat16>();
+  const auto* grad_data = grad_value.data<phi::bfloat16>();
+  auto* out_data = param_out->data<phi::bfloat16>();
+  const auto* lr = learning_rate.data<phi::bfloat16>();
 
   for (size_t i = 0; i < grad_rows.size(); ++i) {
     PADDLE_ENFORCE_LT(
@@ -188,19 +188,14 @@ void SGDSparseParamSparseGradKernel(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(sgd,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SGDDenseKernel,
-                   phi::dtype::bfloat16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    sgd, CPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::bfloat16, float, double) {}
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    float,
                    double) {}
 
@@ -208,6 +203,6 @@ PD_REGISTER_KERNEL(sgd_sparse_param_sparse_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::SGDSparseParamSparseGradKernel,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    float,
                    double) {}

@@ -29,4 +29,4 @@ PD_REGISTER_KERNEL(pad,
                    int64_t,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
