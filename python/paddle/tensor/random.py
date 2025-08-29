@@ -1153,9 +1153,6 @@ def randn_like(
     """
     if dtype is None:
         dtype = x.dtype
-    else:
-        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
     shape = paddle.shape(x)
 
     return standard_normal(shape, dtype, name)
@@ -1242,9 +1239,6 @@ def rand_like(
     """
     if dtype is None:
         dtype = input.dtype
-    else:
-        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = convert_np_dtype_to_dtype_(dtype)
 
     return uniform(
         shape=input.shape,
@@ -2111,15 +2105,8 @@ def randperm(
         return out
 
 
-@size_args_decorator
 def rand(
-    shape: ShapeLike,
-    dtype: DTypeLike | None = None,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-    device: PlaceLike | None = None,
-    requires_grad: bool = False,
+    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -2136,9 +2123,6 @@ def rand(
         name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-        out(Tensor, optional): The output tensor.
-        device(PlaceLike|None, optional): The desired device of returned tensor.
-        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform
@@ -2183,16 +2167,7 @@ def rand(
              [0.27029657, 0.03963696, 0.42487794]])
             >>> # doctest: -SKIP
     """
-    return uniform(
-        shape,
-        dtype,
-        min=0.0,
-        max=1.0,
-        name=name,
-        out=out,
-        device=device,
-        requires_grad=requires_grad,
-    )
+    return uniform(shape, dtype, min=0.0, max=1.0, name=name)
 
 
 @param_one_alias(["lam", "lambd"])
