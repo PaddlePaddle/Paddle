@@ -167,8 +167,8 @@ def test_m_grouped_gemm_contiguous() -> None:
             x_fp8, y_fp8, out, m_indices
         )
         diff = calc_diff(out, ref_out)
-        print("diff:", diff)
         assert diff < 0.001, f"m={m * num_groups}, {k=}, {n=}, {diff:.5f}"
+
     print()
 
 
@@ -206,7 +206,6 @@ def test_m_grouped_gemm_masked() -> None:
                         out[j, : masked_m[j].item()],
                         ref_out[j, : masked_m[j].item()],
                     )
-                    print("diff:", diff)
                     assert diff < 0.001, (
                         f"{m=}, {k=}, {n=}, {j=}, masked_m={masked_m[j]}, {num_groups=}, {diff:.5f}"
                     )
@@ -336,6 +335,6 @@ if __name__ == "__main__":
     paddle.seed(0)
     random.seed(0)
     test_gemm()
-    unittest.main()
-    # test_m_grouped_gemm_contiguous()
-    # test_m_grouped_gemm_masked()
+    test_m_grouped_gemm_contiguous()
+    test_m_grouped_gemm_masked()
+    # unittest.main()
