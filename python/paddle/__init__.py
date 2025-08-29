@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Compatibility Note: The design of certain PaddlePaddle public APIs 
-# incorporates principles from PyTorch and NumPy, maintaining compatibility 
-# with PyTorch's API conventions in terms of function signatures and 
-# parameter semantics. It is important to clarify that these APIs are 
+# Compatibility Note: The design of certain PaddlePaddle public APIs
+# incorporates principles from PyTorch and NumPy, maintaining compatibility
+# with PyTorch's API conventions in terms of function signatures and
+# parameter semantics. It is important to clarify that these APIs are
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
