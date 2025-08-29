@@ -139,6 +139,7 @@ def test_gemm() -> None:
             x_fp8, y_fp8, out, ref_out = construct(m, k, n)
             deep_gemm.gemm_fp8_fp8_bf16_nt(x_fp8, y_fp8, out)
             diff = calc_diff(out, ref_out)
+            print("diff:", diff)
             assert diff < 0.001, f"{m=}, {k=}, {n=}, {diff:.5f}"
 
     print()
@@ -336,6 +337,6 @@ if __name__ == "__main__":
     paddle.seed(0)
     random.seed(0)
     test_gemm()
-    unittest.main()
-    # test_m_grouped_gemm_contiguous()
-    # test_m_grouped_gemm_masked()
+    test_m_grouped_gemm_contiguous()
+    test_m_grouped_gemm_masked()
+    # unittest.main()

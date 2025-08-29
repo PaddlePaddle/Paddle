@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 import paddle
 from paddle import Tensor
@@ -116,18 +116,15 @@ def get_col_major_tma_aligned_tensor(x: Tensor) -> Tensor:
     # NOTES: for the extreme performance, you may rewrite/fuse this function in CUDA
     assert x.dim() in (2, 3)
     remove_dim = False
+    m, n = x.shape[-2], x.shape[-1]
+    aligned_m = get_tma_aligned_size(m, x.element_size())
     if x.dim() == 2:
-        m, n = x.shape
-
-        aligned_m = get_tma_aligned_size(m, x.element_size())
-
-        if aligned_m == m and x.strides[0] == 1 and x.strides[1] == aligned_m:
+        if x.strides[0] == 1 and x.strides[1] == aligned_m:
             return x
 
         x, remove_dim = x.unsqueeze(0), True
 
-    b, m, n = x.shape
-    aligned_m = get_tma_aligned_size(m, x.element_size())
+    b = x.shape[0]
 
     # The last kernel gives a column-major TMA aligned layout
     if (

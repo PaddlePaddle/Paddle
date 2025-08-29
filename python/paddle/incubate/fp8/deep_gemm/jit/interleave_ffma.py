@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The file has been adapted from DeepSeek DeepEP project
+# The file has been adapted from DeepSeek DeepGEMM project
 # Copyright (c) 2025 DeepSeek
-# Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+# Licensed under the MIT License - https://github.com/deepseek-ai/DeepGEMM/blob/main/LICENSE
 
 import argparse
 import mmap
@@ -22,12 +22,11 @@ import os
 import re
 import subprocess
 
-from ..utils import get_cuda_home
+from paddle.utils.cpp_extension.cpp_extension import CUDA_HOME
 
 
 def run_cuobjdump(file_path):
-    CUDA_HOME = get_cuda_home()
-    command = [f"{CUDA_HOME}/bin/cuobjdump", "-sass", file_path]
+    command = [f'{CUDA_HOME}/bin/cuobjdump', '-sass', file_path]
     result = subprocess.run(command, capture_output=True, text=True)
     assert result.returncode == 0
     return result.stdout
@@ -38,14 +37,14 @@ def extract_ffma(sass):
     collected = []
     current = []
 
-    arch_name, func_name = "N/A", "N/A"
+    arch_name, func_name = 'N/A', 'N/A'
     skip_next_line = False
     for line in lines:
-        if "code for" in line:
-            arch_name = line.replace("code for ", "").strip()
-        elif "Function :" in line:
-            func_name = line.replace("Function :", "").strip()
-        elif "FFMA" in line:
+        if 'code for' in line:
+            arch_name = line.replace("code for ", "", 1).strip()
+        elif 'Function :' in line:
+            func_name = line.replace("Function :", "", 1).strip()
+        elif 'FFMA' in line:
             current.append(line)
             skip_next_line = True
         elif skip_next_line:
@@ -54,16 +53,16 @@ def extract_ffma(sass):
         else:
             if len(current) >= 16:
                 assert len(current) % 2 == 0
-                collected.append((f"{arch_name}::{func_name}", current))
+                collected.append((f'{arch_name}::{func_name}', current))
             current = []
 
-    if os.getenv("DG_PRINT_REG_REUSE", None):
-        print(f"Found {len(collected)} FFMA segments")
+    if os.getenv('DG_PRINT_REG_REUSE', None):
+        print(f'Found {len(collected)} FFMA segments')
     return collected
 
 
 def extract_hex_from_line(line):
-    match = re.search(r"/\*\s*(0x[0-9a-fA-F]+)\s*\*/", line)
+    match = re.search(r'/\*\s*(0x[0-9a-fA-F]+)\s*\*/', line)
     assert match
     return int(match.group(1), 16)
 
@@ -78,28 +77,28 @@ def validate(m, offset, le_bytes, num_lines):
 
 
 def parse_registers(line):
-    line = re.sub(r"/\*.*?\*/", "", line)
-    line = line.replace(";", "")
-    tokens = line.strip().split(",")
+    line = re.sub(r'/\*.*?\*/', '', line)
+    line = line.replace(';', '')
+    tokens = line.strip().split(',')
     registers = []
     for token in tokens:
         token = token.strip()
         words = token.split()
         for word in words:
-            if word.startswith("R"):
-                reg = word.split(".")[0]
+            if word.startswith('R'):
+                reg = word.split('.')[0]
                 registers.append(reg)
     return registers
 
 
 def modify_segment(m, name, ffma_lines):
-    num_lines = len(ffma_lines)
+    num_lines = (len(ffma_lines) * 9 // 16) // 2 * 2
     assert num_lines % 2 == 0
 
     le_bytes, new_le_bytes = [], []
     reused_list = []
     dst_reg_set = set()
-    last_reused, last_dst_reg = False, ""
+    last_reused, last_dst_reg = False, ''
     num_changed = 0
     for i in range(num_lines // 2):
         dst_reg = parse_registers(ffma_lines[i * 2])[-2]
@@ -109,14 +108,14 @@ def modify_segment(m, name, ffma_lines):
             extract_hex_from_line(high_line),
         )
         le_bytes.append(
-            low_hex.to_bytes(8, "little") + high_hex.to_bytes(8, "little")
+            low_hex.to_bytes(8, 'little') + high_hex.to_bytes(8, 'little')
         )
         reused = (high_hex & 0x0800000000000000) != 0
         if reused:
             is_first_occurred = dst_reg not in dst_reg_set
             if is_first_occurred or (last_reused and dst_reg == last_dst_reg):
                 # Modify the `reuse` and `yield` bits
-                assert high_hex & 0x0800200000000000, f"{hex(high_hex)}"
+                assert high_hex & 0x0800200000000000, f'{hex(high_hex)}'
                 high_hex ^= 0x0800200000000000
                 reused = False
                 num_changed += 1
@@ -124,12 +123,12 @@ def modify_segment(m, name, ffma_lines):
                 reused_list.append(i)
         dst_reg_set.add(dst_reg)
         new_le_bytes.append(
-            low_hex.to_bytes(8, "little") + high_hex.to_bytes(8, "little")
+            low_hex.to_bytes(8, 'little') + high_hex.to_bytes(8, 'little')
         )
         last_reused, last_dst_reg = reused, dst_reg
-    if os.getenv("DG_PRINT_REG_REUSE", None):
+    if os.getenv('DG_PRINT_REG_REUSE', None):
         print(
-            f" > segment `{name}` new reused list ({num_changed} changed): {reused_list}"
+            f' > segment `{name}` new reused list ({num_changed} changed): {reused_list}'
         )
 
     # Find the offset
@@ -149,20 +148,20 @@ def modify_segment(m, name, ffma_lines):
 
 
 def process(path):
-    if os.getenv("DG_PRINT_REG_REUSE", None):
-        print(f"Processing {path}")
+    if os.getenv('DG_PRINT_REG_REUSE', None):
+        print(f'Processing {path}')
     output = run_cuobjdump(path)
     segments = extract_ffma(output)
-    with open(path, "r+b") as f:
+    with open(path, 'r+b') as f:
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
         for segment in segments:
             modify_segment(mm, *segment)
         mm.close()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Interleave FFMA reg reuse")
-    parser.add_argument("--so", help="Path to the SO file")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Interleave FFMA reg reuse')
+    parser.add_argument('--so', help='Path to the SO file')
     args = parser.parse_args()
 
     process(args.so)

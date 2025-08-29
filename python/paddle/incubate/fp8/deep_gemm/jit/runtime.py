@@ -15,10 +15,14 @@
 # The file has been adapted from DeepSeek DeepEP project
 # Copyright (c) 2025 DeepSeek
 # Licensed under the MIT License - https://github.com/deepseek-ai/DeepEP/blob/main/LICENSE
+from __future__ import annotations
 
 import ctypes
 import os
-from typing import Optional
+
+import paddle
+
+from .template import map_ctype
 
 
 class Runtime:
@@ -36,64 +40,42 @@ class Runtime:
             return False
 
         # Contains all necessary files
-        files = ["kernel.cu", "kernel.args", "kernel.so"]
+        files = ['kernel.cu', 'kernel.args', 'kernel.so']
         return all(os.path.exists(os.path.join(path, file)) for file in files)
 
     def __call__(self, *args) -> int:
         # Load SO file
-        if self.lib is None:
-            self.lib = ctypes.CDLL(os.path.join(self.path, "kernel.so"))
+        if self.lib is None or self.args is None:
+            self.lib = ctypes.CDLL(os.path.join(self.path, 'kernel.so'))
+            with open(os.path.join(self.path, 'kernel.args'), 'r') as f:
+                self.args = eval(f.read())
 
-        if len(args) == 9:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_int(args[5]),
-                ctypes.c_void_p(args[6].cuda_stream),
-                ctypes.c_int(args[7]),
-                ctypes.c_int(args[8]),
-            ]
-        elif len(args) == 10:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_void_p(args[5].data_ptr()),
-                ctypes.c_int(args[6]),
-                ctypes.c_void_p(args[7].cuda_stream),
-                ctypes.c_int(args[8]),
-                ctypes.c_int(args[9]),
-            ]
-        elif len(args) == 11:
-            cargs = [
-                ctypes.c_void_p(args[0].data_ptr()),
-                ctypes.c_void_p(args[1].data_ptr()),
-                ctypes.c_void_p(args[2].data_ptr()),
-                ctypes.c_void_p(args[3].data_ptr()),
-                ctypes.c_void_p(args[4].data_ptr()),
-                ctypes.c_void_p(args[5].data_ptr()),
-                ctypes.c_int(args[6]),
-                ctypes.c_int(args[7]),
-                ctypes.c_void_p(args[8].cuda_stream),
-                ctypes.c_int(args[9]),
-                ctypes.c_int(args[10]),
-            ]
-        else:
-            raise ValueError("Invalid number of arguments")
+        # Check args and launch
+        assert len(args) == len(self.args), (
+            f'Expected {len(self.args)} arguments, got {len(args)}'
+        )
+        cargs = []
+        for arg, (name, dtype) in zip(args, self.args):
+            if isinstance(arg, paddle.Tensor):
+                assert arg.dtype == dtype, (
+                    f'Expected tensor dtype `{dtype}` for `{name}`, got `{arg.dtype}`'
+                )
+            else:
+                assert isinstance(arg, dtype), (
+                    f'Expected built-in type `{dtype}` for `{name}`, got `{type(arg)}`'
+                )
+            cargs.append(map_ctype(arg))
+
         return_code = ctypes.c_int(0)
         self.lib.launch(*cargs, ctypes.byref(return_code))
+        return return_code.value
 
 
 class RuntimeCache:
     def __init__(self) -> None:
         self.cache = {}
 
-    def __getitem__(self, path: str) -> Optional['Runtime']:
+    def __getitem__(self, path: str) -> Runtime | None:
         # In Python runtime
         if path in self.cache:
             return self.cache[path]

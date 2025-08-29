@@ -76,7 +76,10 @@ def cpp_format(template: str, keys: dict[str, Any]) -> str:
     # We don't use `str.format` because it's not safe for C++ {} braces
     new_template = copy.deepcopy(template)
     for key, value in keys.items():
-        new_template = new_template.replace(f"{{{key}}}", f"{value}")
+        value_str = str(value)
+        if isinstance(value, bool):
+            value_str = value_str.lower()
+        new_template = new_template.replace(f'{{{key}}}', f'{value_str}')
     return new_template
 
 
@@ -84,30 +87,22 @@ def generate(
     includes: Iterable[str], arg_defs: Iterable[tuple], body: str
 ) -> str:
     # Common prefix
-    code = "// DeepGEMM auto-generated JIT CUDA source file\n\n"
+    code = '// DeepGEMM auto-generated JIT CUDA source file\n\n'
+
     # Includes
     preload_sys_includes = [
-        "<cuda.h>",
-        "<cuda_fp8.h>",
-        "<cuda_runtime.h>",
-        "<iostream>",
+        '<cuda.h>',
+        '<cuda_fp8.h>',
+        '<cuda_runtime.h>',
+        '<iostream>',
     ]
-    # preload_package_includes = ['"cutlass/cutlass.h"']
+    preload_package_includes = ['"cutlass/cutlass.h"']
 
-    paddle_source_dir = os.path.dirname(paddle.__file__)
-    include_dirs = (
-        paddle_source_dir
-        + "/include/paddle/fluid/fp8/deep_gemm/include/cutlass/cutlass.h"
-    )
-    preload_package_includes = [f'"{include_dirs}"']
-
-    assert isinstance(includes, (list, tuple)), (
-        "includes must be a list or tuple"
-    )
+    assert isinstance(includes, (list, tuple))
     sys_includes = sorted(
         set(
             preload_sys_includes
-            + [include for include in includes if include.startswith("<")]
+            + [include for include in includes if include.startswith('<')]
         )
     )
     package_includes = sorted(
@@ -117,45 +112,45 @@ def generate(
         )
     )
     code += (
-        "\n".join(f"#include {include}" for include in sys_includes) + "\n\n"
+        '\n'.join(f'#include {include}' for include in sys_includes) + '\n\n'
     )
     code += (
-        "\n".join(f"#include {include}" for include in package_includes)
-        + "\n\n"
+        '\n'.join(f'#include {include}' for include in package_includes)
+        + '\n\n'
     )
 
     # Function signature
-    raw = "__raw_"
+    raw = '__raw_'
     get_def = (
-        lambda n, t: f"{genc_map[t][0]} "
-        + (raw if genc_map[t][0] != genc_map[t][1] else "")
+        lambda n, t: f'{genc_map[t][0]} '
+        + (raw if genc_map[t][0] != genc_map[t][1] else '')
         + n
     )
     code += 'extern "C" void launch('
-    code += ", ".join(
+    code += ', '.join(
         [get_def(*arg_def) for arg_def in arg_defs]
         + [
-            "int& __return_code",
+            'int& __return_code',
         ]
     )
-    code += ") {\n"
+    code += ') {\n'
 
     # Cast raw types
-    code += "    // Cast raw types (if needed)\n"
+    code += '    // Cast raw types (if needed)\n'
     for arg_name, arg_type in arg_defs:
         if genc_map[arg_type][0] != genc_map[arg_type][1]:
-            code += f"    auto {arg_name} = reinterpret_cast<{genc_map[arg_type][1]}>({raw}{arg_name});\n"
+            code += f'    auto {arg_name} = reinterpret_cast<{genc_map[arg_type][1]}>({raw}{arg_name});\n'
 
     # Function body
-    code += "\n".join(
-        [(("    " if line else "") + line) for line in body.split("\n")]
+    code += '\n'.join(
+        [(('    ' if line else '') + line) for line in body.split('\n')]
     )
 
     # End the function
-    code += "}\n\n"
+    code += '}\n\n'
 
     # Debug print
-    if os.getenv("DG_JIT_DEBUG", None):
-        print(f"Generated code:\n{code}")
+    if os.getenv('DG_JIT_DEBUG', None):
+        print(f'Generated code:\n{code}')
 
     return code

@@ -27,4 +27,4 @@ from .jit_kernels import (  # noqa: F401
     m_grouped_gemm_fp8_fp8_bf16_nt_masked,
     set_num_sms,
 )
-from .utils import bench, calc_diff, count_bytes, get_cuda_home  # noqa: F401
+from .utils import bench, calc_diff, count_bytes  # noqa: F401

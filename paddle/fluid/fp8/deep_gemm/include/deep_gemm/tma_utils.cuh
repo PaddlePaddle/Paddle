@@ -59,7 +59,7 @@ constexpr CUtensorMapDataType get_CUtensorMapDataType() {
   }
 }
 
-PFN_cuTensorMapEncodeTiled get_cuTensorMapEncodeTiled() {
+inline PFN_cuTensorMapEncodeTiled get_cuTensorMapEncodeTiled() {
   // Get pointer to `cuTensorMapEncodeTiled`
   cudaDriverEntryPointQueryResult driver_status;
   void* cuTensorMapEncodeTiled_ptr = nullptr;
@@ -91,17 +91,16 @@ CUtensorMap make_2d_tma_copy_desc(
     uint32_t smem_dim[2],
     CUtensorMapSwizzle swizzle_type,
     PFN_cuTensorMapEncodeTiled encode_func = nullptr) {
-  CUtensorMap tensor_map{};
-  constexpr uint32_t rank = 2;
-  uint64_t global_stride[rank - 1] = {stride_in_bytes};
-  uint32_t elem_strides[rank] = {1, 1};
+  CUtensorMap tensor_map = {};
+  uint64_t global_stride[1] = {stride_in_bytes};
+  uint32_t elem_strides[2] = {1, 1};
 
   if (encode_func == nullptr) encode_func = get_cuTensorMapEncodeTiled();
 
   auto result =
       encode_func(&tensor_map,
-                  get_CUtensorMapDataType<typename std::remove_cv<T>::type>(),
-                  rank,
+                  get_CUtensorMapDataType<std::remove_cv_t<T>>(),
+                  2,
                   global_address,
                   gmem_dim,
                   global_stride,
@@ -115,21 +114,21 @@ CUtensorMap make_2d_tma_copy_desc(
   return tensor_map;
 }
 
-template <uint32_t kNumTMAMulticast = 1>
 __device__ __forceinline__ void tma_copy(void const* desc_ptr,
                                          uint64_t* barrier_ptr,
                                          void* smem_ptr,
                                          int32_t const& crd_0,
-                                         int32_t const& crd_1) {
+                                         int32_t const& crd_1,
+                                         uint32_t num_tma_multicast) {
   constexpr auto cache_hint =
       static_cast<uint64_t>(cute::TMA::CacheHintSm90::EVICT_NORMAL);
-  if constexpr (kNumTMAMulticast == 1) {
+  if (num_tma_multicast == 1) {
     cute::SM90_TMA_LOAD_2D::copy(
         desc_ptr, barrier_ptr, cache_hint, smem_ptr, crd_0, crd_1);
   } else if (cute::block_rank_in_cluster() == 0) {
     cute::SM90_TMA_LOAD_MULTICAST_2D::copy(desc_ptr,
                                            barrier_ptr,
-                                           (1 << kNumTMAMulticast) - 1,
+                                           (1 << num_tma_multicast) - 1,
                                            cache_hint,
                                            smem_ptr,
                                            crd_0,
