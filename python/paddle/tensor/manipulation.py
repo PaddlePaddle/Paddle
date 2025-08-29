@@ -6417,6 +6417,8 @@ def repeat_interleave(
     repeats: int | Tensor,
     axis: int | None = None,
     name: str | None = None,
+    *,
+    output_size: int | None = None,
 ) -> Tensor:
     """
 
@@ -6446,6 +6448,7 @@ def repeat_interleave(
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        output_size (int, optional): Total output size for the given axis (e.g. sum of repeats). If given, it will avoid stream synchronization needed to calculate output shape of the tensor.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.
@@ -6485,8 +6488,12 @@ def repeat_interleave(
         axis = 0
     if in_dynamic_or_pir_mode():
         if isinstance(repeats, (Variable, paddle.pir.Value)):
-            return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
-        return _C_ops.repeat_interleave(x, repeats, axis)
+            return _C_ops.repeat_interleave_with_tensor_index(
+                x, repeats, axis, output_size if output_size is not None else -1
+            )
+        return _C_ops.repeat_interleave(
+            x, repeats, axis, output_size if output_size is not None else -1
+        )
 
     helper = LayerHelper("repeat_interleave", **locals())
     check_variable_and_dtype(
@@ -6508,6 +6515,7 @@ def repeat_interleave(
         attrs={
             'dim': axis,
             'Repeats': repeats if isinstance(repeats, int) else 0,
+            'output_size': output_size if output_size is not None else -1,
         },
     )
     return out

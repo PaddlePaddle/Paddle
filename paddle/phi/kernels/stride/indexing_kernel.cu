@@ -14,7 +14,6 @@
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
-#include "paddle/phi/kernels/funcs/indexing.h"
 #include <limits>
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -24,6 +23,7 @@
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
+#include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/index_put_kernel.h"

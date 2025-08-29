@@ -1130,8 +1130,11 @@ def _load_state_dict(
                 or idx + 1 == len(read_items)
             ):
                 paddle.assign(
-                    copied_target_state_dict[key].cpu(), state_dict_in_cpu[key]
+                    copied_target_state_dict[key].cpu(), target_state_dict[key]
                 )
+                t = copied_target_state_dict[key]
+                copied_target_state_dict[key] = t.cpu()
+                del t
             idx = idx + 1
 
             if use_dist:

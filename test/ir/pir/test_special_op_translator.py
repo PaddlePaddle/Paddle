@@ -219,26 +219,6 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
             _ = pir.translate_to_pir(main_program.desc)
 
 
-class TestRnnOpTranscriber(unittest.TestCase):
-    def test_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                x = paddle.randn((4, 16))
-                prev_h = paddle.randn((4, 32))
-
-                cell = paddle.nn.SimpleRNNCell(16, 32)
-                y, h = cell(x, prev_h)
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-
 class TestEmptyVarTranslate(unittest.TestCase):
     def test_op(self):
         with paddle.pir_utils.OldIrGuard():
@@ -447,21 +427,6 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
             assert l.global_block().ops[2].name() == "pd_op.share_data_", (
                 "share_buffer should be translated to share_data_"
             )
-
-
-class TestCheckUnregisteredOp(unittest.TestCase):
-    def test_program(self):
-        with paddle.pir_utils.OldIrGuard():
-            main_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program):
-                x = paddle.randn((4, 16))
-                prev_h = paddle.randn((4, 32))
-
-                cell = paddle.nn.SimpleRNNCell(16, 32)
-                y, h = cell(x, prev_h)
-
-            ops = pir.check_unregistered_ops(main_program.desc)
-            assert len(ops) == 0
 
 
 if __name__ == "__main__":

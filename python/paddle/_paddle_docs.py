@@ -515,6 +515,159 @@ add_doc_and_signature(
 )
 
 add_doc_and_signature(
+    "matmul",
+    """
+    Applies matrix multiplication to two tensors. `matmul` follows
+    the complete broadcast rules,
+    and its behavior is consistent with `np.matmul`.
+
+    Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
+    achieve the `dot`, `matmul` and `batchmatmul`.
+
+    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
+    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
+    - If a transpose flag is specified, the last two dimensions of the tensor
+      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
+      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
+      for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
+
+    The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
+
+    - If both tensors are 1-dimensional, the dot product result is obtained.
+
+    - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
+
+    - If the `x` is 1-dimensional and the `y` is 2-dimensional,
+      a `1` is prepended to its dimension in order to conduct the matrix multiply.
+      After the matrix multiply, the prepended dimension is removed.
+
+    - If the `x` is 2-dimensional and `y` is 1-dimensional,
+      the matrix-vector product is obtained.
+
+    - If both arguments are at least 1-dimensional and at least one argument
+      is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
+      If the first argument is 1-dimensional, a 1 is prepended to its dimension
+      in order to conduct the batched matrix multiply and removed after.
+      If the second argument is 1-dimensional, a 1 is appended to its
+      dimension for the purpose of the batched matrix multiple and removed after.
+      The non-matrix (exclude the last two dimensions) dimensions are
+      broadcasted according the broadcast rule.
+      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
+      out will be a (j, k, n, p) tensor.
+
+    Args:
+        x (Tensor): The input tensor which is a Tensor.
+        y (Tensor): The input tensor which is a Tensor.
+        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
+        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
+        name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
+
+    Returns:
+        Tensor: The output Tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # vector * vector
+            >>> x = paddle.rand([10])
+            >>> y = paddle.rand([10])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            []
+
+            >>> # matrix * vector
+            >>> x = paddle.rand([10, 5])
+            >>> y = paddle.rand([5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10]
+
+            >>> # batched matrix * broadcasted vector
+            >>> x = paddle.rand([10, 5, 2])
+            >>> y = paddle.rand([2])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 5]
+
+            >>> # batched matrix * batched matrix
+            >>> x = paddle.rand([10, 5, 2])
+            >>> y = paddle.rand([10, 2, 5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 5, 5]
+
+            >>> # batched matrix * broadcasted matrix
+            >>> x = paddle.rand([10, 1, 5, 2])
+            >>> y = paddle.rand([1, 3, 2, 5])
+            >>> z = paddle.matmul(x, y)
+            >>> print(z.shape)
+            [10, 3, 5, 5]
+
+    """,
+    """    def matmul(
+    x: Tensor,
+    y: Tensor,
+    transpose_x: bool = False,
+    transpose_y: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor""",
+)
+add_doc_and_signature(
+    "multiply",
+    """
+    multiply two tensors element-wise. The equation is:
+
+    .. math::
+        out = x * y
+
+    Note:
+        Supported shape of :attr:`x` and :attr:`y` for this operator:
+        1. `x.shape` == `y.shape`.
+        2. `x.shape` could be the continuous subsequence of `y.shape`.
+        ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        y (Tensor): the input tensor, its data type should be one of bfloat16, float16, float32, float64, int32, int64, bool, complex64, complex128.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If :attr:`x`, :attr:`y` have different shapes and are "broadcastable", the resulting tensor shape is the shape of :attr:`x` and :attr:`y` after broadcasting. If :attr:`x`, :attr:`y` have the same shape, its shape is the same as :attr:`x` and :attr:`y`.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2], [3, 4]])
+            >>> y = paddle.to_tensor([[5, 6], [7, 8]])
+            >>> res = paddle.multiply(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5 , 12],
+             [21, 32]])
+            >>> x = paddle.to_tensor([[[1, 2, 3], [1, 2, 3]]])
+            >>> y = paddle.to_tensor([2])
+            >>> res = paddle.multiply(x, y)
+            >>> print(res)
+            Tensor(shape=[1, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[2, 4, 6],
+              [2, 4, 6]]])
+
+    """,
+    """def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor""",
+)
+add_doc_and_signature(
     "logsumexp",
     r"""
     Calculates the log of the sum of exponentials of ``x`` along ``axis`` .

@@ -43,6 +43,7 @@ void ScatterKernel(const Context &dev_ctx,
   auto *out_data = reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(out));
   int ret = xpu::copy(dev_ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
