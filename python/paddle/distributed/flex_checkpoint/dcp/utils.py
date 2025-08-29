@@ -21,7 +21,6 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import numpy as np
-from filelock import FileLock, Timeout
 
 import paddle
 from paddle.distributed.fleet.utils.log_util import logger
@@ -346,9 +345,10 @@ def is_list_string(s):
 
 def write_to_file_if_empty(data, path):
     lock_path = f"{path}.lock"
-    lock = FileLock(lock_path)
     try:
-        with lock.acquire(timeout=1):
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+        try:
             if os.path.exists(path) and os.path.getsize(path) > 0:
                 logger.info(
                     f"Process {os.getpid()} found the metadata file already written."
@@ -358,13 +358,10 @@ def write_to_file_if_empty(data, path):
             logger.info(
                 f"Process {os.getpid()} successfully wrote the metadata to the file."
             )
-    except Timeout:
-        logger.info(
-            f"Process {os.getpid()} could not acquire the lock and timed out to write the metadata, maybe another process is doing it."
-        )
-    finally:
-        try:
+        finally:
             if os.path.exists(lock_path):
                 os.remove(lock_path)
-        except FileNotFoundError:
-            pass
+    except FileExistsError:
+        logger.info(
+            f"Process {os.getpid()} could not acquire the lock; another process is writing or has written the metadata."
+        )
