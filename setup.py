@@ -1870,11 +1870,11 @@ def get_headers():
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
         )
-        # torch like apis
+        # torch compatible apis
         + list(
             find_files(
                 '*.h',
-                paddle_source_dir + '/paddle/phi/api/include/torch_like_api',
+                paddle_source_dir + '/paddle/phi/api/include/compat',
                 recursive=True,
             )
         )

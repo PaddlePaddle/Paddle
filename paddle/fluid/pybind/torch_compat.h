@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/op_function_common.h"
-#include "paddle/phi/api/include/torch_like_api/compat/scalar_type_conversion.h"
+#include "paddle/phi/api/include/compat/utils/scalar_type_conversion.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;

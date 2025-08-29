@@ -334,7 +334,6 @@ collect_srcs(
   api_srcs
   SRCS
   tensor.cc
-  torch_compat_runtime.cc
   op_meta_info.cc
   context_pool.cc
   tensor_utils.cc

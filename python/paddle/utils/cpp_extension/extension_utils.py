@@ -828,10 +828,10 @@ def find_paddle_includes(use_cuda=False):
     # pythonXX/site-packages/paddle/include
     paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
-    torch_like_api_dir = os.path.join(
-        paddle_include_dir, 'paddle/phi/api/include/torch_like_api'
+    compat_dir = os.path.join(
+        paddle_include_dir, 'paddle/phi/api/include/compat'
     )
-    include_dirs = [paddle_include_dir, third_party_dir, torch_like_api_dir]
+    include_dirs = [paddle_include_dir, third_party_dir, compat_dir]
 
     if use_cuda:
         if core.is_compiled_with_rocm():
