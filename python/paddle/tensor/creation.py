@@ -2113,6 +2113,8 @@ def arange(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -2165,6 +2167,8 @@ def arange(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -2303,6 +2307,8 @@ def range(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         return tensor
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
@@ -2336,6 +2342,8 @@ def range(
         out=out,
     )
     tensor.stop_gradient = not requires_grad
+    if out is not None:
+        out.stop_gradient = not requires_grad
     return tensor
 
 

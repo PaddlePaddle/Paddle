@@ -278,7 +278,7 @@ class TestCreationOut(unittest.TestCase):
     def test_arange(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
-        y = paddle.arange(-1.1, 3.4, 0.1, out=t)
+        y = paddle.arange(-1.1, 3.4, 0.1, out=t, requires_grad=True)
         np.testing.assert_allclose(
             t.numpy(), np.arange(-1.1, 3.4, 0.1), 1e-6, 1e-6
         )
@@ -286,12 +286,16 @@ class TestCreationOut(unittest.TestCase):
             y.numpy(), np.arange(-1.1, 3.4, 0.1), 1e-6, 1e-6
         )
         self.assertEqual(t.data_ptr(), y.data_ptr())
+        self.assertEqual(y.stop_gradient, False)
+        self.assertEqual(t.stop_gradient, False)
 
     def test_range(self):
         x = paddle.randn([2, 2])
         t = paddle.empty_like(x)
-        y = paddle.range(-1.1, 3.4, 0.1, out=t)
+        y = paddle.range(-1.1, 3.4, 0.1, out=t, requires_grad=True)
         self.assertEqual(t.data_ptr(), y.data_ptr())
+        self.assertEqual(y.stop_gradient, False)
+        self.assertEqual(t.stop_gradient, False)
 
 
 if __name__ == '__main__':
