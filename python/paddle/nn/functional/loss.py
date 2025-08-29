@@ -2681,7 +2681,7 @@ def softmax_with_cross_entropy(
     )
 
 
-@ParamAliasDecorator({"target": ["label"]})
+@ParamAliasDecorator({"label": ["target"]})
 def cross_entropy(
     input: Tensor,
     label: Tensor,

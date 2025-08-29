@@ -438,7 +438,7 @@ class CrossEntropyLoss(Layer):
         self.label_smoothing = label_smoothing
         self.name = name
 
-    @ParamAliasDecorator({"target": ["label"]})
+    @ParamAliasDecorator({"label": ["target"]})
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         ret = paddle.nn.functional.cross_entropy(
             input,
