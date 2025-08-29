@@ -77,17 +77,6 @@ __global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
   dest[tid] = value;
 }
 
-struct DivMod {
-  template <typename T>
-  static __device__ __forceinline__ void divmod(T dividend,
-                                                T divisor,
-                                                T* __restrict__ quotient,
-                                                T* __restrict__ remainder) {
-    *quotient = dividend / divisor;
-    *remainder = dividend % divisor;
-  }
-};
-
 template <typename T>
 static T ExcludeSelfInitialValue(const std::string& reduce_op) {
   if (reduce_op == "add") {
@@ -108,6 +97,17 @@ static T ExcludeSelfInitialValue(const std::string& reduce_op) {
             "Unsupported or unnecessary (assign) reduce op: '%s'", reduce_op));
   }
 }
+
+struct DivMod {
+  template <typename T>
+  static __device__ __forceinline__ void divmod(T dividend,
+                                                T divisor,
+                                                T* __restrict__ quotient,
+                                                T* __restrict__ remainder) {
+    *quotient = dividend / divisor;
+    *remainder = dividend % divisor;
+  }
+};
 
 // compute two offsets for self tensor and src tensor
 // if compute_self is true, other wise only src_offset is useful
@@ -608,7 +608,7 @@ void gpu_gather_kernel(phi::DenseTensor self,
   gpu_gather_scatter_functor<tensor_t,
                              index_t,
                              /*is_scatter_like=*/false>()(
-      result, dim, index, self, "assign", tensor_assign, include_self, dev_ctx);
+      result, dim, index, self, "gather", tensor_assign, include_self, dev_ctx);
   return;
 }
 
@@ -976,7 +976,6 @@ void gpu_scatter_mul_min_max_input_grad_kernel(
   } else if (reduce == "amin" || reduce == "amax") {
     phi::funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
-
     ScatterGradPrePassKernel<tensor_t, index_t, MinMaxInputGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
