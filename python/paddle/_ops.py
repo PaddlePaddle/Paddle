@@ -97,7 +97,7 @@ class OpNameSpace(types.ModuleType):
 
     def __getattr__(self, name: str) -> OverloadedOpFunction[..., Any]:
         if name == "__file__":
-            return "paddle.ops"  # type: ignore
+            return PADDLE_OPS_MODULE_NAME  # type: ignore
         return OverloadedOpFunction(self.name, name)
 
 

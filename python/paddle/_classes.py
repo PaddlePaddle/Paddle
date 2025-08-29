@@ -31,7 +31,7 @@ class ClassesNameSpace(types.ModuleType):
 
     def __getattr__(self, name: str) -> Any:
         if name == "__file__":
-            return "paddle.classes"  # type: ignore
+            return PADDLE_CLASSES_MODULE_NAME  # type: ignore
         return paddle.base.core.torch_compat._get_custom_class_python_wrapper(
             self.name, name
         )
