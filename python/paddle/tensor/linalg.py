@@ -1178,12 +1178,14 @@ def matrix_norm(
         )
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@ParamAliasDecorator({"x": ["input", "A"], "p": ["ord"], "axis": ["dim"]})
 def norm(
     x: Tensor,
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
+    out: paddle.Tensor | None = None,
+    dtype: paddle._typing.DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1251,6 +1253,8 @@ def norm(
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor, optional): The output tensor. Ignored out = None.
+        dtype (DTypeLike | None, optional): The data type of the output tensor. If specified, the input tensor is casted to `dtype` while performing the operation. Default value is None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1322,35 +1326,40 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-
-    # calculate vector norm, where axis is None, int or list with only one integer
-    if axis is None or (isinstance(axis, int)):
-        # 'fro' is used to adapt previous usage
-        if p is None or p == 'fro':
-            p = 2.0
-        if isinstance(p, (int, float)):
-            return vector_norm(
+    if dtype is not None:
+        x = x.astype(dtype)
+    if isinstance(p, str):
+        if p == "fro" and (axis is None or isinstance(axis, int)):
+            output = vector_norm(
+                x,
+                p=2,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        else:
+            if axis is None:
+                axis = list(range(x.ndim))
+            output = matrix_norm(
+                x=x, p=p, axis=axis, keepdim=keepdim, name=name
+            )
+    else:
+        p = 2.0 if p is None else p
+        if isinstance(axis, list) and len(axis) == 2:
+            output = matrix_norm(
+                x=x, p=p, axis=axis, keepdim=keepdim, name=name
+            )
+        else:
+            output = vector_norm(
                 x,
                 p=p,
                 axis=axis,
                 keepdim=keepdim,
                 name=name,
             )
-        else:
-            raise ValueError(
-                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
-            )
-
-    # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
-        if p is None:
-            p = 'fro'
-        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
-
-    else:
-        raise ValueError(
-            f"except axis type int or list (length of list <=2), found {axis}"
-        )
+    if out is not None:
+        paddle.assign(output, output=out)
+    return output
 
 
 def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:

@@ -22,20 +22,18 @@ paddle.enable_static()
 
 def get_ir_program():
     paddle.enable_static()
-    with paddle.pir_utils.OldIrGuard():
-        x = paddle.randn([4, 4])
-        main_program, start_program = (
-            paddle.static.Program(),
-            paddle.static.Program(),
-        )
-        with paddle.static.program_guard(main_program, start_program):
-            x_s = paddle.static.data('x', [4, 4], x.dtype)
-            x_s.stop_gradient = False
-            y_s = paddle.matmul(x_s, x_s)
-            y_s = paddle.add(x_s, y_s)
-            y_s = paddle.tanh(y_s)
-        pir_program = pir.translate_to_pir(main_program.desc)
-        return pir_program
+    x = paddle.randn([4, 4])
+    main_program, start_program = (
+        paddle.static.Program(),
+        paddle.static.Program(),
+    )
+    with paddle.static.program_guard(main_program, start_program):
+        x_s = paddle.static.data('x', [4, 4], x.dtype)
+        x_s.stop_gradient = False
+        y_s = paddle.matmul(x_s, x_s)
+        y_s = paddle.add(x_s, y_s)
+        y_s = paddle.tanh(y_s)
+    return main_program
 
 
 class TestBuildOp(unittest.TestCase):
@@ -101,7 +99,6 @@ class TestBuildOp3(unittest.TestCase):
                 out = paddle.mean(sum_out)
                 tanh_operand.set_source(out)
 
-            print(pir_program)
             self.assertEqual(
                 tanh_operand.source().get_defining_op().name(), "pd_op.mean"
             )
@@ -205,14 +202,14 @@ class TestGetValueByOpId(unittest.TestCase):
             )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
-            value1 = main_program.get_value_by_op_id(69)
+            value1 = main_program.get_value_by_op_id(87)
             self.assertEqual(
                 out.get_defining_op().id(),
                 value1[0].get_defining_op().id(),
             )
-            value2 = main_program.get_value_by_op_id([58, 69])
+            value2 = main_program.get_value_by_op_id([58, 87])
             self.assertEqual(
-                69,
+                87,
                 value2[0].get_defining_op().id(),
             )
 

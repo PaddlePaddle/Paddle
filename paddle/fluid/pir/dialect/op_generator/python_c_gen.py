@@ -225,6 +225,8 @@ MUTABLE_ATTR_LIST_TEMPLATE = """
            {mutable_cast_attrs}
         }}else if (PyObject_CheckIRVectorOfValue({name}_obj)){{
            {mutable_vector_cast_attrs}
+        }}else if (PyObject_CheckIRVectorOfValueOrLong({name}_obj)){{
+           {mix_vector_cast_attrs}
         }}else{{
            {no_mutable_cast_attrs}
         }}"""
@@ -525,6 +527,18 @@ class PythonCCodeGen(CodeGen):
                         name=name
                     )
 
+                    mix_vector_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
+                        type='std::vector<pir::Value>',
+                        name_=name + '_tmp',
+                        name=name,
+                        cast_func='CastPyArg2VectorOfValueOrLong',
+                        api_name=op_name,
+                        index=input_size + i,
+                    )
+                    mix_vector_cast_str += BUILTIN_STACK_OP_TEMPLATE.format(
+                        name=name
+                    )
+
                 else:
                     mutable_cast_str = MUTABLE_ATTR_CAST_TEMPLATE.format(
                         type='',
@@ -570,6 +584,7 @@ class PythonCCodeGen(CodeGen):
                         name=name,
                         mutable_cast_attrs=mutable_cast_str,
                         mutable_vector_cast_attrs=mutable_vector_cast_str,
+                        mix_vector_cast_attrs=mix_vector_cast_str,
                         no_mutable_cast_attrs=no_mutable_cast_str,
                     )
                 else:
@@ -707,8 +722,10 @@ class PythonCCodeGen(CodeGen):
         need_check_params_count = False
         self.need_parse_python_api_args = False
         self.use_custom_args_mapper = False
-
-        if op_name in python_api_info_from_yaml.keys():
+        # Do not parse sparse op's python_api_info
+        if (
+            not op_info.is_sparse_op
+        ) and op_name in python_api_info_from_yaml.keys():
             python_api_info = python_api_info_from_yaml[op_name]
         if python_api_info is not None:
             self.need_parse_python_api_args = True

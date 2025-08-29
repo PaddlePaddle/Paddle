@@ -95,8 +95,60 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
+    import builtins
+
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
+    original_init = Tensor.__init__
+
+    def new_init(self, *args, **kwargs):
+        """
+        New Usage Example:
+        1. paddle.Tensor()
+        2. paddle.Tensor(device="cpu")
+        3. paddle.Tensor(1,2,3)
+        4. paddle.Tensor(1,2,3, device="cpu")
+        5. paddle.Tensor([1,2,3])
+        6. paddle.Tensor([1,2,3], device="cpu")
+        7. paddle.Tensor(data=[1,2,3])
+        8. paddle.Tensor(data=[1,2,3], device="cpu")
+        Original Usage Example:
+        9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
+        """
+        if 'device' in kwargs:
+            device = kwargs.pop('device')
+        else:
+            device = "cpu"
+        device = framework._get_paddle_place(device)
+        if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
+            original_init(
+                self, paddle.empty(shape=[0], dtype='float32'), place=device
+            )
+            return
+        if 'data' in kwargs:  # case 7,8
+            data = kwargs.pop('data')
+            original_init(
+                self, paddle.tensor(data, dtype='float32'), place=device
+            )
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            # case 5, 6
+            original_init(
+                self, paddle.tensor(args[0], dtype='float32'), place=device
+            )
+        elif (
+            builtins.all(isinstance(arg, int) for arg in args)
+            and len(kwargs) == 0
+        ):
+            # case 3, 4
+            original_init(
+                self,
+                paddle.empty(shape=list(args), dtype='float32'),
+                place=device,
+            )
+        else:
+            original_init(self, *args, **kwargs)
+
+    Tensor.__init__ = new_init
 
 import paddle.distributed.fleet
 import paddle.text
@@ -210,6 +262,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -244,8 +297,8 @@ from .tensor.creation import (
     ones_like,
     polar,
     range,
+    tensor as as_tensor,
     to_tensor,
-    to_tensor as as_tensor,
     tril,
     tril_,
     tril_indices,
@@ -532,6 +585,7 @@ from .tensor.math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -628,9 +682,6 @@ from .tensor.search import (
     topk,
     where,
     where_,
-)
-from .tensor.softmax import (
-    softmax,
 )
 from .tensor.stat import (
     mean,
@@ -864,12 +915,17 @@ concatenate = concat
 take_along_dim = take_along_axis
 clamp = clip
 ger = outer
-
 div = divide
 div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
 
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -1182,6 +1238,8 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
     'permute',
     'cauchy_',
@@ -1199,6 +1257,7 @@ __all__ = [
     'flatten_',
     'ravel',
     'asin',
+    'mul',
     'multiply',
     'multiply_',
     'disable_static',
