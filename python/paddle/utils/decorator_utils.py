@@ -427,22 +427,7 @@ class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
     ) -> tuple[tuple[Any, ...], dict[str, Any]]:
-        found_keys = [key for key in self.illegal_keys if key in kwargs]
-
-        if found_keys:
-            found_keys.sort()
-            keys_str = ", ".join(f"'{key}'" for key in found_keys)
-            plural = "s" if len(found_keys) > 1 else ""
-
-            raise TypeError(
-                f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
-                f"\nDid you mean to use {self.correct_name}() instead?"
-            )
-        if self.warn_msg is not None:
-            warnings.warn(
-                self.warn_msg,
-                category=Warning,
-            )
+        args, kwargs = super().process(args, kwargs)
 
         if self.ignore_param:
             name, index, typ = self.ignore_param
@@ -583,6 +568,41 @@ def index_select_decorator():
                     args = args[3:]
                 else:
                     args = args[2:]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def sum_decorator():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("dim" in kwargs) and ("axis" not in kwargs):
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) == 3:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                else:
+                    kwargs["dtype"] = args[2]
+                args = ()
+            elif len(args) == 4:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                    kwargs["dtype"] = args[3]
+                else:
+                    kwargs["dtype"] = args[2]
+                    kwargs["keepdim"] = args[3]
+                args = ()
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

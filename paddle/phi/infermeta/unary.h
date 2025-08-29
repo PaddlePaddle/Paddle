@@ -708,6 +708,7 @@ PADDLE_API void ReduceScatterInferMeta(const MetaTensor& x,
 PADDLE_API void RepeatInterleaveInferMeta(const MetaTensor& x,
                                           int repeats,
                                           int dim,
+                                          int64_t output_size,
                                           MetaTensor* out);
 
 PADDLE_API void ReshapeInferMeta(const MetaTensor& x,

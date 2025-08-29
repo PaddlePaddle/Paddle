@@ -14,10 +14,17 @@ set(eager_deps
     custom_operator_node)
 
 if(WITH_GPU)
-  cc_library(
-    activation_offloader
-    SRCS activation_offloader.cc
-    DEPS phi_core phi_gpu)
+  if(WIN32)
+    cc_library(
+      activation_offloader
+      SRCS activation_offloader.cc
+      DEPS phi onednn)
+  else()
+    cc_library(
+      activation_offloader
+      SRCS activation_offloader.cc
+      DEPS phi_core phi_gpu)
+  endif()
   list(APPEND eager_deps activation_offloader)
 endif()
 

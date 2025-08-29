@@ -671,7 +671,11 @@ PADDLE_API void PullSparseV2InferMeta(
     std::vector<MetaTensor*> out);
 
 PADDLE_API void RepeatInterleaveWithTensorIndexInferMeta(
-    const MetaTensor& x, const MetaTensor& repeats, int dim, MetaTensor* out);
+    const MetaTensor& x,
+    const MetaTensor& repeats,
+    int dim,
+    int64_t output_size,
+    MetaTensor* out);
 
 PADDLE_API void RowConvInferMeta(const MetaTensor& x,
                                  const MetaTensor& filter,
