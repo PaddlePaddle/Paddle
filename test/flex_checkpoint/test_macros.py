@@ -323,8 +323,4 @@ class TestFusedFfnMacro3(TestMacro):
 
 
 if __name__ == "__main__":
-    # unittest.main()
-    lexer = Lexer(MacroContext())
-    statements = "layers.1.self_attn.qkv_proj.weight -> layers.1.self_attn.qkv_proj.weight, fused_qkv_old, num_heads = 8, num_key_value_groups = 4"
-    stats = lexer.apply_macros(statements)
-    print("stats: ", stats)
+    unittest.main()
