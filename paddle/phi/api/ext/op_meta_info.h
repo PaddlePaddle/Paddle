@@ -102,7 +102,7 @@ inline std::string Optional(const std::string& t_name) {
   return result;
 }
 
-std::vector<std::string> ParseAttrStr(const std::string& attr);
+PADDLE_API std::vector<std::string> ParseAttrStr(const std::string& attr);
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 

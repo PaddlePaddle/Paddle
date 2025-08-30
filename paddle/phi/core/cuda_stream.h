@@ -45,13 +45,14 @@ class CUDAStream {
   };
 
  public:
-  CUDAStream(const Place& place, const Stream& stream)
+  PADDLE_API CUDAStream(const Place& place, const Stream& stream)
       : place_(place), stream_(stream) {}
-  CUDAStream(const Place& place,
-             const int priority = 0,
-             const StreamFlag& flag = FLAGS_use_default_stream
-                                          ? StreamFlag::kStreamNonBlocking
-                                          : StreamFlag::kDefaultFlag);
+  PADDLE_API CUDAStream(
+      const Place& place,
+      const int priority = 0,
+      const StreamFlag& flag = FLAGS_use_default_stream
+                                   ? StreamFlag::kStreamNonBlocking
+                                   : StreamFlag::kDefaultFlag);
 
   gpuStream_t raw_stream() const { return reinterpret_cast<gpuStream_t>(id()); }
 
@@ -71,9 +72,9 @@ class CUDAStream {
 
   Place place() const { return place_; }
 
-  bool Query() const;
+  PADDLE_API bool Query() const;
 
-  void Synchronize() const;
+  PADDLE_API void Synchronize() const;
 
   void WaitEvent(gpuEvent_t ev) const {
 #ifdef PADDLE_WITH_HIP
@@ -83,7 +84,7 @@ class CUDAStream {
 #endif
   }
 
-  ~CUDAStream();
+  PADDLE_API ~CUDAStream();
 
  private:
   Place place_;

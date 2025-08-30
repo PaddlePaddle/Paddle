@@ -234,15 +234,15 @@ class UnpaddingDenseTensorFunctor<phi::XPUContext, T> {
 };
 #endif
 
-template class PaddingDenseTensorFunctor<phi::CPUContext, int>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, float>;
-template class PaddingDenseTensorFunctor<phi::CPUContext, double>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, int>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, float>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::CPUContext, double>;
 
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, int>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, float>;
-template class UnpaddingDenseTensorFunctor<phi::CPUContext, double>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, int>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, int64_t>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, float>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::CPUContext, double>;
 
 #ifdef PADDLE_WITH_XPU
 template class UnpaddingDenseTensorFunctor<phi::XPUContext, float>;

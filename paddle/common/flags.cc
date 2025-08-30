@@ -1799,6 +1799,15 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Remove some redundant information when printing the pir program");
 
+#ifdef _WIN32
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+#endif
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: enable_async_trace

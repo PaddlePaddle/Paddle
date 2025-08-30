@@ -1449,18 +1449,20 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
-        ]
-        shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
-        if (
-            env_dict.get("WITH_GPU") == "ON"
-            or env_dict.get("WITH_ROCM") == "ON"
-        ):
+        if os.name != 'nt':
             package_data['paddle.libs'] += [
-                ('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_suffix
+                ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
             ]
-            shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+            shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
+            if (
+                env_dict.get("WITH_GPU") == "ON"
+                or env_dict.get("WITH_ROCM") == "ON"
+            ):
+                package_data['paddle.libs'] += [
+                    ('libphi_gpu' if os.name != 'nt' else 'phi_gpu')
+                    + ext_suffix
+                ]
+                shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [

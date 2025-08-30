@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -50,16 +51,16 @@ struct EigenSlice<Eigen::DefaultDevice, T, Rank> {
   }
 };
 
-#define INSTANTIATION(FUNCTOR, TYPE)                      \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 1>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 2>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 3>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 4>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 5>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 6>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 7>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 8>; \
-  template struct FUNCTOR<Eigen::DefaultDevice, TYPE, 9>
+#define INSTANTIATION(FUNCTOR, TYPE)                                 \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 1>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 2>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 3>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 4>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 5>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 6>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 7>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 8>; \
+  template struct PADDLE_API FUNCTOR<Eigen::DefaultDevice, TYPE, 9>
 INSTANTIATION(EigenSlice, bool);
 INSTANTIATION(EigenSlice, int);
 INSTANTIATION(EigenSlice, int8_t);

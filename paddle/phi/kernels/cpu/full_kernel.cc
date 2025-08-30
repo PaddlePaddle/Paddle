@@ -113,7 +113,18 @@ void FullIntArrayKernel(const Context& dev_ctx,
     out_data[i] = static_cast<T>(val);
   }
 }
-
+#ifdef _WIN32
+template PADDLE_API void FullKernel<int, CPUContext>(const CPUContext&,
+                                                     const IntArray&,
+                                                     const Scalar&,
+                                                     DataType dtype UNUSED,
+                                                     DenseTensor*);
+template PADDLE_API void FullKernel<int64_t, CPUContext>(const CPUContext&,
+                                                         const IntArray&,
+                                                         const Scalar&,
+                                                         DataType dtype UNUSED,
+                                                         DenseTensor*);
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,

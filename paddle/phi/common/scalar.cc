@@ -23,7 +23,8 @@ namespace paddle::experimental {
 
 // The Tensor must have one dim
 template <>
-ScalarBase<phi::DenseTensor>::ScalarBase(const phi::DenseTensor& tensor_in)
+PADDLE_API ScalarBase<phi::DenseTensor>::ScalarBase(
+    const phi::DenseTensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,

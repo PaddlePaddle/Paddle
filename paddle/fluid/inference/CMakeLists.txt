@@ -95,10 +95,26 @@ list(REMOVE_ITEM fluid_modules cinn_op_dialect)
 # shared library to prune library size.
 # list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 
-set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
-                          analysis_predictor ${utils_modules})
+if(WIN32)
+  set(SHARED_INFERENCE_DEPS phi dynload_common common ${fluid_modules}
+                            analysis_predictor ${utils_modules})
+else()
+  set(SHARED_INFERENCE_DEPS phi phi_core common ${fluid_modules}
+                            analysis_predictor ${utils_modules})
+endif()
 if(WITH_GPU OR WITH_ROCM)
-  list(APPEND SHARED_INFERENCE_DEPS phi_gpu)
+  if(WIN32)
+    list(
+      APPEND
+      SHARED_INFERENCE_DEPS
+      dynload_cuda
+      cuda_graph_lib
+      dynload_tensorrt
+      dynload_cudnn
+      dynload_cublas)
+  else()
+    list(APPEND SHARED_INFERENCE_DEPS phi_gpu phi_core)
+  endif()
 endif()
 if(NOT WIN32)
   list(APPEND SHARED_INFERENCE_DEPS ${ir_targets})

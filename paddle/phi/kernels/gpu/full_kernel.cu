@@ -119,7 +119,9 @@ void FullLikeKernel(const Context& dev_ctx,
     }
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_FULL_KERNEL(float, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(full,

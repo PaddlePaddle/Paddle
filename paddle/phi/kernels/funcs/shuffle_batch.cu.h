@@ -151,7 +151,7 @@ struct write_output_op_fixed {
   OutputIterT out;
 // flag contains inclusive scan of valid keys
 // perform gather using valid keys
-#if CUDA_VERSION >= 12060 && defined(_WIN32)
+#if CUDA_VERSION >= 12060 && CUDA_VERSION < 12090 && defined(_WIN32)
   _CCCL_EXEC_CHECK_DISABLE
   _CCCL_HOST_DEVICE std::size_t operator()(key_flag_tuple_fixed x) {
     if (x.key < m) {
