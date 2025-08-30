@@ -527,6 +527,8 @@ def amp_guard(
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
+    if isinstance(dtype, paddle.base.core.DataType):
+        dtype = dtype.name
     dtype = dtype.lower()
     if enable:
         if dtype not in ['float16', 'bfloat16']:

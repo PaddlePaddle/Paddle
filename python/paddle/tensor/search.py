@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 from typing_extensions import overload
@@ -22,7 +22,12 @@ from typing_extensions import overload
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    index_select_decorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_variable_and_dtype
@@ -182,8 +187,14 @@ def argsort(
         return ids
 
 
+@index_select_decorator()
 def index_select(
-    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -192,11 +203,23 @@ def index_select(
     of dimensions as the original ``x`` tensor. The dim-th dimension has the same
     size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
+    .. note::
+        Alias and Order Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim`` can be used as an alias for ``axis``.
+        3. This API also supports the PyTorch argument order ``(input, dim, index)`` for positional arguments, which will be converted to the Paddle order ``(x, index, axis)``.
+        For example, ``paddle.index_select(input=x, dim=1, index=idx)`` is equivalent to ``paddle.index_select(x=x, axis=1, index=idx)``, and ``paddle.index_select(x, 1, idx)`` is equivalent to ``paddle.index_select(x, idx, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
+            alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+            alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.
@@ -223,7 +246,7 @@ def index_select(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.index_select(x, index, axis)
+        return _C_ops.index_select(x, index, axis, out=out)
     else:
         helper = LayerHelper("index_select", **locals())
         check_variable_and_dtype(
@@ -643,6 +666,8 @@ def where(
     x: Tensor | float | None = None,
     y: Tensor | float | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
@@ -669,6 +694,7 @@ def where(
         y (Tensor|scalar|None, optional): A Tensor or scalar to choose when the condition is False with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
             alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored to this tensor. Default is None.
 
     Returns:
        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
@@ -699,7 +725,7 @@ def where(
         y = paddle.to_tensor(y)
 
     if x is None and y is None:
-        return nonzero(condition, as_tuple=True)
+        return nonzero(condition, as_tuple=True, out=out)
 
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
@@ -736,7 +762,9 @@ def where(
         if y_shape != broadcast_shape:
             broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
 
-        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+        return _C_ops.where(
+            broadcast_condition, broadcast_x, broadcast_y, out=out
+        )
 
     else:
         # for PIR and old IR
@@ -759,7 +787,9 @@ def where(
             broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
         if in_pir_mode():
-            return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+            return _C_ops.where(
+                broadcast_condition, broadcast_x, broadcast_y, out=out
+            )
         else:
             check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
             check_variable_and_dtype(
@@ -1013,6 +1043,12 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+class TopKRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
     k: int | Tensor,
@@ -1020,7 +1056,9 @@ def topk(
     largest: bool = True,
     sorted: bool = True,
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> TopKRetType:
     """
     Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
@@ -1091,8 +1129,13 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
-        return out, indices
+        values, indices = _C_ops.topk(x, k, axis, largest, sorted)
+        if out is not None:
+            out_values, out_indices = out
+            out_values = paddle.assign(values, output=out_values)
+            out_indices = paddle.assign(indices, output=out_indices)
+            return TopKRetType(values=out_values, indices=out_indices)
+        return TopKRetType(values=values, indices=indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}

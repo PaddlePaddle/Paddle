@@ -244,9 +244,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/eager/activation_offloader.h"
+#endif
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
+COMMON_DECLARE_int64(offload_retry_times);
 COMMON_DECLARE_string(prim_backward_blacklist);
 
 // disable auto conversion to list in Python
@@ -3181,7 +3186,23 @@ All parameter, weight, gradient are variables in Paddle.
             .GetAutoGrowthAllocator(place));
     allocator->DumpInfo();
   });
+
+  m.def("set_skip_offload_callback_tensors",
+        [](const std::vector<paddle::Tensor> &tensors) {
+          egr::ActivationOffloader::Instance()->SetSkipTensors(tensors);
+        });
+  m.def("register_offload_callback", [] {
+    paddle::memory::allocation::RegisterOOMCallback(
+        [](phi::Place place, size_t size) -> size_t {
+          return egr::ActivationOffloader::Instance()->Offload(place, size);
+        });
+  });
+  m.def("clear_offload_callback",
+        [] { paddle::memory::allocation::RegisterOOMCallback(nullptr); });
+  m.def("offload_cached_size",
+        [] { return egr::ActivationOffloader::Instance()->CachedSize(); });
 #endif
+
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDesc(&m);

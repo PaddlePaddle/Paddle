@@ -30,24 +30,24 @@ namespace phi {
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaximumNumBlocks);
+static inline int NumBlocks(const int64_t N) {
+  return static_cast<int>(std::min<int64_t>(
+      (N + kNumCUDAThreads - 1) / kNumCUDAThreads, kNumMaximumNumBlocks));
 }
 
 template <typename T, typename IndexT>
 __global__ void CEmbeddingGrad(T* table,
                                const T* output,
                                const IndexT* ids,
-                               const int rows,
-                               const int columns,
+                               const int64_t rows,
+                               const int64_t columns,
                                const int64_t N,
                                const int64_t start_idx,
                                const int64_t end_idx,
                                const int64_t limit) {
-  CUDA_KERNEL_LOOP(i, limit) {
-    size_t row = i / columns;
-    size_t col = i % columns;
+  CUDA_KERNEL_LOOP_TYPE(i, limit, int64_t) {
+    int64_t row = i / columns;
+    int64_t col = i % columns;
     auto id = ids[row];
     if (id >= start_idx && id < end_idx) {
       auto real_idx = id - start_idx;
@@ -63,12 +63,12 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           int64_t start_index,
                           DenseTensor* w_grad) {
-  int N = w_grad->dims()[0];
-  int D = w_grad->dims()[1];
-  int K = ids.numel();
+  int64_t N = w_grad->dims()[0];
+  int64_t D = w_grad->dims()[1];
+  int64_t K = ids.numel();
 
   auto limit = K * D;
-  int blocks = NumBlocks(limit);
+  auto blocks = NumBlocks(limit);
   int threads = kNumCUDAThreads;
 
   const T* d_output = out_grad.data<T>();

@@ -49,7 +49,7 @@ class Lexer:
         ('COMMA', r','),
         ('NUMBER', r'\d+'),
         ('STRING', r'"[^"]*"|\'[^\']*\''),
-        ('IDENTIFIER', r'[A-Za-z][A-Za-z\.\$\_\*\d]*'),
+        ('IDENTIFIER', r'[A-Za-z][A-Za-z\.\$\_\*\d\^T]*'),
         ('SKIP', r'[ \t]+'),
         ('NEWLINE', r'[\r\n]+'),
         ('MISMATCH', r'.'),

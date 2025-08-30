@@ -1225,10 +1225,23 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
         exception_type = pickle.UnpicklingError
         try:
             if config.safetensors:
-                from safetensors.paddle import load_file
+                if config.return_numpy:
+                    from safetensors.numpy import load_file
 
-                load_result = load_file(path)
+                    load_result = load_file(path)
+                    load_result = _pack_loaded_dict(load_result)
+                else:
+                    from safetensors.paddle import load_file
+
+                    if isinstance(_current_expected_place(), core.CUDAPlace):
+                        load_result = load_file(
+                            path, device=_current_expected_place()
+                        )
+                    else:
+                        load_result = load_file(path, device='cpu')
+
                 return load_result
+
             with _open_file_buffer(path, 'rb') as f:
                 # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'
                 if (
