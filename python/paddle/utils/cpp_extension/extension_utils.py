@@ -835,7 +835,7 @@ def find_paddle_includes(use_cuda=False):
         )
         compat_dir_api_include = os.path.join(
             paddle_include_dir,
-            'paddle/phi/api/include/compat/torch/csrc/api/include/',
+            'paddle/phi/api/include/compat/torch/csrc/api/include',
         )
         include_dirs.extend([compat_dir_root, compat_dir_api_include])
 
