@@ -156,9 +156,12 @@ if(WIN32)
   # re-runs CMake to regenerate the build system when the target specification source changes.
   set(CMAKE_SUPPRESS_REGENERATION OFF)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-  set(WITH_SHARED_PHI
-      OFF
-      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
+  # set(WITH_SHARED_PHI
+  #     ON
+  #     CACHE
+  #       BOOL
+  #       "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32 with static library"
+  #       FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")

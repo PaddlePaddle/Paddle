@@ -45,7 +45,19 @@ void ScaleKernel(const Context& dev_ctx,
   phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, scale.to<T>(), bias.to<T>(), bias_after_scale);
 }
-
+#ifdef _WIN32
+INSTANCE_SCALAR_KERNEL(int, CPUContext)
+INSTANCE_SCALAR_KERNEL(int64_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(float, CPUContext)
+INSTANCE_SCALAR_KERNEL(double, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::dtype::bfloat16, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::dtype::float16, CPUContext)
+INSTANCE_SCALAR_KERNEL(uint8_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(int8_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(int16_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::dtype::complex<float>, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::dtype::complex<double>, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale,

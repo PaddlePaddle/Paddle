@@ -88,7 +88,8 @@ add_doc_and_signature(
     Returns:
         Tensor, results of minimum on the specified axis of input tensor,
         it's data type is the same as input's Tensor.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Examples:
         .. code-block:: python
 
@@ -193,6 +194,8 @@ def amin(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -223,7 +226,8 @@ add_doc_and_signature(
             be written to this tensor and also returned. The returned tensor and `out` share memory
             and autograd meta. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
+    Keyword args:
+        out(Tensor, optional): The output tensor.
     Returns:
         Tensor, results of maximum on the specified axis of input tensor,
         it's data type is the same as `x`.
@@ -332,6 +336,8 @@ def amax(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
@@ -406,6 +412,8 @@ def all(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )

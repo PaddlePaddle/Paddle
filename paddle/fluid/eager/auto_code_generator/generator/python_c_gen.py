@@ -1027,3 +1027,4 @@ if __name__ == "__main__":
         header_path,
         PYTHON_C_H_TEMPLATE.format(body=generated_python_c_functions_header),
     )
+#

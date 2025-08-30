@@ -205,8 +205,8 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
   }
 };
 
-template struct SelectedRowsAddTensor<phi::GPUContext, float>;
-template struct SelectedRowsAddTensor<phi::GPUContext, double>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, double>;
 template struct SelectedRowsAdd<phi::GPUContext, phi::dtype::float16>;
 template struct SelectedRowsAddTensor<phi::GPUContext, phi::dtype::float16>;
 
@@ -330,8 +330,8 @@ struct SelectedRowsAddToTensor<phi::GPUContext, T> {
   }
 };
 
-template struct SelectedRowsAddToTensor<phi::GPUContext, float>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, double>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
@@ -532,7 +532,7 @@ struct MergeAdd<phi::GPUContext, T> {
 
 #define TEMPLATE_SPECIALIZED_FOR_MERGEADD(dtype)        \
   template struct MergeAddImpl<phi::GPUContext, dtype>; \
-  template struct MergeAdd<phi::GPUContext, dtype>;
+  template struct PADDLE_API MergeAdd<phi::GPUContext, dtype>;
 
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)

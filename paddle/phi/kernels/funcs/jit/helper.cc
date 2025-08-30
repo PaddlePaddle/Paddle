@@ -102,7 +102,10 @@ KernelType to_kerneltype(const std::string& act) {
 }
 
 template <>
-void pack_weights<float>(const float* src, float* dst, int n, int k) {
+PADDLE_API void pack_weights<float>(const float* src,
+                                    float* dst,
+                                    int n,
+                                    int k) {
   int block = 0, rest = 0;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {

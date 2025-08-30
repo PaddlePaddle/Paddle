@@ -149,7 +149,7 @@ class AutoTuneCache {
 #endif
   }
 
-  void UpdateStatus();
+  PADDLE_API void UpdateStatus();
 
   // The number of total config cached
   int64_t Size() const { return total_size_; }

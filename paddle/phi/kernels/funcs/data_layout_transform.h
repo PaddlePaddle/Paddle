@@ -77,17 +77,17 @@ inline OneDNNDataType ToOneDNNDataType(DataType type) {
   return OneDNNDataType::undef;
 }
 
-void TransDataLayoutFromOneDNN(DataLayout in_layout,
-                               DataLayout out_layout,
-                               const DenseTensor& in,
-                               DenseTensor* out,
-                               Place place,
-                               bool always_copy = false);
+PADDLE_API void TransDataLayoutFromOneDNN(DataLayout in_layout,
+                                          DataLayout out_layout,
+                                          const DenseTensor& in,
+                                          DenseTensor* out,
+                                          Place place,
+                                          bool always_copy = false);
 TEST_API void* GetDataFromTensor(const DenseTensor& tensor,
                                  OneDNNDataType type);
 
-dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
-                                    phi::DataLayout target_layout);
+PADDLE_API dnnl::memory::desc make_memory_desc(
+    const phi::DenseTensor& ref_tensor, phi::DataLayout target_layout);
 
 #endif
 
