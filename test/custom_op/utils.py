@@ -14,6 +14,7 @@
 
 import os
 import sys
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
@@ -29,12 +30,19 @@ IS_MAC = sys.platform.startswith('darwin')
 paddle_includes = []
 paddle_libraries = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
-    )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.append(str(paddle_include_dir))
+    paddle_includes.append(str(paddle_include_dir / 'third_party'))
+    if not IS_WINDOWS:
+        paddle_includes.append(
+            str(paddle_include_dir / 'paddle/phi/api/include/compat')
+        )
+        paddle_includes.append(
+            str(
+                paddle_include_dir
+                / 'paddle/phi/api/include/compat/torch/csrc/api/include'
+            )
+        )
     paddle_libraries.append(os.path.join(site_packages_path, 'paddle', 'libs'))
 
 # Test for extra compile args
