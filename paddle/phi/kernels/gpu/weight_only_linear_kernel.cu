@@ -211,5 +211,5 @@ PD_REGISTER_KERNEL(weight_only_linear,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightOnlyLinearKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

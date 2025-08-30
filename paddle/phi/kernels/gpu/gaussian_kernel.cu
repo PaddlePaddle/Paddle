@@ -84,12 +84,11 @@ struct GaussianGenerator<ComplexType<T>> {
 };
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianRandom(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
@@ -115,12 +114,11 @@ void GaussianRandom(const Context& dev_ctx,
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianRandom(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
@@ -156,12 +154,11 @@ void GaussianRandom(const Context& dev_ctx,
 }
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianRandomInplace(const Context& dev_ctx,
                            const DenseTensor& x,
                            float mean,
@@ -185,12 +182,11 @@ void GaussianRandomInplace(const Context& dev_ctx,
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void GaussianRandomInplace(const Context& dev_ctx,
                            const DenseTensor& x,
                            float mean,
@@ -250,20 +246,20 @@ PD_REGISTER_KERNEL(gaussian,
                    GPU,
                    ALL_LAYOUT,
                    phi::GaussianKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(gaussian_inplace,
                    GPU,
                    ALL_LAYOUT,
                    phi::GaussianInplaceKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

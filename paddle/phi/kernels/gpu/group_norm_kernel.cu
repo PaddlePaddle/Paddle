@@ -162,8 +162,9 @@ inline __device__ void UpdateSum<__half, 2>(const __half* srcX,
 }
 
 template <>
-inline __device__ void UpdateSum<phi::dtype::float16, 2>(
-    const phi::dtype::float16* srcX, float* sum, float* sumSq) {
+inline __device__ void UpdateSum<phi::float16, 2>(const phi::float16* srcX,
+                                                  float* sum,
+                                                  float* sumSq) {
   __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
   float2 f2 = __half22float2(h2);
   *sum += f2.x + f2.y;
@@ -171,11 +172,10 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
 }
 
 template <>
-inline __device__ void UpdateSum<phi::dtype::float16, 2>(
-    const phi::dtype::float16* srcX,
-    const phi::dtype::float16* srcR,
-    float* sum,
-    float* sumSq) {
+inline __device__ void UpdateSum<phi::float16, 2>(const phi::float16* srcX,
+                                                  const phi::float16* srcR,
+                                                  float* sum,
+                                                  float* sumSq) {
   __half2 h2 = *reinterpret_cast<__half2 const*>(srcX);
   __half2 h2_r = *reinterpret_cast<__half2 const*>(srcR);
   float2 f2 = __half22float2(h2);
@@ -187,8 +187,9 @@ inline __device__ void UpdateSum<phi::dtype::float16, 2>(
 
 #ifdef PADDLE_CUDA_BF16
 template <>
-inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
-    const phi::dtype::bfloat16* srcX, float* sum, float* sumSq) {
+inline __device__ void UpdateSum<phi::bfloat16, 2>(const phi::bfloat16* srcX,
+                                                   float* sum,
+                                                   float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
   float2 f2 = phi::bfloat1622float2(h2);
   *sum += f2.x + f2.y;
@@ -196,11 +197,10 @@ inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
 }
 
 template <>
-inline __device__ void UpdateSum<phi::dtype::bfloat16, 2>(
-    const phi::dtype::bfloat16* srcX,
-    const phi::dtype::bfloat16* srcR,
-    float* sum,
-    float* sumSq) {
+inline __device__ void UpdateSum<phi::bfloat16, 2>(const phi::bfloat16* srcX,
+                                                   const phi::bfloat16* srcR,
+                                                   float* sum,
+                                                   float* sumSq) {
   __nv_bfloat162 h2 = *reinterpret_cast<__nv_bfloat162 const*>(srcX);
   __nv_bfloat162 h2_r = *reinterpret_cast<__nv_bfloat162 const*>(srcR);
   float2 f2 = phi::bfloat1622float2(h2);
@@ -443,11 +443,11 @@ inline __device__ void GroupNormCompute(int64_t dhwBegin,
 }
 
 template <>
-inline __device__ void GroupNormCompute<phi::dtype::float16, 2>(
+inline __device__ void GroupNormCompute<phi::float16, 2>(
     int64_t dhwBegin,
     int64_t dhwEnd,
     int32_t ci,
-    const GroupNormNDHWCParams<phi::dtype::float16>& params,
+    const GroupNormNDHWCParams<phi::float16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -553,11 +553,11 @@ inline __device__ void GroupNormCompute<__half, 2>(
 
 #ifdef PADDLE_CUDA_BF16
 template <>
-inline __device__ void GroupNormCompute<phi::dtype::bfloat16, 2>(
+inline __device__ void GroupNormCompute<phi::bfloat16, 2>(
     int64_t dhwBegin,
     int64_t dhwEnd,
     int32_t ci,
-    const GroupNormNDHWCParams<phi::dtype::bfloat16>& params,
+    const GroupNormNDHWCParams<phi::bfloat16>& params,
     float mean,
     float invStdDev) {
   float2 gammaF2, betaF2;
@@ -1247,42 +1247,42 @@ void GroupNormKernel(const Context& dev_ctx,
     return;
   }
   using std::is_same;
-  if (is_same<T, phi::dtype::float16>::value && data_layout_str == "NHWC") {
+  if (is_same<T, phi::float16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
-    GroupNormNDHWCKernel<phi::dtype::float16, Context>(dev_ctx,
-                                                       x,
-                                                       residual,
-                                                       scale,
-                                                       bias,
-                                                       epsilon,
-                                                       groups,
-                                                       data_layout_str,
-                                                       "",
-                                                       y,
-                                                       new DenseTensor(),
-                                                       mean,
-                                                       var);
+    GroupNormNDHWCKernel<phi::float16, Context>(dev_ctx,
+                                                x,
+                                                residual,
+                                                scale,
+                                                bias,
+                                                epsilon,
+                                                groups,
+                                                data_layout_str,
+                                                "",
+                                                y,
+                                                new DenseTensor(),
+                                                mean,
+                                                var);
     return;
   }
 
 #ifdef PADDLE_CUDA_BF16
-  if (is_same<T, phi::dtype::bfloat16>::value && data_layout_str == "NHWC") {
+  if (is_same<T, phi::bfloat16>::value && data_layout_str == "NHWC") {
     const paddle::optional<DenseTensor>& residual =
         paddle::optional<DenseTensor>(paddle::none);
-    GroupNormNDHWCKernel<phi::dtype::bfloat16, Context>(dev_ctx,
-                                                        x,
-                                                        residual,
-                                                        scale,
-                                                        bias,
-                                                        epsilon,
-                                                        groups,
-                                                        data_layout_str,
-                                                        "",
-                                                        y,
-                                                        new DenseTensor(),
-                                                        mean,
-                                                        var);
+    GroupNormNDHWCKernel<phi::bfloat16, Context>(dev_ctx,
+                                                 x,
+                                                 residual,
+                                                 scale,
+                                                 bias,
+                                                 epsilon,
+                                                 groups,
+                                                 data_layout_str,
+                                                 "",
+                                                 y,
+                                                 new DenseTensor(),
+                                                 mean,
+                                                 var);
     return;
   }
 #endif
@@ -1299,8 +1299,8 @@ PD_REGISTER_KERNEL(group_norm,
                    phi::GroupNormKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::BFLOAT16 ||
       kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -1312,8 +1312,8 @@ PD_REGISTER_KERNEL(add_group_norm_silu,
                    GPU,
                    ALL_LAYOUT,
                    phi::GroupNormNDHWCKernel,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
 }

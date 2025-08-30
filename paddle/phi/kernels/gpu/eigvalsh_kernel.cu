@@ -27,8 +27,8 @@ PD_REGISTER_KERNEL(eigvalsh,  // cuda_only
                    phi::EigvalshKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
