@@ -93,7 +93,7 @@ class MlpModel(paddle.nn.Layer):
             global_input2 = global_input
 
         y = y + global_input2
-        z = paddle.matmul(y, self.w1)
+        z = y @ self.w1
         return z
 
 
