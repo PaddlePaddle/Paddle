@@ -204,6 +204,12 @@ std::vector<int64_t> GetDimsMappingForAxes(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const bool unsharded_miss_axis = false);
 
+std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
+
 void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result);
 
