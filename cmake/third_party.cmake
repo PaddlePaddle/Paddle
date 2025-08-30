@@ -452,6 +452,11 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+if(WITH_DISTRIBUTE)
+  include(external/libuv)
+  list(APPEND third_party_deps extern_libuv)
+endif()
+
 if(WITH_FLAGCX)
   include(external/flagcx)
   list(APPEND third_party_deps flagcx)
@@ -512,11 +517,6 @@ endif()
 if(WITH_BOX_PS)
   include(external/box_ps)
   list(APPEND third_party_deps extern_box_ps)
-endif()
-
-include(external/libuv)
-if(TARGET extern_libuv)
-  list(APPEND third_party_deps extern_libuv)
 endif()
 
 if(WITH_XBYAK)

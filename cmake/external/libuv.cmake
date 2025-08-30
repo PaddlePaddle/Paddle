@@ -64,6 +64,3 @@ set_property(TARGET libuv PROPERTY IMPORTED_LOCATION ${LIBUV_LIBRARIES})
 add_dependencies(libuv extern_libuv)
 
 include_directories(${LIBUV_INCLUDE_DIR})
-
-#add_library(libuv INTERFACE)
-#set_property(TARGET libuv PROPERTY IMPORTED_LOCATION ${DGC_LIBRARIES})

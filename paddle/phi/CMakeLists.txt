@@ -42,7 +42,6 @@ set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
     glog
-    libuv
     warpctc
     warprnnt
     eigen3
@@ -116,6 +115,10 @@ endif()
 
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
+endif()
+
+if(WITH_DISTRIBUTE)
+  list(APPEND PHI_DEPS libuv)
 endif()
 
 set(PHI_CORE_SRCS
