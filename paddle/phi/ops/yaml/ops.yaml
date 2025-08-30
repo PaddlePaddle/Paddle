@@ -3886,7 +3886,7 @@
   backward : moe_gate_dispatch_permute_grad
 
 - op : moe_permute
-  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather)
   output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
   infer_meta:
     func : MoePermuteInferMeta

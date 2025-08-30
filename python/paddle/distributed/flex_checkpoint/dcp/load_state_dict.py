@@ -15,11 +15,14 @@
 from __future__ import annotations
 
 import copy
+import json
 import math
 import os
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 import paddle
 from paddle.base.framework import (
@@ -1016,7 +1019,7 @@ def _load_state_dict(
         ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
             "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
         )
-
+        logger.info(f"readitem num: {len(read_items)}.")
         for item in read_items:
             if any(isinstance(k, tuple) for k in copied_target_state_dict):
                 key = (item.local_tensor_index.tensor_key, item.global_offset)
@@ -1247,3 +1250,217 @@ def load_merged_state_dict(
                 key
             )  # Add new key and remove the old one
     return state_dict_to_save
+
+
+def divide_positions(m, n):
+    '''
+    Divide positions evenly among n processors with a base value and remainder handling.
+
+    Parameters:
+    m (int): Total number of tensor positions.
+    n (int): Number of processors.
+
+    Returns:
+    list: A list of positions indicating where to split the tensors among processors.
+
+    Raises:
+    ValueError: If n is zero or if m is less than n.
+    '''
+    if n == 0:
+        raise ValueError("n should be greater than zero")
+    if m < n:
+        raise ValueError(
+            "tensor number should be greater than or equal to processor number"
+        )
+    base_value = m // n
+    remainder = m % n
+    positions = [0]
+    for i in range(1, n):
+        if remainder > 0:
+            positions.append(positions[-1] + base_value + 1)
+            remainder -= 1
+        else:
+            positions.append(positions[-1] + base_value)
+    positions.append(m)
+    return positions
+
+
+def merge_sharded_state_dict(
+    load_path: str,
+    save_path: str,
+    prefix: str | None = None,
+    safetensor_prefix: str = 'model',
+    unique_id: int | None = None,
+    offload: bool = False,
+    aoa_config: dict[str, list[str]] | None = None,
+    safetensors: bool = False,
+    file_num: int = 1,
+) -> None:
+    """
+    Load the distributed checkpoint and merge it to unsharded state_dict then save as safetensors.
+
+    Note:
+        save files are:
+            model-00001-of-00008.safetensors
+            model-00002-of-00008.safetensors
+            ...
+            model-00008-of-00008.safetensors
+            model.safetensors.index.json
+        model is safetensor_prefix; 00008 is file_num.
+
+    Args:
+        load_path(str): The directory to load checkpoint files.
+        save_path(str): The directory to save merged_checkpoint files.
+        prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
+        safetensor_prefix(str): The safetensors file prefix e.g., Default 'model'.
+        unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
+        offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
+        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        safetensors(bool): Whether to use safetensors format. Default is False.
+        file_num(int): The number of files to split the merged_checkpoint into.
+    Returns:
+        None.
+
+    Example:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('run in distributed mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> w1 = paddle.arange(32).reshape([4, 8])
+            >>> mesh = dist.ProcessMesh([0, 1])
+            >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
+            >>> state_dict = {"w1": sharded_w1}
+            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+
+            >>> # doctest: +SKIP('run in single-card mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> save_path = "./merged_checkpoint"
+            >>> dist.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> # doctest: -SKIP
+    """
+    if unique_id is None:
+        unique_id = get_max_id(load_path)
+    else:
+        assert unique_id >= 0, f'{unique_id} should be >= 0'
+
+    metadata_files, local_data_files = get_checkpoint_files(
+        load_path, unique_id=unique_id
+    )
+
+    metadata_list = []
+    for file in metadata_files:
+        metadata_list.append(paddle.load(os.path.join(load_path, file)))
+
+    # create target state_dict by local_tensor_meta
+
+    all_state_dict = []
+    state_dict_to_save = {}
+    for metadata in metadata_list:
+        for (
+            tensor_key,
+            local_tensor_meta,
+        ) in metadata.state_dict_metadata.items():
+            if prefix is None or tensor_key.startswith(prefix):
+                global_shape = compute_global_shape(local_tensor_meta)
+                t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
+                if offload:
+                    t = t.cpu()
+                state_dict_to_save[tensor_key] = t
+            else:
+                continue
+
+    def slice_dict(d, start, end):
+        """Slice the dictionary keys and return the corresponding sub-dictionary"""
+        keys = list(d.keys())[start:end]
+        return {k: d[k] for k in keys}
+
+    positions = divide_positions(len(state_dict_to_save), file_num)
+    all_state_dict = [
+        slice_dict(state_dict_to_save, positions[i], positions[i + 1])
+        for i in range(file_num)
+    ]
+
+    total = sum(len(dict_) for dict_ in all_state_dict)
+    assert len(state_dict_to_save) == total, (
+        f'split state dict filed :{len(state_dict_to_save)} should seem as {sum}'
+    )
+
+    SaveSafetensor = SavePartialSafetensors(
+        save_path, len(all_state_dict), safetensor_prefix
+    )
+    idx = 0
+    for state_dict_to_save in all_state_dict:
+        load_state_dict(
+            state_dict_to_save,
+            load_path,
+            offload=offload,
+            aoa_config=aoa_config,
+            safetensors=safetensors,
+        )
+
+        # Update dictionary keys in place
+        for key in list(
+            state_dict_to_save.keys()
+        ):  # Use list(data.keys()) to avoid runtime error
+            if prefix and key.startswith(prefix):
+                new_key = key[len(prefix) + 1 :]  # Remove the "str" prefix
+                state_dict_to_save[new_key] = state_dict_to_save.pop(
+                    key
+                )  # Add new key and remove the old one
+
+        if paddle.distributed.get_rank() == 0:
+            SaveSafetensor.save_single_safetenors(state_dict_to_save, idx)
+        idx += 1
+
+    SaveSafetensor.save_index_json()
+
+
+class SavePartialSafetensors:
+    def __init__(self, output_path, total_files_size, prefix="model"):
+        self.output_path = output_path
+        self.prefix = prefix
+        self.paddle_dtype_map = {
+            "paddle.float64": 8,
+            "paddle.float32": 4,
+            "paddle.float16": 2,
+            "paddle.uint16": 2,
+            "paddle.bfloat16": 2,
+            "paddle.uint8": 1,
+            "paddle.float8_e4m3fn": 1,
+            "paddle.float8_e5m2": 1,
+        }
+        self.index = {"metadata": {"total_size": 0}, "weight_map": {}}
+        self.safe_index_name = prefix + ".safetensors.index.json"
+        self.total_files_size = total_files_size
+
+    def save_single_safetenors(self, state_dict, rank):
+        key_list = state_dict.keys()
+
+        shard_file = f"{self.prefix}-{rank + 1:05d}-of-{self.total_files_size:05d}.safetensors"
+        for key in key_list:
+            self.index["weight_map"][key] = shard_file
+            self.index["metadata"]["total_size"] += int(
+                np.prod(state_dict[key].shape)
+                * self.paddle_dtype_map[str(state_dict[key].dtype)]
+            )
+
+        save_file_name = os.path.join(
+            self.output_path,
+            f"{self.prefix}-{rank + 1:05d}-of-{self.total_files_size:05d}.safetensors",
+        )
+        logger.info(f"save_file_name = {save_file_name}")
+        paddle.framework.io._safe_save(
+            state_dict,
+            save_file_name,
+        )
+
+    def save_index_json(self):
+        save_index_file = os.path.join(self.output_path, self.safe_index_name)
+        os.makedirs(os.path.dirname(save_index_file), exist_ok=True)
+        with open(save_index_file, "w", encoding="utf-8") as f:
+            f.write(json.dumps(self.index, indent=2) + "\n")
+        logger.info(f"Model index file saved in {save_index_file}.")
