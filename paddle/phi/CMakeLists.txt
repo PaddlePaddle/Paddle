@@ -206,7 +206,7 @@ if(MSVC)
   set(PHI_DUMMY_FILE_CONTENT
       "__declspec(dllexport) int phi_dummy_placeholder_function(){ return 0\\; }"
   )
-  target_link_libraries(phi PRIVATE ucrt)
+  target_link_libraries(phi ucrt)
 else()
   set(PHI_DUMMY_FILE_CONTENT "")
 endif()
@@ -235,7 +235,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  target_link_libraries(phi PRIVATE IPHLPAPI Userenv)
+  target_link_libraries(phi IPHLPAPI Userenv)
   if(WITH_SHARED_PHI)
     set_property(TARGET phi_core PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
