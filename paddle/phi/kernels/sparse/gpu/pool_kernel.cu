@@ -162,6 +162,6 @@ PD_REGISTER_KERNEL(maxpool_coo,
                    phi::sparse::MaxPoolCooKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

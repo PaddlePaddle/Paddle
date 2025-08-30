@@ -44,8 +44,8 @@
                      phi::sparse::prefix##CooGradKernel,                    \
                      float,                                                 \
                      double,                                                \
-                     phi::dtype::complex<float>,                            \
-                     phi::dtype::complex<double>) {                         \
+                     phi::complex64,                                        \
+                     phi::complex128) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);          \
   }                                                                         \
                                                                             \
@@ -55,8 +55,8 @@
                      phi::sparse::prefix##CsrGradKernel,                    \
                      float,                                                 \
                      double,                                                \
-                     phi::dtype::complex<float>,                            \
-                     phi::dtype::complex<double>) {                         \
+                     phi::complex64,                                        \
+                     phi::complex128) {                                     \
     kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);          \
   }
 

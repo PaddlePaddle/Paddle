@@ -60,8 +60,8 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -77,8 +77,8 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
@@ -87,7 +87,7 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCooKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double,
                    int8_t,
@@ -96,8 +96,8 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -105,7 +105,7 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCsrKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double,
                    int8_t,
@@ -114,8 +114,8 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
