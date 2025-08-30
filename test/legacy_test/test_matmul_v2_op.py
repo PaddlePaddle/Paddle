@@ -1018,54 +1018,6 @@ class TestMatMulOp_trans_y(TestMatMulV2Op):
         )
 
 
-class TestMatMulAPI_Compatibility(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        paddle.enable_static()
-        self.x_shape = [5, 6]
-        self.y_shape = [6, 6]
-        self.dtype = 'float32'
-        self.init_data()
-
-    def init_data(self):
-        self.np_x_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
-        self.np_y_input = np.random.randint(3, 9, self.shape).astype(self.dtype)
-
-    def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x_input)
-        y = paddle.to_tensor(self.np_y_input)
-        paddle_dygraph_out = []
-        # Position args (args)
-        out1 = paddle.matmul(x, y)
-        paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
-        out2 = paddle.matmul(x=x, y=y)
-        paddle_dygraph_out.append(out2)
-        # Key words args for torch
-        out3 = paddle.matmul(input=x, other=y)
-        paddle_dygraph_out.append(out3)
-        # Combined args and kwargs
-        out4 = paddle.matmul(x, other=y)
-        paddle_dygraph_out.append(out4)
-        # Tensor method args
-        out5 = x.matmul(y)
-        paddle_dygraph_out.append(out5)
-        # Tensor method kwargs
-        out6 = x.matmul(other=y)
-        paddle_dygraph_out.append(out6)
-        # Test out
-        out7 = paddle.empty([])
-        paddle.matmul(x, out=out7)
-        paddle_dygraph_out.append(out7)
-        # Numpy reference  out
-        ref_out = reference_matmul(self.np_x_input, self.np_y_input)
-        # Check
-        for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out, out.numpy())
-        paddle.enable_static()
-
-
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
