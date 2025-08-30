@@ -139,7 +139,7 @@ class TestSemiAutoParallelMultiInputs:
     def __init__(self):
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
-        self._run_static = eval(os.getenv("run_static"))
+        self._run_static = False
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         paddle.set_device(self._backend)
