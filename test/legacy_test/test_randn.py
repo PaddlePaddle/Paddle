@@ -42,6 +42,7 @@ class TestTensorCreation(unittest.TestCase):
         ):
             self.pin_memorys.append(True)
 
+    @unittest.skipIf(paddle.device.is_compiled_with_xpu(), "skip xpu")
     def test_randn(self):
         types = [
             None,
