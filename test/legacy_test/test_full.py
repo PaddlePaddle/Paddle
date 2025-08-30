@@ -38,7 +38,7 @@ class TestTensorCreation(unittest.TestCase):
         self.pin_memorys = [False]
         if (
             paddle.device.is_compiled_with_cuda()
-            or paddle.device.is_compiled_with_xpu()
+            and not paddle.device.is_compiled_with_rocm()
         ):
             self.pin_memorys.append(True)
 
@@ -181,7 +181,7 @@ class TestTensorPatchMethod(unittest.TestCase):
         self.pin_memorys = [False]
         if (
             paddle.device.is_compiled_with_cuda()
-            or paddle.device.is_compiled_with_xpu()
+            and not paddle.device.is_compiled_with_rocm()
         ):
             self.pin_memorys.append(True)
 
