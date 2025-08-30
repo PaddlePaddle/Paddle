@@ -28,9 +28,15 @@ set(LIBUV_LIBRARY_DIR
     ${LIBUV_INSTALL_DIR}/lib
     CACHE PATH "libuv library directory." FORCE)
 
-set(LIBUV_LIBRARIES
-    ${LIBUV_INSTALL_DIR}/lib/libuv.a
+if(WIN32)
+  set(LIBUV_LIBRARIES
+    "${LIBUV_INSTALL_DIR}/lib/libuv.lib"
     CACHE FILEPATH "libuv library." FORCE)
+else()
+  set(LIBUV_LIBRARIES
+    "${LIBUV_INSTALL_DIR}/lib/libuv.a"
+    CACHE FILEPATH "libuv library." FORCE)
+endif()
 
 set(LIBUV_BuildTests
     OFF
