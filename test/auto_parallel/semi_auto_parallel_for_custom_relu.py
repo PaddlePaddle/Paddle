@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
@@ -28,12 +29,19 @@ from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS, run_cmd
 # PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
 paddle_includes = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
-    )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.append(str(paddle_include_dir))
+    paddle_includes.append(str(paddle_include_dir / 'third_party'))
+    if not IS_WINDOWS:
+        paddle_includes.append(
+            str(paddle_include_dir / 'paddle/phi/api/include/compat')
+        )
+        paddle_includes.append(
+            str(
+                paddle_include_dir
+                / 'paddle/phi/api/include/compat/torch/csrc/api/include'
+            )
+        )
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']

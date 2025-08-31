@@ -28,9 +28,10 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-void RegisterOOMCallback(std::function<size_t(phi::Place, size_t)> callback);
+PADDLE_API void RegisterOOMCallback(
+    std::function<size_t(phi::Place, size_t)> callback);
 
-class RetryAllocator : public Allocator {
+class PADDLE_API RetryAllocator : public Allocator {
  public:
   RetryAllocator(std::shared_ptr<Allocator> allocator,
                  phi::Place place,

@@ -37,48 +37,50 @@ class DeviceContext;
 namespace distributed {
 class ProcessMesh;
 
-std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
-                                        std::vector<int64_t> out_process_ids);
+PADDLE_API std::vector<int64_t> GetUnionProcessIds(
+    std::vector<int64_t> in_process_ids, std::vector<int64_t> out_process_ids);
 
-bool IsCurRankInMesh(const ProcessMesh& process_mesh);
+PADDLE_API bool IsCurRankInMesh(const ProcessMesh& process_mesh);
 
-bool NeedComputationClipForPP(
+PADDLE_API bool NeedComputationClipForPP(
     const std::shared_ptr<phi::TensorBase>& tensor_impl);
 
-Place GetDefaultPlace();
+PADDLE_API Place GetDefaultPlace();
 
-phi::DeviceContext* GetDistTensorDeviceContext(
+PADDLE_API phi::DeviceContext* GetDistTensorDeviceContext(
     phi::distributed::DistTensor* input);
 
-int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
-                                  int64_t global_rank = -1);
+PADDLE_API int64_t GetLocalRankInParticipate(
+    const std::vector<int64_t>& process_ids, int64_t global_rank = -1);
 
 // Get the coordinate of cur rank in process mesh. For example, the process mesh
 // is [[0, 1], [2, 3], [4, 5], [6, 7]], if the current rank is 4, then will
 // return [2, 0]; if the current rank is 3, then will return [1, 1].
-std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh);
+PADDLE_API std::vector<int64_t> GetCurRankCoordInMesh(
+    const ProcessMesh& process_mesh);
 
 // If the index i's value in dims_mapping is x ( x != -1), means the ith axis of
 // tensor need be split by xth axis of process_mesh. The function analyze the
 // input vector, return a key-value map of tensor_split_axis and
 // process_mesh_split_axis.
 // For example, if dims_mapping is [-1, 1, -1, 0], will return {1: 1, 3: 0}.
-std::map<int, int64_t> GetSplitAxisWithDimsMapping(
+PADDLE_API std::map<int, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping);
 
 // If given a number, balance split it to multiple pieces.
 // For example, the input value is 12, split it to 5 pieces, then return
 // {3, 3, 2, 2, 2}.
-std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces);
+PADDLE_API std::vector<int64_t> BalancedSplit(int64_t total_nums,
+                                              int64_t num_of_pieces);
 
 // Create a comm context of the input process_ids. Once the newly comm context
 // created, it will be cached in the global instance, and get from the global
 // cache later. If the input dev_ctx is GPU, then nccl comm context will be
 // created. If the input dev_ctx is CPU, then gloo comm context will be created.
-CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
-                                    const std::vector<int64_t>& process_ids);
+PADDLE_API CommContext* CreateOrGetCommContext(
+    const DeviceContext& dev_ctx, const std::vector<int64_t>& process_ids);
 
-phi::DDim InferShapeForReshardFromReplicate(
+PADDLE_API phi::DDim InferShapeForReshardFromReplicate(
     const std::shared_ptr<phi::DenseTensor>& global_value,
     const TensorDistAttr& dist_attr);
 
@@ -225,7 +227,8 @@ phi::DDim InferShapeForReshardFromReplicate(
   } while (0)
 
 std::vector<ProcessMesh> GetSubMeshes(const ProcessMesh& process_mesh);
-bool IsSubMesh(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
+PADDLE_API bool IsSubMesh(const ProcessMesh& global_mesh,
+                          const ProcessMesh& sub_mesh);
 
 }  // namespace distributed
 }  // namespace phi

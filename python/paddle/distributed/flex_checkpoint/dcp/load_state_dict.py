@@ -678,6 +678,7 @@ def _handle_aoa(
     src_desc_to_sharded_tensor = {}
     dst_to_src_desc_mapping = {}
     new_load_dict = {}
+    src_desc_to_postprocess_list = {}
 
     for param_name, tgt_shard in load_dict.items():
         tgt_desc = build_shard_desc(tgt_shard)
@@ -686,12 +687,15 @@ def _handle_aoa(
             src_desc = mapping.source_slice
             dst_desc = mapping.target_slice
             idx = (src_desc.key, tuple(src_desc.global_offset))
-            if len(shard_mappings) == 1:
-                assert (
-                    src_desc.local_shape == dst_desc.local_shape
-                    and src_desc.global_shape == dst_desc.global_shape
-                    and src_desc.global_offset == dst_desc.global_offset
+            if mapping.postprocess_list is not None:
+                src_desc_to_postprocess_list[src_desc] = (
+                    mapping.postprocess_list
                 )
+            if (len(shard_mappings) == 1) and (
+                src_desc.local_shape == dst_desc.local_shape
+                and src_desc.global_shape == dst_desc.global_shape
+                and src_desc.global_offset == dst_desc.global_offset
+            ):
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
                     local_tensor=tgt_shard.local_tensor,
@@ -725,7 +729,10 @@ def _handle_aoa(
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
         src_tensor = src_desc_to_sharded_tensor[src_desc]
         dst_tensor = load_dict[dst_desc.key]
-        assign_sharded_slice(src_desc, src_tensor, dst_desc, dst_tensor)
+        postprocess_list = src_desc_to_postprocess_list.get(src_desc, None)
+        assign_sharded_slice(
+            src_desc, src_tensor, dst_desc, dst_tensor, postprocess_list
+        )
 
 
 def _finish_unflatten(flat_shards, padding_info):

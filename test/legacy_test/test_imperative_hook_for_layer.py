@@ -18,12 +18,66 @@ import unittest
 import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
-# from test_imperative_lod_tensor_to_selected_rows_deprecated import SimpleNet
+from op_test import get_places
 
 import paddle
+from paddle import base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
+
+
+class SimpleNet(paddle.nn.Layer):
+    def __init__(
+        self,
+        hidden_size,
+        vocab_size,
+        num_steps=20,
+        init_scale=0.1,
+        is_sparse=False,
+        dtype='float32',
+    ):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
+        self.init_scale = init_scale
+        self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=base.ParamAttr(
+                name='embedding_para',
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-init_scale, high=init_scale
+                ),
+            ),
+        )
+        self.softmax_bias = self.create_parameter(
+            attr=base.ParamAttr(),
+            shape=[self.vocab_size],
+            dtype=dtype,
+            default_initializer=paddle.nn.initializer.Uniform(
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
+
+    def forward(self, input, label):
+        x_emb = self.embedding(input)
+        projection = paddle.matmul(
+            x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
+        )
+        projection = paddle.add(projection, self.softmax_bias)
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=projection, label=label, soft_label=False
+        )
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
+
+        return loss
 
 
 def forward_post_hook(layer, input, output):
@@ -45,160 +99,160 @@ def forward_pre_hook1(layer, input):
     return input_return
 
 
-# class Test_Forward_Hook(unittest.TestCase):
-#     # test forward_pre_hook and forward_post_hook that have return value
-#     def test_forward_hook_return_value(self):
-#         seed = 90
+class Test_Forward_Hook(unittest.TestCase):
+    # test forward_pre_hook and forward_post_hook that have return value
+    def test_forward_hook_return_value(self):
+        seed = 90
 
-#         for place in get_places():
-#             with base.dygraph.guard(place):
-#                 paddle.seed(seed)
-#                 base.set_flags({'FLAGS_sort_sum_gradient': True})
+        for place in get_places():
+            with base.dygraph.guard(place):
+                paddle.seed(seed)
+                base.set_flags({'FLAGS_sort_sum_gradient': True})
 
-#                 input_word = (
-#                     np.array(
-#                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
-#                     )
-#                     .reshape(6, 3)
-#                     .astype('int64')
-#                 )
-#                 input_word1 = input_word * 2
-#                 input_word = input_word.reshape((-1, 3, 1))
-#                 input_word1 = input_word1.reshape((-1, 3, 1))
-#                 y_data = (
-#                     np.array(
-#                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-#                     )
-#                     .reshape(6, 3)
-#                     .astype('int64')
-#                 )
-#                 y_data = y_data.reshape((-1, 1))
+                input_word = (
+                    np.array(
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
+                input_word1 = input_word * 2
+                input_word = input_word.reshape((-1, 3, 1))
+                input_word1 = input_word1.reshape((-1, 3, 1))
+                y_data = (
+                    np.array(
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
+                y_data = y_data.reshape((-1, 1))
 
-#                 input = paddle.to_tensor(input_word)
-#                 input1 = paddle.to_tensor(input_word1)
-#                 y = paddle.to_tensor(y_data)
+                input = paddle.to_tensor(input_word)
+                input1 = paddle.to_tensor(input_word1)
+                y = paddle.to_tensor(y_data)
 
-#                 simplenet = SimpleNet(
-#                     hidden_size=20,
-#                     vocab_size=32,
-#                     num_steps=3,
-#                     init_scale=0.1,
-#                     is_sparse=False,
-#                     dtype="float32",
-#                 )
+                simplenet = SimpleNet(
+                    hidden_size=20,
+                    vocab_size=32,
+                    num_steps=3,
+                    init_scale=0.1,
+                    is_sparse=False,
+                    dtype="float32",
+                )
 
-#                 # origin, don't register any hook
-#                 outs_origin = simplenet(input, y)
-#                 outs_origin1 = simplenet(input1, y)
+                # origin, don't register any hook
+                outs_origin = simplenet(input, y)
+                outs_origin1 = simplenet(input1, y)
 
-#                 # register forward_pre_hook
-#                 forward_pre_hook_handle1 = simplenet.register_forward_pre_hook(
-#                     forward_pre_hook1
-#                 )
-#                 outs_pre_hook = simplenet(input, y)
-#                 np.testing.assert_array_equal(
-#                     outs_pre_hook.numpy(), outs_origin1.numpy()
-#                 )
+                # register forward_pre_hook
+                forward_pre_hook_handle1 = simplenet.register_forward_pre_hook(
+                    forward_pre_hook1
+                )
+                outs_pre_hook = simplenet(input, y)
+                np.testing.assert_array_equal(
+                    outs_pre_hook.numpy(), outs_origin1.numpy()
+                )
 
-#                 # remove forward_pre_hook
-#                 forward_pre_hook_handle1.remove()
-#                 outs_pre_hook = simplenet(input, y)
-#                 np.testing.assert_array_equal(
-#                     outs_pre_hook.numpy(), outs_origin.numpy()
-#                 )
+                # remove forward_pre_hook
+                forward_pre_hook_handle1.remove()
+                outs_pre_hook = simplenet(input, y)
+                np.testing.assert_array_equal(
+                    outs_pre_hook.numpy(), outs_origin.numpy()
+                )
 
-#                 # register forward_posst_hook
-#                 forward_post_hook_handle1 = (
-#                     simplenet.register_forward_post_hook(forward_post_hook1)
-#                 )
-#                 outs_forward_hook = simplenet(input, y)
-#                 np.testing.assert_array_equal(
-#                     outs_forward_hook.numpy(), outs_origin.numpy() * 2
-#                 )
+                # register forward_posst_hook
+                forward_post_hook_handle1 = (
+                    simplenet.register_forward_post_hook(forward_post_hook1)
+                )
+                outs_forward_hook = simplenet(input, y)
+                np.testing.assert_array_equal(
+                    outs_forward_hook.numpy(), outs_origin.numpy() * 2
+                )
 
-#                 # remove forward_post_hook
-#                 forward_post_hook_handle1.remove()
-#                 outs_forward_hook = simplenet(input, y)
-#                 np.testing.assert_array_equal(
-#                     outs_forward_hook.numpy(), outs_origin.numpy()
-#                 )
+                # remove forward_post_hook
+                forward_post_hook_handle1.remove()
+                outs_forward_hook = simplenet(input, y)
+                np.testing.assert_array_equal(
+                    outs_forward_hook.numpy(), outs_origin.numpy()
+                )
 
-#     # test forward_pre_hook and forward_post_hook that don't have return value
-#     def test_forward_hook(self):
-#         seed = 90
+    # test forward_pre_hook and forward_post_hook that don't have return value
+    def test_forward_hook(self):
+        seed = 90
 
-#         for place in get_places():
-#             with base.dygraph.guard(place):
-#                 paddle.seed(seed)
-#                 base.set_flags({'FLAGS_sort_sum_gradient': True})
+        for place in get_places():
+            with base.dygraph.guard(place):
+                paddle.seed(seed)
+                base.set_flags({'FLAGS_sort_sum_gradient': True})
 
-#                 global call_forward_post_hook
-#                 global call_forward_pre_hook
+                global call_forward_post_hook
+                global call_forward_pre_hook
 
-#                 input_word = (
-#                     np.array(
-#                         [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
-#                     )
-#                     .reshape(6, 3)
-#                     .astype('int64')
-#                 )
-#                 input_word = input_word.reshape((-1, 3, 1))
-#                 y_data = (
-#                     np.array(
-#                         [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-#                     )
-#                     .reshape(6, 3)
-#                     .astype('int64')
-#                 )
-#                 y_data = y_data.reshape((-1, 1))
+                input_word = (
+                    np.array(
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
+                input_word = input_word.reshape((-1, 3, 1))
+                y_data = (
+                    np.array(
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
+                y_data = y_data.reshape((-1, 1))
 
-#                 input = paddle.to_tensor(input_word)
-#                 y = paddle.to_tensor(y_data)
+                input = paddle.to_tensor(input_word)
+                y = paddle.to_tensor(y_data)
 
-#                 simplenet = SimpleNet(
-#                     hidden_size=20,
-#                     vocab_size=32,
-#                     num_steps=3,
-#                     init_scale=0.1,
-#                     is_sparse=False,
-#                     dtype="float32",
-#                 )
+                simplenet = SimpleNet(
+                    hidden_size=20,
+                    vocab_size=32,
+                    num_steps=3,
+                    init_scale=0.1,
+                    is_sparse=False,
+                    dtype="float32",
+                )
 
-#                 # origin, don't register any hook
-#                 outs_origin = simplenet(input, y)
-#                 self.assertFalse(call_forward_post_hook)
-#                 self.assertFalse(call_forward_pre_hook)
+                # origin, don't register any hook
+                outs_origin = simplenet(input, y)
+                self.assertFalse(call_forward_post_hook)
+                self.assertFalse(call_forward_pre_hook)
 
-#                 # register forward_post_hook and forward_pre_hook
-#                 forward_post_hook_handle = simplenet.register_forward_post_hook(
-#                     forward_post_hook
-#                 )
-#                 forward_pre_hook_handle = simplenet.register_forward_pre_hook(
-#                     forward_pre_hook
-#                 )
-#                 outs_hook = simplenet(input, y)
-#                 self.assertTrue(call_forward_post_hook)
-#                 self.assertTrue(call_forward_pre_hook)
+                # register forward_post_hook and forward_pre_hook
+                forward_post_hook_handle = simplenet.register_forward_post_hook(
+                    forward_post_hook
+                )
+                forward_pre_hook_handle = simplenet.register_forward_pre_hook(
+                    forward_pre_hook
+                )
+                outs_hook = simplenet(input, y)
+                self.assertTrue(call_forward_post_hook)
+                self.assertTrue(call_forward_pre_hook)
 
-#                 outs_hook = simplenet(input, y)
-#                 self.assertTrue(call_forward_post_hook)
-#                 self.assertTrue(call_forward_pre_hook)
+                outs_hook = simplenet(input, y)
+                self.assertTrue(call_forward_post_hook)
+                self.assertTrue(call_forward_pre_hook)
 
-#                 # remove forward_post_hook
-#                 forward_post_hook_handle.remove()
-#                 call_forward_post_hook = False
-#                 call_forward_pre_hook = False
-#                 outs_remove_forward_hook = simplenet(input, y)
-#                 self.assertFalse(call_forward_post_hook)
-#                 self.assertTrue(call_forward_pre_hook)
+                # remove forward_post_hook
+                forward_post_hook_handle.remove()
+                call_forward_post_hook = False
+                call_forward_pre_hook = False
+                outs_remove_forward_hook = simplenet(input, y)
+                self.assertFalse(call_forward_post_hook)
+                self.assertTrue(call_forward_pre_hook)
 
-#                 # remove forward_pre_hook
-#                 forward_pre_hook_handle.remove()
-#                 call_forward_post_hook = False
-#                 call_forward_pre_hook = False
-#                 outs_remove_hook = simplenet(input, y)
-#                 self.assertFalse(call_forward_post_hook)
-#                 self.assertFalse(call_forward_pre_hook)
+                # remove forward_pre_hook
+                forward_pre_hook_handle.remove()
+                call_forward_post_hook = False
+                call_forward_pre_hook = False
+                outs_remove_hook = simplenet(input, y)
+                self.assertFalse(call_forward_post_hook)
+                self.assertFalse(call_forward_pre_hook)
 
 
 def forward_pre_hook_with_kwargs(layer, args, kwargs):

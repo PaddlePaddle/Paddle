@@ -83,18 +83,18 @@ class JitKernelRegistrar {
                 msg)
 
 // Refer always on CPUPlace
-#define REGISTER_JITKERNEL_REFER(kernel_type, ...)                   \
-  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                          \
-      __reg_jitkernel_##kernel_type##_refer_CPUPlace,                \
-      "REGISTER_KERNEL_REFER must be called in global namespace");   \
-  static ::phi::jit::JitKernelRegistrar<::phi::jit::ReferKernelPool, \
-                                        ::phi::CPUPlace,             \
-                                        __VA_ARGS__>                 \
-      __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_(        \
-          ::phi::jit::KernelType::kernel_type);                      \
-  int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_() {          \
-    __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_.Touch();  \
-    return 0;                                                        \
+#define REGISTER_JITKERNEL_REFER(kernel_type, ...)                     \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                            \
+      __reg_jitkernel_##kernel_type##_refer_CPUPlace,                  \
+      "REGISTER_KERNEL_REFER must be called in global namespace");     \
+  static ::phi::jit::JitKernelRegistrar<::phi::jit::ReferKernelPool,   \
+                                        ::phi::CPUPlace,               \
+                                        __VA_ARGS__>                   \
+      __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_(          \
+          ::phi::jit::KernelType::kernel_type);                        \
+  PADDLE_API int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_() { \
+    __jit_kernel_registrar_##kernel_type##_refer_CPUPlace_.Touch();    \
+    return 0;                                                          \
   }
 
 // kernel_type: should be in phi::jit::KernelType
@@ -140,27 +140,27 @@ class JitKernelRegistrar {
     return 0;                                                           \
   }
 
-#define USE_JITKERNEL_GEN(kernel_type)                            \
-  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                       \
-      __reg_jitkernel_gen_##kernel_type##_CPUPlace_,              \
-      "USE_JITKERNEL_GEN must be called in global namespace");    \
-  extern int TouchJitKernelReg_gen_##kernel_type##_CPUPlace_();   \
-  static int use_jitkernel_gen_##kernel_type##_CPUPlace_ UNUSED = \
+#define USE_JITKERNEL_GEN(kernel_type)                                     \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                                \
+      __reg_jitkernel_gen_##kernel_type##_CPUPlace_,                       \
+      "USE_JITKERNEL_GEN must be called in global namespace");             \
+  PADDLE_API extern int TouchJitKernelReg_gen_##kernel_type##_CPUPlace_(); \
+  static int use_jitkernel_gen_##kernel_type##_CPUPlace_ UNUSED =          \
       TouchJitKernelReg_gen_##kernel_type##_CPUPlace_()
 
-#define USE_JITKERNEL_REFER(kernel_type)                            \
-  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                         \
-      __reg_jitkernel_##kernel_type##_refer_CPUPlace_,              \
-      "USE_JITKERNEL_REFER must be called in global namespace");    \
-  extern int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_();   \
-  static int use_jitkernel_##kernel_type##_refer_CPUPlace_ UNUSED = \
+#define USE_JITKERNEL_REFER(kernel_type)                                     \
+  STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                                  \
+      __reg_jitkernel_##kernel_type##_refer_CPUPlace_,                       \
+      "USE_JITKERNEL_REFER must be called in global namespace");             \
+  PADDLE_API extern int TouchJitKernelReg_##kernel_type##_refer_CPUPlace_(); \
+  static int use_jitkernel_##kernel_type##_refer_CPUPlace_ UNUSED =          \
       TouchJitKernelReg_##kernel_type##_refer_CPUPlace_()
 
 #define USE_KERNEL_MORE(kernel_type, impl_type, place_type)              \
   STATIC_ASSERT_JITKERNEL_GLOBAL_NAMESPACE(                              \
       __reg_jitkernel_##kernel_type##_##impl_type##_##place_type##_,     \
       "USE_JITKERNEL_MORE must be called in global namespace");          \
-  extern int                                                             \
+  PADDLE_API extern int                                                  \
       TouchJitKernelReg_##kernel_type##_##impl_type##_##place_type##_(); \
   static int use_jitkernel_##kernel_type##_##impl_type##_##place_type##_ \
       UNUSED =                                                           \

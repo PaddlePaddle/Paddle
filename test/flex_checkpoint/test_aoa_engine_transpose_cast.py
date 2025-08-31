@@ -513,10 +513,10 @@ class TestAOAEngineTransposeCast4(TestAOAEngineTransposeCast):
         self.aoa_statements = [
             "s0, s1 -> s, axis = 1\n",
             "s -> s, dtype = 'bfloat16'\n",
-            "s -> a, transpose = '[2, 0, 1]'\n",
+            "s -> a, permute = '[2, 0, 1]'\n",
             "a -> b1, b2, b3, axis = 0\n",
-            "b1 -> b1, transpose = '[0, 2, 1]'\n",
-            "b2 -> b2, transpose = '[0, 2, 1]'\n",
+            "b1 -> b1, permute = '[0, 2, 1]'\n",
+            "b2 -> b2, permute = '[0, 2, 1]'\n",
             "b1, b2 -> d0, axis = 1\n",
             "b3 -> d1\n",
             "d1 -> d1, dtype = 'float32'",

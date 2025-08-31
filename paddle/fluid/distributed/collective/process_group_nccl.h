@@ -15,6 +15,7 @@
 #pragma once
 
 #include <chrono>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -287,7 +288,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   uint64_t comm_seq_{0};
   std::unordered_map<std::string, uint64_t> p2p_comm_seq_;
-  std::unordered_map<std::string, std::string> place_to_group_key_;
+  std::map<std::string, std::string> place_to_group_key_;
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;

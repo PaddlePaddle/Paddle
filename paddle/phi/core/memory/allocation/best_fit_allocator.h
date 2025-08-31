@@ -103,7 +103,7 @@ class BestFitAllocation : public Allocation {
 //
 // To free an allocation, it will set the chunk of allocation to free and merge
 // the prev-chunk and the next-chunk when possible.
-class BestFitAllocator : public Allocator {
+class PADDLE_API BestFitAllocator : public Allocator {
  public:
   explicit BestFitAllocator(phi::Allocation* allocation);
 

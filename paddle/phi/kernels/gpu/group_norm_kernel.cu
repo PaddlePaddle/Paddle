@@ -402,7 +402,7 @@ void groupNormNDHWCSum<T>::operator()(GroupNormNDHWCParams<T>* params,
     }
   }
 }
-template class groupNormNDHWCSum<half>;
+template class PADDLE_API groupNormNDHWCSum<half>;
 
 template <typename T, int THREADS_PER_CHANNEL>
 inline __device__ void GroupNormCompute(int64_t dhwBegin,
@@ -704,7 +704,7 @@ void groupNormNDHWCScale<T>::operator()(const GroupNormNDHWCParams<T>& params,
     }
   }
 }
-template class groupNormNDHWCScale<half>;
+template class PADDLE_API groupNormNDHWCScale<half>;
 
 template <typename T, typename Context>
 void GroupNormNDHWCKernel(const Context& dev_ctx,
@@ -1099,9 +1099,9 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
                                      variance,
                                      data_layout);
 }
-template class GroupNormDirectCUDAFunctor<float, float>;
+template class PADDLE_API GroupNormDirectCUDAFunctor<float, float>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-template class GroupNormDirectCUDAFunctor<half, float>;
+template class PADDLE_API GroupNormDirectCUDAFunctor<half, float>;
 #endif
 
 template <typename T, typename Context>

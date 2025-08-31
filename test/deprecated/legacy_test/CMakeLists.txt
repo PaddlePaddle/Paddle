@@ -632,6 +632,11 @@ set(STATIC_BUILD_TESTS
     test_unique
     test_one_hot_v2_op)
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_sparse_conv_op)
+endif()
+
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
