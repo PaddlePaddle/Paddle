@@ -32,7 +32,7 @@ from .tensor.compat import (
 from .tensor.compat_softmax import softmax
 
 
-class TorchMetaFinder:
+class TorchAliasMetaFinder:
     """
     PyTorch compatibility layer for PaddlePaddle.
 
@@ -55,7 +55,7 @@ class TorchMetaFinder:
 
         is_pkg = hasattr(source_module, "__path__")
 
-        class TorchLoader(importlib.abc.Loader):
+        class TorchAliasLoader(importlib.abc.Loader):
             def __init__(self, source, target_name):
                 self._source = source
                 self._target_name = target_name
@@ -87,22 +87,22 @@ class TorchMetaFinder:
         # statements like `import torch.nn.functional` work correctly.
         return importlib.util.spec_from_loader(
             fullname,
-            TorchLoader(source_module, fullname),
+            TorchAliasLoader(source_module, fullname),
             is_package=is_pkg,
             origin=getattr(source_module, "__file__", None),
         )
 
 
-TORCH_FINDER = TorchMetaFinder()
+TORCH_ALIAS_FINDER = TorchAliasMetaFinder()
 
 
 def install_torch_alias():
-    sys.meta_path.insert(0, TORCH_FINDER)
+    sys.meta_path.insert(0, TORCH_ALIAS_FINDER)
 
 
 def uninstall_torch_alias():
-    if TORCH_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_FINDER)
+    if TORCH_ALIAS_FINDER in sys.meta_path:
+        sys.meta_path.remove(TORCH_ALIAS_FINDER)
         if 'torch' in sys.modules:
             del sys.modules['torch']
         return
