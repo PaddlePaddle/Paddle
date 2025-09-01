@@ -42,18 +42,15 @@ class TorchMetaFinder:
     """
 
     def find_spec(self, fullname, path, target=None):
-        method_name = 'spec_for_{fullname}'.format(**locals())
-        method = getattr(self, method_name, lambda: None)
-        return method()
+        if fullname != "torch" and not fullname.startswith("torch."):
+            return None
 
-    def spec_for_torch(self):
         import importlib
         import importlib.abc
         import importlib.util
 
-        import paddle
-
-        module = paddle
+        module_name = fullname.replace("torch", "paddle", 1)
+        module = importlib.import_module(module_name)
 
         class TorchLoader(importlib.abc.Loader):
             def create_module(self, spec):
