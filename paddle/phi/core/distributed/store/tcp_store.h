@@ -80,7 +80,7 @@ class MasterDaemon : public DaemonThread {
 
  protected:
   void run() override;
-  void stop() override {};
+  void stop() override{};
 
  private:
   void ProcessCommands(std::vector<struct pollfd>* p_fds);

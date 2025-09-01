@@ -14,17 +14,8 @@
 
 include(ExternalProject)
 
-set(LIBUV_PREFIX_DIR ${THIRD_PARTY_PATH}/libuv)
-set(LIBUV_INCLUDE_DIR ${LIBUV_PREFIX_DIR}/include)
 set(LIBUV_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/libuv)
-set(SOURCE_INCLUDE_DIR ${LIBUV_SOURCE_DIR}/include)
 set(LIBUV_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libuv)
-set(LIBUV_INCLUDE_DIR
-    ${LIBUV_INSTALL_DIR}/include
-    CACHE PATH "libuv include directory." FORCE)
-set(LIBUV_LIBRARY_DIR
-    ${LIBUV_INSTALL_DIR}/lib
-    CACHE PATH "libuv library directory." FORCE)
 
 if(WIN32)
   set(LIBUV_CONFIGURE_COMMAND ${LIBUV_SOURCE_DIR}/vcbuild.bat release)

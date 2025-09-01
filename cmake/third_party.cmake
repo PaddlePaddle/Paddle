@@ -452,8 +452,8 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
-if(WITH_DISTRIBUTE)
-  include(external/libuv)
+include(external/libuv)
+if(TARGET extern_libuv)
   list(APPEND third_party_deps extern_libuv)
 endif()
 
