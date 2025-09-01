@@ -733,12 +733,12 @@ void MultiheadGPUComputeFunctor<T>::operator()(const phi::GPUContext &dev_ctx,
                        beta);
 }
 
-template class MultiheadGPUComputeFunctor<float>;
+template class PADDLE_API MultiheadGPUComputeFunctor<float>;
 
 // device function 'operator()' is not supported until cuda 10.0
 // HIP defined __HIP_NO_HALF_CONVERSIONS__ in hip.cmake
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-template class MultiheadGPUComputeFunctor<half>;
+template class PADDLE_API MultiheadGPUComputeFunctor<half>;
 #endif
 
 }  // namespace funcs

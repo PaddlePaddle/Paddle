@@ -65,7 +65,12 @@ void GradAddKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   AddFunctor<T>(dev_ctx, x, y, -1, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_ADD_KERNEL(float, CPUContext)
+INSTANTIATE_ADD_KERNEL(double, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, CPUContext)
+#endif
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;

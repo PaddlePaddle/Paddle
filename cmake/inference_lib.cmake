@@ -288,6 +288,11 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 
 if(WIN32)
+  set(paddle_phi_libs ${PADDLE_BINARY_DIR}/paddle/phi/phi*)
+  copy(
+    inference_lib_dist
+    SRCS ${paddle_phi_libs}
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   if(WITH_STATIC_LIB)
     set(paddle_inference_lib
         $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib

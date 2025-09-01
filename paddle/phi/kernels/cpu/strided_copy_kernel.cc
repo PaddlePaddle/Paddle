@@ -84,6 +84,22 @@ void StridedCopyKernel(const Context& dev_ctx,
     output_data[output_offset] = input_data[input_offset];
   }
 }
+#ifdef _WIN32
+INSTANTIATE_STRIDEDCOPY_KERNEL(bool, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int8_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int16_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int32_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(int64_t, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(float, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(double, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float16, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::bfloat16, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<float>, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<double>, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e4m3fn, CPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e5m2, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(strided_copy,

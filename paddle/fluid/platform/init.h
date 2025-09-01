@@ -18,18 +18,19 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/common/macros.h"
 #include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
-bool InitGflags(std::vector<std::string> argv);
+PADDLE_API bool InitGflags(std::vector<std::string> argv);
 
-void InitGLOG(const std::string& prog_name);
+PADDLE_API void InitGLOG(const std::string& prog_name);
 
 TEST_API void InitDevices();
 
-void InitDevices(const std::vector<int> devices);
+PADDLE_API void InitDevices(const std::vector<int> devices);
 
 TEST_API void InitMemoryMethod();
 
@@ -55,7 +56,7 @@ class SignalMessageDumper {
 void SignalHandle(const char* data, int size);
 #endif
 
-void DisableSignalHandler();
+PADDLE_API void DisableSignalHandler();
 
 }  // namespace framework
 }  // namespace paddle

@@ -13,21 +13,30 @@
 # limitations under the License.
 
 import os
+from pathlib import Path
 from site import getsitepackages
 
 from utils import extra_compile_args
 
 import paddle
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
+from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 paddle_includes = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
-    )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.append(str(paddle_include_dir))
+    paddle_includes.append(str(paddle_include_dir / 'third_party'))
+    if not IS_WINDOWS:
+        paddle_includes.append(
+            str(paddle_include_dir / 'paddle/phi/api/include/compat')
+        )
+        paddle_includes.append(
+            str(
+                paddle_include_dir
+                / 'paddle/phi/api/include/compat/torch/csrc/api/include'
+            )
+        )
 # Add current dir, search custom_power.h
 paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 

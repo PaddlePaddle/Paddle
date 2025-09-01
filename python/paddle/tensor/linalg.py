@@ -28,6 +28,7 @@ from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -261,6 +262,7 @@ def matrix_transpose(
     return x.mT
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def matmul(
     x: Tensor,
     y: Tensor,

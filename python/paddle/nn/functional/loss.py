@@ -679,7 +679,7 @@ def binary_cross_entropy(
     if in_dynamic_or_pir_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
-            out = _C_ops.multiply(out, weight, 'axis', -1)
+            out = _C_ops.multiply(out, weight)
 
         if reduction == 'sum':
             return _C_ops.sum(out, [], None, False)

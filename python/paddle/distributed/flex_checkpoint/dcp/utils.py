@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import ast
 import copy
 import os
 import re
@@ -22,7 +23,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import paddle
+from paddle.distributed.fleet.utils.log_util import logger
 
+from ..aoa.aoa_engine import (
+    postprocess_transpose,
+)
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
@@ -239,7 +244,9 @@ def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
     return True, overlap_offset, overlap_shape, desc_starts, shard_starts
 
 
-def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
+def assign_sharded_slice(
+    src_desc, src_shard, dst_desc, dst_shard, postprocess_list=None
+):
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
         get_overlap_region(
             src_desc.global_offset,
@@ -259,24 +266,54 @@ def assign_sharded_slice(src_desc, src_shard, dst_desc, dst_shard):
     )
 
     assert src_has or dst_has, "no overlap!"
-    assert overlap_shape == overlap_shape2, (
-        f"overlap shape mismatch: {overlap_shape} vs {overlap_shape2}"
-    )
-    axes = list(range(len(overlap_shape)))
+    if overlap_shape != overlap_shape2:
+        assert postprocess_list is not None, (
+            "only post transpose operation could make overlap shape mismatch"
+        )
+        transposed_src_overlap_shape = postprocess_transpose(
+            overlap_shape, postprocess_list
+        )
 
-    src_tensor_slice = paddle.slice(
-        src_shard.local_tensor,
-        axes=axes,
-        starts=src_shard_starts,
-        ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
-    )
+        assert transposed_src_overlap_shape == overlap_shape2, (
+            f"overlap shape mismatch: {transposed_src_overlap_shape} vs {overlap_shape2}"
+        )
+        axes = list(range(len(transposed_src_overlap_shape)))
 
-    dst_tensor_slice = paddle.slice(
-        dst_shard.local_tensor,
-        axes=axes,
-        starts=dst_shard_starts,
-        ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
-    )
+        src_tensor_slice = paddle.slice(
+            src_shard.local_tensor,
+            axes=axes,
+            starts=src_shard_starts,
+            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+        )
+
+        for ps in postprocess_list:
+            is_list, result = is_list_string(ps)
+            if is_list:
+                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
+
+        dst_tensor_slice = paddle.slice(
+            dst_shard.local_tensor,
+            axes=axes,
+            starts=dst_shard_starts,
+            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
+        )
+
+    else:
+        axes = list(range(len(overlap_shape)))
+
+        src_tensor_slice = paddle.slice(
+            src_shard.local_tensor,
+            axes=axes,
+            starts=src_shard_starts,
+            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+        )
+
+        dst_tensor_slice = paddle.slice(
+            dst_shard.local_tensor,
+            axes=axes,
+            starts=dst_shard_starts,
+            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
+        )
 
     paddle.assign(src_tensor_slice, dst_tensor_slice)
 
@@ -296,3 +333,35 @@ def build_shard_desc(val):
         global_shape=tuple(val.global_shape),
         global_offset=tuple(val.global_offset),
     )
+
+
+def is_list_string(s):
+    try:
+        result = ast.literal_eval(s)
+        return (True, result) if isinstance(result, list) else (False, None)
+    except:
+        return False, None
+
+
+def write_to_file_if_empty(data, path):
+    lock_path = f"{path}.lock"
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+        try:
+            if os.path.exists(path) and os.path.getsize(path) > 0:
+                logger.info(
+                    f"Process {os.getpid()} found the metadata file already written."
+                )
+                return
+            paddle.save(data, path)
+            logger.info(
+                f"Process {os.getpid()} successfully wrote the metadata to the file."
+            )
+        finally:
+            if os.path.exists(lock_path):
+                os.remove(lock_path)
+    except FileExistsError:
+        logger.info(
+            f"Process {os.getpid()} could not acquire the lock; another process is writing or has written the metadata."
+        )
