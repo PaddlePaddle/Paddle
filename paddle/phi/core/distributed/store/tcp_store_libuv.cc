@@ -44,13 +44,12 @@ bool SegmentedDataStream::readMany(char* dest, size_t size) {
       _buff_offset = 0;
       ++_buff_idx;
       if (_buff_idx >= _buffers.size() && remaining > 0) {
-        PADDLE_THROW(common::errors::Fatal(
-            paddle::string::Sprintf("Read operation exceeds buffer boundary. "
-                                    "buffer index: %d, available: %d, "
-                                    "remaining: %d",
-                                    _buff_idx,
-                                    _buffers.size(),
-                                    remaining)));
+        PADDLE_THROW(common::errors::Fatal(paddle::string::Sprintf(
+            "Read operation exceeds buffer boundary. ",
+            "buffer index: %d, available: %d, remaining: %d",
+            _buff_idx,
+            _buffers.size(),
+            remaining)));
       }
     }
   }
@@ -59,7 +58,7 @@ bool SegmentedDataStream::readMany(char* dest, size_t size) {
 }
 
 template <typename T>
-bool SegmentedDataStream::readValue(T& value) {  // NOLINT(runtime/references)
+bool SegmentedDataStream::readValue(T& value) {
   return readMany(reinterpret_cast<char*>(&value), sizeof(T));
 }
 
@@ -135,12 +134,11 @@ void LibUVHandle::handleClose(uv_handle_t* uv_handle) {
   h->onClose();
 }
 
-//    LibUVTCPSocket
+//   ==== LibUVTCPSocket ====
 LibUVTCPSocket::LibUVTCPSocket(uv_loop_t* loop) {
   uv_tcp_init(loop, &client);
   if (int err = uv_tcp_nodelay(&client, 1)) {
-    VLOG(2) << "The no-delay option is unavailable for the client socket. err: "
-            << err;
+    VLOG(2) << "The no-delay option is unavailable. err: " << err;
   }
 }
 
@@ -220,7 +218,6 @@ std::shared_ptr<LibUVTCPServer> LibUVTCPServer::createServer(uv_loop_t* loop,
     res->close();
     throw;
   }
-
   return res;
 }
 
@@ -239,14 +236,11 @@ void LibUVTCPServer::accept(const std::shared_ptr<LibUVTCPSocket>& socket) {
 
 void LibUVTCPServer::setSocketPort() {
   sockaddr_storage addr_s{};
-
   int addr_len = sizeof(addr_s);
-
   if (uv_tcp_getsockname(reinterpret_cast<uv_tcp_t*>(getRawStream()),
                          reinterpret_cast<::sockaddr*>(&addr_s),
                          &addr_len) != 0) {
-    throw std::runtime_error(
-        "uv_tcp_getsockname failed, the port number cannot be retrieved.");
+    throw std::runtime_error("the port number cannot be retrieved.");
   }
   if (addr_s.ss_family == AF_INET) {
     _port = ntohs(reinterpret_cast<sockaddr_in*>(&addr_s)->sin_port);
@@ -276,7 +270,6 @@ void WriteUVContent::writeDone(uv_write_t* req, int status) {
   auto self = std::move(data_ptr->strong_self);
   delete data_ptr;
   uv_req_set_data(reinterpret_cast<uv_req_t*>(req), nullptr);
-
   if (self && status) {
     VLOG(2) << "Write to client failed. code:" << status
             << " desc:" << uv_strerror(status)
@@ -296,21 +289,17 @@ WriteUVContent::~WriteUVContent() {
 
 void WriteUVContent::send() {
   if (data.empty()) return;
-
   buf = uv_buf_init(reinterpret_cast<char*>(data.data()), data.size());
   int res = uv_write(&req,
                      reinterpret_cast<uv_stream_t*>(handle->getRawHandle()),
                      &buf,
                      1,
                      writeDone);
-
   if (res) {
-    VLOG(2) << "Write failed. code:" << res << "desc:" << uv_strerror(res)
-            << "name:" << uv_err_name(res);
+    VLOG(2) << "Write failed. code:" << res << " desc:" << uv_strerror(res)
+            << " name:" << uv_err_name(res);
     handle->close();
   } else {
-    /* This object was successfully registered with the event loop, so keep it
-     * alive until it's unregistered. */
     auto data_ptr = static_cast<RequestData*>(
         uv_req_get_data(reinterpret_cast<uv_req_t*>(&req)));
     if (data_ptr) {
@@ -354,7 +343,6 @@ void LibUVClient::readCallback(uv_stream_t* client,
                                ssize_t nread,
                                const uv_buf_t* buf) {
   auto uv_socket = LibUVTCPSocket::getTCPSocket(client);
-
   if (nread > 0) {
     try {
       uv_socket->doProcess(buf, nread);
@@ -406,12 +394,10 @@ void LibUVClient::doProcess(const uv_buf_t* buf, size_t nread) {
         if (!doWaitCommand()) return;
         break;
       default:
-        VLOG(4) << "invalid command from Client, command: "
-                << static_cast<int>(command);
+        VLOG(4) << "invalid command from Client, command: " << command;
         close();
         return;
     }
-
     stream.commit();
   }
 }
@@ -422,9 +408,7 @@ bool LibUVClient::doSetCommand() {
 
   std::vector<uint8_t> newData;
   if (!stream.readContent(newData)) return false;
-
   VLOG(7) << "set key:" << key << " address:" << this->address();
-
   store->set(key, newData);
   return true;
 }
@@ -434,7 +418,6 @@ bool LibUVClient::doGetCommand() {
   if (!stream.readKey(key)) return false;
 
   VLOG(7) << "get key: " << key << " address:" << this->address();
-
   const auto& data = store->get(key);
   UVWriter sw(ptr());
   sw.writeVector(data);
@@ -445,18 +428,15 @@ bool LibUVClient::doGetCommand() {
 bool LibUVClient::doAddCommand() {
   std::string key;
   if (!stream.readKey(key)) return false;
-
   int64_t addVal = 0;
   if (!stream.readValue(addVal)) return false;
 
   addVal = store->add(key, addVal);
   VLOG(7) << "add key:" << key << " val: " << addVal
           << " address:" << this->address();
-
   UVWriter sw(ptr());
   sw.writeValue(addVal);
   sw.send();
-
   return true;
 }
 
@@ -465,8 +445,6 @@ bool LibUVClient::doCheckCommand() {
   if (!stream.readKey(key)) return false;
 
   VLOG(7) << "check key:" << key << " address:" << this->address();
-
-  // check keys
   std::vector<std::string> keys = {key};
   UVWriter sw(ptr());
   if (store->checkKeys(keys)) {
@@ -494,10 +472,9 @@ bool LibUVClient::doWaitCommand() {
 
 void LibUVClient::onClose() { store->removeClient(ptr()); }
 
-PADDLE_API std::string formatSockAddr(const struct ::sockaddr* addr,
-                                      socklen_t len) {
+PADDLE_API std::string fmtSockAddr(const struct ::sockaddr* addr,
+                                   socklen_t len) {
   char host[NI_MAXHOST], port[NI_MAXSERV];  // NOLINT
-
   int flags = NI_NUMERICSERV;
   int err =
       ::getnameinfo(addr, len, host, sizeof(host), port, sizeof(port), flags);
@@ -528,13 +505,11 @@ void LibUVClient::readStart() {
 
   if (int err = uv_tcp_getpeername(
           &client, reinterpret_cast<struct ::sockaddr*>(&addr), &addrLen)) {
-    VLOG(2) << "Client remote endpoint resolution failed. err="
-            << uv_strerror(err);
+    VLOG(2) << "Remote endpoint resolution failed. err=" << uv_strerror(err);
   } else {
     _address =
-        formatSockAddr(reinterpret_cast<struct ::sockaddr*>(&addr), addrLen);
+        fmtSockAddr(reinterpret_cast<struct ::sockaddr*>(&addr), addrLen);
   }
-
   int res = uv_read_start(
       reinterpret_cast<uv_stream_t*>(&client), allocBuffer, readCallback);
   if (res) {
@@ -740,21 +715,6 @@ bool LibUVMasterDaemon::waitKey(const std::string& key,
   return false;
 }
 
-int64_t LibUVMasterDaemon::size() {
-  return static_cast<int64_t>(_tcp_store.size());
-}
-
-void LibUVMasterDaemon::append(const std::string& key,
-                               const std::vector<uint8_t>& value) {
-  auto it = _tcp_store.find(key);
-  if (it != _tcp_store.end()) {
-    it->second.insert(it->second.end(), value.begin(), value.end());
-  } else {
-    _tcp_store[key] = value;
-  }
-  notifyWaitingClients(key);
-}
-
 void LibUVMasterDaemon::notifyWaitingClients(const std::string& key) {
   auto sockets_to_wait = _waiting_sockets.find(key);
   if (sockets_to_wait != _waiting_sockets.end()) {
@@ -775,5 +735,4 @@ std::unique_ptr<phi::distributed::detail::DaemonThread> create_libuv_tcpstore(
   res->init(port);
   return res;
 }
-
 }  // namespace phi::distributed::detail

@@ -51,24 +51,14 @@ namespace detail {
 // shutdown sequence for the thread
 class DaemonThread {
  public:
-  DaemonThread();
-
+  DaemonThread() = default;
   virtual ~DaemonThread() = 0;
-
-  void start() {
-    daemonThread_ = std::thread{&DaemonThread::run, this};
-    is_running_.store(true);
-  }
+  void start();
 
  protected:
-  void cleanup() {
-    stop();
-    // Join the thread
-    daemonThread_.join();
-  }
+  void cleanup();
   virtual void run() = 0;
   virtual void stop() = 0;
-  bool is_running() { return is_running_.load(); }
 
  private:
   std::atomic<bool> is_running_{false};
@@ -90,7 +80,7 @@ class MasterDaemon : public DaemonThread {
 
  protected:
   void run() override;
-  void stop() override{};
+  void stop() override {};
 
  private:
   void ProcessCommands(std::vector<struct pollfd>* p_fds);

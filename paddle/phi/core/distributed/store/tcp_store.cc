@@ -26,9 +26,17 @@
 namespace phi::distributed::detail {
 
 // DaemonThread thread parent class methods
-DaemonThread::DaemonThread() = default;
-
 DaemonThread::~DaemonThread() = default;
+
+void DaemonThread::start() {
+  daemonThread_ = std::thread{&DaemonThread::run, this};
+  is_running_.store(true);
+}
+
+void DaemonThread::cleanup() {
+  stop();
+  daemonThread_.join();
+}
 
 constexpr int INFTIME = 10000;  // 10 seconds
 

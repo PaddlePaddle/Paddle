@@ -140,8 +140,6 @@ class PADDLE_API LibUVMasterDaemon : public DaemonThread {
   bool waitKey(const std::string& key,
                const std::shared_ptr<LibUVHandle>& client);
   bool checkKeys(const std::vector<std::string>& keys);
-  int64_t size();
-  void append(const std::string& key, const std::vector<uint8_t>& value);
   // client
   void addClient(const std::shared_ptr<LibUVHandle>& client);
   void removeClient(const std::shared_ptr<LibUVHandle>& client);

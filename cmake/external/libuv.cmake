@@ -16,10 +16,8 @@ include(ExternalProject)
 
 set(LIBUV_PREFIX_DIR ${THIRD_PARTY_PATH}/libuv)
 set(LIBUV_INCLUDE_DIR ${LIBUV_PREFIX_DIR}/include)
-
 set(LIBUV_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/libuv)
 set(SOURCE_INCLUDE_DIR ${LIBUV_SOURCE_DIR}/include)
-
 set(LIBUV_INSTALL_DIR ${THIRD_PARTY_PATH}/install/libuv)
 set(LIBUV_INCLUDE_DIR
     ${LIBUV_INSTALL_DIR}/include
@@ -29,38 +27,44 @@ set(LIBUV_LIBRARY_DIR
     CACHE PATH "libuv library directory." FORCE)
 
 if(WIN32)
-  set(LIBUV_LIBRARIES
-      "${LIBUV_INSTALL_DIR}/lib/libuv.lib"
-      CACHE FILEPATH "libuv library." FORCE)
+  set(LIBUV_CONFIGURE_COMMAND ${LIBUV_SOURCE_DIR}/vcbuild.bat release)
+  set(LIBUV_BUILD_COMMAND ${LIBUV_SOURCE_DIR}/vcbuild.bat release)
+  set(LIBUV_LIBRARIES ${LIBUV_SOURCE_DIR}/Release/libuv.lib)
+  set(LIBUV_INCLUDE_DIR ${LIBUV_SOURCE_DIR}/include)
 else()
-  set(LIBUV_LIBRARIES
-      "${LIBUV_INSTALL_DIR}/lib/libuv.a"
-      CACHE FILEPATH "libuv library." FORCE)
+  # Unix-like platform (Linux、macOS)
+  set(LIBUV_CONFIGURE_COMMAND
+      ${LIBUV_SOURCE_DIR}/autogen.sh COMMAND ${LIBUV_SOURCE_DIR}/configure
+      --prefix=${LIBUV_INSTALL_DIR} --enable-static --disable-shared
+      CFLAGS=-fPIC)
+  set(LIBUV_BUILD_COMMAND $(MAKE))
+  set(LIBUV_INSTALL_COMMAND $(MAKE) install)
+  set(LIBUV_LIBRARIES ${LIBUV_INSTALL_DIR}/lib/libuv.a)
+  set(LIBUV_INCLUDE_DIR ${LIBUV_INSTALL_DIR}/include)
 endif()
-
-set(LIBUV_BuildTests
-    OFF
-    CACHE INTERNAL "")
-
-set(LIBUV_CMAKE_C_FLAGS "-O0 -fPIC")
-set(LIBUV_CMAKE_CXX_FLAGS "-O0 -fPIC")
 
 ExternalProject_Add(
   extern_libuv
   ${EXTERNAL_PROJECT_LOG_ARGS}
   SOURCE_DIR ${LIBUV_SOURCE_DIR}
-  PREFIX ${LIBUV_PREFIX_DIR}
-  PATCH_COMMAND ""
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
-             -DCMAKE_INSTALL_PREFIX=${LIBUV_INSTALL_DIR}
-             -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-             -DCMAKE_C_FLAGS=${LIBUV_CMAKE_C_FLAGS}
-             -DCMAKE_CXX_FLAGS=${LIBUV_CMAKE_CXX_FLAGS}
+  BINARY_DIR ${LIBUV_SOURCE_DIR}
+  INSTALL_DIR ${LIBUV_INSTALL_DIR}
+  # config
+  CONFIGURE_COMMAND ${LIBUV_CONFIGURE_COMMAND}
+  BUILD_COMMAND ${LIBUV_BUILD_COMMAND}
+  # install
+  INSTALL_COMMAND ${LIBUV_INSTALL_COMMAND}
+  # output
   BUILD_BYPRODUCTS ${LIBUV_LIBRARIES})
 
-generate_dummy_static_lib(LIB_NAME "libuv" GENERATOR "libuv.cmake")
-set_property(TARGET libuv PROPERTY IMPORTED_LOCATION ${LIBUV_LIBRARIES})
+add_library(libuv STATIC IMPORTED)
 add_dependencies(libuv extern_libuv)
+
+set_target_properties(libuv PROPERTIES IMPORTED_LOCATION ${LIBUV_LIBRARIES})
+if(WIN32)
+  set_target_properties(
+    libuv PROPERTIES INTERFACE_LINK_LIBRARIES
+                     "ws2_32;psapi;iphlpapi;userenv;advapi32")
+endif()
 
 include_directories(${LIBUV_INCLUDE_DIR})
