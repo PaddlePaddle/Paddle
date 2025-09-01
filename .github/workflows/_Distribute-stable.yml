@@ -347,7 +347,7 @@ jobs:
           git submodule update --init --recursive --force
           cd ..
           paddle_whl=/paddle/dist/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl
-          timeout 80m bash /paddle/ci/auto_parallel/ci_auto_parallel.sh ${paddle_whl}
+          timeout 80m bash /paddle/ci/auto_parallel/distribute_auto_parallel.sh ${paddle_whl}
           '
       - name: Upload and display logs
         if: always()

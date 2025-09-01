@@ -17,8 +17,8 @@ source ${work_dir}/ci/auto_parallel/target_path_lists.sh
 
 export paddle=$1
 export paddle_dir=${work_dir}
-mkdir -p ${work_dir}/../case_logs
-export log_path=${work_dir}/../case_logs
+mkdir -p ${work_dir}/../workspace/case_logs
+export log_path=${work_dir}/../workspace/case_logs
 export case_list=()
 
 global_total_count=0
@@ -39,8 +39,8 @@ install_paddle(){
 
 install_external_ops(){
     echo -e "\033[31m ---- Install extern_ops  \033"
-    export PYTHONPATH=${work_dir}/../PaddleNLP:$PYTHONPATH
-    cd ${work_dir}/../PaddleNLP/slm/model_zoo/gpt-3/external_ops
+    export PYTHONPATH=${work_dir}/../workspace/PaddleNLP:$PYTHONPATH
+    cd ${work_dir}/../workspace/PaddleNLP/slm/model_zoo/gpt-3/external_ops
     python setup.py install
     python -c "import fused_ln;";
 }
@@ -235,7 +235,7 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             print_info $? `ls -lt ${log_path} | grep "test" | head -n 1 | awk '{print $9}'` ${case}
             let case_num++
         elif [[ ${case} == "llama_auto" ]];then
-            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
             timeout 5m bash $cmd prepare_case llama_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd llama_auto
             # There is no need to reinstall the related packages of `PaddleNLP` afterward.
@@ -244,29 +244,29 @@ if [[ ${#case_list[*]} -ne 0 ]];then
             # that there is no need to repeat the download process later.
             export FLAGS_download_data="llama ""$FLAGS_download_data"
             let case_num++
-            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/llama
+            clean_file ${work_dir}/../workspace/PaddleNLP/llm/auto_parallel/llama
         elif [[ ${case} == "gpt-3_auto" ]];then
-            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
             timeout 5m bash $cmd prepare_case llm_gpt_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_auto
             # there is no need to repeat the `gpt` download process later.
             export FLAGS_download_data="gpt ""$FLAGS_download_data"
             let case_num++
-            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/gpt-3
+            clean_file ${work_dir}/../workspace/PaddleNLP/llm/auto_parallel/gpt-3
         elif [[ ${case} == "gpt-3_dygraph" ]];then
-            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_dy.sh
+            cmd=${work_dir}/../workspace/PaddleNLP/scripts/distribute/ci_case_dy.sh
             timeout 5m bash $cmd prepare_case llm_gpt_case_list_dygraph $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd gpt-3_dygraph
             let case_num++
-            clean_file ${work_dir}/../PaddleNLP/llm
+            clean_file ${work_dir}/../workspace/PaddleNLP/llm
         elif [[ ${case} == "deepseek_auto" ]];then
-            cmd=${work_dir}/../PaddleNLP/scripts/distribute/ci_case_auto.sh
+            cmd=${work_dir}/../workspace/PaddleNLP/scripts/distribute/ci_case_auto.sh
             timeout 5m bash $cmd prepare_case deepseek_case_list_auto $FLAGS_install_deps $FLAGS_download_data
             execute_func_list $cmd deepseek_auto
             export FLAGS_install_deps=1
             export FLAGS_download_data="deepseek ""$FLAGS_download_data"
             let case_num++
-            clean_file ${work_dir}/../PaddleNLP/llm/auto_parallel/deepseek-v3
+            clean_file ${work_dir}/../workspace/PaddleNLP/llm/auto_parallel/deepseek-v3
         else
             echo -e "\033[31m ---- no ${case} \033"
             let case_num++
