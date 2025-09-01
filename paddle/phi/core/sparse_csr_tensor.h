@@ -29,8 +29,9 @@ class DenseTensorUtils;
 /// non_zero_cols_ represents the column index of non zero elements in original
 /// DenseTensor,
 /// non_zero_elements_ represents the non zero elements of original DenseTensor.
-class SparseCsrTensor : public TensorBase,
-                        public TypeInfoTraits<TensorBase, SparseCsrTensor> {
+class PADDLE_API SparseCsrTensor
+    : public TensorBase,
+      public TypeInfoTraits<TensorBase, SparseCsrTensor> {
  public:
   SparseCsrTensor();
   /// \brief Because sparse csr tensor is a resource handle, we provide a

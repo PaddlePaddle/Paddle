@@ -31,7 +31,7 @@ namespace auto_parallel {
 class ProcessMeshProto;
 }
 
-class ProcessMesh {
+class PADDLE_API ProcessMesh {
  public:
   ProcessMesh() = default;
 
@@ -86,27 +86,29 @@ inline std::ostream& operator<<(std::ostream& os, const ProcessMesh& obj) {
   return os;
 }
 
-bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
+PADDLE_API bool operator==(const ProcessMesh& lhs, const ProcessMesh& rhs);
 
 inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
   return !operator==(lhs, rhs);
 }
 
 // split the mesh into sub-meshes at the given axis
-std::vector<ProcessMesh> SplitMesh(const ProcessMesh& mesh, int axis);
+PADDLE_API std::vector<ProcessMesh> SplitMesh(const ProcessMesh& mesh,
+                                              int axis);
 
 // return which dimension that the sub_mesh is split from the global_mesh,
 // if sub_mesh is not a subset of global_mesh, return -1
-int SubMeshDim(const ProcessMesh& global_mesh, const ProcessMesh& sub_mesh);
+PADDLE_API int SubMeshDim(const ProcessMesh& global_mesh,
+                          const ProcessMesh& sub_mesh);
 
 // when the shapes of two meshes are different and their process_ids
 // are the same, check whether the only difference is that mesh 'a'
 // has an additional '1' on the split dim of its shape.
 // e.g. a.shape = [2], b.shape = [2, 1], and the process_ids are the
 // same, then they are equal.
-bool mesh_equal_ignore_shape1(const ProcessMesh& a,
-                              const ProcessMesh& b,
-                              int split_dim);
+PADDLE_API bool mesh_equal_ignore_shape1(const ProcessMesh& a,
+                                         const ProcessMesh& b,
+                                         int split_dim);
 
 }  // namespace distributed
 }  // namespace phi

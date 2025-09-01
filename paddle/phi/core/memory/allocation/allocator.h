@@ -176,7 +176,7 @@ static T&& FillValue(T&& allocation) {
 }
 
 // Base interface class of memory Allocator.
-class Allocator : public phi::Allocator {
+class PADDLE_API Allocator : public phi::Allocator {
  public:
   static void AllocationDeleter(phi::Allocation* allocation) {
     Allocator* allocator =

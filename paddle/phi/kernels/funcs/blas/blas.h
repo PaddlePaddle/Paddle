@@ -75,9 +75,9 @@ struct MatDescriptor {
  *
  * @param trans: True if the matrix is transposed.
  */
-extern MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
-                                            int num_flatten_cols,
-                                            bool trans);
+extern PADDLE_API MatDescriptor CreateMatrixDescriptor(const DDim& tensor_dim,
+                                                       int num_flatten_cols,
+                                                       bool trans);
 
 template <typename DeviceContext>
 class Blas {

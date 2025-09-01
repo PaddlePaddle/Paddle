@@ -30,7 +30,7 @@ namespace allocation {
 // memory allocation and reuse memory.
 // BufferedAllocator provides the same thread-safety level as
 // underlying_allocator_
-class BufferedAllocator : public Allocator {
+class PADDLE_API BufferedAllocator : public Allocator {
  public:
   explicit BufferedAllocator(std::shared_ptr<Allocator> allocator);
 
