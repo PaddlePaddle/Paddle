@@ -3345,6 +3345,22 @@ class OpTest(unittest.TestCase):
         check_auto_parallel=False,
         check_pir_onednn=False,
     ):
+        if os.getenv("FLAG_SKIP_FLOAT64", "0") in ["1", "ON", "TRUE"]:
+            for name, value in self.inputs.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if (
+                            hasattr(item[1], 'dtype')
+                            and item[1].dtype == np.float64
+                        ):
+                            self.skipTest(
+                                "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                            )
+                elif hasattr(value, 'dtype') and value.dtype == np.float64:
+                    self.skipTest(
+                        "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                    )
+
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 
