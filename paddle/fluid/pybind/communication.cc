@@ -26,6 +26,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#include "paddle/phi/core/distributed/gpu_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_config.h"
 #endif
 #include "paddle/phi/core/distributed/store/store_utils.h"
@@ -155,6 +156,17 @@ void BindNCCLConfig(py::module *m) {
                   py::arg("nchannels") = -1,
                   py::arg("algoStr") = "",
                   py::arg("protoStr") = "",
+                  py::call_guard<py::gil_scoped_release>());
+}
+#endif
+
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+void BindGPUTaskManager(py::module *m) {
+  py::class_<phi::distributed::GPUTaskManager,
+             std::shared_ptr<phi::distributed::GPUTaskManager>>(
+      *m, "GPUTaskManager")
+      .def_static("set_start_time",
+                  &phi::distributed::GPUTaskManager::SetStartTime,
                   py::call_guard<py::gil_scoped_release>());
 }
 #endif

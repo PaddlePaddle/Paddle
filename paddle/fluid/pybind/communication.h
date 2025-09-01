@@ -29,6 +29,7 @@ void BindTCPStore(pybind11::module* m);
 void BindCommContextManager(pybind11::module* m);
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
 void BindNCCLConfig(pybind11::module* m);
+void BindGPUTaskManager(pybind11::module* m);
 #endif
 
 }  // namespace pybind
