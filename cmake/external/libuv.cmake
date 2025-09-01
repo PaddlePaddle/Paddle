@@ -59,7 +59,7 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS=${LIBUV_CMAKE_CXX_FLAGS}
   BUILD_BYPRODUCTS ${LIBUV_LIBRARIES})
 
-add_library(libuv STATIC IMPORTED GLOBAL)
+generate_dummy_static_lib(LIB_NAME "libuv" GENERATOR "libuv.cmake")
 set_property(TARGET libuv PROPERTY IMPORTED_LOCATION ${LIBUV_LIBRARIES})
 add_dependencies(libuv extern_libuv)
 
