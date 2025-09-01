@@ -87,25 +87,6 @@ void RemainderRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FloorDivideRawKernel(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          int axis,
-                          DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-  auto f = [](xpu::Context* xpu_ctx,
-              const XPUType* x,
-              const XPUType* y,
-              XPUType* z,
-              const std::vector<int64_t>& xshape,
-              const std::vector<int64_t>& yshape) {
-    return xpu::broadcast_floordiv<XPUType>(xpu_ctx, x, y, z, xshape, yshape);
-  };
-
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
-}
-
-template <typename T, typename Context>
 void TruncDivideRawKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
@@ -149,15 +130,6 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   int32_t,
-                   int64_t) {}
-PD_REGISTER_KERNEL(trunc_divide_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::TruncDivideRawKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,

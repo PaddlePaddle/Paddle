@@ -323,8 +323,6 @@ PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
 PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
 PD_REGISTER_KERNEL(floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int) {
 }
-PD_REGISTER_KERNEL(trunc_divide, KPS, ALL_LAYOUT, phi::TruncDivideKernel, int) {
-}
 PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
 
