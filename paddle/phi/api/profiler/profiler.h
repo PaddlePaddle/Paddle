@@ -28,7 +28,7 @@ limitations under the License. */
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 
@@ -82,14 +82,14 @@ struct EventList {
   std::forward_list<std::vector<T>> event_blocks;
 };
 
-Event* PushEvent(const std::string& name,
-                 const EventRole role,
-                 const std::string attr = "none");
-void PopEvent(const std::string& name,
-              const EventRole role,
-              const std::string attr = "none");
+PADDLE_API Event* PushEvent(const std::string& name,
+                            const EventRole role,
+                            const std::string attr = "none");
+PADDLE_API void PopEvent(const std::string& name,
+                         const EventRole role,
+                         const std::string attr = "none");
 
-void EnableOpInfoRecorder();
-void DisableOpInfoRecorder();
+PADDLE_API void EnableOpInfoRecorder();
+PADDLE_API void DisableOpInfoRecorder();
 
 }  // namespace phi

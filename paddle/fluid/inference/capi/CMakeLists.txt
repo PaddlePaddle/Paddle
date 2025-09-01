@@ -15,10 +15,17 @@
 
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc c_api.cc)
 
-cc_library(
-  paddle_inference_c
-  SRCS ${C_API_SRCS}
-  DEPS paddle_inference)
+if(WIN32)
+  cc_library(
+    paddle_inference_c
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference dynload_tensorrt)
+else()
+  cc_library(
+    paddle_inference_c
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference)
+endif()
 
 if(NOT ON_INFER AND NOT WIN32)
   return()

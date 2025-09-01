@@ -17,6 +17,32 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle import base
+
+
+def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
+    """Reference forward implementation using np.matmul."""
+    # np.matmul does not support the transpose flags, so we manually
+    # transpose X and Y appropriately.
+    if transpose_X:
+        if X.ndim == 1:
+            X = X.reshape((X.size,))
+        elif X.ndim == 2:
+            X = X.T
+        else:
+            dim = list(range(len(X.shape)))
+            dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
+            X = np.transpose(X, tuple(dim))
+    if transpose_Y:
+        if Y.ndim == 1:
+            Y = Y.reshape((Y.size,))
+        else:
+            dim = list(range(len(Y.shape)))
+            dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
+            Y = np.transpose(Y, tuple(dim))
+
+    Out = np.matmul(X, Y)
+    return Out
 
 
 class TestMatmulOutAndParamDecorator(unittest.TestCase):
@@ -75,6 +101,90 @@ class TestMatmulOutAndParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 y_grad.numpy(), y_grad_std.numpy(), rtol=1e-20
             )
+
+
+class TestMatMulAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_shape = [5, 6]
+        self.y_shape = [6, 4]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_input = np.random.randint(0, 8, self.x_shape).astype(
+            self.dtype
+        )
+        self.np_y_input = np.random.randint(3, 9, self.y_shape).astype(
+            self.dtype
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_input)
+        y = paddle.to_tensor(self.np_y_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.matmul(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.matmul(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.matmul(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.matmul(x, other=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.matmul(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.matmul(other=y)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.matmul(x, other=y, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = reference_matmul(self.np_x_input, self.np_y_input)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=self.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_shape, dtype=self.dtype
+            )
+            # Position args (args)
+            out1 = paddle.matmul(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.matmul(x=x, y=y)
+            # Key words args for torch
+            out3 = paddle.matmul(input=x, other=y)
+            # Combined args and kwargs
+            out4 = paddle.matmul(x, other=y)
+            # Tensor method args
+            out5 = x.matmul(y)
+            # Tensor method kwargs
+            out6 = x.matmul(other=y)
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_input, "y": self.np_y_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = reference_matmul(self.np_x_input, self.np_y_input)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 if __name__ == "__main__":

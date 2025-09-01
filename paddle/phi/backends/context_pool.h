@@ -29,14 +29,14 @@ limitations under the License. */
 namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-void SetAllowTF32Cublas(bool active);
+PADDLE_API void SetAllowTF32Cublas(bool active);
 /*Get the global variable allow_tf32_cublas value*/
-bool AllowTF32Cublas();
+PADDLE_API bool AllowTF32Cublas();
 extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
-void SetAllowTF32Cudnn(bool active);
+PADDLE_API void SetAllowTF32Cudnn(bool active);
 /*Get the global variable allow_tf32_cudnn value*/
-bool AllowTF32Cudnn();
+PADDLE_API bool AllowTF32Cudnn();
 #endif  // PADDLE_WITH_CUDA
 
 template <typename Place>
@@ -76,18 +76,18 @@ struct DefaultDeviceContextType<phi::CustomPlace> {
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
-  TEST_API static DeviceContextPool& Instance();
+  PADDLE_API static DeviceContextPool& Instance();
 
   /*! \brief  Create should only called by Init function */
-  TEST_API static DeviceContextPool& Init(
+  PADDLE_API static DeviceContextPool& Init(
       const std::vector<phi::Place>& places);
 
-  TEST_API static bool IsInitialized();
+  PADDLE_API static bool IsInitialized();
 
-  TEST_API static void SetPool(DeviceContextPool* dev_pool);
+  PADDLE_API static void SetPool(DeviceContextPool* dev_pool);
 
   /*! \brief  Return handle of single device context. */
-  TEST_API phi::DeviceContext* Get(const phi::Place& place);
+  PADDLE_API phi::DeviceContext* Get(const phi::Place& place);
 
   template <typename Place>
   const typename DefaultDeviceContextType<Place>::TYPE* GetByPlace(
@@ -96,13 +96,13 @@ class DeviceContextPool {
         const typename DefaultDeviceContextType<Place>::TYPE*>(Get(place));
   }
 
-  TEST_API size_t Size() const;
+  PADDLE_API size_t Size() const;
 
-  TEST_API const
+  PADDLE_API const
       std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>&
       device_contexts() const;
 
-  TEST_API static void SetDeviceContexts(
+  PADDLE_API static void SetDeviceContexts(
       const std::map<Place,
                      std::shared_future<std::unique_ptr<DeviceContext>>>*);
 

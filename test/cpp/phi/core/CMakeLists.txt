@@ -2,16 +2,27 @@ cc_test(
   test_custom_kernel
   SRCS test_custom_kernel.cc
   DEPS phi common)
-cc_test(
-  test_dense_tensor
-  SRCS test_dense_tensor.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    test_dense_tensor
+    SRCS test_dense_tensor.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    test_dense_tensor
+    SRCS test_dense_tensor.cc
+    DEPS phi common)
+endif()
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
-cc_test(
-  test_kernel_factory
-  SRCS test_kernel_factory.cc
-  DEPS phi common)
+if(WIN32)
+  paddle_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS phi common)
+else()
+  cc_test(
+    test_kernel_factory
+    SRCS test_kernel_factory.cc
+    DEPS phi common)
+endif()
 cc_test(
   test_sparse_coo_tensor
   SRCS test_sparse_coo_tensor.cc
@@ -29,10 +40,17 @@ cc_test(
   SRCS test_meta_fn_utils.cc
   DEPS phi common)
 
-cc_test(
-  test_ddim
-  SRCS test_ddim.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    test_ddim
+    SRCS test_ddim.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    test_ddim
+    SRCS test_ddim.cc
+    DEPS phi common)
+endif()
 if(WITH_GPU)
   nv_test(
     test_dim
@@ -67,10 +85,17 @@ cc_test(
   DEPS phi common)
 
 if(WITH_GPU)
-  nv_test(
-    test_mixed_vector
-    SRCS test_mixed_vector.cc test_mixed_vector.cu
-    DEPS phi common tensor)
+  if(WIN32)
+    nv_test(
+      test_mixed_vector
+      SRCS test_mixed_vector.cc test_mixed_vector.cu
+      DEPS type_info common tensor)
+  else()
+    nv_test(
+      test_mixed_vector
+      SRCS test_mixed_vector.cc test_mixed_vector.cu
+      DEPS phi common tensor)
+  endif()
 elseif(WITH_ROCM)
   hip_test(
     test_mixed_vector

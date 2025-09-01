@@ -19,6 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <utility>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/profiler/output_logger.h"
 
@@ -29,7 +30,7 @@ namespace platform {
 // A ChromeTracingLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
 // should only call LogNodeTrees and LogMetaInfo in order.
-class ChromeTracingLogger : public BaseLogger {
+class PADDLE_API ChromeTracingLogger : public BaseLogger {
  public:
   explicit ChromeTracingLogger(const std::string& filename);
   explicit ChromeTracingLogger(const char* filename);

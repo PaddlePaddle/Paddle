@@ -63,7 +63,12 @@ void ScaleKernel(const Context& dev_ctx,
       &outputs,
       ScaleFunctor<T, MT>(scale.to<MT>(), bias.to<MT>(), bias_after_scale));
 }
-
+#ifdef _WIN32
+INSTANCE_SCALAR_KERNEL(int, GPUContext)
+INSTANCE_SCALAR_KERNEL(int64_t, GPUContext)
+INSTANCE_SCALAR_KERNEL(float, GPUContext)
+INSTANCE_SCALAR_KERNEL(double, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale,

@@ -96,5 +96,9 @@ void FullIntArrayKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& shape,
                         DataType dtype,
                         DenseTensor* out);
-
+#ifdef _WIN32
+#define INSTANTIATE_FULL_KERNEL(type, context)        \
+  template PADDLE_API void FullKernel<type, context>( \
+      const context&, const IntArray&, const Scalar&, DataType, DenseTensor*);
+#endif
 }  // namespace phi
