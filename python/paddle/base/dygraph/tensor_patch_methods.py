@@ -1157,10 +1157,16 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
-        if self.place.is_cuda_pinned_place():
+        if (
+            self.place.is_cuda_pinned_place()
+            or self.place.is_xpu_pinned_place()
+        ):
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
+            if paddle.device.is_compiled_with_xpu():
+                res = self._copy_to(core.XPUPinnedPlace(), blocking)
+            else:
+                res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res

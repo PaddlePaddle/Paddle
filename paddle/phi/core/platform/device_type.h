@@ -32,7 +32,7 @@ enum DeviceType {
   MAX_DEVICE_TYPES = 7,
 };
 
-DeviceType Place2DeviceType(const phi::Place& place);
+PADDLE_API DeviceType Place2DeviceType(const phi::Place& place);
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;

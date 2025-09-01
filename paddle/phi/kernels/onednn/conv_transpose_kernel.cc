@@ -151,7 +151,7 @@ class ConvTransposeOneDNNHandlerT
      */
     auto chosen_memory_format = funcs::OneDNNMemoryFormat::any;
     auto data_type = dnnl::memory::data_type::f32;
-    const bool is_BFLOAT16 =
+    const bool is_bfloat16 =
         dev_ctx.HasDnnAttr("mkldnn_data_type")
             ? PADDLE_GET_CONST(std::string,
                                dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
@@ -162,7 +162,7 @@ class ConvTransposeOneDNNHandlerT
             ? PADDLE_GET_CONST(std::string,
                                dev_ctx.GetDnnAttr("onednn_data_type")) ==
                   "bfloat16"
-            : is_BFLOAT16;
+            : is_bfloat16;
     if (is_onednn_BFLOAT16 || std::is_same<T_out, dtype::bfloat16>::value) {
       data_type = dnnl::memory::data_type::bf16;
     }
@@ -499,7 +499,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
                            const std::vector<int>& dilations,
                            const std::string& data_format UNUSED,
                            DenseTensor* out) {
-  const bool is_BFLOAT16 =
+  const bool is_bfloat16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
@@ -510,7 +510,7 @@ void Conv2dTransposeKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("onednn_data_type")) ==
                 "bfloat16"
-          : is_BFLOAT16;
+          : is_bfloat16;
   const bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
@@ -556,7 +556,7 @@ void Conv2dTransposeBiasKernel(const Context& dev_ctx,
                                const std::vector<int>& dilations,
                                const std::string& data_format UNUSED,
                                DenseTensor* out) {
-  const bool is_BFLOAT16 =
+  const bool is_bfloat16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
@@ -567,7 +567,7 @@ void Conv2dTransposeBiasKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("onednn_data_type")) ==
                 "bfloat16"
-          : is_BFLOAT16;
+          : is_bfloat16;
   const bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))

@@ -13,8 +13,25 @@ set(eager_deps
     grad_tensor_holder
     custom_operator_node)
 
+if(WITH_GPU)
+  if(WIN32)
+    cc_library(
+      activation_offloader
+      SRCS activation_offloader.cc
+      DEPS phi onednn)
+  else()
+    cc_library(
+      activation_offloader
+      SRCS activation_offloader.cc
+      DEPS phi_core phi_gpu)
+  endif()
+  list(APPEND eager_deps activation_offloader)
+endif()
+
 if(WITH_GPU OR WITH_ROCM)
-  set(eager_deps ${eager_deps} phi_gpu)
+  if(NOT WIN32)
+    set(eager_deps ${eager_deps} phi_gpu)
+  endif()
 endif()
 
 if(NOT (NOT WITH_PYTHON AND ON_INFER))

@@ -403,11 +403,7 @@ def set_paddle_custom_device_lib_path(lib_path):
 
 # set paddle lib path
 def set_paddle_lib_path():
-    site_dirs = (
-        site.getsitepackages()
-        if hasattr(site, 'getsitepackages')
-        else [x for x in sys.path if 'site-packages' in x]
-    )
+    site_dirs = site.getsitepackages()
     for site_dir in site_dirs:
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):

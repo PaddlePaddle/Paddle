@@ -48,7 +48,17 @@ void CastKernel(const Context& dev_ctx,
                            }));
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_CAST_KERNEL(float, CPUContext)
+INSTANTIATE_CAST_KERNEL(double, CPUContext)
+INSTANTIATE_CAST_KERNEL(int, CPUContext)
+INSTANTIATE_CAST_KERNEL(int64_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(bool, CPUContext)
+INSTANTIATE_CAST_KERNEL(int16_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(phi::dtype::float16, CPUContext)
+INSTANTIATE_CAST_KERNEL(phi::dtype::bfloat16, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(cast,

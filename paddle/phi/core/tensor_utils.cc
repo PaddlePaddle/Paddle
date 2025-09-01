@@ -340,64 +340,64 @@ void Copy(const Context& dev_ctx UNUSED,
   PADDLE_THROW(errors::Unimplemented("Copy for TensorArray is unimplemented."));
 }
 
-template void Copy(const CPUContext& dev_ctx,
-                   const DenseTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   DenseTensor* dst);
+template void PADDLE_API Copy(const CPUContext& dev_ctx,
+                              const DenseTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              DenseTensor* dst);
 
-template void Copy(const DeviceContext& dev_ctx,
-                   const DenseTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   DenseTensor* dst);
+template void PADDLE_API Copy(const DeviceContext& dev_ctx,
+                              const DenseTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              DenseTensor* dst);
 
-template void Copy(const CPUContext& dev_ctx,
-                   const SelectedRows& src,
-                   Place dst_place,
-                   bool blocking,
-                   SelectedRows* dst);
-template void Copy(const DeviceContext& dev_ctx,
-                   const SelectedRows& src,
-                   Place dst_place,
-                   bool blocking,
-                   SelectedRows* dst);
+template void PADDLE_API Copy(const CPUContext& dev_ctx,
+                              const SelectedRows& src,
+                              Place dst_place,
+                              bool blocking,
+                              SelectedRows* dst);
+template void PADDLE_API Copy(const DeviceContext& dev_ctx,
+                              const SelectedRows& src,
+                              Place dst_place,
+                              bool blocking,
+                              SelectedRows* dst);
 
-template void Copy(const CPUContext& dev_ctx,
-                   const SparseCooTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   SparseCooTensor* dst);
+template void PADDLE_API Copy(const CPUContext& dev_ctx,
+                              const SparseCooTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              SparseCooTensor* dst);
 
-template void Copy(const DeviceContext& dev_ctx,
-                   const SparseCooTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   SparseCooTensor* dst);
+template void PADDLE_API Copy(const DeviceContext& dev_ctx,
+                              const SparseCooTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              SparseCooTensor* dst);
 
-template void Copy(const CPUContext& dev_ctx,
-                   const SparseCsrTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   SparseCsrTensor* dst);
+template void PADDLE_API Copy(const CPUContext& dev_ctx,
+                              const SparseCsrTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              SparseCsrTensor* dst);
 
-template void Copy(const DeviceContext& dev_ctx,
-                   const SparseCsrTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   SparseCsrTensor* dst);
+template void PADDLE_API Copy(const DeviceContext& dev_ctx,
+                              const SparseCsrTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              SparseCsrTensor* dst);
 
-template void Copy(const CPUContext& dev_ctx,
-                   const TensorArray& src,
-                   Place dst_place,
-                   bool blocking,
-                   TensorArray* dst);
+template void PADDLE_API Copy(const CPUContext& dev_ctx,
+                              const TensorArray& src,
+                              Place dst_place,
+                              bool blocking,
+                              TensorArray* dst);
 
-template void Copy(const DeviceContext& dev_ctx,
-                   const TensorArray& src,
-                   Place dst_place,
-                   bool blocking,
-                   TensorArray* dst);
+template void PADDLE_API Copy(const DeviceContext& dev_ctx,
+                              const TensorArray& src,
+                              Place dst_place,
+                              bool blocking,
+                              TensorArray* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template void Copy(const GPUContext& dev_ctx,

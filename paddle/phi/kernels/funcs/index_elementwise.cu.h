@@ -64,6 +64,22 @@ __global__ void index_elementwise_kernel(const int64_t N,
   }
 }
 
+template <int nt, int vt, typename T, typename func_t>
+__global__ void index_put_kernel(const int64_t N,
+                                 const bool accumulate,
+                                 const func_t f) {
+  const auto tid = threadIdx.x;
+  const auto nv = nt * vt;
+  auto idx = nv * blockIdx.x + tid;
+#pragma unroll
+  for (int i = 0; i < vt; i++) {
+    if (idx < N) {
+      f(idx, accumulate);
+      idx += nt;
+    }
+  }
+}
+
 template <typename T>
 struct DivMod {
   T div, mod;

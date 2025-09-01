@@ -58,7 +58,7 @@ struct Transpose {
 };
 
 template <typename DeviceContext, typename T>
-struct SetConstant {
+struct PADDLE_API SetConstant {
   void operator()(const DeviceContext& dev_ctx,
                   phi::DenseTensor* tensor,
                   T num);
@@ -78,9 +78,9 @@ void set_constant_with_place(const phi::DeviceContext& dev_ctx,
                              phi::DenseTensor* tensor,
                              float value);
 
-void set_constant(const phi::DeviceContext& dev_ctx,
-                  phi::DenseTensor* tensor,
-                  float value);
+PADDLE_API void set_constant(const phi::DeviceContext& dev_ctx,
+                             phi::DenseTensor* tensor,
+                             float value);
 
 template <typename DeviceContext, typename T>
 struct RowwiseAdd {

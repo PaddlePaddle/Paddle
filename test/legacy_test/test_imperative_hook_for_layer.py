@@ -19,13 +19,65 @@ import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
 from op_test import get_places
-from test_imperative_lod_tensor_to_selected_rows_deprecated import SimpleNet
 
 import paddle
 from paddle import base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
+
+
+class SimpleNet(paddle.nn.Layer):
+    def __init__(
+        self,
+        hidden_size,
+        vocab_size,
+        num_steps=20,
+        init_scale=0.1,
+        is_sparse=False,
+        dtype='float32',
+    ):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
+        self.init_scale = init_scale
+        self.num_steps = num_steps
+        paddle.set_default_dtype(dtype)
+        self.embedding = paddle.nn.Embedding(
+            vocab_size,
+            hidden_size,
+            sparse=is_sparse,
+            weight_attr=base.ParamAttr(
+                name='embedding_para',
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-init_scale, high=init_scale
+                ),
+            ),
+        )
+        self.softmax_bias = self.create_parameter(
+            attr=base.ParamAttr(),
+            shape=[self.vocab_size],
+            dtype=dtype,
+            default_initializer=paddle.nn.initializer.Uniform(
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
+
+    def forward(self, input, label):
+        x_emb = self.embedding(input)
+        projection = paddle.matmul(
+            x_emb, paddle.transpose(self.embedding.weight, perm=[1, 0])
+        )
+        projection = paddle.add(projection, self.softmax_bias)
+        projection = paddle.reshape(projection, shape=[-1, self.vocab_size])
+        loss = paddle.nn.functional.softmax_with_cross_entropy(
+            logits=projection, label=label, soft_label=False
+        )
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.mean(loss, axis=[0])
+        loss = paddle.sum(loss)
+
+        return loss
 
 
 def forward_post_hook(layer, input, output):
