@@ -30,6 +30,7 @@ DEFINE_CUDA_ELEMENTWISE_OP(Maximum)
 DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
 DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
+DEFINE_CUDA_ELEMENTWISE_OP(TruncDivide)
 DEFINE_CUDA_ELEMENTWISE_OP(ElementwisePow)
 
 }  // namespace phi
@@ -47,8 +48,6 @@ PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
 }
 PD_REGISTER_KERNEL(
     floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
-PD_REGISTER_KERNEL(
-    floor_divide_raw, KPS, ALL_LAYOUT, phi::TruncDivideRawKernel, int) {}
 PD_REGISTER_KERNEL(
     elementwise_pow_raw, KPS, ALL_LAYOUT, phi::ElementwisePowRawKernel, float) {
 }

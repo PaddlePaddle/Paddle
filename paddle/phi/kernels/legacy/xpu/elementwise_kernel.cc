@@ -87,7 +87,7 @@ void RemainderRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void TruncDivideRawKernel(const Context& dev_ctx,
+void FloorDivideRawKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           int axis,
