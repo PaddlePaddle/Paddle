@@ -102,6 +102,7 @@ class Allocator {
 
   virtual ~Allocator() = default;
   virtual AllocationPtr Allocate(size_t bytes_size) = 0;
+  virtual void PreAlloc() {}
 
   virtual bool IsAllocThreadSafe() const { return false; }
 };

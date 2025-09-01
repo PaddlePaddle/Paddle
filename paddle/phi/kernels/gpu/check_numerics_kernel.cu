@@ -500,7 +500,16 @@ void CheckNumericsKernel(const Context& dev_ctx,
     PrintStack<T>(dev_ctx, *stats, op_type, var_name, dev_id);
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_CHECKNUMBERICS_KERNEL(float, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(double, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::bfloat16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::complex<float>, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::complex<double>, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e4m3fn, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e5m2, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(check_numerics,

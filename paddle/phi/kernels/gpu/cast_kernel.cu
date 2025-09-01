@@ -42,6 +42,17 @@ void CastKernel(const Context& dev_ctx,
     CastCUDAKernel<T>(dev_ctx, x, out_dtype, out);
   }
 }
+#ifdef _WIN32
+INSTANTIATE_CAST_KERNEL(float, GPUContext)
+INSTANTIATE_CAST_KERNEL(double, GPUContext)
+INSTANTIATE_CAST_KERNEL(int, GPUContext)
+INSTANTIATE_CAST_KERNEL(int64_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(bool, GPUContext)
+INSTANTIATE_CAST_KERNEL(int16_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::dtype::float16, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::dtype::bfloat16, GPUContext)
+#endif
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)        \

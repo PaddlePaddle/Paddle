@@ -48,7 +48,10 @@ void TransposeKernel(const Context& dev_ctx,
   }
   phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, formatted_axis, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_TRANSPOSE_KERNEL(float, GPUContext)
+INSTANTIATE_TRANSPOSE_KERNEL(dtype::float16, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(transpose,

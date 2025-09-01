@@ -27,10 +27,11 @@ namespace platform {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAGraph = phi::backends::gpu::CUDAGraph;
 
-void BeginCUDAGraphCapture(phi::GPUPlace place,
-                           gpuStreamCaptureMode mode,
-                           int64_t pool_id = CUDAGraph::kInvalidPoolID);
-std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
+PADDLE_API void BeginCUDAGraphCapture(
+    phi::GPUPlace place,
+    gpuStreamCaptureMode mode,
+    int64_t pool_id = CUDAGraph::kInvalidPoolID);
+PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
 inline phi::GPUPlace CUDAGraphCapturingPlace() {

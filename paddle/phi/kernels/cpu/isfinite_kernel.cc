@@ -66,3 +66,25 @@ PD_REGISTER_KERNEL(isfinite,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
+
+#ifdef _WIN32
+namespace phi {
+INSTANTIATE_ISFINITE_KERNEL_Isnan(float, CPUContext)        // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isnan(double, CPUContext)   // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isnan(int, CPUContext)      // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isnan(int64_t, CPUContext)  // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::float16,
+                                      CPUContext)  // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::bfloat16,
+                                      CPUContext)  // NOLINT
+
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(float, CPUContext)    // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(double, CPUContext)   // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(int, CPUContext)      // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, CPUContext)  // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::float16,
+                                      CPUContext)  // NOLINT
+    INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::bfloat16,
+                                      CPUContext)  // NOLINT
+}  // namespace phi
+#endif

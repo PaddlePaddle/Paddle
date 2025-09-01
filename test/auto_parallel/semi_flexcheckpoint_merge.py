@@ -186,6 +186,59 @@ class TestDistCheckpoint:
         self.dist_checkpoint(True, False)
         self.dist_checkpoint(False, False)
 
+    def count_files_in_temp_dir(self, single_path):
+        if not os.path.exists(single_path):
+            return 0
+        files = [
+            f
+            for f in os.listdir(single_path)
+            if os.path.isfile(os.path.join(single_path, f))
+        ]
+        return len(files)
+
+    def test_checkpoint_load_merge_save(self):
+        model_path = os.path.join(self.temp_dir.name, '/model')
+        single_path = os.path.join(self.temp_dir.name, '/single_model')
+
+        # Test checkpoint saving
+        with paddle.LazyGuard():
+            model = DistMlpModel(self.mesh)
+        for p in model.parameters():
+            p.initialize()
+
+        dataset = RandomDataset(128, 1024)
+        sampler = BatchSampler(
+            dataset,
+            batch_size=4,
+        )
+        dataloader = DataLoader(
+            dataset,
+            batch_sampler=sampler,
+        )
+        opt = paddle.optimizer.AdamW(
+            learning_rate=0.001, parameters=model.parameters()
+        )
+        opt = dist.shard_optimizer(opt)
+
+        for step, inputs in enumerate(dataloader):
+            data = inputs
+            logits = model(data)
+            loss = paddle.mean(logits)
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+        dist.save_state_dict(model.state_dict(), model_path, safetensors=False)
+
+        dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(
+            model_path, single_path, offload=True, safetensors=False, file_num=2
+        )
+        assert self.count_files_in_temp_dir(single_path) == 3, (
+            f"Expected 3 files in temp dir, but got {self.count_files_in_temp_dir()}"
+        )
+        self.temp_dir.cleanup()
+
 
 if __name__ == '__main__':
     TestDistCheckpoint().test_dist_checkpoint()
+    TestDistCheckpoint().test_checkpoint_load_merge_save()

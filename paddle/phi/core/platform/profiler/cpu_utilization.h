@@ -25,11 +25,11 @@
 #include <sys/times.h>
 #include <unistd.h>
 #endif
-
+#include "paddle/common/macros.h"
 namespace paddle {
 namespace platform {
 
-class CpuUtilization {
+class PADDLE_API CpuUtilization {
  public:
   CpuUtilization() {}
   void RecordBeginTimeInfo();
