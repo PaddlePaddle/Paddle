@@ -49,19 +49,47 @@ class TorchMetaFinder:
         import importlib.abc
         import importlib.util
 
+        # Map the requested torch fullname to the corresponding paddle fullname.
         module_name = fullname.replace("torch", "paddle", 1)
-        module = importlib.import_module(module_name)
+        source_module = importlib.import_module(module_name)
+
+        is_pkg = hasattr(source_module, "__path__")
 
         class TorchLoader(importlib.abc.Loader):
+            def __init__(self, source, target_name):
+                self._source = source
+                self._target_name = target_name
+
             def create_module(self, spec):
-                module.__name__ = 'torch'
-                return module
+                # Create a new module object that will act as the "torch..." module.
+                import types
+
+                mod = types.ModuleType(self._target_name)
+                # Preserve file/path information for tooling/debugging.
+                mod.__file__ = getattr(self._source, "__file__", None)
+                if is_pkg:
+                    # package must expose __path__ so import machinery can find submodules
+                    mod.__path__ = list(getattr(self._source, "__path__", []))
+                    mod.__package__ = self._target_name
+                else:
+                    mod.__package__ = self._target_name.rpartition('.')[0]
+                return mod
 
             def exec_module(self, module):
-                pass
+                # Populate the new module with attributes from the source paddle module.
+                # Skip a few special attributes that should reflect the new module name.
+                for k, v in self._source.__dict__.items():
+                    if k in ("__name__", "__package__", "__path__", "__spec__"):
+                        continue
+                    module.__dict__[k] = v
 
+        # Use fullname for the spec name and mark as package when appropriate so that
+        # statements like `import torch.nn.functional` work correctly.
         return importlib.util.spec_from_loader(
-            'torch', TorchLoader(), origin=module.__file__
+            fullname,
+            TorchLoader(source_module, fullname),
+            is_package=is_pkg,
+            origin=getattr(source_module, "__file__", None),
         )
 
 
