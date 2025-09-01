@@ -1089,10 +1089,14 @@ def randn(
     return tensor
 
 
+@param_one_alias(["x", "input"])
 def randn_like(
     x: Tensor,
     dtype: DTypeLike | None = None,
     name: str | None = None,
+    *,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
 ) -> Tensor:
     """
     Returns a tensor with the same size as input that is filled with random numbers from a normal distribution with mean 0 and variance 1.
@@ -1100,12 +1104,17 @@ def randn_like(
     Args:
         x (Tensor): The input multi-dimensional tensor which specifies shape. The dtype of ``x``
             can be float16, bfloat16, float32, float64, complex64, complex128.
+            alias: ``input``.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the
             output tensor. Supported data types: float16, bfloat16, float32, float64, complex64, complex128. If ``dtype`` is None, the data type is the
             same as x's data type. Default is None.
         name (str|None, optional): The default value is None.  Normally there is no
             need for user to set this property.  For more information, please
             refer to :ref:`api_guide_Name`.
+        device (str|paddle.Place|None, optional): The device on which to place the created tensor.
+            If None, the device is the same as input's device. Default is None.
+        requires_grad (bool, optional): Whether to compute gradients for the created tensor.
+            Default is False.
 
     Returns:
         Tensor, A Tensor with the same size as input that is filled with random numbers from a normal distribution with mean 0 and variance 1.
@@ -1150,12 +1159,29 @@ def randn_like(
             >>> # doctest: -SKIP
             >>> print(out3.dtype)
             paddle.float64
+
+            >>> # example 4:
+            >>> # device and requires_grad are provided
+            >>> x = paddle.zeros((1, 2)).astype("float32")
+            >>> out4 = paddle.randn_like(x, device=paddle.CPUPlace(), requires_grad=True)
+            >>> print(out4)
+            >>> # doctest: +SKIP("Random output")
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [[0.78040242, 0.29628819]])
     """
     if dtype is None:
         dtype = x.dtype
+    if device is None:
+        device = x.place
     shape = paddle.shape(x)
 
-    return standard_normal(shape, dtype, name)
+    return randn(
+        shape=shape,
+        dtype=dtype,
+        name=name,
+        device=device,
+        requires_grad=requires_grad,
+    )
 
 
 def rand_like(
@@ -1239,12 +1265,13 @@ def rand_like(
     """
     if dtype is None:
         dtype = input.dtype
+    if device is None:
+        device = input.place
+    shape = paddle.shape(input)
 
-    return uniform(
-        shape=input.shape,
+    return rand(
+        shape=shape,
         dtype=dtype,
-        min=0.0,
-        max=1.0,
         name=name,
         device=device,
         requires_grad=requires_grad,
@@ -2105,8 +2132,16 @@ def randperm(
         return out
 
 
+@size_args_decorator
 def rand(
-    shape: ShapeLike, dtype: DTypeLike | None = None, name: str | None = None
+    shape: ShapeLike,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: paddle.Tensor | None = None,
+    device: PlaceLike | None = None,
+    requires_grad: bool = False,
+    pin_memory: bool = False,
 ) -> Tensor:
     """
     Returns a Tensor filled with random values sampled from a uniform
@@ -2116,6 +2151,8 @@ def rand(
         shape (tuple|list|Tensor): Shape of the Tensor to be created. The data type is ``int32`` or ``int64`` .
             If ``shape`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
             If ``shape`` is an Tensor, it should be an 1-D Tensor which represents a list.
+            If ``shape`` is *shape, directly pass integers as variable-length arguments (e.g., `rand(2, 3)`).
+            alias: ``size``.
         dtype (str|np.dtype|paddle.dtype|None, optional): The data type of the output Tensor.
             Supported data types: float32, float64.
             Default is None, use global default dtype (see :ref:`get_default_dtype`
@@ -2123,6 +2160,10 @@ def rand(
         name (str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        out(Tensor, optional): The output tensor.
+        device(PlaceLike|None, optional): The desired device of returned tensor.
+        requires_grad(bool, optional):  If autograd should record operations on the returned tensor. Default: False.
+        pin_memory(bool, optional): If set, return tensor would be allocated in the pinned memory. Works only for CPU tensors. Default: False
 
     Returns:
         Tensor, A Tensor filled with random values sampled from a uniform
@@ -2167,7 +2208,40 @@ def rand(
              [0.27029657, 0.03963696, 0.42487794]])
             >>> # doctest: -SKIP
     """
-    return uniform(shape, dtype, min=0.0, max=1.0, name=name)
+    device = (
+        _get_paddle_place(device)
+        if device is not None
+        else _current_expected_place()
+    )
+    if (
+        pin_memory
+        and in_dynamic_mode()
+        and device is not None
+        and not isinstance(device, (core.CUDAPinnedPlace, core.XPUPinnedPlace))
+    ):
+        if isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and device.is_gpu_place()
+        ):
+            device = core.CUDAPinnedPlace()
+        elif isinstance(device, core.XPUPlace) or (
+            isinstance(device, core.Place) and device.is_xpu_place()
+        ):
+            device = core.XPUPinnedPlace()
+        else:
+            raise RuntimeError(f"Pinning memory is not supported for {device}")
+    tensor = uniform(
+        shape=shape,
+        dtype=dtype,
+        min=0.0,
+        max=1.0,
+        name=name,
+        out=out,
+        device=device,
+        requires_grad=requires_grad,
+    )
+    if pin_memory and in_dynamic_mode():
+        tensor = tensor.pin_memory()
+    return tensor
 
 
 @param_one_alias(["lam", "lambd"])
