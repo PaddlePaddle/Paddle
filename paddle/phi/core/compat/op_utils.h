@@ -27,7 +27,7 @@ limitations under the License. */
 
 namespace phi {
 
-class DefaultKernelSignatureMap {
+class PADDLE_API DefaultKernelSignatureMap {
  public:
   static DefaultKernelSignatureMap& Instance();
 
@@ -68,7 +68,7 @@ class DefaultKernelSignatureMap {
   DISABLE_COPY_AND_ASSIGN(DefaultKernelSignatureMap);
 };
 
-class OpUtilsMap {
+class PADDLE_API OpUtilsMap {
  public:
   static OpUtilsMap& Instance();
 
@@ -140,11 +140,11 @@ class OpUtilsMap {
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
 
-struct BaseKernelNameRegistrar {
+struct PADDLE_API BaseKernelNameRegistrar {
   BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name);
 };
 
-struct ArgumentMappingFnRegistrar {
+struct PADDLE_API ArgumentMappingFnRegistrar {
   ArgumentMappingFnRegistrar(const char* op_type,
                              ArgumentMappingFn arg_mapping_fn);
 };
@@ -156,7 +156,7 @@ struct ArgumentMappingFnRegistrar {
   static const ::phi::BaseKernelNameRegistrar                                 \
       __registrar_base_kernel_name_for_##base_kernel_name(#op_type,           \
                                                           #base_kernel_name); \
-  int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
+  PADDLE_API int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
 
 #define PD_DECLARE_BASE_KERNEL_NAME(op_type, base_kernel_name)                 \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
@@ -172,7 +172,7 @@ struct ArgumentMappingFnRegistrar {
       "PD_REGISTER_ARG_MAPPING_FN must be called in global namespace."); \
   static const ::phi::ArgumentMappingFnRegistrar                         \
       __registrar_arg_map_fn_for_##op_type(#op_type, arg_mapping_fn);    \
-  int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
+  PADDLE_API int TouchArgumentMappingFnSymbol_##op_type() { return 0; }
 
 #define PD_DECLARE_ARG_MAPPING_FN(op_type)                              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                    \

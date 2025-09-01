@@ -48,7 +48,7 @@
 
 #endif
 
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 PD_DECLARE_bool(log_memory_stats);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);

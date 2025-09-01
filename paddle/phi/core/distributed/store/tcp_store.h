@@ -118,7 +118,7 @@ class TCPClient {
 }  // namespace detail
 
 // TODO(gongwb) :Add IP6 support.
-class TCPStore : public Store {
+class PADDLE_API TCPStore : public Store {
  public:
   static constexpr std::uint16_t kDefaultPort = 6170;
   explicit TCPStore(std::string host,

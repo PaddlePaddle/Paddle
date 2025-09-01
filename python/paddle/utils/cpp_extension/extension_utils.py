@@ -829,6 +829,15 @@ def find_paddle_includes(use_cuda=False):
     paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
     include_dirs = [paddle_include_dir, third_party_dir]
+    if not IS_WINDOWS:
+        compat_dir_root = os.path.join(
+            paddle_include_dir, 'paddle/phi/api/include/compat'
+        )
+        compat_dir_api_include = os.path.join(
+            paddle_include_dir,
+            'paddle/phi/api/include/compat/torch/csrc/api/include',
+        )
+        include_dirs.extend([compat_dir_root, compat_dir_api_include])
 
     if use_cuda:
         if core.is_compiled_with_rocm():

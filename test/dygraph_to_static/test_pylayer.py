@@ -292,9 +292,9 @@ class TestPyLayerBase(unittest.TestCase):
         self.to_static: bool = False
 
     def _run(self, *input_args, **input_kwargs):
-        assert getattr(
-            self, "dygraph_func", None
-        ), "Please setting `self.dygraph_func` before calling `self._run`"
+        assert getattr(self, "dygraph_func", None), (
+            "Please setting `self.dygraph_func` before calling `self._run`"
+        )
 
         with enable_to_static_guard(self.to_static):
             paddle.set_device(self.place)
@@ -318,9 +318,9 @@ class TestPyLayerBase(unittest.TestCase):
         dygraph_inp_args = []
         static_inp_args = []
         for v in args:
-            assert isinstance(
-                v, paddle.Tensor
-            ), f"Only Support `paddle.Tensor` now, but got {type(v)}"
+            assert isinstance(v, paddle.Tensor), (
+                f"Only Support `paddle.Tensor` now, but got {type(v)}"
+            )
             stop_gradient = v.stop_gradient
             # detach from the compute graph to turn `dygraph_inp_args` and `static_inp_args` into leaf nodes
             v = v.detach()
@@ -334,9 +334,9 @@ class TestPyLayerBase(unittest.TestCase):
         static_inp_kwargs = {}
         for k, v in kwargs.items():
             stop_gradient = v.stop_gradient
-            assert isinstance(
-                v, paddle.Tensor
-            ), "Only Support `paddle.Tensor` now"
+            assert isinstance(v, paddle.Tensor), (
+                "Only Support `paddle.Tensor` now"
+            )
             # detach from the compute graph to turn `dygraph_inp_kwargs` and `static_inp_kwargs` into leaf nodes
             v = v.detach()
             dygraph_inp_kwargs[k] = v.clone()

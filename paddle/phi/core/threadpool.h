@@ -48,7 +48,7 @@ struct ExceptionHandler {
 
 // ThreadPool maintains a queue of tasks, and runs them using a fixed
 // number of threads.
-class ThreadPool {
+class PADDLE_API ThreadPool {
  public:
   explicit ThreadPool(int num_threads);
 
@@ -56,7 +56,7 @@ class ThreadPool {
       std::packaged_task<std::unique_ptr<common::enforce::EnforceNotMet>()>;
 
   // Returns the singleton of ThreadPool.
-  TEST_API static ThreadPool* GetInstance();
+  static ThreadPool* GetInstance();
 
   ~ThreadPool();
 

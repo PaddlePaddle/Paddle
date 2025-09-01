@@ -15,6 +15,7 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
@@ -22,6 +23,7 @@ from utils import check_output
 
 import paddle
 from paddle.utils.cpp_extension import load
+from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS
 
 if os.name == 'nt' or sys.platform.startswith('darwin'):
     # only support Linux now
@@ -34,12 +36,19 @@ if paddle.is_compiled_with_cuda():
 
 paddle_includes = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
-    )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.append(str(paddle_include_dir))
+    paddle_includes.append(str(paddle_include_dir / 'third_party'))
+    if not IS_WINDOWS:
+        paddle_includes.append(
+            str(paddle_include_dir / 'paddle/phi/api/include/compat')
+        )
+        paddle_includes.append(
+            str(
+                paddle_include_dir
+                / 'paddle/phi/api/include/compat/torch/csrc/api/include'
+            )
+        )
 # include "custom_power.h"
 paddle_includes.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -144,9 +153,9 @@ class TestCppExtensionJITInstall(unittest.TestCase):
 
     def _test_optional_tensor(self):
         x = custom_cpp_extension.optional_tensor(True)
-        assert (
-            x is None
-        ), "Return None when input parameter return_option = True"
+        assert x is None, (
+            "Return None when input parameter return_option = True"
+        )
         x = custom_cpp_extension.optional_tensor(False).numpy()
         x_np = np.ones(shape=[2, 2])
         np.testing.assert_array_equal(
