@@ -28,8 +28,8 @@ else()
       ${LIBUV_SOURCE_DIR}/autogen.sh COMMAND ${LIBUV_SOURCE_DIR}/configure
       --prefix=${LIBUV_INSTALL_DIR} --enable-static --disable-shared
       CFLAGS=-fPIC)
-  set(LIBUV_BUILD_COMMAND ${CMAKE_MAKE_PROGRAM})
-  set(LIBUV_INSTALL_COMMAND ${CMAKE_MAKE_PROGRAM} install)
+  set(LIBUV_BUILD_COMMAND make)
+  set(LIBUV_INSTALL_COMMAND make install)
   set(LIBUV_LIBRARIES ${LIBUV_INSTALL_DIR}/lib/libuv.a)
   set(LIBUV_INCLUDE_DIR ${LIBUV_INSTALL_DIR}/include)
 endif()
