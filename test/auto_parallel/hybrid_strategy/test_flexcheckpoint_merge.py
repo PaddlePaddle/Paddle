@@ -36,6 +36,8 @@ class TestDistCheckpointMerge(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+        ckpt_path.cleanup()
+
 
 if __name__ == "__main__":
     unittest.main()
