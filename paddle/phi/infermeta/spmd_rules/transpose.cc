@@ -79,8 +79,10 @@ SpmdInfo TransposeInferSpmd(const DistMetaTensor& x,
   // Step2.1: Merge input shardings
   std::pair<std::string, std::vector<std::vector<int64_t>>> x_sharding_info(
       {x_axes, x_dims_mapping});
+  const auto& axes_size = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-      ShardingMergeForTensorsOnePair({x_sharding_info});
+      ShardingMergeForTensors({x_sharding_info}, axes_size, mesh_shape);
 
   // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<std::vector<int64_t>> out_dims_mapping =
@@ -149,8 +151,10 @@ SpmdInfo TransposeInferSpmdReverse(const DistMetaTensor& x,
   // Step2.1: merge input shardings
   std::pair<std::string, std::vector<std::vector<int64_t>>> out_sharding_info(
       {out_axes, out_dims_mapping});
+  const auto& axes_size = GetAxesSizes({{out_axes, out_shape}});
+  const auto& mesh_shape = out_dist_attr_src.process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-      ShardingMergeForTensorsOnePair({out_sharding_info});
+      ShardingMergeForTensors({out_sharding_info}, axes_size, mesh_shape);
 
   // step2.2: infer input dims mapping from merged output dims mapping
   std::vector<std::vector<int64_t>> x_dims_mapping =
