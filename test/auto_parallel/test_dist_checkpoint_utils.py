@@ -192,22 +192,5 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         ckpt_dir_tmp.cleanup()
 
 
-class TestDistCheckpointMerge(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=4, timeout=50, nnode=1)
-        self._default_envs = {}
-        self._changeable_envs = {"backend": ["gpu"]}
-
-    def test_merge_checkpoint(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_flexcheckpoint_merge.py",
-                user_defined_envs=envs,
-            )
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -1277,7 +1277,7 @@ def divide_positions(m, n):
         raise ValueError("n should be greater than zero")
     if m < n:
         raise ValueError(
-            "tensor number should be greater than or equal to processor number"
+            f"tensor number {m} should be greater than or equal to processor number {n}"
         )
     base_value = m // n
     remainder = m % n
