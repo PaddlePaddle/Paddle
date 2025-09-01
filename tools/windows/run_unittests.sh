@@ -419,7 +419,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_cuda_graph_partial_graph_static_run$|\
 ^test_imperative_triple_grad$|\
 ^test_mul_op$|\
-^test_quant_linear_op$]\
+^test_quant_linear_op$|\
 ^test_fused_gemm_epilogue_op$|\
 ^test_fused_gemm_epilogue_op_with_es$|\
 ^test_fused_linear_param_grad_add$|\
@@ -440,6 +440,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_int8_scale_calculation_onednn_pass$|\
 ^test_while_api$|\
 ^test_sparse_matmul_op$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
 ^test_standalone_cuda_graph_multi_stream_deprecated_static_build_deprecated$|\
 ^test_cuda_graph$|\
 ^test_cuda_graph_static_mode$|\
