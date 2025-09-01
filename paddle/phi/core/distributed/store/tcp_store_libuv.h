@@ -32,7 +32,6 @@
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
 namespace phi::distributed::detail {
-
 auto constexpr MAX_KEY_LEN = 16 * 1024;
 auto constexpr MAX_CONTENT_LEN = 16 * 1024 * 1024;
 auto constexpr MAX_BUFFER_SIZE = size_t(4096);
@@ -50,9 +49,7 @@ class PADDLE_API SegmentedDataStream {
   void append(uv_buf_t buf);
   bool readMany(char* dest, size_t size);
   template <typename T>
-  bool readValue(T& value) {  // NOLINT(runtime/references)
-    return readMany(reinterpret_cast<char*>(&value), sizeof(T));
-  }
+  bool readValue(T& value);  // NOLINT(runtime/references)
 
   bool readKey(std::string& str);                // NOLINT(runtime/references)
   bool readContent(std::vector<uint8_t>& data);  // NOLINT(runtime/references)
@@ -65,28 +62,16 @@ class PADDLE_API LibUVHandle
     : public std::enable_shared_from_this<LibUVHandle> {
  public:
   ~LibUVHandle() = default;
-
-  std::shared_ptr<LibUVHandle> ptr() { return shared_from_this(); }
-
+  std::shared_ptr<LibUVHandle> ptr();
   virtual uv_handle_t* getRawHandle() = 0;
-
-  void close() {
-    if (uv_is_closing(getRawHandle())) {
-      return;
-    }
-    uv_close(getRawHandle(), handleClose);
-  }
+  void close();
 
  protected:
-  void handleAvailable() { uv_handle_set_data(getRawHandle(), this); }
-
+  void handleAvailable();
   virtual void onClose() = 0;
 
  private:
-  static void handleClose(uv_handle_t* uv_handle) {
-    auto h = reinterpret_cast<LibUVHandle*>(uv_handle_get_data(uv_handle));
-    h->onClose();
-  }
+  static void handleClose(uv_handle_t* uv_handle);
 };
 
 class PADDLE_API LibUVTCPSocket : public LibUVHandle {
@@ -95,7 +80,6 @@ class PADDLE_API LibUVTCPSocket : public LibUVHandle {
   uv_handle_t* getRawHandle() override;
   std::shared_ptr<LibUVTCPSocket> ptr();
   static std::shared_ptr<LibUVTCPSocket> getTCPSocket(uv_stream_t* handle);
-
   virtual void doProcess(const uv_buf_t* buf, size_t nread) {
     PADDLE_THROW(
         common::errors::Fatal("Socket subclass does not implement doProcess"));
@@ -129,17 +113,11 @@ class PADDLE_API LibUVTCPServer : public LibUVTCPSocket {
   std::uint16_t _port{};
 
   void setSocketPort();
-
   static void defaultOnConnect(int status) {
     PADDLE_THROW(common::errors::Fatal(
         "Socket accepted, but onConnect callback is undefined"));
   }
-
-  static void onNewConnection(uv_stream_t* server, int status) {
-    auto h = reinterpret_cast<LibUVTCPServer*>(
-        uv_handle_get_data(reinterpret_cast<uv_handle_t*>(server)));
-    h->_on_connect_callback(status);
-  }
+  static void onNewConnection(uv_stream_t* server, int status);
 };
 
 class PADDLE_API LibUVMasterDaemon : public DaemonThread {
@@ -229,27 +207,11 @@ class PADDLE_API UVWriter {
  public:
   explicit UVWriter(std::shared_ptr<LibUVHandle> handle)
       : handle(std::move(handle)) {}
-
   template <typename T>
-  void writeValue(T val) {
-    uint8_t* val_ptr = reinterpret_cast<uint8_t*>(&val);
-    data.insert(data.end(), val_ptr, val_ptr + sizeof(T));
-  }
-
-  void writeVector(const std::vector<uint8_t>& val) {
-    writeValue<uint64_t>(val.size());
-    data.insert(data.end(), val.begin(), val.end());
-  }
-
-  void writeString(const std::string& val) {
-    writeValue<uint64_t>(val.size());
-    data.insert(data.end(), val.data(), val.data() + val.size());
-  }
-
-  void send() {
-    auto wd = std::make_shared<WriteUVContent>(std::move(data), handle);
-    wd->send();
-  }
+  void writeValue(T val);
+  void writeVector(const std::vector<uint8_t>& val);
+  void writeString(const std::string& val);
+  void send();
 };
 
 class PADDLE_API LibUVClient : public LibUVTCPSocket {

@@ -58,6 +58,11 @@ bool SegmentedDataStream::readMany(char* dest, size_t size) {
   return true;
 }
 
+template <typename T>
+bool SegmentedDataStream::readValue(T& value) {  // NOLINT(runtime/references)
+  return readMany(reinterpret_cast<char*>(&value), sizeof(T));
+}
+
 bool SegmentedDataStream::readKey(std::string& str) {
   uint64_t size = 0;
   if (!readValue(size)) return false;
@@ -111,6 +116,25 @@ void SegmentedDataStream::reset() {
   _read_offset = _buff_offset = _buff_offset_commit;
 }
 
+// LibUVHandle
+std::shared_ptr<LibUVHandle> LibUVHandle::ptr() { return shared_from_this(); }
+
+void LibUVHandle::close() {
+  if (uv_is_closing(getRawHandle())) {
+    return;
+  }
+  uv_close(getRawHandle(), handleClose);
+}
+
+void LibUVHandle::handleAvailable() {
+  uv_handle_set_data(getRawHandle(), this);
+}
+
+void LibUVHandle::handleClose(uv_handle_t* uv_handle) {
+  auto h = reinterpret_cast<LibUVHandle*>(uv_handle_get_data(uv_handle));
+  h->onClose();
+}
+
 //    LibUVTCPSocket
 LibUVTCPSocket::LibUVTCPSocket(uv_loop_t* loop) {
   uv_tcp_init(loop, &client);
@@ -128,7 +152,7 @@ std::shared_ptr<LibUVTCPSocket> LibUVTCPSocket::ptr() {
   return std::static_pointer_cast<LibUVTCPSocket>(shared_from_this());
 }
 
-static std::shared_ptr<LibUVTCPSocket> LibUVTCPSocket::getTCPSocket(
+std::shared_ptr<LibUVTCPSocket> LibUVTCPSocket::getTCPSocket(
     uv_stream_t* handle) {
   auto h = reinterpret_cast<LibUVTCPSocket*>(
       uv_handle_get_data(reinterpret_cast<uv_handle_t*>(handle)));
@@ -140,8 +164,9 @@ void LibUVTCPServer::setCallback(LibUVCallback&& callback) {
   _on_connect_callback = std::move(callback);
 }
 
-static std::shared_ptr<LibUVTCPServer> LibUVTCPServer::createServer(
-    uv_loop_t* loop, std::uint16_t port, bool useIpv6) {
+std::shared_ptr<LibUVTCPServer> LibUVTCPServer::createServer(uv_loop_t* loop,
+                                                             std::uint16_t port,
+                                                             bool useIpv6) {
   auto res = std::make_shared<LibUVTCPServer>(loop);
   res->handleAvailable();
   try {
@@ -230,6 +255,12 @@ void LibUVTCPServer::setSocketPort() {
   }
 }
 
+void LibUVTCPServer::onNewConnection(uv_stream_t* server, int status) {
+  auto h = reinterpret_cast<LibUVTCPServer*>(
+      uv_handle_get_data(reinterpret_cast<uv_handle_t*>(server)));
+  h->_on_connect_callback(status);
+}
+
 // WriteUVContent
 WriteUVContent::WriteUVContent(std::vector<uint8_t>&& in_data,
                                std::shared_ptr<LibUVHandle> handle)
@@ -237,7 +268,7 @@ WriteUVContent::WriteUVContent(std::vector<uint8_t>&& in_data,
   uv_req_set_data(reinterpret_cast<uv_req_t*>(&req), new RequestData());
 }
 
-static void WriteUVContent::writeDone(uv_write_t* req, int status) {
+void WriteUVContent::writeDone(uv_write_t* req, int status) {
   auto data_ptr = static_cast<RequestData*>(
       uv_req_get_data(reinterpret_cast<uv_req_t*>(req)));
   if (!data_ptr) return;
@@ -288,18 +319,40 @@ void WriteUVContent::send() {
   }
 }
 
+// UVWriter
+template <typename T>
+void UVWriter::writeValue(T val) {
+  uint8_t* val_ptr = reinterpret_cast<uint8_t*>(&val);
+  data.insert(data.end(), val_ptr, val_ptr + sizeof(T));
+}
+
+void UVWriter::writeVector(const std::vector<uint8_t>& val) {
+  writeValue<uint64_t>(val.size());
+  data.insert(data.end(), val.begin(), val.end());
+}
+
+void UVWriter::writeString(const std::string& val) {
+  writeValue<uint64_t>(val.size());
+  data.insert(data.end(), val.data(), val.data() + val.size());
+}
+
+void UVWriter::send() {
+  auto wd = std::make_shared<WriteUVContent>(std::move(data), handle);
+  wd->send();
+}
+
 // LibUVClient
-static void LibUVClient::allocBuffer(uv_handle_t* handle,
-                                     size_t buf_size,
-                                     uv_buf_t* buf) {
+void LibUVClient::allocBuffer(uv_handle_t* handle,
+                              size_t buf_size,
+                              uv_buf_t* buf) {
   buf_size = std::min(buf_size, MAX_BUFFER_SIZE);
   buf->base = reinterpret_cast<char*>(malloc(buf_size));
   buf->len = buf_size;
 }
 
-static void LibUVClient::readCallback(uv_stream_t* client,
-                                      ssize_t nread,
-                                      const uv_buf_t* buf) {
+void LibUVClient::readCallback(uv_stream_t* client,
+                               ssize_t nread,
+                               const uv_buf_t* buf) {
   auto uv_socket = LibUVTCPSocket::getTCPSocket(client);
 
   if (nread > 0) {
@@ -441,41 +494,6 @@ bool LibUVClient::doWaitCommand() {
 
 void LibUVClient::onClose() { store->removeClient(ptr()); }
 
-void LibUVClient::readStart() {
-  struct ::sockaddr_storage addr {};
-  int addrLen{sizeof(struct ::sockaddr_storage)};
-
-  if (int err = uv_tcp_getpeername(
-          &client, reinterpret_cast<struct ::sockaddr*>(&addr), &addrLen)) {
-    VLOG(2) << "Client remote endpoint resolution failed. err="
-            << uv_strerror(err);
-  } else {
-    _address =
-        formatSockAddr(reinterpret_cast<struct ::sockaddr*>(&addr), addrLen);
-  }
-
-  int res = uv_read_start(
-      reinterpret_cast<uv_stream_t*>(&client), allocBuffer, readCallback);
-  if (res) {
-    VLOG(2) << "Read callback initialization failure. client:"
-            << reinterpret_cast<void*>(this) << " code:" << res
-            << " desc:" << uv_strerror(res) << " name:" << uv_err_name(res);
-    close();
-  }
-}
-
-static std::shared_ptr<LibUVClient> LibUVClient::make(
-    uv_loop_t* loop, LibUVMasterDaemon* store) {
-  auto res = std::make_shared<LibUVClient>(loop, store);
-  res->handleAvailable();
-  return res;
-}
-
-std::shared_ptr<LibUVClient> LibUVClient::ptr() {
-  return std::static_pointer_cast<LibUVClient>(shared_from_this());
-}
-
-//  LibUVMasterDaemon
 PADDLE_API std::string formatSockAddr(const struct ::sockaddr* addr,
                                       socklen_t len) {
   char host[NI_MAXHOST], port[NI_MAXSERV];  // NOLINT
@@ -504,6 +522,41 @@ PADDLE_API std::string formatSockAddr(const struct ::sockaddr* addr,
   }
 }
 
+void LibUVClient::readStart() {
+  struct ::sockaddr_storage addr {};
+  int addrLen{sizeof(struct ::sockaddr_storage)};
+
+  if (int err = uv_tcp_getpeername(
+          &client, reinterpret_cast<struct ::sockaddr*>(&addr), &addrLen)) {
+    VLOG(2) << "Client remote endpoint resolution failed. err="
+            << uv_strerror(err);
+  } else {
+    _address =
+        formatSockAddr(reinterpret_cast<struct ::sockaddr*>(&addr), addrLen);
+  }
+
+  int res = uv_read_start(
+      reinterpret_cast<uv_stream_t*>(&client), allocBuffer, readCallback);
+  if (res) {
+    VLOG(2) << "Read callback initialization failure. client:"
+            << reinterpret_cast<void*>(this) << " code:" << res
+            << " desc:" << uv_strerror(res) << " name:" << uv_err_name(res);
+    close();
+  }
+}
+
+std::shared_ptr<LibUVClient> LibUVClient::make(uv_loop_t* loop,
+                                               LibUVMasterDaemon* store) {
+  auto res = std::make_shared<LibUVClient>(loop, store);
+  res->handleAvailable();
+  return res;
+}
+
+std::shared_ptr<LibUVClient> LibUVClient::ptr() {
+  return std::static_pointer_cast<LibUVClient>(shared_from_this());
+}
+
+//  LibUVMasterDaemon
 void LibUVMasterDaemon::onConnect(int status) {
   auto client = LibUVClient::make(&loop_, this);
   addClient(client);
