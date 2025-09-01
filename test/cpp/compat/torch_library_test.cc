@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <ATen/AccumulateType.h>
 #include <torch/all.h>
 #include <torch/library.h>
 
@@ -21,6 +22,8 @@ at::Tensor mymuladd_cpu(at::Tensor a, const at::Tensor& b, double c) {
   TORCH_CHECK(a.sizes() == b.sizes());
   TORCH_CHECK(a.dtype() == at::kFloat);
   TORCH_CHECK(b.dtype() == at::kFloat);
+  at::toAccumulateType(a.scalar_type(), false);
+  torch::torch_example_fn();
   TORCH_INTERNAL_ASSERT(a.device().type() == at::DeviceType::CPU);
   TORCH_INTERNAL_ASSERT(b.device().type() == at::DeviceType::CPU);
   at::Tensor a_contig = a.contiguous();

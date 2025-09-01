@@ -36,6 +36,8 @@ class Library;
 class FunctionArgs;
 class FunctionResult;
 
+void torch_example_fn();
+
 struct arg {
   explicit arg(std::string name)
       : name_(std::move(name)), value_(std::nullopt) {}
