@@ -3395,7 +3395,6 @@ bool SlogdetV2OpInferSymbolicShape(
   infer_context->SetShapeOrDataForValue(
       op->result(1),
       symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(out_dims)});
-
   return true;
 }
 

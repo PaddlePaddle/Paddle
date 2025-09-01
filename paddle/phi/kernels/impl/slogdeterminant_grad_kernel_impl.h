@@ -179,7 +179,7 @@ void SlogDeterminantV2GradKernel(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& sign,
                                  const DenseTensor& logdet,
-                                 const DenseTensor& sign_grad,
+                                 const DenseTensor& sign_grad UNUSED,
                                  const DenseTensor& logdet_grad,
                                  DenseTensor* x_grad) {
   using RealT = typename phi::dtype::Real<T>;

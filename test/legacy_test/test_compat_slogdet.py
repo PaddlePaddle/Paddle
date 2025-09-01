@@ -167,6 +167,66 @@ class TestSlogDet(unittest.TestCase):
         self.assertEqual(sign.item(), 0)
         self.assertEqual(logabsdet.item(), -np.inf)
 
+    def test_invertible_matrix_backward(self):
+        with paddle.device.device_guard("cpu"):
+            x = paddle.to_tensor(
+                [
+                    [0.5, 0, 0],
+                    [0, 0.6, 0],
+                    [0, 0, 0.7],
+                ],
+                dtype="float32",
+                place="cpu",
+                stop_gradient=False,
+            )
+            out = paddle.compat.slogdet(x)
+            self.assertTrue(hasattr(out, "sign"))
+            self.assertTrue(hasattr(out, "logabsdet"))
+            sign, logabsdet = out
+            self.assertEqual(sign.dtype, x.dtype)
+            self.assertFalse(logabsdet.is_complex())
+
+            logdet_grad = paddle.randn_like(logabsdet)
+            sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
+
+            np.testing.assert_allclose(sign.numpy(), sign_ref, 1e-5, 1e-5)
+            np.testing.assert_allclose(
+                logabsdet.numpy(),
+                logdet_ref,
+                1e-5,
+                1e-5,
+            )
+
+            (x_grad,) = paddle.grad(logabsdet, x, logdet_grad)
+            x_grad_ref = self.slogdet_backward(
+                x.numpy(),
+                sign.numpy(),
+                logdet_grad.numpy()[..., None, None],
+            )
+            np.testing.assert_allclose(x_grad.numpy(), x_grad_ref, 1e-5, 1e-5)
+
+            # test pir + dynamic shape
+            st_f = paddle.jit.to_static(
+                paddle.compat.slogdet,
+                full_graph=True,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[-1, -1], dtype="float32"),
+                ],
+            )
+            sign, logabsdet = st_f(x)
+            self.assertTrue(hasattr(out, "sign"))
+            self.assertTrue(hasattr(out, "logabsdet"))
+            self.assertEqual(sign.dtype, x.dtype)
+            self.assertFalse(logabsdet.is_complex())
+
+            np.testing.assert_allclose(sign.numpy(), sign_ref, 1e-5, 1e-5)
+            np.testing.assert_allclose(
+                logabsdet.numpy(),
+                logdet_ref,
+                1e-5,
+                1e-5,
+            )
+
 
 if __name__ == '__main__':
     unittest.main()
