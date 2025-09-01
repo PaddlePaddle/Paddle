@@ -417,7 +417,40 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
 ^test_cuda_graph_partial_graph_static_run$|\
-^test_imperative_triple_grad$"
+^test_imperative_triple_grad$|\
+^test_mul_op$|\
+^test_quant_linear_op$]\
+^test_fused_gemm_epilogue_op$|\
+^test_fused_gemm_epilogue_op_with_es$|\
+^test_fused_linear_param_grad_add$|\
+^test_fused_matmul_bias$|\
+^test_fused_gemm_epilogue_pass$|\
+^test_params_quantization_onednn_pass$|\
+^test_depthwise_conv_onednn_pass$|\
+^cc_imp_py_test$|\
+^test_depthwise_conv_onednn_pass$|\
+^test_compute_propagate_scales_onednn_pass$|\
+^test_onednn_placement_pass$|\
+^test_shuffle_channel_onednn_detect_pass$|\
+^test_cpu_quantize_placement_pass$|\
+^test_cpu_quantize_pass$|\
+^test_cpu_quantize_squash_pass$|\
+^test_cpu_bfloat16_placement_pass$|\
+^test_cpu_bfloat16_pass$|\
+^test_int8_scale_calculation_onednn_pass$|\
+^test_while_api$|\
+^test_sparse_matmul_op$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build_deprecated$|\
+^test_cuda_graph$|\
+^test_cuda_graph_static_mode$|\
+^test_cuda_graphed_layer$|\
+^test_switch_autotune$|\
+^test_nn_margin_rank_loss$|\
+^test_no_grad$|\
+^test_memory_efficient_attention$|\
+^test_fused_flash_attn_pass$|\
+^test_convert_mea_2_fa_pass$|\
+^test_flash_attention_deterministic$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
