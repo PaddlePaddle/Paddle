@@ -583,10 +583,17 @@ function run_unittest_gpu() {
     export CUDA_VISIBLE_DEVICES=0
 
     if nvcc --version | grep 11.2; then
+        echo "CUDA version is 11.2, disable win_inference_test"
+        disable_wingpu_test=${disable_win_inference_test}
+    fi
+
+    if nvcc --version | grep 11.7; then
+        echo "CUDA version is 11.7, disable win_inference_test"
         disable_wingpu_test=${disable_win_inference_test}
     fi
 
     if nvcc --version | grep 12.0; then
+        echo "CUDA version is 12.0, disable wingpu_cuda12_test"
         disable_wingpu_test=${disable_wingpu_cuda12_test}
     fi
 
