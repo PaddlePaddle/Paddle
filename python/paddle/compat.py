@@ -16,6 +16,10 @@
 # Note that this file does not depend on PyTorch in any way.
 # This is a standalone implementation.
 
+import sys
+import warnings
+from contextlib import contextmanager
+
 from .tensor.compat import (
     Unfold,
     max,
@@ -26,6 +30,68 @@ from .tensor.compat import (
     split,
 )
 from .tensor.compat_softmax import softmax
+
+
+class TorchMetaFinder:
+    """
+    PyTorch compatibility layer for PaddlePaddle.
+
+    This class provides a way to `import torch` but actually loads PaddlePaddle.
+
+    Inspired by the setuptools _distutils_hack.
+    """
+
+    def find_spec(self, fullname, path, target=None):
+        method_name = 'spec_for_{fullname}'.format(**locals())
+        method = getattr(self, method_name, lambda: None)
+        return method()
+
+    def spec_for_torch(self):
+        import importlib
+        import importlib.abc
+        import importlib.util
+
+        import paddle
+
+        module = paddle
+
+        class TorchLoader(importlib.abc.Loader):
+            def create_module(self, spec):
+                module.__name__ = 'torch'
+                return module
+
+            def exec_module(self, module):
+                pass
+
+        return importlib.util.spec_from_loader(
+            'torch', TorchLoader(), origin=module.__file__
+        )
+
+
+TORCH_FINDER = TorchMetaFinder()
+
+
+def install_torch_alias():
+    sys.meta_path.insert(0, TORCH_FINDER)
+
+
+def uninstall_torch_alias():
+    if TORCH_FINDER in sys.meta_path:
+        sys.meta_path.remove(TORCH_FINDER)
+        if 'torch' in sys.modules:
+            del sys.modules['torch']
+        return
+    warnings.warn("torch alias is not installed.")
+
+
+@contextmanager
+def enable_torch_alias_guard():
+    install_torch_alias()
+    try:
+        yield
+    finally:
+        uninstall_torch_alias()
+
 
 __all__ = [
     'softmax',
