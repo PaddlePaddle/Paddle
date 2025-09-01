@@ -894,5 +894,3 @@ if __name__ == '__main__':
         python_c_def_h_file,
         python_c_def_cc_file,
     )
-
-#
