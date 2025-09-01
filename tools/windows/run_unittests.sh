@@ -62,7 +62,6 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mul_op$|\
 ^test_bmn$|\
 ^test_memory_efficient_attention$|\
-^test_fuse_gemm_epilogue_pass_deprecated$|\
 ^test_tril_triu_op$|\
 ^test_elementwise_add_mkldnn_op$|\
 ^test_comp_high_grad$|\
@@ -456,7 +455,6 @@ long_time_test="^test_gru_op$|\
 ^test_cross_op$|\
 ^test_elementwise_nn_grad$|\
 ^test_fused_elemwise_activation_op$|\
-^test_imperative_lod_tensor_to_selected_rows_deprecated$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
 ^test_layer_norm_op_static_build$|\

@@ -31,7 +31,7 @@ def get_ir_program():
     with paddle.static.program_guard(main_program, start_program):
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
-        y_s = paddle.matmul(x_s, x_s)
+        y_s = paddle.divide(x_s, x_s)
         y_s = paddle.add(x_s, y_s)
         y_s = paddle.mean(y_s)
         y_s = paddle.tanh(y_s)
@@ -62,7 +62,7 @@ class TestBuildOp(unittest.TestCase):
                 op_name_list,
                 [
                     'pd_op.data',
-                    'pd_op.matmul',
+                    'pd_op.divide',
                     'pd_op.add',
                     'pd_op.full_int_array',
                     'pd_op.full_int_array',

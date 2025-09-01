@@ -2916,14 +2916,14 @@
     func : renorm_grad
 
 - backward_op : repeat_interleave_double_grad
-  forward : repeat_interleave_grad(Tensor x, Tensor grad_out, int repeats, int axis) -> Tensor(grad_x)
+  forward : repeat_interleave_grad(Tensor x, Tensor grad_out, int repeats, int axis, int64_t output_size) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int repeats, int axis)
   output : Tensor(grad_out_grad)
   invoke: repeat_interleave(grad_x_grad, repeats, axis)
 
 - backward_op : repeat_interleave_grad
-  forward : repeat_interleave(Tensor x, int repeats, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int repeats, int axis)
+  forward : repeat_interleave(Tensor x, int repeats, int axis, int64_t output_size = -1) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int repeats, int axis, int64_t output_size = -1)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -2933,14 +2933,14 @@
   backward: repeat_interleave_double_grad
 
 - backward_op : repeat_interleave_with_tensor_index_double_grad
-  forward : repeat_interleave_with_tensor_index_grad(Tensor x, Tensor repeats, Tensor grad_out, int axis) -> Tensor(grad_x)
-  args : (Tensor repeats, Tensor grad_x_grad, int axis)
+  forward : repeat_interleave_with_tensor_index_grad(Tensor x, Tensor repeats, Tensor grad_out, int axis, int64_t output_size = -1) -> Tensor(grad_x)
+  args : (Tensor repeats, Tensor grad_x_grad, int axis, int64_t output_size = -1)
   output : Tensor(grad_out_grad)
-  invoke: repeat_interleave_with_tensor_index(grad_x_grad, repeats, axis)
+  invoke: repeat_interleave_with_tensor_index(grad_x_grad, repeats, axis, output_size)
 
 - backward_op : repeat_interleave_with_tensor_index_grad
-  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int axis) -> Tensor(out)
-  args : (Tensor x, Tensor repeats, Tensor out_grad, int axis)
+  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int axis, int64_t output_size = -1) -> Tensor(out)
+  args : (Tensor x, Tensor repeats, Tensor out_grad, int axis, int64_t output_size = -1)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

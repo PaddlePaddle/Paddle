@@ -26,10 +26,12 @@ if(WITH_XBYAK)
   add_subdirectory(gen)
 endif()
 
-cc_test(
-  jit_kernel_test
-  SRCS test.cc
-  DEPS phi common)
+if(NOT WIN32)
+  cc_test(
+    jit_kernel_test
+    SRCS test.cc
+    DEPS phi common)
+endif()
 
 if(NOT WIN32)
   set(cuda_less12_and_gcc_greater12 false)

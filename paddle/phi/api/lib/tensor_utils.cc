@@ -33,7 +33,7 @@ namespace paddle {
 
 PD_REGISTER_API(from_blob)
 
-phi::Place GetPlaceFromPtr(void* data) {
+PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000

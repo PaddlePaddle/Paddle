@@ -27,17 +27,17 @@ limitations under the License. */
 namespace phi {
 namespace dynload {
 
-void* GetTensorRtHandle();
+PADDLE_API void* GetTensorRtHandle();
 
-extern std::once_flag tensorrt_dso_flag;
-extern void* tensorrt_dso_handle;
+PADDLE_API extern std::once_flag tensorrt_dso_flag;
+PADDLE_API extern void* tensorrt_dso_handle;
 
-void* GetTensorRtPluginHandle();
+PADDLE_API void* GetTensorRtPluginHandle();
 extern std::once_flag tensorrt_plugin_dso_flag;
 extern void* tensorrt_plugin_dso_handle;
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_POINTER_WRAP(__name)             \
-  struct DynLoad__##__name {                                           \
+  struct PADDLE_API DynLoad__##__name {                                \
     template <typename... Args>                                        \
     void* operator()(Args... args) {                                   \
       std::call_once(tensorrt_dso_flag, []() {                         \
@@ -72,7 +72,7 @@ extern void* tensorrt_plugin_dso_handle;
   extern DynLoad__##__name __name
 
 #define DECLARE_DYNAMIC_LOAD_TENSORRT_PLUGIN_WRAP(__name)                      \
-  struct DynLoad__##__name {                                                   \
+  struct PADDLE_API DynLoad__##__name {                                        \
     template <typename... Args>                                                \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {           \
       std::call_once(tensorrt_plugin_dso_flag, []() {                          \

@@ -295,6 +295,35 @@ def size_args_decorator(func: Callable) -> Callable:
     return wrapped_func
 
 
+def size_args_decorator_patch(method: Callable) -> Callable:
+    """
+    A decorator that allow *size for patching method to Tensor.
+    e.g. Tensor.method(*size, *, ...).
+
+    Usage Example:
+
+    paddle.randn([]).new_ones(1, dtype=paddle.float32)
+    paddle.randn([]).new_ones(1, 2, 3, dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], paddle.float32)
+    """
+
+    @functools.wraps(method)
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        if len(args) >= 2 and isinstance(args[1], int):
+            # args[0]: Tensor
+            # args[1:]: *size
+            kwargs['size'] = list(args[1:])
+            args = (args[0],)
+
+        return method(*args, **kwargs)
+
+    wrapped_func.__signature__ = inspect.signature(method)
+
+    return wrapped_func
+
+
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()

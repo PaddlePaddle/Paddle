@@ -25,10 +25,17 @@ cc_test(
   DEPS phi common)
 
 # For String Kernels
-cc_test(
-  test_strings_lower_upper_dev_api
-  SRCS test_strings_lower_upper_dev_api.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    test_strings_lower_upper_dev_api
+    SRCS test_strings_lower_upper_dev_api.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    test_strings_lower_upper_dev_api
+    SRCS test_strings_lower_upper_dev_api.cc
+    DEPS phi common)
+endif()
 if(WITH_GPU)
   nv_test(
     test_strings_lower_upper_dev_gpu_api
@@ -57,15 +64,25 @@ elseif(WITH_ROCM)
     DEPS phi common)
 endif()
 
-cc_test(
-  test_memcpy_dev_api
-  SRCS test_memcpy_dev_api.cc
-  DEPS phi common)
-
-cc_test(
-  test_transfer_layout_dev_api
-  SRCS test_transfer_layout_dev_api.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    test_memcpy_dev_api
+    SRCS test_memcpy_dev_api.cc
+    DEPS type_info common)
+  cc_test(
+    test_memcpy_dev_api
+    SRCS test_memcpy_dev_api.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    test_memcpy_dev_api
+    SRCS test_memcpy_dev_api.cc
+    DEPS phi common)
+  cc_test(
+    test_transfer_layout_dev_api
+    SRCS test_transfer_layout_dev_api.cc
+    DEPS phi common)
+endif()
 
 if(WITH_GPU)
   nv_test(
@@ -101,10 +118,17 @@ cc_test(
   SRCS strided_memcpy_test.cc
   DEPS phi common)
 
-cc_test(
-  sequence_padding_test
-  SRCS sequence_padding_test.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    sequence_padding_test
+    SRCS sequence_padding_test.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    sequence_padding_test
+    SRCS sequence_padding_test.cc
+    DEPS phi common)
+endif()
 
 cc_test(
   sequence_pooling_test

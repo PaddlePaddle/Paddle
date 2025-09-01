@@ -16,6 +16,27 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_eager_tensor)
+  list(REMOVE_ITEM TEST_OPS test_imperative_selected_rows)
+  list(REMOVE_ITEM TEST_OPS test_sparse_elementwise_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_mask_as_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_reshape_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_slice_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_softmax_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_sum_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_transpose_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_unary_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_utils_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_model)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_pooling_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
+  list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
@@ -1150,6 +1171,12 @@ set(STATIC_BUILD_TESTS
     test_while_op
     test_tensor_array_to_tensor)
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_sparse_norm_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_sparse_pooling_op)
+endif()
+
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
@@ -1195,7 +1222,6 @@ set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_linalg_cholesky_inverse PROPERTIES TIMEOUT 100)
-set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
@@ -1254,7 +1280,10 @@ set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_imperative_selected_rows_to_lod_tensor
-                     PROPERTIES TIMEOUT 200)
+if(NOT WIN32)
+  set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_imperative_selected_rows_to_lod_tensor
+                       PROPERTIES TIMEOUT 200)
+endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)

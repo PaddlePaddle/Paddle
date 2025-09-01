@@ -25,6 +25,9 @@ import numpy as np
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.utils.decorator_utils import (
+    size_args_decorator_patch,
+)
 
 from . import Value
 
@@ -686,6 +689,7 @@ def monkey_patch_value():
             pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_empty_(
         self,
         size: ShapeLike,
@@ -731,6 +735,7 @@ def monkey_patch_value():
             pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_ones_(
         self,
         size: ShapeLike,
@@ -777,6 +782,7 @@ def monkey_patch_value():
             pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_zeros_(
         self,
         size: ShapeLike,
