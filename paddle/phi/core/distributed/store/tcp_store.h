@@ -59,6 +59,7 @@ class DaemonThread {
   void cleanup();
   virtual void run() = 0;
   virtual void stop() = 0;
+  bool is_running();
 
  private:
   std::atomic<bool> is_running_{false};

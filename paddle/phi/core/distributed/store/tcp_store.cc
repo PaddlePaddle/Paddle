@@ -38,6 +38,8 @@ void DaemonThread::cleanup() {
   daemonThread_.join();
 }
 
+bool DaemonThread::is_running() { return is_running_.load(); }
+
 constexpr int INFTIME = 10000;  // 10 seconds
 
 std::unique_ptr<MasterDaemon> MasterDaemon::createDaemon(SocketType socket,

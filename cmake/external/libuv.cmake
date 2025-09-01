@@ -23,7 +23,7 @@ if(WIN32)
   set(LIBUV_LIBRARIES ${LIBUV_SOURCE_DIR}/Release/libuv.lib)
   set(LIBUV_INCLUDE_DIR ${LIBUV_SOURCE_DIR}/include)
 else()
-  # Unix-like platform (Linux、macOS)
+  # Unix-like platform (Linux or macOS)
   set(LIBUV_CONFIGURE_COMMAND
       ${LIBUV_SOURCE_DIR}/autogen.sh COMMAND ${LIBUV_SOURCE_DIR}/configure
       --prefix=${LIBUV_INSTALL_DIR} --enable-static --disable-shared
