@@ -124,6 +124,18 @@ DenseTensor FloorDivide(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  TruncDivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  return dense_out;
+}
+
+template <typename T, typename Context>
 DenseTensor Heaviside(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& y) {

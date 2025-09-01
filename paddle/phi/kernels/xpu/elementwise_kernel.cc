@@ -40,6 +40,15 @@ void FloorDivideKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  int axis = -1;
+  TruncDivideRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
 void MaximumKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
@@ -161,6 +170,15 @@ PD_REGISTER_KERNEL(floor_divide,
                    XPU,
                    ALL_LAYOUT,
                    phi::FloorDivideKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16,
+                   int32_t,
+                   int64_t) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
                    float,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,

@@ -96,6 +96,25 @@ void FloorDivideRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void TruncDivideRawKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
+  // allocate memory for out
+  dev_ctx.template Alloc<T>(out);
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  if (x_dims.size() >= y_dims.size()) {  // NOLINT
+    funcs::ElementwiseCompute<funcs::TruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::TruncDivideFunctor<T>(), out, axis);
+  } else {
+    funcs::ElementwiseCompute<funcs::InverseTruncDivideFunctor<T>, T>(
+        dev_ctx, x, y, funcs::InverseTruncDivideFunctor<T>(), out, axis);
+  }
+}
+
+template <typename T, typename Context>
 void ElementwisePowRawKernel(const Context& dev_ctx,
                              const DenseTensor& x,
                              const DenseTensor& y,
@@ -148,6 +167,19 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide_raw,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TruncDivideRawKernel,
                    uint8_t,
                    int8_t,
                    int16_t,

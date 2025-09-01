@@ -845,6 +845,19 @@
   backward : tile_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : trunc_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : trunc_divide
+  data_transform :
+    support_trans_dtype : x, y
+  inplace: (x -> out)
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : unique
   args : (Tensor x, bool return_index=false, bool return_inverse=false, bool return_counts=false, int[] axis={}, DataType dtype=DataType::INT64, bool is_sorted=false)
   output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)

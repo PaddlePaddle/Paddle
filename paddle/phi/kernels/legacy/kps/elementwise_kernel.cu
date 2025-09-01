@@ -48,6 +48,8 @@ PD_REGISTER_KERNEL(minimum_raw, KPS, ALL_LAYOUT, phi::MinimumRawKernel, float) {
 PD_REGISTER_KERNEL(
     floor_divide_raw, KPS, ALL_LAYOUT, phi::FloorDivideRawKernel, int) {}
 PD_REGISTER_KERNEL(
+    floor_divide_raw, KPS, ALL_LAYOUT, phi::TruncDivideRawKernel, int) {}
+PD_REGISTER_KERNEL(
     elementwise_pow_raw, KPS, ALL_LAYOUT, phi::ElementwisePowRawKernel, float) {
 }
 #else
@@ -155,6 +157,19 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   float16,
+                   bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide_raw,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::TruncDivideRawKernel,
                    uint8_t,
                    int8_t,
                    int16_t,
