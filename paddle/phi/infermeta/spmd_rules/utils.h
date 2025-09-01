@@ -57,6 +57,12 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
         tensor_axes_to_dim_pairs,
     const bool merge_conflicts = true);
 
+std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
+
 // Intend to use for generating the TensorDistAttr of output based on the input
 // activation TensorDistAttr. The process_mesh, batch_dim, dynamic_dim are
 // copied with annotated is forced to False, and dims_mapping is leave to be
@@ -202,6 +208,12 @@ struct ReplicateInferSpmdDynamicHelper
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
+
+std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
     const bool unsharded_miss_axis = false);
 
 void DebugInfoForInferSpmd(const std::string& rule_name,

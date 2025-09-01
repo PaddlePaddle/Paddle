@@ -131,6 +131,88 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
+std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const bool merge_conflicts) {
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map;
+  std::unordered_map<int64_t, std::pair<std::string, int64_t>>
+      placements_status;  // 0, 1, 2 represent the priority, and co_shard has
+                          // the highest priority
+  for (auto it = tensor_axes_to_dim_pairs.rbegin();
+       it != tensor_axes_to_dim_pairs.rend();
+       ++it) {
+    const auto& pair = *it;
+    if (pair.first.length() != pair.second.size()) {
+      throw std::runtime_error("Mismatched sharding spec and mesh dimensions.");
+    }
+    for (size_t i = 0; i < pair.second.size(); ++i) {
+      std::string tensor_axis(1, pair.first[i]);
+      std::vector<int64_t> current_dims = pair.second[i];
+      if (axis_to_dim_map.find(tensor_axis) == axis_to_dim_map.end()) {
+        for (const auto dim : current_dims) {
+          auto it = placements_status.find(dim);
+          if (it != placements_status.end() && it->second.second == 1) {
+            const auto& before_axis = it->second.first;
+            axis_to_dim_map[before_axis].clear();
+          }
+        }
+        current_dims.erase(
+            std::remove_if(current_dims.begin(),
+                           current_dims.end(),
+                           [&](int64_t dim) {
+                             return placements_status.find(dim) !=
+                                        placements_status.end() &&
+                                    placements_status[dim].second == 2;
+                           }),
+            current_dims.end());
+        axis_to_dim_map[tensor_axis] = current_dims;
+        const int status = (current_dims.size() == 1)
+                               ? 1
+                               : 2;  // if size ==0 will pass the loop.
+        for (const auto dim : current_dims) {
+          if (placements_status.find(dim) == placements_status.end()) {
+            placements_status[dim] = {tensor_axis, status};
+          }
+        }
+      } else {
+        std::set<int64_t> set_dim(axis_to_dim_map[tensor_axis].begin(),
+                                  axis_to_dim_map[tensor_axis].end());
+        std::vector<int64_t> dim_diff;
+        for (auto dim : current_dims) {
+          if (set_dim.find(dim) == set_dim.end()) {
+            dim_diff.emplace_back(dim);
+          }
+        }
+        for (const auto dim : dim_diff) {
+          if (placements_status.find(dim) == placements_status.end()) {
+            if (axis_to_dim_map[tensor_axis].size() == 1) {
+              placements_status[axis_to_dim_map[tensor_axis][0]].second = 2;
+            }
+            axis_to_dim_map[tensor_axis].emplace_back(dim);
+            placements_status[dim] = {tensor_axis, 2};
+          } else {
+            if (placements_status[dim].first != tensor_axis &&
+                placements_status[dim].second == 1) {
+              auto before_axis = placements_status[dim].first;
+              auto& before_dims = axis_to_dim_map[before_axis];
+              before_dims.erase(
+                  std::remove(before_dims.begin(), before_dims.end(), dim),
+                  before_dims.end());
+              axis_to_dim_map[tensor_axis].emplace_back(dim);
+              placements_status[dim] = {tensor_axis, 2};
+            }
+          }
+        }
+      }
+    }
+  }
+  for (auto& pair : axis_to_dim_map) {
+    std::sort(pair.second.begin(), pair.second.end());
+  }
+  return axis_to_dim_map;
+}
 TensorDistAttr CopyTensorDistAttrForOutput(
     const TensorDistAttr& src_dist_attr) {
   TensorDistAttr new_dist_attr = TensorDistAttr();
@@ -521,6 +603,32 @@ std::vector<int64_t> GetDimsMappingForAxes(
   return dims_mapping;
 }
 
+std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
+    const bool unsharded_miss_axis) {
+  std::vector<std::vector<int64_t>> dims_mapping;
+  for (int64_t i = 0, n = static_cast<int64_t>(axes.size()); i < n; i++) {
+    std::string axis = axes.substr(i, 1);
+    if (axis == "1") {
+      dims_mapping.emplace_back(std::vector<int64_t>{});
+    } else {
+      auto iter = axis_to_dim_map.find(axis);
+      if (iter == axis_to_dim_map.end()) {
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(std::vector<int64_t>{});
+        } else {
+          common::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
+      }
+    }
+  }
+  return dims_mapping;
+}
 void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result) {
   VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";
