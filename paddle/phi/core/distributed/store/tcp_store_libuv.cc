@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/store/tcp_store_libuv.h"
 
@@ -119,8 +120,12 @@ LibUVTCPSocket::LibUVTCPSocket(uv_loop_t* loop) {
   }
 }
 
-uv_handle_t* LibUVTCPSocket::getRawHandle() override {
+uv_handle_t* LibUVTCPSocket::getRawHandle() {
   return reinterpret_cast<uv_handle_t*>(&client);
+}
+
+std::shared_ptr<LibUVTCPSocket> LibUVTCPSocket::ptr() {
+  return std::static_pointer_cast<LibUVTCPSocket>(shared_from_this());
 }
 
 static std::shared_ptr<LibUVTCPSocket> LibUVTCPSocket::getTCPSocket(
@@ -318,7 +323,7 @@ static void LibUVClient::readCallback(uv_stream_t* client,
   free(buf->base);
 }
 
-void LibUVClient::doProcess(const uv_buf_t* buf, size_t nread) override {
+void LibUVClient::doProcess(const uv_buf_t* buf, size_t nread) {
   auto tmp = *buf;
   tmp.len = nread;
   stream.append(tmp);
@@ -434,7 +439,7 @@ bool LibUVClient::doWaitCommand() {
   return true;
 }
 
-void LibUVClient::onClose() override { store->removeClient(ptr()); }
+void LibUVClient::onClose() { store->removeClient(ptr()); }
 
 void LibUVClient::readStart() {
   struct ::sockaddr_storage addr {};

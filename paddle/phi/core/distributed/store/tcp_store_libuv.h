@@ -26,8 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/core/distributed/store/tcp_store.h"
@@ -94,20 +92,14 @@ class PADDLE_API LibUVHandle
 class PADDLE_API LibUVTCPSocket : public LibUVHandle {
  public:
   explicit LibUVTCPSocket(uv_loop_t* loop);
-
   uv_handle_t* getRawHandle() override;
-
-  std::shared_ptr<LibUVTCPSocket> ptr() {
-    return std::static_pointer_cast<LibUVTCPSocket>(shared_from_this());
-  }
-
+  std::shared_ptr<LibUVTCPSocket> ptr();
   static std::shared_ptr<LibUVTCPSocket> getTCPSocket(uv_stream_t* handle);
 
   virtual void doProcess(const uv_buf_t* buf, size_t nread) {
     PADDLE_THROW(
         common::errors::Fatal("Socket subclass does not implement doProcess"));
   }
-
   uv_tcp_t client{};
 
  protected:
@@ -117,17 +109,13 @@ class PADDLE_API LibUVTCPSocket : public LibUVHandle {
 class PADDLE_API LibUVTCPServer : public LibUVTCPSocket {
  public:
   typedef std::function<void(int)> LibUVCallback;
-
   explicit LibUVTCPServer(uv_loop_t* loop)
       : LibUVTCPSocket(loop), _on_connect_callback(defaultOnConnect) {}
-
   void setCallback(LibUVCallback&& callback);
-
   static std::shared_ptr<LibUVTCPServer> createServer(uv_loop_t* loop,
                                                       std::uint16_t port,
                                                       bool useIpv6);
   std::uint16_t port() const { return _port; }
-
   void accept(const std::shared_ptr<LibUVTCPSocket>& socket);
 
  protected:
@@ -165,9 +153,7 @@ class PADDLE_API LibUVMasterDaemon : public DaemonThread {
   LibUVMasterDaemon& operator=(const LibUVMasterDaemon& other) = delete;
   // Disable move assignment operator
   LibUVMasterDaemon& operator=(LibUVMasterDaemon&& other) = delete;
-
   ~LibUVMasterDaemon() override;
-
   void init(const std::uint16_t& port);
   // operator for key
   void set(const std::string& key, const std::vector<uint8_t>& value);
@@ -178,7 +164,6 @@ class PADDLE_API LibUVMasterDaemon : public DaemonThread {
   bool checkKeys(const std::vector<std::string>& keys);
   int64_t size();
   void append(const std::string& key, const std::vector<uint8_t>& value);
-
   // client
   void addClient(const std::shared_ptr<LibUVHandle>& client);
   void removeClient(const std::shared_ptr<LibUVHandle>& client);
@@ -201,21 +186,17 @@ class PADDLE_API LibUVMasterDaemon : public DaemonThread {
   // number of keys awaited
   std::unordered_map<std::shared_ptr<LibUVHandle>, size_t> _awaited_keys;
   std::unordered_set<std::shared_ptr<LibUVHandle>> _clients;
-
   int port_;
 
   static LibUVMasterDaemon& UVMasterDaemon(uv_handle_t* stream) {
     return *reinterpret_cast<LibUVMasterDaemon*>(uv_handle_get_data(stream));
   }
-
   static void on_new_connection(uv_stream_t* server, int status) {
     UVMasterDaemon(reinterpret_cast<uv_handle_t*>(server)).onConnect(status);
   }
-
   static void on_exit_request(uv_async_t* handle) {
     UVMasterDaemon(reinterpret_cast<uv_handle_t*>(handle)).onExitRequest();
   }
-
   void onConnect(int status);
   void onExitRequest();
   void notifyWaitingClients(const std::string& key);
@@ -225,7 +206,6 @@ class PADDLE_API WriteUVContent
     : public std::enable_shared_from_this<WriteUVContent> {
   std::shared_ptr<WriteUVContent> ptr() { return shared_from_this(); }
   static void writeDone(uv_write_t* req, int status);
-
   struct RequestData {
     std::shared_ptr<WriteUVContent> strong_self;
   };
@@ -244,7 +224,6 @@ class PADDLE_API WriteUVContent
 class PADDLE_API UVWriter {
   std::vector<uint8_t> data;
   std::shared_ptr<LibUVHandle> handle;
-
   void* operator new(size_t);
 
  public:
@@ -277,7 +256,6 @@ class PADDLE_API LibUVClient : public LibUVTCPSocket {
   SegmentedDataStream stream;
   LibUVMasterDaemon* store;
   std::string _address{"null"};
-
   const std::string& address() const { return _address; }
   static void allocBuffer(uv_handle_t* handle, size_t buf_size, uv_buf_t* buf);
   static void readCallback(uv_stream_t* client,
@@ -301,5 +279,4 @@ class PADDLE_API LibUVClient : public LibUVTCPSocket {
                                            LibUVMasterDaemon* store);
   std::shared_ptr<LibUVClient> ptr();
 };
-
 }  // namespace phi::distributed::detail
