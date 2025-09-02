@@ -209,6 +209,30 @@ def param_two_alias(alias_list1, alias_list2):
     return decorator
 
 
+def tensor_split_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if not kwargs:
+            return func(*args, **kwargs)
+        # Process parameters to handle alias mapping
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        if "indices_or_sections" in kwargs:
+            kwargs["num_or_indices"] = kwargs.pop("indices_or_sections")
+        if "indices" in kwargs:
+            kwargs["num_or_indices"] = kwargs.pop("indices")
+        if "sections" in kwargs:
+            kwargs["num_or_indices"] = kwargs.pop("sections")
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def param_two_alias_one_default(alias_list1, alias_list2, default_param):
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
