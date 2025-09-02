@@ -61,4 +61,5 @@
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias:
-   use_default_mapping : True
+    x : [input]
+    y : [tensor]
