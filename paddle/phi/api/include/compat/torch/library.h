@@ -579,16 +579,8 @@ class class_ {
   // Register constructor
   template <typename... Types>
   class_& def(torch::init_types<Types...>) {
-    // std::cout << "def() called with " << sizeof...(Types)
-    //           << " template parameters" << std::endl;
-
     // Create a lambda for the constructor
     auto constructor_func = [](const FunctionArgs& args) -> torch::IValue {
-      // std::cout << "Constructor lambda called with " << args.size()
-      //           << " arguments" << std::endl;
-      // std::cout << "Expected parameter count: " << sizeof...(Types)
-      //           << std::endl;
-
       if constexpr (sizeof...(Types) == 0) {
         // Default constructor
         if (args.size() != 0) {
@@ -644,12 +636,8 @@ class class_ {
 
       ClassRegistry::instance().register_method(
           qualified_name_, name, CppFunction(method_func));
-      // std::cout << "Instance method " << name << " registered successfully"
-      //           << std::endl;
     } else {
-      // Handle generic callable (e.g., lambda, std::function)
-      // std::cout << "Method registration for " << name
-      //           << " (generic callable not yet implemented)" << std::endl;
+      // TODO(SigureMo): Handle generic callable (e.g., lambda, std::function)
     }
 
     return *this;
