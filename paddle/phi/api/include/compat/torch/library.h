@@ -36,8 +36,6 @@ class Library;
 class FunctionArgs;
 class FunctionResult;
 
-void torch_example_fn();
-
 struct arg {
   explicit arg(std::string name)
       : name_(std::move(name)), value_(std::nullopt) {}
@@ -509,53 +507,18 @@ class ClassRegistry {
   }
 
   void register_class(const std::string& namespace_name,
-                      const std::string& class_name) {
-    std::string qualified_name = namespace_name + "::" + class_name;
-    classes_[qualified_name] =
-        std::make_unique<ClassRegistration>(namespace_name, class_name);
-    // TODO(SigureMo): Use vlog for debug logging
-    // std::cout << "Registered class: " << qualified_name << std::endl;
-  }
+                      const std::string& class_name);
 
   void register_constructor(const std::string& qualified_name,
-                            CppFunction&& func) {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found");
-    }
-    it->second->constructors.push_back(
-        std::make_shared<CppFunction>(std::move(func)));
-    // std::cout << "Registered constructor for: " << qualified_name
-    //           << " (total: " << it->second->constructors.size() << ")"
-    //           << std::endl;
-  }
+                            CppFunction&& func);
 
   void register_method(const std::string& qualified_name,
                        const std::string& method_name,
-                       CppFunction&& func) {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found");
-    }
-    it->second->methods[method_name] =
-        std::make_shared<CppFunction>(std::move(func));
-    // std::cout << "Registered method: " << qualified_name << "::" <<
-    // method_name
-    //           << std::endl;
-  }
+                       CppFunction&& func);
 
   void register_static_method(const std::string& qualified_name,
                               const std::string& method_name,
-                              CppFunction&& func) {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found");
-    }
-    it->second->static_methods[method_name] =
-        std::make_shared<CppFunction>(std::move(func));
-    // std::cout << "Registered static method: " << qualified_name
-    //           << "::" << method_name << std::endl;
-  }
+                              CppFunction&& func);
 
   bool has_class(const std::string& qualified_name) const {
     return classes_.find(qualified_name) != classes_.end();
@@ -578,185 +541,21 @@ class ClassRegistry {
 
   FunctionResult call_method_with_args(const std::string& qualified_name,
                                        const std::string& method_name,
-                                       const FunctionArgs& args) {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found!");
-    }
-
-    auto& class_reg = it->second;
-    auto method_it = class_reg->methods.find(method_name);
-    if (method_it == class_reg->methods.end()) {
-      throw std::runtime_error("Method " + method_name + " not found in " +
-                               qualified_name + "!");
-    }
-
-    try {
-      // std::cout << "Executing " << qualified_name << "::" << method_name
-      //           << " (instance) with " << args.size() << " args" <<
-      //           std::endl;
-      auto result = method_it->second->call_with_args(args);
-
-      if (result.has_value()) {
-        // std::cout << "Instance method executed successfully with return
-        // value"
-        //           << std::endl;
-      } else {
-        // std::cout << "Instance method executed successfully (void)"
-        //           << std::endl;
-      }
-      return result;
-    } catch (const std::exception& e) {
-      // std::cout << "Instance method execution failed: " << e.what()
-      //           << std::endl;
-      throw;
-    }
-  }
+                                       const FunctionArgs& args);
 
   FunctionResult call_constructor_with_args(const std::string& qualified_name,
-                                            const FunctionArgs& args) const {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found!");
-    }
-
-    auto& class_reg = it->second;
-    if (class_reg->constructors.empty()) {
-      throw std::runtime_error("No constructor registered for " +
-                               qualified_name);
-    }
-
-    // std::cout << "Creating instance of " << qualified_name << " with "
-    //           << args.size() << " args" << std::endl;
-    // std::cout << "Available constructors: " << class_reg->constructors.size()
-    //           << std::endl;
-
-    for (size_t i = 0; i < class_reg->constructors.size(); ++i) {
-      try {
-        // std::cout << "Trying constructor " << (i + 1) << "..." << std::endl;
-        auto result = class_reg->constructors[i]->call_with_args(args);
-        // std::cout << "Constructor " << (i + 1) << " executed successfully"
-        //           << std::endl;
-        return result;
-      } catch (const std::exception& e) {
-        // std::cout << "Constructor " << (i + 1) << " failed: " << e.what()
-        //           << std::endl;
-      }
-    }
-
-    throw std::runtime_error("No suitable constructor found for " +
-                             qualified_name);
-  }
+                                            const FunctionArgs& args) const;
 
   FunctionResult call_static_method_with_args(const std::string& qualified_name,
                                               const std::string& method_name,
-                                              const FunctionArgs& args) const {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found!");
-    }
-
-    auto& class_reg = it->second;
-    auto method_it = class_reg->static_methods.find(method_name);
-    if (method_it == class_reg->static_methods.end()) {
-      throw std::runtime_error("Static method " + method_name +
-                               " not found in " + qualified_name + "!");
-    }
-
-    try {
-      // std::cout << "Executing " << qualified_name << "::" << method_name
-      //           << " (static) with " << args.size() << " args" << std::endl;
-      auto result = method_it->second->call_with_args(args);
-
-      if (result.has_value()) {
-        // std::cout << "Static method executed successfully with return value"
-        //           << std::endl;
-      } else {
-        // std::cout << "Static method executed successfully (void return)"
-        //           << std::endl;
-      }
-      return result;
-    } catch (const std::exception& e) {
-      // std::cout << "Error executing static method: " << e.what() <<
-      // std::endl;
-      throw;
-    }
-  }
+                                              const FunctionArgs& args) const;
 
   FunctionResult call_method_with_args(const std::string& qualified_name,
                                        const std::string& method_name,
                                        const IValue& instance,
-                                       const FunctionArgs& args) const {
-    auto it = classes_.find(qualified_name);
-    if (it == classes_.end()) {
-      throw std::runtime_error("Class " + qualified_name + " not found!");
-    }
+                                       const FunctionArgs& args) const;
 
-    auto& class_reg = it->second;
-    auto method_it = class_reg->methods.find(method_name);
-    if (method_it == class_reg->methods.end()) {
-      throw std::runtime_error("Instance method " + method_name +
-                               " not found in " + qualified_name + "!");
-    }
-
-    try {
-      // std::cout << "Executing " << qualified_name << "::" << method_name
-      //           << " (instance) with " << args.size() << " args" <<
-      //           std::endl;
-
-      // Create a FunctionArgs object with the instance as the first argument
-      FunctionArgs method_args;
-      method_args.add_arg(instance);  // Add the instance as the first arg
-      for (size_t i = 0; i < args.size(); ++i) {
-        method_args.add_arg(args.get_value(i));
-      }
-
-      auto result = method_it->second->call_with_args(method_args);
-
-      if (result.has_value()) {
-        // std::cout << "Instance method executed successfully with return
-        // value"
-        //           << std::endl;
-      } else {
-        // std::cout << "Instance method executed successfully (void return)"
-        //           << std::endl;
-      }
-      return result;
-    } catch (const std::exception& e) {
-      // std::cout << "Error executing instance method: " << e.what() <<
-      // std::endl;
-      throw;
-    }
-  }
-
-  void print_all_classes() const {
-    std::cout << "\n=== Registered Classes ===" << std::endl;
-    for (const auto& [qualified_name, registration] : classes_) {
-      std::cout << "Class: " << qualified_name << std::endl;
-
-      if (!registration->constructors.empty()) {
-        std::cout << "  Constructors: " << registration->constructors.size()
-                  << " available" << std::endl;
-      }
-
-      if (!registration->methods.empty()) {
-        std::cout << "  Methods: ";
-        for (const auto& [method_name, _] : registration->methods) {
-          std::cout << method_name << " ";
-        }
-        std::cout << std::endl;
-      }
-
-      if (!registration->static_methods.empty()) {
-        std::cout << "  Static Methods: ";
-        for (const auto& [method_name, _] : registration->static_methods) {
-          std::cout << method_name << " ";
-        }
-        std::cout << std::endl;
-      }
-    }
-    std::cout << "==========================" << std::endl << std::endl;
-  }
+  void print_all_classes() const;
 
  private:
   std::unordered_map<std::string, std::unique_ptr<ClassRegistration>> classes_;
@@ -906,26 +705,12 @@ class OperatorRegistry {
   }
 
   void register_schema(const std::string& qualified_name,
-                       const std::string& schema) {
-    auto& op = get_or_create_operator(qualified_name);
-    op.schema = schema;
-    // std::cout << "Registered schema: " << qualified_name << " -> " << schema
-    //           << std::endl;
-  }
+                       const std::string& schema);
 
   void register_implementation(const std::string& qualified_name,
                                DispatchKey key,
-                               CppFunction&& func) {
-    auto& op = get_or_create_operator(qualified_name);
-    op.implementations[key] = std::move(func);
-    // std::cout << "Registered implementation: " << qualified_name << " for "
-    //           << dispatch_key_to_string(key) << std::endl;
-  }
-
-  OperatorRegistration* find_operator(const std::string& qualified_name) {
-    auto it = operators_.find(qualified_name);
-    return (it != operators_.end()) ? &it->second : nullptr;
-  }
+                               CppFunction&& func);
+  OperatorRegistration* find_operator(const std::string& qualified_name);
 
   std::vector<std::string> list_all_operators() const {
     std::vector<std::string> ops;
@@ -936,65 +721,7 @@ class OperatorRegistry {
   }
 
   bool execute_operator(const std::string& qualified_name,
-                        DispatchKey key = DispatchKey::CPU) {
-    auto* op = find_operator(qualified_name);
-    if (!op) {
-      // std::cout << "Error: Operator " << qualified_name << " not found!"
-      //           << std::endl;
-      return false;
-    }
-
-    auto impl_it = op->implementations.find(key);
-    if (impl_it != op->implementations.end()) {
-      try {
-        // std::cout << "Executing " << qualified_name << " with "
-        //           << dispatch_key_to_string(key) << std::endl;
-        auto result = impl_it->second.call();
-        if (result.has_value()) {
-          // std::cout << "Operator executed successfully with return value"
-          //           << std::endl;
-        } else {
-          // std::cout << "Operator executed successfully (void return)"
-          //           << std::endl;
-        }
-        return true;
-      } catch (const std::exception& e) {
-        // std::cout << "Error executing operator: " << e.what() << std::endl;
-        return false;
-      }
-    }
-
-    // try fallback to CPU
-    if (key != DispatchKey::CPU) {
-      auto cpu_it = op->implementations.find(DispatchKey::CPU);
-      if (cpu_it != op->implementations.end()) {
-        // std::cout << "Fallback to CPU for " << qualified_name << std::endl;
-        try {
-          auto result = cpu_it->second.call();
-          if (result.has_value()) {
-            // std::cout << "Operator executed successfully with return value "
-            //              "(CPU fallback)"
-            //           << std::endl;
-          } else {
-            // std::cout
-            //     << "Operator executed successfully (void return, CPU
-            //     fallback)"
-            //     << std::endl;
-          }
-          return true;
-        } catch (const std::exception& e) {
-          // std::cout << "Error executing operator (CPU fallback): " <<
-          // e.what()
-          //           << std::endl;
-          return false;
-        }
-      }
-    }
-
-    // std::cout << "Error: No implementation found for " << qualified_name
-    //           << " with " << dispatch_key_to_string(key) << std::endl;
-    return false;
-  }
+                        DispatchKey key = DispatchKey::CPU);
 
   template <typename... Args>
   FunctionResult execute_operator_with_args(const std::string& qualified_name,
@@ -1059,21 +786,7 @@ class OperatorRegistry {
     return operators_;
   }
 
-  void print_all_operators() const {
-    std::cout << "\n=== Registered Operators ===" << std::endl;
-    for (const auto& [name, op] : operators_) {
-      std::cout << "Operator: " << name << std::endl;
-      if (!op.schema.empty()) {
-        std::cout << "  Schema: " << op.schema << std::endl;
-      }
-      std::cout << "  Implementations: ";
-      for (const auto& [key, impl] : op.implementations) {
-        std::cout << dispatch_key_to_string(key) << " ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << "=========================" << std::endl;
-  }
+  void print_all_operators() const;
 
  private:
   std::unordered_map<std::string, OperatorRegistration> operators_;
@@ -1102,43 +815,12 @@ class Library {
           const std::string& ns,
           std::optional<DispatchKey> dispatch_key = std::nullopt,
           const char* file = nullptr,
-          uint32_t line = 0)
-      : kind_(kind),
-        ns_(ns),
-        dispatch_key_(dispatch_key),
-        file_(file),
-        line_(line) {
-    // std::cout << "Created Library: kind=" << kind_to_string(kind)
-    //           << ", namespace=" << ns;
-    if (dispatch_key) {
-      // std::cout << ", dispatch_key=" <<
-      // dispatch_key_to_string(*dispatch_key);
-    }
-    // std::cout << std::endl;
-  }
+          uint32_t line = 0);
 
-  Library(const std::string& ns)  // NOLINT
-      : kind_(DEF), ns_(ns), file_(nullptr), line_(0) {
-    // std::cout << "Created Library: namespace=" << ns << std::endl;
-  }
+  Library(const std::string& ns);  // NOLINT
 
   // Define an operator schema (for TORCH_LIBRARY and TORCH_LIBRARY_FRAGMENT)
-  Library& def(const std::string& schema) & {
-    if (kind_ == IMPL) {
-      // std::cout
-      //     << "Warning: def() should not be called in TORCH_LIBRARY_IMPL
-      //     block"
-      //     << std::endl;
-      return *this;
-    }
-
-    // Simple schema extraction: if it contains '(', extract the part before '('
-    auto op_name = extract_op_name(schema);
-    auto qualified_name = ns_ + "::" + op_name;
-
-    OperatorRegistry::instance().register_schema(qualified_name, schema);
-    return *this;
-  }
+  Library& def(const std::string& schema) &;
 
   // Define an operator implementation
   template <typename Func>
@@ -1178,15 +860,7 @@ class Library {
   }
 
   // Print current library info
-  void print_info() const {
-    // std::cout << "Library Info: " << kind_to_string(kind_)
-    //           << ", namespace=" << ns_;
-    if (dispatch_key_) {
-      // std::cout << ", dispatch_key=" <<
-      // dispatch_key_to_string(*dispatch_key_);
-    }
-    // std::cout << std::endl;
-  }
+  void print_info() const;
 
  private:
   Kind kind_;
