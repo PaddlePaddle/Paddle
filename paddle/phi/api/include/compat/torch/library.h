@@ -557,6 +557,8 @@ class PADDLE_API ClassRegistry {
 
   void print_all_classes() const;
 
+  DISABLE_COPY_AND_ASSIGN(ClassRegistry)
+
  private:
   std::unordered_map<std::string, std::unique_ptr<ClassRegistration>> classes_;
 };
@@ -714,6 +716,8 @@ class PADDLE_API OperatorRegistry {
   }
 
   void print_all_operators() const;
+
+  DISABLE_COPY_AND_ASSIGN(OperatorRegistry)
 
  private:
   std::unordered_map<std::string, OperatorRegistration> operators_;
