@@ -45,7 +45,10 @@
 #endif
 
 #if defined(PADDLE_WITH_FLAGCX)
+#if !defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/distributed/flagcx_comm_context.h"
+#endif
+#include "paddle/phi/backends/dynload/flagcx.h"
 #include "paddle/phi/core/distributed/flagcx_tools.h"
 #endif
 
@@ -251,12 +254,34 @@ void CommContextManager::CreateBKCLCommContext(
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
+#if defined(PADDLE_WITH_FLAGCX)
+  flagcxHandlerGroup_t flagcx_handler;
+  phi::dynload::flagcxHandleInit(&flagcx_handler);
+  if (rank == 0) {
+    phi::dynload::flagcxGetUniqueId(&flagcx_handler->uniqueId);
+  }
+#else
   BKCLUniqueId bkcl_id;
   if (rank == 0) {
     PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_get_unique_id(&bkcl_id));
   }
+#endif
 
   std::string unique_key = "BKCLCommContext/" + unique_comm_key + hash_key;
+#if defined(PADDLE_WITH_FLAGCX)
+  if (rank == 0) {
+    std::vector<uint8_t> bkcl_id_wrapper(
+        reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),
+        reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId) +
+            sizeof(flagcxUniqueId));
+    store->set(unique_key, bkcl_id_wrapper);
+  } else {
+    const auto& bkcl_id_wrapper = store->get(unique_key);
+    std::memcpy(reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),
+                bkcl_id_wrapper.data(),
+                bkcl_id_wrapper.size());
+  }
+#else
   if (rank == 0) {
     std::vector<uint8_t> bkcl_id_wrapper(
         reinterpret_cast<uint8_t*>(&bkcl_id),
@@ -266,12 +291,18 @@ void CommContextManager::CreateBKCLCommContext(
     const auto& bkcl_id_wrapper = store->get(unique_key);
     std::memcpy(&bkcl_id, bkcl_id_wrapper.data(), bkcl_id_wrapper.size());
   }
+#endif
 
   VLOG(3) << "init BKCLCommContext rank: " << rank << ", size: " << size
           << ", unique_comm_key: " << unique_comm_key
           << ", unique_key: " << unique_key;
+#if defined(PADDLE_WITH_FLAGCX)
+  auto bkcl_comm_context =
+      std::make_unique<BKCLCommContext>(rank, size, flagcx_handler);
+#else
   auto bkcl_comm_context =
       std::make_unique<BKCLCommContext>(rank, size, bkcl_id);
+#endif
 
   if (CommContextManager::device_id != -1) {
     std::unique_ptr<phi::XPUContext> dev_ctx(new phi::XPUContext(
@@ -301,7 +332,7 @@ void CommContextManager::CreateBKCLCommContext(
 }
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 void CommContextManager::CreateFlagcxCommContext(
     const std::shared_ptr<Store>& store,
     const std::string& unique_comm_key,
