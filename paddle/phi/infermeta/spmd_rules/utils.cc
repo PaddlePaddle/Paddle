@@ -131,6 +131,133 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
+std::unordered_map<std::string, int64_t> GetAxesSizes(
+    const std::vector<std::pair<std::string, std::vector<int64_t>>>&
+        axes_to_size) {
+  std::unordered_map<std::string, int64_t> axis_to_size_map;
+  for (auto& pair : axes_to_size) {
+    for (size_t i = 0; i < pair.second.size(); ++i) {
+      auto axis = pair.first.substr(i, 1);
+      axis_to_size_map[axis] = pair.second[i];
+    }
+  }
+  return axis_to_size_map;
+}
+
+int64_t calculate_total_shards(const std::vector<int64_t>& sharding_vec,
+                               const std::vector<int64_t>& mesh_shape) {
+  if (sharding_vec.empty()) return 1;
+  return std::accumulate(
+      sharding_vec.begin(),
+      sharding_vec.end(),
+      1LL,
+      [&](int64_t acc, int64_t dim) { return acc * mesh_shape.at(dim); });
+}
+
+std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts) {
+  // Merging Suggestions
+  // A struct : { "b" -> { [0], [1, 2], [1] }, "i" -> { ... } }
+  std::unordered_map<std::string, std::vector<std::vector<int64_t>>>
+      axis_to_suggestions;
+  for (const auto& pair : tensor_axes_to_dim_pairs) {
+    const std::string& einsum_str = pair.first;
+    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
+    for (size_t i = 0; i < einsum_str.length(); ++i) {
+      auto axis = einsum_str.substr(i, 1);
+      axis_to_suggestions[axis].push_back(dims_mapping[i]);
+    }
+  }
+  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
+  for (auto& pair : axis_to_suggestions) {
+    const std::string& axis = pair.first;
+    auto& suggestions = pair.second;
+    // Sort by their parallelism in descending order, construct a total order.
+    std::sort(suggestions.begin(),
+              suggestions.end(),
+              [&mesh_shape](const auto& a, const auto& b) {
+                const int64_t asz = static_cast<int64_t>(a.size());
+                const int64_t bsz = static_cast<int64_t>(b.size());
+                if (asz != bsz) return asz > bsz;
+
+                const int64_t ash = calculate_total_shards(a, mesh_shape);
+                const int64_t bsh = calculate_total_shards(b, mesh_shape);
+                if (ash != bsh) return ash > bsh;
+
+                return std::lexicographical_compare(
+                    a.begin(), a.end(), b.begin(), b.end());
+              });
+
+    std::vector<int64_t> merged_vec;
+    std::unordered_set<int64_t> seen_dims;
+    for (const auto& suggestion : suggestions) {
+      for (const auto& dim : suggestion) {
+        if (seen_dims.find(dim) == seen_dims.end()) {
+          merged_vec.push_back(dim);
+          seen_dims.insert(dim);
+        }
+      }
+    }
+    current_sharding[axis] = merged_vec;
+  }
+
+  // Iterative Conflict Resolution
+  for (auto& [axis, sharding_vec] : current_sharding) {
+    const int64_t axis_size = axis_sizes.at(axis);
+    int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
+    while (total_shards > 1 && (axis_size % total_shards != 0) &&
+           !sharding_vec.empty()) {
+      // Note(ooooo): remove the last mesh_dim, it can keep the shard order
+      // and has a good parallelism. In the worst case, it also can hold the
+      // first parallelism.
+      const int64_t dim_to_remove = sharding_vec.back();
+      sharding_vec.pop_back();
+      total_shards /= mesh_shape.at(dim_to_remove);
+    }
+  }
+  // Mesh Dimension Reuse Conflict
+  std::unordered_map<int64_t, std::string> mesh_dim_to_axes;
+  for (auto const& [axis, sharding_vec] : current_sharding) {
+    for (int64_t mesh_dim : sharding_vec) {
+      mesh_dim_to_axes[mesh_dim] += axis;
+    }
+  }
+  for (auto const& [mesh_dim, competing_axes] : mesh_dim_to_axes) {
+    if (competing_axes.size() > 1) {
+      if (!merge_conflicts) {
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
+            competing_axes,
+            mesh_dim));
+      }
+      std::string winning_axis = "";
+      int64_t max_size = -1;
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        int64_t size = axis_sizes.at(axis_str);
+        // Pick the axis with the largest size.
+        if (size > max_size) {
+          max_size = size;
+          winning_axis = axis_char;
+        }
+      }
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        if (axis_str != winning_axis) {
+          auto& vec = current_sharding.at(axis_str);
+          vec.erase(std::remove(vec.begin(), vec.end(), mesh_dim), vec.end());
+        }
+      }
+    }
+  }
+  return current_sharding;
+}
+
 TensorDistAttr CopyTensorDistAttrForOutput(
     const TensorDistAttr& src_dist_attr) {
   TensorDistAttr new_dist_attr = TensorDistAttr();
@@ -509,6 +636,33 @@ std::vector<int64_t> GetDimsMappingForAxes(
       if (iter == axis_to_dim_map.end()) {
         if (unsharded_miss_axis) {
           dims_mapping.emplace_back(-1);
+        } else {
+          common::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
+      }
+    }
+  }
+  return dims_mapping;
+}
+
+std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
+    const bool unsharded_miss_axis) {
+  std::vector<std::vector<int64_t>> dims_mapping;
+  for (int64_t i = 0, n = static_cast<int64_t>(axes.size()); i < n; i++) {
+    std::string axis = axes.substr(i, 1);
+    if (axis == "1") {
+      dims_mapping.emplace_back(std::vector<int64_t>{});
+    } else {
+      auto iter = axis_to_dim_map.find(axis);
+      if (iter == axis_to_dim_map.end()) {
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(std::vector<int64_t>{});
         } else {
           common::errors::InvalidArgument(
               "Tensor axis [%s] of not in axis_to_dim_map.", axis);

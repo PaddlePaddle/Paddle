@@ -22,8 +22,8 @@ PD_REGISTER_KERNEL(imag_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ImagGradKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -31,8 +31,8 @@ PD_REGISTER_KERNEL(real_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::RealGradKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 

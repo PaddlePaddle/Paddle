@@ -54,7 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/xpu_async_load.h"
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/distributed/collective/process_group_flagcx.h"
 #endif
 
@@ -86,7 +86,7 @@ using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
@@ -1539,7 +1539,7 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
   py::class_<ProcessGroupFlagcx, std::shared_ptr<ProcessGroupFlagcx>>(
       *m, "ProcessGroupFlagcx", ProcessGroup)
       .def_static("create",

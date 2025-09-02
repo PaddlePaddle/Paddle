@@ -126,6 +126,6 @@ PD_REGISTER_KERNEL(strided_copy,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::dtype::complex<float>,
 #endif
-                   ::phi::dtype::float16,
-                   ::phi::dtype::bfloat16) {
+                   ::phi::float16,
+                   ::phi::bfloat16) {
 }

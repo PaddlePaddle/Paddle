@@ -20,8 +20,8 @@ namespace auto_parallel {
 
 TEST(SoftmaxGradInferSpmd, Ctor) {
   // Sharding along axes besides softmax axis.
-  std::vector<int64_t> x_shape = {32, 48};
-  std::vector<int64_t> out_grad_shape = {32, 48};
+  std::vector<int64_t> x_shape = {36, 48};
+  std::vector<int64_t> out_grad_shape = {36, 48};
 
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
@@ -84,8 +84,8 @@ TEST(SoftmaxGradInferSpmd, Ctor) {
           << std::endl;
 
   // Sharding on multi axes.
-  x_shape = {10, 32, 48, 24};
-  out_grad_shape = {10, 32, 48, 24};
+  x_shape = {10, 36, 48, 24};
+  out_grad_shape = {10, 36, 48, 24};
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
   out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({0, 1, -1, -1}));
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
@@ -111,8 +111,8 @@ TEST(SoftmaxGradInferSpmd, Ctor) {
           << std::endl;
 
   // Sharding on multi axes.
-  x_shape = {10, 32, 48, 24};
-  out_grad_shape = {10, 32, 48, 24};
+  x_shape = {10, 36, 48, 24};
+  out_grad_shape = {10, 36, 48, 24};
   x_dist_attr.set_dims_mapping(std::vector<int64_t>({0, -1, -1, -1}));
   out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, 1, -1}));
   x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);

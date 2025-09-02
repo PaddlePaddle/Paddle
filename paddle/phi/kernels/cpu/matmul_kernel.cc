@@ -27,8 +27,8 @@ PD_REGISTER_KERNEL(matmul,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(matmul_with_flatten,
                    CPU,
