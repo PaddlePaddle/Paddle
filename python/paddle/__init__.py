@@ -128,18 +128,24 @@ else:
         device = framework._get_paddle_place(device)
         if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
             original_init(
-                self, paddle.empty(shape=[0], dtype='float32'), place=device
+                self,
+                paddle.empty(shape=[0], dtype='float32', device=device),
+                place=device,
             )
             return
         if 'data' in kwargs:  # case 7,8
             data = kwargs.pop('data')
             original_init(
-                self, paddle.tensor(data, dtype='float32'), place=device
+                self,
+                paddle.tensor(data, dtype='float32', device=device),
+                place=device,
             )
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
             # case 5, 6
             original_init(
-                self, paddle.tensor(args[0], dtype='float32'), place=device
+                self,
+                paddle.tensor(args[0], dtype='float32', device=device),
+                place=device,
             )
         elif (
             builtins.all(isinstance(arg, int) for arg in args)
@@ -148,7 +154,7 @@ else:
             # case 3, 4
             original_init(
                 self,
-                paddle.empty(shape=list(args), dtype='float32'),
+                paddle.empty(shape=list(args), dtype='float32', device=device),
                 place=device,
             )
         else:
