@@ -335,13 +335,15 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with `fill_value`.
 
         Examples:
-            >>> import paddle
-            >>> x = paddle.ones([2, 2])
-            >>> y = x.new_full([3, 3], 5.0)
-            >>> y.numpy()
-            array([[5., 5., 5.],
-                   [5., 5., 5.],
-                   [5., 5., 5.]], dtype=float32)
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_full([3, 3], 5.0)
+                >>> y.numpy()
+                array([[5., 5., 5.],
+                       [5., 5., 5.],
+                       [5., 5., 5.]], dtype=float32)
         """
 
         if dtype is None:
@@ -383,11 +385,13 @@ def monkey_patch_math_tensor():
             Tensor: A new uninitialized Tensor with the specified shape.
 
         Examples:
-            >>> import paddle
-            >>> x = paddle.ones([2, 2])
-            >>> y = x.new_empty(3, 3)
-            >>> y.shape
-            [3, 3]
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_empty(3, 3)
+                >>> y.shape
+                [3, 3]
         """
 
         if dtype is None:
@@ -428,13 +432,15 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with ones.
 
         Examples:
-            >>> import paddle
-            >>> x = paddle.zeros([2, 2])
-            >>> y = x.new_ones(3, 3)
-            >>> y.numpy()
-            array([[1., 1., 1.],
-                   [1., 1., 1.],
-                   [1., 1., 1.]], dtype=float32)
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.zeros([2, 2])
+                >>> y = x.new_ones(3, 3)
+                >>> y.numpy()
+                array([[1., 1., 1.],
+                       [1., 1., 1.],
+                       [1., 1., 1.]], dtype=float32)
         """
 
         if dtype is None:
@@ -476,6 +482,8 @@ def monkey_patch_math_tensor():
             Tensor: A new Tensor filled with zeros.
 
         Examples:
+            .. code-block:: python
+
             >>> import paddle
             >>> x = paddle.ones([2, 2])
             >>> y = x.new_zeros(3, 3)
