@@ -74,6 +74,7 @@ ExternalProject_Add(
   INSTALL_DIR ${LIBUV_INSTALL_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LIBUV_INSTALL_DIR}
+             -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DCMAKE_C_FLAGS_RELEASE=${LIBUV_CMAKE_CXX_FLAGS_RELEASE}
@@ -94,7 +95,7 @@ set_target_properties(libuv PROPERTIES IMPORTED_LOCATION ${LIBUV_LIBRARIES})
 if(WIN32)
   set_target_properties(
     libuv PROPERTIES INTERFACE_LINK_LIBRARIES
-                     "ucrt;ws2_32;psapi;iphlpapi;userenv;advapi32")
+                     "ws2_32;psapi;iphlpapi;userenv;advapi32")
 endif()
 
 include_directories(${LIBUV_INCLUDE_DIR})
