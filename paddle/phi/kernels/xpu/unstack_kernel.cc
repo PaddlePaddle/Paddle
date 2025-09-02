@@ -54,7 +54,7 @@ PD_REGISTER_KERNEL(unstack,
                    XPU,
                    ALL_LAYOUT,
                    phi::UnStackKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    int,
                    int64_t) {}

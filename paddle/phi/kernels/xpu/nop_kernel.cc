@@ -15,10 +15,5 @@
 #include "paddle/phi/kernels/nop_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_REGISTER_KERNEL(nop,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::NopKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    nop, XPU, ALL_LAYOUT, phi::NopKernel, float, phi::bfloat16, phi::float16) {}

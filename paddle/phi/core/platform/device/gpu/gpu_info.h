@@ -29,13 +29,13 @@
 namespace paddle {
 namespace platform {
 //! Get the version of dnn
-int DnnVersion();
+PADDLE_API int DnnVersion();
 
 //! Get the total number of GPU devices in system.
-TEST_API int GetGPUDeviceCount();
+PADDLE_API int GetGPUDeviceCount();
 
 //! Get the compute capability of the ith GPU (format: major * 10 + minor)
-TEST_API int GetGPUComputeCapability(int id);
+PADDLE_API int GetGPUComputeCapability(int id);
 
 //! Get the runtime version of the ith GPU
 int GetGPURuntimeVersion(int id);
@@ -56,22 +56,22 @@ int GetGPUMaxThreadsPerMultiProcessor(int id);
 int GetGPUMaxThreadsPerBlock(int id);
 
 //! Get the current GPU device id in system.
-TEST_API int GetCurrentDeviceId();
+PADDLE_API int GetCurrentDeviceId();
 
 //! Get the maximum GridDim size for GPU buddy allocator.
 std::array<unsigned int, 3> GetGpuMaxGridDimSize(int);
 
 //! Get a list of device ids from environment variable or use all.
-std::vector<int> GetSelectedDevices();
+PADDLE_API std::vector<int> GetSelectedDevices();
 
 //! Get the properties of the ith GPU device.
-const gpuDeviceProp &GetDeviceProperties(int id);
+PADDLE_API const gpuDeviceProp &GetDeviceProperties(int id);
 
 //! Set the GPU device id for next execution.
-TEST_API void SetDeviceId(int device_id);
+PADDLE_API void SetDeviceId(int device_id);
 
 //! Get the memory usage of current GPU device.
-void GpuMemoryUsage(size_t *available, size_t *total);
+PADDLE_API void GpuMemoryUsage(size_t *available, size_t *total);
 
 //! Get the available memory to allocate, which is the size of available gpu
 //! minus reserving.
@@ -100,10 +100,10 @@ void GpuMemcpyAsync(void *dst,
                     gpuStream_t stream);
 
 //! Copy memory from address src to dst synchronously.
-void GpuMemcpySync(void *dst,
-                   const void *src,
-                   size_t count,
-                   gpuMemcpyKind kind);
+PADDLE_API void GpuMemcpySync(void *dst,
+                              const void *src,
+                              size_t count,
+                              gpuMemcpyKind kind);
 
 //! Copy memory from one device to another device asynchronously.
 void GpuMemcpyPeerAsync(void *dst,
@@ -121,12 +121,12 @@ void GpuMemcpyPeerSync(
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
 
 //! Blocks until stream has completed all operations.
-void GpuStreamSync(gpuStream_t stream);
+PADDLE_API void GpuStreamSync(gpuStream_t stream);
 
-void GpuDestroyStream(gpuStream_t stream);
+PADDLE_API void GpuDestroyStream(gpuStream_t stream);
 
 // ! Blocks until device has completed all operations.
-void GpuDeviceSync();
+PADDLE_API void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
 gpuError_t RecordedGpuMalloc(void **ptr,
@@ -146,7 +146,7 @@ gpuError_t RecordedGpuMallocAsync(void **ptr,
 //! CudaFree with recorded info
 void RecordedGpuFreeAsync(void *p, size_t size, int dev_id, gpuStream_t stream);
 
-gpuError_t GpuGetLastError();
+PADDLE_API gpuError_t GpuGetLastError();
 
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
@@ -179,7 +179,7 @@ uint64_t RecordedGpuLimitSize(int dev_id);
 bool IsGpuMallocRecorded(int dev_id);
 
 //! Empty idle cached memory held by the allocator.
-void EmptyCache(void);
+PADDLE_API void EmptyCache(void);
 
 bool IsGPUManagedMemorySupported(int dev_id);
 

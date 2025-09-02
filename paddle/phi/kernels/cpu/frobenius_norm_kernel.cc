@@ -23,5 +23,5 @@ PD_REGISTER_KERNEL(frobenius_norm,
                    phi::FrobeniusNormKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

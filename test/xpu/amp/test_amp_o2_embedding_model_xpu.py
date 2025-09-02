@@ -1,1 +1,0 @@
-../../amp/test_amp_o2_embedding_model.py

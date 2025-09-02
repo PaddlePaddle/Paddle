@@ -222,6 +222,8 @@ def _convert_to_place(device: PlaceLike) -> PlaceLike:
         return device  # return directly if not a string
 
     lower_device = device.lower()
+    if lower_device.startswith("cuda"):
+        lower_device = lower_device.replace("cuda", "gpu")
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
             ","
@@ -610,6 +612,10 @@ def get_device_properties(
             "Please input appropriate device again!"
             "Example: 'metax_gpu:0'"
         )
+
+    if device_name == 'gpu':
+        return paddle.device.cuda.get_device_properties(device_id)
+
     if not core.is_compiled_with_custom_device(device_name):
         raise ValueError(
             f"PaddlePaddle is not compiled with support for '{device_name}' device. "

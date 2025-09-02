@@ -69,4 +69,4 @@ PD_REGISTER_KERNEL(mean_all_grad,
                    ALL_LAYOUT,
                    phi::MeanAllGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

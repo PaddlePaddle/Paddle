@@ -411,10 +411,10 @@ PD_REGISTER_KERNEL(index_elementwise_put_grad,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(index_elementwise_put_with_tensor_grad,
                    GPU,
@@ -428,7 +428,7 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor_grad,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

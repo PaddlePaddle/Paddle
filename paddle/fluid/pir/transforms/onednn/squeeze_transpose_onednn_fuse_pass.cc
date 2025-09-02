@@ -77,6 +77,7 @@ class SqueezeTransposePattern : public paddle::drr::DrrPatternBase {
                    {"output_data_type", res.StrAttr("fp32")},
                    {"data_format", res.StrAttr("AnyLayout")},
                    {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"onednn_data_type", res.StrAttr("")},
                }});
     fused_transpose({&res.Tensor("x")}, {&res.Tensor("transpose_op_out")});
   }

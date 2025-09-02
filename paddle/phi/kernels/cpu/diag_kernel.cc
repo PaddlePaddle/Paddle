@@ -67,10 +67,10 @@ PD_REGISTER_KERNEL(diag,
                    CPU,
                    ALL_LAYOUT,
                    phi::DiagKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    float,
                    double,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

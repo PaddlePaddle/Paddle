@@ -1,4 +1,8 @@
-set(COMMON_API_TEST_DEPS phi common)
+if(WIN32)
+  set(COMMON_API_TEST_DEPS type_info common)
+else()
+  set(COMMON_API_TEST_DEPS phi common)
+endif()
 
 if(WITH_GPU)
   nv_test(

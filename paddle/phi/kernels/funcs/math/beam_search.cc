@@ -302,10 +302,10 @@ class BeamSearchFunctor<phi::CPUContext, T> {
   }
 };
 
-template class BeamSearchFunctor<phi::CPUContext, int>;
-template class BeamSearchFunctor<phi::CPUContext, int64_t>;
-template class BeamSearchFunctor<phi::CPUContext, float>;
-template class BeamSearchFunctor<phi::CPUContext, double>;
+template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int>;
+template class PADDLE_API BeamSearchFunctor<phi::CPUContext, int64_t>;
+template class PADDLE_API BeamSearchFunctor<phi::CPUContext, float>;
+template class PADDLE_API BeamSearchFunctor<phi::CPUContext, double>;
 
 }  // namespace math
 }  // namespace phi

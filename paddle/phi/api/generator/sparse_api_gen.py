@@ -23,10 +23,12 @@ class SparseAPI(ForwardAPI):
     def __init__(self, api_item_yaml):
         super().__init__(api_item_yaml)
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=False):
+    def gene_api_declaration(
+        self, grad_flag=False, append_predefined_out=False
+    ):
         return f"""
 // {", ".join(self.outputs['names'])}
-{super().gene_api_declaration(append_input_out=False)}
+{super().gene_api_declaration(append_predefined_out=False)}
 """
 
     def gene_output(
@@ -393,7 +395,7 @@ class SparseAPI(ForwardAPI):
 """
 
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=False
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
     ):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -405,7 +407,7 @@ class SparseAPI(ForwardAPI):
             )
 
         return f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_input_out=False)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_predefined_out=False)}) {{
 {kernel_dispatch_code}
   PADDLE_THROW(common::errors::Unimplemented(
           "The kernel of ({self.api}) for input tensors is unimplemented, please check the type of input tensors."));
@@ -501,12 +503,12 @@ def generate_api(
             sparse_api.is_dygraph_api = False
         header_file.write(
             sparse_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=False
+                grad_flag=grad_flag, append_predefined_out=False
             )
         )
         source_file.write(
             sparse_api.gene_api_code(
-                grad_flag=grad_flag, append_input_out=False
+                grad_flag=grad_flag, append_predefined_out=False
             )
         )
 

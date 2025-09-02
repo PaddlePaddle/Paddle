@@ -211,14 +211,20 @@ std::string GetExternalErrorMsg(T status) {
   return sout.str();
 }
 
-template std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
-template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
-template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
-template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
-template std::string GetExternalErrorMsg<cusparseStatus_t>(cusparseStatus_t);
-template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
-template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
-template std::string GetExternalErrorMsg<CUresult>(CUresult);
+template PADDLE_API std::string GetExternalErrorMsg<cudaError_t>(cudaError_t);
+template PADDLE_API std::string GetExternalErrorMsg<curandStatus_t>(
+    curandStatus_t);
+template PADDLE_API std::string GetExternalErrorMsg<cudnnStatus_t>(
+    cudnnStatus_t);
+template PADDLE_API std::string GetExternalErrorMsg<cublasStatus_t>(
+    cublasStatus_t);
+template PADDLE_API std::string GetExternalErrorMsg<cusparseStatus_t>(
+    cusparseStatus_t);
+template PADDLE_API std::string GetExternalErrorMsg<cusolverStatus_t>(
+    cusolverStatus_t);
+template PADDLE_API std::string GetExternalErrorMsg<cufftResult_t>(
+    cufftResult_t);
+template PADDLE_API std::string GetExternalErrorMsg<CUresult>(CUresult);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif

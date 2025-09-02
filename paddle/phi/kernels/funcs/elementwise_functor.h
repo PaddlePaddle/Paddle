@@ -1324,7 +1324,7 @@ struct ElementwiseInversePowFunctor<ComplexType<T>> {
   inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
                                               const ComplexType<T> b) const {
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    return pow(a, b);
+    return pow(b, a);
 #else
     return std::pow(static_cast<std::complex<T>>(b),
                     static_cast<std::complex<T>>(a));

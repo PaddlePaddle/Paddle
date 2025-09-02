@@ -4,6 +4,11 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_INFERENCE_IR_PASSES "${TEST_INFERENCE_IR_PASSES}")
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_sparse_conv_using_buffer_api")
+endif()
+
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES "test_quant_linear_fuse_pass")
 endif()

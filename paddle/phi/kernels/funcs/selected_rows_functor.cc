@@ -115,8 +115,8 @@ struct SelectedRowsAdd<phi::CPUContext, T> {
   }
 };
 
-template struct SelectedRowsAdd<phi::CPUContext, float>;
-template struct SelectedRowsAdd<phi::CPUContext, double>;
+template struct PADDLE_API SelectedRowsAdd<phi::CPUContext, float>;
+template struct PADDLE_API SelectedRowsAdd<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddTensor<phi::CPUContext, T> {
@@ -185,8 +185,8 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
   }
 };
 
-template struct SelectedRowsAddTensor<phi::CPUContext, float>;
-template struct SelectedRowsAddTensor<phi::CPUContext, double>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::CPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTensor<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::CPUContext, T> {
@@ -235,10 +235,10 @@ struct SelectedRowsAddTo<phi::CPUContext, T> {
   }
 };
 
-template struct SelectedRowsAddTo<phi::CPUContext, float>;
-template struct SelectedRowsAddTo<phi::CPUContext, double>;
-template struct SelectedRowsAddTo<phi::CPUContext, int>;
-template struct SelectedRowsAddTo<phi::CPUContext, int64_t>;
+template struct PADDLE_API SelectedRowsAddTo<phi::CPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTo<phi::CPUContext, double>;
+template struct PADDLE_API SelectedRowsAddTo<phi::CPUContext, int>;
+template struct PADDLE_API SelectedRowsAddTo<phi::CPUContext, int64_t>;
 
 template <typename T>
 struct SelectedRowsSumTo<phi::CPUContext, T> {
@@ -283,8 +283,8 @@ struct SelectedRowsSumTo<phi::CPUContext, T> {
   }
 };
 
-template struct SelectedRowsSumTo<phi::CPUContext, float>;
-template struct SelectedRowsSumTo<phi::CPUContext, double>;
+template struct PADDLE_API SelectedRowsSumTo<phi::CPUContext, float>;
+template struct PADDLE_API SelectedRowsSumTo<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
@@ -392,17 +392,18 @@ struct SelectedRowsAddToTensor<phi::XPUContext, T> {
 
 #endif
 
-template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
-template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
-template struct SelectedRowsAddToTensor<phi::CPUContext,
-                                        phi::dtype::complex<float>>;
-template struct SelectedRowsAddToTensor<phi::CPUContext,
-                                        phi::dtype::complex<double>>;
-
+template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, float>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, double>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, int>;
+template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct PADDLE_API
+    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
+template struct PADDLE_API
+    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
+template struct PADDLE_API
+    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::complex<float>>;
+template struct PADDLE_API
+    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::complex<double>>;
 #ifdef PADDLE_WITH_XPU
 template struct SelectedRowsAddToTensor<phi::XPUContext, float>;
 #endif
@@ -639,7 +640,7 @@ struct MergeAdd<phi::CPUContext, T> {
 
 #define TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(dtype)    \
   template struct MergeAddImpl<phi::CPUContext, dtype>; \
-  template struct MergeAdd<phi::CPUContext, dtype>;
+  template struct PADDLE_API MergeAdd<phi::CPUContext, dtype>;
 
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(double)
@@ -923,10 +924,10 @@ struct MergeAverage<phi::CPUContext, T> {
 template struct MergeAdd<phi::XPUContext, float>;
 #endif
 
-template struct MergeAverage<phi::CPUContext, int>;
-template struct MergeAverage<phi::CPUContext, int64_t>;
-template struct MergeAverage<phi::CPUContext, float>;
-template struct MergeAverage<phi::CPUContext, double>;
+template struct PADDLE_API MergeAverage<phi::CPUContext, int>;
+template struct PADDLE_API MergeAverage<phi::CPUContext, int64_t>;
+template struct PADDLE_API MergeAverage<phi::CPUContext, float>;
+template struct PADDLE_API MergeAverage<phi::CPUContext, double>;
 
 template <typename T>
 struct UpdateToTensor<phi::CPUContext, T> {

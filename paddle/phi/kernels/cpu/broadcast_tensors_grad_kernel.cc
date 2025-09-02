@@ -208,6 +208,6 @@ PD_REGISTER_KERNEL(broadcast_tensors_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
