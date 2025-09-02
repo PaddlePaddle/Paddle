@@ -25,7 +25,7 @@ PD_REGISTER_KERNEL(eigvalsh_grad,
                    phi::EigvalshGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(1).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }

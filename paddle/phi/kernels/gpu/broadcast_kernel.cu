@@ -60,16 +60,16 @@ PD_REGISTER_KERNEL(broadcast,
                    phi::BroadcastKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int,
                    bool,
                    int8_t,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #else
 PD_REGISTER_KERNEL(broadcast,
                    GPU,
@@ -83,7 +83,7 @@ PD_REGISTER_KERNEL(broadcast,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

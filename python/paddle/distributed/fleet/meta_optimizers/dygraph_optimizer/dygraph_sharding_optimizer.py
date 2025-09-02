@@ -348,6 +348,13 @@ class DygraphShardingOptimizer:
         with framework.no_grad():
             for param in parameter_list:
                 g_var = self._get_param_grad(param)
+                if g_var is None:
+                    if hasattr(param, "main_grad"):
+                        g_var = paddle.zeros_like(param, dtype=paddle.float32)
+                        param.main_grad = g_var
+                    else:
+                        g_var = paddle.zeros_like(param, dtype=param.dtype)
+                        param.grad = g_var
                 if g_var is not None:
                     reduce_op = ReduceOp.AVG
                     if not self.use_reduce_avg:
@@ -625,8 +632,7 @@ class DygraphShardingOptimizerV2:
         self._hcg = hcg
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
-        self.clear_color = None
-
+        self.clear_color = []
         self._parameter_list = optimizer._parameter_list
 
         # param name -> slice_param
@@ -834,7 +840,7 @@ class DygraphShardingOptimizerV2:
                         self.param2bucket[p.name] = [buffer]
 
     def clear_param_storage(self, color):
-        self.clear_color = color
+        self.clear_color.append(color)
         if color in self._color_to_comm_buffer_list.keys():
             for comm_buffer in self._color_to_comm_buffer_list[color]:
                 for param in comm_buffer.params:
@@ -852,12 +858,13 @@ class DygraphShardingOptimizerV2:
                 comm_buffer._clear_param_storage()
 
     def reset_param_storage(self):
-        color = self.clear_color
-        if color is None:
-            return
-        if color in self._color_to_comm_buffer_list.keys():
-            for comm_buffer in self._color_to_comm_buffer_list[color]:
-                comm_buffer._reset_param_storage()
+        for color in self.clear_color:
+            if color is None:
+                continue
+
+            if color in self._color_to_comm_buffer_list.keys():
+                for comm_buffer in self._color_to_comm_buffer_list[color]:
+                    comm_buffer._reset_param_storage()
 
     def clear_grad(self, set_to_zero=True):
         """

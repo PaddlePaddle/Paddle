@@ -166,12 +166,12 @@ PD_REGISTER_KERNEL(add_n,
                    ALL_LAYOUT,
                    phi::AddNKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(add_n_array,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddNArrayKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -320,7 +320,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmax(x=data, dtype="float32")
 
-            self.assertRaises(ValueError, test_argmax_attr_type)
+            self.assertRaises(TypeError, test_argmax_attr_type)
 
             def test_argmin_attr_type():
                 data = paddle.static.data(
@@ -328,7 +328,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmin(x=data, dtype="float32")
 
-            self.assertRaises(ValueError, test_argmin_attr_type)
+            self.assertRaises(TypeError, test_argmin_attr_type)
 
             def test_argmax_axis_type():
                 data = paddle.static.data(
@@ -436,7 +436,6 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
         np_api = eval(f"np.{api_name}")
         ref_out = np_api(self.np_input, 1)
         # Check
-        count = 1
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()

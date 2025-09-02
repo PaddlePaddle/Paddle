@@ -202,5 +202,5 @@ PD_REGISTER_KERNEL(apply_per_channel_scale,
                    GPU,
                    ALL_LAYOUT,
                    phi::ApplyPerChannelScaleKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

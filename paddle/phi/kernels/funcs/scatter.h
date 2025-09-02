@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <cstring>
 #include <string>
 #include <unordered_set>
@@ -76,6 +77,10 @@ void ScatterAssign(const phi::CPUContext& dev_ctx UNUSED,
                    const DenseTensor& src,
                    const DenseTensor& index,
                    DenseTensor* output) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6) << "Do nothing for CPUGather since inputs has 0-size tensor.";
+    return;
+  }
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -164,6 +169,12 @@ void ScatterAssignAdd(const phi::CPUContext& dev_ctx,
                       const DenseTensor& src,
                       const DenseTensor& index,
                       DenseTensor* output) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for ScatterAssignAdd since inputs has 0-size tensor.";
+    return;
+  }
+
   PADDLE_ENFORCE_EQ(
       index.dims().size() == 1 || index.dims().size() == 0 ||
           (index.dims().size() == 2 && index.dims()[1] == 1),
@@ -250,6 +261,11 @@ template <typename T, typename IndexT = int>
 void CPUScatterGradForX(const phi::CPUContext& dev_ctx UNUSED,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for CPUScatterGradForX since inputs has 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   const IndexT* p_index = index.data<IndexT>();

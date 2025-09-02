@@ -228,7 +228,7 @@ class SimpleEmbeddingNet(nn.Layer):
     def forward(self, x):
         out = self.embedding(x)
         scale = paddle.full(shape=[1], fill_value=2, dtype="int64")
-        out = paddle.multiply(out, scale.astype("float32"))
+        out = out * (scale.astype("float32"))
         out = self.linear(out)
         out = nn.functional.dropout(out, p=0.2)
         return out

@@ -342,10 +342,6 @@
 
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
-  python_api :
-    name : [paddle.argmax, paddle.Tensor.argmax]
-    args_mapper :
-      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -358,10 +354,6 @@
 
 - op : argmin
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
-  python_api :
-    name : [paddle.argmin, paddle.Tensor.argmin]
-    args_mapper :
-      func : ArgMaxMinMapper
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -3679,6 +3671,15 @@
   backward : mean_all_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : median
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
+  output : Tensor(out), Tensor(medians)
+  infer_meta :
+    func : MedianInferMeta
+  kernel :
+    func : median
+  backward : median_grad
+
 - op : memcpy_d2h
   args : (Tensor x, int dst_place_type)
   output : Tensor
@@ -3877,7 +3878,7 @@
   backward : moe_gate_dispatch_permute_grad
 
 - op : moe_permute
-  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather)
   output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
   infer_meta:
     func : MoePermuteInferMeta
@@ -4554,7 +4555,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
+  args : (Tensor x, int repeats, int axis, int64_t output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveInferMeta
@@ -4565,7 +4566,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave_with_tensor_index
-  args : (Tensor x, Tensor repeats, int axis)
+  args : (Tensor x, Tensor repeats, int axis, int64_t output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveWithTensorIndexInferMeta
@@ -5021,6 +5022,10 @@
 
 - op : sigmoid
   args : (Tensor x)
+  python_api:
+    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
+    args_alias:
+      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5062,12 +5067,13 @@
 
 - op : silu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
+  inplace : (x -> out)
   backward : silu_grad
   interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
   traits: pir::UnaryElementWiseTrait
@@ -5222,6 +5228,10 @@
 
 - op : sqrt
   args : (Tensor x)
+  python_api :
+    name : [paddle.sqrt,paddle.Tensor.sqrt]
+    args_alias:
+      x : [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

@@ -34,7 +34,7 @@ void FusedConv2DKernel(const Context& dev_ctx,
                        bool fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
-  bool is_BFLOAT16 = onednn_data_type == "bfloat16";
+  bool is_bfloat16 = onednn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
                 &input,
@@ -48,7 +48,7 @@ void FusedConv2DKernel(const Context& dev_ctx,
                 groups,
                 data_format,
                 true,
-                is_BFLOAT16,
+                is_bfloat16,
                 fuse_activation,
                 fuse_residual_conn,
                 force_fp32_output,
@@ -73,7 +73,7 @@ void FusedDepthwiseConv2DKernel(
     bool fuse_residual_conn,
     bool force_fp32_output,
     DenseTensor* out) {
-  bool is_BFLOAT16 = onednn_data_type == "bfloat16";
+  bool is_bfloat16 = onednn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
                 &input,
@@ -87,7 +87,7 @@ void FusedDepthwiseConv2DKernel(
                 groups,
                 data_format,
                 true,
-                is_BFLOAT16,
+                is_bfloat16,
                 fuse_activation,
                 fuse_residual_conn,
                 force_fp32_output,
@@ -111,7 +111,7 @@ void FusedConv3DKernel(const Context& dev_ctx,
                        bool fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
-  bool is_BFLOAT16 = onednn_data_type == "bfloat16";
+  bool is_bfloat16 = onednn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
                 &input,
@@ -125,7 +125,7 @@ void FusedConv3DKernel(const Context& dev_ctx,
                 groups,
                 data_format,
                 true,
-                is_BFLOAT16,
+                is_bfloat16,
                 fuse_activation,
                 fuse_residual_conn,
                 force_fp32_output,

@@ -15,11 +15,14 @@
 from __future__ import annotations
 
 import copy
+import json
 import math
 import os
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+import numpy as np
 
 import paddle
 from paddle.base.framework import (
@@ -675,6 +678,7 @@ def _handle_aoa(
     src_desc_to_sharded_tensor = {}
     dst_to_src_desc_mapping = {}
     new_load_dict = {}
+    src_desc_to_postprocess_list = {}
 
     for param_name, tgt_shard in load_dict.items():
         tgt_desc = build_shard_desc(tgt_shard)
@@ -683,12 +687,15 @@ def _handle_aoa(
             src_desc = mapping.source_slice
             dst_desc = mapping.target_slice
             idx = (src_desc.key, tuple(src_desc.global_offset))
-            if len(shard_mappings) == 1:
-                assert (
-                    src_desc.local_shape == dst_desc.local_shape
-                    and src_desc.global_shape == dst_desc.global_shape
-                    and src_desc.global_offset == dst_desc.global_offset
+            if mapping.postprocess_list is not None:
+                src_desc_to_postprocess_list[src_desc] = (
+                    mapping.postprocess_list
                 )
+            if (len(shard_mappings) == 1) and (
+                src_desc.local_shape == dst_desc.local_shape
+                and src_desc.global_shape == dst_desc.global_shape
+                and src_desc.global_offset == dst_desc.global_offset
+            ):
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
                     local_tensor=tgt_shard.local_tensor,
@@ -722,7 +729,10 @@ def _handle_aoa(
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
         src_tensor = src_desc_to_sharded_tensor[src_desc]
         dst_tensor = load_dict[dst_desc.key]
-        assign_sharded_slice(src_desc, src_tensor, dst_desc, dst_tensor)
+        postprocess_list = src_desc_to_postprocess_list.get(src_desc, None)
+        assign_sharded_slice(
+            src_desc, src_tensor, dst_desc, dst_tensor, postprocess_list
+        )
 
 
 def _finish_unflatten(flat_shards, padding_info):
@@ -1016,7 +1026,7 @@ def _load_state_dict(
         ) or all(isinstance(k, tuple) for k in copied_target_state_dict), (
             "target_state_dict contains a mix of tuple and non-tuple keys. Please ensure key types are consistent."
         )
-
+        logger.info(f"readitem num: {len(read_items)}.")
         for item in read_items:
             if any(isinstance(k, tuple) for k in copied_target_state_dict):
                 key = (item.local_tensor_index.tensor_key, item.global_offset)
@@ -1130,8 +1140,11 @@ def _load_state_dict(
                 or idx + 1 == len(read_items)
             ):
                 paddle.assign(
-                    copied_target_state_dict[key].cpu(), state_dict_in_cpu[key]
+                    copied_target_state_dict[key].cpu(), target_state_dict[key]
                 )
+                t = copied_target_state_dict[key]
+                copied_target_state_dict[key] = t.cpu()
+                del t
             idx = idx + 1
 
             if use_dist:
@@ -1244,3 +1257,272 @@ def load_merged_state_dict(
                 key
             )  # Add new key and remove the old one
     return state_dict_to_save
+
+
+def divide_positions(m, n):
+    '''
+    Divide positions evenly among n processors with a base value and remainder handling.
+
+    Parameters:
+    m (int): Total number of tensor positions.
+    n (int): Number of processors.
+
+    Returns:
+    list: A list of positions indicating where to split the tensors among processors.
+
+    Raises:
+    ValueError: If n is zero or if m is less than n.
+    '''
+    if n == 0:
+        raise ValueError("n should be greater than zero")
+    if m < n:
+        raise ValueError(
+            f"tensor number {m} should be greater than or equal to processor number {n}"
+        )
+    base_value = m // n
+    remainder = m % n
+    positions = [0]
+    for i in range(1, n):
+        if remainder > 0:
+            positions.append(positions[-1] + base_value + 1)
+            remainder -= 1
+        else:
+            positions.append(positions[-1] + base_value)
+    positions.append(m)
+    return positions
+
+
+def merge_sharded_state_dict(
+    load_path: str,
+    save_path: str,
+    prefix: str | None = None,
+    safetensor_prefix: str = 'model',
+    process_group: Group | None = None,
+    unique_id: int | None = None,
+    offload: bool = False,
+    aoa_config: dict[str, list[str]] | None = None,
+    safetensors: bool = False,
+    file_num: int = 1,
+) -> None:
+    """
+    Load the distributed checkpoint and merge it to unsharded state_dict then save as safetensors.
+
+    Note:
+        save files are:
+            model-00001-of-00008.safetensors
+            model-00002-of-00008.safetensors
+            ...
+            model-00008-of-00008.safetensors
+            model.safetensors.index.json
+        model is safetensor_prefix; 00008 is file_num.
+
+    Args:
+        load_path(str): The directory to load checkpoint files.
+        save_path(str): The directory to save merged_checkpoint files.
+        prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
+        safetensor_prefix(str): The safetensors file prefix e.g., Default 'model'.
+        process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
+        unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
+        offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
+        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        safetensors(bool): Whether to use safetensors format. Default is False.
+        file_num(int): The number of files to split the merged_checkpoint into.
+    Returns:
+        None.
+
+    Example:
+        .. code-block:: python
+
+            >>> # doctest: +SKIP('run in distributed mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> w1 = paddle.arange(32).reshape([4, 8])
+            >>> mesh = dist.ProcessMesh([0, 1])
+            >>> sharded_w1 = dist.shard_tensor(w1, mesh, [dist.Shard(0)])
+            >>> state_dict = {"w1": sharded_w1}
+            >>> dist.save_state_dict(state_dict, ckpt_path) # save sharded checkpoint
+
+            >>> # doctest: +SKIP('run in single-card mode.')
+            >>> import paddle
+            >>> import paddle.distributed as dist
+            >>> ckpt_path = "./checkpoint"
+            >>> save_path = "./merged_checkpoint"
+            >>> dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(ckpt_path, save_path)  # load unsharded and save to safetensors
+            >>> # doctest: -SKIP
+    """
+    if unique_id is None:
+        unique_id = get_max_id(load_path)
+    else:
+        assert unique_id >= 0, f'{unique_id} should be >= 0'
+
+    use_dist = True if paddle.distributed.get_world_size() > 1 else False
+
+    if use_dist and process_group is None and not is_initialized():
+        # Init the default global process group
+        paddle.distributed.init_parallel_env()
+
+    if use_dist:
+        # sync to avoid some ranks not write path yet
+        paddle.distributed.barrier(process_group)
+
+    metadata_files, local_data_files = get_checkpoint_files(
+        load_path, unique_id=unique_id
+    )
+
+    metadata_list = []
+    for file in metadata_files:
+        metadata_list.append(paddle.load(os.path.join(load_path, file)))
+    file_num = paddle.distributed.get_world_size()
+
+    # create target state_dict by local_tensor_meta
+    def slice_dict(d, start, end):
+        """Slice the dictionary keys and return the corresponding sub-dictionary"""
+        keys = list(d.keys())[start:end]
+        return {k: d[k] for k in keys}
+
+    all_state_dict = []
+    local_state_dict_to_save = {}
+    SaveSafetensor = SavePartialSafetensors(
+        save_path, process_group, safetensor_prefix
+    )
+
+    for metadata in metadata_list:
+        state_dict_metadata = metadata.state_dict_metadata
+        positions = divide_positions(len(state_dict_metadata), file_num)
+        rank = paddle.distributed.get_rank()
+
+        partial_state_dict_metadata = slice_dict(
+            state_dict_metadata, positions[rank], positions[rank + 1]
+        )
+        for (
+            tensor_key,
+            local_tensor_meta,
+        ) in partial_state_dict_metadata.items():
+            if prefix is None or tensor_key.startswith(prefix):
+                global_shape = compute_global_shape(local_tensor_meta)
+                t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
+                if offload:
+                    t = t.cpu()
+                local_state_dict_to_save[tensor_key] = t
+            else:
+                continue
+
+        logger.info(
+            f"rank :{rank} , local_state_dict_to_save.size :{len(local_state_dict_to_save)}"
+        )
+
+        if paddle.distributed.get_rank() == 0:
+            for ii in range(len(positions) - 1):
+                shard_file = f"{safetensor_prefix}-{ii + 1:05d}-of-{file_num:05d}.safetensors"
+                for key in list(state_dict_metadata.keys())[
+                    positions[ii] : positions[ii + 1]
+                ]:
+                    SaveSafetensor.index["weight_map"][key] = shard_file
+                    local_tensor_meta = state_dict_metadata[key]
+                    shape_ = compute_global_shape(local_tensor_meta)
+                    dtype_ = local_tensor_meta[0].dtype
+                    SaveSafetensor.index["metadata"]["total_size"] += int(
+                        np.prod(shape_)
+                        * SaveSafetensor.paddle_dtype_map[str(dtype_)]
+                    )
+
+            weight_size = len(SaveSafetensor.index["weight_map"])
+            logger.info(
+                f"SaveSafetensor.index[weight_map] size = {weight_size}."
+            )
+
+    if paddle.distributed.get_rank() == 0:
+        SaveSafetensor.save_index_json()
+
+    if use_dist:
+        paddle.distributed.barrier(process_group)
+        paddle.distributed.all_gather_object(
+            all_state_dict, len(local_state_dict_to_save), process_group
+        )
+    else:
+        all_state_dict = [len(local_state_dict_to_save)]
+
+    if paddle.distributed.get_rank() == 0:
+        total_keys = sum(size for size in all_state_dict)
+        total_meta_items = sum(
+            len(metadata.state_dict_metadata.items())
+            for metadata in metadata_list
+        )
+
+        assert total_meta_items == total_keys, (
+            f'split state dict filed :{total_meta_items} should seem as {total_keys}'
+        )
+        assert file_num == len(all_state_dict), (
+            f'file_num:{file_num} should seem as len(all_state_dict):{len(all_state_dict)}'
+        )
+
+    load_state_dict(
+        local_state_dict_to_save,
+        load_path,
+        process_group,
+        offload=offload,
+        aoa_config=aoa_config,
+        safetensors=safetensors,
+    )
+
+    # Update dictionary keys in place
+    for key in list(
+        local_state_dict_to_save.keys()
+    ):  # Use list(data.keys()) to avoid runtime error
+        if prefix and key.startswith(prefix):
+            new_key = key[len(prefix) + 1 :]  # Remove the "str" prefix
+            local_state_dict_to_save[new_key] = local_state_dict_to_save.pop(
+                key
+            )  # Add new key and remove the old one
+
+    SaveSafetensor.save_single_safetenors(
+        local_state_dict_to_save, paddle.distributed.get_rank()
+    )
+
+
+class SavePartialSafetensors:
+    def __init__(self, output_path, process_group, prefix="model"):
+        self.output_path = output_path
+        self.process_group = process_group
+        self.prefix = prefix
+        self.paddle_dtype_map = {
+            "float64": 8,
+            "float32": 4,
+            "float16": 2,
+            "uint16": 2,
+            "bfloat16": 2,
+            "uint8": 1,
+            "float8_e4m3fn": 1,
+            "float8_e5m2": 1,
+        }
+        self.index = {"metadata": {"total_size": 0}, "weight_map": {}}
+        self.safe_index_name = prefix + ".safetensors.index.json"
+        self.total_files_size = paddle.distributed.get_world_size()
+        self.save_index_file = os.path.join(
+            self.output_path, self.safe_index_name
+        )
+        os.makedirs(os.path.dirname(self.save_index_file), exist_ok=True)
+        self.index_save_called = False
+
+    def save_single_safetenors(self, state_dict, rank):
+        save_file_name = os.path.join(
+            self.output_path,
+            f"{self.prefix}-{rank + 1:05d}-of-{self.total_files_size:05d}.safetensors",
+        )
+        logger.info(f"save_file_name = {save_file_name}")
+        paddle.framework.io._safe_save(
+            state_dict,
+            save_file_name,
+        )
+
+    def save_index_json(self):
+        if self.index_save_called:
+            raise RuntimeError(
+                "save_index_json method can only be called once!"
+            )
+
+        self.index_save_called = True
+        with open(self.save_index_file, "w", encoding="utf-8") as f:
+            f.write(json.dumps(self.index, indent=2) + "\n")
+        logger.info(f"Model index file saved in {self.save_index_file}.")

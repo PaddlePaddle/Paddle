@@ -25,6 +25,9 @@ import numpy as np
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.utils.decorator_utils import (
+    size_args_decorator_patch,
+)
 
 from . import Value
 
@@ -647,6 +650,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -682,8 +686,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_empty_(
         self,
         size: ShapeLike,
@@ -729,6 +735,7 @@ def monkey_patch_value():
             pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_ones_(
         self,
         size: ShapeLike,
@@ -736,6 +743,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -771,8 +779,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_zeros_(
         self,
         size: ShapeLike,
@@ -780,6 +790,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -815,6 +826,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _int_(self):

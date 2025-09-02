@@ -207,13 +207,13 @@ PD_REGISTER_KERNEL(fused_rms_norm_ext,
                    ALL_LAYOUT,
                    phi::RMSLnFwd,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(fused_rms_norm_ext_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::RMSLnBwd,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

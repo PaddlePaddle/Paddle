@@ -14,7 +14,14 @@
 
 #include "paddle/phi/backends/dynload/tensorrt.h"
 
+#include <mutex>
 #include <string>
+
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
 namespace phi::dynload {
 
@@ -31,30 +38,38 @@ TENSORRT_RAND_ROUTINE_EACH_NON_POINTER(DEFINE_WRAP);
 TENSORRT_PLUGIN_RAND_ROUTINE_EACH(DEFINE_WRAP);
 
 void* GetDsoHandle(const std::string& dso_name) {
-#if !defined(_WIN32)
-  int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
+#if defined(_WIN32)
+  HMODULE dso_handle = LoadLibraryA(dso_name.c_str());
+  PADDLE_ENFORCE_NOT_NULL(
+      dso_handle,
+      common::errors::NotFound(
+          "TensorRT is needed, "
+          "but TensorRT dynamic library '%s' is not found.\n"
+          "  Suggestions:\n"
+          "  1. Check if the TensorRT is installed correctly and its version"
+          " is matched with paddlepaddle you installed.\n"
+          "  2. Configure environment variables as follows:\n"
+          "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n",
+          dso_name.c_str()));
+  return reinterpret_cast<void*>(dso_handle);
 #else
-  int dynload_flags = 0;
-#endif  // !_WIN32
-
+  int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
   void* dso_handle = dlopen(dso_name.c_str(), dynload_flags);
 
   PADDLE_ENFORCE_NOT_NULL(
       dso_handle,
       common::errors::NotFound(
           "TensorRT is needed, "
-          "but TensorRT dynamic library is not found.\n"
+          "but TensorRT dynamic library '%s' is not found.\n"
           "  Suggestions:\n"
           "  1. Check if the TensorRT is installed correctly and its version"
           " is matched with paddlepaddle you installed.\n"
-          "  2. Configure environment variables as "
-          "follows:\n"
+          "  2. Configure environment variables as follows:\n"
           "  - Linux: set LD_LIBRARY_PATH by `export LD_LIBRARY_PATH=...`\n"
-          "  - Windows: set PATH by `set PATH=XXX;%PATH%`\n"
-          "  - Mac: set  DYLD_LIBRARY_PATH by `export "
-          "DYLD_LIBRARY_PATH=...`\n"));
-
+          "  - Mac: set  DYLD_LIBRARY_PATH by `export DYLD_LIBRARY_PATH=...`\n",
+          dso_name.c_str()));
   return dso_handle;
+#endif
 }
 
 void* GetTensorRtHandle() {

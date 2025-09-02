@@ -109,6 +109,14 @@ class ApiOnesTest(unittest.TestCase):
             (result,) = exe.run(fetch_list=[ones])
             expect = np.ones(10, dtype="int64")
         np.testing.assert_equal(result, expect)
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            ones = paddle.ones(shape=10, dtype=paddle.long)
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            (result,) = exe.run(fetch_list=[ones])
+            expect = np.ones(10, dtype="int64")
+        np.testing.assert_equal(result, expect)
         paddle.disable_static()
 
     def test_dygraph_ones(self):

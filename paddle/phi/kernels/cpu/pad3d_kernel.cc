@@ -589,5 +589,5 @@ PD_REGISTER_KERNEL(pad3d,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
