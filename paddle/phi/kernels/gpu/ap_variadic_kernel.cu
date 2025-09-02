@@ -113,7 +113,7 @@ PD_REGISTER_KERNEL(ap_variadic,
                    phi::ApVariadicKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(ap_variadic,
                    GPU,
@@ -121,6 +121,6 @@ PD_REGISTER_KERNEL(ap_variadic,
                    phi::ApVariadicKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

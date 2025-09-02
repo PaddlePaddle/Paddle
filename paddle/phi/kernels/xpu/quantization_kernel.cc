@@ -65,9 +65,5 @@ void QuantizeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(quantize_xpu,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::QuantizeKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    quantize_xpu, XPU, ALL_LAYOUT, phi::QuantizeKernel, float, phi::float16) {}

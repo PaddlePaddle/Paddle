@@ -131,8 +131,8 @@ PD_REGISTER_KERNEL(rprop,
                    GPU,
                    ALL_LAYOUT,
                    phi::RpropKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
@@ -143,13 +143,8 @@ PD_REGISTER_KERNEL(rprop,
 #endif
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(rprop,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RpropKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {
+PD_REGISTER_KERNEL(
+    rprop, GPU, ALL_LAYOUT, phi::RpropKernel, phi::float16, float, double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   }

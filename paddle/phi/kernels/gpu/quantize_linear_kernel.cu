@@ -110,7 +110,7 @@ struct DequantizeFunctor<phi::GPUContext, T> {
   }
 };
 
-template struct DequantizeFunctor<phi::GPUContext, phi::dtype::float16>;
+template struct DequantizeFunctor<phi::GPUContext, phi::float16>;
 template struct DequantizeFunctor<phi::GPUContext, float>;
 template struct DequantizeFunctor<phi::GPUContext, double>;
 template struct ChannelDequantizeFunctorV2<phi::GPUContext, float16>;
@@ -125,7 +125,7 @@ PD_REGISTER_KERNEL(dequantize_linear,
                    float,
                    int8_t,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -134,7 +134,7 @@ PD_REGISTER_KERNEL(quantize_linear,
                    ALL_LAYOUT,
                    phi::QuantizeLinearKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -145,7 +145,7 @@ PD_REGISTER_KERNEL(dequantize_linear_deprecated,
                    float,
                    int8_t,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -154,7 +154,7 @@ PD_REGISTER_KERNEL(quantize_linear_deprecated_train,
                    ALL_LAYOUT,
                    phi::QuantizeLinearDeprecatedTrainKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -163,6 +163,6 @@ PD_REGISTER_KERNEL(quantize_linear_deprecated_infer,
                    ALL_LAYOUT,
                    phi::QuantizeLinearDeprecatedInferKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

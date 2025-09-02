@@ -1151,7 +1151,7 @@ class DistForwardAPI(ForwardAPI):
                     and self.outputs['types'][0] == "Tensor"
                     and self.api != "empty_like"
                 ):
-                    output_creation_code += "Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
                 else:
                     output_creation_code += API_OUT_CREATION_TEMPLATE.format(
                         return_type, ""
@@ -2106,7 +2106,7 @@ class DistForwardAPI(ForwardAPI):
 
     # override BaseAPI's method
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         # init status
         self.inplace_flag = inplace_flag
@@ -2174,23 +2174,27 @@ class DistForwardAPI(ForwardAPI):
 
 class DistBackwardAPI(DistForwardAPI):
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         return BackwardAPI.gene_base_api_code(
             self,
             inplace_flag,
             grad_flag=grad_flag,
-            append_input_out=append_input_out,
+            append_predefined_out=append_predefined_out,
         )
 
-    def gene_api_code(self, grad_flag=False, append_input_out=False):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
         return BackwardAPI.gene_api_code(
-            self, grad_flag=grad_flag, append_input_out=append_input_out
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
         )
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         return BackwardAPI.gene_api_declaration(
-            self, grad_flag=grad_flag, append_input_out=append_input_out
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
         )
 
 
@@ -2260,7 +2264,7 @@ def generate_api(
             dist_forward_api.is_dygraph_api = False
             header_file.write(
                 dist_forward_api.gene_api_declaration(
-                    grad_flag=grad_flag, append_input_out=not grad_flag
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
                 )
             )
             source_file.write(
@@ -2270,7 +2274,7 @@ def generate_api(
 
         header_file.write(
             dist_forward_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=not grad_flag
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
             )
         )
         source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))

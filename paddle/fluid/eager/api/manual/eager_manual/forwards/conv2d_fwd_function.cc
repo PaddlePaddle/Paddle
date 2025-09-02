@@ -24,15 +24,16 @@
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
 
-paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
-                              const paddle::Tensor& filter,
-                              std::vector<int> strides,
-                              std::vector<int> paddings,
-                              std::string padding_algorithm,
-                              std::vector<int> dilations,
-                              int groups,
-                              std::string data_format,
-                              paddle::optional<paddle::Tensor*> input_out) {
+paddle::Tensor conv2d_ad_func(
+    const paddle::Tensor& input,
+    const paddle::Tensor& filter,
+    std::vector<int> strides,
+    std::vector<int> paddings,
+    std::string padding_algorithm,
+    std::vector<int> dilations,
+    int groups,
+    std::string data_format,
+    paddle::optional<paddle::Tensor*> predefined_out) {
   VLOG(3) << "Running AD API: "
           << "conv2d";
   if (FLAGS_check_cuda_error) [[unlikely]] {

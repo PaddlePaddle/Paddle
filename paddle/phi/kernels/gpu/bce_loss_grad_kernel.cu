@@ -61,4 +61,4 @@ PD_REGISTER_KERNEL(bce_loss_grad,
                    phi::BCELossGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

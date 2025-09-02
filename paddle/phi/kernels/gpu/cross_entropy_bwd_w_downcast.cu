@@ -288,4 +288,4 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax_bwd_w_downcast,
                    phi::CrossEntropyWithSoftmaxBwdWithDowncastKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

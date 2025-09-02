@@ -21,14 +21,13 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm  # noqa: F401
+from paddle._C_ops import bmm, matmul  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
-    param_two_alias,
     transpose_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -260,148 +259,6 @@ def matrix_transpose(
             [2, 5, 3]
     """
     return x.mT
-
-
-@param_two_alias(["x", "input"], ["y", "other"])
-def matmul(
-    x: Tensor,
-    y: Tensor,
-    transpose_x: bool = False,
-    transpose_y: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    """
-    Applies matrix multiplication to two tensors. `matmul` follows
-    the complete broadcast rules,
-    and its behavior is consistent with `np.matmul`.
-
-    Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
-    achieve the `dot`, `matmul` and `batchmatmul`.
-
-    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
-    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
-
-    - If a transpose flag is specified, the last two dimensions of the tensor
-      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
-      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
-      for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
-
-    The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
-
-    - If both tensors are 1-dimensional, the dot product result is obtained.
-
-    - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
-
-    - If the `x` is 1-dimensional and the `y` is 2-dimensional,
-      a `1` is prepended to its dimension in order to conduct the matrix multiply.
-      After the matrix multiply, the prepended dimension is removed.
-
-    - If the `x` is 2-dimensional and `y` is 1-dimensional,
-      the matrix-vector product is obtained.
-
-    - If both arguments are at least 1-dimensional and at least one argument
-      is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
-      If the first argument is 1-dimensional, a 1 is prepended to its dimension
-      in order to conduct the batched matrix multiply and removed after.
-      If the second argument is 1-dimensional, a 1 is appended to its
-      dimension for the purpose of the batched matrix multiple and removed after.
-      The non-matrix (exclude the last two dimensions) dimensions are
-      broadcasted according the broadcast rule.
-      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
-      out will be a (j, k, n, p) tensor.
-
-    Args:
-        x (Tensor): The input tensor which is a Tensor.
-        y (Tensor): The input tensor which is a Tensor.
-        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
-        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
-        name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
-
-    Returns:
-        Tensor: The output Tensor.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # vector * vector
-            >>> x = paddle.rand([10])
-            >>> y = paddle.rand([10])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            []
-
-            >>> # matrix * vector
-            >>> x = paddle.rand([10, 5])
-            >>> y = paddle.rand([5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10]
-
-            >>> # batched matrix * broadcasted vector
-            >>> x = paddle.rand([10, 5, 2])
-            >>> y = paddle.rand([2])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 5]
-
-            >>> # batched matrix * batched matrix
-            >>> x = paddle.rand([10, 5, 2])
-            >>> y = paddle.rand([10, 2, 5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 5, 5]
-
-            >>> # batched matrix * broadcasted matrix
-            >>> x = paddle.rand([10, 1, 5, 2])
-            >>> y = paddle.rand([1, 3, 2, 5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 3, 5, 5]
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
-    else:
-        attrs = {
-            'trans_x': transpose_x,
-            'trans_y': transpose_y,
-        }
-
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val,
-                    name,
-                    [
-                        'int8',
-                        'uint16',
-                        'float16',
-                        'float32',
-                        'float64',
-                        'complex64',
-                        'complex128',
-                    ],
-                    'matmul',
-                )
-
-        __check_input(x, y)
-
-        helper = LayerHelper('matmul_v2', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='matmul_v2',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-        return out
 
 
 def fp8_fp8_half_gemm_fused(

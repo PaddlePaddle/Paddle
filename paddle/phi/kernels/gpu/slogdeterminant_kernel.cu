@@ -563,8 +563,8 @@ PD_REGISTER_KERNEL(slogdet,
                    phi::SlogDeterminantKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(slogdet_v2,
                    GPU,
@@ -572,5 +572,5 @@ PD_REGISTER_KERNEL(slogdet_v2,
                    phi::SlogDeterminantV2Kernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
