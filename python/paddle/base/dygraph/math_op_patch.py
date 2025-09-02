@@ -291,15 +291,14 @@ def monkey_patch_math_tensor():
         Returns:
             Tensor: A new Tensor with its last two dimensions swapped.
 
-        Raises:
-            ValueError: If the input Tensor has fewer than 2 dimensions.
-
         Examples:
-            >>> import paddle
-            >>> x = paddle.randn([2, 3, 4])
-            >>> x_transposed = x.mT
-            >>> x_transposed.shape
-            [2, 4, 3]
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3, 4])
+                >>> x_transposed = x.mT
+                >>> x_transposed.shape
+                [2, 4, 3]
         """
         if len(var.shape) < 2:
             raise ValueError(
