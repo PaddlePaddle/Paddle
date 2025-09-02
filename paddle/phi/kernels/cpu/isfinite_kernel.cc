@@ -73,14 +73,14 @@ INSTANTIATE_ISFINITE_KERNEL_Isnan(float, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isnan(double, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isnan(int, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isnan(int64_t, CPUContext);
-INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::float16, CPUContext);
-INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::bfloat16, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::float16, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::bfloat16, CPUContext);
 
 INSTANTIATE_ISFINITE_KERNEL_Isinf(float, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(double, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(int, CPUContext);
 INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, CPUContext);
-INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::float16, CPUContext);
-INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::bfloat16, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::float16, CPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::bfloat16, CPUContext);
 }  // namespace phi
 #endif
