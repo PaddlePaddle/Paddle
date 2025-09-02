@@ -102,6 +102,7 @@ if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
     import builtins
+    import math
 
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
@@ -155,6 +156,43 @@ else:
             original_init(self, *args, **kwargs)
 
     Tensor.__init__ = new_init
+
+    class CallableSize:
+        def __init__(self, tensor):
+            self.tensor = tensor
+            self._value = math.prod(tensor.shape)
+
+        def __call__(self, dim=None):
+            if dim is None:
+                return self.tensor.shape
+            else:
+                return self.tensor.shape[dim]
+
+        # class method
+        def __instancecheck__(self, instance):
+            return isinstance(self._value, instance)
+
+        # value method
+        def __int__(self):
+            return int(self._value)
+
+        def __float__(self):
+            return float(self._value)
+
+        def __str__(self):
+            return str(self._value)
+
+        def __repr__(self):
+            return repr(self._value)
+
+    original_getattr = Tensor.__getattribute__
+
+    def new_getattr(self, name):
+        if name == 'size':
+            return CallableSize(self)
+        return original_getattr(self, name)
+
+    Tensor.__getattribute__ = new_getattr
 
 import paddle.distributed.fleet
 import paddle.text
