@@ -22,7 +22,7 @@ PD_REGISTER_KERNEL(lamb_sr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sr::LambKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);

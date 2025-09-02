@@ -21,6 +21,6 @@ PD_REGISTER_KERNEL(add_n_sr,
                    float,
                    double,
                    int,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int64_t) {}
