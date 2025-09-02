@@ -206,6 +206,7 @@ if(MSVC)
   set(PHI_DUMMY_FILE_CONTENT
       "__declspec(dllexport) int phi_dummy_placeholder_function(){ return 0\\; }"
   )
+  target_link_libraries(phi ucrt.lib)
 else()
   set(PHI_DUMMY_FILE_CONTENT "")
 endif()
@@ -231,7 +232,6 @@ target_compile_definitions(phi_core PUBLIC PHI_INNER)
 
 if(WIN32)
   target_link_libraries(phi_core shlwapi.lib)
-  target_link_libraries(phi_core ucrt.lib)
 endif()
 
 if(WIN32)
