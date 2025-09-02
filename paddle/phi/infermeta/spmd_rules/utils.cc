@@ -173,9 +173,8 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
       axis_to_suggestions[axis].push_back(dims_mapping[i]);
     }
   }
-  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
+
   for (auto& pair : axis_to_suggestions) {
-    const std::string& axis = pair.first;
     auto& suggestions = pair.second;
     // Sort by their parallelism in descending order, construct a total order.
     std::sort(suggestions.begin(),
@@ -192,7 +191,25 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
                 return std::lexicographical_compare(
                     a.begin(), a.end(), b.begin(), b.end());
               });
+  }
+  // To vector
+  std::vector<std::pair<std::string, std::vector<std::vector<int64_t>>>>
+      vec_axis_to_suggestions(axis_to_suggestions.begin(),
+                              axis_to_suggestions.end());
 
+  std::sort(vec_axis_to_suggestions.begin(),
+            vec_axis_to_suggestions.end(),
+            [](auto& lhs, auto& rhs) {
+              auto lsize = lhs.second[0].size();
+              auto rsize = rhs.second[0].size();
+              return lsize > rsize;
+            });
+
+  std::unordered_map<std::string, std::vector<int64_t>> current_sharding;
+
+  for (auto& pair : vec_axis_to_suggestions) {
+    const std::string& axis = pair.first;
+    auto& suggestions = pair.second;
     std::vector<int64_t> merged_vec;
     std::unordered_set<int64_t> seen_dims;
     for (const auto& suggestion : suggestions) {
@@ -205,7 +222,6 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     }
     current_sharding[axis] = merged_vec;
   }
-
   // Iterative Conflict Resolution
   for (auto& [axis, sharding_vec] : current_sharding) {
     const int64_t axis_size = axis_sizes.at(axis);
