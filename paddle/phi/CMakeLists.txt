@@ -230,7 +230,7 @@ endif()
 target_compile_definitions(phi_core PUBLIC PHI_INNER)
 
 if(WIN32)
-  target_link_libraries(phi_core shlwapi.lib)
+  target_link_libraries(phi_core shlwapi.lib ucrt.lib)
 endif()
 
 if(WIN32)

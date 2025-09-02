@@ -36,8 +36,6 @@
 #include "paddle/phi/core/distributed/store/store.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
-COMMON_DECLARE_bool(tcp_store_using_libuv);
-
 namespace phi {
 namespace distributed {
 
@@ -164,13 +162,6 @@ class TCPStore : public Store {
   bool check(const std::string& key) override;
   void wait(const std::string& key) override;
   void set(const std::string& key, const std::vector<uint8_t>& value) override;
-
-  bool isLibuvBackend() const noexcept {
-    if (FLAGS_tcp_store_using_libuv) {
-      return true;
-    }
-    return false;
-  }
 
  private:
   void waitWorkers();

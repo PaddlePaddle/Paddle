@@ -23,6 +23,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 
+COMMON_DECLARE_bool(tcp_store_using_libuv);
 namespace phi::distributed::detail {
 
 // DaemonThread thread parent class methods
@@ -400,7 +401,7 @@ TCPStore::TCPStore(std::string host,
   VLOG(7) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
     _server = detail::TCPServer::create(
-        port, this->_num_workers, timeout, isLibuvBackend());
+        port, this->_num_workers, timeout, FLAGS_tcp_store_using_libuv);
   }
 
   _client = detail::TCPClient::connect(host, port);
