@@ -126,13 +126,8 @@ void AdamaxKernel(const Context& dev_ctx,
                                    master_out_data);
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(adamax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::AdamaxKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    adamax, GPU, ALL_LAYOUT, phi::AdamaxKernel, float, double, phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

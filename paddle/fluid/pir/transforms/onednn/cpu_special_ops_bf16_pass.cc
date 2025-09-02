@@ -57,10 +57,13 @@ class CastBf16Pattern : public pir::OpRewritePattern<OpType> {
     if (pre_op && pre_op->name() == "onednn_op.quantize") return false;
 
     auto attributes = op->attributes();
-    auto onednn_data_type = attributes["mkldnn_data_type"];
+    auto mkldnn_data_type = attributes["mkldnn_data_type"];
+    std::string mkldnn_dtype =
+        mkldnn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
+    auto onednn_data_type = attributes["onednn_data_type"];
     std::string onednn_dtype =
         onednn_data_type.template dyn_cast<pir::StrAttribute>().AsString();
-    if (onednn_dtype != "bfloat16") return false;
+    if (mkldnn_dtype != "bfloat16" && onednn_dtype != "bfloat16") return false;
 
     pir::IrContext *ctx = rewriter.ir_context();
 
@@ -124,10 +127,14 @@ class ConcatBf16QuantizePattern
     if (!pre_op.out().HasOneUse()) return false;
 
     auto op_attributes = op->attributes();
-    auto onednn_data_type = op_attributes.at("mkldnn_data_type")
+    auto mkldnn_data_type = op_attributes.at("mkldnn_data_type")
                                 .dyn_cast<pir::StrAttribute>()
                                 .AsString();
-    if (onednn_data_type != "bfloat16") return false;
+    auto onednn_data_type = op_attributes.at("onednn_data_type")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString();
+    if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16")
+      return false;
 
     auto combine_inputs = pre_op.inputs();
 
@@ -236,10 +243,14 @@ class SplitSliceBf16QuantizePattern
     if (pre_op) return false;
 
     auto op_attributes = op->attributes();
-    auto onednn_data_type = op_attributes.at("mkldnn_data_type")
+    auto mkldnn_data_type = op_attributes.at("mkldnn_data_type")
                                 .dyn_cast<pir::StrAttribute>()
                                 .AsString();
-    if (onednn_data_type != "bfloat16") return false;
+    auto onednn_data_type = op_attributes.at("onednn_data_type")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString();
+    if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16")
+      return false;
 
     pir::IrContext *ctx = rewriter.ir_context();
 
@@ -367,10 +378,14 @@ class SplitdoubleBf16QuantizePattern
     if (pre_op) return false;
 
     auto op_attributes = op->attributes();
-    auto onednn_data_type = op_attributes.at("mkldnn_data_type")
+    auto mkldnn_data_type = op_attributes.at("mkldnn_data_type")
                                 .dyn_cast<pir::StrAttribute>()
                                 .AsString();
-    if (onednn_data_type != "bfloat16") return false;
+    auto onednn_data_type = op_attributes.at("onednn_data_type")
+                                .dyn_cast<pir::StrAttribute>()
+                                .AsString();
+    if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16")
+      return false;
 
     pir::IrContext *ctx = rewriter.ir_context();
 

@@ -22,4 +22,4 @@ PD_REGISTER_KERNEL(sparse_momentum,
                    phi::SparseMomentumOpKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

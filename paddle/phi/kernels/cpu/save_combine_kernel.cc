@@ -28,7 +28,7 @@ PD_REGISTER_KERNEL(save_combine_tensor,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(save_combine_vocab,
                    CPU,
@@ -38,4 +38,4 @@ PD_REGISTER_KERNEL(save_combine_vocab,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

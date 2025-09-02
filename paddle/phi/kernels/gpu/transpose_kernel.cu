@@ -48,7 +48,10 @@ void TransposeKernel(const Context& dev_ctx,
   }
   phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, formatted_axis, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_TRANSPOSE_KERNEL(float, GPUContext)
+INSTANTIATE_TRANSPOSE_KERNEL(dtype::float16, GPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(transpose,
@@ -63,9 +66,9 @@ PD_REGISTER_KERNEL(transpose,
                    int32_t,
                    int64_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2) {}

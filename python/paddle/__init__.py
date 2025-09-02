@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Compatibility Note: The design of certain PaddlePaddle public APIs 
-# incorporates principles from PyTorch and NumPy, maintaining compatibility 
-# with PyTorch's API conventions in terms of function signatures and 
-# parameter semantics. It is important to clarify that these APIs are 
+# Compatibility Note: The design of certain PaddlePaddle public APIs
+# incorporates principles from PyTorch and NumPy, maintaining compatibility
+# with PyTorch's API conventions in terms of function signatures and
+# parameter semantics. It is important to clarify that these APIs are
 # implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
@@ -128,18 +128,24 @@ else:
         device = framework._get_paddle_place(device)
         if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
             original_init(
-                self, paddle.empty(shape=[0], dtype='float32'), place=device
+                self,
+                paddle.empty(shape=[0], dtype='float32', device=device),
+                place=device,
             )
             return
         if 'data' in kwargs:  # case 7,8
             data = kwargs.pop('data')
             original_init(
-                self, paddle.tensor(data, dtype='float32'), place=device
+                self,
+                paddle.tensor(data, dtype='float32', device=device),
+                place=device,
             )
         elif len(args) == 1 and isinstance(args[0], (list, tuple)):
             # case 5, 6
             original_init(
-                self, paddle.tensor(args[0], dtype='float32'), place=device
+                self,
+                paddle.tensor(args[0], dtype='float32', device=device),
+                place=device,
             )
         elif (
             builtins.all(isinstance(arg, int) for arg in args)
@@ -148,7 +154,7 @@ else:
             # case 3, 4
             original_init(
                 self,
-                paddle.empty(shape=list(args), dtype='float32'),
+                paddle.empty(shape=list(args), dtype='float32', device=device),
                 place=device,
             )
         else:
@@ -200,6 +206,8 @@ from . import (
     tensor as tensor,
     utils as utils,
 )
+from ._classes import classes as classes
+from ._ops import ops as ops
 from .amp import (
     get_autocast_cpu_dtype,
     get_autocast_dtype,

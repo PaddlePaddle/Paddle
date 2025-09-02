@@ -31,16 +31,17 @@ namespace phi {
  * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
-void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows,
-                       const phi::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is,
-                           phi::SelectedRows* selected_rows,
-                           const phi::DeviceContext& dev_ctx);
+PADDLE_API void SerializeToStream(std::ostream& os,
+                                  const phi::SelectedRows& selected_rows,
+                                  const phi::DeviceContext& dev_ctx);
+PADDLE_API void DeserializeFromStream(std::istream& is,
+                                      phi::SelectedRows* selected_rows,
+                                      const phi::DeviceContext& dev_ctx);
 
-void SerializeToStream(std::ostream& os,
-                       const phi::SelectedRows& selected_rows);
+PADDLE_API void SerializeToStream(std::ostream& os,
+                                  const phi::SelectedRows& selected_rows);
 
-void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows);
+PADDLE_API void DeserializeFromStream(std::istream& is,
+                                      phi::SelectedRows* selected_rows);
 
 }  // namespace phi

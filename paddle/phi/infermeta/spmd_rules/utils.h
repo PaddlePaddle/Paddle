@@ -17,6 +17,7 @@ limitations under the License. */
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -41,6 +42,10 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
                              const int64_t& broadcast_ndim,
                              const std::string& alphabet);
 
+std::unordered_map<std::string, int64_t> GetAxesSizes(
+    const std::vector<std::pair<std::string, std::vector<int64_t>>>&
+        axes_to_size);
+
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A replicated dimension could be merged by any sharded dimension.
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
@@ -55,6 +60,14 @@ int64_t ShardingMergeForAxis(const std::string& axis,
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
         tensor_axes_to_dim_pairs,
+    const bool merge_conflicts = true);
+
+std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
     const bool merge_conflicts = true);
 
 // Intend to use for generating the TensorDistAttr of output based on the input
@@ -202,6 +215,12 @@ struct ReplicateInferSpmdDynamicHelper
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
+
+std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, std::vector<int64_t>>&
+        axis_to_dim_map,
     const bool unsharded_miss_axis = false);
 
 void DebugInfoForInferSpmd(const std::string& rule_name,

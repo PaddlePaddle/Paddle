@@ -284,9 +284,9 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
   std::shared_ptr<const DenseTensorMeta> tensor_meta_;
 };
 
-bool equal_placements(const Placements& a, const Placements& b);
+PADDLE_API bool equal_placements(const Placements& a, const Placements& b);
 
-phi::distributed::Placements cvt_dim_map_to_placements(
+PADDLE_API phi::distributed::Placements cvt_dim_map_to_placements(
     const ProcessMesh& process_mesh,
     const std::vector<int64_t>& dim_mapping,
     const paddle::flat_hash_map<int64_t, phi::ReduceType>& partial_status);

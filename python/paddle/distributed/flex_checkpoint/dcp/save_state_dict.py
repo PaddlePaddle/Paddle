@@ -36,6 +36,7 @@ from .utils import (
     is_sharded_state_dict,
     minimal_nd_slice,
     ravel_index,
+    write_to_file_if_empty,
 )
 
 if TYPE_CHECKING:
@@ -428,9 +429,10 @@ def save_state_dict_impl(
         metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
         metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
 
-        if coordinator_rank == paddle.distributed.get_rank():
-            logger.debug(f"metadata:{metadata}")
-            paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
+        logger.debug(f"metadata:{metadata}")
+        write_to_file_if_empty(
+            metadata, os.path.join(path, f"{unique_id}.metadata")
+        )
 
         # TODO(zhuxinming): dedup_tensor should using replica id when using ShardedWeight.
         dedup_tensor(

@@ -138,8 +138,8 @@ PD_REGISTER_KERNEL(accuracy,
                    GPU,
                    ALL_LAYOUT,
                    phi::AccuracyKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);

@@ -32,10 +32,9 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
     case DataType::INT64:
       return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::dtype::float16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(
-          GetValue<phi::dtype::bfloat16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:

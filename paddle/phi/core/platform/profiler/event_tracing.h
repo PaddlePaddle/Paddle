@@ -26,7 +26,7 @@ namespace platform {
 // Host event tracing. A trace marks something that happens but has no duration
 // associated with it. For example, thread starts working.
 // Chrome Trace Viewer Format: Instant Event
-struct RecordInstantEvent {
+struct PADDLE_API RecordInstantEvent {
   /**
    * @param name: It is the caller's responsibility to manage the underlying
    * storage. RecordInstantEvent stores the pointer.

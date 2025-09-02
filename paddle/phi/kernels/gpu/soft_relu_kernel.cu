@@ -61,5 +61,5 @@ PD_REGISTER_KERNEL(soft_relu,
                    phi::SoftReluCudaKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

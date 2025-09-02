@@ -15,12 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include <stddef.h>
+#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace platform {
 
 //! Set the number of threads in use.
-void SetNumThreads(int num_threads);
+PADDLE_API void SetNumThreads(int num_threads);
 
 }  // namespace platform
 }  // namespace paddle

@@ -1556,19 +1556,19 @@ PD_REGISTER_KERNEL(flash_attn_v3_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3GradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flash_attn_v3_varlen_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3VarlenGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flashmask_attention_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashMaskV2GradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
