@@ -155,7 +155,6 @@ def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
 
 
 class TestBCELoss(unittest.TestCase):
-
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
@@ -298,7 +297,6 @@ class TestBceLossOpFP16(TestBceLossOp):
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
-
     def test_fp16(self):
         if not core.is_compiled_with_cuda():
             return

@@ -74,9 +74,9 @@ class CheckMethod(Enum):
                 >>> print(CheckMethod.get_checking_method(MaskAlgo.MASK_2D_BEST))
                 CheckMethod.CHECK_2D
         """
-        assert isinstance(
-            mask_algo, MaskAlgo
-        ), "mask_algo should be MaskAlgo type"
+        assert isinstance(mask_algo, MaskAlgo), (
+            "mask_algo should be MaskAlgo type"
+        )
         if mask_algo == MaskAlgo.MASK_1D:
             return CheckMethod.CHECK_1D
         else:

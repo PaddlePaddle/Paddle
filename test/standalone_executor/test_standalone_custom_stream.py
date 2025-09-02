@@ -74,7 +74,6 @@ class TestCustomStream(unittest.TestCase):
 
         if apply_custom_stream:
             self.set_custom_stream(main_program)
-
         with paddle.static.program_guard(main_program, startup_program):
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
             scope = core.Scope()

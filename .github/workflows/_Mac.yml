@@ -2,6 +2,11 @@ name: Mac-CPU
 
 on:
   workflow_call:
+    inputs:
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -42,6 +47,7 @@ defaults:
 jobs:
   build-and-test:
     name: Build and test
+    if: ${{ inputs.clone-can-skip != 'true' }}
     runs-on:
       group: Mac-CI
 

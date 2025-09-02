@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "paddle/fluid/imperative/execution_context.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
@@ -188,9 +189,9 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_TRUE(ctx->IsDygraph());
 }
 
-std::string LayerDebugString(const std::string& op_type,
-                             const NameVarBaseMap& ins,
-                             const NameVarBaseMap& outs);
+PADDLE_API std::string LayerDebugString(const std::string& op_type,
+                                        const NameVarBaseMap& ins,
+                                        const NameVarBaseMap& outs);
 
 TEST(test_layer, test_debug_string) {
   phi::CPUPlace place;

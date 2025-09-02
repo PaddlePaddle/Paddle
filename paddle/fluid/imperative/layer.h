@@ -51,6 +51,25 @@ class GradOpNode;
 class OpBase;
 class VariableWrapper;
 
+#ifdef _WIN32
+PADDLE_API void TestSetForwardDataTypeOfGradVarsEager(
+    const NameVarMap<egr::EagerVariable>& outs);
+
+PADDLE_API std::string LayerDebugString(const std::string& op_type,
+                                        const NameVarMap<VarBase>& ins,
+                                        const NameVarMap<VarBase>& outs);
+
+PADDLE_API std::string LayerDebugString(
+    const std::string& op_type,
+    const NameVarMap<VariableWrapper>& ins,
+    const NameVarMap<VariableWrapper>& outs);
+
+PADDLE_API std::string LayerDebugString(
+    const std::string& op_type,
+    const NameVarMap<egr::EagerVariable>& ins,
+    const NameVarMap<egr::EagerVariable>& outs);
+#endif
+
 class TEST_API ThreadSafeNameSet {
  public:
   void Insert(const std::string& name);
@@ -178,7 +197,7 @@ class VarBase {
     var_->SetGradNode(node);
   }
 
-  size_t GradOpNum() const;
+  PADDLE_API size_t GradOpNum() const;
 
   const std::shared_ptr<GradOpNode>& GradNode() const { return grad_node_; }
 
@@ -235,14 +254,14 @@ class VarBase {
   void _GradientSetEmpty(bool is_empty = true);
   bool _IsGradientSetEmpty();
 
-  std::shared_ptr<VarBase> NewVarBase(const phi::Place& dst_place,
-                                      const bool blocking) const;
+  PADDLE_API std::shared_ptr<VarBase> NewVarBase(const phi::Place& dst_place,
+                                                 const bool blocking) const;
 
-  void CopyFrom(const imperative::VarBase& src, bool blocking);
+  PADDLE_API void CopyFrom(const imperative::VarBase& src, bool blocking);
 
-  void BumpInplaceVersion();
+  PADDLE_API void BumpInplaceVersion();
 
-  void _CopyGradientFrom(const imperative::VarBase& src);
+  PADDLE_API void _CopyGradientFrom(const imperative::VarBase& src);
 
   /* Hook related method: now only used for GradVarBase */
   bool HasVariableWrapperHook() const { return var_->HasVariableWrapperHook(); }
@@ -289,7 +308,7 @@ class VarBase {
   TEST_API static ThreadSafeNameSet name_set_;
 };
 
-std::shared_ptr<GradOpNode> CreateGradOpNode(
+PADDLE_API std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op,
     const NameVarBaseMap& ins,
     const NameVarBaseMap& outs,
@@ -298,7 +317,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
-std::shared_ptr<GradOpNode> CreateGradOpNode(
+PADDLE_API std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op,
     const NameTensorMap& ins,
     const NameTensorMap& outs,
@@ -307,7 +326,7 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
     const phi::Place& place,
     const std::map<std::string, std::string>& inplace_map);
 
-void ClearNoNeedBufferInputs(OpBase* op);
+PADDLE_API void ClearNoNeedBufferInputs(OpBase* op);
 
 }  // namespace imperative
 }  // namespace paddle

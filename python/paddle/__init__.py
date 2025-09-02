@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Compatibility Note: The design of certain PaddlePaddle public APIs
+# incorporates principles from PyTorch and NumPy, maintaining compatibility
+# with PyTorch's API conventions in terms of function signatures and
+# parameter semantics. It is important to clarify that these APIs are
+# implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
 import typing
@@ -36,19 +42,30 @@ except ImportError:
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
+from .base.dygraph.generated_tensor_methods_patch import (
+    monkey_patch_generated_methods_for_tensor,
+)
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
-from .framework import monkey_patch_math_tensor, monkey_patch_variable
+from .framework import (
+    monkey_patch_math_tensor,
+    monkey_patch_variable,
+)
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
+from .pir.generated_methods_patch import (
+    monkey_patch_generated_methods_for_value,
+)
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
+
+monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -84,8 +101,66 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
+    import builtins
+
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
+    original_init = Tensor.__init__
+
+    def new_init(self, *args, **kwargs):
+        """
+        New Usage Example:
+        1. paddle.Tensor()
+        2. paddle.Tensor(device="cpu")
+        3. paddle.Tensor(1,2,3)
+        4. paddle.Tensor(1,2,3, device="cpu")
+        5. paddle.Tensor([1,2,3])
+        6. paddle.Tensor([1,2,3], device="cpu")
+        7. paddle.Tensor(data=[1,2,3])
+        8. paddle.Tensor(data=[1,2,3], device="cpu")
+        Original Usage Example:
+        9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
+        """
+        if 'device' in kwargs:
+            device = kwargs.pop('device')
+        else:
+            device = "cpu"
+        device = framework._get_paddle_place(device)
+        if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
+            original_init(
+                self,
+                paddle.empty(shape=[0], dtype='float32', device=device),
+                place=device,
+            )
+            return
+        if 'data' in kwargs:  # case 7,8
+            data = kwargs.pop('data')
+            original_init(
+                self,
+                paddle.tensor(data, dtype='float32', device=device),
+                place=device,
+            )
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            # case 5, 6
+            original_init(
+                self,
+                paddle.tensor(args[0], dtype='float32', device=device),
+                place=device,
+            )
+        elif (
+            builtins.all(isinstance(arg, int) for arg in args)
+            and len(kwargs) == 0
+        ):
+            # case 3, 4
+            original_init(
+                self,
+                paddle.empty(shape=list(args), dtype='float32', device=device),
+                place=device,
+            )
+        else:
+            original_init(self, *args, **kwargs)
+
+    Tensor.__init__ = new_init
 
 import paddle.distributed.fleet
 import paddle.text
@@ -122,13 +197,17 @@ from . import (
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
+    compat as compat,
     fft as fft,
     hub as hub,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
 )
+from ._classes import classes as classes
+from ._ops import ops as ops
 from .amp import (
     get_autocast_cpu_dtype,
     get_autocast_dtype,
@@ -197,8 +276,19 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
     MmapStorage,
+    ShortTensor,
     arange,
     assign,
     cauchy_,
@@ -220,6 +310,8 @@ from .tensor.creation import (
     ones,
     ones_like,
     polar,
+    range,
+    tensor as as_tensor,
     to_tensor,
     tril,
     tril_,
@@ -248,6 +340,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -333,6 +426,7 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
     ravel,
     repeat_interleave,
@@ -343,8 +437,11 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -406,6 +503,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     clip,
@@ -501,6 +599,7 @@ from .tensor.math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -553,6 +652,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -569,6 +669,7 @@ from .tensor.random import (
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,
@@ -612,6 +713,34 @@ from .utils.dlpack import (
     from_dlpack,
     to_dlpack,
 )
+
+
+class _TensorMethodOrModule:
+    def __init__(self):
+        import paddle.tensor as tensor_module
+
+        from .tensor.creation import tensor as tensor_api
+
+        self.module = tensor_module
+        self.method = tensor_api
+
+    def __call__(self, *args, **kwargs):
+        return self.method(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+    def __repr__(self):
+        return repr(self.method)
+
+    def __str__(self):
+        return str(self.method)
+
+    def __dir__(self):
+        return dir(self.module)
+
+
+tensor = _TensorMethodOrModule()  # noqa: F811
 
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
@@ -795,8 +924,23 @@ nan = math.nan
 pi = math.pi
 e = math.e
 
+# API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+div = divide
+div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
+
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -873,6 +1017,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -908,7 +1053,18 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     'crop',
     'ParamAttr',
     'stanh',
@@ -922,6 +1078,7 @@ __all__ = [
     'squeeze',
     'squeeze_',
     'to_tensor',
+    'as_tensor',
     'gather_nd',
     'isin',
     'isinf',
@@ -979,6 +1136,7 @@ __all__ = [
     'pdist',
     'unbind',
     'meshgrid',
+    'range',
     'arange',
     'load',
     'numel',
@@ -1024,6 +1182,7 @@ __all__ = [
     'DataParallel',
     'argmin',
     'prod',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -1039,10 +1198,14 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1090,11 +1253,15 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
     'randn_like',
+    'rand_like',
     'strided_slice',
     'unique',
     'unique_consecutive',
@@ -1106,6 +1273,7 @@ __all__ = [
     'flatten_',
     'ravel',
     'asin',
+    'mul',
     'multiply',
     'multiply_',
     'disable_static',
@@ -1152,6 +1320,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1183,12 +1353,16 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1249,9 +1423,12 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'softmax',
 ]
-
 import os
+
+monkey_patch_generated_methods_for_tensor()
+import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

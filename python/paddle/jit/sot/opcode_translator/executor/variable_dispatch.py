@@ -1071,7 +1071,6 @@ Dispatcher.register(
 def apply_op_with_zero_division_check(
     op: BinaryOp, lhs: VariableBase, rhs: VariableBase
 ):
-
     graph = lhs.graph
     if op in NEED_GUARD_ZERO_DIVISION_ERROR_OPS:
         call_eq = BuiltinVariable(operator.eq, graph, DanglingTracker())
@@ -1201,7 +1200,9 @@ for binary_fn in BINARY_OPS:
                         "TensorVariable",
                     ),
                     partial(
-                        lambda reverse_magic_name, var, other: other.graph.call_tensor_method(
+                        lambda reverse_magic_name,
+                        var,
+                        other: other.graph.call_tensor_method(
                             reverse_magic_name, other, var
                         ),
                         magic_method.name,

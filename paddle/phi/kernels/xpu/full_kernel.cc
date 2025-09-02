@@ -96,7 +96,7 @@ void FullLikeKernel(const Context& dev_ctx,
     using XPUInTDType = typename XPUTypeTrait<T>::Type;
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
+        typename std::conditional<std::is_same<T, phi::float16>::value,
                                   float,
                                   T>::type>::type;
 
@@ -164,8 +164,8 @@ PD_REGISTER_KERNEL(full,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
@@ -174,12 +174,13 @@ PD_REGISTER_KERNEL(full_like,
                    float,
                    double,
                    uint8_t,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -191,8 +192,8 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -207,7 +208,7 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

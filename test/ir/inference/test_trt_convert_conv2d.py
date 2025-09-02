@@ -178,15 +178,19 @@ class TrtConvertConv2dNotPersistableTest(TrtLayerAutoScanTest):
         self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-2, 1e-2)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-2, 1e-2),
+        )
 
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-2, 1e-2)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-2, 1e-2),
+        )
 
     def test(self):
         self.run_test(run_pir=True)

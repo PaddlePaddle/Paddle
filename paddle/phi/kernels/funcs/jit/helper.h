@@ -196,7 +196,7 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   return funcs[0];
 }
 
-extern std::map<size_t, std::shared_ptr<void>>& GetFuncCacheMap();
+PADDLE_API extern std::map<size_t, std::shared_ptr<void>>& GetFuncCacheMap();
 
 template <typename KernelTuple, typename PlaceType>
 class KernelFuncs {
@@ -246,10 +246,10 @@ class KernelFuncs {
   DISABLE_COPY_AND_ASSIGN(KernelFuncs);
 };
 
-const char* to_string(KernelType kt);
-const char* to_string(SeqPoolType kt);
+PADDLE_API const char* to_string(KernelType kt);
+PADDLE_API const char* to_string(SeqPoolType kt);
 
-KernelType to_kerneltype(const std::string& act);
+PADDLE_API KernelType to_kerneltype(const std::string& act);
 
 inline std::ostream& operator<<(std::ostream& os, const lstm_attr_t& attr) {
   os << "dim_size[" << attr.d << "],act_gate[" << to_string(attr.act_gate)

@@ -553,9 +553,7 @@ class Momentum(Optimizer):
                         "use_nesterov": self._use_nesterov,
                         "regularization_method": self._regularization_method_dict[
                             key
-                        ][
-                            param_group_idx
-                        ],
+                        ][param_group_idx],
                         "regularization_coeff": self._regularization_coeff_dict[
                             key
                         ][param_group_idx],

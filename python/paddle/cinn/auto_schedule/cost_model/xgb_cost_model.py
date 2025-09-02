@@ -78,9 +78,9 @@ class XgbCostModel:
         Args:
             path(str): path to save
         """
-        assert (
-            self.booster is not None
-        ), "Calling save on a XgbCostModel not been trained"
+        assert self.booster is not None, (
+            "Calling save on a XgbCostModel not been trained"
+        )
         self.booster.save_model(path)
 
     def load(self, path):

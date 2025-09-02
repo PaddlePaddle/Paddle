@@ -148,5 +148,5 @@ PD_REGISTER_KERNEL(rms_norm_grad,
                    ALL_LAYOUT,
                    phi::RmsNormGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

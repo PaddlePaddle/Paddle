@@ -27,8 +27,9 @@ def resize_image(img, target_size):
     target_size: the target resized image size.
     """
     percent = target_size / float(min(img.size[0], img.size[1]))
-    resized_size = int(round(img.size[0] * percent)), int(
-        round(img.size[1] * percent)
+    resized_size = (
+        int(round(img.size[0] * percent)),
+        int(round(img.size[1] * percent)),
     )
     img = img.resize(resized_size, Image.ANTIALIAS)
     return img
@@ -58,8 +59,9 @@ def crop_img(im, inner_size, color=True, test=True):
       If True, crop the center of images.
     """
     if color:
-        height, width = max(inner_size, im.shape[1]), max(
-            inner_size, im.shape[2]
+        height, width = (
+            max(inner_size, im.shape[1]),
+            max(inner_size, im.shape[2]),
         )
         padded_im = np.zeros((3, height, width))
         startY = (height - im.shape[1]) / 2
@@ -68,8 +70,9 @@ def crop_img(im, inner_size, color=True, test=True):
         padded_im[:, startY:endY, startX:endX] = im
     else:
         im = im.astype('float32')
-        height, width = max(inner_size, im.shape[0]), max(
-            inner_size, im.shape[1]
+        height, width = (
+            max(inner_size, im.shape[0]),
+            max(inner_size, im.shape[1]),
         )
         padded_im = np.zeros((height, width))
         startY = (height - im.shape[0]) / 2

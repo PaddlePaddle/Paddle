@@ -41,7 +41,7 @@ jobs:
       WITH_CACHE: "OFF"
       WITH_TPCACHE: "ON"
       WITH_SCCACHE: "ON"
-      WITH_SHARED_PHI: "OFF"
+      WITH_SHARED_PHI: "ON"
       FLAGS_enable_eager_mode: 1
       GIT_PR_ID: ${{ github.event.pull_request.number }}
       WITH_TESTING: "ON"

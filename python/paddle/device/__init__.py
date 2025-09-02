@@ -222,6 +222,8 @@ def _convert_to_place(device: PlaceLike) -> PlaceLike:
         return device  # return directly if not a string
 
     lower_device = device.lower()
+    if lower_device.startswith("cuda"):
+        lower_device = lower_device.replace("cuda", "gpu")
     if device in core.get_all_custom_device_type():
         selected_devices = os.getenv(f"FLAGS_selected_{device}s", "0").split(
             ","
@@ -610,6 +612,10 @@ def get_device_properties(
             "Please input appropriate device again!"
             "Example: 'metax_gpu:0'"
         )
+
+    if device_name == 'gpu':
+        return paddle.device.cuda.get_device_properties(device_id)
+
     if not core.is_compiled_with_custom_device(device_name):
         raise ValueError(
             f"PaddlePaddle is not compiled with support for '{device_name}' device. "
@@ -683,18 +689,18 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
             "Please input appropriate device again!"
         )
 
-    assert (
-        device_id >= 0
-    ), f"The device id must be not less than 0, but got id = {device_id}."
+    assert device_id >= 0, (
+        f"The device id must be not less than 0, but got id = {device_id}."
+    )
 
     if core.is_compiled_with_cuda():
-        assert (
-            device_id < device_count()
-        ), f"The device id {device_id} exceeds gpu card number {device_count()}"
+        assert device_id < device_count(), (
+            f"The device id {device_id} exceeds gpu card number {device_count()}"
+        )
     else:
-        assert device_id < core.get_custom_device_count(
-            device_type
-        ), f"The device id {device_id} exceeds {device_type} device card number {core.get_custom_device_count(device_type)}"
+        assert device_id < core.get_custom_device_count(device_type), (
+            f"The device id {device_id} exceeds {device_type} device card number {core.get_custom_device_count(device_type)}"
+        )
     return device_id
 
 

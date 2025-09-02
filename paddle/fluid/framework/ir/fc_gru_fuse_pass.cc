@@ -181,7 +181,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
                          Node* bias,
                          Node* hidden,
                          Node* fc_bias,
-                         const bool use_mkldnn) {
+                         const bool use_onednn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
@@ -200,7 +200,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
                     gru->Op()->GetAttrIfExists<bool>("origin_mode"));
     // TODO(TJ): This should be a option for infer
     op_desc.SetAttr("use_seq", true);
-    op_desc.SetAttr("use_mkldnn", use_mkldnn);
+    op_desc.SetAttr("use_onednn", use_onednn);
     op_desc.SetAttr("activation", gru->Op()->GetAttr("activation"));
     op_desc.SetAttr("gate_activation", gru->Op()->GetAttr("gate_activation"));
 
@@ -290,8 +290,9 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
       LOG(INFO) << "fc_gru_fuse_pass not supported when origin_mode=True.";
       return;
     }
-    const bool use_mkldnn =
-        (mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+    const bool use_onednn =
+        ((mul->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+          mul->Op()->GetAttrIfExists<bool>("use_onednn")) &&
          gru->Op()->GetAttrIfExists<std::string>("activation") == "tanh" &&
          gru->Op()->GetAttrIfExists<std::string>("gate_activation") ==
              "sigmoid");
@@ -302,7 +303,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
 
-      gru_creator(gru, x_n, w, Weight, Bias, Hidden, fc_bias, use_mkldnn);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, fc_bias, use_onednn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes({mul,
                                                     gru,
@@ -314,7 +315,7 @@ int FCGRUFusePass::BuildFusion(Graph* graph,
                                                     BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      gru_creator(gru, x_n, w, Weight, Bias, Hidden, nullptr, use_mkldnn);
+      gru_creator(gru, x_n, w, Weight, Bias, Hidden, nullptr, use_onednn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, gru, BatchGate, BatchResetHiddenPrev, BatchHidden});

@@ -116,12 +116,12 @@ class DistributedCrossEntropy(DistributedOperatorImplContainer):
         axis = axis + logits_ndim if axis < 0 else axis
 
         if is_dim_shard(logits_dims_mapping[axis]):
-            assert (
-                soft_label is False
-            ), "parallel_cross_entropy does not support soft_label now."
-            assert (
-                axis == logits_ndim - 1
-            ), "parallel_cross_entropy can only support shard on the last dim now."
+            assert soft_label is False, (
+                "parallel_cross_entropy does not support soft_label now."
+            )
+            assert axis == logits_ndim - 1, (
+                "parallel_cross_entropy can only support shard on the last dim now."
+            )
             op_dist_attr.impl_idx = 1
         else:
             op_dist_attr.impl_idx = 0
@@ -162,9 +162,9 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        assert (
-            op_dist_attr is not None
-        ), f"forward op [{src_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"forward op [{src_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         assert 'Logits' in kwargs, "input [Logits] is not given"
@@ -172,12 +172,12 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         assert 'Loss' in kwargs, "output [Loss] is not given"
         assert 'Softmax' in kwargs, "output [Softmax] is not given"
 
-        assert (
-            len(kwargs['Logits']) == 1
-        ), "input [Logits] take 1 variable but got {}".format(kwargs['Logits'])
-        assert (
-            len(kwargs['Label']) == 1
-        ), "input [Label] take 1 variable but got {}".format(kwargs['Label'])
+        assert len(kwargs['Logits']) == 1, (
+            "input [Logits] take 1 variable but got {}".format(kwargs['Logits'])
+        )
+        assert len(kwargs['Label']) == 1, (
+            "input [Label] take 1 variable but got {}".format(kwargs['Label'])
+        )
 
         logits_var = main_block._var_recursive(kwargs['Logits'][0])
         label_var = main_block._var_recursive(kwargs['Label'][0])
@@ -228,9 +228,9 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
 
-        assert (
-            op_dist_attr is not None
-        ), f"backward op [{backward_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"backward op [{backward_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         assert 'Softmax' in kwargs, "input [Logits] is not given"
@@ -238,21 +238,21 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         assert 'Loss@GRAD' in kwargs, "input [Loss@GRAD] is not given"
         assert 'Logits@GRAD' in kwargs, "output [Logits@GRAD] is not given"
 
-        assert (
-            len(kwargs['Softmax']) == 1
-        ), "input [Softmax] take 1 variable but got {}".format(
-            kwargs['Softmax']
+        assert len(kwargs['Softmax']) == 1, (
+            "input [Softmax] take 1 variable but got {}".format(
+                kwargs['Softmax']
+            )
         )
-        assert (
-            len(kwargs['Label']) == 1
-        ), "input [Label] take 1 variable but got {}".format(kwargs['Label'])
-        assert (
-            len(kwargs['Loss@GRAD']) == 1
-        ), "input [Loss@GRAD] take 1 variable but got {}".format(kwargs['Out'])
-        assert (
-            len(kwargs['Logits@GRAD']) == 1
-        ), "output [Logits@GRAD] take 1 variable but got {}".format(
-            kwargs['Logits@GRAD']
+        assert len(kwargs['Label']) == 1, (
+            "input [Label] take 1 variable but got {}".format(kwargs['Label'])
+        )
+        assert len(kwargs['Loss@GRAD']) == 1, (
+            "input [Loss@GRAD] take 1 variable but got {}".format(kwargs['Out'])
+        )
+        assert len(kwargs['Logits@GRAD']) == 1, (
+            "output [Logits@GRAD] take 1 variable but got {}".format(
+                kwargs['Logits@GRAD']
+            )
         )
         # replicate op in dist program
         copy_op_without_infer_shape(backward_op, main_block, ctx, kwargs)
@@ -285,9 +285,9 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        assert (
-            op_dist_attr is not None
-        ), f"forward op [{src_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"forward op [{src_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         assert 'Logits' in kwargs, "input [Logits] is not given"
@@ -295,12 +295,12 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         assert 'Loss' in kwargs, "output [Loss] is not given"
         assert 'Softmax' in kwargs, "output [Softmax] is not given"
 
-        assert (
-            len(kwargs['Logits']) == 1
-        ), "input [Logits] take 1 variable but got {}".format(kwargs['Logits'])
-        assert (
-            len(kwargs['Label']) == 1
-        ), "input [Label] take 1 variable but got {}".format(kwargs['Label'])
+        assert len(kwargs['Logits']) == 1, (
+            "input [Logits] take 1 variable but got {}".format(kwargs['Logits'])
+        )
+        assert len(kwargs['Label']) == 1, (
+            "input [Label] take 1 variable but got {}".format(kwargs['Label'])
+        )
 
         logits_var = main_block._var_recursive(kwargs['Logits'][0])
         label_var = main_block._var_recursive(kwargs['Label'][0])
@@ -395,9 +395,9 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
 
-        assert (
-            op_dist_attr is not None
-        ), f"backward op [{backward_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"backward op [{backward_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         assert 'Softmax' in kwargs, "input [Softmax] is not given"
@@ -405,23 +405,23 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         assert 'Loss@GRAD' in kwargs, "input [Loss@GRAD] is not given"
         assert 'Logits@GRAD' in kwargs, "output [Logits@GRAD] is not given"
 
-        assert (
-            len(kwargs['Softmax']) == 1
-        ), "input [Softmax] take 1 variable but got {}".format(
-            kwargs['Softmax']
+        assert len(kwargs['Softmax']) == 1, (
+            "input [Softmax] take 1 variable but got {}".format(
+                kwargs['Softmax']
+            )
         )
-        assert (
-            len(kwargs['Label']) == 1
-        ), "input [Label] take 1 variable but got {}".format(kwargs['Label'])
-        assert (
-            len(kwargs['Loss@GRAD']) == 1
-        ), "input [Loss@GRAD] take 1 variable but got {}".format(
-            kwargs['Loss@GRAD']
+        assert len(kwargs['Label']) == 1, (
+            "input [Label] take 1 variable but got {}".format(kwargs['Label'])
         )
-        assert (
-            len(kwargs['Logits@GRAD']) == 1
-        ), "output [Logits@GRAD] take 1 variable but got {}".format(
-            kwargs['Logits@GRAD']
+        assert len(kwargs['Loss@GRAD']) == 1, (
+            "input [Loss@GRAD] take 1 variable but got {}".format(
+                kwargs['Loss@GRAD']
+            )
+        )
+        assert len(kwargs['Logits@GRAD']) == 1, (
+            "output [Logits@GRAD] take 1 variable but got {}".format(
+                kwargs['Logits@GRAD']
+            )
         )
 
         # got dist attribute info

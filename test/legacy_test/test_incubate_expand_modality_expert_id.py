@@ -82,9 +82,8 @@ def fused_gate_logits_process_ref(
 
     token_type_ids_float = token_type_ids[:, None].astype("float32")
     weight_and_expert = (
-        (1 - token_type_ids_float) * lm_weight_and_expert_id
-        + token_type_ids_float * mm_weight_and_expert_id
-    )
+        1 - token_type_ids_float
+    ) * lm_weight_and_expert_id + token_type_ids_float * mm_weight_and_expert_id
     return weight_and_expert, prob_lm.reshape([prob_lm.shape[0], -1]), prob_mm
 
 
@@ -177,5 +176,4 @@ class Test_expand_modality_expert_id_API(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()

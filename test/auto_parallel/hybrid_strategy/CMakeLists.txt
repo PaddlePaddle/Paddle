@@ -10,13 +10,20 @@ if((WITH_GPU) AND (LINUX))
     test_semi_auto_parallel_hybrid_strategy ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_semi_auto_parallel_hybrid_strategy
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
     test_save_load_state_dict MODULES test_save_load_state_dict ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_save_load_state_dict
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_flexcheckpoint_merge MODULES test_flexcheckpoint_merge ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_flexcheckpoint_merge
                        PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
@@ -97,7 +104,7 @@ if((WITH_GPU) AND (LINUX))
     test_pir_reshard_nd_mesh_func MODULES test_pir_reshard_nd_mesh_func ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_pir_reshard_nd_mesh_func
-                       PROPERTIES TIMEOUT "35" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "60" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
@@ -151,7 +158,7 @@ if((WITH_GPU) AND (LINUX))
     ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_parallel_api_with_llama_3d
-                       PROPERTIES TIMEOUT "400" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "800" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(

@@ -38,7 +38,7 @@ if(WITH_NCCL OR WITH_RCCL)
 
 endif()
 
-if(WITH_FLAGCX)
+if(WITH_FLAGCX AND NOT WITH_XPU)
   cc_library(
     process_group_flagcx
     SRCS process_group_flagcx.cc common.cc

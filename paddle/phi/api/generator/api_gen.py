@@ -105,12 +105,12 @@ class ForwardAPI(BaseAPI):
                     result = re.search(r"(?P<in>\w+)\s*->\s*(?P<out>\w+)", item)
                     in_val = result.group('in')
                     out_val = result.group('out')
-                    assert (
-                        in_val in self.inputs['names']
-                    ), f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
-                    assert (
-                        out_val in self.outputs['names']
-                    ), f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    assert in_val in self.inputs['names'], (
+                        f"{self.api} : {mode} input error: the input var name('{in_val}') is not found in the input args of {self.api}."
+                    )
+                    assert out_val in self.outputs['names'], (
+                        f"{self.api} : {mode} output error: the output var name('{out_val}') is not found in the output args of {self.api}."
+                    )
 
                     if mode == 'inplace':
                         inplace_map[out_val] = in_val
@@ -120,7 +120,6 @@ class ForwardAPI(BaseAPI):
         return inplace_map, view_map
 
     def get_return_type_with_intermediate(self, inplace_flag=False):
-
         out_type_list = []
         for i, out_type in enumerate(self.outputs['types']):
             out_name = self.outputs['names'][i].split('@')[0]
@@ -228,7 +227,7 @@ class ForwardAPI(BaseAPI):
                 and self.api != "empty_like"
             ):
                 output_create = f"""
-{code_indent}  Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
             else:
                 output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
@@ -243,9 +242,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'std::vector<Tensor>'
                 or return_type == 'std::vector<Tensor>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -255,9 +254,9 @@ class ForwardAPI(BaseAPI):
                 return_type == 'paddle::optional<std::vector<Tensor>>'
                 or return_type == 'paddle::optional<std::vector<Tensor>>&'
             ):
-                assert (
-                    self.outputs['out_size_expr'][0] is not None
-                ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                assert self.outputs['out_size_expr'][0] is not None, (
+                    f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                )
                 output_create = (
                     output_create
                     + f"""
@@ -327,9 +326,9 @@ class ForwardAPI(BaseAPI):
                     get_out_code = f"std::get<{i}>(api_output).get_ptr()"
 
                 if out_dtype_list[i] == 'std::vector<Tensor>':
-                    assert (
-                        self.outputs['out_size_expr'][i] is not None
-                    ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    assert self.outputs['out_size_expr'][i] is not None, (
+                        f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+                    )
                     # Special case for inplace vector and inplace optional<vector>
                     if self.outputs['names'][i] in self.inplace_map:
                         set_out_func = "SetInplaceVectorKernelOutput"
@@ -428,9 +427,8 @@ class ForwardAPI(BaseAPI):
 
 
 class BackwardAPI(ForwardAPI):
-
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -438,7 +436,7 @@ class BackwardAPI(ForwardAPI):
         else:
             inplace_name = api_func_name
         api_code = f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_input_out=append_input_out)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_predefined_out=append_predefined_out)}) {{
 {self.get_grad_outputs_define(inplace_flag)}
 {self.get_optional_inputs_change(inplace_flag)}
     {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
@@ -447,7 +445,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
 """
         return api_code
 
-    def gene_api_code(self, grad_flag=False, append_input_out=False):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
         if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
@@ -459,7 +457,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
             return ""
 
         api_code = self.gene_base_api_code(
-            grad_flag=grad_flag, append_input_out=append_input_out
+            grad_flag=grad_flag, append_predefined_out=append_predefined_out
         )
         if self.is_base_api and len(self.inplace_map) > 0:
             if self.api[-1] == '_':
@@ -468,7 +466,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
 
         return api_code
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
@@ -483,7 +481,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             api_declaration = f"""
-PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_predefined_out=append_predefined_out)});
 """
 
         if self.is_base_api and len(self.inplace_map) > 0:
@@ -492,7 +490,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(appen
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True,append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_predefined_out=append_predefined_out)});
 """
             )
 
@@ -653,7 +651,7 @@ def generate_api(
             forward_api.is_dygraph_api = False
             header_file.write(
                 forward_api.gene_api_declaration(
-                    grad_flag=grad_flag, append_input_out=not grad_flag
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
                 )
             )
             source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))
@@ -661,7 +659,7 @@ def generate_api(
 
         header_file.write(
             forward_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=not grad_flag
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
             )
         )
         source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))

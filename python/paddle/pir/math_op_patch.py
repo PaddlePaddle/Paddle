@@ -25,6 +25,9 @@ import numpy as np
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.utils.decorator_utils import (
+    size_args_decorator_patch,
+)
 
 from . import Value
 
@@ -647,6 +650,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -682,8 +686,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_empty_(
         self,
         size: ShapeLike,
@@ -691,6 +697,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -721,9 +728,14 @@ def monkey_patch_value():
             device = self.place
 
         return paddle.empty(
-            size, dtype=dtype, device=device, requires_grad=requires_grad
+            size,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_ones_(
         self,
         size: ShapeLike,
@@ -731,6 +743,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -766,8 +779,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_zeros_(
         self,
         size: ShapeLike,
@@ -775,6 +790,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -810,6 +826,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _int_(self):
@@ -1026,9 +1043,9 @@ def monkey_patch_value():
         return _C_ops.sparse_indices(self)
 
     def set_shape(self, shape):
-        assert (
-            paddle.base.dygraph.base.in_to_static_mode()
-        ), "We only support call 'set_shape' in to_static mode."
+        assert paddle.base.dygraph.base.in_to_static_mode(), (
+            "We only support call 'set_shape' in to_static mode."
+        )
 
         if self.is_dense_tensor_type() or self.is_selected_row_type():
             type = paddle.pir.create_shaped_type(self.type(), shape)
@@ -1074,9 +1091,9 @@ def monkey_patch_value():
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if dtype is None:

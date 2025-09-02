@@ -430,6 +430,16 @@
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
+- op : fused_partial_rope
+  args: (Tensor x, Tensor cos, Tensor sin)
+  output: Tensor(out)
+  infer_meta:
+    func: FusedPartialRopeInferMeta
+  kernel:
+    func: fused_partial_rope
+  backward: fused_partial_rope_grad
+  support_dygraph_mode : true
+
 - op : fused_rotary_position_embedding
   args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true, bool time_major = false, float rotary_emb_base = 10000.0)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)

@@ -69,5 +69,5 @@ PD_REGISTER_KERNEL(scatter_nd_add_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
