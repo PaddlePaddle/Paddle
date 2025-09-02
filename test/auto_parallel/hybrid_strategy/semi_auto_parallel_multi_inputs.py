@@ -61,11 +61,11 @@ class MlpModel(paddle.nn.Layer):
         x = input1 + input2
         # x: [bs, seq_len, hidden]
         # forward on mesh0
-        y = paddle.matmul(x, self.w0)
+        y = x @ self.w0
         # forward on mesh1
         if self.run_single_process is False:
             y = dist.reshard(y, mesh1, [dist.Shard(0), dist.Shard(2)])
-        z = paddle.matmul(y, self.w1)
+        z = y @ self.w1
         return z
 
 

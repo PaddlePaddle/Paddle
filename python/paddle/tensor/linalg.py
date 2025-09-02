@@ -21,7 +21,7 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm  # noqa: F401
+from paddle._C_ops import bmm, matmul  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
@@ -259,147 +259,6 @@ def matrix_transpose(
             [2, 5, 3]
     """
     return x.mT
-
-
-def matmul(
-    x: Tensor,
-    y: Tensor,
-    transpose_x: bool = False,
-    transpose_y: bool = False,
-    name: str | None = None,
-    *,
-    out: Tensor | None = None,
-) -> Tensor:
-    """
-    Applies matrix multiplication to two tensors. `matmul` follows
-    the complete broadcast rules,
-    and its behavior is consistent with `np.matmul`.
-
-    Currently, the input tensors' number of dimensions can be any, `matmul` can be used to
-    achieve the `dot`, `matmul` and `batchmatmul`.
-
-    The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
-    flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
-
-    - If a transpose flag is specified, the last two dimensions of the tensor
-      are transposed. If the tensor is ndim-1 of shape, the transpose is invalid. If the tensor
-      is ndim-1 of shape :math:`[D]`, then for :math:`x` it is treated as :math:`[1, D]`, whereas
-      for :math:`y` it is the opposite: It is treated as :math:`[D, 1]`.
-
-    The multiplication behavior depends on the dimensions of `x` and `y`. Specifically:
-
-    - If both tensors are 1-dimensional, the dot product result is obtained.
-
-    - If both tensors are 2-dimensional, the matrix-matrix product is obtained.
-
-    - If the `x` is 1-dimensional and the `y` is 2-dimensional,
-      a `1` is prepended to its dimension in order to conduct the matrix multiply.
-      After the matrix multiply, the prepended dimension is removed.
-
-    - If the `x` is 2-dimensional and `y` is 1-dimensional,
-      the matrix-vector product is obtained.
-
-    - If both arguments are at least 1-dimensional and at least one argument
-      is N-dimensional (where N > 2), then a batched matrix multiply is obtained.
-      If the first argument is 1-dimensional, a 1 is prepended to its dimension
-      in order to conduct the batched matrix multiply and removed after.
-      If the second argument is 1-dimensional, a 1 is appended to its
-      dimension for the purpose of the batched matrix multiple and removed after.
-      The non-matrix (exclude the last two dimensions) dimensions are
-      broadcasted according the broadcast rule.
-      For example, if input is a (j, 1, n, m) tensor and the other is a (k, m, p) tensor,
-      out will be a (j, k, n, p) tensor.
-
-    Args:
-        x (Tensor): The input tensor which is a Tensor.
-        y (Tensor): The input tensor which is a Tensor.
-        transpose_x (bool, optional): Whether to transpose :math:`x` before multiplication. Default is False.
-        transpose_y (bool, optional): Whether to transpose :math:`y` before multiplication. Default is False.
-        name (str|None, optional): If set None, the layer will be named automatically. For more information, please refer to :ref:`api_guide_Name`. Default is None.
-        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
-
-    Returns:
-        Tensor: The output Tensor.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # vector * vector
-            >>> x = paddle.rand([10])
-            >>> y = paddle.rand([10])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            []
-
-            >>> # matrix * vector
-            >>> x = paddle.rand([10, 5])
-            >>> y = paddle.rand([5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10]
-
-            >>> # batched matrix * broadcasted vector
-            >>> x = paddle.rand([10, 5, 2])
-            >>> y = paddle.rand([2])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 5]
-
-            >>> # batched matrix * batched matrix
-            >>> x = paddle.rand([10, 5, 2])
-            >>> y = paddle.rand([10, 2, 5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 5, 5]
-
-            >>> # batched matrix * broadcasted matrix
-            >>> x = paddle.rand([10, 1, 5, 2])
-            >>> y = paddle.rand([1, 3, 2, 5])
-            >>> z = paddle.matmul(x, y)
-            >>> print(z.shape)
-            [10, 3, 5, 5]
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.matmul(x, y, transpose_x, transpose_y, out=out)
-    else:
-        attrs = {
-            'trans_x': transpose_x,
-            'trans_y': transpose_y,
-        }
-
-        def __check_input(x, y):
-            var_names = {'x': x, 'y': y}
-            for name, val in var_names.items():
-                check_variable_and_dtype(
-                    val,
-                    name,
-                    [
-                        'int8',
-                        'uint16',
-                        'float16',
-                        'float32',
-                        'float64',
-                        'complex64',
-                        'complex128',
-                    ],
-                    'matmul',
-                )
-
-        __check_input(x, y)
-
-        helper = LayerHelper('matmul_v2', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='matmul_v2',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-            attrs=attrs,
-        )
-        return out
 
 
 def fp8_fp8_half_gemm_fused(
@@ -1178,12 +1037,14 @@ def matrix_norm(
         )
 
 
-@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
+@ParamAliasDecorator({"x": ["input", "A"], "p": ["ord"], "axis": ["dim"]})
 def norm(
     x: Tensor,
     p: float | _POrder | None = None,
     axis: int | list[int] | tuple[int, int] | None = None,
     keepdim: bool = False,
+    out: paddle.Tensor | None = None,
+    dtype: paddle._typing.DTypeLike | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1251,6 +1112,8 @@ def norm(
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor, optional): The output tensor. Ignored out = None.
+        dtype (DTypeLike | None, optional): The data type of the output tensor. If specified, the input tensor is casted to `dtype` while performing the operation. Default value is None.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1322,35 +1185,40 @@ def norm(
         axis = list(axis)
     elif isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
-
-    # calculate vector norm, where axis is None, int or list with only one integer
-    if axis is None or (isinstance(axis, int)):
-        # 'fro' is used to adapt previous usage
-        if p is None or p == 'fro':
-            p = 2.0
-        if isinstance(p, (int, float)):
-            return vector_norm(
+    if dtype is not None:
+        x = x.astype(dtype)
+    if isinstance(p, str):
+        if p == "fro" and (axis is None or isinstance(axis, int)):
+            output = vector_norm(
+                x,
+                p=2,
+                axis=axis,
+                keepdim=keepdim,
+                name=name,
+            )
+        else:
+            if axis is None:
+                axis = list(range(x.ndim))
+            output = matrix_norm(
+                x=x, p=p, axis=axis, keepdim=keepdim, name=name
+            )
+    else:
+        p = 2.0 if p is None else p
+        if isinstance(axis, list) and len(axis) == 2:
+            output = matrix_norm(
+                x=x, p=p, axis=axis, keepdim=keepdim, name=name
+            )
+        else:
+            output = vector_norm(
                 x,
                 p=p,
                 axis=axis,
                 keepdim=keepdim,
                 name=name,
             )
-        else:
-            raise ValueError(
-                f"only valid p type is int or float for vector_norm, found {type(p)} and{p}"
-            )
-
-    # calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(axis) == 2:
-        if p is None:
-            p = 'fro'
-        return matrix_norm(x=x, p=p, axis=axis, keepdim=keepdim, name=name)
-
-    else:
-        raise ValueError(
-            f"except axis type int or list (length of list <=2), found {axis}"
-        )
+    if out is not None:
+        paddle.assign(output, output=out)
+    return output
 
 
 def dist(x: Tensor, y: Tensor, p: float = 2, name: str | None = None) -> Tensor:

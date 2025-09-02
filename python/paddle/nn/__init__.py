@@ -87,10 +87,13 @@ from .layer.container import (
 )
 from .layer.conv import (
     Conv1D,
+    Conv1d,
     Conv1DTranspose,
     Conv2D,
+    Conv2d,
     Conv2DTranspose,
     Conv3D,
+    Conv3d,
     Conv3DTranspose,
 )
 from .layer.distance import PairwiseDistance
@@ -245,6 +248,7 @@ __all__ = [
     'NLLLoss',
     'PoissonNLLLoss',
     'Conv1D',
+    'Conv1d',
     'Sequential',
     'Hardswish',
     'Conv1DTranspose',
@@ -255,6 +259,7 @@ __all__ = [
     'ParameterDict',
     'ParameterList',
     'Conv2D',
+    'Conv2d',
     'Softshrink',
     'Hardtanh',
     'TransformerDecoderLayer',
@@ -272,6 +277,7 @@ __all__ = [
     'Layer',
     'TransformerDecoder',
     'Conv3D',
+    'Conv3d',
     'Tanh',
     'Conv3DTranspose',
     'Flatten',

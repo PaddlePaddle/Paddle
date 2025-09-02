@@ -96,7 +96,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
   int heuristic_threshold = FLAGS_xpu_top_p_sampling_heuristic_threshold;
 
   if ((!FLAGS_xpu_top_p_sampling_use_fp16) ||
-      std::is_same<T, phi::dtype::float16>::value) {
+      std::is_same<T, phi::float16>::value) {
     r = xpu::faster_top_p_sampling<XPUType, int>(dev_ctx.x_context(),
                                                  x_ptr,
                                                  ps_ptr,
@@ -109,7 +109,7 @@ void TopPSamplingKernel(const Context& dev_ctx,
                                                  heuristic_threshold);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "top_p_sampling");
   } else {
-    using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
     XPUTypeFP16* x_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(x.numel());
     XPUTypeFP16* ps_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(ps.numel());
     XPUTypeFP16* out_fp16_ptr = RAII_GUARD.alloc<XPUTypeFP16>(out->numel());
@@ -153,4 +153,4 @@ PD_REGISTER_KERNEL(top_p_sampling,
                    ALL_LAYOUT,
                    phi::TopPSamplingKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

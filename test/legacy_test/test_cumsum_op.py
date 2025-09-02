@@ -1036,6 +1036,41 @@ class TestCumSumOpFp16(unittest.TestCase):
             paddle.disable_static()
 
 
+class TestCumsumOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.test_configs = [
+            {'shape': [100], 'dtype': 'float32'},
+            {'shape': [12, 15], 'dtype': 'float64'},
+            {'shape': [4, 5, 6], 'dtype': 'int32'},
+            {'shape': [2, 3, 4, 5], 'dtype': 'int64'},
+            {'shape': [50, 2], 'dtype': 'float32'},
+        ]
+
+    def test_out_parameter(self):
+        for config in self.test_configs:
+            shape = config['shape']
+            dtype = config['dtype']
+            axis = -1
+
+            with self.subTest(shape=shape, dtype=dtype):
+                if 'int' in dtype:
+                    x_np = np.random.randint(0, 100, size=shape).astype(dtype)
+                else:
+                    x_np = np.random.randn(*shape).astype(dtype)
+
+                x_tensor = paddle.to_tensor(x_np)
+
+                expected_tensor = paddle.cumsum(x_tensor, axis=axis)
+
+                out_tensor = paddle.zeros_like(expected_tensor)
+                paddle.cumsum(x_tensor, axis=axis, out=out_tensor)
+
+                np.testing.assert_allclose(
+                    out_tensor.numpy(), expected_tensor.numpy(), rtol=1e-20
+                )
+
+
 def create_test_class(op_type, dtype, shape, axis):
     class Cls(unittest.TestCase):
         def test_zero_size(self):

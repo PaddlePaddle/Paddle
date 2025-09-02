@@ -46,28 +46,29 @@ template <typename BaseT, typename DerivedT>
 const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
     RegisterStaticType<BaseT>(DerivedT::name());
 
-template class TypeInfoTraits<phi::TensorBase, DenseTensor>;
-template class TypeInfoTraits<phi::TensorBase, SelectedRows>;
-template class TypeInfoTraits<phi::TensorBase, SparseCooTensor>;
-template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
-template class TypeInfoTraits<phi::TensorBase, StringTensor>;
-template class TypeInfoTraits<phi::TensorBase, TensorArray>;
-template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
-template class TypeInfoTraits<phi::TensorBase, Vocab>;
-template class TypeInfoTraits<phi::TensorBase, Strings>;
-template class TypeInfoTraits<phi::TensorBase, RawTensor>;
-template class TypeInfoTraits<phi::TensorBase, FeedList>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, DenseTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, SelectedRows>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, SparseCooTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, StringTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, TensorArray>;
+template class PADDLE_API
+    TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, Vocab>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, Strings>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, RawTensor>;
+template class PADDLE_API TypeInfoTraits<phi::TensorBase, FeedList>;
 
-template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
-template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
+template class PADDLE_API TypeInfoTraits<phi::DeviceContext, CPUContext>;
+template class PADDLE_API TypeInfoTraits<phi::DeviceContext, CustomContext>;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
-template class TypeInfoTraits<phi::DeviceContext, GPUContext>;
+template class PADDLE_API TypeInfoTraits<phi::DeviceContext, GPUContext>;
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
+template class PADDLE_API TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 #endif
 
 #ifdef PADDLE_WITH_XPU

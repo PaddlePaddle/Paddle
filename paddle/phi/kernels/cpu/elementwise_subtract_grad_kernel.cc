@@ -74,9 +74,9 @@ PD_REGISTER_KERNEL(subtract_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(subtract_double_grad,
                    CPU,
@@ -87,6 +87,6 @@ PD_REGISTER_KERNEL(subtract_double_grad,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

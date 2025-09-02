@@ -45,6 +45,15 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(paddle.bool, convert("bool"))
         self.assertEqual(paddle.int8, convert("int8"))
         self.assertEqual(paddle.uint8, convert("uint8"))
+        self.assertEqual(paddle.float32, convert(paddle.float32))
+        self.assertEqual(paddle.float16, convert(paddle.float16))
+        self.assertEqual(paddle.float64, convert(paddle.float64))
+        self.assertEqual(paddle.int32, convert(paddle.int32))
+        self.assertEqual(paddle.int16, convert(paddle.int16))
+        self.assertEqual(paddle.int64, convert(paddle.int64))
+        self.assertEqual(paddle.bool, convert(paddle.bool))
+        self.assertEqual(paddle.int8, convert(paddle.int8))
+        self.assertEqual(paddle.uint8, convert(paddle.uint8))
 
     def test_var(self):
         b = default_main_program().current_block()

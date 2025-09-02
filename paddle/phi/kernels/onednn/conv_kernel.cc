@@ -36,7 +36,7 @@ void ConvKernel(const Context& dev_ctx,
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
-  bool is_BFLOAT16 =
+  bool is_bfloat16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
@@ -47,7 +47,7 @@ void ConvKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("onednn_data_type")) ==
                 "bfloat16"
-          : is_BFLOAT16;
+          : is_bfloat16;
   bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))

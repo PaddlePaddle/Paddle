@@ -56,13 +56,13 @@ struct DataTypeTraits {
 };
 
 template <>
-struct DataTypeTraits<phi::dtype::float16> {
+struct DataTypeTraits<phi::float16> {
   using DataType = half;
 };
 
 #ifdef CUDA_BFLOAT16_AVAILABLE
 template <>
-struct DataTypeTraits<phi::dtype::bfloat16> {
+struct DataTypeTraits<phi::bfloat16> {
   using DataType = __nv_bfloat16;
 };
 #endif
@@ -1266,8 +1266,8 @@ PD_REGISTER_KERNEL(top_p_sampling,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(top_p_sampling,
                    GPU,
@@ -1277,5 +1277,5 @@ PD_REGISTER_KERNEL(top_p_sampling,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

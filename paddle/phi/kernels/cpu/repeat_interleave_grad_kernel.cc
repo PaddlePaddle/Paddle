@@ -30,6 +30,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
     const DenseTensor& repeats_tensor,
     const DenseTensor& out_grad,
     int dim,
+    int64_t output_size UNUSED,
     DenseTensor* x_grad) {
   auto input_dim = x_grad->dims();
   if (dim < 0) {
@@ -79,6 +80,7 @@ void RepeatInterleaveGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 int repeats,
                                 int dim,
+                                int64_t output_size UNUSED,
                                 DenseTensor* x_grad) {
   if (x_grad && x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
@@ -111,7 +113,7 @@ PD_REGISTER_KERNEL(repeat_interleave_with_tensor_index_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(repeat_interleave_grad,
                    CPU,
@@ -121,4 +123,4 @@ PD_REGISTER_KERNEL(repeat_interleave_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

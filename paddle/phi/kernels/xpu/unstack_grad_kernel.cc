@@ -60,6 +60,6 @@ PD_REGISTER_KERNEL(unstack_grad,
                    ALL_LAYOUT,
                    phi::UnStackGradKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}

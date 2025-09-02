@@ -37,9 +37,10 @@ bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
   }
 }
 
-paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
-                                const paddle::Tensor& y,
-                                paddle::optional<paddle::Tensor*> input_out) {
+paddle::Tensor multiply_ad_func(
+    const paddle::Tensor& x,
+    const paddle::Tensor& y,
+    paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply";
@@ -140,7 +141,7 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   }
 
   // Forward API Call
-  auto api_result = paddle::experimental::multiply(x, y, input_out);
+  auto api_result = paddle::experimental::multiply(x, y, predefined_out);
   // Check NaN and Inf if needed
 
   if (FLAGS_check_nan_inf) {
@@ -241,9 +242,10 @@ paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
   return out;
 }
 
-paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
-                                  const paddle::Tensor& y,
-                                  paddle::optional<paddle::Tensor*> input_out) {
+paddle::Tensor& multiply__ad_func(
+    paddle::Tensor& x,  // NOLINT
+    const paddle::Tensor& y,
+    paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << "Running AD API: "
           << "multiply_";
