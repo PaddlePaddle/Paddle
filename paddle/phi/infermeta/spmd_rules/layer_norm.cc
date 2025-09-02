@@ -90,8 +90,11 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   std::fill(x_dims_mapping.begin() + begin_norm_axis,
             x_dims_mapping.end(),
             std::vector<int64_t>{});
+  const auto& axes_size = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x.dist_attr().process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
+      ShardingMergeForTensors(
+          {{x_axes, x_dims_mapping}}, axes_size, mesh_shape);
 
   // Step2.2: infer output dims mapping
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -383,8 +386,13 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
     axes_sharding_info.emplace_back(annotations[2],
                                     dist_attrs[2].multi_dims_mapping());
     axes_sharding_info.emplace_back(annotations[3], out_grad_dims_mapping);
+    const auto& axes_size = GetAxesSizes({{annotations[0], shapes[0]},
+                                          {annotations[1], shapes[1]},
+                                          {annotations[2], shapes[2]},
+                                          {annotations[3], shapes[3]}});
+    const auto& mesh_shape = x.dist_attr().process_mesh().shape();
     std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
-        ShardingMergeForTensors(axes_sharding_info);
+        ShardingMergeForTensors(axes_sharding_info, axes_size, mesh_shape);
 
     x_dist_attr = std::move(dist_attrs[0]);
     x_dist_attr.set_dims_mapping(

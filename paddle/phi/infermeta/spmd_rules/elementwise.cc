@@ -277,9 +277,13 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
+  const auto& axes_size = GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}});
+  const auto& mesh_shape = x.dist_attr().process_mesh().shape();
   std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
       ShardingMergeForTensors(
-          {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
+          {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}},
+          axes_size,
+          mesh_shape);
 
   // Step2.2: Infer output dims mapping from merged input dims mapping
   std::vector<std::vector<int64_t>> out_dims_mapping =
