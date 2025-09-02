@@ -501,7 +501,7 @@ struct ClassRegistration {
 // Global class registry
 class PADDLE_API ClassRegistry {
  public:
-  PADDLE_API static ClassRegistry& instance() {
+  static ClassRegistry& instance() {
     static ClassRegistry registry;
     return registry;
   }
@@ -520,43 +520,40 @@ class PADDLE_API ClassRegistry {
                               const std::string& method_name,
                               CppFunction&& func);
 
-  PADDLE_API bool has_class(const std::string& qualified_name) const {
+  bool has_class(const std::string& qualified_name) const {
     return classes_.find(qualified_name) != classes_.end();
   }
 
-  PADDLE_API bool has_method(const std::string& qualified_name,
-                             const std::string& method_name) const {
+  bool has_method(const std::string& qualified_name,
+                  const std::string& method_name) const {
     auto it = classes_.find(qualified_name);
     if (it == classes_.end()) return false;
     return it->second->methods.find(method_name) != it->second->methods.end();
   }
 
-  PADDLE_API bool has_static_method(const std::string& qualified_name,
-                                    const std::string& method_name) const {
+  bool has_static_method(const std::string& qualified_name,
+                         const std::string& method_name) const {
     auto it = classes_.find(qualified_name);
     if (it == classes_.end()) return false;
     return it->second->static_methods.find(method_name) !=
            it->second->static_methods.end();
   }
 
-  PADDLE_API FunctionResult
-  call_method_with_args(const std::string& qualified_name,
-                        const std::string& method_name,
-                        const FunctionArgs& args) const;
+  FunctionResult call_method_with_args(const std::string& qualified_name,
+                                       const std::string& method_name,
+                                       const FunctionArgs& args) const;
 
-  PADDLE_API FunctionResult
-  call_method_with_args(const std::string& qualified_name,
-                        const std::string& method_name,
-                        const IValue& instance,
-                        const FunctionArgs& args) const;
+  FunctionResult call_method_with_args(const std::string& qualified_name,
+                                       const std::string& method_name,
+                                       const IValue& instance,
+                                       const FunctionArgs& args) const;
 
-  PADDLE_API FunctionResult call_constructor_with_args(
-      const std::string& qualified_name, const FunctionArgs& args) const;
+  FunctionResult call_constructor_with_args(const std::string& qualified_name,
+                                            const FunctionArgs& args) const;
 
-  PADDLE_API FunctionResult
-  call_static_method_with_args(const std::string& qualified_name,
-                               const std::string& method_name,
-                               const FunctionArgs& args) const;
+  FunctionResult call_static_method_with_args(const std::string& qualified_name,
+                                              const std::string& method_name,
+                                              const FunctionArgs& args) const;
 
   void print_all_classes() const;
 
@@ -701,10 +698,9 @@ class PADDLE_API OperatorRegistry {
   void register_implementation(const std::string& qualified_name,
                                DispatchKey key,
                                CppFunction&& func);
-  PADDLE_API OperatorRegistration* find_operator(
-      const std::string& qualified_name);
+  OperatorRegistration* find_operator(const std::string& qualified_name);
 
-  PADDLE_API std::vector<std::string> list_all_operators() const {
+  std::vector<std::string> list_all_operators() const {
     std::vector<std::string> ops;
     for (const auto& pair : operators_) {
       ops.push_back(pair.first);
@@ -712,8 +708,8 @@ class PADDLE_API OperatorRegistry {
     return ops;
   }
 
-  PADDLE_API const std::unordered_map<std::string, OperatorRegistration>&
-  get_operators() const {
+  const std::unordered_map<std::string, OperatorRegistration>& get_operators()
+      const {
     return operators_;
   }
 
