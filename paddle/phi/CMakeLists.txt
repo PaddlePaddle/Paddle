@@ -42,6 +42,7 @@ set(PHI_DEPS
     phi_profiler_proto
     auto_parallel_proto
     glog
+    libuv
     warpctc
     warprnnt
     eigen3
@@ -115,10 +116,6 @@ endif()
 
 if(WITH_DGC)
   list(APPEND PHI_DEPS dgc)
-endif()
-
-if(WITH_DISTRIBUTE)
-  list(APPEND PHI_DEPS libuv)
 endif()
 
 set(PHI_CORE_SRCS
@@ -237,7 +234,6 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  target_link_libraries(phi IPHLPAPI Userenv)
   if(WITH_SHARED_PHI)
     set_property(TARGET phi_core PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
