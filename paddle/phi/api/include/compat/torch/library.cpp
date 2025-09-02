@@ -66,7 +66,7 @@ void ClassRegistry::register_static_method(const std::string& qualified_name,
 FunctionResult ClassRegistry::call_method_with_args(
     const std::string& qualified_name,
     const std::string& method_name,
-    const FunctionArgs& args) {
+    const FunctionArgs& args) const {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
     throw std::runtime_error("Class " + qualified_name + " not found!");
@@ -94,6 +94,19 @@ FunctionResult ClassRegistry::call_method_with_args(
     VLOG(3) << "Instance method execution failed: " << e.what();
     throw;
   }
+}
+
+FunctionResult ClassRegistry::call_method_with_args(
+    const std::string& qualified_name,
+    const std::string& method_name,
+    const IValue& instance,
+    const FunctionArgs& args) const {
+  FunctionArgs full_args;
+  full_args.add_arg(instance);
+  for (size_t i = 0; i < args.size(); ++i) {
+    full_args.add_arg(args.get_value(i));
+  }
+  return call_method_with_args(qualified_name, method_name, full_args);
 }
 
 FunctionResult ClassRegistry::call_constructor_with_args(
@@ -160,48 +173,6 @@ FunctionResult ClassRegistry::call_static_method_with_args(
   }
 }
 
-FunctionResult ClassRegistry::call_method_with_args(
-    const std::string& qualified_name,
-    const std::string& method_name,
-    const IValue& instance,
-    const FunctionArgs& args) const {
-  auto it = classes_.find(qualified_name);
-  if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found!");
-  }
-
-  auto& class_reg = it->second;
-  auto method_it = class_reg->methods.find(method_name);
-  if (method_it == class_reg->methods.end()) {
-    throw std::runtime_error("Instance method " + method_name +
-                             " not found in " + qualified_name + "!");
-  }
-
-  try {
-    VLOG(3) << "Executing " << qualified_name << "::" << method_name
-            << " (instance) with " << args.size() << " args";
-
-    // Create a FunctionArgs object with the instance as the first argument
-    FunctionArgs method_args;
-    method_args.add_arg(instance);  // Add the instance as the first arg
-    for (size_t i = 0; i < args.size(); ++i) {
-      method_args.add_arg(args.get_value(i));
-    }
-
-    auto result = method_it->second->call_with_args(method_args);
-
-    if (result.has_value()) {
-      VLOG(3) << "Instance method executed successfully with return value";
-    } else {
-      VLOG(3) << "Instance method executed successfully (void return)";
-    }
-    return result;
-  } catch (const std::exception& e) {
-    VLOG(3) << "Error executing instance method: " << e.what();
-    throw;
-  }
-}
-
 void ClassRegistry::print_all_classes() const {
   std::ostringstream oss;
   oss << "\n=== Registered Classes ===" << std::endl;
@@ -253,59 +224,6 @@ OperatorRegistration* OperatorRegistry::find_operator(
     const std::string& qualified_name) {
   auto it = operators_.find(qualified_name);
   return (it != operators_.end()) ? &it->second : nullptr;
-}
-
-bool OperatorRegistry::execute_operator(const std::string& qualified_name,
-                                        DispatchKey key) {
-  auto* op = find_operator(qualified_name);
-  if (!op) {
-    VLOG(3) << "Error: Operator " << qualified_name << " not found!";
-    return false;
-  }
-
-  auto impl_it = op->implementations.find(key);
-  if (impl_it != op->implementations.end()) {
-    try {
-      VLOG(3) << "Executing " << qualified_name << " with "
-              << dispatch_key_to_string(key);
-      auto result = impl_it->second.call();
-      if (result.has_value()) {
-        VLOG(3) << "Operator executed successfully with return value";
-      } else {
-        VLOG(3) << "Operator executed successfully (void return)";
-      }
-      return true;
-    } catch (const std::exception& e) {
-      VLOG(3) << "Error executing operator: " << e.what();
-      return false;
-    }
-  }
-
-  // try fallback to CPU
-  if (key != DispatchKey::CPU) {
-    auto cpu_it = op->implementations.find(DispatchKey::CPU);
-    if (cpu_it != op->implementations.end()) {
-      VLOG(3) << "Fallback to CPU for " << qualified_name;
-      try {
-        auto result = cpu_it->second.call();
-        if (result.has_value()) {
-          VLOG(3) << "Operator executed successfully with return value (CPU "
-                     "fallback)";
-        } else {
-          VLOG(3)
-              << "Operator executed successfully (void return, CPU fallback)";
-        }
-        return true;
-      } catch (const std::exception& e) {
-        VLOG(3) << "Error executing operator (CPU fallback): " << e.what();
-        return false;
-      }
-    }
-  }
-
-  VLOG(3) << "Error: No implementation found for " << qualified_name << " with "
-          << dispatch_key_to_string(key);
-  return false;
 }
 
 void OperatorRegistry::print_all_operators() const {

@@ -541,7 +541,12 @@ class ClassRegistry {
 
   FunctionResult call_method_with_args(const std::string& qualified_name,
                                        const std::string& method_name,
-                                       const FunctionArgs& args);
+                                       const FunctionArgs& args) const;
+
+  FunctionResult call_method_with_args(const std::string& qualified_name,
+                                       const std::string& method_name,
+                                       const IValue& instance,
+                                       const FunctionArgs& args) const;
 
   FunctionResult call_constructor_with_args(const std::string& qualified_name,
                                             const FunctionArgs& args) const;
@@ -549,11 +554,6 @@ class ClassRegistry {
   FunctionResult call_static_method_with_args(const std::string& qualified_name,
                                               const std::string& method_name,
                                               const FunctionArgs& args) const;
-
-  FunctionResult call_method_with_args(const std::string& qualified_name,
-                                       const std::string& method_name,
-                                       const IValue& instance,
-                                       const FunctionArgs& args) const;
 
   void print_all_classes() const;
 
@@ -718,67 +718,6 @@ class OperatorRegistry {
       ops.push_back(pair.first);
     }
     return ops;
-  }
-
-  bool execute_operator(const std::string& qualified_name,
-                        DispatchKey key = DispatchKey::CPU);
-
-  template <typename... Args>
-  FunctionResult execute_operator_with_args(const std::string& qualified_name,
-                                            DispatchKey key,
-                                            Args&&... args) {
-    auto* op = find_operator(qualified_name);
-    if (!op) {
-      throw std::runtime_error("Operator " + qualified_name + " not found!");
-    }
-
-    auto impl_it = op->implementations.find(key);
-    if (impl_it != op->implementations.end()) {
-      try {
-        // std::cout << "Executing " << qualified_name << " with "
-        //           << dispatch_key_to_string(key) << std::endl;
-        auto result = impl_it->second.call(std::forward<Args>(args)...);
-        if (result.has_value()) {
-          // std::cout << "Operator executed successfully with return value"
-          //           << std::endl;
-        } else {
-          // std::cout << "Operator executed successfully (void return)"
-          //           << std::endl;
-        }
-        return result;
-      } catch (const std::exception& e) {
-        throw std::runtime_error("Error executing operator: " +
-                                 std::string(e.what()));
-      }
-    }
-
-    // try fallback to CPU
-    if (key != DispatchKey::CPU) {
-      auto cpu_it = op->implementations.find(DispatchKey::CPU);
-      if (cpu_it != op->implementations.end()) {
-        // std::cout << "Fallback to CPU for " << qualified_name << std::endl;
-        try {
-          auto result = cpu_it->second.call(std::forward<Args>(args)...);
-          if (result.has_value()) {
-            // std::cout << "Operator executed successfully with return value "
-            //              "(CPU fallback)"
-            //           << std::endl;
-          } else {
-            // std::cout
-            //     << "Operator executed successfully (void return, CPU
-            //     fallback)"
-            //     << std::endl;
-          }
-          return result;
-        } catch (const std::exception& e) {
-          throw std::runtime_error("Error executing operator (CPU fallback): " +
-                                   std::string(e.what()));
-        }
-      }
-    }
-
-    throw std::runtime_error("No implementation found for " + qualified_name +
-                             " with " + dispatch_key_to_string(key));
   }
 
   const std::unordered_map<std::string, OperatorRegistration>& get_operators()
