@@ -2990,7 +2990,7 @@ def tensor_split(
 
     .. note::
         Alias Support: The parameter name ``input`` can be used as an alias for ``x``, ``indices_or_sections`` can be used as an alias for ``num_or_indices``, and ``dim`` can be used as an alias for ``axis``.
-        For example, ``tensor_split(input=tensor_x, indices_or_sections=[2,4], dim=1, ...)`` is equivalent to ``tensor_split(x=tensor_x, num_or_indices=[2,4], axis=1, ...)``.
+        For example, ``tensor_split(input=tensor_x, indices=[2,4], dim=1, ...)`` is equivalent to ``tensor_split(x=tensor_x, num_or_indices=[2,4], axis=1, ...)``.
 
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
@@ -3000,7 +3000,7 @@ def tensor_split(
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
-            alias: ``indices_or_sections``
+            alias: ``indices`` or ``sections``
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
