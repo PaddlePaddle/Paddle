@@ -43,13 +43,6 @@ __global__ void index_add_cuda_kernel(const T* input,
     int64_t dim_idx = idx % (stride * size) / stride;
     IndexT src_dim_idx =
         (index[dim_idx] < 0 ? index[dim_idx] + index_dim_size : index[dim_idx]);
-    if (src_dim_idx < 0 || src_dim_idx >= index_dim_size) {
-      printf("Index out of bounds: index[%d] = %d, index_dim_size = %d\n",
-             dim_idx,
-             src_dim_idx,
-             index_dim_size);
-      return;
-    }
     int64_t input_idx =
         idx + (delta * pre_idx + src_dim_idx - dim_idx) * stride;
     phi::CudaAtomicAdd(&output[input_idx], add_value[idx]);
@@ -63,10 +56,6 @@ void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& add_value,
                     int axis,
                     DenseTensor* output) {
-  if (output && output->numel() == 0) {
-    dev_ctx.template Alloc<T>(output);
-    return;
-  }
   if (x.numel() == 0) {
     if (output->numel() > 0) {
       dev_ctx.template Alloc<T>(output);
@@ -79,6 +68,10 @@ void IndexAddKernel(const Context& dev_ctx,
   }
   if (add_value.numel() == 0) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
+    return;
+  }
+  if (output->numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
     return;
   }
   auto input_dim = x.dims();
@@ -94,9 +87,6 @@ void IndexAddKernel(const Context& dev_ctx,
 
   auto* in_data = x.data<T>();
   T* out_data = dev_ctx.template Alloc<T>(output);
-  PADDLE_ENFORCE_NOT_NULL(
-      out_data,
-      errors::InvalidArgument("The output tensor memory is not allocated."));
   auto* add_value_data = add_value.data<T>();
 
   int64_t numel = add_value.numel();

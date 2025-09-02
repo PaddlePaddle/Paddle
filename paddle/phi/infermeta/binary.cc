@@ -2501,6 +2501,12 @@ void IndexAddInferMeta(const MetaTensor& x,
                        int axis,
                        MetaTensor* output) {
   auto input_dim = x.dims();
+  if (index.dims().size() == 1 && index.dims()[0] == 0) {
+    output->set_dims(input_dim);
+    output->set_dtype(x.dtype());
+    output->set_layout(x.layout());
+    return;
+  }
   auto index_dim = index.dims();
   auto add_value_dim = add_value.dims();
 
