@@ -230,10 +230,11 @@ endif()
 target_compile_definitions(phi_core PUBLIC PHI_INNER)
 
 if(WIN32)
-  target_link_libraries(phi_core shlwapi.lib ucrt.lib)
+  target_link_libraries(phi_core shlwapi.lib)
 endif()
 
 if(WIN32)
+  target_link_libraries(phi_core ucrt.lib)
   if(WITH_SHARED_PHI)
     set_property(TARGET phi_core PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
