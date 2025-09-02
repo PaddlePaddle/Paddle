@@ -742,6 +742,77 @@ class _TensorMethodOrModule:
 
 tensor = _TensorMethodOrModule()  # noqa: F811
 
+import collections.abc
+import functools
+from collections.abc import Iterable
+
+
+class Size(tuple):
+    def __new__(cls, *args, **kwargs):
+        if len(args) == 1 and isinstance(args[0], collections.abc.Sequence):
+            seq = args[0]
+        else:
+            seq = args
+
+        converted = []
+        for item in seq:
+            if hasattr(item, '__index__'):
+                converted.append(int(item.__index__()))
+            else:
+                raise TypeError(
+                    f"paddle.Size() takes an iterable of 'int' (got {type(item).__name__})"
+                )
+
+        return super().__new__(cls, converted)
+
+    def __repr__(self):
+        if not self:
+            return "paddle.Size([])"
+        return f"paddle.Size([{', '.join(map(str, self))}])"
+
+    def __add__(self, other):
+        if isinstance(other, (tuple)):
+            return Size(super().__add__(tuple(other)))
+        raise TypeError(
+            f"can only concatenate tuple (not {type(other).__name__}) to Size"
+        )
+
+    def __radd__(self, other):
+        if isinstance(other, (tuple)):
+            return Size(tuple(other).__add__(self))
+        raise TypeError(
+            f"can only concatenate tuple (not {type(other).__name__}) to Size"
+        )
+
+    def __mul__(self, other):
+        if isinstance(other, int):
+            return Size(super().__mul__(other))
+        return NotImplemented
+
+    __rmul__ = __mul__
+
+    def numel(self):
+        return functools.reduce(lambda x, y: x * y, self, 1)
+
+    def __reduce__(self):
+        return (Size, (tuple(self),))
+
+    def __concat__(self, other: Iterable):
+        if not isinstance(other, (tuple, Size)):
+            raise TypeError(
+                f"can only concatenate tuple (not {type(other).__name__}) to paddle.Size"
+            )
+        return self + other
+
+    def __getitem__(self, key):
+        from builtins import slice
+
+        result = super().__getitem__(key)
+        if isinstance(key, slice):
+            return Size(result)
+        return result
+
+
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os

@@ -1722,6 +1722,21 @@ class TestEagerTensorInplaceVersion(unittest.TestCase):
         self.assertEqual(var.inplace_version, 2)
 
 
+class TestEagerTensorIsCuda(unittest.TestCase):
+    def test_is_cuda(self):
+        paddle.disable_static()
+        cpu_tensor = paddle.to_tensor(
+            [2, 3], dtype="float32", place=paddle.CPUPlace()
+        )
+        self.assertFalse(cpu_tensor.is_cuda)
+
+        if paddle.is_compiled_with_cuda():
+            gpu_tensor = paddle.to_tensor(
+                [2, 3], dtype="float32", place=paddle.CUDAPlace(0)
+            )
+            self.assertTrue(gpu_tensor.is_cuda)
+
+
 class TestEagerTensorSlice(unittest.TestCase):
     def test_slice(self):
         paddle.disable_static()

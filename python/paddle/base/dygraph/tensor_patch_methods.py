@@ -1155,6 +1155,10 @@ def monkey_patch_tensor():
             res.persistable = self.persistable
             return res
 
+    @property
+    def is_cuda(self) -> bool:
+        return self.place.is_gpu_place()
+
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
         if (
@@ -1462,6 +1466,7 @@ def monkey_patch_tensor():
         ("backward", backward),
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
+        ("is_cuda", is_cuda),
         ("gradient", gradient),
         ("apply_", apply_),
         ("apply", apply),
