@@ -17,7 +17,14 @@ if((WITH_GPU) AND (LINUX))
     test_save_load_state_dict MODULES test_save_load_state_dict ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_save_load_state_dict
-                       PROPERTIES TIMEOUT "200" LABELS "RUN_TYPE=HYBRID")
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_flexcheckpoint_merge MODULES test_flexcheckpoint_merge ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_flexcheckpoint_merge
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=HYBRID")
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
