@@ -182,7 +182,8 @@ class MultiDeviceFeedReader {
       auto *holder = new framework::ReaderHolder();
       auto reader = create_or_get_reader(i);
       if (use_double_buffer) {
-        VLOG(3) << "Creating " << i << "-th BufferedReader" << " with buffer_size: " << reader_buffer_size_;
+        VLOG(3) << "Creating " << i << "-th BufferedReader"
+                << " with buffer_size: " << reader_buffer_size_;
         holder->Reset(
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, reader_buffer_size_, pin_memory_));

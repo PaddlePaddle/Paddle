@@ -344,9 +344,9 @@ class DataLoader:
             batch data asynchronously, so it would speed up data feeding
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
-        reader_buffer_size (int, optional): This option takes effect onl
+        reader_buffer_size (int, optional): This option takes effect only
             when use_buffer_reader is set to True. It specifies the number of
-            batches the buffer reader prefetches in advance. Note that 
+            batches the buffer reader prefetches in advance. Note that
             Increasing this value will result in a linear increase in CPU or GPU memory usage.
             Default 2.
         prefetch_factor (int, optional): Number of batch data the DataLoader would prefetch
