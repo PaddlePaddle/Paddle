@@ -773,6 +773,52 @@ class NormTestForNUCAndDtype(unittest.TestCase):
         )
         self.assertEqual(res_paddle.dtype, paddle.float64)
 
+    def test_with_out(self):
+        # matrix
+        x = np.random.randn(10, 20).astype("float32")
+
+        res_numpy = np.linalg.norm(x, ord='nuc')
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p='nuc', out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        res_numpy = np.linalg.norm(x, ord=2, axis=(0, 1))
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p=2, axis=[0, 1], out=res_out)
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-5, atol=1e-6
+        )
+
+        # vector
+        x = np.random.randn(10).astype("float32")
+        res_numpy = np.linalg.norm(x, ord=2, axis=0)
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p='fro', axis=0, out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        res_numpy = np.linalg.norm(x, ord=2, axis=0)
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p=2, axis=0, out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
 
 class API_NormTest(unittest.TestCase):
     def test_basic(self):

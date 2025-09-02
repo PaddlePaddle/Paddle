@@ -159,18 +159,11 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
-def softmax_param_ignore_alias(
+def softmax_param_alias(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     @functools.wraps(func)
     def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
-        # Remove ignored parameters from args
-        if 2 < len(args) and isinstance(args[2], int):
-            args = args[:2] + args[2 + 1 :]
-        else:
-            # Remove ignored parameters from kwargs
-            kwargs.pop("_stacklevel", None)
-
         # Process parameters to handle alias mapping
         if "input" in kwargs:
             kwargs["x"] = kwargs.pop("input")
@@ -302,6 +295,35 @@ def size_args_decorator(func: Callable) -> Callable:
     return wrapped_func
 
 
+def size_args_decorator_patch(method: Callable) -> Callable:
+    """
+    A decorator that allow *size for patching method to Tensor.
+    e.g. Tensor.method(*size, *, ...).
+
+    Usage Example:
+
+    paddle.randn([]).new_ones(1, dtype=paddle.float32)
+    paddle.randn([]).new_ones(1, 2, 3, dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], paddle.float32)
+    """
+
+    @functools.wraps(method)
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        if len(args) >= 2 and isinstance(args[1], int):
+            # args[0]: Tensor
+            # args[1:]: *size
+            kwargs['size'] = list(args[1:])
+            args = (args[0],)
+
+        return method(*args, **kwargs)
+
+    wrapped_func.__signature__ = inspect.signature(method)
+
+    return wrapped_func
+
+
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()
@@ -400,6 +422,49 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 category=Warning,
             )
             self.warn_msg = None
+        return args, kwargs
+
+
+class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
+    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected and one argument is ignored"""
+
+    def __init__(
+        self,
+        illegal_keys: set[str],
+        ignore_param: tuple[str, int, type[Any]],
+        func_name: str,
+        correct_name: str,
+        url_suffix: str = "",
+    ) -> None:
+        """
+        Args:
+            illegal_keys (set[str]): the keywords to reject
+            ignore_param: (tuple[str, int, type[Any]]): A tuple of (parameter_name, index, type) to ignore by name, position and type
+            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
+            correct_name (str): the user hint that points to the correct function
+            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
+                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
+                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
+
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+
+                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
+        """
+        super().__init__(illegal_keys, func_name, correct_name, url_suffix)
+        self.ignore_param = ignore_param
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        args, kwargs = super().process(args, kwargs)
+
+        if self.ignore_param:
+            name, index, typ = self.ignore_param
+            if index < len(args) and isinstance(args[index], typ):
+                args = args[:index] + args[index + 1 :]
+            else:
+                kwargs.pop(name, None)
+
         return args, kwargs
 
 
@@ -532,6 +597,41 @@ def index_select_decorator():
                     args = args[3:]
                 else:
                     args = args[2:]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def sum_decorator():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("dim" in kwargs) and ("axis" not in kwargs):
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) == 3:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                else:
+                    kwargs["dtype"] = args[2]
+                args = ()
+            elif len(args) == 4:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                    kwargs["dtype"] = args[3]
+                else:
+                    kwargs["dtype"] = args[2]
+                    kwargs["keepdim"] = args[3]
+                args = ()
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

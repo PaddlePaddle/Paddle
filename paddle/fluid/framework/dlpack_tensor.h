@@ -35,7 +35,7 @@ class DLPackTensor {
 
   inline operator ::DLTensor&() { return t_; }
 
-  ::DLManagedTensor* ToDLManagedTensor();
+  PADDLE_API ::DLManagedTensor* ToDLManagedTensor();
 
  private:
   ::DLTensor t_;

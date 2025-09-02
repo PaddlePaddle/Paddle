@@ -431,7 +431,17 @@ struct XPUSqrtGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
     int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::sqrt_grad<XPUType>);
+        dev_ctx,
+        x,
+        out,
+        dout,
+        dx,
+        (int (*)(baidu::xpu::api::Context*,
+                 const XPUType*,
+                 const XPUType*,
+                 const XPUType*,
+                 XPUType*,
+                 int64_t))xpu::sqrt_grad<XPUType>);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sqrt_grad");
   }
 };

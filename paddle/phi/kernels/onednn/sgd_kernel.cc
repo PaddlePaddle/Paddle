@@ -21,16 +21,16 @@
 namespace phi {
 
 bool SgdCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
-  if (DenseTensor::classof(dev_ctx->MutableIutputAt(0)) &&
-      DenseTensor::classof(dev_ctx->MutableIutputAt(2))) {
+  if (DenseTensor::classof(dev_ctx->MutableInputAt(0)) &&
+      DenseTensor::classof(dev_ctx->MutableInputAt(2))) {
     return true;
   }
   return false;
 }
 
 bool SgdSparseCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
-  if (DenseTensor::classof(dev_ctx->MutableIutputAt(0)) &&
-      SelectedRows::classof(dev_ctx->MutableIutputAt(2))) {
+  if (DenseTensor::classof(dev_ctx->MutableInputAt(0)) &&
+      SelectedRows::classof(dev_ctx->MutableInputAt(2))) {
     return true;
   }
   return false;
@@ -49,7 +49,7 @@ void SGDDenseKernel(const Context& dev_ctx,
   const T* param_data = param.data<T>();
   const auto* grad_data = grad.data<T>();
   const auto* lr = learning_rate.data<T>();
-  // Since denese SGD is not in place operation, first copy params to output
+  // Since dense SGD is not in place operation, first copy params to output
   // tensor and then update it.
   std::memcpy(out_data, param_data, param.memory_size());
   funcs::OneDNNAXPYHandler<T>(param_out->numel(), -lr[0], dev_ctx.GetEngine())(

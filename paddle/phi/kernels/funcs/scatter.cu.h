@@ -166,6 +166,12 @@ void GPUScatterAssign(const phi::GPUContext& dev_ctx,
                       const DenseTensor& index,
                       DenseTensor* output,
                       bool overwrite = true) {
+  if (src.numel() == 0 || index.numel() == 0) {
+    VLOG(6)
+        << "Do nothing for GPUScatterAssign since inputs has 0-size tensor.";
+    return;
+  }
+
   if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(
         index.dims()[1],
@@ -256,6 +262,10 @@ template <typename T, typename IndexT = int>
 void GPUScatterGradForX(const phi::GPUContext& dev_ctx,
                         const DenseTensor& index,
                         DenseTensor* output) {
+  if (index.numel() == 0) {
+    VLOG(6) << "Do nothing for GPUScatterGradX since index is 0-size tensor.";
+    return;
+  }
   int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto dst_dims = output->dims();
   // slice size

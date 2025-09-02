@@ -137,28 +137,56 @@ if(${TENSORRT_VERSION_NUMBER} GREATER_EQUAL 82)
   list(APPEND CONVERT_FILES set_value_op.cc)
 endif()
 
-nv_library(
-  tensorrt_converter
-  SRCS ${CONVERT_FILES}
-  DEPS tensorrt_engine
-       tensorrt_plugin
-       operator
-       scope
-       phi
-       tensorrt_op_teller
-       op_registry)
+if(WIN32)
+  nv_library(
+    tensorrt_converter
+    SRCS ${CONVERT_FILES}
+    DEPS tensorrt_engine
+         tensorrt_plugin
+         operator
+         scope
+         phi
+         tensorrt_op_teller
+         op_registry
+         dynload_tensorrt)
+else()
+  nv_library(
+    tensorrt_converter
+    SRCS ${CONVERT_FILES}
+    DEPS tensorrt_engine
+         tensorrt_plugin
+         operator
+         scope
+         phi
+         tensorrt_op_teller
+         op_registry)
+endif()
 
-nv_test(
-  test_op_converter
-  SRCS test_op_converter.cc
-  DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
-       tensorrt_converter)
+if(WIN32)
+  nv_test(
+    test_op_converter
+    SRCS test_op_converter.cc
+    DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
+         tensorrt_converter dynload_tensorrt)
+else()
+  nv_test(
+    test_op_converter
+    SRCS test_op_converter.cc
+    DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
+         tensorrt_converter)
+endif()
+
 if(WIN32)
   nv_test(
     test_custom_plugin_creater
     SRCS test_custom_plugin_creater.cc
-    DEPS paddle_framework tensorrt_converter phi common custom_operator
-         init_phi)
+    DEPS paddle_framework
+         tensorrt_converter
+         phi
+         common
+         custom_operator
+         init_phi
+         dynload_tensorrt)
 elseif(WITH_CINN)
   nv_test(
     test_custom_plugin_creater

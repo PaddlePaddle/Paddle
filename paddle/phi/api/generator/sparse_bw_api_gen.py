@@ -35,23 +35,25 @@ class SparseBackwardAPI(SparseAPI, BackwardAPI):
     def gene_return_code(self):
         return "return;"
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=False):
+    def gene_api_declaration(
+        self, grad_flag=False, append_predefined_out=False
+    ):
         return SparseAPI.gene_api_declaration(
-            self, grad_flag=grad_flag, append_input_out=False
+            self, grad_flag=grad_flag, append_predefined_out=False
         )
 
     def get_declare_args(
-        self, inplace_flag=False, grad_flag=False, append_input_out=False
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
     ):
         return BackwardAPI.get_declare_args(
-            self, grad_flag=grad_flag, append_input_out=False
+            self, grad_flag=grad_flag, append_predefined_out=False
         )
 
     def get_define_args(
-        self, inplace_flag=False, grad_flag=False, append_input_out=False
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=False
     ):
         return BackwardAPI.get_define_args(
-            self, grad_flag=grad_flag, append_input_out=False
+            self, grad_flag=grad_flag, append_predefined_out=False
         )
 
     def gene_output(
@@ -189,12 +191,12 @@ def generate_api(
         sparse_bw_api = SparseBackwardAPI(api)
         header_file.write(
             sparse_bw_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=False
+                grad_flag=grad_flag, append_predefined_out=False
             )
         )
         source_file.write(
             sparse_bw_api.gene_api_code(
-                grad_flag=grad_flag, append_input_out=False
+                grad_flag=grad_flag, append_predefined_out=False
             )
         )
 
