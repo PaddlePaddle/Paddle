@@ -501,6 +501,8 @@ struct ClassRegistration {
 // Global class registry
 class PADDLE_API ClassRegistry {
  public:
+  ClassRegistry() = default;
+
   static ClassRegistry& instance() {
     static ClassRegistry registry;
     return registry;
@@ -689,6 +691,8 @@ struct OperatorRegistration {
 
 class PADDLE_API OperatorRegistry {
  public:
+  OperatorRegistry() = default;
+
   static OperatorRegistry& instance() {
     static OperatorRegistry registry;
     return registry;
