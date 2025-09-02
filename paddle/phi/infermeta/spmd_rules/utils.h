@@ -44,7 +44,8 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
 
 std::unordered_map<std::string, int64_t> GetAxesSizes(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        axes_to_size);
+        axes_to_size,
+    bool with_broadcast = false);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A replicated dimension could be merged by any sharded dimension.

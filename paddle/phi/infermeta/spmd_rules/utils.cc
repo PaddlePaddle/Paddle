@@ -133,26 +133,36 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 
 std::unordered_map<std::string, int64_t> GetAxesSizes(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        axes_to_size) {
+        axes_to_size,
+    bool with_broadcast) {
   std::unordered_map<std::string, int64_t> axis_to_size_map;
   for (auto& pair : axes_to_size) {
     for (size_t i = 0; i < pair.second.size(); ++i) {
       auto axis = pair.first.substr(i, 1);
-      // Get the max size for axis and check broadcastable.
-      if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
-        axis_to_size_map[axis] = pair.second[i];
-      } else if (axis_to_size_map[axis] == 1) {
-        axis_to_size_map[axis] = pair.second[i];
+      if (with_broadcast) {
+        // Get the max size for axis and check broadcastable.
+        if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
+          axis_to_size_map[axis] = pair.second[i];
+        } else if (axis_to_size_map[axis] == 1) {
+          axis_to_size_map[axis] = pair.second[i];
+        } else {
+          PADDLE_ENFORCE_EQ(
+              pair.second[i],
+              axis_to_size_map[axis],
+              common::errors::PreconditionNotMet(
+                  "Shape Conflict: Tensor Axis [%s] can't broadcast by "
+                  "different size [%d] and [%d].",
+                  axis,
+                  pair.second[i],
+                  axis_to_size_map[axis]));
+        }
       } else {
-        PADDLE_ENFORCE_EQ(
-            pair.second[i],
-            axis_to_size_map[axis],
-            common::errors::PreconditionNotMet(
-                "Shape Conflict: Tensor Axis [%s] can't broadcast by "
-                "different size [%d] and [%d].",
-                axis,
-                pair.second[i],
-                axis_to_size_map[axis]));
+        if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
+          axis_to_size_map[axis] = pair.second[i];
+        } else {
+          axis_to_size_map[axis] =
+              std::min(pair.second[i], axis_to_size_map[axis]);
+        }
       }
     }
   }
