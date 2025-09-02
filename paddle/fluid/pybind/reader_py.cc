@@ -509,7 +509,7 @@ void BindReader(py::module *module) {
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory,
-         int reader_buffer_size = 2) {
+         int reader_buffer_size) {
         return new MultiDeviceFeedReader<reader::DenseTensorBlockingQueue>(
             queue,
             names,
@@ -522,6 +522,16 @@ void BindReader(py::module *module) {
             pin_memory,
             reader_buffer_size);
       },
+      py::arg("queue"),
+      py::arg("names"),
+      py::arg("shapes"),
+      py::arg("dtypes"),
+      py::arg("need_check_feed"),
+      py::arg("dst_places"),
+      py::arg("use_double_buffer"),
+      py::arg("drop_last"),
+      py::arg("pin_memory"),
+      py::arg("reader_buffer_size") = 2,
       py::return_value_policy::take_ownership);
 
   m.def(
@@ -536,7 +546,7 @@ void BindReader(py::module *module) {
          bool use_double_buffer,
          bool drop_last,
          bool pin_memory,
-         int reader_buffer_size = 2) {
+         int reader_buffer_size) {
         queue->SetDeviceCount(dst_places.size());
         return new MultiDeviceFeedReader<
             reader::OrderedMultiDeviceDenseTensorBlockingQueue>(
@@ -551,6 +561,16 @@ void BindReader(py::module *module) {
             pin_memory,
             reader_buffer_size);
       },
+      py::arg("queue"),
+      py::arg("names"),
+      py::arg("shapes"),
+      py::arg("dtypes"),
+      py::arg("need_check_feed"),
+      py::arg("dst_places"),
+      py::arg("use_double_buffer"),
+      py::arg("drop_last"),
+      py::arg("pin_memory"),
+      py::arg("reader_buffer_size") = 2,
       py::return_value_policy::take_ownership);
 }
 
