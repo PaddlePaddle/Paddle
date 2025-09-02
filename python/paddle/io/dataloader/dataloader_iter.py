@@ -97,6 +97,7 @@ class _DataLoaderIterBase:
         self._auto_collate_batch = loader.auto_collate_batch
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
+        self._reader_buffer_size = loader.reader_buffer_size
         self._prefetch_factor = loader.prefetch_factor
         self._use_shared_memory = loader.use_shared_memory
         self._timeout = (
@@ -218,6 +219,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._use_buffer_reader,
             True,
             self._pin_memory,
+            self._reader_buffer_size,
         )
 
         self._thread = threading.Thread(
@@ -523,6 +525,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._use_buffer_reader,
             True,
             self._pin_memory,
+            self._reader_buffer_size,
         )
 
         self._thread_done_event = threading.Event()
