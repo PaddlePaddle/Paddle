@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include "paddle/common/macros.h"  // For macro PADDLE_API
 
 namespace torch {
 class Library;
@@ -498,9 +499,9 @@ struct ClassRegistration {
 };
 
 // Global class registry
-class ClassRegistry {
+class PADDLE_API ClassRegistry {
  public:
-  static ClassRegistry& instance() {
+  PADDLE_API static ClassRegistry& instance() {
     static ClassRegistry registry;
     return registry;
   }
@@ -519,40 +520,43 @@ class ClassRegistry {
                               const std::string& method_name,
                               CppFunction&& func);
 
-  bool has_class(const std::string& qualified_name) const {
+  PADDLE_API bool has_class(const std::string& qualified_name) const {
     return classes_.find(qualified_name) != classes_.end();
   }
 
-  bool has_method(const std::string& qualified_name,
-                  const std::string& method_name) const {
+  PADDLE_API bool has_method(const std::string& qualified_name,
+                             const std::string& method_name) const {
     auto it = classes_.find(qualified_name);
     if (it == classes_.end()) return false;
     return it->second->methods.find(method_name) != it->second->methods.end();
   }
 
-  bool has_static_method(const std::string& qualified_name,
-                         const std::string& method_name) const {
+  PADDLE_API bool has_static_method(const std::string& qualified_name,
+                                    const std::string& method_name) const {
     auto it = classes_.find(qualified_name);
     if (it == classes_.end()) return false;
     return it->second->static_methods.find(method_name) !=
            it->second->static_methods.end();
   }
 
-  FunctionResult call_method_with_args(const std::string& qualified_name,
-                                       const std::string& method_name,
-                                       const FunctionArgs& args) const;
+  PADDLE_API FunctionResult
+  call_method_with_args(const std::string& qualified_name,
+                        const std::string& method_name,
+                        const FunctionArgs& args) const;
 
-  FunctionResult call_method_with_args(const std::string& qualified_name,
-                                       const std::string& method_name,
-                                       const IValue& instance,
-                                       const FunctionArgs& args) const;
+  PADDLE_API FunctionResult
+  call_method_with_args(const std::string& qualified_name,
+                        const std::string& method_name,
+                        const IValue& instance,
+                        const FunctionArgs& args) const;
 
-  FunctionResult call_constructor_with_args(const std::string& qualified_name,
-                                            const FunctionArgs& args) const;
+  PADDLE_API FunctionResult call_constructor_with_args(
+      const std::string& qualified_name, const FunctionArgs& args) const;
 
-  FunctionResult call_static_method_with_args(const std::string& qualified_name,
-                                              const std::string& method_name,
-                                              const FunctionArgs& args) const;
+  PADDLE_API FunctionResult
+  call_static_method_with_args(const std::string& qualified_name,
+                               const std::string& method_name,
+                               const FunctionArgs& args) const;
 
   void print_all_classes() const;
 
@@ -684,7 +688,7 @@ struct OperatorRegistration {
       : qualified_name(name), schema(schema_str) {}
 };
 
-class OperatorRegistry {
+class PADDLE_API OperatorRegistry {
  public:
   static OperatorRegistry& instance() {
     static OperatorRegistry registry;
@@ -697,9 +701,10 @@ class OperatorRegistry {
   void register_implementation(const std::string& qualified_name,
                                DispatchKey key,
                                CppFunction&& func);
-  OperatorRegistration* find_operator(const std::string& qualified_name);
+  PADDLE_API OperatorRegistration* find_operator(
+      const std::string& qualified_name);
 
-  std::vector<std::string> list_all_operators() const {
+  PADDLE_API std::vector<std::string> list_all_operators() const {
     std::vector<std::string> ops;
     for (const auto& pair : operators_) {
       ops.push_back(pair.first);
@@ -707,8 +712,8 @@ class OperatorRegistry {
     return ops;
   }
 
-  const std::unordered_map<std::string, OperatorRegistration>& get_operators()
-      const {
+  PADDLE_API const std::unordered_map<std::string, OperatorRegistration>&
+  get_operators() const {
     return operators_;
   }
 
