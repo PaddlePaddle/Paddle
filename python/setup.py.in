@@ -296,23 +296,20 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+class CudaVersion:
+    def __init__(self, version: str):
+        self.version = version
 
-    Returns:
-        string: Return the version information of cuda. If paddle package is CPU version, it will return False.
+    def __call__(self):
+        return self.version
 
-    Examples:
-        .. code-block:: python
+    def __str__(self):
+        return self.version
 
-            >>> import paddle
+    def __repr__(self):
+        return f"CudaVersion('{self.version}')"
 
-            >>> paddle.version.cuda()
-            >>> # doctest: +SKIP('Different environments yield different output.')
-            '10.2'
-
-    """
-    return cuda_version
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.
