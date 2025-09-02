@@ -591,23 +591,7 @@ class TestPutAlongAxisFP16MulDuplicatedIndices(unittest.TestCase):
 
 class TestPutAlongAxisIntegerMean(unittest.TestCase):
     def setUp(self):
-        self.input = paddle.arange(-16, 16, 1, dtype=paddle.int32).reshape(
-            [4, 4, 2]
-        )
-        self.src = paddle.full([4, 4, 2], -3, dtype=paddle.int32)
-        self.index = paddle.zeros([4, 4, 2], dtype=paddle.int64)
-        self.dim = 1
-
-    def test_mean_int(self):
-        result = paddle.put_along_axis(
-            self.input,
-            indices=self.index,
-            values=self.src,
-            axis=self.dim,
-            reduce='mean',
-            include_self=True,
-        )
-        gt_result = np.array(
+        self.gt_result = np.array(
             [
                 [[-6, -6], [-14, -13], [-12, -11], [-10, -9]],
                 [[-4, -4], [-6, -5], [-4, -3], [-2, -1]],
@@ -616,7 +600,35 @@ class TestPutAlongAxisIntegerMean(unittest.TestCase):
             ],
             dtype='int32',
         )
-        np.testing.assert_array_equal(result.numpy(), gt_result)
+
+    def _make_static_mean_int(self, place):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input_ = paddle.arange(-16, 16, 1, dtype=paddle.int32).reshape(
+                [4, 4, 2]
+            )
+            src = paddle.full([4, 4, 2], -3, dtype=paddle.int32)
+            index = paddle.zeros([4, 4, 2], dtype=paddle.int64)
+            result = paddle.put_along_axis(
+                input_,
+                indices=index,
+                values=src,
+                axis=1,
+                reduce='mean',
+                include_self=True,
+            )
+
+            exe = paddle.static.Executor(place)
+            result_np = exe.run(fetch_list=[result])
+            np.testing.assert_array_equal(result_np[0], self.gt_result)
+        paddle.disable_static()
+
+    def test_mean_int(self):
+        # try testing with both CPU and GPU places
+        if paddle.is_compiled_with_cuda():
+            self._make_static_mean_int(paddle.CUDAPlace(0))
+            paddle.CUDAPlace(0)
+        self._make_static_mean_int(paddle.CPUPlace())
 
 
 if __name__ == '__main__':
