@@ -94,7 +94,7 @@ set_target_properties(libuv PROPERTIES IMPORTED_LOCATION ${LIBUV_LIBRARIES})
 if(WIN32)
   set_target_properties(
     libuv PROPERTIES INTERFACE_LINK_LIBRARIES
-                     "ws2_32;psapi;iphlpapi;userenv;advapi32")
+                     "ucrt;ws2_32;psapi;iphlpapi;userenv;advapi32")
 endif()
 
 include_directories(${LIBUV_INCLUDE_DIR})
