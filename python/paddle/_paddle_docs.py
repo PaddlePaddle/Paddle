@@ -1912,7 +1912,56 @@ def logical_xor(
 """,
 )
 
-# lihaoyang08
+add_doc_and_signature(
+    "dot",
+    """
+    This operator calculates inner product for vectors.
+
+    Note:
+       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
+       is the batch dimension, which means that the vectors of multiple batches are dotted.
+
+    Parameters:
+        x (Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+            alias: ``input``.
+        y (Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
+            alias: ``other``.
+        name (str|None, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor.
+
+    Returns:
+        Tensor: the calculated result Tensor.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # 1-D Tensor * 1-D Tensor
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([4, 5, 6])
+            >>> z = paddle.dot(x, y)
+            >>> print(z)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            32)
+
+            >>> # 2-D Tensor * 2-D Tensor
+            >>> x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
+            >>> y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            >>> z = paddle.dot(x, y)
+            >>> print(z)
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [32, 64])
+""",
+    """
+def dot(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor
+""",
+)
 
 # lubingxin
 
