@@ -215,6 +215,7 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
+from .cuda import Stream as Stream
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,

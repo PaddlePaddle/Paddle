@@ -130,16 +130,27 @@ def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
 
 class Stream(_PaddleStream):
     """
-    Torch API: torch.cuda.Stream -> Paddle: paddle.cuda.Stream
-
-    example:
-        >>> import paddle
-        >>> s = paddle.cuda.Stream()
-        >>> assert isinstance(s, paddle.device.Stream)
+    Torch API: torch.cuda.Stream -> Paddle: paddle.device.Stream
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # PyTorch priority -> Paddle priority
+    _priority_map = {-1: 1, 0: 2}
+
+    def __init__(self, device=None, priority=0, *args, **kwargs):
+        """
+        Args:
+            device (int | str | None): 设备索引/字符串/None
+            priority (int): PyTorch priority (-1, 0)
+        """
+        paddle_device = _device_to_paddle(device)
+
+        # 转换 priority
+        paddle_priority = self._priority_map.get(priority, 2)
+
+        # 调用 Paddle 构造函数
+        super().__init__(
+            device=paddle_device, priority=paddle_priority, *args, **kwargs
+        )
 
 
 __all__ = [
