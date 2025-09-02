@@ -183,87 +183,95 @@ ShardingMergeForTensorsElementWise(
       common::errors::InvalidArgument(
           "For ShardingMergeForTensorsElementWise, the number of input "
           "tensors should be less or equal to 2."));
-  // Get the basic followed dims_mapping
-  int followed_index = 0;
-  int max_shards = -1;
-  int max_ndim = -1;
-  int num = 0;
-  int max_co_num = 0;
+  // Select basic follow input tensor: co_shard_nums > total_shards > ndim.
+  size_t followed_index = 0;
+  int64_t max_shards = -1;
+  int64_t max_ndim = -1;
+  int max_co_num = -1;
+  size_t cur_idx = 0;
+
   for (const auto& pair : tensor_axes_to_dim_pairs) {
-    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
-    std::vector<int64_t> sharding_vec;
-    std::unordered_set<int64_t> seen_dims;
+    const auto& dims_mapping = pair.second;
     int co_num = 0;
-    for (const auto& mesh_dim : dims_mapping) {
-      if (dims_mapping.size() > 1) {
+    std::vector<int64_t> sharding_vec;
+    sharding_vec.reserve(dims_mapping.size());
+    std::unordered_set<int64_t> seen_dims;
+
+    for (const auto& mesh_dim_group : dims_mapping) {
+      if (mesh_dim_group.size() > 1) {
         co_num = co_num + 1;
       }
-      for (const auto& dim : mesh_dim) {
-        if (seen_dims.find(dim) == seen_dims.end()) {
-          sharding_vec.push_back(dim);
-          seen_dims.insert(dim);
+      for (const auto& dim : mesh_dim_group) {
+        if (seen_dims.emplace(dim).second) {
+          sharding_vec.emplace_back(dim);
         }
       }
     }
-    int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
-    int64_t ndims = dims_mapping.size();
-    if ((co_num > max_co_num) || (total_shards > max_shards) ||
+    const int64_t total_shards =
+        calculate_total_shards(sharding_vec, mesh_shape);
+    const int64_t ndims = static_cast<int64_t>(dims_mapping.size());
+    if (co_num > max_co_num || total_shards > max_shards ||
         (total_shards == max_shards && ndims > max_ndim)) {
+      max_co_num = co_num;
       max_shards = total_shards;
       max_ndim = ndims;
-      followed_index = num;
-      max_co_num = co_num;
+      followed_index = cur_idx;
     }
-    num = num + 1;
+    ++cur_idx;
   }
-  int broadcast_rank =
-      max_ndim - tensor_axes_to_dim_pairs[followed_index].second.size();
-  std::string max_axes = tensor_axes_to_dim_pairs[followed_index].first;
+
+  const std::string& max_axes = tensor_axes_to_dim_pairs[followed_index].first;
+
+  // Normalize all input tensors to same ndims and align axes string.
   std::vector<std::pair<std::string, std::vector<std::vector<int64_t>>>>
-      new_tensor_axes_to_dim_pairs;
+      normalized;
+  normalized.reserve(tensor_axes_to_dim_pairs.size());
   for (const auto& pair : tensor_axes_to_dim_pairs) {
-    std::string enisum_str = pair.first;
+    std::string einsum_str = pair.first;
     auto dim_mapping = pair.second;
-    if (enisum_str.length() != max_ndim) {
-      enisum_str = max_axes;
-      for (size_t i = 0; i < max_ndim - enisum_str.length(); i++) {
-        dim_mapping.insert(dim_mapping.begin(), std::vector<int64_t>({}));
+    if (einsum_str.length() != static_cast<size_t>(max_ndim)) {
+      einsum_str = max_axes;
+      const size_t pad = static_cast<size_t>(max_ndim) - dim_mapping.size();
+      if (pad > 0) {
+        dim_mapping.insert(dim_mapping.begin(), pad, std::vector<int64_t>{});
       }
     }
-    new_tensor_axes_to_dim_pairs.push_back(
-        std::make_pair(enisum_str, dim_mapping));
+    normalized.emplace_back(std::move(einsum_str), std::move(dim_mapping));
   }
+
   std::unordered_map<std::string, std::vector<int64_t>> basic_sharding;
-  auto max_dim_mapping = new_tensor_axes_to_dim_pairs[followed_index].second;
+  basic_sharding.reserve(static_cast<size_t>(max_ndim));
+  const auto& base_dim_mapping = normalized[followed_index].second;
+
   std::unordered_set<int64_t> seen_dims;
-  for (int i = 0; i < max_ndim; i++) {
-    basic_sharding[max_axes.substr(i, 1)] = max_dim_mapping[i];
-    for (const auto& dim : max_dim_mapping[i]) {
-      seen_dims.insert(dim);
+  for (int64_t i = 0; i < max_ndim; ++i) {
+    const std::string axis_key(1, max_axes[static_cast<size_t>(i)]);
+    basic_sharding[axis_key] = base_dim_mapping[static_cast<size_t>(i)];
+    for (int64_t dim : base_dim_mapping[static_cast<size_t>(i)]) {
+      seen_dims.emplace(dim);
     }
   }
 
-  if (new_tensor_axes_to_dim_pairs.size() == 2) {
-    int other_index = 0;
-    if (followed_index == 0) {
-      other_index = 1;
-    }
-    auto other_dim_mapping = new_tensor_axes_to_dim_pairs[other_index].second;
-    for (int i = 0; i < max_ndim; i++) {
-      for (const auto& dim : other_dim_mapping[i]) {
-        if (seen_dims.find(dim) == seen_dims.end()) {
-          basic_sharding[max_axes.substr(i, 1)].push_back(dim);
-          seen_dims.insert(dim);
+  // Merge the binary to more shard.
+  if (normalized.size() == 2) {
+    const size_t other_index = (followed_index == 0 ? 1 : 0);
+    const auto& other_dim_mapping = normalized[other_index].second;
+    for (int64_t i = 0; i < max_ndim; ++i) {
+      const std::string axis_key(1, max_axes[static_cast<size_t>(i)]);
+      auto& axis_vec = basic_sharding[axis_key];
+
+      for (int64_t dim : other_dim_mapping[static_cast<size_t>(i)]) {
+        if (seen_dims.emplace(dim).second) {
+          axis_vec.emplace_back(dim);
         }
       }
-      auto xxx = basic_sharding[max_axes.substr(i, 1)];
-      const int64_t axis_size = axis_sizes.at(max_axes.substr(i, 1));
-      int64_t total_shards = calculate_total_shards(
-          basic_sharding[max_axes.substr(i, 1)], mesh_shape);
+
+      const int64_t axis_size = axis_sizes.at(axis_key);
+      int64_t total_shards = calculate_total_shards(axis_vec, mesh_shape);
       while (total_shards > 1 && (axis_size % total_shards != 0) &&
-             !xxx.empty()) {
-        const int64_t dim_to_remove = xxx.back();
-        xxx.pop_back();
+             !axis_vec.empty()) {
+        const int64_t dim_to_remove = axis_vec.back();
+        axis_vec.pop_back();
         total_shards /= mesh_shape.at(dim_to_remove);
         seen_dims.erase(dim_to_remove);
       }
@@ -276,6 +284,7 @@ ShardingMergeForTensorsElementWise(
       mesh_dim_to_axes[mesh_dim] += axis;
     }
   }
+  // Mesh Dimension Reuse Conflict
   for (auto const& [mesh_dim, competing_axes] : mesh_dim_to_axes) {
     if (competing_axes.size() > 1) {
       if (!merge_conflicts) {
