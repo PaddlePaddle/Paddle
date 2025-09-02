@@ -20,10 +20,6 @@ import paddle
 from paddle import core
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CPU scatter/gather kernel is not yet modified, coming soon and this skipping will be removed.",
-)
 class TestNonBroadcastableMismatchedShapeCase(unittest.TestCase):
     """Unittest from PyTorch comparison and handcrafted backward result
     Note that this unit test might fail, if you modify the implementation
@@ -428,10 +424,6 @@ class TestNonBroadcastableMismatchedShapeCase(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CPU scatter/gather kernel is not yet modified, coming soon and this skipping will be removed.",
-)
 class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
     """Test case from issue 72803"""
 
@@ -572,6 +564,59 @@ class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
         np.testing.assert_allclose(dx.numpy(), self.gt_dx, 1e-6, 1e-6)
         np.testing.assert_allclose(dv.numpy(), self.gt_dv, 1e-6, 1e-6)
         np.testing.assert_allclose(ddout.numpy(), self.gt_ddout, 1e-6, 1e-6)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "CPU FP16 is not supported",
+)
+class TestPutAlongAxisFP16MulDuplicatedIndices(unittest.TestCase):
+    def setUp(self):
+        self.input = paddle.ones(16, dtype=paddle.float16)
+        self.src = paddle.arange(
+            0.9, 0.9 + 0.02 * 16, 0.02, dtype=paddle.float16
+        )
+        self.index = paddle.zeros(16, dtype=paddle.int64)
+
+    def test_fp16_mul_reduce(self):
+        res = paddle.put_along_axis(
+            self.input, self.index, self.src, axis=0, reduce='mul'
+        )
+        gt = np.ones(16, dtype=np.float64)
+        gt[0] = np.arange(0.9, 0.9 + 16 * 0.02, 0.02).prod()
+        np.testing.assert_allclose(
+            res.numpy().astype(np.float64), gt, rtol=1e-2, atol=1e-2
+        )
+
+
+class TestPutAlongAxisIntegerMean(unittest.TestCase):
+    def setUp(self):
+        self.input = paddle.arange(-16, 16, 1, dtype=paddle.int32).reshape(
+            [4, 4, 2]
+        )
+        self.src = paddle.full([4, 4, 2], -3, dtype=paddle.int32)
+        self.index = paddle.zeros([4, 4, 2], dtype=paddle.int64)
+        self.dim = 1
+
+    def test_mean_int(self):
+        result = paddle.put_along_axis(
+            self.input,
+            indices=self.index,
+            values=self.src,
+            axis=self.dim,
+            reduce='mean',
+            include_self=True,
+        )
+        gt_result = np.array(
+            [
+                [[-6, -6], [-14, -13], [-12, -11], [-10, -9]],
+                [[-4, -4], [-6, -5], [-4, -3], [-2, -1]],
+                [[-3, -3], [2, 3], [4, 5], [6, 7]],
+                [[-1, -1], [10, 11], [12, 13], [14, 15]],
+            ],
+            dtype='int32',
+        )
+        np.testing.assert_array_equal(result.numpy(), gt_result)
 
 
 if __name__ == '__main__':
