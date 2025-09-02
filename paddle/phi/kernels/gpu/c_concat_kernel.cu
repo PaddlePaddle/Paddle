@@ -67,7 +67,7 @@ void CConcatKernel(const Context& dev_ctx,
 
   gpuStream_t stream = nullptr;
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && defined(PADDLE_KERNEL_WITH_FLAGCX)
   phi::distributed::FlagcxCommContext* comm_ctx = nullptr;
   comm_ctx = static_cast<phi::distributed::FlagcxCommContext*>(
       dev_ctx.GetCommContext());
@@ -82,7 +82,7 @@ void CConcatKernel(const Context& dev_ctx,
                         "NCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
   stream = dev_ctx.stream();
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && defined(PADDLE_KERNEL_WITH_FLAGCX)
   comm_ctx->AllGather(&temp_out, *x, reinterpret_cast<flagcxStream_t>(&stream));
 #else
   comm_ctx->AllGather(&temp_out, *x, stream);
