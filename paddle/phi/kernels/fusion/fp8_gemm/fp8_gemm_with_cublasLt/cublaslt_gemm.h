@@ -55,12 +55,12 @@ inline cudaDataType_t GetCublasLtDataType() {
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::float16>() {
   return CUDA_R_16F;
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
   return CUDA_R_16BF;
 }
 
@@ -339,12 +339,12 @@ void cublaslt_fp8_fp8_fp16_gemm(
                     common::errors::InvalidArgument(
                         "FP8 gemm need k % 16 = 0, but k = %d", k));
 
-  dev_ctx.template Alloc<phi::dtype::float16>(out);
+  dev_ctx.template Alloc<phi::float16>(out);
   int batch_count = 1;
   for (size_t i = 0; i < rank - 2; ++i) {
     batch_count *= x.dims()[i];
   }
-  CublasLtMatmulFP8<phi::dtype::float16>(
+  CublasLtMatmulFP8<phi::float16>(
       dev_ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
 
@@ -396,12 +396,12 @@ void cublaslt_fp8_fp8_bf16_gemm(
                     common::errors::InvalidArgument(
                         "FP8 gemm need k % 16 = 0, but k = %d", k));
 
-  dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+  dev_ctx.template Alloc<phi::bfloat16>(out);
   int batch_count = 1;
   for (size_t i = 0; i < rank - 2; ++i) {
     batch_count *= x.dims()[i];
   }
-  CublasLtMatmulFP8<phi::dtype::bfloat16>(
+  CublasLtMatmulFP8<phi::bfloat16>(
       dev_ctx, batch_count, m, n, k, x, y, scale, bias, activation_type, out);
 }
 

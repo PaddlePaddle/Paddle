@@ -498,14 +498,11 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
         handler.template AcquireWeightHMemory<float>(&weight_h, origin_mode);
   } else if (phi::TransToProtoVarType(weight_h.dtype()) ==
              phi::ProtoDataType::BF16) {
-    h0_memory_p =
-        handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0.get_ptr());
-    weight_x_memory_p =
-        handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(
-            &weight_x, origin_mode);
-    weight_h_memory_p =
-        handler.template AcquireWeightHMemory<phi::dtype::bfloat16>(
-            &weight_h, origin_mode);
+    h0_memory_p = handler.template AcquireH0Memory<phi::bfloat16>(h0.get_ptr());
+    weight_x_memory_p = handler.template AcquireWeightXMemory<phi::bfloat16>(
+        &weight_x, origin_mode);
+    weight_h_memory_p = handler.template AcquireWeightHMemory<phi::bfloat16>(
+        &weight_h, origin_mode);
   } else {
     h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0.get_ptr());
     weight_x_memory_p =
@@ -603,7 +600,7 @@ void FusionGRUKernel(const Context& dev_ctx,
           ? PADDLE_GET_CONST(std::vector<float>,
                              dev_ctx.GetDnnAttr("Scale_weights"))
           : tmp_scale_weights;
-  const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
+  const bool is_bf16 = std::is_same<T, phi::bfloat16>::value;
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
     RunKernel<T, float>(dev_ctx,
@@ -655,5 +652,5 @@ PD_REGISTER_KERNEL(fusion_gru,
                    ONEDNN,
                    phi::fusion::FusionGRUKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t) {}

@@ -102,7 +102,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #else
@@ -112,7 +112,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm,
                    phi::fusion::FusedBiasDropoutResidualLnKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
 }
 #endif
