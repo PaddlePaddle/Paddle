@@ -177,10 +177,5 @@ void RAdamKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(radam,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RAdamKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    radam, GPU, ALL_LAYOUT, phi::RAdamKernel, float, double, phi::float16) {}

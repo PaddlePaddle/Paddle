@@ -1532,6 +1532,7 @@ def sum(
     axis: int | Sequence[int] | None = None,
     dtype: DTypeLike | None = None,
     keepdim: bool = False,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -1559,6 +1560,7 @@ def sum(
             output Tensor. The result Tensor will have one fewer dimension
             than the :attr:`x` unless :attr:`keepdim` is true, default
             value is False.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1637,11 +1639,11 @@ def sum(
             dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dynamic_mode():
-        return _C_ops.sum(x, axis, dtype, keepdim)
+        return _C_ops.sum(x, axis, dtype, keepdim, out=out)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         if in_pir_mode():
-            return _C_ops.sum(x, axis, dtype, keepdim)
+            return _C_ops.sum(x, axis, dtype, keepdim, out=out)
         else:
             attrs = {'dim': axis, 'keep_dim': keepdim}
 
@@ -4483,7 +4485,7 @@ def cumprod(
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if x.dtype != dtype:
-            x = cast_(x, dtype)
+            x = cast(x, dtype)
 
     if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim, False, False)
@@ -4530,9 +4532,7 @@ def cumprod_(
     if dim is None:
         dim = -1
         x = _C_ops.flatten_(x, 0, len(x.shape) - 1)
-    if dtype is None:
-        dtype = x.dtype
-    else:
+    if dtype is not None:
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
         if x.dtype != dtype:
@@ -4548,6 +4548,7 @@ def prod(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -4571,6 +4572,7 @@ def prod(
             float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before
             operator performed. This is very useful for avoiding data type overflows. The default value is None,
             the dtype of output is the same as input Tensor `x`.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4648,7 +4650,7 @@ def prod(
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
-        return _C_ops.prod(x, axis, keepdim, reduce_all)
+        return _C_ops.prod(x, axis, keepdim, reduce_all, out=out)
     else:
         helper = LayerHelper('reduce_prod', **locals())
         check_variable_and_dtype(

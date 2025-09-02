@@ -49,11 +49,11 @@ void SubtractKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
+// using bfloat16 = ::phi::bfloat16;
 
 PD_REGISTER_KERNEL(subtract,
                    CPU,
@@ -66,4 +66,4 @@ PD_REGISTER_KERNEL(subtract,
                    int64_t,
                    complex64,
                    complex128,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

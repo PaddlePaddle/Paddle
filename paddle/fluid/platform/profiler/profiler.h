@@ -44,7 +44,7 @@ struct ProfilerOptions {
   uint32_t trace_level = FLAGS_host_trace_level;
 };
 
-class Profiler {
+class PADDLE_API Profiler {
  public:
   static uint32_t
       span_index;  // index of profiler range, when user profiles multiple

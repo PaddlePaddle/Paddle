@@ -64,9 +64,5 @@ void MomentumDenseKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(momentum,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::MomentumDenseKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    momentum, XPU, ALL_LAYOUT, phi::MomentumDenseKernel, float, phi::float16) {}

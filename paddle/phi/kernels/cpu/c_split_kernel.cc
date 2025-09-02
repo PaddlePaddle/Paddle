@@ -38,4 +38,4 @@ PD_REGISTER_KERNEL(c_split,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

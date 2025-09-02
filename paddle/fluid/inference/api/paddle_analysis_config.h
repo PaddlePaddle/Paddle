@@ -36,6 +36,7 @@
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
+#include "paddle/common/macros.h"
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 
@@ -43,7 +44,7 @@ namespace paddle {
 
 class AnalysisPredictor;
 
-struct PD_INFER_DECL XpuConfig {
+struct PADDLE_API XpuConfig {
   // Select which xpu device to run model.
   int device_id{0};
 
@@ -133,7 +134,7 @@ struct PD_INFER_DECL XpuConfig {
 /// AnalysisConfig,
 /// and loading it into AnalysisPredictor.
 ///
-struct PD_INFER_DECL AnalysisConfig {
+struct PADDLE_API AnalysisConfig {
   AnalysisConfig();
   ///
   /// \brief Construct a new AnalysisConfig from another

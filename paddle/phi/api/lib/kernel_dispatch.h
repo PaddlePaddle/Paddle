@@ -36,11 +36,11 @@ namespace paddle {
 namespace experimental {
 
 namespace detail {
-BackendSet GetTensorBackendSet(const phi::TensorBase& t);
-std::size_t CountLeadingZeros(uint32_t val);
+PADDLE_API BackendSet GetTensorBackendSet(const phi::TensorBase& t);
+PADDLE_API std::size_t CountLeadingZeros(uint32_t val);
 }  // namespace detail
 
-phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
+PADDLE_API phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
 
 enum class KernelType {
   DENSE_TENSOR_KERNEL,   // kernel for DenseTensor
@@ -227,7 +227,7 @@ DataType ParseDataType(const Tensor& tensor);
 DataType ParseDataType(const std::vector<Tensor>& tensors);
 DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
 
-Backend ParseBackend(const Place& place);
+PADDLE_API Backend ParseBackend(const Place& place);
 Backend ParseBackend(const Tensor& tensor);
 template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
@@ -238,7 +238,7 @@ Backend ParseBackend(T t, Args... args) {
 }
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor);
 
-phi::DataLayout ParseLayout(phi::DataLayout layout);
+PADDLE_API phi::DataLayout ParseLayout(phi::DataLayout layout);
 phi::DataLayout ParseLayout(const Tensor& tensor);
 phi::DataLayout ParseLayoutWithInputOrder(phi::DataLayout layout,
                                           const Tensor& tensor);

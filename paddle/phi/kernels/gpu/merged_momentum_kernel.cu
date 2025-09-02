@@ -20,7 +20,7 @@ PD_REGISTER_KERNEL(merged_momentum,
                    GPU,
                    ALL_LAYOUT,
                    phi::MergedMomentumKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {

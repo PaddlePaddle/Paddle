@@ -398,7 +398,7 @@ template TEST_API void Tracer::TraceOp<VarBase>(
     paddle::framework::AttributeMap* default_attrs,
     bool use_default_attr_map);
 
-template void Tracer::TraceOp<egr::EagerVariable>(
+template PADDLE_API void Tracer::TraceOp<egr::EagerVariable>(
     const std::string& type,
     const NameVarMap<egr::EagerVariable>& ins,
     const NameVarMap<egr::EagerVariable>& outs,

@@ -27,7 +27,7 @@ class TensorArray : public TensorBase,
  public:
   /// \brief Construct a TensorArray.
   /// \param vec The vector DenseTensor used to init TensorArray.
-  explicit TensorArray(const std::vector<DenseTensor>& vec);
+  PADDLE_API explicit TensorArray(const std::vector<DenseTensor>& vec);
 
   explicit TensorArray(size_t n) {
     for (size_t i = 0; i < n; i++) {
@@ -55,46 +55,46 @@ class TensorArray : public TensorBase,
   static const char* name() { return "TensorArray"; }
 
   /// \brief This overridden function is not used in TensorArray.
-  TEST_API int64_t numel() const override;
+  PADDLE_API int64_t numel() const override;
 
   /// \brief This overridden function is not used in TensorArray.
-  TEST_API const DDim& dims() const override;
+  PADDLE_API const DDim& dims() const override;
 
   /// \brief This overridden function is not used in TensorArray.
-  TEST_API const Place& place() const override;
+  PADDLE_API const Place& place() const override;
 
-  TEST_API DataType dtype() const override;
+  PADDLE_API DataType dtype() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_type(const DataType dtype);
+  PADDLE_API void set_type(const DataType dtype);
 #endif
 
-  TEST_API DataLayout layout() const override;
+  PADDLE_API DataLayout layout() const override;
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
-  void set_layout(const DataLayout layout);
+  PADDLE_API void set_layout(const DataLayout layout);
 #endif
 
   /// \brief This overridden function is not used in TensorArray.
-  TEST_API bool valid() const override;
+  PADDLE_API bool valid() const override;
 
   /// \brief Test whether the holder is created.
   /// \return Whether the holder is created.
-  TEST_API bool has_allocation() const override;
+  PADDLE_API bool has_allocation() const override;
 
   /// \brief Test whether the tensor's storage in TensorArray is allocated.
   /// return Whether all tensors in TensorArray is allocated.
-  TEST_API bool initialized() const override;
+  PADDLE_API bool initialized() const override;
 
   /// \brief Clear all tensors in TensorArray.
   void clear() { tensors_.clear(); }
 
   /// \brief Allocate memory with requested size for all tensors from allocator.
   /// \return Void pointer
-  TEST_API void* AllocateFrom(Allocator* allocator,
-                              DataType dtype,
-                              size_t requested_size = 0,
-                              bool fake_alloc = false) override;
+  PADDLE_API void* AllocateFrom(Allocator* allocator,
+                                DataType dtype,
+                                size_t requested_size = 0,
+                                bool fake_alloc = false) override;
 
   bool empty() const { return tensors_.empty(); }
 
@@ -109,13 +109,13 @@ class TensorArray : public TensorBase,
   void reserve(size_t n) { tensors_.reserve(n); }
 
   /// \brief Add the tensor to the end of TensorArray
-  TEST_API void push_back(const DenseTensor& tensor);
+  PADDLE_API void push_back(const DenseTensor& tensor);
 
-  void emplace_back();
+  PADDLE_API void emplace_back();
 
-  void emplace_back(const DenseTensor& tensor);
+  PADDLE_API void emplace_back(const DenseTensor& tensor);
 
-  void pop(size_t i);
+  PADDLE_API void pop(size_t i);
 
   /// \brief Return the last tensor in TensorArray
   DenseTensor& back() { return tensors_.back(); }

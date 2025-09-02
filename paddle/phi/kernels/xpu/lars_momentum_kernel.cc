@@ -110,4 +110,4 @@ PD_REGISTER_KERNEL(lars_momentum,
                    ALL_LAYOUT,
                    phi::LarsMomentumKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

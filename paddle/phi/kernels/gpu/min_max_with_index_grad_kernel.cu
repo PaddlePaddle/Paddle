@@ -98,8 +98,8 @@ PD_REGISTER_KERNEL(max_with_index_grad,
                    int,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(min_with_index_grad,
                    GPU,
@@ -111,5 +111,5 @@ PD_REGISTER_KERNEL(min_with_index_grad,
                    int,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
