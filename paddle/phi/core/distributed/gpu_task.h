@@ -17,12 +17,6 @@
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/utils.h"
 
-#if defined(PADDLE_WITH_RCCL)
-#include "paddle/phi/backends/dynload/rccl.h"
-#else
-#include "paddle/phi/backends/dynload/nccl.h"
-#endif
-
 namespace phi {
 class DenseTensor;
 namespace distributed {
@@ -35,42 +29,34 @@ class GPUTask {
           int64_t numel = 0,
           bool sync_op = true,
           bool use_calc_stream = false,
-          gpuStream_t = nullptr,
+          gpuStream_t stream = nullptr,
           CommType comm_type = CommType::UNKNOWN);
   ~GPUTask() = default;
 
-  std::string GetTraceMsg();
-  bool HasPrinted();
-  void SetPrint();
-
-  bool IsCompleted();
   bool Skip();
 
   void StartRecord();
   void EndRecord();
+  bool CudaEventQuery(gpuEvent_t event);
+  bool IsCompleted();
   void ClearRecord();
 
-  bool CudaEventQuery(gpuEvent_t event);
+  bool HasPrinted();
+  void SetPrint();
+  std::string GetTraceMsg(gpuEvent_t event);
 
  private:
   phi::Place place_;
   std::string group_key_;
-  uint64_t seq_{0};
+  uint64_t seq_;
   int64_t numel_;
-  gpuStream_t nccl_stream_;
-  CommType comm_type_;
   bool sync_op_;
   bool use_calc_stream_;
+  gpuStream_t stream_;
+  CommType comm_type_;
 
-  // #ifdef PADDLE_WITH_CUDA
-  //   unsigned int cuda_event_flags_ = cudaEventDisableTiming;
-  // #else  // PADDLE_WITH_HIP
-  //   unsigned int hip_event_flags_ = hipEventDisableTiming;
-  // #endif
   gpuEvent_t start_event_;
   gpuEvent_t end_event_;
-  std::chrono::time_point<std::chrono::steady_clock> start_time_;
-  std::chrono::time_point<std::chrono::steady_clock> end_time_;
 
   bool start_event_created_;
   bool end_event_created_;

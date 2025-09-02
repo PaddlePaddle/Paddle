@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/gpu_task_manager.h"
 #include <fstream>
 #include <future>
 #include "glog/logging.h"
+
+#include "paddle/phi/core/distributed/gpu_task_manager.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
+#if defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/dynload/rccl.h"
+#else
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
 
 namespace phi::distributed {
 
@@ -24,6 +31,7 @@ std::thread GPUTaskManager::gpu_task_clear_loop_thread_;
 const int64_t GPUTaskManager::loop_thread_sleep_millis = 10000;
 
 std::atomic<bool> GPUTaskManager::terminated_;
+
 std::mutex GPUTaskManager::gpu_task_list_mutex_;
 std::condition_variable GPUTaskManager::gpu_task_list_cv_;
 std::list<std::shared_ptr<GPUTask>> GPUTaskManager::gpu_task_list_;
@@ -32,11 +40,18 @@ std::mutex GPUTaskManager::gpu_task_clear_list_mutex_;
 std::condition_variable GPUTaskManager::gpu_task_clear_list_cv_;
 std::list<std::shared_ptr<GPUTask>> GPUTaskManager::gpu_task_clear_list_;
 
+gpuEvent_t GPUTaskManager::start_event_;
+
 GPUTaskManager::GPUTaskManager() {
   terminated_.store(false);
   gpu_task_loop_thread_ = std::thread(&GPUTaskManager::GPUTaskLoop, this);
   gpu_task_clear_loop_thread_ =
       std::thread(&GPUTaskManager::GPUTaskClearLoop, this);
+#ifdef PADDLE_WITH_CUDA
+  CUDA_CHECK(cudaEventCreateWithFlags(&start_event_, 0));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventCreateWithFlags(&start_event_, 0));
+#endif
 }
 
 GPUTaskManager::~GPUTaskManager() {
@@ -51,16 +66,34 @@ GPUTaskManager::~GPUTaskManager() {
     gpu_task_clear_list_cv_.notify_one();
     gpu_task_clear_loop_thread_.join();
   }
+
   LOG(INFO) << "GPUTaskManager destruct success.";
 }
 
+void GPUTaskManager::Stop() {
+  terminated_.store(true);
+
+  if (gpu_task_loop_thread_.joinable()) {
+    gpu_task_list_cv_.notify_one();
+    gpu_task_loop_thread_.join();
+  }
+
+  if (gpu_task_clear_loop_thread_.joinable()) {
+    gpu_task_clear_list_cv_.notify_one();
+    gpu_task_clear_loop_thread_.join();
+  }
+
+  LOG(INFO) << "GPUTaskManager stopped.";
+}
+
 void GPUTaskManager::SetStartTime() {
-  auto& instance = GetInstance();
-  instance.start_time_ =
-      std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(
-          std::chrono::steady_clock::now().time_since_epoch())
-          .count();
-  LOG(INFO) << "GPUTaskManager init at " << instance.start_time_;
+  auto& tmp = GetInstance();
+#ifdef PADDLE_WITH_CUDA
+  CUDA_CHECK(cudaEventRecord(start_event_));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventRecord(start_event_));
+#endif
+  LOG(INFO) << "GPUTaskManager init";
 }
 
 void GPUTaskManager::GPUTaskEnqueue(std::shared_ptr<GPUTask> gpu_task) {
@@ -78,23 +111,6 @@ void GPUTaskManager::GPUTaskClearEnqueue(std::shared_ptr<GPUTask> gpu_task) {
     std::lock_guard<std::mutex> lock(gpu_task_clear_list_mutex_);
     gpu_task_clear_list_.emplace_back(gpu_task);
   }
-}
-
-void GPUTaskManager::Stop() {
-  terminated_.store(true);
-
-  LOG(INFO) << "GPUTaskManager stopped begin.";
-  if (gpu_task_loop_thread_.joinable()) {
-    gpu_task_list_cv_.notify_one();
-    gpu_task_loop_thread_.join();
-  }
-
-  if (gpu_task_clear_loop_thread_.joinable()) {
-    gpu_task_clear_list_cv_.notify_one();
-    gpu_task_clear_loop_thread_.join();
-  }
-
-  LOG(INFO) << "GPUTaskManager stopped.";
 }
 
 void GPUTaskManager::GPUTaskLoop() {
@@ -127,10 +143,6 @@ void GPUTaskManager::GPUTaskLoop() {
 
 void GPUTaskManager::GPUTaskClearLoop() {
   std::future<void> future;
-  // constexpr size_t kMaxBatchSize = 50;
-  // int count=0;
-  // std::string empty_str;
-  // empty_str.reserve(100*50);
   while (!terminated_.load()) {
     if (future.valid()) {
       future.wait();
@@ -146,15 +158,8 @@ void GPUTaskManager::GPUTaskClearLoop() {
            iter != gpu_task_clear_list_.end();) {
         auto task = *iter;
         if (!task->HasPrinted()) {
-          // if (count==kMaxBatchSize){
-          //   LOG(INFO) << empty_str;
-          //   count=0;
-          //   empty_str.clear();
-          // }else{
-          //   count++;
-          //   empty_str += task->GetTraceMsg() + "\n";
-          // }
-          LOG(INFO) << task->GetTraceMsg();
+          // task->GetTraceMsg(start_event_);
+          LOG(INFO) << task->GetTraceMsg(start_event_);
           task->SetPrint();
         }
         future = std::async(std::launch::async, [&]() { task->ClearRecord(); });

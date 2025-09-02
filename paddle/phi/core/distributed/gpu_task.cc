@@ -18,16 +18,15 @@
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/utils/data_type.h"
+#if defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/dynload/rccl.h"
+#else
+#include "paddle/phi/backends/dynload/nccl.h"
+#endif
 
 COMMON_DECLARE_bool(enable_time_compare);
 
 namespace phi::distributed {
-
-void CUDART_CB GetCPUTime(cudaStream_t stream, cudaError_t status, void* data) {
-  auto* time_ptr =
-      static_cast<std::chrono::time_point<std::chrono::steady_clock>*>(data);
-  *time_ptr = std::chrono::steady_clock::now();
-}
 
 GPUTask::GPUTask(const phi::Place& place,
                  const std::string& group_key,
@@ -41,7 +40,7 @@ GPUTask::GPUTask(const phi::Place& place,
       group_key_(group_key),
       seq_(seq),
       numel_(numel),
-      nccl_stream_(stream),
+      stream_(stream),
       comm_type_(comm_type),
       sync_op_(sync_op),
       use_calc_stream_(use_calc_stream),
@@ -65,16 +64,18 @@ void GPUTask::StartRecord() {
   if (!start_event_created_) {
 #ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&start_event_, 0));
-    CUDA_CHECK(
-        cudaStreamAddCallback(nccl_stream_, GetCPUTime, &start_time_, 0));
-    CUDA_CHECK(cudaEventRecord(start_event_, nccl_stream_));
 #else  // PADDLE_WITH_HIP
     HIP_CHECK(hipEventCreateWithFlags(&start_event_, 0));
-    HIP_CHECK(hipEventRecord(start_event_, nccl_stream_));
 #endif
     start_event_created_ = true;
   }
+#ifdef PADDLE_WITH_CUDA
+  CUDA_CHECK(cudaEventRecord(start_event_, stream_));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventRecord(start_event_, stream_));
+#endif
 }
+
 void GPUTask::EndRecord() {
   if (skip_) {
     return;
@@ -83,14 +84,16 @@ void GPUTask::EndRecord() {
   if (!end_event_created_) {
 #ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&end_event_, 0));
-    CUDA_CHECK(cudaStreamAddCallback(nccl_stream_, GetCPUTime, &end_time_, 0));
-    CUDA_CHECK(cudaEventRecord(end_event_, nccl_stream_));
 #else  // PADDLE_WITH_HIP
     HIP_CHECK(hipEventCreateWithFlags(&end_event_, 0));
-    HIP_CHECK(hipEventRecord(end_event_, nccl_stream_));
 #endif
     end_event_created_ = true;
   }
+#ifdef PADDLE_WITH_CUDA
+  CUDA_CHECK(cudaEventRecord(end_event_, stream_));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventRecord(end_event_, stream_));
+#endif
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -165,34 +168,22 @@ bool GPUTask::IsCompleted() {
   return completed_;
 }
 
-std::string GPUTask::GetTraceMsg() {
+std::string GPUTask::GetTraceMsg(gpuEvent_t zero_event) {
   if (skip_) {
     return "";
   }
-  double start_time =
-      std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(
-          start_time_.time_since_epoch())
-          .count();
-  double end_time =
-      std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(
-          end_time_.time_since_epoch())
-          .count();
-  if (FLAGS_enable_time_compare) {
-    float elapsed_ms;
-    cudaEventElapsedTime(&elapsed_ms, start_event_, end_event_);
-    return group_key_ + "," + std::to_string(seq_) + "," +
-           std::to_string(static_cast<std::uint8_t>(comm_type_)) + "," +
-           std::to_string(numel_) + "," + std::to_string(start_time) + "," +
-           std::to_string(end_time) + "," + std::to_string(use_calc_stream_) +
-           "," + std::to_string(end_time - start_time) + "," +
-           std::to_string(elapsed_ms * 1000) + "," +
-           std::to_string((end_time - start_time) / (elapsed_ms * 1000));
-  } else {
-    return group_key_ + "," + std::to_string(seq_) + "," +
-           std::to_string(static_cast<std::uint8_t>(comm_type_)) + "," +
-           std::to_string(numel_) + "," + std::to_string(start_time) + "," +
-           std::to_string(end_time);
-  }
+#ifdef PADDLE_WITH_CUDA
+  float start_ms, end_ms;
+  cudaEventElapsedTime(&start_ms, zero_event, start_event_);
+  cudaEventElapsedTime(&end_ms, zero_event, end_event_);
+#else  // PADDLE_WITH_HIP
+  hipEventElapsedTime(&start_ms, zero_event, start_event_);
+  hipEventElapsedTime(&end_ms, zero_event, end_event_);
+#endif
+  return group_key_ + "," + std::to_string(seq_) + "," +
+         std::to_string(static_cast<std::uint8_t>(comm_type_)) + "," +
+         std::to_string(numel_) + "," + std::to_string(start_ms) + "," +
+         std::to_string(end_ms);
 }
 
 bool GPUTask::HasPrinted() {

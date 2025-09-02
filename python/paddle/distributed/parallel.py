@@ -1179,8 +1179,9 @@ def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
-        paddle.distributed.barrier()
-        core.GPUTaskManager.set_start_time()
+        if backend in ["nccl"]:
+            paddle.distributed.barrier()
+            core.GPUTaskManager.set_start_time()
         return group
 
     node_num = {i.split(":")[0] for i in parallel_env.trainer_endpoints}

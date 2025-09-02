@@ -20,6 +20,7 @@
 #include <mutex>
 #include <thread>
 
+#include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/gpu_task.h"
 
 namespace phi {
@@ -58,7 +59,7 @@ class GPUTaskManager {
   static std::condition_variable gpu_task_clear_list_cv_;
   static std::list<std::shared_ptr<GPUTask>> gpu_task_clear_list_;
 
-  double start_time_;  // us
+  static gpuEvent_t start_event_;
 };
 
 }  // namespace distributed
