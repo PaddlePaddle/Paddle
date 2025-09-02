@@ -20,6 +20,10 @@ from typing import TYPE_CHECKING, Union
 
 import paddle
 from paddle import CUDAPlace, CustomPlace
+from paddle.device import (
+    Stream as _PaddleStream,
+    stream_guard as _PaddleStreamGuard,
+)
 
 if TYPE_CHECKING:
     from paddle.base import core
@@ -107,13 +111,35 @@ def get_device_capability(device: int | None = None) -> tuple[int, int]:
     return paddle.device.cuda.get_device_capability(device)
 
 
-# def stream(stream_obj: core.CUDAStream)-> NoReturn
-#     """
-#     Mimics torch.cuda.stream()
+class StreamContext(_PaddleStreamGuard):
+    """
+    Torch style Stream context manager, inherited from Paddle's stream_guard.
+    """
 
-#     A context manager that sets a given stream as the current stream.
-#     """
-#     return paddle.device.cuda.stream_guard(stream_obj)
+    def __init__(self, stream: _PaddleStream):
+        super().__init__(stream)
+
+
+def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
+    """
+    Mimics torch.cuda.stream()
+    A context manager that sets a given stream as the current stream.
+    """
+    return StreamContext(stream_obj)
+
+
+class Stream(_PaddleStream):
+    """
+    Torch API: torch.cuda.Stream -> Paddle: paddle.cuda.Stream
+
+    example:
+        >>> import paddle
+        >>> s = paddle.cuda.Stream()
+        >>> assert isinstance(s, paddle.device.Stream)
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 __all__ = [
@@ -123,6 +149,6 @@ __all__ = [
     "get_device_properties",
     "get_device_name",
     "get_device_capability",
-    # "stream",
-    # "version",
+    "stream",
+    "Stream",
 ]

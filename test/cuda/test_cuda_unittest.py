@@ -15,13 +15,17 @@
 # test_cuda_unittest.py
 import unittest
 
+import paddle
 from paddle.cuda import (
+    Stream,
+    StreamContext,
     _device_to_paddle,
     current_stream,
     get_device_capability,
     get_device_name,
     get_device_properties,
     is_available,
+    stream,
     synchronize,
 )
 
@@ -90,6 +94,28 @@ class TestCudaCompat(unittest.TestCase):
         cap = get_device_capability(0)
         self.assertIsInstance(cap, tuple)
         self.assertEqual(len(cap), 2)
+
+    def test_stream_creation(self):
+        s = Stream()
+        self.assertIsInstance(s, paddle.device.Stream)
+
+    def test_stream_context(self):
+        s = Stream()
+        with stream(s):
+            ctx = stream(s)
+            self.assertIsInstance(ctx, StreamContext)
+            current = current_stream()
+            self.assertEqual(current.stream_base, s.stream_base)
+
+    def test_nested_streams(self):
+        s1 = Stream()
+        s2 = Stream()
+        with stream(s1):
+            with stream(s2):
+                current = paddle.cuda.current_stream()
+                self.assertEqual(current.stream_base, s2.stream_base)
+            current = paddle.cuda.current_stream()
+            self.assertEqual(current.stream_base, s1.stream_base)
 
 
 if __name__ == '__main__':
