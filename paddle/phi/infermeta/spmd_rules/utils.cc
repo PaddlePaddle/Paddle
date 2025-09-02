@@ -138,7 +138,22 @@ std::unordered_map<std::string, int64_t> GetAxesSizes(
   for (auto& pair : axes_to_size) {
     for (size_t i = 0; i < pair.second.size(); ++i) {
       auto axis = pair.first.substr(i, 1);
-      axis_to_size_map[axis] = pair.second[i];
+      // Get the max size for axis and check broadcastable.
+      if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
+        axis_to_size_map[axis] = pair.second[i];
+      } else if (axis_to_size_map[axis] == 1) {
+        axis_to_size_map[axis] = pair.second[i];
+      } else {
+        PADDLE_ENFORCE_EQ(
+            pair.second[i],
+            axis_to_size_map[axis],
+            common::errors::PreconditionNotMet(
+                "Shape Conflict: Tensor Axis [%s] can't broadcast by "
+                "different size [%d] and [%d].",
+                axis,
+                pair.second[i],
+                axis_to_size_map[axis]));
+      }
     }
   }
   return axis_to_size_map;
@@ -152,6 +167,145 @@ int64_t calculate_total_shards(const std::vector<int64_t>& sharding_vec,
       sharding_vec.end(),
       1LL,
       [&](int64_t acc, int64_t dim) { return acc * mesh_shape.at(dim); });
+}
+
+std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsElementWise(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts) {
+  PADDLE_ENFORCE_LE(
+      tensor_axes_to_dim_pairs.size(),
+      2,
+      common::errors::InvalidArgument(
+          "For ShardingMergeForTensorsElementWise, the number of input "
+          "tensors should be less or equal to 2."));
+  // Get the basic followed dims_mapping
+  int followed_index = 0;
+  int max_shards = -1;
+  int max_ndim = -1;
+  int num = 0;
+  int max_co_num = 0;
+  for (const auto& pair : tensor_axes_to_dim_pairs) {
+    const std::vector<std::vector<int64_t>>& dims_mapping = pair.second;
+    std::vector<int64_t> sharding_vec;
+    std::unordered_set<int64_t> seen_dims;
+    int co_num = 0;
+    for (const auto& mesh_dim : dims_mapping) {
+      if (dims_mapping.size() > 1) {
+        co_num = co_num + 1;
+      }
+      for (const auto& dim : mesh_dim) {
+        if (seen_dims.find(dim) == seen_dims.end()) {
+          sharding_vec.push_back(dim);
+          seen_dims.insert(dim);
+        }
+      }
+    }
+    int64_t total_shards = calculate_total_shards(sharding_vec, mesh_shape);
+    int64_t ndims = dims_mapping.size();
+    if ((co_num > max_co_num) || (total_shards > max_shards) ||
+        (total_shards == max_shards && ndims > max_ndim)) {
+      max_shards = total_shards;
+      max_ndim = ndims;
+      followed_index = num;
+      max_co_num = co_num;
+    }
+    num = num + 1;
+  }
+  int broadcast_rank =
+      max_ndim - tensor_axes_to_dim_pairs[followed_index].second.size();
+  std::string max_axes = tensor_axes_to_dim_pairs[followed_index].first;
+  std::vector<std::pair<std::string, std::vector<std::vector<int64_t>>>>
+      new_tensor_axes_to_dim_pairs;
+  for (const auto& pair : tensor_axes_to_dim_pairs) {
+    std::string enisum_str = pair.first;
+    auto dim_mapping = pair.second;
+    if (enisum_str.length() != max_ndim) {
+      enisum_str = max_axes;
+      for (size_t i = 0; i < max_ndim - enisum_str.length(); i++) {
+        dim_mapping.insert(dim_mapping.begin(), std::vector<int64_t>({}));
+      }
+    }
+    new_tensor_axes_to_dim_pairs.push_back(
+        std::make_pair(enisum_str, dim_mapping));
+  }
+  std::unordered_map<std::string, std::vector<int64_t>> basic_sharding;
+  auto max_dim_mapping = new_tensor_axes_to_dim_pairs[followed_index].second;
+  std::unordered_set<int64_t> seen_dims;
+  for (int i = 0; i < max_ndim; i++) {
+    basic_sharding[max_axes.substr(i, 1)] = max_dim_mapping[i];
+    for (const auto& dim : max_dim_mapping[i]) {
+      seen_dims.insert(dim);
+    }
+  }
+
+  if (new_tensor_axes_to_dim_pairs.size() == 2) {
+    int other_index = 0;
+    if (followed_index == 0) {
+      other_index = 1;
+    }
+    auto other_dim_mapping = new_tensor_axes_to_dim_pairs[other_index].second;
+    for (int i = 0; i < max_ndim; i++) {
+      for (const auto& dim : other_dim_mapping[i]) {
+        if (seen_dims.find(dim) == seen_dims.end()) {
+          basic_sharding[max_axes.substr(i, 1)].push_back(dim);
+          seen_dims.insert(dim);
+        }
+      }
+      auto xxx = basic_sharding[max_axes.substr(i, 1)];
+      const int64_t axis_size = axis_sizes.at(max_axes.substr(i, 1));
+      int64_t total_shards = calculate_total_shards(
+          basic_sharding[max_axes.substr(i, 1)], mesh_shape);
+      while (total_shards > 1 && (axis_size % total_shards != 0) &&
+             !xxx.empty()) {
+        const int64_t dim_to_remove = xxx.back();
+        xxx.pop_back();
+        total_shards /= mesh_shape.at(dim_to_remove);
+        seen_dims.erase(dim_to_remove);
+      }
+    }
+  }
+
+  std::unordered_map<int64_t, std::string> mesh_dim_to_axes;
+  for (auto const& [axis, sharding_vec] : basic_sharding) {
+    for (int64_t mesh_dim : sharding_vec) {
+      mesh_dim_to_axes[mesh_dim] += axis;
+    }
+  }
+  for (auto const& [mesh_dim, competing_axes] : mesh_dim_to_axes) {
+    if (competing_axes.size() > 1) {
+      if (!merge_conflicts) {
+        PADDLE_THROW(common::errors::PreconditionNotMet(
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension "
+            "[%d].",
+            competing_axes,
+            mesh_dim));
+      }
+      std::string winning_axis = "";
+      int64_t max_size = -1;
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        int64_t size = axis_sizes.at(axis_str);
+        // Pick the axis with the largest size.
+        if (size > max_size) {
+          max_size = size;
+          winning_axis = axis_char;
+        }
+      }
+      for (auto const& axis_char : competing_axes) {
+        std::string axis_str(1, axis_char);
+        if (axis_str != winning_axis) {
+          auto& vec = basic_sharding.at(axis_str);
+          vec.erase(std::remove(vec.begin(), vec.end(), mesh_dim), vec.end());
+        }
+      }
+    }
+  }
+  return basic_sharding;
 }
 
 std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
