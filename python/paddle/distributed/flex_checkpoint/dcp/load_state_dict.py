@@ -38,6 +38,7 @@ from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
+    make_replicated_sharded_weight,
 )
 from .utils import (
     assign_sharded_slice,
@@ -707,6 +708,8 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
                 )
+                if local_tensor.place != tgt_shard.local_tensor.place:
+                    local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
                     local_tensor=local_tensor,
@@ -1140,7 +1143,8 @@ def _load_state_dict(
                 or idx + 1 == len(read_items)
             ):
                 paddle.assign(
-                    copied_target_state_dict[key].cpu(), target_state_dict[key]
+                    copied_target_state_dict[key].cpu(),
+                    target_state_dict[key].local_tensor,
                 )
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
@@ -1390,6 +1394,7 @@ def merge_sharded_state_dict(
     for metadata in metadata_list:
         state_dict_metadata = metadata.state_dict_metadata
         positions = divide_positions(len(state_dict_metadata), file_num)
+        # positions = [0, 22, 90]
         rank = paddle.distributed.get_rank()
 
         partial_state_dict_metadata = slice_dict(
@@ -1404,7 +1409,12 @@ def merge_sharded_state_dict(
                 t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
                 if offload:
                     t = t.cpu()
-                local_state_dict_to_save[tensor_key] = t
+                local_state_dict_to_save[tensor_key] = (
+                    make_replicated_sharded_weight(
+                        key=tensor_key,
+                        tensor=t,
+                    )
+                )
             else:
                 continue
 
@@ -1475,7 +1485,8 @@ def merge_sharded_state_dict(
             local_state_dict_to_save[new_key] = local_state_dict_to_save.pop(
                 key
             )  # Add new key and remove the old one
-
+    for key, value in local_state_dict_to_save.items():
+        local_state_dict_to_save[key] = value.local_tensor
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
