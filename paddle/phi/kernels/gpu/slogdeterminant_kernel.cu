@@ -25,6 +25,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/determinant_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 #include "paddle/phi/kernels/slogdeterminant_kernel.h"
@@ -293,7 +294,21 @@ struct SlogDeterminantV2Functor {
                   DenseTensor* logdet) {
     if (input.numel() == 0) {
       dev_ctx.template Alloc<T>(sign);
+      if (sign->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(sign->dims()),
+                               static_cast<T>(1),
+                               sign->dtype(),
+                               sign);
+      }
       dev_ctx.template Alloc<T>(logdet);
+      if (logdet->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(logdet->dims()),
+                               static_cast<phi::dtype::complex<T>>(0),
+                               logdet->dtype(),
+                               logdet);
+      }
       return;
     }
 #ifndef PADDLE_WITH_HIP
@@ -429,7 +444,22 @@ struct SlogDeterminantV2Functor<phi::dtype::complex<T>, Context> {
                   DenseTensor* logdet) {
     if (input.numel() == 0) {
       dev_ctx.template Alloc<phi::dtype::complex<T>>(sign);
+      if (sign->numel() > 0) {
+        FullKernel<phi::dtype::complex<T>, Context>(
+            dev_ctx,
+            common::vectorize(sign->dims()),
+            static_cast<phi::dtype::complex<T>>(1),
+            sign->dtype(),
+            sign);
+      }
       dev_ctx.template Alloc<T>(logdet);
+      if (logdet->numel() > 0) {
+        FullKernel<T, Context>(dev_ctx,
+                               common::vectorize(logdet->dims()),
+                               static_cast<phi::dtype::complex<T>>(0),
+                               logdet->dtype(),
+                               logdet);
+      }
       return;
     }
 #ifndef PADDLE_WITH_HIP
