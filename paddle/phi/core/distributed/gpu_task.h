@@ -16,6 +16,7 @@
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/utils.h"
+#include "paddle/phi/core/platform/resource_pool.h"
 
 namespace phi {
 class DenseTensor;
@@ -57,6 +58,8 @@ class GPUTask {
 
   gpuEvent_t start_event_;
   gpuEvent_t end_event_;
+  // std::shared_ptr<gpuEvent_t> start_event_;
+  // std::shared_ptr<gpuEvent_t> end_event_;
 
   bool start_event_created_;
   bool end_event_created_;
@@ -66,6 +69,22 @@ class GPUTask {
 
  private:
   DISABLE_COPY_AND_ASSIGN(GPUTask);
+};
+
+class CudaEventResourcePool {
+ public:
+  std::shared_ptr<gpuEvent_t> New(int dev_idx);
+
+  static CudaEventResourcePool& Instance();
+
+ private:
+  CudaEventResourcePool();
+
+  DISABLE_COPY_AND_ASSIGN(CudaEventResourcePool);
+
+ private:
+  std::vector<std::shared_ptr<paddle::platform::ResourcePool<gpuEvent_t>>>
+      pool_;
 };
 
 }  // namespace distributed

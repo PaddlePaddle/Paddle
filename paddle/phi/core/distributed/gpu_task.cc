@@ -60,20 +60,31 @@ void GPUTask::StartRecord() {
   if (skip_) {
     return;
   }
+
   backends::gpu::GPUDeviceGuard guard(place_.device);
-  if (!start_event_created_) {
 #ifdef PADDLE_WITH_CUDA
+  if (!start_event_created_) {
     CUDA_CHECK(cudaEventCreateWithFlags(&start_event_, 0));
-#else  // PADDLE_WITH_HIP
-    HIP_CHECK(hipEventCreateWithFlags(&start_event_, 0));
-#endif
     start_event_created_ = true;
   }
-#ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(start_event_, stream_));
 #else  // PADDLE_WITH_HIP
+  if (!start_event_created_) {
+    HIP_CHECK(hipEventCreateWithFlags(&start_event_, 0));
+    start_event_created_ = true;
+  }
   HIP_CHECK(hipEventRecord(start_event_, stream_));
 #endif
+  //   if (!start_event_created_) {
+  //     start_event_ =
+  //     CudaEventResourcePool::Instance().New(place_.device);//std::shared_ptr<gpuEvent_t>
+  //     start_event_created_ = true;
+  //   }
+  // #ifdef PADDLE_WITH_CUDA
+  //   CUDA_CHECK(cudaEventRecord(*start_event_, stream_));
+  // #else  // PADDLE_WITH_HIP
+  //   HIP_CHECK(hipEventRecord(*start_event_, stream_));
+  // #endif
 }
 
 void GPUTask::EndRecord() {
@@ -81,19 +92,29 @@ void GPUTask::EndRecord() {
     return;
   }
   backends::gpu::GPUDeviceGuard guard(place_.device);
-  if (!end_event_created_) {
 #ifdef PADDLE_WITH_CUDA
+  if (!end_event_created_) {
     CUDA_CHECK(cudaEventCreateWithFlags(&end_event_, 0));
-#else  // PADDLE_WITH_HIP
-    HIP_CHECK(hipEventCreateWithFlags(&end_event_, 0));
-#endif
     end_event_created_ = true;
   }
-#ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(end_event_, stream_));
 #else  // PADDLE_WITH_HIP
+  if (!end_event_created_) {
+    HIP_CHECK(hipEventCreateWithFlags(&end_event_, 0));
+    end_event_created_ = true;
+  }
   HIP_CHECK(hipEventRecord(end_event_, stream_));
 #endif
+  //   if (!end_event_created_) {
+  //     end_event_ =
+  //     CudaEventResourcePool::Instance().New(place_.device);//std::shared_ptr<gpuEvent_t>
+  //     end_event_created_ = true;
+  //   }
+  // #ifdef PADDLE_WITH_CUDA
+  //   CUDA_CHECK(cudaEventRecord(*end_event_, stream_));
+  // #else  // PADDLE_WITH_HIP
+  //   HIP_CHECK(hipEventRecord(*end_event_, stream_));
+  // #endif
 }
 
 #ifdef PADDLE_WITH_CUDA
@@ -163,6 +184,7 @@ bool GPUTask::IsCompleted() {
     return true;
   }
   if (end_event_created_ && CudaEventQuery(end_event_)) {
+    // if (end_event_created_ && CudaEventQuery(*end_event_)) {
     completed_ = true;
   }
   return completed_;
@@ -180,6 +202,13 @@ std::string GPUTask::GetTraceMsg(gpuEvent_t zero_event) {
   hipEventElapsedTime(&start_ms, zero_event, start_event_);
   hipEventElapsedTime(&end_ms, zero_event, end_event_);
 #endif
+  // #ifdef PADDLE_WITH_CUDA
+  //   cudaEventElapsedTime(&start_ms, zero_event, *start_event_);
+  //   cudaEventElapsedTime(&end_ms, zero_event, *end_event_);
+  // #else // PADDLE_WITH_HIP
+  //   hipEventElapsedTime(&start_ms, zero_event, *start_event_);
+  //   hipEventElapsedTime(&end_ms, zero_event, *end_event_);
+  // #endif
   return group_key_ + "," + std::to_string(seq_) + "," +
          std::to_string(static_cast<std::uint8_t>(comm_type_)) + "," +
          std::to_string(numel_) + "," + std::to_string(start_ms) + "," +
@@ -196,4 +225,55 @@ bool GPUTask::HasPrinted() {
 void GPUTask::SetPrint() { has_printed_ = true; }
 
 bool GPUTask::Skip() { return skip_; }
+
+CudaEventResourcePool& CudaEventResourcePool::Instance() {
+  static CudaEventResourcePool pool;
+  return pool;
+}
+
+CudaEventResourcePool::CudaEventResourcePool() {
+  int dev_cnt = phi::backends::gpu::GetGPUDeviceCount();
+  pool_.reserve(dev_cnt);
+  for (int dev_idx = 0; dev_idx < dev_cnt; ++dev_idx) {
+    auto creator = [dev_idx] {
+      phi::backends::gpu::SetDeviceId(dev_idx);
+      gpuEvent_t* event = new gpuEvent_t;
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventCreateWithFlags(event, 0));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreateWithFlags(event, 0));
+#endif
+      return event;
+    };
+
+    auto deleter = [dev_idx](gpuEvent_t* event) {
+      phi::backends::gpu::SetDeviceId(dev_idx);
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipEventDestroy(*event));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaEventDestroy(*event));
+      delete event;
+#endif
+    };
+
+    pool_.emplace_back(
+        paddle::platform::ResourcePool<gpuEvent_t>::Create(creator, deleter));
+  }
+}
+
+std::shared_ptr<gpuEvent_t> CudaEventResourcePool::New(int dev_idx) {
+  PADDLE_ENFORCE_GE(
+      dev_idx,
+      0,
+      common::errors::InvalidArgument(
+          "The dev_idx should be not less than 0, but got %d.", dev_idx));
+  PADDLE_ENFORCE_LT(
+      dev_idx,
+      pool_.size(),
+      common::errors::OutOfRange(
+          "The dev_idx should be less than device count %d, but got %d.",
+          pool_.size(),
+          dev_idx));
+  return pool_[dev_idx]->New();
+}
 }  // namespace phi::distributed
