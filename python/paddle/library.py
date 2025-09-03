@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable, Sequence
-from typing import Literal, overload
+from typing import Literal, Union, overload
+
+from typing_extensions import TypeAlias
 
 from ._ops import PYTHON_OP_REGISTRY
 
-device_types_t = str | Sequence[str] | None
+_DeviceTypes: TypeAlias = Union[str, Sequence[str], None]
 
 
 def warn_about_unimplemented_torch_features(feature: str, fn_name: str) -> None:
@@ -76,7 +78,7 @@ def custom_op(
     /,
     *,
     mutates_args: str | Iterable[str],
-    device_types: device_types_t = None,
+    device_types: _DeviceTypes = None,
     schema: str | None = None,
     tags: Sequence[Tag] | None = None,
 ) -> Callable[[Callable[..., object]], CustomOpDef]: ...
@@ -89,7 +91,7 @@ def custom_op(
     /,
     *,
     mutates_args: str | Iterable[str],
-    device_types: device_types_t = None,
+    device_types: _DeviceTypes = None,
     schema: str | None = None,
     tags: Sequence[Tag] | None = None,
 ) -> CustomOpDef: ...
@@ -101,7 +103,7 @@ def custom_op(
     /,
     *,
     mutates_args: str | Iterable[str],
-    device_types: device_types_t = None,
+    device_types: _DeviceTypes = None,
     schema: str | None = None,
     tags: Sequence[Tag] | None = None,
 ) -> Callable[[Callable[..., object]], CustomOpDef] | CustomOpDef:
