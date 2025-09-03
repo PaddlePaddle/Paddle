@@ -142,8 +142,7 @@ def tensor_stride_negative_dim(x):
 class TestTensorStride(Dy2StTestBase):
     def _assert_dy2st_equal(self, fn):
         x = paddle.ones([2, 3, 4])
-        with enable_to_static_guard(False):
-            dygraph_res = fn(x)
+        dygraph_res = fn(x)
         static_res = paddle.jit.to_static(fn)(x)
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 

@@ -3392,24 +3392,27 @@ A tuple of all strides is returned when no argument is passed in. Otherwise, an 
 returned as the stride in the particular dimension dim.
 
 Args:
-dim (int, optional): if specified, return the stride in the particular dimension dim.
-             If None, return the strides of all dimensions. Default: None.
+    dim (int, optional): If specified, return the stride in the particular dimension dim.
+                         If None, return the strides of all dimensions. Default: None.
 
 Returns:
-int or tuple: The stride of the tensor. If dim is None, returns a tuple of all strides.
+    int or tuple: The stride of the tensor. If dim is None, returns a tuple of all strides.
        If dim is specified, returns the stride in that dimension.
 
 Examples:
-.. code-block:: python
 
->>> import paddle
->>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
->>> print(x.stride())
-(3, 1)
->>> print(x.stride(0))
-3
->>> print(x.stride(1))
-1
+    .. code-block:: python
+
+        >>> import paddle
+        >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
+        >>> x.stride()
+        (3, 1)
+        >>> x.stride(0)
+        3
+        >>> x.stride(1)
+        1
+        >>> x.stride(-1)
+        1
 )DOC");                             // NOLINT
 
 static PyObject* tensor_method_stride(TensorObject* self,
