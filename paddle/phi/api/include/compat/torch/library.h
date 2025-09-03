@@ -704,6 +704,11 @@ class PADDLE_API OperatorRegistry {
   void register_implementation(const std::string& qualified_name,
                                DispatchKey key,
                                CppFunction&& func);
+
+  bool has_operator(const std::string& qualified_name) const {
+    return operators_.find(qualified_name) != operators_.end();
+  }
+
   OperatorRegistration* find_operator(const std::string& qualified_name);
 
   std::vector<std::string> list_all_operators() const {
