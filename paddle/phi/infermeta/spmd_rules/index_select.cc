@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/index_select.h"
 
+#include <unordered_set>
 #include "glog/logging.h"
-
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
@@ -24,12 +24,40 @@ limitations under the License. */
 
 namespace phi::distributed {
 
+using phi::distributed::auto_parallel::str_join;
+
+static inline std::vector<int64_t> FilterIndexMeshDims(
+    const std::vector<int64_t>& index_mesh_dims,
+    const std::vector<std::vector<int64_t>>& x_dims_mapping,
+    int axis,
+    int mesh_ndim) {
+  std::unordered_set<int64_t> conflict_dims;
+  conflict_dims.reserve(mesh_ndim);
+  for (int i = 0; i < static_cast<int>(x_dims_mapping.size()); ++i) {
+    if (i == axis) continue;
+    for (int64_t d : x_dims_mapping[static_cast<size_t>(i)]) {
+      conflict_dims.insert(d);
+    }
+  }
+  std::vector<int64_t> kept_dims;
+  kept_dims.reserve(index_mesh_dims.size());
+  for (int64_t d : index_mesh_dims) {
+    if (conflict_dims.find(d) == conflict_dims.end()) {
+      kept_dims.emplace_back(d);
+    } else {
+      VLOG(4) << "Conflict detected on mesh dim " << d
+              << ". Replicating the index tensor.";
+    }
+  }
+  return kept_dims;
+}
+
 SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
                               const DistMetaTensor& index,
                               int axis) {
   // Step0: Verify Input
-  EXTRACT_SHAPE_AND_DIST_ATTR(x);
-  EXTRACT_SHAPE_AND_DIST_ATTR(index);
+  EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(x);
+  EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(index);
   axis = axis < 0 ? x_ndim + axis : axis;
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
@@ -42,26 +70,20 @@ SpmdInfo IndexSelectInferSpmd(const DistMetaTensor& x,
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   TensorDistAttr index_dist_attr_dst =
       CopyTensorDistAttrForOutput(index_dist_attr_src);
-  std::vector<int64_t> x_dims_mapping = x_dims_mapping_src;
-  std::vector<int64_t> index_dims_mapping = index_dims_mapping_src;
-  x_dims_mapping[axis] = -1;
+  std::vector<std::vector<int64_t>> x_dims_mapping = x_dims_mapping_src;
+  std::vector<std::vector<int64_t>> index_dims_mapping = index_dims_mapping_src;
+  x_dims_mapping[axis].clear();
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  std::vector<int64_t> out_dims_mapping(x_ndim, -1);
-  int64_t index_mesh_dim = index_dims_mapping[0];
-  for (int i = 0; i < x_ndim; ++i) {
-    if (i != axis) {
-      out_dims_mapping[i] = x_dims_mapping[i];
-      // input shared usually more useful than index shared
-      if (index_mesh_dim != -1 && out_dims_mapping[i] == index_mesh_dim) {
-        VLOG(4) << "Conflict detected on mesh dim " << index_mesh_dim
-                << ". Replicating the index tensor.";
-        index_mesh_dim = -1;
-        index_dims_mapping[0] = -1;
-      }
-    }
-  }
-  out_dims_mapping[axis] = index_mesh_dim;
+  const std::vector<int64_t> filtered_index_mesh_dims =
+      FilterIndexMeshDims(index_dims_mapping[0],
+                          x_dims_mapping,
+                          axis,
+                          x_dist_attr_src.process_mesh().ndim());
+
+  std::vector<std::vector<int64_t>> out_dims_mapping = x_dims_mapping;
+  out_dims_mapping[axis] = filtered_index_mesh_dims;
+  index_dims_mapping[0] = filtered_index_mesh_dims;
   index_dist_attr_dst.set_dims_mapping(index_dims_mapping);
   TensorDistAttr out_dist_attr_dst =
       CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -78,9 +100,9 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
                                   const DistMetaTensor& index,
                                   const DistMetaTensor& out_grad,
                                   int axis) {
-  EXTRACT_SHAPE_AND_DIST_ATTR(x);
-  EXTRACT_SHAPE_AND_DIST_ATTR(index);
-  EXTRACT_SHAPE_AND_DIST_ATTR(out_grad);
+  EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(x);
+  EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(index);
+  EXTRACT_SHAPE_AND_DIST_ATTR_CO_SHARD(out_grad);
   axis = axis < 0 ? x_ndim + axis : axis;
   PADDLE_ENFORCE_EQ(
       0 <= axis && axis < x_ndim,
@@ -107,10 +129,12 @@ SpmdInfo IndexSelectGradInferSpmd(const DistMetaTensor& x,
 
   TensorDistAttr x_grad_dist_attr_dst = x_dist_attr_dst;
   x_grad_dist_attr_dst.clean_partial_status();
-  if (index_dist_attr_dst.dims_mapping()[0] != -1) {
-    std::vector<int64_t> partial_dims(1, index_dist_attr_dst.dims_mapping()[0]);
+  std::vector<int64_t> partial_dims =
+      index_dist_attr_dst.multi_dims_mapping()[0];
+  if (!partial_dims.empty()) {
     x_grad_dist_attr_dst.set_partial_status(partial_dims);
-    VLOG(4) << "x_grad is marked as partial on mesh dim: " << partial_dims[0];
+    VLOG(4) << "x_grad is marked as partial on mesh dim: "
+            << str_join(partial_dims);
   }
 
   VLOG(4) << "IndexSelectGradInferSpmd: Done.";
