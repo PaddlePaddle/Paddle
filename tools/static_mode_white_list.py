@@ -549,7 +549,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_softmax_mkldnn_op',
     'test_softmax_bf16_mkldnn_op',
     'test_sum_mkldnn_op',
-    'test_sum_bf16_onednn_op',
+    'test_sum_bf16_mkldnn_op',
     'test_transpose_int8_onednn_op',
     'test_transpose_bf16_onednn_op',
     'test_transpose_onednn_op',
