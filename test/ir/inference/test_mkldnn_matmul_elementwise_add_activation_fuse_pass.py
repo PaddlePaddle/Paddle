@@ -60,7 +60,7 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
