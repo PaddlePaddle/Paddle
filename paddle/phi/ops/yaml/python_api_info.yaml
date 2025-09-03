@@ -16,6 +16,11 @@
   name : [paddle.multiply,paddle.Tensor.multiply]
   args_alias :
     use_default_mapping : True
+- op : log2
+  name : [paddle.log2,paddle.Tensor.log2]
+  args_alias :
+    use_default_mapping : True
+
 - op : maximum
   name : [paddle.maximum,paddle.Tensor.maximum]
   args_alias :
