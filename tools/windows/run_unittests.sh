@@ -515,7 +515,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_amp_promote$|\
 ^test_conv2d_transpose_mkldnn_op$|\
 ^test_conv2d_transpose_op_depthwise_conv$|\
-^test_dygraph_mnist_fp16$|\
 ^test_trt_convert_multihead_matmul_roformer$"
 
 
