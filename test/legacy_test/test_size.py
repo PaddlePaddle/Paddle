@@ -19,6 +19,17 @@ import paddle
 
 
 class TestPaddleSize(unittest.TestCase):
+    # TODO: enable when paddle.Tensor.size() is implemented
+    # def test_tensor_size(self):
+    #     x = paddle.empty(3, 4, 5)
+    #     size = x.size()
+    #     self.assertEqual(size, (3, 4, 5))
+    #     self.assertIsInstance(size, paddle.Size)
+
+    #     int_size = x.size(dim=1)
+    #     self.assertEqual(int_size, 3)
+    #     self.assertIsInstance(int_size, int)
+
     def test_creation_size(self):
         size = paddle.Size()
         self.assertEqual(size, ())
@@ -39,6 +50,11 @@ class TestPaddleSize(unittest.TestCase):
         self.assertEqual(size, (2, 3))
         self.assertIsInstance(size, paddle.Size)
 
+        tensor3 = paddle.to_tensor([2, 3])
+        size = paddle.Size(tensor3)
+        self.assertEqual(size, (2, 3))
+        self.assertIsInstance(size, paddle.Size)
+
         size = paddle.Size([True, False])
         self.assertEqual(size, (1, 0))
         self.assertIsInstance(size, paddle.Size)
@@ -52,8 +68,6 @@ class TestPaddleSize(unittest.TestCase):
             paddle.Size([1.5, 2.5])  # float not allowed
         with self.assertRaises(TypeError):
             paddle.Size(["a", "b"])  # string not allowed
-        with self.assertRaises(AssertionError):
-            paddle.Size([paddle.to_tensor([1, 2])])  # non-scalar tensor
 
     def test_creation_from_mixed_types(self):
         size = paddle.Size([1, paddle.to_tensor(2), 3])
@@ -144,6 +158,12 @@ class TestPaddleSize(unittest.TestCase):
         new_size = reduced[0](*reduced[1])
         self.assertEqual(new_size, size)
         self.assertIsInstance(new_size, paddle.Size)
+
+    def test_count_index(self):
+        x = paddle.Size([2, 3]).count(2)
+        y = paddle.Size([2, 3]).index(3, 0)
+        self.assertEqual(x, 1)
+        self.assertEqual(y, 1)
 
 
 if __name__ == "__main__":

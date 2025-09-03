@@ -128,6 +128,7 @@ def monkey_patch_tensor():
             'strides',
             'offset',
             '__cuda_array_interface__',
+            'is_cuda',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -1156,7 +1157,7 @@ def monkey_patch_tensor():
             return res
 
     @property
-    def is_cuda(self) -> bool:
+    def is_cuda(self: Tensor) -> bool:
         return self.place.is_gpu_place()
 
     @framework.dygraph_only
