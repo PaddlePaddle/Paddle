@@ -194,6 +194,7 @@ from . import (
     compat as compat,
     fft as fft,
     hub as hub,
+    library as library,
     linalg as linalg,
     signal as signal,
     special as special,
