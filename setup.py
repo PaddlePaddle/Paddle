@@ -311,8 +311,8 @@ def git_commit() -> str:
     return str(git_commit)
 
 
-def get_date() -> int:
-    return env_dict.get("DATE_ONLY")
+def get_paddle_version() -> int:
+    return env_dict.get("PADDLE_VERSION")
 
 
 def _get_version_detail(idx):
@@ -496,7 +496,7 @@ def get_tensorrt_version() -> str:
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
-full_version     = '%(major)d.%(minor)d.%(patch)s.dev%(date_only)s'
+full_version     = '%(paddle_version)s'
 major            = '%(major)d'
 minor            = '%(minor)d'
 patch            = '%(patch)s'
@@ -791,10 +791,10 @@ def cuda_archs():
         f.write(
             cnt
             % {
+                'paddle_version': get_paddle_version(),
                 'major': get_major(),
                 'minor': get_minor(),
                 'patch': get_patch(),
-                'date_only': get_date(),
                 'nccl': get_nccl_version(),
                 'rc': RC,
                 'version': env_dict.get("PADDLE_VERSION"),
