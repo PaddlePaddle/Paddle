@@ -157,42 +157,24 @@ else:
 
     Tensor.__init__ = new_init
 
-    class CallableSize:
-        def __init__(self, tensor):
-            self.tensor = tensor
-            self._value = math.prod(tensor.shape)
+    class CallableInt(int):
+        def __new__(cls, shape):
+            num = int(math.prod(shape))
+            instance = super().__new__(cls, num)
+            instance.shape = shape
+            return instance
 
         def __call__(self, dim=None):
             if dim is None:
-                return self.tensor.shape
+                return self.shape
             else:
-                return self.tensor.shape[dim]
+                return self.shape[dim]
 
-        # class method
-        def __instancecheck__(self, instance):
-            return isinstance(self._value, instance)
+    @property
+    def size_method(self):
+        return CallableInt(self.shape)
 
-        # value method
-        def __int__(self):
-            return int(self._value)
-
-        def __float__(self):
-            return float(self._value)
-
-        def __str__(self):
-            return str(self._value)
-
-        def __repr__(self):
-            return repr(self._value)
-
-    original_getattr = Tensor.__getattribute__
-
-    def new_getattr(self, name):
-        if name == 'size':
-            return CallableSize(self)
-        return original_getattr(self, name)
-
-    Tensor.__getattribute__ = new_getattr
+    Tensor.size = size_method
 
 import paddle.distributed.fleet
 import paddle.text
