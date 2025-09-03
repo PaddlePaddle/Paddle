@@ -141,11 +141,8 @@ def custom_op(
     return inner(fn)
 
 
-_op_identifier = str | CustomOpDef
-
-
 def register_fake(
-    op: _op_identifier,
+    op: str | CustomOpDef,
     func: Callable[..., object] | None = None,
     /,
     *,
