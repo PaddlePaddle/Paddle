@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 #include "paddle/phi/backends/dynload/lapack.h"
-#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace phi::funcs {
 
