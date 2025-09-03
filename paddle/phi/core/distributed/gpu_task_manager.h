@@ -36,7 +36,7 @@ class GPUTaskManager {
     static GPUTaskManager instance;
     return instance;
   }
-  static void SetStartTime();
+  void SetStartTime();
   void GPUTaskEnqueue(std::shared_ptr<GPUTask> gpu_task);
   void GPUTaskClearEnqueue(std::shared_ptr<GPUTask> gpu_task);
   void Stop();

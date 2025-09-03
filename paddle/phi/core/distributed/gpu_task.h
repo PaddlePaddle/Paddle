@@ -24,17 +24,10 @@ namespace distributed {
 
 class GPUTask {
  public:
-  GPUTask(const phi::Place& place = phi::Place(),
-          const std::string& group_key = "",
-          uint64_t seq = 0,
-          int64_t numel = 0,
-          bool sync_op = true,
-          bool use_calc_stream = false,
+  GPUTask(const phi::Place& place,
           gpuStream_t stream = nullptr,
-          CommType comm_type = CommType::UNKNOWN);
+          const std::string& label = "");
   ~GPUTask() = default;
-
-  bool Skip();
 
   void StartRecord();
   void EndRecord();
@@ -48,13 +41,8 @@ class GPUTask {
 
  private:
   phi::Place place_;
-  std::string group_key_;
-  uint64_t seq_;
-  int64_t numel_;
-  bool sync_op_;
-  bool use_calc_stream_;
   gpuStream_t stream_;
-  CommType comm_type_;
+  std::string label_;
 
   gpuEvent_t start_event_;
   gpuEvent_t end_event_;
@@ -65,7 +53,6 @@ class GPUTask {
   bool end_event_created_;
   bool completed_;
   bool has_printed_;
-  bool skip_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(GPUTask);

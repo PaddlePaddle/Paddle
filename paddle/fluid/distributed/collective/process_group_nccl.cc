@@ -1160,23 +1160,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
 
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-  } else {
-    std::string group_key = place_to_group_key_.at(key);
-    auto gpu_task =
-        std::make_shared<phi::distributed::GPUTask>(place,
-                                                    group_key,
-                                                    comm_seq_,
-                                                    GetTensorNumel(tensors),
-                                                    sync_op,
-                                                    use_calc_stream,
-                                                    nccl_stream,
-                                                    comm_type);
+  } else if (GetTensorNumel(tensors) > 1024 * 1024) {
+    auto gpu_task = std::make_shared<phi::distributed::GPUTask>(
+        place,
+        nccl_stream,
+        std::to_string(static_cast<std::uint8_t>(comm_type)));
     gpu_task->StartRecord();
     fn(nccl_comm_ctx, nccl_stream);
     gpu_task->EndRecord();
 
     auto& gpu_task_manager = phi::distributed::GPUTaskManager::GetInstance();
     gpu_task_manager.GPUTaskEnqueue(std::move(gpu_task));
+  } else {
+    fn(nccl_comm_ctx, nccl_stream);
   }
 
   if (!use_calc_stream) {
@@ -1315,23 +1311,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
 
     auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
     comm_task_manager.CommTaskEnqueue(std::move(comm_task));
-  } else {
-    std::string group_key = place_to_group_key_.at(key);
-    auto gpu_task =
-        std::make_shared<phi::distributed::GPUTask>(place,
-                                                    group_key,
-                                                    p2p_comm_seq_[key],
-                                                    tensor.numel(),
-                                                    sync_op,
-                                                    use_calc_stream,
-                                                    nccl_stream,
-                                                    comm_type);
+  } else if (tensor.numel() > 1024 * 1024) {
+    auto gpu_task = std::make_shared<phi::distributed::GPUTask>(
+        place,
+        nccl_stream,
+        std::to_string(static_cast<std::uint8_t>(comm_type)));
     gpu_task->StartRecord();
     fn(nccl_comm_ctx, nccl_stream, p2p_target_rank);
     gpu_task->EndRecord();
 
     auto& gpu_task_manager = phi::distributed::GPUTaskManager::GetInstance();
     gpu_task_manager.GPUTaskEnqueue(std::move(gpu_task));
+  } else {
+    fn(nccl_comm_ctx, nccl_stream, p2p_target_rank);
   }
 
   if (!use_calc_stream) {

@@ -14,7 +14,10 @@
 
 #include "paddle/phi/core/distributed/gpu_task.h"
 #include "paddle/common/flags.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -29,38 +32,25 @@ COMMON_DECLARE_bool(enable_time_compare);
 namespace phi::distributed {
 
 GPUTask::GPUTask(const phi::Place& place,
-                 const std::string& group_key,
-                 uint64_t seq,
-                 int64_t numel,
-                 bool sync_op,
-                 bool use_calc_stream,
                  gpuStream_t stream,
-                 CommType comm_type)
+                 const std::string& label)
     : place_(place),
-      group_key_(group_key),
-      seq_(seq),
-      numel_(numel),
       stream_(stream),
-      comm_type_(comm_type),
-      sync_op_(sync_op),
-      use_calc_stream_(use_calc_stream),
+      label_(label),
       start_event_(nullptr),
       end_event_(nullptr),
       start_event_created_(false),
       end_event_created_(false),
       completed_(false),
-      has_printed_(false),
-      skip_(false) {
-  if (numel <= 1024 * 1024) {
-    skip_ = true;
+      has_printed_(false) {
+  if (stream_ == nullptr) {
+    stream_ = static_cast<phi::GPUContext*>(
+                  phi::DeviceContextPool::Instance().Get(place))
+                  ->stream();
   }
 }
 
 void GPUTask::StartRecord() {
-  if (skip_) {
-    return;
-  }
-
   backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_CUDA
   if (!start_event_created_) {
@@ -88,9 +78,6 @@ void GPUTask::StartRecord() {
 }
 
 void GPUTask::EndRecord() {
-  if (skip_) {
-    return;
-  }
   backends::gpu::GPUDeviceGuard guard(place_.device);
 #ifdef PADDLE_WITH_CUDA
   if (!end_event_created_) {
@@ -119,9 +106,6 @@ void GPUTask::EndRecord() {
 
 #ifdef PADDLE_WITH_CUDA
 void GPUTask::ClearRecord() {
-  if (skip_) {
-    return;
-  }
   if (start_event_created_) {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     CUDA_CHECK(cudaEventDestroy(start_event_));
@@ -135,9 +119,6 @@ void GPUTask::ClearRecord() {
 }
 #else  // PADDLE_WITH_HIP
 void GPUTask::ClearRecord() {
-  if (skip_) {
-    return;
-  }
   if (start_event_created_) {
     backends::gpu::GPUDeviceGuard guard(place_.device);
     HIP_CHECK(hipEventDestroy(start_event_));
@@ -152,9 +133,6 @@ void GPUTask::ClearRecord() {
 #endif
 
 bool GPUTask::CudaEventQuery(gpuEvent_t event) {
-  if (skip_) {
-    return true;
-  }
 #ifdef PADDLE_WITH_CUDA
   cudaError_t ret = cudaEventQuery(event);
   if (ret == cudaSuccess) {
@@ -180,7 +158,7 @@ bool GPUTask::CudaEventQuery(gpuEvent_t event) {
 }
 
 bool GPUTask::IsCompleted() {
-  if (skip_ || completed_) {
+  if (completed_) {
     return true;
   }
   if (end_event_created_ && CudaEventQuery(end_event_)) {
@@ -191,9 +169,6 @@ bool GPUTask::IsCompleted() {
 }
 
 std::string GPUTask::GetTraceMsg(gpuEvent_t zero_event) {
-  if (skip_) {
-    return "";
-  }
   float start_ms, end_ms;
 #ifdef PADDLE_WITH_CUDA
   cudaEventElapsedTime(&start_ms, zero_event, start_event_);
@@ -209,22 +184,12 @@ std::string GPUTask::GetTraceMsg(gpuEvent_t zero_event) {
   //   hipEventElapsedTime(&start_ms, zero_event, *start_event_);
   //   hipEventElapsedTime(&end_ms, zero_event, *end_event_);
   // #endif
-  return group_key_ + "," + std::to_string(seq_) + "," +
-         std::to_string(static_cast<std::uint8_t>(comm_type_)) + "," +
-         std::to_string(numel_) + "," + std::to_string(start_ms) + "," +
-         std::to_string(end_ms);
+  return std::to_string(start_ms) + "," + std::to_string(end_ms) + "," + label_;
 }
 
-bool GPUTask::HasPrinted() {
-  if (skip_) {
-    return true;
-  }
-  return has_printed_;
-}
+bool GPUTask::HasPrinted() { return has_printed_; }
 
 void GPUTask::SetPrint() { has_printed_ = true; }
-
-bool GPUTask::Skip() { return skip_; }
 
 CudaEventResourcePool& CudaEventResourcePool::Instance() {
   static CudaEventResourcePool pool;
@@ -276,4 +241,5 @@ std::shared_ptr<gpuEvent_t> CudaEventResourcePool::New(int dev_idx) {
           dev_idx));
   return pool_[dev_idx]->New();
 }
+
 }  // namespace phi::distributed

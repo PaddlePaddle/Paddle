@@ -3215,9 +3215,8 @@ All parameter, weight, gradient are variables in Paddle.
   BindCommContextManager(&m);
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
   BindNCCLConfig(&m);
-#endif
-#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
   BindGPUTaskManager(&m);
+  BindGPUTask(&m);
 #endif
   BindAutoParallel(&m);
   BindJitProperty(&m);
@@ -4154,3 +4153,4 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 }
 }  // namespace paddle::pybind
+git

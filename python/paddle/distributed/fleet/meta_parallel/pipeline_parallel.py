@@ -25,6 +25,7 @@ from typing import Callable
 
 import paddle
 from paddle import framework
+from paddle.base import core
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
 from ..utils import timer_helper as timer
@@ -1198,6 +1199,13 @@ class PipelineParallel(MetaParallelBase):
 
         assert chunk_id is None or isinstance(chunk_id, int)
 
+        if (
+            paddle.distributed.collective._default_backend == 'nccl'
+            and int(os.getenv("FLAGS_enable_gpu_async_trace", "0")) == 1
+        ):
+            gpu_task = core.GPUTask.create("forward")
+            gpu_task.start_record()
+
         self.callbacks.on_location(
             PipelineParallelMicroStepLocations.FORWARD_BEGIN,
             input_tensor=input_tensor,
@@ -1223,6 +1231,13 @@ class PipelineParallel(MetaParallelBase):
         backward_loss_tensor, backward_loss_fn_node = self._maybe_loss_compute(
             output_tensor, micro_dataset, overlap_schedule_mode
         )
+
+        if (
+            paddle.distributed.collective._default_backend == 'nccl'
+            and int(os.getenv("FLAGS_enable_gpu_async_trace", "0")) == 1
+        ):
+            gpu_task.end_record()
+            core.GPUTaskManager.enqueue(gpu_task)
 
         if self.is_pipeline_first_stage() or self.is_pipeline_last_stage():
             # Only increase micro batch id at virtual first/last pp stage.
@@ -1252,6 +1267,14 @@ class PipelineParallel(MetaParallelBase):
             self.timers("backward_step").start()
         if self.processed_steps < g_profile_pipeline_details_steps:
             get_sync_logger().info("Before backward_step")
+
+        if (
+            paddle.distributed.collective._default_backend == 'nccl'
+            and int(os.getenv("FLAGS_enable_gpu_async_trace", "0")) == 1
+        ):
+            gpu_task = core.GPUTask.create("backward")
+            gpu_task.start_record()
+
         with paddle.amp.auto_cast(enable=False):
             self.callbacks.on_location(
                 PipelineParallelMicroStepLocations.BACKWARD_BEGIN,
@@ -1329,6 +1352,13 @@ class PipelineParallel(MetaParallelBase):
                 output_tensor_grad=output_tensor_grad,
                 step_id=step_id,
             )
+
+            if (
+                paddle.distributed.collective._default_backend == 'nccl'
+                and int(os.getenv("FLAGS_enable_gpu_async_trace", "0")) == 1
+            ):
+                gpu_task.end_record()
+                core.GPUTaskManager.enqueue(gpu_task)
 
             if self.processed_steps < g_profile_pipeline_details_steps:
                 get_sync_logger().info("After backward_step")

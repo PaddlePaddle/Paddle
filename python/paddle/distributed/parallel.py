@@ -1179,7 +1179,10 @@ def init_parallel_env(nccl_config: NCCLConfig | None = None) -> Group:
         _add_new_group(group)
         parallel_helper._set_parallel_ctx(True)
 
-        if backend in ["nccl"]:
+        if (
+            backend in ["nccl"]
+            and int(os.getenv("FLAGS_enable_gpu_async_trace", "0")) == 1
+        ):
             paddle.distributed.barrier()
             core.GPUTaskManager.set_start_time()
         return group

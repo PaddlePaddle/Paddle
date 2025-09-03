@@ -87,7 +87,6 @@ void GPUTaskManager::Stop() {
 }
 
 void GPUTaskManager::SetStartTime() {
-  auto& tmp = GetInstance();
 #ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(start_event_));
 #else  // PADDLE_WITH_HIP
@@ -98,9 +97,6 @@ void GPUTaskManager::SetStartTime() {
 
 void GPUTaskManager::GPUTaskEnqueue(std::shared_ptr<GPUTask> gpu_task) {
   if (!terminated_.load()) {
-    if (gpu_task->Skip()) {
-      return;
-    }
     std::lock_guard<std::mutex> lock(gpu_task_list_mutex_);
     gpu_task_list_.emplace_back(std::move(gpu_task));
   }
