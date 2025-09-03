@@ -908,7 +908,7 @@ disable_static()
 from .pir_utils import IrGuard
 
 try:
-    from .device.cuda import Stream as Stream
+    from .cuda import Stream as Stream
 except ImportError:
 
     class _DummyStream:

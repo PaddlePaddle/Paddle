@@ -97,7 +97,9 @@ class TestCudaCompat(unittest.TestCase):
 
     def test_stream_creation(self):
         s = Stream()
+        s1 = paddle.Stream()  # test paddle.Stream
         self.assertIsInstance(s, paddle.device.Stream)
+        self.assertIsInstance(s1, paddle.device.Stream)
 
     def test_stream_context(self):
         s = Stream(device='gpu', priority=2)
