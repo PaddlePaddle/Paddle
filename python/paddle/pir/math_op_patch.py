@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import textwrap
 import warnings
@@ -1127,6 +1128,16 @@ def monkey_patch_value():
 
         return transform(self, device, dtype, blocking)
 
+    def __deepcopy__(self, memo):
+        if isinstance(self.place, paddle.CUDAPlace):
+            new_tensor = _C_ops.memcpy(self, 1)
+        elif isinstance(self.place, paddle.CUDAPinnedPlace):
+            new_tensor = _C_ops.memcpy(self, 2)
+        else:
+            new_tensor = _C_ops.memcpy(self, 0)
+        memo[id(self)] = new_tensor
+        return new_tensor
+
     def to(self, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
@@ -1170,6 +1181,16 @@ def monkey_patch_value():
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
+
+        if "non_blocking" in kwargs:
+            non_blocking = kwargs.pop("non_blocking")
+        else:
+            non_blocking = False
+
+        if "copy" in kwargs:
+            copy_tensor = kwargs.pop("copy")
+        else:
+            copy_tensor = False
 
         size_args = len(args)
         size_kwargs = len(kwargs)
@@ -1295,8 +1316,13 @@ def monkey_patch_value():
             args["dtype"] = other.dtype
             # in dy2static, we need show warning for this case
             other.place  # noqa: B018
-
-        return self._to(**args)
+        args["blocking"] = (
+            False if not args.get("blocking", False) or non_blocking else True
+        )
+        res = self._to(**args)
+        if copy_tensor:
+            return copy.deepcopy(res)
+        return res
 
     @fake_interface_only
     def numpy(self):
@@ -1431,6 +1457,7 @@ def monkey_patch_value():
         ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
+        ("__deepcopy__", __deepcopy__),
         # For basic operators
         (
             '__add__',

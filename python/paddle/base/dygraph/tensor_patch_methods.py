@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import inspect
 import warnings
@@ -776,6 +777,17 @@ def monkey_patch_tensor():
         device = None
         dtype = None
         blocking = None
+
+        if "non_blocking" in kwargs:
+            non_blocking = kwargs.pop("non_blocking")
+        else:
+            non_blocking = False
+
+        if "copy" in kwargs:
+            copy_tensor = kwargs.pop("copy")
+        else:
+            copy_tensor = False
+
         size_args = len(args)
         size_kwargs = len(kwargs)
 
@@ -850,7 +862,11 @@ def monkey_patch_tensor():
                 device, dtype = get_device_dtype_from_tensor(
                     kwargs.get("other", None)
                 )
-        return self._to(device, dtype, blocking)
+        blocking = False if not blocking or non_blocking else True
+        res = self._to(device, dtype, blocking)
+        if copy_tensor:
+            return copy.deepcopy(res)
+        return res
 
     def clear_grad(self: Tensor) -> None:
         """
