@@ -1292,11 +1292,19 @@ def divide_positions(m, n):
     return positions
 
 
+def endswith(key, prefix_list):
+    for prefix in prefix_list:
+        if key.endswith(prefix):
+            return True
+    return False
+
+
 def merge_sharded_state_dict(
     load_path: str,
     save_path: str,
     prefix: str | None = None,
     safetensor_prefix: str = 'model',
+    skip_postfix_list: list = [],
     process_group: Group | None = None,
     unique_id: int | None = None,
     offload: bool = False,
@@ -1389,6 +1397,18 @@ def merge_sharded_state_dict(
 
     for metadata in metadata_list:
         state_dict_metadata = metadata.state_dict_metadata
+        origin_size = len(state_dict_metadata)
+        rm_key_list = []
+        for key in state_dict_metadata.keys():
+            if endswith(key, skip_postfix_list):
+                rm_key_list.append(key)
+        for key in rm_key_list:
+            state_dict_metadata.pop(key)
+        cur_size = len(state_dict_metadata)
+        logger.info(
+            f"state_dict_metadata origin_size: {origin_size}, cur_size: {cur_size} skip {origin_size - cur_size}"
+        )
+
         positions = divide_positions(len(state_dict_metadata), file_num)
         rank = paddle.distributed.get_rank()
 
