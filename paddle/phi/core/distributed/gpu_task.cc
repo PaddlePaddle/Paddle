@@ -172,8 +172,8 @@ std::string GPUTask::GetTraceMsg(gpuEvent_t zero_event) {
   if (skip_) {
     return "";
   }
-#ifdef PADDLE_WITH_CUDA
   float start_ms, end_ms;
+#ifdef PADDLE_WITH_CUDA
   cudaEventElapsedTime(&start_ms, zero_event, start_event_);
   cudaEventElapsedTime(&end_ms, zero_event, end_event_);
 #else  // PADDLE_WITH_HIP
