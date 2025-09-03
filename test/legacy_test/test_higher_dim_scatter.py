@@ -591,44 +591,62 @@ class TestPutAlongAxisFP16MulDuplicatedIndices(unittest.TestCase):
 
 class TestPutAlongAxisIntegerMean(unittest.TestCase):
     def setUp(self):
-        self.gt_result = np.array(
+        self.gt_include_self = np.array(
             [
-                [[-6, -6], [-14, -13], [-12, -11], [-10, -9]],
-                [[-4, -4], [-6, -5], [-4, -3], [-2, -1]],
-                [[-3, -3], [2, 3], [4, 5], [6, 7]],
-                [[-1, -1], [10, 11], [12, 13], [14, 15]],
+                [[-8, -7, -7, -7], [-12, -11, -10, -9]],
+                [[-5, -5, -4, -4], [-4, -3, -2, -1]],
+                [[-2, -2, -2, -1], [4, 5, 6, 7]],
+                [[0, 1, 1, 1], [12, 13, 14, 15]],
+            ],
+            dtype='int32',
+        )
+        self.gt_exclude_self = np.array(
+            [
+                [[-3, -3, -3, -3], [-12, -11, -10, -9]],
+                [[-3, -3, -3, -3], [-4, -3, -2, -1]],
+                [[-3, -3, -3, -3], [4, 5, 6, 7]],
+                [[-3, -3, -3, -3], [12, 13, 14, 15]],
             ],
             dtype='int32',
         )
 
-    def _make_static_mean_int(self, place):
+    def _make_static_mean_int(self, gt, include_self, place):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             input_ = paddle.arange(-16, 16, 1, dtype=paddle.int32).reshape(
-                [4, 4, 2]
+                [4, 2, 4]
             )
-            src = paddle.full([4, 4, 2], -3, dtype=paddle.int32)
-            index = paddle.zeros([4, 4, 2], dtype=paddle.int64)
+            src = paddle.full([4, 2, 4], -3, dtype=paddle.int32)
+            index = paddle.zeros([4, 2, 4], dtype=paddle.int64)
             result = paddle.put_along_axis(
                 input_,
                 indices=index,
                 values=src,
                 axis=1,
                 reduce='mean',
-                include_self=True,
+                include_self=include_self,
             )
 
             exe = paddle.static.Executor(place)
             result_np = exe.run(fetch_list=[result])
-            np.testing.assert_array_equal(result_np[0], self.gt_result)
+            np.testing.assert_array_equal(result_np[0], gt)
         paddle.disable_static()
 
     def test_mean_int(self):
         # try testing with both CPU and GPU places
         if paddle.is_compiled_with_cuda():
-            self._make_static_mean_int(paddle.CUDAPlace(0))
-            paddle.CUDAPlace(0)
-        self._make_static_mean_int(paddle.CPUPlace())
+            self._make_static_mean_int(
+                self.gt_include_self, True, paddle.CUDAPlace(0)
+            )
+            self._make_static_mean_int(
+                self.gt_exclude_self, False, paddle.CUDAPlace(0)
+            )
+        self._make_static_mean_int(
+            self.gt_include_self, True, paddle.CPUPlace()
+        )
+        self._make_static_mean_int(
+            self.gt_exclude_self, False, paddle.CPUPlace()
+        )
 
 
 if __name__ == '__main__':
