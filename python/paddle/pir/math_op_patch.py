@@ -219,7 +219,15 @@ def monkey_patch_value():
         warnings.warn(
             "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
         )
-        return True
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CUDAPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return expected_place == framework.core.CUDAPlace
 
     @property
     def place(self):
