@@ -516,26 +516,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv2d_transpose_mkldnn_op$|\
 ^test_conv2d_transpose_op_depthwise_conv$|\
 ^test_dygraph_mnist_fp16$|\
-^test_stub$|\
-^test_save_load$|\
-^test_conv_transpose_nn_grad$|\
-^test_dygraph_spectral_norm$|\
-^test_lambv2_op$|\
-^test_retain_graph$|\
-^test_multihead_matmul_roformer_fuse_pass$|\
-^test_imperative_qat_user_defined$|\
-^test_sot_resnet$|\
-^test_fused_conv2d_add_act_op$|\
-^test_standalone_executor_aot_choose_kernel_deprecated$|\
-^test_image_classification_deprecated$|\
-^test_functional_conv2d_transpose_deprecated$|\
-^test_inference_api_deprecated$|\
-^test_inplace_addto_strategy_deprecated$|\
-^test_dynamic_shape_infermeta$|\
-^test_conv2d_add_act_fuse_pass$|\
-^test_conv3d_layer_deprecated$|\
-^test_conv3d_transpose_part2_op_deprecated$|\
-^test_split_program_deprecated$|\
 ^test_trt_convert_multihead_matmul_roformer$"
 
 
