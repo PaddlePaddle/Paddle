@@ -142,8 +142,9 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
     return torch::IValue(ivalue_list);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Conversion of Python object to torch::IValue for this type is not "
-        "implemented yet."));
+        "Conversion of Python object to torch::IValue for type %s is not "
+        "implemented yet.",
+        std::string(py::str(py::type::of(obj))).c_str()));
   }
 }
 
