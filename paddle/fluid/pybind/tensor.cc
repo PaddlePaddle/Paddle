@@ -260,15 +260,15 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             int dim = py::cast<int>(dim_obj);
             dim = dim < 0 ? dim + shape.size() : dim;
 
-            PADDLE_ENFORCE_EQ(
-                dim >= 0 && dim < static_cast<int>(shape.size()),
-                true,
-                common::errors::InvalidArgument(
-                    "Dimension out of range (expected to be in range of [%d, %d], "
-                    "but got %d)",
-                    -static_cast<int>(shape.size()),
-                    static_cast<int>(shape.size()) - 1,
-                    dim));
+            PADDLE_ENFORCE_EQ(dim >= 0 && dim < static_cast<int>(shape.size()),
+                              true,
+                              common::errors::InvalidArgument(
+                                  "Dimension out of range (expected to be in "
+                                  "range of [%d, %d], "
+                                  "but got %d)",
+                                  -static_cast<int>(shape.size()),
+                                  static_cast<int>(shape.size()) - 1,
+                                  dim));
 
             return py::cast(strides[dim]);
           },
