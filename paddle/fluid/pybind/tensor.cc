@@ -241,38 +241,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            [](phi::DenseTensor &self, const std::string &layout) {
              self.set_layout(common::StringToDataLayout(layout));
            })
-      .def(
-          "stride",
-          [](const phi::DenseTensor &self, py::object dim_obj = py::none()) {
-            auto shape = self.dims();
-            std::vector<int64_t> strides;
-
-            int64_t stride = 1;
-            for (int i = shape.size() - 1; i >= 0; --i) {
-              strides.insert(strides.begin(), stride);
-              stride *= shape[i];
-            }
-
-            if (dim_obj.is_none()) {
-              return py::cast(strides);
-            }
-
-            int dim = py::cast<int>(dim_obj);
-            dim = dim < 0 ? dim + shape.size() : dim;
-
-            PADDLE_ENFORCE_EQ(dim >= 0 && dim < static_cast<int>(shape.size()),
-                              true,
-                              common::errors::InvalidArgument(
-                                  "Dimension out of range (expected to be in "
-                                  "range of [%d, %d], "
-                                  "but got %d)",
-                                  -static_cast<int>(shape.size()),
-                                  static_cast<int>(shape.size()) - 1,
-                                  dim));
-
-            return py::cast(strides[dim]);
-          },
-          py::arg("dim") = py::none())
       .def("_alloc_float",
            [](phi::DenseTensor &self, phi::CustomPlace &place) {
              self.mutable_data<float>(place);
