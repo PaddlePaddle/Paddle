@@ -141,7 +141,7 @@ class TestCudaCompat(unittest.TestCase):
 
     def test_paddle_device_copy(self):
         d1 = paddle.device("gpu:1")
-        d2 = paddle.device(d1)  # 拷贝
+        d2 = paddle.device(d1)
         self.assertEqual(d1, d2)
 
     def test_paddle_device_invalid(self):
