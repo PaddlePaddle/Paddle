@@ -484,6 +484,95 @@ class DotOp_ZeroSize(OpTest):
         self.shape = [0]
 
 
+def get_places():
+    places = []
+    if base.is_compiled_with_cuda():
+        places.append(paddle.CUDAPlace(0))
+    places.append(paddle.CPUPlace())
+    return places
+
+
+class TestDotAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.places = get_places()
+        self.shape = [50]
+        self.dtype = "float64"
+        self.init_data()
+
+    def init_data(self):
+        self.np_x = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_y = np.random.rand(*self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.dot(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.dot(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch compatibility
+        out3 = paddle.dot(input=x, tensor=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.dot(x, tensor=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.dot(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.dot(tensor=y)
+        paddle_dygraph_out.append(out6)
+        # Test 'out' parameter for torch compatibility
+        out7 = paddle.empty([], dtype=x.dtype)
+        paddle.dot(x, y, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference output
+        ref_out = np.dot(self.np_x, self.np_y)
+        # Check all dygraph results
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy(), rtol=1e-05)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            # Define static data placeholders
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            y = paddle.static.data(name="y", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.dot(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.dot(x=x, y=y)
+            # Key words args for torch compatibility
+            out3 = paddle.dot(input=x, tensor=y)
+            # Combined args and kwargs
+            out4 = paddle.dot(x, tensor=y)
+            # Tensor method args
+            out5 = x.dot(y)
+            # Tensor method kwargs
+            out6 = x.dot(tensor=y)
+            # Do not support out in static
+            # Numpy reference output
+            ref_out = np.dot(self.np_x, self.np_y)
+            fetch_list = [out1, out2, out3, out4, out5, out6]
+            for place in self.places:
+                exe = base.Executor(place)
+                fetches = exe.run(
+                    main,
+                    feed={"x": self.np_x, "y": self.np_y},
+                    fetch_list=fetch_list,
+                )
+                for out in fetches:
+                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
