@@ -48,12 +48,12 @@ class VecT4<float> {
   using Type = int4;
 };
 template <>
-class VecT4<phi::dtype::float16> {
+class VecT4<phi::float16> {
  public:
   using Type = int2;
 };
 template <>
-class VecT4<phi::dtype::bfloat16> {
+class VecT4<phi::bfloat16> {
  public:
   using Type = int2;
 };
@@ -72,12 +72,12 @@ class VecT2<float> {
   using Type = int2;
 };
 template <>
-class VecT2<phi::dtype::float16> {
+class VecT2<phi::float16> {
  public:
   using Type = int;
 };
 template <>
-class VecT2<phi::dtype::bfloat16> {
+class VecT2<phi::bfloat16> {
  public:
   using Type = int;
 };
@@ -1227,7 +1227,7 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
 
 #if CUDNN_VERSION < 8100
 template <>
-inline void LaunchSoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
+inline void LaunchSoftmaxForwardCudnnKernel<phi::bfloat16>(
     const GPUContext& dev_ctx,
     const DenseTensor& x,
     const int axis,
@@ -1238,7 +1238,7 @@ inline void LaunchSoftmaxForwardCudnnKernel<phi::dtype::bfloat16>(
       "8100."));
 }
 template <>
-inline void LaunchSoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
+inline void LaunchSoftmaxBackwardCudnnKernel<phi::bfloat16>(
     const GPUContext& dev_ctx,
     const DenseTensor& out,
     const DenseTensor& dout,
@@ -1257,7 +1257,7 @@ bool UseCudnnSoftmax(const GPUContext& dev_ctx,
                      bool last_dim) {
   bool cudnn_available = dev_ctx.cudnn_handle();
   if (!dev_ctx.cudnn_handle()) {
-    if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    if (std::is_same<T, phi::bfloat16>::value) {
 #if CUDNN_VERSION < 8100
       cudnn_available = false;
 #endif
