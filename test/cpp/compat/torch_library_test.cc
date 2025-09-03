@@ -621,3 +621,8 @@ TEST(test_torch_library, TestOperatorRegistryPrintAllOperators) {
   const auto& operator_registry = torch::OperatorRegistry::instance();
   operator_registry.print_all_operators();
 }
+
+TEST(test_torch_library, TestLibraryPrintInfo) {
+  torch::Library lib("example_library_test_print_info");
+  lib.print_info();
+}

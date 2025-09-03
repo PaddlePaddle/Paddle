@@ -14,6 +14,7 @@
 
 #include <torch/library.h>
 #include "glog/logging.h"
+#include "paddle/common/exception.h"
 
 namespace torch {
 
@@ -30,7 +31,8 @@ void ClassRegistry::register_constructor(const std::string& qualified_name,
                                          CppFunction&& func) {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
   it->second->constructors.push_back(
       std::make_shared<CppFunction>(std::move(func)));
@@ -43,7 +45,8 @@ void ClassRegistry::register_method(const std::string& qualified_name,
                                     CppFunction&& func) {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
   it->second->methods[method_name] =
       std::make_shared<CppFunction>(std::move(func));
@@ -55,7 +58,8 @@ void ClassRegistry::register_static_method(const std::string& qualified_name,
                                            CppFunction&& func) {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
   it->second->static_methods[method_name] =
       std::make_shared<CppFunction>(std::move(func));
@@ -69,14 +73,16 @@ FunctionResult ClassRegistry::call_method_with_args(
     const FunctionArgs& args) const {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found!");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
 
   auto& class_reg = it->second;
   auto method_it = class_reg->methods.find(method_name);
   if (method_it == class_reg->methods.end()) {
-    throw std::runtime_error("Method " + method_name + " not found in " +
-                             qualified_name + "!");
+    PADDLE_THROW(common::errors::NotFound("Method %s not found in class %s!",
+                                          method_name.c_str(),
+                                          qualified_name.c_str()));
   }
 
   try {
@@ -113,12 +119,14 @@ FunctionResult ClassRegistry::call_constructor_with_args(
     const std::string& qualified_name, const FunctionArgs& args) const {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found!");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
 
   auto& class_reg = it->second;
   if (class_reg->constructors.empty()) {
-    throw std::runtime_error("No constructor registered for " + qualified_name);
+    PADDLE_THROW(common::errors::NotFound(
+        "No constructor registered for class %s!", qualified_name.c_str()));
   }
 
   VLOG(3) << "Creating instance of " << qualified_name << " with "
@@ -136,8 +144,8 @@ FunctionResult ClassRegistry::call_constructor_with_args(
     }
   }
 
-  throw std::runtime_error("No suitable constructor found for " +
-                           qualified_name);
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "No suitable constructor found for class %s!", qualified_name.c_str()));
 }
 
 FunctionResult ClassRegistry::call_static_method_with_args(
@@ -146,14 +154,17 @@ FunctionResult ClassRegistry::call_static_method_with_args(
     const FunctionArgs& args) const {
   auto it = classes_.find(qualified_name);
   if (it == classes_.end()) {
-    throw std::runtime_error("Class " + qualified_name + " not found!");
+    PADDLE_THROW(common::errors::NotFound("Class %s not found in registry!",
+                                          qualified_name.c_str()));
   }
 
   auto& class_reg = it->second;
   auto method_it = class_reg->static_methods.find(method_name);
   if (method_it == class_reg->static_methods.end()) {
-    throw std::runtime_error("Static method " + method_name + " not found in " +
-                             qualified_name + "!");
+    PADDLE_THROW(
+        common::errors::NotFound("Static method %s not found in class %s!",
+                                 method_name.c_str(),
+                                 qualified_name.c_str()));
   }
 
   try {
