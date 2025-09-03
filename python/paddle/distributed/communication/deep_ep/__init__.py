@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from .buffer import Buffer
+from .buffer import M2NBuffer
 from .utils import (
     EventOverlap,
     get_event_from_calc_stream,

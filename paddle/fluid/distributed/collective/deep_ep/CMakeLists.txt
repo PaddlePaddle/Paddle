@@ -8,7 +8,8 @@ if(WITH_NVSHMEM)
 
   set(DEEPEP_KERNEL_SRCS
       kernels/intranode.cu kernels/runtime.cu kernels/internode.cu
-      kernels/internode_ll.cu kernels/internode_ll_two_stage.cu)
+      kernels/internode_ll.cu kernels/internode_ll_two_stage.cu
+      kernels/internode_ll.cu kernels/m2n_ll_two_stage.cu)
   cc_library(
     deepep_kernels
     SRCS ${DEEPEP_KERNEL_SRCS}
