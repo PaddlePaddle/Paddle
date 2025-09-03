@@ -398,7 +398,7 @@ void FlashAttnV3BaseKernel(
       out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
-      dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+      dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
       dev_ctx.template Alloc<T>(out);
@@ -927,17 +927,15 @@ void FlashAttnV3BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::dtype::bfloat16> set_zero;
-      set_zero(
-          dev_ctx,
-          out,
-          phi::dtype::bfloat16{0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      set_zero(dev_ctx,
+               out,
+               phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::dtype::float16> set_zero;
-      set_zero(
-          dev_ctx,
-          out,
-          phi::dtype::float16{0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      set_zero(dev_ctx,
+               out,
+               phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       phi::funcs::SetConstant<Context, phi::dtype::float8_e4m3fn> set_zero;
       set_zero(dev_ctx,
@@ -1558,7 +1556,7 @@ void FlashMaskV2BaseKernel(
       out->Resize(common::make_ddim({total_q, num_heads, head_size_v}));
     }
     if (q_type == phi::DataType::FLOAT8_E4M3FN) {
-      dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+      dev_ctx.template Alloc<phi::bfloat16>(out);
     } else {
       // umiswing: assuming T is Input Type
       dev_ctx.template Alloc<T>(out);
@@ -2206,17 +2204,15 @@ void FlashMaskV2BaseKernel(
     // If seqlen_k == 0, then we have an empty tensor. We need to set the output
     // to 0.
     if (out->dtype() == phi::DataType::BFLOAT16) {
-      phi::funcs::SetConstant<Context, phi::dtype::bfloat16> set_zero;
-      set_zero(
-          dev_ctx,
-          out,
-          phi::dtype::bfloat16{0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::bfloat16> set_zero;
+      set_zero(dev_ctx,
+               out,
+               phi::bfloat16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT16) {
-      phi::funcs::SetConstant<Context, phi::dtype::float16> set_zero;
-      set_zero(
-          dev_ctx,
-          out,
-          phi::dtype::float16{0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::float16> set_zero;
+      set_zero(dev_ctx,
+               out,
+               phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       phi::funcs::SetConstant<Context, phi::dtype::float8_e4m3fn> set_zero;
       set_zero(dev_ctx,
@@ -2297,19 +2293,19 @@ PD_REGISTER_KERNEL(flash_attn_v3,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3Kernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flash_attn_v3_varlen,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3VarlenKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flashmask_attention_v2,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashMaskV2Kernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

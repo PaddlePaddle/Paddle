@@ -226,7 +226,7 @@ void ResNetUnitKernel(const Context &dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    resnet_unit, GPU, ALL_LAYOUT, phi::ResNetUnitKernel, phi::dtype::float16) {}
+    resnet_unit, GPU, ALL_LAYOUT, phi::ResNetUnitKernel, phi::float16) {}
 #else
 namespace phi {
 template <typename T, typename Context>
@@ -273,9 +273,6 @@ void ResNetUnitEmptyKernel(const Context &dev_ctx,
       "ResNetUnitOp only supports CUDNN_VERSION >= 8000 for now."));
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(resnet_unit,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::ResNetUnitEmptyKernel,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    resnet_unit, GPU, ALL_LAYOUT, phi::ResNetUnitEmptyKernel, phi::float16) {}
 #endif

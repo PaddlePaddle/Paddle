@@ -57,12 +57,12 @@ void FullLikeKernel(const Context& dev_ctx,
     out->Resize(x.dims());
     return;
   }
-  if (!std::is_same<T, phi::dtype::complex<float>>::value &&
-      !std::is_same<T, phi::dtype::complex<double>>::value) {
+  if (!std::is_same<T, phi::complex64>::value &&
+      !std::is_same<T, phi::complex128>::value) {
     auto value = val.to<double>();
     using CommonType = typename std::common_type<
         float,
-        typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
+        typename std::conditional<std::is_same<T, phi::float16>::value,
                                   float,
                                   T>::type>::type;
 
@@ -141,10 +141,10 @@ PD_REGISTER_KERNEL(full,
                    bool,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(full_like,
                    CPU,
@@ -158,10 +158,10 @@ PD_REGISTER_KERNEL(full_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -180,9 +180,9 @@ PD_REGISTER_KERNEL(full_with_tensor,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
 }

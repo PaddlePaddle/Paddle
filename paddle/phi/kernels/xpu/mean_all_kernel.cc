@@ -50,5 +50,4 @@ void MeanAllKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    mean_all, XPU, ALL_LAYOUT, phi::MeanAllKernel, float, phi::dtype::float16) {
-}
+    mean_all, XPU, ALL_LAYOUT, phi::MeanAllKernel, float, phi::float16) {}
