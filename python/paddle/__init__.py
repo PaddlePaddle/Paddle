@@ -215,7 +215,6 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
-from .cuda import Stream as Stream
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
@@ -906,6 +905,7 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
 disable_static()
 
+from .cuda import Stream as Stream
 from .pir_utils import IrGuard
 
 ir_guard = IrGuard()
