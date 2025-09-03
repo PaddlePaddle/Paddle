@@ -110,11 +110,10 @@ __device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
   }
 }
 
-template <
-    typename T,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
                                           const T mean_value,
@@ -125,11 +124,10 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
   // TODO(Xreki): support complex
 }
 
-template <
-    typename T,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
                                           const T mean_value,
@@ -518,9 +516,9 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::CheckNumericsKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2) {}

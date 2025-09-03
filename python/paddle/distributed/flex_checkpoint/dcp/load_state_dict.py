@@ -1310,7 +1310,6 @@ def merge_sharded_state_dict(
     offload: bool = False,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
-    file_num: int = 1,
 ) -> None:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict then save as safetensors.
@@ -1322,19 +1321,19 @@ def merge_sharded_state_dict(
             ...
             model-00008-of-00008.safetensors
             model.safetensors.index.json
-        model is safetensor_prefix; 00008 is file_num.
+        model is safetensor_prefix; 00008 is file_num which same ad dist total_size.
 
     Args:
         load_path(str): The directory to load checkpoint files.
         save_path(str): The directory to save merged_checkpoint files.
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         safetensor_prefix(str): The safetensors file prefix e.g., Default 'model'.
+        skip_postfix_list(list(str)): The skip postfix list of state_dict key. e.g., ['moment1_0', 'beta1_pow_acc_0'], Default [].
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
-        file_num(int): The number of files to split the merged_checkpoint into.
     Returns:
         None.
 

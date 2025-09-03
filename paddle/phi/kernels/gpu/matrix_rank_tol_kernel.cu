@@ -220,17 +220,17 @@ void GesvdjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
-                                               int batchSize,
-                                               int m,
-                                               int n,
-                                               int k,
-                                               phi::dtype::complex<float>* A,
-                                               phi::dtype::complex<float>* U,
-                                               phi::dtype::complex<float>* V,
-                                               float* S,
-                                               int* info,
-                                               int thin_UV) {
+void GesvdjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+                                   int batchSize,
+                                   int m,
+                                   int n,
+                                   int k,
+                                   phi::complex64* A,
+                                   phi::complex64* U,
+                                   phi::complex64* V,
+                                   float* S,
+                                   int* info,
+                                   int thin_UV) {
   // do not compute singular vectors
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
@@ -300,17 +300,17 @@ void GesvdjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void GesvdjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
-                                                int batchSize,
-                                                int m,
-                                                int n,
-                                                int k,
-                                                phi::dtype::complex<double>* A,
-                                                phi::dtype::complex<double>* U,
-                                                phi::dtype::complex<double>* V,
-                                                double* S,
-                                                int* info,
-                                                int thin_UV) {
+void GesvdjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+                                    int batchSize,
+                                    int m,
+                                    int n,
+                                    int k,
+                                    phi::complex128* A,
+                                    phi::complex128* U,
+                                    phi::complex128* V,
+                                    double* S,
+                                    int* info,
+                                    int thin_UV) {
   // do not compute singular vectors
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
   gesvdjInfo_t gesvdj_params = NULL;
@@ -493,12 +493,12 @@ void SyevjBatched<double>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
-                                              int batchSize,
-                                              int n,
-                                              phi::dtype::complex<float>* A,
-                                              float* W,
-                                              int* info) {
+void SyevjBatched<phi::complex64>(const phi::GPUContext& dev_ctx,
+                                  int batchSize,
+                                  int n,
+                                  phi::complex64* A,
+                                  float* W,
+                                  int* info) {
   auto handle = dev_ctx.cusolver_dn_handle();
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
@@ -557,12 +557,12 @@ void SyevjBatched<phi::dtype::complex<float>>(const phi::GPUContext& dev_ctx,
 }
 
 template <>
-void SyevjBatched<phi::dtype::complex<double>>(const phi::GPUContext& dev_ctx,
-                                               int batchSize,
-                                               int n,
-                                               phi::dtype::complex<double>* A,
-                                               double* W,
-                                               int* info) {
+void SyevjBatched<phi::complex128>(const phi::GPUContext& dev_ctx,
+                                   int batchSize,
+                                   int n,
+                                   phi::complex128* A,
+                                   double* W,
+                                   int* info) {
   auto handle = dev_ctx.cusolver_dn_handle();
   // Compute eigenvalues only
   const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
@@ -922,8 +922,8 @@ PD_REGISTER_KERNEL(matrix_rank_tol,  // cuda_only
                    phi::MatrixRankTolKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
 
@@ -933,8 +933,8 @@ PD_REGISTER_KERNEL(matrix_rank_atol_rtol,  // cuda_only
                    phi::MatrixRankAtolRtolKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
 

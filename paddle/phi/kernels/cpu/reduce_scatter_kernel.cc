@@ -42,4 +42,4 @@ PD_REGISTER_KERNEL(reduce_scatter,
                    uint8_t,
                    int16_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

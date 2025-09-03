@@ -282,6 +282,24 @@ def monkey_patch_math_tensor():
 
     @property
     def _mT_(var: Tensor) -> Tensor:
+        """
+        Return the last two dimensions of a Tensor transposed.
+
+        Args:
+            var (Tensor): The input Tensor, which must have at least 2 dimensions.
+
+        Returns:
+            Tensor: A new Tensor with its last two dimensions swapped.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn([2, 3, 4])
+                >>> x_transposed = x.mT
+                >>> x_transposed.shape
+                [2, 4, 3]
+        """
         if len(var.shape) < 2:
             raise ValueError(
                 f"Tensor.ndim({var.ndim}) is required to be greater than or equal to 2."
@@ -301,6 +319,33 @@ def monkey_patch_math_tensor():
         requires_grad: bool = False,
         pin_memory: bool = False,
     ) -> Tensor:
+        """
+        Create a new Tensor of specified shape and fill it with a given value.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            size (ShapeLike): Shape of the new Tensor.
+            fill_value (bool | float | Tensor): Value to fill the Tensor with.
+            dtype (DTypeLike, optional): Desired data type of the new Tensor. Defaults to `var.dtype`.
+            device (PlaceLike, optional): Device on which to place the new Tensor. Defaults to `var.place`.
+            requires_grad (bool, optional): Whether to track gradients. Default: False.
+            pin_memory (bool, optional): Whether to pin memory. Default: False.
+
+        Returns:
+            Tensor: A new Tensor filled with `fill_value`.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_full([3, 3], 5.0)
+                >>> y.numpy()
+                array([[5., 5., 5.],
+                       [5., 5., 5.],
+                       [5., 5., 5.]], dtype=float32)
+        """
+
         if dtype is None:
             dtype = var.dtype
         if device is None:
@@ -325,6 +370,30 @@ def monkey_patch_math_tensor():
         requires_grad: bool = False,
         pin_memory: bool = False,
     ) -> Tensor:
+        """
+        Create a new uninitialized Tensor of the specified shape.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            size (ShapeLike): Shape of the new Tensor.
+            dtype (DTypeLike, optional): Desired data type of the new Tensor. Defaults to `var.dtype`.
+            device (PlaceLike, optional): Device on which to place the new Tensor. Defaults to `var.place`.
+            requires_grad (bool, optional): Whether to track gradients. Default: False.
+            pin_memory (bool, optional): Whether to pin memory. Default: False.
+
+        Returns:
+            Tensor: A new uninitialized Tensor with the specified shape.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.ones([2, 2])
+                >>> y = x.new_empty(3, 3)
+                >>> y.shape
+                [3, 3]
+        """
+
         if dtype is None:
             dtype = var.dtype
         if device is None:
@@ -348,6 +417,32 @@ def monkey_patch_math_tensor():
         requires_grad: bool = False,
         pin_memory: bool = False,
     ) -> Tensor:
+        """
+        Create a new Tensor of the specified shape filled with ones.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            size (ShapeLike): Shape of the new Tensor.
+            dtype (DTypeLike, optional): Desired data type of the new Tensor. Defaults to `var.dtype`.
+            device (PlaceLike, optional): Device on which to place the new Tensor. Defaults to `var.place`.
+            requires_grad (bool, optional): Whether to track gradients. Default: False.
+            pin_memory (bool, optional): Whether to pin memory. Default: False.
+
+        Returns:
+            Tensor: A new Tensor filled with ones.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.zeros([2, 2])
+                >>> y = x.new_ones(3, 3)
+                >>> y.numpy()
+                array([[1., 1., 1.],
+                       [1., 1., 1.],
+                       [1., 1., 1.]], dtype=float32)
+        """
+
         if dtype is None:
             dtype = var.dtype
         if device is None:
@@ -372,6 +467,32 @@ def monkey_patch_math_tensor():
         requires_grad: bool = False,
         pin_memory: bool = False,
     ) -> Tensor:
+        """
+        Create a new Tensor of the specified shape filled with zeros.
+
+        Args:
+            var (Tensor): A reference Tensor for default dtype and device.
+            size (ShapeLike): Shape of the new Tensor.
+            dtype (DTypeLike, optional): Desired data type of the new Tensor. Defaults to `var.dtype`.
+            device (PlaceLike, optional): Device on which to place the new Tensor. Defaults to `var.place`.
+            requires_grad (bool, optional): Whether to track gradients. Default: False.
+            pin_memory (bool, optional): Whether to pin memory. Default: False.
+
+        Returns:
+            Tensor: A new Tensor filled with zeros.
+
+        Examples:
+            .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.ones([2, 2])
+            >>> y = x.new_zeros(3, 3)
+            >>> y.numpy()
+            array([[0., 0., 0.],
+                   [0., 0., 0.],
+                   [0., 0., 0.]], dtype=float32)
+        """
+
         if dtype is None:
             dtype = var.dtype
         if device is None:

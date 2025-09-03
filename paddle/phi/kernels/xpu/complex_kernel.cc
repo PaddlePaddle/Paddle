@@ -157,8 +157,8 @@ PD_REGISTER_KERNEL(conj,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::complex<float>) {}
 
 PD_REGISTER_KERNEL(

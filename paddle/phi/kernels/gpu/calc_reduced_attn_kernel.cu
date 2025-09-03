@@ -135,5 +135,5 @@ PD_REGISTER_KERNEL(calc_reduced_attn_scores,
                    GPU,
                    ALL_LAYOUT,
                    phi::CalcReducedAttnScoresKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

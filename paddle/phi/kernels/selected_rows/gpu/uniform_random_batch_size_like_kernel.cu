@@ -61,4 +61,4 @@ PD_REGISTER_KERNEL(uniform_random_batch_size_like_sr,
                    phi::sr::GPUUniformRandomKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

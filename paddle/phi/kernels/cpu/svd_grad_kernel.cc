@@ -24,5 +24,5 @@ PD_REGISTER_KERNEL(svd_grad,
                    phi::SvdGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

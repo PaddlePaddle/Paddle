@@ -68,14 +68,14 @@ INSTANTIATE_CAST_KERNEL(phi::dtype::bfloat16, GPUContext)
                      bool,                                     \
                      int8_t,                                   \
                      uint8_t,                                  \
-                     phi::dtype::float16,                      \
-                     phi::dtype::complex<float>,               \
-                     phi::dtype::complex<double>,              \
+                     phi::float16,                             \
+                     phi::complex64,                           \
+                     phi::complex128,                          \
                      ##__VA_ARGS__) {                          \
     kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
   }
 
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
-                                  phi::dtype::bfloat16,
+                                  phi::bfloat16,
                                   phi::dtype::float8_e4m3fn,
                                   phi::dtype::float8_e5m2)

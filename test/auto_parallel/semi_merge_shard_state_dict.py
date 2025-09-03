@@ -117,7 +117,6 @@ class TestDistCheckpoint:
             ],
             offload=True,
             safetensors=False,
-            file_num=2,
         )
         import safetensors
 
