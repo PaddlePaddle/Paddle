@@ -80,7 +80,9 @@ void IndexSampleKernel(const Context& dev_ctx,
   size_t batch_size = input_dim[0];
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
-
+  if (batch_size == 0 || input_length == 0 || index_length == 0) {
+    return;
+  }
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   int block_height =

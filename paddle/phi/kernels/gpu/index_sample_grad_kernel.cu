@@ -88,6 +88,12 @@ void IndexSampleGradKernel(const Context& dev_ctx,
   size_t batch_size = index_dim[0];
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
+
+  phi::funcs::SetConstant<Context, T> set_zero;
+  set_zero(dev_ctx, x_grad, static_cast<T>(0));
+  if (batch_size == 0 || input_length == 0 || index_length == 0) {
+    return;
+  }
   bool same_data_in_index_row = index_length == 1 ? false : true;
 
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
@@ -101,8 +107,6 @@ void IndexSampleGradKernel(const Context& dev_ctx,
                 (batch_size + block_dim.y - 1) / block_dim.y);
   phi::backends::gpu::LimitGridDim(dev_ctx, &grid_dim);
 
-  phi::funcs::SetConstant<Context, T> set_zero;
-  set_zero(dev_ctx, x_grad, static_cast<T>(0));
   bool use_int32 = true;
   if (out_grad.numel() > UINT32_MAX || x_grad->numel() > UINT32_MAX) {
     use_int32 = false;
