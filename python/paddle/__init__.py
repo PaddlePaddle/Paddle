@@ -170,6 +170,9 @@ else:
             else:
                 return self.shape[dim]
 
+        def __instancecheck__(self, instance):
+            return isinstance(int, instance)
+
     @property
     def size_method(self):
         return CallableInt(self.shape)
