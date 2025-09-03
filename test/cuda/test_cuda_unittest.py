@@ -122,6 +122,34 @@ class TestCudaCompat(unittest.TestCase):
         cudaVersionClass = paddle.version.cuda
         assert cudaVersion == cudaVersionClass
 
+    # ---------------------
+    # paddle.device compatibility tests
+    # ---------------------
+    def test_paddle_device_cpu(self):
+        d = paddle.device("cpu")
+        self.assertTrue(d == "cpu")
+
+    def test_paddle_device_gpu(self):
+        d1 = paddle.device("cuda", 2)
+        self.assertEqual(d1, "gpu:2")
+
+        d2 = paddle.device("cuda:3")
+        self.assertEqual(d2, "gpu:3")
+
+        d3 = paddle.device(4)
+        self.assertEqual(d3, "gpu:4")
+
+    def test_paddle_device_copy(self):
+        d1 = paddle.device("gpu:1")
+        d2 = paddle.device(d1)  # 拷贝
+        self.assertEqual(d1, d2)
+
+    def test_paddle_device_invalid(self):
+        with self.assertRaises(ValueError):
+            paddle.device("tpu")
+        with self.assertRaises(TypeError):
+            paddle.device(3.14)
+
 
 if __name__ == '__main__':
     unittest.main()
