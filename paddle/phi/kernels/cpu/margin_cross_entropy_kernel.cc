@@ -47,4 +47,4 @@ PD_REGISTER_KERNEL(margin_cross_entropy,
                    phi::MarginCrossEntropyKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -347,6 +347,11 @@ class DataLoader:
             batch data asynchronously, so it would speed up data feeding
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
+        reader_buffer_size (int, optional): This option takes effect only
+            when use_buffer_reader is set to True. It specifies the number of
+            batches the buffer reader prefetches in advance. Note that
+            Increasing this value will result in a linear increase in CPU or GPU memory usage.
+            Default 2.
         prefetch_factor (int, optional): Number of batch data the DataLoader would prefetch
             if use_buffer_reader=True. Default 2.
         use_shared_memory (bool, optional): whether to use shared memory to speed up
@@ -435,6 +440,7 @@ class DataLoader:
     return_list: bool
     collate_fn: _CollateFn | None
     use_buffer_reader: bool
+    reader_buffer_size: int
     prefetch_factor: int
     worker_init_fn: Callable[[int], None] | None
     dataset: Dataset[Any]
@@ -461,6 +467,7 @@ class DataLoader:
         collate_fn: _CollateFn | None = None,
         num_workers: int = 0,
         use_buffer_reader: bool = True,
+        reader_buffer_size: int = 2,
         prefetch_factor: int = 2,
         use_shared_memory: bool = True,
         timeout: int = 0,
@@ -470,6 +477,7 @@ class DataLoader:
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
+        self.reader_buffer_size = reader_buffer_size
         self.prefetch_factor = prefetch_factor
         self.worker_init_fn = worker_init_fn
 

@@ -78,5 +78,4 @@ void BmmKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    bmm, XPU, ALL_LAYOUT, phi::BmmKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(bmm, XPU, ALL_LAYOUT, phi::BmmKernel, float, phi::float16) {}

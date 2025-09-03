@@ -265,8 +265,8 @@ PD_REGISTER_KERNEL(multinomial,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

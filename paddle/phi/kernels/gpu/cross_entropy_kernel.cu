@@ -1391,7 +1391,7 @@ void CrossEntropyWithSoftmaxCUDAKernel(const GPUContext& dev_ctx,
                                                        axis_dim);
     } else {
       // For bfloat16, we integrated mix-precision inside the kernel
-      if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
+      if constexpr (std::is_same_v<T, phi::bfloat16>) {
         auto* softmax_data = dev_ctx.template Alloc<float>(softmax);
         auto* loss_data = dev_ctx.template Alloc<float>(loss);
         auto* labels_data = label.data<LabelT>();
@@ -1505,7 +1505,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    ALL_LAYOUT,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
@@ -1514,8 +1514,8 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
@@ -1523,7 +1523,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif
 #endif

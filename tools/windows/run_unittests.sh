@@ -417,7 +417,126 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_imperative_double_grad$|\
 ^test_comp_eager_matmul_double_grad$|\
 ^test_cuda_graph_partial_graph_static_run$|\
-^test_imperative_triple_grad$"
+^test_imperative_triple_grad$|\
+^test_mul_op$|\
+^test_quant_linear_op$|\
+^test_fused_gemm_epilogue_op$|\
+^test_fused_gemm_epilogue_op_with_es$|\
+^test_fused_linear_param_grad_add$|\
+^test_fused_matmul_bias$|\
+^test_fused_gemm_epilogue_pass$|\
+^test_params_quantization_onednn_pass$|\
+^test_depthwise_conv_onednn_pass$|\
+^cc_imp_py_test$|\
+^test_depthwise_conv_onednn_pass$|\
+^test_compute_propagate_scales_onednn_pass$|\
+^test_onednn_placement_pass$|\
+^test_shuffle_channel_onednn_detect_pass$|\
+^test_cpu_quantize_placement_pass$|\
+^test_cpu_quantize_pass$|\
+^test_cpu_quantize_squash_pass$|\
+^test_cpu_bfloat16_placement_pass$|\
+^test_cpu_bfloat16_pass$|\
+^test_int8_scale_calculation_onednn_pass$|\
+^test_while_api$|\
+^test_sparse_matmul_op$|\
+^test_standalone_cuda_graph_multi_stream_deprecated$|\
+^test_standalone_cuda_graph_multi_stream_deprecated_static_build_deprecated$|\
+^test_cuda_graph$|\
+^test_cuda_graph_static_mode$|\
+^test_cuda_graphed_layer$|\
+^test_switch_autotune$|\
+^test_nn_margin_rank_loss$|\
+^test_no_grad$|\
+^test_memory_efficient_attention$|\
+^test_fused_flash_attn_pass$|\
+^test_convert_mea_2_fa_pass$|\
+^test_flash_attention_deterministic$|\
+^test_map_op_another_pass$|\
+^test_conv2d_add_fuse_pass$|\
+^test_cutlass_fused_conv2d_add_act_op$|\
+^test_multihead_matmul_roformer_fuse_pass_pir$|\
+^test_mobile_net$|\
+^test_IntermediateLayerGetter$|\
+^test_se_resnet$|\
+^test_amp_api$|\
+^test_prim_amp$|\
+^test_fuse_resnet_unit$|\
+^test_dygraph_multi_forward$|\
+^test_instance_norm_op_v2$|\
+^test_multi_precision_fp16_train$|\
+^test_imperative_skip_op$|\
+^test_qat$|\
+^test_bmn$|\
+^test_imperative_layer_children$|\
+^test_trans_layout_op$|\
+^test_resnet$|\
+^test_resnet_amp$|\
+^test_resnet_pure_fp16$|\
+^test_image_classification_fp16$|\
+^test_tensorrt_engine$|\
+^test_collect_operator_stats$|\
+^test_conv1d_layer$|\
+^test_conv1d_transpose_layer$|\
+^test_dygraph_weight_norm$|\
+^test_mnist$|\
+^test_mnist_amp$|\
+^test_hapi_amp$|\
+^test_imperative_mnist_sorted_gradient$|\
+^test_imperative_qat_fuse$|\
+^test_imperative_qat_lsq$|\
+^test_imperative_qat_matmul$|\
+^test_sot_resnet50_backward$|\
+^test_asp_optimize_static_deprecated$|\
+^test_asp_save_load_deprecated$|\
+^test_conv2d_api_deprecated$|\
+^test_user_defined_quantization_deprecated$|\
+^test_quantization_scale_pass_deprecated$|\
+^test_mnist_pure_fp16$|\
+^test_callback_reduce_lr_on_plateau$|\
+^test_callback_visualdl$|\
+^test_imperative_qat$|\
+^test_step_profiler$|\
+^test_conv2d_bn_fuse_pass$|\
+^test_onednn_shape_op$|\
+^test_recognize_digits_deprecated$|\
+^test_conv2d_layer_deprecated$|\
+^test_graph_deprecated$|\
+^test_onednn_multi_gru_fuse_pass$|\
+^test_onednn_multi_gru_seq_fuse_pass$|\
+^test_conv2d_layer$|\
+^test_conv3d_layer$|\
+^test_initializer$|\
+^test_forbid_dynamic_op_api$|\
+^test_nn_dtype_device_bias$|\
+^test_sot_dynamic_shape$|\
+^test_asp_optimize_dynamic_deprecated$|\
+^test_amp_decorate$|\
+^test_amp_promote$|\
+^test_conv2d_transpose_mkldnn_op$|\
+^test_conv2d_transpose_op_depthwise_conv$|\
+^test_dygraph_mnist_fp16$|\
+^test_stub$|\
+^test_save_load$|\
+^test_conv_transpose_nn_grad$|\
+^test_dygraph_spectral_norm$|\
+^test_lambv2_op$|\
+^test_retain_graph$|\
+^test_multihead_matmul_roformer_fuse_pass$|\
+^test_imperative_qat_user_defined$|\
+^test_sot_resnet$|\
+^test_fused_conv2d_add_act_op$|\
+^test_standalone_executor_aot_choose_kernel_deprecated$|\
+^test_image_classification_deprecated$|\
+^test_functional_conv2d_transpose_deprecated$|\
+^test_inference_api_deprecated$|\
+^test_inplace_addto_strategy_deprecated$|\
+^test_dynamic_shape_infermeta$|\
+^test_conv2d_add_act_fuse_pass$|\
+^test_conv3d_layer_deprecated$|\
+^test_conv3d_transpose_part2_op_deprecated$|\
+^test_split_program_deprecated$|\
+^test_trt_convert_multihead_matmul_roformer$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -583,10 +702,17 @@ function run_unittest_gpu() {
     export CUDA_VISIBLE_DEVICES=0
 
     if nvcc --version | grep 11.2; then
+        echo "CUDA version is 11.2, disable win_inference_test"
+        disable_wingpu_test=${disable_win_inference_test}
+    fi
+
+    if nvcc --version | grep 11.7; then
+        echo "CUDA version is 11.7, disable win_inference_test"
         disable_wingpu_test=${disable_win_inference_test}
     fi
 
     if nvcc --version | grep 12.0; then
+        echo "CUDA version is 12.0, disable wingpu_cuda12_test"
         disable_wingpu_test=${disable_wingpu_cuda12_test}
     fi
 

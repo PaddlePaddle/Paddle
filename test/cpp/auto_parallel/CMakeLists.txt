@@ -61,6 +61,9 @@ if(WITH_DISTRIBUTE)
   paddle_test(moe_combine_spmd_rule_test SRCS moe_combine_spmd_rule_test.cc
               DEPS spmd_rule_test_util phi)
 
+  paddle_test(softmax_co_shard_spmd_rule_test SRCS
+              softmax_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
   paddle_test(reshape_co_shard_spmd_rule_test SRCS
               reshape_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 
