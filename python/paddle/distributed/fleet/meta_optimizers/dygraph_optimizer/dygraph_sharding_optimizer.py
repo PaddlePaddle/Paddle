@@ -1330,10 +1330,10 @@ class DygraphShardingOptimizerV2:
         optim_state_dict = self.state_dict()
         master_weights = optim_state_dict.pop("master_weights", None)
         optim_state_dict.pop("LR_Scheduler", None)
-
-        static_to_struct = {
-            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
-        }
+        static_to_struct = {}
+        for k, v in model_sharded_state_dict.items():
+            if v.local_tensor.name not in static_to_struct:
+                static_to_struct[v.local_tensor.name] = k
 
         sharded_state = {}
 
