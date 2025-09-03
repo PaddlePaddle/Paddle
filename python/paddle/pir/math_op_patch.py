@@ -217,7 +217,7 @@ def monkey_patch_value():
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it. None will be returned."
+            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
         )
         return True
 
