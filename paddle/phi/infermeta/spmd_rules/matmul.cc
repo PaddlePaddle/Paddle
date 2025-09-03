@@ -183,8 +183,15 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
       x_axes, x_dims_mapping);
   std::pair<std::string, std::vector<std::vector<int64_t>>> y_pair(
       y_axes, y_dims_mapping);
-  const auto& axis_sizes =
-      GetAxesSizes({{x_axes, ori_x_shape}, {y_axes, ori_y_shape}});
+  auto x_shape = common::vectorize(x.dims());
+  auto y_shape = common::vectorize(y.dims());
+  if (trans_x) {
+    std::iter_swap(x_shape.end() - 2, x_shape.end() - 1);
+  }
+  if (trans_y) {
+    std::iter_swap(y_shape.end() - 2, y_shape.end() - 1);
+  }
+  const auto& axis_sizes = GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}});
   const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
   auto axis_to_dim_map =
       ShardingMergeForTensors({x_pair, y_pair}, axis_sizes, mesh_shape);
@@ -200,14 +207,6 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
 
   // Step2.3: Merge and get Inputs' New Dims Mapping.
-  auto x_shape = common::vectorize(x.dims());
-  auto y_shape = common::vectorize(y.dims());
-  if (trans_x) {
-    std::iter_swap(x_shape.end() - 2, x_shape.end() - 1);
-  }
-  if (trans_y) {
-    std::iter_swap(y_shape.end() - 2, y_shape.end() - 1);
-  }
   TensorDistAttr x_dist_attr_dst = GetMatmulInferredDistAttr(
       x_dist_attr_src, x_shape, x_axes, axis_to_dim_map, trans_x);
   TensorDistAttr y_dist_attr_dst = GetMatmulInferredDistAttr(
