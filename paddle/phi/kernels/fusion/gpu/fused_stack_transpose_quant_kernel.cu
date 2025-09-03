@@ -252,7 +252,7 @@ PD_REGISTER_KERNEL(fused_stack_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedStackQuantKernel,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }
@@ -261,7 +261,7 @@ PD_REGISTER_KERNEL(fused_stack_transpose_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedStackTransposeQuantKernel,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

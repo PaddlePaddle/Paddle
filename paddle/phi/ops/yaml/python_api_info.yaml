@@ -57,3 +57,9 @@
   name : [paddle.logical_not, paddle.Tensor.logical_not]
   args_alias:
    use_default_mapping : True
+
+- op : dot
+  name : [paddle.dot, paddle.Tensor.dot]
+  args_alias:
+    x : [input]
+    y : [tensor]

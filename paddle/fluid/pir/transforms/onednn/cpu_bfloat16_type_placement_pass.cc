@@ -85,7 +85,10 @@ class CpuBfloat16TypePattern : public pir::RewritePattern {
         auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
-        if (mkldnn_data_type != "bfloat16") {
+        auto onednn_data_type = op_attr.at("onednn_data_type")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+        if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
           return false;
         }
       }

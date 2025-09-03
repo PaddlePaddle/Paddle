@@ -62,4 +62,4 @@ PD_REGISTER_KERNEL(fused_softplus,
                    ONEDNN,
                    phi::fusion::FusedSoftplusKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
