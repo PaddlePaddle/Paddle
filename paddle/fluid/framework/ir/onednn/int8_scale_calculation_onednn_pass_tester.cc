@@ -48,7 +48,7 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", scale_weights);
     op->SetAttr("use_onednn", true);
-    op->SetAttr("mkldnn_data_type", std::string("int8"));
+    op->SetAttr("onednn_data_type", std::string("int8"));
   } else {
     FAIL() << "Unexpected operator type.";
   }
