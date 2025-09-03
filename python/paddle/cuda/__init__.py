@@ -139,15 +139,13 @@ class Stream(_PaddleStream):
     def __init__(self, device=None, priority=0, *args, **kwargs):
         """
         Args:
-            device (int | str | None): 设备索引/字符串/None
+            device (int | str | None): device id/str/None
             priority (int): PyTorch priority (-1, 0)
         """
         paddle_device = _device_to_paddle(device)
 
-        # 转换 priority
         paddle_priority = self._priority_map.get(priority, 2)
 
-        # 调用 Paddle 构造函数
         super().__init__(
             device=paddle_device, priority=paddle_priority, *args, **kwargs
         )
