@@ -100,7 +100,7 @@ class TestCudaCompat(unittest.TestCase):
         self.assertIsInstance(s, paddle.device.Stream)
 
     def test_stream_context(self):
-        s = Stream()
+        s = Stream(device='gpu', priority=2)
         with stream(s):
             ctx = stream(s)
             self.assertIsInstance(ctx, StreamContext)
@@ -116,6 +116,11 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertEqual(current.stream_base, s2.stream_base)
             current = paddle.cuda.current_stream()
             self.assertEqual(current.stream_base, s1.stream_base)
+
+    def test_version_cuda(self):
+        cudaVersion = paddle.version.cuda()
+        cudaVersionClass = paddle.version.cuda
+        assert cudaVersion == cudaVersionClass
 
 
 if __name__ == '__main__':

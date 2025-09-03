@@ -619,14 +619,21 @@ class CudaVersion:
     def __init__(self, version: str):
         self.version = version
 
-    def __call__(self):
+    def __call__(self) -> str:
         return self.version
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.version
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"CudaVersion('{self.version}')"
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, str):
+            return self.version == other
+        if isinstance(other, CudaVersion):
+            return self.version == other.version
+        return NotImplemented
 
 cuda = CudaVersion(cuda_version)
 
