@@ -44,6 +44,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'get_map_tensor',
         'get_selected_rows',
         'get_strides',
+        'stride',
         'get_tensor',
         'grad',
         'grad_',

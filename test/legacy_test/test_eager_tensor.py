@@ -1914,7 +1914,7 @@ class TestEagerTensorStride(unittest.TestCase):
         stride_result = x.stride()
         get_strides_result = x.get_strides()
 
-        self.assertEqual(tuple(get_strides_result), stride_result)
+        self.assertEqual(get_strides_result, stride_result)
 
         y = paddle.to_tensor(
             [[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype='float32'
@@ -1922,7 +1922,7 @@ class TestEagerTensorStride(unittest.TestCase):
         stride_result_3d = y.stride()
         get_strides_result_3d = y.get_strides()
 
-        self.assertEqual(tuple(get_strides_result_3d), stride_result_3d)
+        self.assertEqual(get_strides_result_3d, stride_result_3d)
 
     def test_stride_with_dim(self):
         paddle.disable_static()
@@ -1979,7 +1979,7 @@ class TestEagerTensorStride(unittest.TestCase):
                 stride_result = x.stride()
                 get_strides_result = x.get_strides()
 
-                self.assertEqual(tuple(get_strides_result), stride_result)
+                self.assertEqual(get_strides_result, stride_result)
 
     def test_stride_dim_none_equiv(self):
         paddle.disable_static()
