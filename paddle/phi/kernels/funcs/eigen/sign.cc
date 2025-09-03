@@ -61,7 +61,7 @@ template struct EigenSign<Eigen::DefaultDevice, int32_t>;
 template struct EigenSign<Eigen::DefaultDevice, int64_t>;
 template struct EigenSign<Eigen::DefaultDevice, float>;
 template struct EigenSign<Eigen::DefaultDevice, double>;
-template struct EigenSign<Eigen::DefaultDevice, phi::dtype::complex<float>>;
-template struct EigenSign<Eigen::DefaultDevice, phi::dtype::complex<double>>;
+template struct EigenSign<Eigen::DefaultDevice, phi::complex64>;
+template struct EigenSign<Eigen::DefaultDevice, phi::complex128>;
 
 }  // namespace phi::funcs

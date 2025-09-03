@@ -52,20 +52,19 @@ inline static size_t round_up(size_t n, size_t q) {
 namespace rocprim {
 namespace detail {
 template <>
-struct radix_key_codec_base<phi::dtype::float16>
-    : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+struct radix_key_codec_base<phi::float16>
+    : radix_key_codec_integral<phi::float16, uint16_t> {};
 
 template <>
-struct radix_key_codec_base<phi::dtype::bfloat16>
-    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
+struct radix_key_codec_base<phi::bfloat16>
+    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
 
 #if HIP_VERSION >= 50400000
 template <>
-struct float_bit_mask<phi::dtype::float16> : float_bit_mask<rocprim::half> {};
+struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
 
 template <>
-struct float_bit_mask<phi::dtype::bfloat16>
-    : float_bit_mask<rocprim::bfloat16> {};
+struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif
 }  // namespace detail
 }  // namespace rocprim
@@ -74,13 +73,12 @@ namespace cub = hipcub;
 // set cub base traits in order to handle float16
 namespace cub {
 template <>
-struct NumericTraits<phi::dtype::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+struct NumericTraits<phi::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
 template <>
-struct NumericTraits<phi::dtype::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
-};
+struct NumericTraits<phi::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
 
 }  // namespace cub
 #endif
@@ -584,10 +582,10 @@ struct RadixTypeConfig<int64_t> {
 };
 
 template <>
-struct RadixTypeConfig<phi::dtype::float16> {
+struct RadixTypeConfig<phi::float16> {
   typedef uint32_t RadixType;
 
-  static inline __device__ RadixType Convert(phi::dtype::float16 v) {
+  static inline __device__ RadixType Convert(phi::float16 v) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     half v_h = v.to_half();
     RadixType x = __half_as_ushort(v_h);
@@ -599,30 +597,30 @@ struct RadixTypeConfig<phi::dtype::float16> {
 #endif
   }
 
-  static inline __device__ phi::dtype::float16 Deconvert(RadixType v) {
+  static inline __device__ phi::float16 Deconvert(RadixType v) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
     RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
-    return static_cast<phi::dtype::float16>(__ushort_as_half(v ^ mask));
+    return static_cast<phi::float16>(__ushort_as_half(v ^ mask));
 #else
     assert(false);
-    return static_cast<phi::dtype::float16>(0);
+    return static_cast<phi::float16>(0);
 #endif
   }
 };
 
 template <>
-struct RadixTypeConfig<phi::dtype::bfloat16> {
+struct RadixTypeConfig<phi::bfloat16> {
   typedef uint32_t RadixType;
 
-  static inline __device__ RadixType Convert(phi::dtype::bfloat16 v) {
+  static inline __device__ RadixType Convert(phi::bfloat16 v) {
     RadixType x = v.x;
     RadixType mask = (x & 0x00008000) ? 0x0000ffff : 0x00008000;
     return (v == v) ? (x ^ mask) : 0xffff;
   }
 
-  static inline __device__ phi::dtype::bfloat16 Deconvert(RadixType v) {
+  static inline __device__ phi::bfloat16 Deconvert(RadixType v) {
     RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
-    phi::dtype::bfloat16 r;
+    phi::bfloat16 r;
     r.x = (v ^ mask);
     return r;
   }

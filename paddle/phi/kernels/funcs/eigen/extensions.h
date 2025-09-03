@@ -25,7 +25,7 @@
 
 namespace Eigen {
 
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 template <typename T>
 using complex = phi::dtype::complex<T>;
 
@@ -33,8 +33,7 @@ template <typename T>
 struct NumTraits;
 
 template <>
-struct NumTraits<phi::dtype::bfloat16>
-    : GenericNumTraits<phi::dtype::bfloat16> {
+struct NumTraits<phi::bfloat16> : GenericNumTraits<phi::bfloat16> {
   enum {
     IsSigned = true,
     IsInteger = false,
@@ -42,22 +41,22 @@ struct NumTraits<phi::dtype::bfloat16>
     RequireInitialization = false
   };
 
-  HOSTDEVICE static inline phi::dtype::bfloat16 epsilon() {
+  HOSTDEVICE static inline phi::bfloat16 epsilon() {
     return phi::dtype::raw_uint16_to_bfloat16(0x3400);
   }
-  HOSTDEVICE static inline phi::dtype::bfloat16 dummy_precision() {
-    return phi::dtype::bfloat16(1e-5f);
+  HOSTDEVICE static inline phi::bfloat16 dummy_precision() {
+    return phi::bfloat16(1e-5f);
   }
-  HOSTDEVICE static inline phi::dtype::bfloat16 highest() {
+  HOSTDEVICE static inline phi::bfloat16 highest() {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
   }
-  HOSTDEVICE static inline phi::dtype::bfloat16 lowest() {
+  HOSTDEVICE static inline phi::bfloat16 lowest() {
     return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
   }
-  HOSTDEVICE static inline phi::dtype::bfloat16 infinity() {
+  HOSTDEVICE static inline phi::bfloat16 infinity() {
     return phi::dtype::raw_uint16_to_bfloat16(0x7f80);
   }
-  HOSTDEVICE static inline phi::dtype::bfloat16 quiet_NaN() {
+  HOSTDEVICE static inline phi::bfloat16 quiet_NaN() {
     return phi::dtype::raw_uint16_to_bfloat16(0xffc1);
   }
 };
@@ -138,86 +137,85 @@ namespace numext {
 //////////// bfloat methods /////////////
 
 template <>
-HOSTDEVICE inline bool(isnan)(const phi::dtype::bfloat16& a) {
+HOSTDEVICE inline bool(isnan)(const phi::bfloat16& a) {
   return (phi::dtype::isnan)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isinf)(const phi::dtype::bfloat16& a) {
+HOSTDEVICE inline bool(isinf)(const phi::bfloat16& a) {
   return (phi::dtype::isinf)(a);
 }
 
 template <>
-HOSTDEVICE inline bool(isfinite)(const phi::dtype::bfloat16& a) {
+HOSTDEVICE inline bool(isfinite)(const phi::bfloat16& a) {
   return (phi::dtype::isfinite)(a);
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 exp(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::expf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 exp(const phi::bfloat16& a) {
+  return phi::bfloat16(::expf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 expm1(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::expm1f(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 expm1(const phi::bfloat16& a) {
+  return phi::bfloat16(::expm1f(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 erf(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::erff(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 erf(const phi::bfloat16& a) {
+  return phi::bfloat16(::erff(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 log(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::logf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 log(const phi::bfloat16& a) {
+  return phi::bfloat16(::logf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 tanh(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::tanhf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 tanh(const phi::bfloat16& a) {
+  return phi::bfloat16(::tanhf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 sqrt(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::sqrtf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 sqrt(const phi::bfloat16& a) {
+  return phi::bfloat16(::sqrtf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 ceil(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::ceilf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 ceil(const phi::bfloat16& a) {
+  return phi::bfloat16(::ceilf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 floor(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::floorf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 floor(const phi::bfloat16& a) {
+  return phi::bfloat16(::floorf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 round(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::roundf(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 round(const phi::bfloat16& a) {
+  return phi::bfloat16(::roundf(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 pow(const phi::dtype::bfloat16& a,
-                                           const phi::dtype::bfloat16& b) {
-  return phi::dtype::bfloat16(
-      ::powf(static_cast<float>(a), static_cast<float>(b)));
+HOSTDEVICE inline phi::bfloat16 pow(const phi::bfloat16& a,
+                                    const phi::bfloat16& b) {
+  return phi::bfloat16(::powf(static_cast<float>(a), static_cast<float>(b)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 abs(const phi::dtype::bfloat16& a) {
-  return phi::dtype::bfloat16(::fabs(static_cast<float>(a)));
+HOSTDEVICE inline phi::bfloat16 abs(const phi::bfloat16& a) {
+  return phi::bfloat16(::fabs(static_cast<float>(a)));
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 mini(const phi::dtype::bfloat16& a,
-                                            const phi::dtype::bfloat16& b) {
+HOSTDEVICE inline phi::bfloat16 mini(const phi::bfloat16& a,
+                                     const phi::bfloat16& b) {
   return b < a ? b : a;
 }
 
 template <>
-HOSTDEVICE inline phi::dtype::bfloat16 maxi(const phi::dtype::bfloat16& a,
-                                            const phi::dtype::bfloat16& b) {
+HOSTDEVICE inline phi::bfloat16 maxi(const phi::bfloat16& a,
+                                     const phi::bfloat16& b) {
   return a < b ? b : a;
 }
 
