@@ -77,7 +77,7 @@ class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
                 'alpha': alpha,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
