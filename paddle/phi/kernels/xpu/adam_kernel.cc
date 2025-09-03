@@ -496,7 +496,7 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::dtype::float16) {
+    adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);

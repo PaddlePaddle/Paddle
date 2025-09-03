@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
+#include <type_traits>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -75,6 +76,15 @@ __global__ void CudaMemsetAsync(int* dest, int value, size_t size) {
   int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid * sizeof(int) >= size) return;
   dest[tid] = value;
+}
+
+template <typename SrcT, typename DstT>
+__global__ void CastMemcpy(const SrcT* __restrict__ src,
+                           DstT* __restrict__ dst,
+                           int64_t size) {
+  int64_t tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid >= size) return;
+  dst[tid] = static_cast<DstT>(src[tid]);
 }
 
 template <typename T>
@@ -459,6 +469,11 @@ __global__ void ScatterWriteByWinnersKernel(
   }
 }
 
+namespace {
+template <typename T, typename U>
+constexpr bool is_same_type = std::is_same_v<std::decay_t<T>, std::decay_t<U>>;
+}  // anonymous namespace
+
 template <typename tensor_t,
           typename index_t = int64_t,
           bool is_scatter_like = true>
@@ -577,18 +592,53 @@ struct gpu_gather_scatter_functor {
           atomic_cnt_buffer);
     }
 
-    GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-        <<<grid, block, shared_mem_bytes, stream>>>(self_data,
-                                                    index_data,
-                                                    shape_strides,
-                                                    src_data,
-                                                    self_select_dim_size,
-                                                    src_select_dim_size,
-                                                    index_size,
-                                                    dim,
-                                                    ndim,
-                                                    reduce_op,
-                                                    atomic_cnt_buffer);
+    if constexpr ((is_same_type<func_t, ReduceMul>)&&(
+                      is_same_type<tensor_t, phi::dtype::bfloat16> ||
+                      is_same_type<tensor_t, phi::dtype::float16>)) {
+      DenseTensor promoted_self(self),
+          promoted_src(src);  // shallow copy tensor meta
+
+      dev_ctx.Alloc<float>(&promoted_self);
+      dev_ctx.Alloc<float>(&promoted_src);
+
+      constexpr int block_size = 256;
+      const int64_t src_size = src.numel();
+      const int64_t self_grid = (self_size + block_size - 1) / block_size;
+      const int64_t src_grid = (src_size + block_size - 1) / block_size;
+      CastMemcpy<<<self_grid, block_size, 0, stream>>>(
+          self_data, promoted_self.data<float>(), self_size);
+      CastMemcpy<<<src_grid, block_size, 0, stream>>>(
+          src_data, promoted_src.data<float>(), src_size);
+      // promote tp float32 and compute, then cast back to fp16/bfp16
+      GatherScatterGPUKernel<float, index_t, func_t, is_scatter_like>
+          <<<grid, block, shared_mem_bytes, stream>>>(
+              promoted_self.data<float>(),
+              index_data,
+              shape_strides,
+              promoted_src.data<float>(),
+              self_select_dim_size,
+              src_select_dim_size,
+              index_size,
+              dim,
+              ndim,
+              reduce_op,
+              atomic_cnt_buffer);
+      CastMemcpy<<<self_grid, block_size, 0, stream>>>(
+          promoted_self.data<float>(), self_data, self_size);
+    } else {
+      GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+          <<<grid, block, shared_mem_bytes, stream>>>(self_data,
+                                                      index_data,
+                                                      shape_strides,
+                                                      src_data,
+                                                      self_select_dim_size,
+                                                      src_select_dim_size,
+                                                      index_size,
+                                                      dim,
+                                                      ndim,
+                                                      reduce_op,
+                                                      atomic_cnt_buffer);
+    }
     if (method_name == "mean") {
       constexpr int _block = 512;
       int64_t grid = (self_size + _block - 1) / _block;

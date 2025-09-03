@@ -1474,7 +1474,7 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         self.grad_node_out_list = grad_node_out_list
 
-    def run(self, append_input_out=False):
+    def run(self, append_predefined_out=False):
         # Basic Validation Check
         self.DygraphYamlValidationCheck()
 
@@ -1663,7 +1663,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         return layout_logic_str
 
     def GenerateForwardDefinitionAndDeclaration(
-        self, is_inplaced, grad_flag, append_input_out
+        self, is_inplaced, grad_flag, append_predefined_out
     ):
         namespace = self.namespace
         if self.forward_api_name[-1] == '_' and not is_inplaced:
@@ -1862,7 +1862,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         inputs_args_declaration_str = ", ".join(inputs_args_declaration_list)
         inputs_args_definition_str = ", ".join(inputs_args_definition_list)
         if (
-            append_input_out
+            append_predefined_out
             and not grad_flag
             and not is_inplaced
             and len(self.forward_outputs_position_map) == 1
@@ -1872,13 +1872,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         ):
             inputs_args_declaration_str = (
                 inputs_args_declaration_str
-                + ", paddle::optional<paddle::Tensor*> input_out = paddle::none"
+                + ", paddle::optional<paddle::Tensor*> predefined_out = paddle::none"
             )
             inputs_args_definition_str = (
                 inputs_args_definition_str
-                + ", paddle::optional<paddle::Tensor*> input_out"
+                + ", paddle::optional<paddle::Tensor*> predefined_out"
             )
-            inputs_call_list.append("input_out")
+            inputs_call_list.append("predefined_out")
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
 
@@ -2134,7 +2134,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
         amp_inputs_call_args_str = ", ".join(amp_inputs_call_list)
         if (
-            append_input_out
+            append_predefined_out
             and not grad_flag
             and not is_inplaced
             and len(self.forward_outputs_position_map) == 1
@@ -2142,7 +2142,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             == "Tensor"
             and forward_api_name != "empty_like"
         ):
-            amp_inputs_call_args_str = amp_inputs_call_args_str + ", input_out"
+            amp_inputs_call_args_str = (
+                amp_inputs_call_args_str + ", predefined_out"
+            )
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
@@ -2167,7 +2169,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_promote_inputs_call_list
             )
             if (
-                append_input_out
+                append_predefined_out
                 and not grad_flag
                 and not is_inplaced
                 and len(self.forward_outputs_position_map) == 1
@@ -2176,7 +2178,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (
-                    type_promote_inputs_call_args_str + ", input_out"
+                    type_promote_inputs_call_args_str + ", predefined_out"
                 )
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
@@ -2201,7 +2203,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_promote_inputs_call_list
             )
             if (
-                append_input_out
+                append_predefined_out
                 and not grad_flag
                 and not is_inplaced
                 and len(self.forward_outputs_position_map) == 1
@@ -2210,7 +2212,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (
-                    type_promote_inputs_call_args_str + ", input_out"
+                    type_promote_inputs_call_args_str + ", predefined_out"
                 )
 
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
@@ -2357,7 +2359,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.forward_declaration_str += f"TEST_API {returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(
-        self, grad_flag, append_input_out
+        self, grad_flag, append_predefined_out
     ):
         # Inplaced Version Dygraph Function Generation
         forward_api_name = self.forward_api_name
@@ -2368,7 +2370,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             self.GenerateForwardDefinitionAndDeclaration(
                 is_inplaced=True,
                 grad_flag=grad_flag,
-                append_input_out=append_input_out,
+                append_predefined_out=append_predefined_out,
             )
             self.UpdateCoreOpsInformation(is_inplaced=True)
 
@@ -2404,8 +2406,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         for name, (ttype, pos) in forward_outputs_position_map.items():
             core_ops_returns_info[fwd_api_name][pos] = name
 
-    def run(self, grad_flag=False, append_input_out=False):
-        super().run(append_input_out=append_input_out)
+    def run(self, grad_flag=False, append_predefined_out=False):
+        super().run(append_predefined_out=append_predefined_out)
 
         ###################
         # Code Generation #
@@ -2415,13 +2417,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         self.GenerateForwardDefinitionAndDeclaration(
             is_inplaced=False,
             grad_flag=grad_flag,
-            append_input_out=append_input_out,
+            append_predefined_out=append_predefined_out,
         )
 
         self.UpdateCoreOpsInformation(is_inplaced=False)
 
         self.GenerateInplacedForwardDygraphFunctions(
-            grad_flag, append_input_out=append_input_out
+            grad_flag, append_predefined_out=append_predefined_out
         )
 
 
@@ -3255,8 +3257,8 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             returns_str,
         )
 
-    def run(self, append_input_out=False):
-        super().run(append_input_out=append_input_out)
+    def run(self, append_predefined_out=False):
+        super().run(append_predefined_out=append_predefined_out)
 
         self.ResetOptionalInputs()
 
@@ -3340,7 +3342,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
 
         return backward_api_contents
 
-    def GenerateCode(self, grad_flag=False, append_input_out=True):
+    def GenerateCode(self, grad_flag=False, append_predefined_out=True):
         if grad_flag:
             op_string = 'backward_op'
         else:
@@ -3389,7 +3391,7 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                     namespace,
                 )
                 function_generator.run(
-                    grad_flag, append_input_out=append_input_out
+                    grad_flag, append_predefined_out=append_predefined_out
                 )
 
                 self.forward_definition_str += (
@@ -3415,7 +3417,9 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                         namespace,
                         next_grad_api_contents,
                     )
-                    node_generator.run(append_input_out=append_input_out)
+                    node_generator.run(
+                        append_predefined_out=append_predefined_out
+                    )
                     self.node_declaration_str += (
                         node_generator.node_declaration_str + "\n"
                     )
@@ -3450,12 +3454,14 @@ class DygraphForwardAndNodesGenerator(GeneratorBase):
                 namespace, self.node_definition_str
             )
 
-    def run(self, grad_flag=False, append_input_out=False):
+    def run(self, grad_flag=False, append_predefined_out=False):
         self.ParseYamlContents()
 
         self.InferNameSpace()
 
-        self.GenerateCode(grad_flag, append_input_out=append_input_out)
+        self.GenerateCode(
+            grad_flag, append_predefined_out=append_predefined_out
+        )
 
 
 ################
@@ -3564,10 +3570,10 @@ if __name__ == "__main__":
             generator = DygraphForwardAndNodesGenerator(
                 api_yaml_path, backward_yaml_path
             )
-        append_input_out = (
+        append_predefined_out = (
             "string" not in api_yaml_path and "sparse" not in api_yaml_path
         )
-        generator.run(append_input_out=append_input_out)
+        generator.run(append_predefined_out=append_predefined_out)
 
         node_declaration_str += generator.node_declaration_str + "\n"
         node_definition_str += generator.node_definition_str + "\n"
@@ -3602,7 +3608,7 @@ if __name__ == "__main__":
                 backward_yaml_path, backward_yaml_path
             )
 
-        generator_grad.run(True, append_input_out=False)
+        generator_grad.run(True, append_predefined_out=False)
 
         backward_declaration_str += (
             generator_grad.forward_declaration_str + "\n"

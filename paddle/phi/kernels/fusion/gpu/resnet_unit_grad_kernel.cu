@@ -215,7 +215,7 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitGradKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 namespace phi {
 
@@ -267,5 +267,5 @@ PD_REGISTER_KERNEL(resnet_unit_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitGradEmptyKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

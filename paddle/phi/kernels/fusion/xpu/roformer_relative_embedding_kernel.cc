@@ -75,4 +75,4 @@ PD_REGISTER_KERNEL(roformer_relative_embedding_xpu,
                    ALL_LAYOUT,
                    phi::fusion::RoformerRelativePosXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

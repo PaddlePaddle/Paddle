@@ -313,4 +313,4 @@ PD_REGISTER_KERNEL(c_softmax_with_multi_label_cross_entropy,
                    phi::CSoftmaxWithMultiLabelCrossEntropyKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

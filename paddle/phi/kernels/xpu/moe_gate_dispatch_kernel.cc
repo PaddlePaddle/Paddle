@@ -132,5 +132,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch,
                    ALL_LAYOUT,
                    phi::MoeGateDispatchKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
