@@ -905,8 +905,19 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
 disable_static()
 
-from .cuda import Stream as Stream
 from .pir_utils import IrGuard
+
+try:
+    from .device.cuda import Stream as Stream
+except ImportError:
+
+    class _DummyStream:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "The current device does not support using paddle.Stream."
+            )
+
+    Stream = _DummyStream
 
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
