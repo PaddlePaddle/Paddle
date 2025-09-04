@@ -1172,6 +1172,8 @@ if '${WITH_CINN}' == 'ON':
     package_data['paddle.libs']+=['cinn_sycl_runtime_source.h']
 
     cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16.h'
+    if '${WITH_ROCM}' == 'ON':
+        cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/hip/float16.h'
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']

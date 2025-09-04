@@ -436,7 +436,6 @@ class TestArgmaxAPI_Compatibility(unittest.TestCase):
         np_api = eval(f"np.{api_name}")
         ref_out = np_api(self.np_input, 1)
         # Check
-        count = 1
         for out in paddle_dygraph_out:
             np.testing.assert_allclose(ref_out, out.numpy())
         paddle.enable_static()

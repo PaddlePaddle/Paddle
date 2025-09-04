@@ -952,12 +952,12 @@ PD_REGISTER_KERNEL(fused_multi_transformer,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerOpKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(fused_multi_transformer,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerOpKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

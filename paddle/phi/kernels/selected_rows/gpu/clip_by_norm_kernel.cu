@@ -24,4 +24,4 @@ PD_REGISTER_KERNEL(clip_by_norm_sr,
                    ALL_LAYOUT,
                    phi::sr::ClipByNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

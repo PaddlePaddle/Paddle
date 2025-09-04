@@ -31,5 +31,5 @@ PD_REGISTER_KERNEL(sign,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

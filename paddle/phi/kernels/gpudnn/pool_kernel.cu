@@ -330,7 +330,7 @@ void Pool3dGPUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using phi::dtype::float16;
+using phi::float16;
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
