@@ -159,9 +159,8 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<Tensor*>* AllMutablePlainOutput();
   std::unordered_map<size_t, size_t> GetInplaceIndexMap() const;
   std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap() const;
-
-  const std::vector<std::string>* inputs_names_;
-  const std::vector<std::string>* outputs_names_;
+  void ValidateAndAssignOutputs(CustomOpKernelContext* ctx,
+                                const std::vector<Tensor>& outs);
 
  private:
   // TODO(chenweihang): replaced be SmallVector
@@ -177,6 +176,9 @@ class PADDLE_API CustomOpKernelContext {
 
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
+
+  const std::vector<std::string>* inputs_names_;
+  const std::vector<std::string>* outputs_names_;
 };
 
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
@@ -202,9 +204,6 @@ struct TypeTag {};
 
 template <typename F, F f>
 struct KernelFuncImpl;
-
-void ValidateAndAssignOutputs(CustomOpKernelContext* ctx,
-                              std::vector<Tensor> outs);
 
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
