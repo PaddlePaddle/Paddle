@@ -38,7 +38,7 @@ struct CUDATypeTraits;
 
 template <>
 struct CUDATypeTraits<half> {
-  typedef phi::dtype::float16 TYPE;
+  typedef phi::float16 TYPE;
 };
 
 template <>
