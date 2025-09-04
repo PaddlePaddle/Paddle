@@ -242,8 +242,8 @@ void CustomOpKernelContext::ConstructInplaceIndex(
     return;
   }
 
-  this->inputs_names_ = &inputs;
-  this->outputs_names_ = &outputs;
+  this->inputs_names_ = inputs;
+  this->outputs_names_ = outputs;
 
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
     auto& input = inputs[in_idx];
