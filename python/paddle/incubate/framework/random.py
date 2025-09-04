@@ -195,8 +195,10 @@ def set_rng_state(
             ]
         )
         if not len(state_list) == dev_cnt:
+            dev_types = core.get_available_custom_device()
+            dev_type = dev_types[0]
             raise ValueError(
-                f"Length of custom device state list should be equal to the {place.get_dtype_type()} device count"
+                f"Length of custom device state list should be equal to the {core.get_custom_device_count(dev_type)} device count"
             )
         for i in range(dev_cnt):
             set_state(
@@ -291,8 +293,10 @@ def register_rng_state_as_index(
             ]
         )
         if not len(state_list) == dev_cnt:
+            dev_types = core.get_available_custom_device()
+            dev_type = dev_types[0]
             raise ValueError(
-                f"Length of custom device state list should be equal to the {place.get_dtype_type()} device count"
+                f"Length of custom device state list should be equal to the {core.get_custom_device_count(dev_type)} device count"
             )
         for i in range(dev_cnt):
             new_state_index_list.append(
