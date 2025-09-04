@@ -46,7 +46,19 @@ void IndexAddGradKernel(const Context& dev_ctx,
     }
     return;
   }
-
+  if (index.numel() == 0) {
+    if (x_grad) {
+      phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
   // x.shape == out.shape in index_grad op
   auto input_dim = out_grad.dims();
   auto add_value_dim = add_value.dims();
