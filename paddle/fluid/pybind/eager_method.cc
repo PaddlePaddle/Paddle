@@ -3406,7 +3406,7 @@ Examples:
         >>> import paddle
         >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]])
         >>> x.stride()
-        (3, 1)
+        [3, 1]
         >>> x.stride(0)
         3
         >>> x.stride(1)
