@@ -124,6 +124,9 @@ class TestCudaCompat(unittest.TestCase):
         cudaVersionClass = paddle.version.cuda
         assert cudaVersion == cudaVersionClass
 
+    def test_error(self):
+        assert 1 == 0
+
 
 if __name__ == '__main__':
     unittest.main()
