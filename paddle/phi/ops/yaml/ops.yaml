@@ -945,6 +945,10 @@
 
 - op : ceil
   args : (Tensor x)
+  python_api:
+    name : [paddle.ceil, paddle.Tensor.ceil]
+    args_alias:
+      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

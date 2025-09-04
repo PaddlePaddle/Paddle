@@ -108,6 +108,17 @@ static T ExcludeSelfInitialValue(const std::string& reduce_op) {
   }
 }
 
+template <typename T>
+__device__ __forceinline__ T IntFloorDiv(T a, T b) {
+  if ((a < 0) != (b < 0)) {
+    // compute div and mod at the same time can be optimized by compilers
+    const auto quot = a / b;
+    const auto rem = a % b;
+    return rem ? quot - 1 : quot;
+  }
+  return a / b;
+}
+
 struct DivMod {
   template <typename T>
   static __device__ __forceinline__ void divmod(T dividend,
@@ -319,7 +330,12 @@ __global__ void CastDivKernel(tensor_t* __restrict__ self_data,
 
   int64_t tid = threadIdx.x + static_cast<int64_t>(blockIdx.x) * blockDim.x;
   if (tid >= numel) return;
-  self_data[tid] /= static_cast<tensor_t>(atomic_cnt_buffer[tid]);
+  if constexpr (std::is_integral_v<std::decay_t<tensor_t>>) {
+    self_data[tid] = IntFloorDiv(self_data[tid],
+                                 static_cast<tensor_t>(atomic_cnt_buffer[tid]));
+  } else {
+    self_data[tid] /= static_cast<tensor_t>(atomic_cnt_buffer[tid]);
+  }
 }
 
 /**

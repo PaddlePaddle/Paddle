@@ -148,7 +148,7 @@ else:
                 place=device,
             )
         elif (
-            builtins.all(isinstance(arg, int) for arg in args)
+            builtins.all(isinstance(arg, builtins.int) for arg in args)
             and len(kwargs) == 0
         ):
             # case 3, 4
