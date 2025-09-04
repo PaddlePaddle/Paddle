@@ -268,8 +268,8 @@ PD_REGISTER_KERNEL(slice,
                    ALL_LAYOUT,
                    phi::SliceKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::dtype::complex<float>,
 #endif

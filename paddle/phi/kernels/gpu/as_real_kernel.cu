@@ -19,8 +19,8 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/as_real_impl.h"
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(
     as_real, GPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {

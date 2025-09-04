@@ -266,5 +266,5 @@ PD_REGISTER_KERNEL(fused_softmax_mask_upper_triangle,
                    ALL_LAYOUT,
                    phi::fusion::FusedSoftmaxMaskFuseUpperTriangleKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

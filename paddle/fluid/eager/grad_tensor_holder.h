@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
@@ -46,14 +47,14 @@ class GradTensorHolder {
   GradTensorHolder& operator=(const GradTensorHolder& other) = default;
 
   // Create new tensor and copy tensor->impl
-  void add(size_t slot_id,
-           size_t rank,
-           const paddle::Tensor& t,
-           bool create_graph = false);
-  void CopyValueFromTensor(size_t slot_id,
-                           size_t rank,
-                           const paddle::Tensor& t,
-                           bool fill_one = false);
+  PADDLE_API void add(size_t slot_id,
+                      size_t rank,
+                      const paddle::Tensor& t,
+                      bool create_graph = false);
+  PADDLE_API void CopyValueFromTensor(size_t slot_id,
+                                      size_t rank,
+                                      const paddle::Tensor& t,
+                                      bool fill_one = false);
 
   const std::vector<paddle::Tensor>& operator[](const size_t& pos) {
     return buffer_[pos];
@@ -64,7 +65,7 @@ class GradTensorHolder {
     return buffer_;
   }
 
-  void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
+  PADDLE_API void SetBufferSlotRankZeros(size_t slot_id, size_t rank);
 
  private:
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>

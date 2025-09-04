@@ -71,5 +71,5 @@ PD_REGISTER_KERNEL(moe_combine,
                    ALL_LAYOUT,
                    phi::MoeCombineKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

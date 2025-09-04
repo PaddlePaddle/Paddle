@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import functools
 import inspect
 import warnings
-from collections.abc import Iterable
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 
 from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _InputT = ParamSpec("_InputT")
 _RetT = TypeVar("_RetT")
@@ -155,6 +159,22 @@ class SetDefaultParaAliasDecorator(DecoratorBase):
         return args, kwargs
 
 
+def softmax_param_alias(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        # Process parameters to handle alias mapping
+        if "input" in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
 def param_one_alias(alias_list):
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
@@ -246,6 +266,64 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
+def size_args_decorator(func: Callable) -> Callable:
+    """
+    A decorator that normalizes the 'size' argument to 'shape'.
+
+    Usage Example:
+
+    paddle.ones(1, dtype=paddle.float32)
+    paddle.ones(1, 2, 3, dtype=paddle.float32)
+    paddle.ones([1, 2, 3], dtype=paddle.float32)
+    paddle.ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.ones([1, 2, 3], paddle.float32)
+    paddle.ones(shape=[1, 2, 3], dtype=paddle.float32)
+    """
+
+    @functools.wraps(func)
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        if 'size' in kwargs:
+            kwargs['shape'] = kwargs.pop('size')
+        elif len(args) >= 1 and isinstance(args[0], int):
+            kwargs['shape'] = list(args)
+            args = ()
+
+        return func(*args, **kwargs)
+
+    wrapped_func.__signature__ = inspect.signature(func)
+
+    return wrapped_func
+
+
+def size_args_decorator_patch(method: Callable) -> Callable:
+    """
+    A decorator that allow *size for patching method to Tensor.
+    e.g. Tensor.method(*size, *, ...).
+
+    Usage Example:
+
+    paddle.randn([]).new_ones(1, dtype=paddle.float32)
+    paddle.randn([]).new_ones(1, 2, 3, dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones(size=[1, 2, 3], dtype=paddle.float32)
+    paddle.randn([]).new_ones([1, 2, 3], paddle.float32)
+    """
+
+    @functools.wraps(method)
+    def wrapped_func(*args: Any, **kwargs: Any) -> Any:
+        if len(args) >= 2 and isinstance(args[1], int):
+            # args[0]: Tensor
+            # args[1:]: *size
+            kwargs['size'] = list(args[1:])
+            args = (args[0],)
+
+        return method(*args, **kwargs)
+
+    wrapped_func.__signature__ = inspect.signature(method)
+
+    return wrapped_func
+
+
 class VariableArgsDecorator(DecoratorBase):
     def __init__(self, var: str) -> None:
         super().__init__()
@@ -297,12 +375,32 @@ class ForbidKeywordsDecorator(DecoratorBase):
     """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected"""
 
     def __init__(
-        self, illegal_keys: set[str], func_name: str, correct_name: str
+        self,
+        illegal_keys: set[str],
+        func_name: str,
+        correct_name: str,
+        url_suffix: str = "",
     ) -> None:
+        """
+        Args:
+            illegal_keys (set[str]): the keywords to reject
+            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
+            correct_name (str): the user hint that points to the correct function
+            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
+                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
+                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
+
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+
+                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
+        """
         super().__init__()
         self.illegal_keys = illegal_keys
         self.func_name = func_name
         self.correct_name = correct_name
+        self.warn_msg = None
+        if url_suffix:
+            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -318,6 +416,55 @@ class ForbidKeywordsDecorator(DecoratorBase):
                 f"{self.func_name}() received unexpected keyword argument{plural} {keys_str}. "
                 f"\nDid you mean to use {self.correct_name}() instead?"
             )
+        if self.warn_msg is not None:
+            warnings.warn(
+                self.warn_msg,
+                category=Warning,
+            )
+            self.warn_msg = None
+        return args, kwargs
+
+
+class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
+    """A decorator that hints users to use the correct `compat` functions, when erroneous keyword arguments are detected and one argument is ignored"""
+
+    def __init__(
+        self,
+        illegal_keys: set[str],
+        ignore_param: tuple[str, int, type[Any]],
+        func_name: str,
+        correct_name: str,
+        url_suffix: str = "",
+    ) -> None:
+        """
+        Args:
+            illegal_keys (set[str]): the keywords to reject
+            ignore_param: (tuple[str, int, type[Any]]): A tuple of (parameter_name, index, type) to ignore by name, position and type
+            func_name (str): the name of the function being decorated (should incorporate module name, like paddle.nn.Unfold)
+            correct_name (str): the user hint that points to the correct function
+            url_suffix (str, optional): Only specified in non paddle.compat functions. If specified, the function being decorated
+                will emit a warning upon the first call, warning the users about the API difference and points to Docs.
+                Please correctly specifying the `url_suffix`, this should be the suffix of the api-difference doc. For example:
+
+                (prefix omitted)/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/**torch/torch.nn.Unfold**.html
+
+                In this example, the correct `url_suffix` should be 'torch/torch.nn.Unfold'. Defaults to an empty str.
+        """
+        super().__init__(illegal_keys, func_name, correct_name, url_suffix)
+        self.ignore_param = ignore_param
+
+    def process(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        args, kwargs = super().process(args, kwargs)
+
+        if self.ignore_param:
+            name, index, typ = self.ignore_param
+            if index < len(args) and isinstance(args[index], typ):
+                args = args[:index] + args[index + 1 :]
+            else:
+                kwargs.pop(name, None)
+
         return args, kwargs
 
 
@@ -340,6 +487,151 @@ def reshape_decorator():
                     kwargs["x"] = args[0]
                     kwargs['shape'] = list(args[1:])
                     args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def transpose_decorator():
+    """
+    Usage Example:
+    PyTorch:
+        torch.transpose(x, dim0=0, dim1=1)
+    Paddle:
+        paddle.transpose(x, perm=[1, 0, 2])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+
+            dim0 = kwargs.pop("dim0", kwargs.pop("axis0", None))
+            dim1 = kwargs.pop("dim1", kwargs.pop("axis1", None))
+
+            if dim0 is None and len(args) > 1 and isinstance(args[1], int):
+                dim0 = args[1]
+            if dim1 is None and len(args) > 2 and isinstance(args[2], int):
+                dim1 = args[2]
+
+            if dim0 is not None and dim1 is not None:
+                ndim = kwargs["x"].ndim if "x" in kwargs else args[0].ndim
+                perm = list(range(ndim))
+                perm[dim0], perm[dim1] = perm[dim1], perm[dim0]
+                kwargs["perm"] = perm
+                if len(args) > 1:
+                    args = (args[0],)
+
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def expand_decorator():
+    """
+    Usage Example:
+    paddle.expand(x=tensor_x, shape=[3, 4], name=None)
+    tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])
+    tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)
+    tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("size" in kwargs) and ("shape" not in kwargs):
+                kwargs["shape"] = kwargs.pop("size")
+            elif len(args) >= 2 and type(args[1]) is int:
+                if all(type(arg) is int for arg in args[1:]):
+                    kwargs["x"] = args[0]
+                    kwargs['shape'] = list(args[1:])
+                    args = ()
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def index_select_decorator():
+    """
+    Usage Example:
+    PyTorch: index_select(input, dim, index)
+        torch.index_select(input=input_tensor, dim=1, index=indices)
+        torch.index_select(input_tensor, 1, indices)
+    Paddle: index_select(x, index, axis=0)
+        paddle.index_select(x=input_tensor, index=indices, axis=1)
+        paddle.index_select(input_tensor, indices, axis=1)
+    """
+
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "dim" in kwargs and "axis" not in kwargs:
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) >= 2 and isinstance(args[1], int):
+                if len(args) < 3 and "index" not in kwargs:
+                    raise TypeError(
+                        "index_select() missing 1 required argument: 'index'"
+                    )
+                input_tensor = args[0]
+                dim_or_axis = args[1]
+                if "x" not in kwargs:
+                    kwargs["x"] = input_tensor
+                if "axis" not in kwargs:
+                    kwargs["axis"] = dim_or_axis
+                if len(args) > 2 and "index" not in kwargs:
+                    kwargs["index"] = args[2]
+                    args = args[3:]
+                else:
+                    args = args[2:]
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def sum_decorator():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if ("input" in kwargs) and ("x" not in kwargs):
+                kwargs["x"] = kwargs.pop("input")
+            if ("dim" in kwargs) and ("axis" not in kwargs):
+                kwargs["axis"] = kwargs.pop("dim")
+            if len(args) == 3:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                else:
+                    kwargs["dtype"] = args[2]
+                args = ()
+            elif len(args) == 4:
+                kwargs["x"] = args[0]
+                kwargs["axis"] = args[1]
+                if isinstance(args[2], bool):
+                    kwargs["keepdim"] = args[2]
+                    kwargs["dtype"] = args[3]
+                else:
+                    kwargs["dtype"] = args[2]
+                    kwargs["keepdim"] = args[3]
+                args = ()
+
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)

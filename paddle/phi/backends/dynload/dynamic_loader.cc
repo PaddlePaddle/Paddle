@@ -256,7 +256,12 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
     VLOG(3) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
+#if defined(_WIN32) || defined(_WIN64)
+    HMODULE handle = LoadLibraryA(dso_path.c_str());
+    dso_handle = reinterpret_cast<void*>(handle);
+#else
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
+#endif
   }
   return dso_handle;
 }
@@ -291,6 +296,10 @@ static inline std::string FindLibAbsolutePath(const std::string& directory,
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
+#if defined(_WIN32) || defined(_WIN64)
+  HMODULE hModule = LoadLibraryA(dso_path.c_str());
+  return reinterpret_cast<void*>(hModule);
+#else
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
@@ -318,6 +327,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 #endif
 
   return dso_handle;
+#endif
 }
 
 /*
@@ -831,6 +841,20 @@ void* GetFlashAttnV3DsoHandle() {
   return GetDsoHandleFromSearchPath(flashattn_dir, FLASHATTNV3_LIB_NAME);
 #else
   return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattnv3.so");
+#endif
+}
+
+void* GetFlashMaskV2DsoHandle() {
+  std::string flashattn_dir = "";
+  if (!s_py_site_pkg_path.path.empty()) {
+    flashattn_dir = s_py_site_pkg_path.path;
+  }
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashmaskv2.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(flashattn_dir, "flashmaskv2.dll");
+#else
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashmaskv2.so");
 #endif
 }
 

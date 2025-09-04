@@ -25,13 +25,11 @@ from dygraph_to_static_utils import (
 import paddle
 from paddle import base
 from paddle.autograd import PyLayer
-from paddle.framework import use_pir_api
-from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.dy2static.pir_partial_program import (
     partial_program_from as pir_partial_program_from,
 )
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
-from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
+from paddle.jit.translated_layer import INFER_PARAMS_SUFFIX
 
 SEED = 2020
 
@@ -121,7 +119,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             layer=layer,
             path=infer_model_prefix,
             input_spec=[x],
-            output_spec=[1] if use_pir_api() else [pred],
+            output_spec=[1],
         )
         # Check the correctness of the inference
         dygraph_out, _ = layer(x)
@@ -130,7 +128,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             layer,
             [x_data],
             dygraph_out.numpy(),
-            fetch=[0] if use_pir_api() else [loss],
+            fetch=[0],
         )
         self.check_save_inference_model(
             layer, [x_data], dygraph_out.numpy(), feed=[x]
@@ -163,7 +161,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             layer=layer,
             path=infer_model_prefix,
             input_spec=[x],
-            output_spec=[1] if use_pir_api() else [pred],
+            output_spec=[1],
         )
         # Check the correctness of the inference
         loss_out, _ = layer(x)
@@ -174,7 +172,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
             layer,
             [x_data],
             loss_out_numpy,
-            fetch=[0] if use_pir_api() else [loss],
+            fetch=[0],
         )
         self.check_save_inference_model(
             layer, [x_data], loss_out_numpy, feed=[x]
@@ -191,10 +189,7 @@ class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
         infer_model_dir = os.path.join(
             self.temp_dir.name, "test_dy2stat_inference"
         )
-        if use_pir_api():
-            model_filename = "model" + PIR_INFER_MODEL_SUFFIX
-        else:
-            model_filename = "model" + INFER_MODEL_SUFFIX
+        model_filename = "model" + PIR_INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
 
         paddle.jit.save(
@@ -254,19 +249,7 @@ class TestPartialProgramRaiseError(Dy2StTestBase):
         # TypeError: Type of self._params should be list or tuple,
         # but received <class 'paddle.base.framework.EagerParamBase'>.
         with self.assertRaises(TypeError):
-            if use_pir_api():
-                pir_partial_program_from(concrete_program)
-            else:
-                partial_program_from(concrete_program)
-
-        # Under PIR, params are tuples and cannot be modified
-        if not use_pir_api():
-            params[0] = "linear.w.0"
-            concrete_program.parameters = params
-            # TypeError: Type of self._params[0] should be framework.EagerParamBase,
-            # but received <type 'str'>.
-            with self.assertRaises(TypeError):
-                partial_program_from(concrete_program)
+            pir_partial_program_from(concrete_program)
 
 
 if __name__ == '__main__':

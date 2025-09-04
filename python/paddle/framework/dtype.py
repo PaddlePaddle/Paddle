@@ -76,6 +76,7 @@ def bind_vartype():
     paddle.int16 = int16
     paddle.int32 = int32
     paddle.int64 = int64
+    paddle.long = int64
 
     paddle.float32 = float32
     paddle.float64 = float64
@@ -143,6 +144,7 @@ def bind_datatype():
     paddle.int16 = int16
     paddle.int32 = int32
     paddle.int64 = int64
+    paddle.long = int64
 
     paddle.float32 = float32
     paddle.float64 = float64

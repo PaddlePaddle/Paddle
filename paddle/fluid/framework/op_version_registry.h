@@ -168,21 +168,24 @@ class OpVersionDesc {
     return std::move(*this);
   }
 
-  OpVersionDesc&& NewInput(const std::string& name, const std::string& remark);
-  OpVersionDesc&& NewOutput(const std::string& name, const std::string& remark);
-  OpVersionDesc&& BugfixWithBehaviorChanged(const std::string& remark);
+  PADDLE_API OpVersionDesc&& NewInput(const std::string& name,
+                                      const std::string& remark);
+  PADDLE_API OpVersionDesc&& NewOutput(const std::string& name,
+                                       const std::string& remark);
+  PADDLE_API OpVersionDesc&& BugfixWithBehaviorChanged(
+      const std::string& remark);
 
   /* Incompatible upgrade, only for existing registration. */
-  OpVersionDesc&& DeleteAttr(const std::string& name,
-                             const std::string& remark);
-  OpVersionDesc&& ModifyInput(const std::string& name,
-                              const std::string& remark);
-  OpVersionDesc&& ModifyOutput(const std::string& name,
-                               const std::string& remark);
-  OpVersionDesc&& DeleteInput(const std::string& name,
-                              const std::string& remark);
-  OpVersionDesc&& DeleteOutput(const std::string& name,
-                               const std::string& remark);
+  PADDLE_API OpVersionDesc&& DeleteAttr(const std::string& name,
+                                        const std::string& remark);
+  PADDLE_API OpVersionDesc&& ModifyInput(const std::string& name,
+                                         const std::string& remark);
+  PADDLE_API OpVersionDesc&& ModifyOutput(const std::string& name,
+                                          const std::string& remark);
+  PADDLE_API OpVersionDesc&& DeleteInput(const std::string& name,
+                                         const std::string& remark);
+  PADDLE_API OpVersionDesc&& DeleteOutput(const std::string& name,
+                                          const std::string& remark);
 
  public:
   const std::vector<std::unique_ptr<OpUpdateBase>>& infos() const {
@@ -235,16 +238,16 @@ class OpVersion {
 
 class OpVersionRegistrar {
  public:
-  static OpVersionRegistrar& GetInstance();
+  PADDLE_API static OpVersionRegistrar& GetInstance();
 
-  OpVersion& Register(const std::string& op_type);
+  PADDLE_API OpVersion& Register(const std::string& op_type);
   const std::unordered_map<std::string, OpVersion>& GetVersionMap() {
     return op_version_map_;
   }
   bool Has(const std::string& op_type) const {
     return op_version_map_.count(op_type);
   }
-  uint32_t version_id(const std::string& op_type) const;
+  PADDLE_API uint32_t version_id(const std::string& op_type) const;
 
  private:
   std::unordered_map<std::string, OpVersion> op_version_map_;
@@ -375,7 +378,7 @@ class PassVersionCheckers {
 
 class PassVersionCheckerRegistrar {
  public:
-  static PassVersionCheckerRegistrar& GetInstance();
+  PADDLE_API static PassVersionCheckerRegistrar& GetInstance();
 
   PassVersionCheckers& Register(const std::string& pass_name) {
     PADDLE_ENFORCE_EQ(

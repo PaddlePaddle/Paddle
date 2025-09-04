@@ -222,14 +222,14 @@ void MaxPool2dV2CUDNNKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using phi::dtype::float16;
+using phi::float16;
 
 PD_REGISTER_KERNEL(max_pool2d_v2,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dV2CUDNNKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::CppTypeToDataType<int>::Type());
 }

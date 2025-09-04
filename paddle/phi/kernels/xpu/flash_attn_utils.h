@@ -21,8 +21,8 @@
 namespace xfa = baidu::xpu::xfa;
 namespace phi {
 
-using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
 
 enum XPU_FA_TGEMM {
   FA_FLOAT = 0,
@@ -35,10 +35,10 @@ XPU_FA_TGEMM get_flash_attn_tgemm() {
   const char* xpu_paddle_fa_float16 =
       std::getenv("XPU_PADDLE_FA_TGEMM_FLOAT16");
   if (xpu_paddle_fa_float16 != nullptr &&
-      (std::is_same<phi::dtype::float16, T>::value ||
+      (std::is_same<phi::float16, T>::value ||
        std::is_same<XPUTypeFP16, T>::value)) {
     return XPU_FA_TGEMM::FA_FLOAT16;
-  } else if ((std::is_same<phi::dtype::bfloat16, T>::value ||
+  } else if ((std::is_same<phi::bfloat16, T>::value ||
               std::is_same<XPUTypeBF16, T>::value) &&
              std::getenv("XPU_PADDLE_FA_BFLOAT16_XTE") != nullptr) {
     return XPU_FA_TGEMM::FA_FLOAT16;

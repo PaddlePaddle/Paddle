@@ -988,17 +988,17 @@ class TheOnePSRuntime(RuntimeBase):
             program_idx = 0
             for table_name in tensor_table_dict:
                 if tensor_table_dict[table_name]["startup_program"] is not None:
-                    tensor_table_dict[table_name][
-                        "startup_program_id"
-                    ] = program_idx
+                    tensor_table_dict[table_name]["startup_program_id"] = (
+                        program_idx
+                    )
                     self._server_sub_program.append(
                         tensor_table_dict[table_name]["startup_program"].desc
                     )
                     program_idx += 1
                 if tensor_table_dict[table_name]["main_program"] is not None:
-                    tensor_table_dict[table_name][
-                        "main_program_id"
-                    ] = program_idx
+                    tensor_table_dict[table_name]["main_program_id"] = (
+                        program_idx
+                    )
                     self._server_sub_program.append(
                         tensor_table_dict[table_name]["main_program"].desc
                     )
@@ -1228,9 +1228,9 @@ class TheOnePSRuntime(RuntimeBase):
     def _stop_worker(self):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode:
-            assert (
-                self._heter_client is not None
-            ), "heter client should not be None in heterps mode"
+            assert self._heter_client is not None, (
+                "heter client should not be None in heterps mode"
+            )
             self._heter_client.stop()
         # executor = self._get_executor()
         # executor.close()

@@ -23,10 +23,13 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import roll  # noqa: F401
 from paddle.tensor import fill_constant
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
+    expand_decorator,
+    param_one_alias,
     param_two_alias,
     reshape_decorator,
     view_decorator,
@@ -63,7 +66,7 @@ if TYPE_CHECKING:
         ShapeLike,
         TensorOrTensors,
     )
-
+from paddle._C_ops import expand_as  # noqa: F401
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 __all__ = []
@@ -155,9 +158,9 @@ def tensor_array_to_tensor(
             >>> output, output_index = paddle.tensor.manipulation.tensor_array_to_tensor(input=array)
     """
     if in_dynamic_mode():
-        assert isinstance(
-            input, list
-        ), "The 'input' in tensor_array_to_tensor must be list"
+        assert isinstance(input, list), (
+            "The 'input' in tensor_array_to_tensor must be list"
+        )
         from paddle import concat, stack
 
         op = stack if use_stack else concat
@@ -529,6 +532,97 @@ def slice(
         )
 
         return out
+
+
+def narrow(
+    input: Tensor,
+    dim: int,
+    start: int | Tensor,
+    length: int,
+) -> Tensor:
+    """
+    Returns a narrowed slice of input along a single axis.
+
+    This operator selects the index range [start, start + length) on dimension dim and keeps all
+    the dimensions unchanged.
+
+    Args:
+        input (Tensor): Input tensor.
+        dim (int): Dimension to narrow. Supports negative indexing.
+        start (int|Tensor): Start index on ``dim``. Can be a Python int or a 0-D
+            int Tensor (int32 or int64). Negative values are supported.
+        length (int): Number of elements to select from ``start``. Must be
+            non-negative.
+
+    Returns:
+        Tensor: A tensor that is a narrowed view of ``input``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[1, 2, 3, 4],
+            ...                       [5, 6, 7, 8]], dtype='int64')
+
+            >>> y1 = paddle.narrow(x, dim=1, start=1, length=2)
+            >>> print(y1)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 3],
+             [6, 7]])
+
+            >>> y2 = paddle.narrow(x, dim=-1, start=-3, length=3)
+            >>> print(y2)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 3, 4],
+             [6, 7, 8]])
+
+            >>> s = paddle.to_tensor(0, dtype='int64')
+            >>> y3 = paddle.narrow(x, dim=1, start=s, length=2)
+            >>> print(y3)
+            Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 2],
+             [5, 6]])
+    """
+
+    if isinstance(start, paddle.Tensor):
+        assert start.ndim == 0 and start.dtype in [
+            paddle.int32,
+            paddle.int64,
+        ], "start must be an 0-dim integral Tensor."
+        start = start.item()
+    assert input.ndim > 0, "narrow() cannot be applied to a 0-dim tensor."
+    assert length >= 0, "narrow(): length must be non-negative."
+
+    rank = input.ndim
+    if input.ndim == 0:
+        rank = 1
+
+    if not (0 <= dim < rank):
+        _dim = dim + rank if dim < 0 else dim
+        if _dim < 0 or _dim >= rank:
+            raise IndexError(
+                f"Dimension out of range (expected to be in range of [{-rank}, {rank - 1}], but got {dim})"
+            )
+        dim = _dim
+
+    dim_length = input.shape[dim]
+    assert -dim_length <= start <= dim_length, (
+        f"start out of range (expected to be in range of [{-dim_length}, {dim_length}], but got {start})"
+    )
+    if start < 0:
+        start = start + dim_length
+    assert start <= dim_length - length, (
+        f"start ({start}) + length ({length}) exceeds dimension size ({dim_length})."
+    )
+    new_shape = list(input.shape)
+    new_shape[dim] = length
+    stride = input.strides
+    offset = start * stride[dim]
+    offset *= paddle.core.size_of_dtype(input.dtype)
+    return paddle.as_strided(
+        input, shape=new_shape, stride=stride, offset=offset
+    )
 
 
 def transpose(
@@ -1144,12 +1238,12 @@ def _fill_diagonal_tensor_impl(
     inplace: bool = False,
 ) -> Tensor:
     inshape = x.shape
-    assert dim1 < len(inshape) and dim1 >= -len(
-        inshape
-    ), 'dim1 should between [-rank,rank) in fill_diagonal_tensor_'
-    assert dim2 < len(inshape) and dim2 >= -len(
-        inshape
-    ), 'dim2 should between [-rank,rank) in fill_diagonal_tensor_'
+    assert dim1 < len(inshape) and dim1 >= -len(inshape), (
+        'dim1 should between [-rank,rank) in fill_diagonal_tensor_'
+    )
+    assert dim2 < len(inshape) and dim2 >= -len(inshape), (
+        'dim2 should between [-rank,rank) in fill_diagonal_tensor_'
+    )
     assert len(inshape) >= 2, 'Tensor dims should >= 2 in fill_diagonal_tensor_'
     dim1 %= len(inshape)
     dim2 %= len(inshape)
@@ -1165,9 +1259,9 @@ def _fill_diagonal_tensor_impl(
         inshape[dim2] - offset,
     )
     predshape.append(diaglen)
-    assert tuple(predshape) == tuple(
-        y.shape
-    ), f"the y shape should be {predshape}"
+    assert tuple(predshape) == tuple(y.shape), (
+        f"the y shape should be {predshape}"
+    )
     if len(y.shape) == 1:
         y = y.reshape([1, -1])
 
@@ -1350,7 +1444,11 @@ def tolist(x: Tensor) -> NestedList[int | float | complex]:
 
 @ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def concat(
-    x: Sequence[Tensor], axis: int | Tensor = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int | Tensor = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -1379,6 +1477,7 @@ def concat(
             it works the same way as ``axis+R``. Default is 0.
             alias: ``dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         Tensor, A Tensor with the same data type as ``x``.
@@ -1421,7 +1520,7 @@ def concat(
     if in_dynamic_mode():
         if isinstance(axis, Variable):
             axis = axis.item(0)
-        return _C_ops.concat(input, axis)
+        return _C_ops.concat(input, axis, out=out)
     elif in_pir_mode():
 
         def is_in_amp_mode():
@@ -1870,6 +1969,9 @@ def rot90(
         return flip(transpose(x, axes_list), axes[1])
 
 
+@ParamAliasDecorator(
+    {"x": ["input"], "start_axis": ["start_dim"], "stop_axis": ["end_dim"]}
+)
 def flatten(
     x: Tensor, start_axis: int = 0, stop_axis: int = -1, name: str | None = None
 ) -> Tensor:
@@ -1908,11 +2010,18 @@ def flatten(
           We get:
             Out.shape = (3 * 100 * 100 * 4)
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, the parameter name ``start_dim`` can be used as an alias for ``start_axis`` , and the parameter name ``end_dim`` can be used as an alias for ``stop_axis``.
+        For example, ``flatten(input=tensor_x, start_dim=0, end_dim=-1)`` is equivalent to ``flatten(x=tensor_x, start_axis=0, stop_axis=-1)``.
+
     Args:
         x (Tensor): A tensor of number of dimensions >= axis. A tensor with data type float16, float32,
                       float64, int8, int32, int64, uint8.
+            alias: ``input``.
         start_axis (int): the start axis to flatten
+            alias: ``start_dim``.
         stop_axis (int): the stop axis to flatten
+            alias: ``end_dim``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -2086,121 +2195,13 @@ def flatten_(
         return _C_ops.flatten_(x, start_axis, stop_axis)
 
 
-def roll(
-    x: Tensor,
-    shifts: int | Sequence[int],
-    axis: int | Sequence[int] | None = None,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Roll the `x` tensor along the given axis(axes). With specific 'shifts', Elements that
-    roll beyond the last position are re-introduced at the first according to 'shifts'.
-    If a axis is not specified,
-    the tensor will be flattened before rolling and then restored to the original shape.
-
-    Args:
-        x (Tensor): The x tensor as input.
-        shifts (int|list|tuple): The number of places by which the elements
-                           of the `x` tensor are shifted.
-        axis (int|list|tuple, optional): axis(axes) along which to roll. Default: None
-        name(str|None, optional): The default value is None.  Normally there is no need for user to set this property.
-                For more information, please refer to :ref:`api_guide_Name` .
-
-    The image below shows a 2D tensor `[[1,2,3],[4,5,6],[7,8,9]]` being transformed into tensors with
-    different shapes through the roll operation.
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/roll.png
-        :width: 700
-        :align: center
-        :alt: legend of roll API
-
-    Returns:
-        Tensor, A Tensor with same data type as `x`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
-            ...                       [4.0, 5.0, 6.0],
-            ...                       [7.0, 8.0, 9.0]])
-            >>> out_z1 = paddle.roll(x, shifts=1)
-            >>> print(out_z1.numpy())
-            [[9. 1. 2.]
-             [3. 4. 5.]
-             [6. 7. 8.]]
-            >>> out_z2 = paddle.roll(x, shifts=1, axis=0)
-            >>> print(out_z2.numpy())
-            [[7. 8. 9.]
-             [1. 2. 3.]
-             [4. 5. 6.]]
-            >>> out_z3 = paddle.roll(x, shifts=1, axis=1)
-            >>> print(out_z3.numpy())
-            [[3. 1. 2.]
-             [6. 4. 5.]
-             [9. 7. 8.]]
-    """
-    origin_shape = x.shape
-    if type(shifts) == int:
-        shifts = [shifts]
-    if type(axis) == int:
-        axis = [axis]
-
-    len_origin_shape = len(origin_shape)
-    if axis is not None:
-        for i in range(len(axis)):
-            if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
-                raise ValueError(
-                    f"axis is out of range, it should be in range [{-len_origin_shape}, {len_origin_shape}), but received {axis}"
-                )
-    else:
-        axis = []
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.roll(x, shifts, axis)
-    else:
-        check_variable_and_dtype(
-            x,
-            'dtype',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'uint16',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            'roll',
-        )
-        helper = LayerHelper("roll", **locals())
-        check_type(axis, 'axis', (list, tuple), 'roll')
-
-        out = helper.create_variable_for_type_inference(x.dtype)
-
-        if isinstance(shifts, Variable):
-            helper.append_op(
-                type='roll',
-                inputs={'X': x, "ShiftsTensor": shifts},
-                outputs={'Out': out},
-                attrs={'axis': axis},
-            )
-        else:
-            check_type(shifts, 'shifts', (list, tuple), 'roll')
-            helper.append_op(
-                type='roll',
-                inputs={'X': x},
-                outputs={'Out': out},
-                attrs={'axis': axis, 'shifts': shifts},
-            )
-        return out
-
-
+@ParamAliasDecorator({"x": ["tensors"], "axis": ["dim"]})
 def stack(
-    x: Sequence[Tensor], axis: int = 0, name: str | None = None
+    x: Sequence[Tensor],
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Stacks all the input tensors ``x`` along ``axis`` dimension.
@@ -2296,11 +2297,12 @@ def stack(
 
     Args:
         x (list[Tensor]|tuple[Tensor]): Input ``x`` can be a ``list`` or ``tuple`` of tensors, the Tensors in ``x``
-                                     must be of the same shape and dtype. Supported data types: float32, float64, int32, int64.
+                                     must be of the same shape and dtype. Supported data types: float32, float64, int32, int64. Alias: ``tensors``.
         axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is ``[-(R+1), R+1)``,
                               where ``R`` is the number of dimensions of the first input tensor ``x[0]``.
-                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0.
+                              If ``axis < 0``, ``axis = axis+R+1``. The default value of axis is 0. Alias: ``dim``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the output will be written to this tensor.
 
     Returns:
         Tensor, The stacked tensor with same data type as input.
@@ -2354,7 +2356,7 @@ def stack(
     axis = 0 if axis is None else axis
 
     if in_dynamic_mode():
-        return _C_ops.stack(x, axis)
+        return _C_ops.stack(x, axis, out=out)
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         # NOTE:(zhiqiu) Only support Variable as input if the Variable is a DENSE_TENSOR_ARRAY create by create_array, array_write, array_read, etc.
@@ -2742,6 +2744,7 @@ def row_stack(x: Sequence[Tensor], name: str | None = None) -> Tensor:
     illegal_keys={"tensor", "split_size_or_sections", "dim"},
     func_name="paddle.split",
     correct_name="paddle.compat.split",
+    url_suffix="torch/torch.split",
 )
 def split(
     x: Tensor,
@@ -2857,9 +2860,9 @@ def split(
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(num_or_sections) <= input_shape[dim]
-                ), 'len(num_or_sections) must not be more than input.shape[dim].'
+                assert len(num_or_sections) <= input_shape[dim], (
+                    'len(num_or_sections) must not be more than input.shape[dim].'
+                )
             if paddle.utils._contain_var(num_or_sections):
                 num_or_sections = paddle.utils.get_int_tensor_list(
                     num_or_sections
@@ -2942,9 +2945,9 @@ def split(
             num = num_or_sections
         else:
             if isinstance(dim, int) and input_shape[dim] > 0:
-                assert (
-                    len(num_or_sections) <= input_shape[dim]
-                ), 'len(num_or_sections) must not be more than input.shape[dim].'
+                assert len(num_or_sections) <= input_shape[dim], (
+                    'len(num_or_sections) must not be more than input.shape[dim].'
+                )
             num = len(num_or_sections)
             attrs['sections'] = [
                 -1 if isinstance(ele, Variable) else ele
@@ -3312,6 +3315,7 @@ def vsplit(
     return tensor_split(x, num_or_indices, axis=0, name=name)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def squeeze(
     x: Tensor, axis: int | Sequence[int] | None = None, name: str | None = None
 ) -> Tensor:
@@ -3360,12 +3364,18 @@ def squeeze(
           Output:
             out.shape = [1, 3, 5]
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``squeeze(input=tensor_x, dim=1)`` is equivalent to ``squeeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor. Supported data type: float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple, optional): An integer or list/tuple of integers, indicating the dimensions to be squeezed. Default is None.
                           The range of axis is :math:`[-ndim(x), ndim(x))`.
                           If axis is negative, :math:`axis = axis + ndim(x)`.
                           If axis is None, all the dimensions of x of size 1 will be removed.
+            alias: ``dim``.
         name (str|None, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -3936,6 +3946,7 @@ def unique(
         return tuple(outs)
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def unsqueeze(
     x: Tensor,
     axis: int | Sequence[Tensor | int] | Tensor,
@@ -3950,12 +3961,18 @@ def unsqueeze(
     Tensor copy in ``dygraph`` mode. If you want to use the Tensor copy version,
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``unsqueeze(input=tensor_x, dim=1)`` is equivalent to ``unsqueeze(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
+            alias: ``input``.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                     If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
+            alias: ``dim``.
         name (str|None, optional): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
@@ -4195,15 +4212,21 @@ def gather(
         return out
 
 
+@param_one_alias(['axis', 'dim'])
 def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
     """
 
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
 
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``unbind(input=tensor_x, dim=0)`` is equivalent to ``unbind(input=tensor_x, axis=0)``.
+
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
         axis (int, optional): A 0-D Tensor with shape [] and type is ``int32|int64``. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+            alias: ``dim``.
     Returns:
         list(Tensor), The list of segmented Tensor variables.
 
@@ -4536,6 +4559,7 @@ def scatter_nd(
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
+@ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def chunk(
     x: Tensor, chunks: int, axis: int | Tensor = 0, name: str | None = None
 ) -> list[Tensor]:
@@ -4555,12 +4579,18 @@ def chunk(
         :alt: legend of reshape API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``chunk(input=tensor_x, dim=1)`` is equivalent to ``chunk(x=tensor_x, axis=1)``.
+
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
+            alias: ``input``.
         chunks(int): The number of tensor to be split along the certain axis.
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+            alias: ``dim``.
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -4654,21 +4684,21 @@ def tile(
             'tile',
         )
         if isinstance(repeat_times, (Variable, paddle.pir.Value)):
-            assert (
-                len(repeat_times.shape) == 1
-            ), 'repeat_times must be a Tensor with ndim == 1.'
+            assert len(repeat_times.shape) == 1, (
+                'repeat_times must be a Tensor with ndim == 1.'
+            )
         else:
             for elem in repeat_times:
                 if isinstance(elem, (Variable, paddle.pir.Value)):
                     numel = functools.reduce(lambda x, y: x * y, elem.shape, 1)
-                    assert (
-                        numel == 1
-                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
+                    assert numel == 1, (
+                        'Elements in repeat_times must be Tensor with one element or integers.'
+                    )
                 else:
                     type_tuple = (int, np.int32, np.int64)
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
+                    assert isinstance(elem, type_tuple), (
+                        'Elements in repeat_times must be Tensor with one element or integers.'
+                    )
 
         check_variable_and_dtype(
             x,
@@ -4695,9 +4725,9 @@ def tile(
 
     if in_dynamic_mode():
         if isinstance(repeat_times, core.eager.Tensor):
-            assert (
-                repeat_times.ndim == 1
-            ), "Only support ndim == 1 while repeat_times is a Tensor."
+            assert repeat_times.ndim == 1, (
+                "Only support ndim == 1 while repeat_times is a Tensor."
+            )
             repeat_times = repeat_times.tolist()
 
         return _C_ops.tile(x, repeat_times)
@@ -4717,9 +4747,9 @@ def tile(
                     attrs_repeat_times.append(-1)
                 else:
                     attrs_repeat_times.append(times)
-                    assert (
-                        times > 0
-                    ), "All elements in repeat_times must be positive for tile."
+                    assert times > 0, (
+                        "All elements in repeat_times must be positive for tile."
+                    )
             return attrs_repeat_times
 
         helper = LayerHelper('tile', **locals())
@@ -4809,93 +4839,11 @@ def repeat(
     return tile(input, repeat_times=repeats)
 
 
-def expand_as(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-
-    Expand the input tensor ``x`` to the same shape as the input tensor ``y``.
-
-    Both the number of dimensions of ``x`` and ``y`` must be less than or equal to 6, and the number of dimensions of ``y`` must be greater than or equal to that of ``x``. The dimension to expand must have a value of 0.
-
-    The following diagram illustrates how a one-dimensional tensor is transformed into a tensor with a shape of [2,3] through the expand_as operation. The target tensor has a shape of [2,3], and through expand_as, the one-dimensional tensor is expanded into a tensor with a shape of [2,3].
-
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/images/api_legend/expand_as.png
-        :width: 800
-        :alt: expand_as API
-        :align: center
-
-    Args:
-        x (Tensor): The input tensor, its data type is bool, float32, float64, int32 or int64.
-        y (Tensor): The input tensor that gives the shape to expand to.
-        name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor, A Tensor with the same shape as ``y``. The data type is the same as ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> data_x = paddle.to_tensor([1, 2, 3], 'int32')
-            >>> data_y = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], 'int32')
-            >>> out = paddle.expand_as(data_x, data_y)
-            >>> print(out)
-            Tensor(shape=[2, 3], dtype=int32, place=Place(cpu), stop_gradient=True,
-            [[1, 2, 3],
-             [1, 2, 3]])
-    """
-    if in_dynamic_mode():
-        return _C_ops.expand_as(x, None, y.shape)
-    elif in_pir_mode():
-        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
-            raise ValueError(
-                "When the data type of input 'x' for expand_as is bool, "
-                "you must set its stop_gradient to be False by "
-                "some_var.stop_gradient = True, supporting "
-                "some_var as the input 'x'."
-            )
-        return _C_ops.expand_as(x, y, y.shape)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-            ],
-            'expand_as',
-        )
-        check_type(y, 'y', Variable, 'expand_as')
-
-        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
-            raise ValueError(
-                "When the data type of input 'x' for expand_as is bool, "
-                "you must set its stop_gradient to be False by "
-                "some_var.stop_gradient = True, supporting "
-                "some_var as the input 'x'."
-            )
-        inputs = {"X": [x], "Y": [y]}
-
-        helper = LayerHelper('expand_as', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='expand_as_v2',
-            inputs=inputs,
-            attrs={'target_shape': y.shape},
-            outputs={'Out': out},
-        )
-        return out
-
-
 @ParamAliasDecorator({"x": ["input"], "shape": ["size"]})
 def broadcast_to(
-    x: Tensor, shape: ShapeLike, name: str | None = None
+    x: Tensor,
+    shape: ShapeLike,
+    name: str | None = None,
 ) -> Tensor:
     """
 
@@ -4940,6 +4888,7 @@ def broadcast_to(
     return expand(x, shape, name)
 
 
+@expand_decorator()
 def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
     """
 
@@ -4955,12 +4904,23 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         :alt: legend of expand API
         :align: center
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and ``size`` can be used as an alias for ``shape``.
+        ``shape`` can be a variable number of arguments.
+        For example:
+            ``paddle.expand(tensor_x, shape=[3, 4], name=None)``
+            ``tensor_x.expand([3, 4]) -> paddle.expand(tensor_x, [3, 4])``
+            ``tensor_x.expand(3, 4) -> paddle.expand(tensor_x, 3, 4)``
+            ``tensor_x.expand(size=[3, 4]) -> paddle.expand(tensor_x, size=[3, 4])``
 
     Args:
         x (Tensor): The input Tensor, its data type is bool, float16, float32, float64, int32, int64, uint8, uint16, complex64 or complex128.
-        shape (list|tuple|Tensor): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
+            alias: ``input``
+        shape (list|tuple|Tensor|variable number of arguments): The result shape after expanding. The data type is int32. If shape is a list or tuple, all its elements
             should be integers or 0-D or 1-D Tensors with the data type int32. If shape is a Tensor, it should be an 1-D Tensor with the data type int32.
             The value -1 in shape means keeping the corresponding dimension unchanged.
+            ``shape`` can be a variable number of arguments.
+            alias: ``size``.
         name (str|None, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -5002,14 +4962,14 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
-                    assert (
-                        elem.numel() == 1
-                    ), 'Elements in shape must be Tensor with one element or integers.'
+                    assert elem.numel() == 1, (
+                        'Elements in shape must be Tensor with one element or integers.'
+                    )
                 else:
                     type_tuple = (int, np.int32, np.int64)
-                    assert isinstance(
-                        elem, type_tuple
-                    ), 'Elements in shape must be Tensor with one element or integers.'
+                    assert isinstance(elem, type_tuple), (
+                        'Elements in shape must be Tensor with one element or integers.'
+                    )
 
         check_variable_and_dtype(
             x,
@@ -5049,9 +5009,9 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
                     attrs_expand_shape.append(-2)
                 else:
                     attrs_expand_shape.append(shape)
-                    assert (
-                        shape > 0 or shape == -1
-                    ), "All elements in shape of expand must be positive or -1."
+                    assert shape > 0 or shape == -1, (
+                        "All elements in shape of expand must be positive or -1."
+                    )
             return attrs_expand_shape
 
         if isinstance(shape, Variable):
@@ -5340,18 +5300,18 @@ def masked_scatter(
 
     """
     # make sure the dtype of x and value is the same
-    assert (
-        x.dtype == value.dtype
-    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
     assert mask.dtype == paddle.bool
 
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
     if in_dynamic_mode() and mask_prefix.numel() != 0:
-        assert (
-            mask_prefix[-1] <= value.numel()
-        ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+        assert mask_prefix[-1] <= value.numel(), (
+            f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+        )
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
     mask = paddle.logical_not(mask.astype(bool))
@@ -5366,16 +5326,16 @@ def masked_scatter_(
     Inplace version of ``masked_scatter`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_masked_scatter`.
     """
-    assert (
-        x.dtype == value.dtype
-    ), f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    assert x.dtype == value.dtype, (
+        f'x and value must have the same dtype, but got x dtype is {x.dtype}, value dtype is {value.dtype}'
+    )
     assert mask.dtype == paddle.bool
     zeros_like_x = paddle.zeros_like(x, dtype=int)
     mask = paddle.add(paddle.cast(mask, dtype="int"), zeros_like_x)
     mask_prefix = paddle.clip(mask.cumsum() - 1, min=0)
-    assert (
-        mask_prefix[-1] <= value.numel()
-    ), f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+    assert mask_prefix[-1] <= value.numel(), (
+        f'mask true nums must be <= value size, but got mask true nums is {mask_prefix[-1].item()}, value size is {value.numel().item()}'
+    )
 
     value = value.flatten()[mask_prefix].reshape(mask.shape)
     mask = paddle.logical_not(mask.astype(bool))
@@ -6464,6 +6424,8 @@ def repeat_interleave(
     repeats: int | Tensor,
     axis: int | None = None,
     name: str | None = None,
+    *,
+    output_size: int | None = None,
 ) -> Tensor:
     """
 
@@ -6493,6 +6455,7 @@ def repeat_interleave(
         name(str|None, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+        output_size (int, optional): Total output size for the given axis (e.g. sum of repeats). If given, it will avoid stream synchronization needed to calculate output shape of the tensor.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.
@@ -6532,8 +6495,12 @@ def repeat_interleave(
         axis = 0
     if in_dynamic_or_pir_mode():
         if isinstance(repeats, (Variable, paddle.pir.Value)):
-            return _C_ops.repeat_interleave_with_tensor_index(x, repeats, axis)
-        return _C_ops.repeat_interleave(x, repeats, axis)
+            return _C_ops.repeat_interleave_with_tensor_index(
+                x, repeats, axis, output_size if output_size is not None else -1
+            )
+        return _C_ops.repeat_interleave(
+            x, repeats, axis, output_size if output_size is not None else -1
+        )
 
     helper = LayerHelper("repeat_interleave", **locals())
     check_variable_and_dtype(
@@ -6555,6 +6522,7 @@ def repeat_interleave(
         attrs={
             'dim': axis,
             'Repeats': repeats if isinstance(repeats, int) else 0,
+            'output_size': output_size if output_size is not None else -1,
         },
     )
     return out
@@ -6602,9 +6570,9 @@ def moveaxis(
         src = list(source)
     if isinstance(destination, tuple):
         dst = list(destination)
-    assert len(src) == len(
-        dst
-    ), "'source' must have the same number with 'destination'"
+    assert len(src) == len(dst), (
+        "'source' must have the same number with 'destination'"
+    )
 
     if len(src) != len(set(src)):
         raise ValueError("Each element of 'source' must be unique!")
@@ -6619,31 +6587,31 @@ def moveaxis(
     dst_dims = list(range(ndim))
 
     for i, axis in enumerate(zip(src, dst)):
-        assert isinstance(
-            axis[0], int
-        ), "Each element of 'source' must be integer."
+        assert isinstance(axis[0], int), (
+            "Each element of 'source' must be integer."
+        )
         if axis[0] < 0:
-            assert (
-                axis[0] >= -ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[0] >= -ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
             src[i] += ndim
         else:
-            assert (
-                axis[0] < ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[0] < ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
 
-        assert isinstance(
-            axis[1], int
-        ), "Each element of 'source' must be integer."
+        assert isinstance(axis[1], int), (
+            "Each element of 'source' must be integer."
+        )
         if axis[1] < 0:
-            assert (
-                axis[1] >= -ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[1] >= -ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
             dst[i] += ndim
         else:
-            assert (
-                axis[1] < ndim
-            ), f"'source' must be in the range of [-{ndim}, {ndim})"
+            assert axis[1] < ndim, (
+                f"'source' must be in the range of [-{ndim}, {ndim})"
+            )
         perm[dst[i]] = src[i]
         src_dims.remove(src[i])
         dst_dims.remove(dst[i])
@@ -6806,9 +6774,9 @@ def non_negative_axis(arr, axis):
     if axis >= 0:
         assert axis < ndim, f"'axis'  must be in the range of [-{ndim}, {ndim})"
     else:
-        assert (
-            axis >= -ndim
-        ), f"'axis'  must be in the range of [-{ndim}, {ndim})"
+        assert axis >= -ndim, (
+            f"'axis'  must be in the range of [-{ndim}, {ndim})"
+        )
         axis += ndim
 
     return axis
@@ -6866,9 +6834,55 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+def scatter_add(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Scatter the values of the source tensor to the target tensor according to the given indices, and perform a add operation along the designated axis.
+
+    Args:
+        input (Tensor) : The Input Tensor. Supported data types are bfloat16, float16, float32, float64,
+            int32, int64, uint8.
+        dim (int) : The axis to scatter 1d slices along.
+        index (Tensor) : Indices to scatter along each 1d slice of input. This must match the dimension of input,
+             Supported data type are int32 and int64.
+        src (Tensor) : The value element(s) to scatter. The data types should be same as input.
+
+    Returns:
+        Tensor, The indexed element, same dtype with input
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([[10, 20, 30], [40, 50, 60]])
+            >>> indices = paddle.zeros((2,3)).astype("int32")
+            >>> values = paddle.to_tensor([[1, 2, 3],[4, 5, 6]]).astype(x.dtype)
+            >>> result = paddle.scatter_add(x, 0, indices, values)
+            >>> print(result)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[15, 27, 39],
+             [40, 50, 60]])
+
+    """
+
+    return put_along_axis(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
+    )
+
+
 @ParamAliasDecorator({"arr": ["input"], "axis": ["dim"]})
 def take_along_axis(
-    arr: Tensor, indices: Tensor, axis: int, broadcast: bool = True
+    arr: Tensor,
+    indices: Tensor,
+    axis: int,
+    broadcast: bool = True,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Take values from the input array by given indices matrix along the designated axis.
@@ -6886,9 +6900,10 @@ def take_along_axis(
         axis (int) : The axis to take 1d slices along.
             alias: ``dim``.
         broadcast (bool, optional): whether the indices broadcast.
+        out (Tensor, optional): The output Tensor. If set, the output will be written to this Tensor.
 
     Returns:
-        Tensor, The indexed element, same dtype with arr
+        Tensor, The indexed element, same dtype with arr.
 
     Examples:
         .. code-block:: python
@@ -6935,7 +6950,7 @@ def take_along_axis(
                 )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.take_along_axis(arr, indices, axis)
+        return _C_ops.take_along_axis(arr, indices, axis, out=out)
     else:
         check_variable_and_dtype(
             arr,
@@ -7275,6 +7290,22 @@ def put_along_axis_(
             )
     return _C_ops.put_along_axis_(
         arr, indices, values, axis, reduce, include_self
+    )
+
+
+def scatter_add_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor,
+) -> Tensor:
+    """
+    Inplace version of ``scatter_add`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_scatter_add`.
+    """
+
+    return put_along_axis_(
+        input, index, src, dim, 'add', include_self=True, broadcast=False
     )
 
 

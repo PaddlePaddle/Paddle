@@ -217,9 +217,9 @@ class ConstantVariable(VariableBase):
         return ConstantVariable(bool(self), self.graph, DummyTracker([self]))
 
     def bool_not(self):
-        assert isinstance(
-            self.get_py_value(), bool
-        ), "Bool_not can only be applied to a bool variable."
+        assert isinstance(self.get_py_value(), bool), (
+            "Bool_not can only be applied to a bool variable."
+        )
         return ConstantVariable(
             not bool(self.get_py_value()), self.graph, DummyTracker([self])
         )
@@ -288,9 +288,9 @@ class ConstantVariable(VariableBase):
         """
         if isinstance(value, ConstantVariable):
             return value
-        assert isinstance(
-            value, ConstTypes
-        ), f"value: {value},type: {type(value)}"
+        assert isinstance(value, ConstTypes), (
+            f"value: {value},type: {type(value)}"
+        )
         return ConstantVariable(value, graph, ConstTracker(value))
 
 
@@ -986,16 +986,16 @@ class SymbolicVariable(VariableBase):
         super().__init__(graph, tracker)
         self.var_name = self.var_name_generator.next()
         if isinstance(value_or_meta, MetaInfoOrNull):
-            assert (
-                not value_or_meta.is_null()
-            ), "MetaInfoOrNull should not be null"
+            assert not value_or_meta.is_null(), (
+                "MetaInfoOrNull should not be null"
+            )
             assert len(value_or_meta.unwrap_unsafe().shape) == 0
             self.value = get_symbolic_from_meta(value_or_meta)
             self.meta = value_or_meta
         else:
-            assert isinstance(
-                value_or_meta, SymbolicInt
-            ), f"Unsupported type {type(value_or_meta)} for SymbolicVariable"
+            assert isinstance(value_or_meta, SymbolicInt), (
+                f"Unsupported type {type(value_or_meta)} for SymbolicVariable"
+            )
             self.value = value_or_meta
             self.meta = MetaInfo(
                 [], paddle.int64, True, self.var_name, False, None, None
@@ -1019,15 +1019,15 @@ class SymbolicVariable(VariableBase):
     def add_constraint(self, constraint: SymbolicConstraint):
         constraint_node, constraint_extern_vars = constraint
         for extern_var in constraint_extern_vars.values():
-            assert isinstance(
-                extern_var, SymbolicVariable
-            ), f"SymbolicVariable.add_constraint() got {extern_var}."
-            assert (
-                extern_var.value.is_backed()
-            ), "Only backed symbol is supported."
-            assert (
-                extern_var.tracker.is_traceable()
-            ), "Only traceable symbol is supported."
+            assert isinstance(extern_var, SymbolicVariable), (
+                f"SymbolicVariable.add_constraint() got {extern_var}."
+            )
+            assert extern_var.value.is_backed(), (
+                "Only backed symbol is supported."
+            )
+            assert extern_var.tracker.is_traceable(), (
+                "Only traceable symbol is supported."
+            )
         self.constraints.append(constraint)
 
     def to_constant(self):
@@ -1083,9 +1083,9 @@ class SymbolicVariable(VariableBase):
                 )
             )
         value = self.tracker.op(*input_values)
-        assert isinstance(
-            value, (bool, int, float)
-        ), f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
+        assert isinstance(value, (bool, int, float)), (
+            f"SymbolicVariable.get_py_value() should return bool, int or float, but got {type(value)}"
+        )
         return value
 
     def get_example_value(
@@ -1113,9 +1113,9 @@ class SymbolicVariable(VariableBase):
                 )
             )
         value = self.tracker.op(*input_values)
-        assert isinstance(
-            value, (bool, int, float)
-        ), f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        assert isinstance(value, (bool, int, float)), (
+            f"SymbolicVariable.get_example_value() should return bool, int or float, but got {type(value)}"
+        )
         return value
 
     def create_constraint_tree(
@@ -1128,9 +1128,9 @@ class SymbolicVariable(VariableBase):
         extern_vars = {}
         num_sym = 0
         for input in tracker.inputs:
-            assert isinstance(
-                input, (ConstantVariable, SymbolicVariable)
-            ), f"SymbolicVariable.create_constraint_tree() got {input}."
+            assert isinstance(input, (ConstantVariable, SymbolicVariable)), (
+                f"SymbolicVariable.create_constraint_tree() got {input}."
+            )
             if isinstance(input, ConstantVariable):
                 input_nodes.append(ConstantConstraintNode(input.get_py_value()))
             else:

@@ -257,9 +257,9 @@ class CustomOpInfo:
         return cls._instance
 
     def __init__(self):
-        assert not hasattr(
-            self.__class__, '_instance'
-        ), 'Please use `instance()` to get CustomOpInfo object!'
+        assert not hasattr(self.__class__, '_instance'), (
+            'Please use `instance()` to get CustomOpInfo object!'
+        )
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
@@ -522,9 +522,9 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(
-        include_dirs_file
-    ), f"File {include_dirs_file} does not exist"
+    assert os.path.isfile(include_dirs_file), (
+        f"File {include_dirs_file} does not exist"
+    )
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f if line.strip()]
 
@@ -821,14 +821,33 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
+def _get_all_paddle_includes_from_include_root(include_root: str) -> list[str]:
+    """
+    Get all paddle include directories from include root (packaged in wheel)
+    """
+    third_party_dir = os.path.join(include_root, 'third_party')
+    include_dirs = [include_root, third_party_dir]
+    if not IS_WINDOWS:
+        compat_dir_root = os.path.join(
+            include_root, 'paddle/phi/api/include/compat'
+        )
+        compat_dir_api_include = os.path.join(
+            include_root,
+            'paddle/phi/api/include/compat/torch/csrc/api/include',
+        )
+        include_dirs.extend([compat_dir_root, compat_dir_api_include])
+    return include_dirs
+
+
 def find_paddle_includes(use_cuda=False):
     """
     Return Paddle necessary include dir path.
     """
     # pythonXX/site-packages/paddle/include
     paddle_include_dir = get_include()
-    third_party_dir = os.path.join(paddle_include_dir, 'third_party')
-    include_dirs = [paddle_include_dir, third_party_dir]
+    include_dirs = _get_all_paddle_includes_from_include_root(
+        paddle_include_dir
+    )
 
     if use_cuda:
         if core.is_compiled_with_rocm():

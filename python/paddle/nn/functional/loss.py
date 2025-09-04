@@ -21,6 +21,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.framework import (
@@ -94,9 +95,9 @@ def dice_loss(
     """
     assert input.dtype in (paddle.float32, paddle.float64)
     assert label.dtype in (paddle.int32, paddle.int64)
-    assert (
-        len(input.shape) >= 2
-    ), "The rank of input should be greater than or equal to 2."
+    assert len(input.shape) >= 2, (
+        "The rank of input should be greater than or equal to 2."
+    )
     assert len(input.shape) == len(label.shape), (
         "The rank of input and label should be equal, "
         f"but received input: {len(input.shape)}, label: {len(label.shape)}."
@@ -105,9 +106,9 @@ def dice_loss(
         "The last dimension of label should be 1, "
         f"but received {label.shape[-1]}."
     )
-    assert (
-        input.shape[:-1] == label.shape[:-1]
-    ), "All dimensions should be equal except the last one."
+    assert input.shape[:-1] == label.shape[:-1], (
+        "All dimensions should be equal except the last one."
+    )
 
     label = paddle.squeeze(label, [-1])
     label = paddle.nn.functional.one_hot(label, input.shape[-1])
@@ -679,7 +680,7 @@ def binary_cross_entropy(
     if in_dynamic_or_pir_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
-            out = _C_ops.multiply(out, weight, 'axis', -1)
+            out = _C_ops.multiply(out, weight)
 
         if reduction == 'sum':
             return _C_ops.sum(out, [], None, False)
@@ -2680,6 +2681,7 @@ def softmax_with_cross_entropy(
     )
 
 
+@ParamAliasDecorator({"label": ["target"]})
 def cross_entropy(
     input: Tensor,
     label: Tensor,
@@ -2824,6 +2826,9 @@ def cross_entropy(
             3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
             the shape and data type of ``label`` could be either the situation 1 or situation 2.
             In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
+
+            4. Alias Support: The parameter name ``label`` can be used as an alias for ``target``.
+            For example, ``cross_entropy(label=tensor)`` is equivalent to ``cross_entropy(target=tensor)``.
 
         weight (Tensor, optional): a manual rescaling weight given to each class.
             If given, has to be a Tensor of size C and the data type is float32, float64.

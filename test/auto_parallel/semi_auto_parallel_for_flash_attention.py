@@ -24,9 +24,9 @@ class TestFlashAttentionSemiAutoParallel(SemiAutoParallelTestBase):
         super().__init__()
 
     def check_placements(self, output, expected_placements):
-        assert (
-            output.placements == expected_placements
-        ), f"{output.placements}  vs {expected_placements}"
+        assert output.placements == expected_placements, (
+            f"{output.placements}  vs {expected_placements}"
+        )
 
     def test_flash_att_forward(self, is_gqa=False):
         if is_gqa:

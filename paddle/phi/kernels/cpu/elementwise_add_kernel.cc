@@ -65,14 +65,19 @@ void GradAddKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   AddFunctor<T>(dev_ctx, x, y, -1, out);
 }
-
+#ifdef _WIN32
+INSTANTIATE_ADD_KERNEL(float, CPUContext)
+INSTANTIATE_ADD_KERNEL(double, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, CPUContext)
+#endif
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
+// using bfloat16 = ::phi::bfloat16;
 
 PD_REGISTER_KERNEL(add,
                    CPU,

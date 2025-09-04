@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle::experimental {
 
 template <>
-ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
+PADDLE_API ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
     : dtype_(tensor_in.dtype()) {  // NOLINT
   PADDLE_ENFORCE_EQ(tensor_in.numel(),
                     1,

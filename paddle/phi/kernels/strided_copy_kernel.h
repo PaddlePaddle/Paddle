@@ -52,4 +52,14 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
                                   int64_t out_offset,
                                   DenseTensor* out);
 
+#ifdef _WIN32
+#define INSTANTIATE_STRIDEDCOPY_KERNEL(type, context)        \
+  template PADDLE_API void StridedCopyKernel<type, context>( \
+      const context&,                                        \
+      const DenseTensor&,                                    \
+      const std::vector<int64_t>&,                           \
+      const std::vector<int64_t>&,                           \
+      int64_t,                                               \
+      DenseTensor*);
+#endif
 }  // namespace phi
