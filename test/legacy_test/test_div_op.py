@@ -215,6 +215,59 @@ class TestPaddleDivide(unittest.TestCase):
 
         paddle.disable_static()
 
+    def test_paddle_trunc_divide(self):
+        """Test trunc_divide"""
+
+        def run_test(place):
+            # Test float32
+            x_f32 = paddle.to_tensor(
+                [5, -5, 3.5, -3.5], dtype='float32', place=self.place
+            )
+            y_f32 = paddle.to_tensor(
+                [2, 2, 2, 2], dtype='float32', place=self.place
+            )
+
+            # trunc (a/b)
+            out_f32 = paddle.divide(x_f32, y_f32, rounding_mode='trunc')
+            self.assertEqual(out_f32.dtype, paddle.float32)
+
+            # Inverse trunc (b/a)
+            inv_f32 = paddle.divide(y_f32, x_f32, rounding_mode='trunc')
+            self.assertEqual(inv_f32.dtype, paddle.float32)
+
+            # Test float16
+            x_f16 = paddle.to_tensor(
+                [5, -5, 3.5, -3.5], dtype='float16', place=self.place
+            )
+            y_f16 = paddle.to_tensor(
+                [2, 2, 2, 2], dtype='float16', place=self.place
+            )
+
+            out_f16 = paddle.divide(x_f16, y_f16, rounding_mode='trunc')
+            self.assertEqual(out_f16.dtype, paddle.float16)
+
+            inv_f16 = paddle.divide(y_f16, x_f16, rounding_mode='trunc')
+            self.assertEqual(inv_f16.dtype, paddle.float16)
+
+            # Test bfloat16
+            x_bf16 = paddle.to_tensor(
+                [5, -5, 3.5, -3.5], dtype='bfloat16', place=self.place
+            )
+            y_bf16 = paddle.to_tensor(
+                [2, 2, 2, 2], dtype='bfloat16', place=self.place
+            )
+
+            out_bf16 = paddle.divide(x_bf16, y_bf16, rounding_mode='trunc')
+            self.assertEqual(out_bf16.dtype, paddle.bfloat16)
+
+            inv_bf16 = paddle.divide(y_bf16, x_bf16, rounding_mode='trunc')
+            self.assertEqual(inv_bf16.dtype, paddle.bfloat16)
+
+        run_test(paddle.CPUPlace())
+
+        if paddle.is_compiled_with_cuda():
+            run_test(paddle.CUDAPlace(0))
+
 
 class TestPaddleDiv(unittest.TestCase):
     def setUp(self):
