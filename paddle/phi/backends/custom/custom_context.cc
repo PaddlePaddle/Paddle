@@ -339,6 +339,25 @@ struct CustomContext::Impl {
     }
   }
 
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
+  }
+
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(iter,
+                      dnn_attrs_.end(),
+                      common::errors::NotFound(
+                          "Attribute `%s` is not found in CustomContext."));
+    return iter->second;
+  }
+
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
+    dnn_attrs_[attr_name] = attr;
+  }
+
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
   Place place_;
 
   std::shared_ptr<phi::stream::Stream> stream_;
@@ -370,6 +389,8 @@ struct CustomContext::Impl {
   cublasLtHandle_t blaslt_handle_{nullptr};
   std::function<cublasLtHandle_t()> blaslt_handle_creator_{nullptr};
 
+  static thread_local AttributeMap dnn_attrs_;
+
   enum BLASMathMode {
     BLAS_DEFAULT_MATH = 0,
     BLAS_TENSOR_OP_MATH = 1,
@@ -393,6 +414,8 @@ struct CustomContext::Impl {
   mutable std::mutex stream_call_back_mtx_;
   mutable std::future<void> last_future_;
 };
+
+thread_local AttributeMap CustomContext::Impl::dnn_attrs_ = {};
 
 CustomContext::CustomContext(const CustomPlace& place)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
@@ -561,5 +584,19 @@ void CustomContext::TensorCoreCublasCallIfAvailable(
     const std::function<void(cublasHandle_t)>& callback) const {
   impl_->TensorCoreCublasCallIfAvailable(callback);
 }
+
+bool CustomContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
+}
+
+const Attribute& CustomContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
+}
+
+void CustomContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
+}
+
+void CustomContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 }  // namespace phi
