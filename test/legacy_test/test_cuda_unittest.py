@@ -106,7 +106,7 @@ class TestCudaCompat(unittest.TestCase):
         else:
             with self.assertRaises(RuntimeError):
                 paddle.Stream()
-    
+
     def test_stream_creation(self):
         if paddle.is_compiled_with_cuda():
             s = Stream()
