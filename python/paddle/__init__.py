@@ -194,6 +194,7 @@ from paddle import (
 
 # high-level api
 from . import (
+    _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
