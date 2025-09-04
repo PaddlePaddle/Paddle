@@ -119,6 +119,9 @@ class TestCudaCompat(unittest.TestCase):
             current = paddle.cuda.current_stream()
             self.assertEqual(current.stream_base, s1.stream_base)
 
+    def test_error(self):
+        assert 1 == 0
+
 
 if __name__ == '__main__':
     unittest.main()

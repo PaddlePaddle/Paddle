@@ -913,6 +913,18 @@ disable_static()
 
 from .pir_utils import IrGuard
 
+try:
+    from .cuda import Stream as Stream
+except ImportError:
+
+    class _DummyStream:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "The current device does not support using paddle.Stream."
+            )
+
+    Stream = _DummyStream
+
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
