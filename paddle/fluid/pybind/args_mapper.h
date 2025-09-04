@@ -40,7 +40,7 @@ void ArgMaxMinMapper(PyObject* args,
 
 void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
-                  Tensor* x,
+                  Tensor** x_ptr_ptr,
                   paddle::experimental::IntArray* axis,
                   phi::DataType* dtype,
                   bool* keepdim);

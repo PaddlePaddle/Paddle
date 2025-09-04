@@ -165,7 +165,7 @@ bool CheckBool(PyObject* obj) {
 }
 void ArgSumMapper(PyObject* args,
                   PyObject* kwargs,
-                  Tensor* x,
+                  Tensor** x_ptr_ptr,
                   paddle::experimental::IntArray* axis,
                   phi::DataType* dtype,
                   bool* keepdim) {
@@ -176,15 +176,16 @@ void ArgSumMapper(PyObject* args,
   CheckParamsCount(nargs, remaining_kwargs, max_args);
 
   // Get EagerTensors from args
-  *x = GetTensorFromArgsOrKWArgs("sum",
-                                 "x",
-                                 args,
-                                 0,
-                                 kwargs,
-                                 {"input", "x"},
-                                 nargs,
-                                 &remaining_kwargs,
-                                 false);
+  auto& x = GetTensorFromArgsOrKWArgs("sum",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"input", "x"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
 
   // Parse Attributes if needed
   PyObject* axis_obj = GetItemFromArgsOrKWArgs(
