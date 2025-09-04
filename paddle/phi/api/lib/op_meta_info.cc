@@ -58,6 +58,64 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   return rlt;
 }
 
+void ValidateAndAssignOutputs(CustomOpKernelContext* ctx,
+                              std::vector<Tensor> outs) {
+  auto* orig_outs = ctx->AllMutablePlainOutput();  // without inplaced outputs
+
+  // NOTE: This logic contains three branches:
+  // 1) If the number of returned tensors equals the number of non-inplace
+  // outputs, directly assign the returned tensors to
+  // ctx->AllMutablePlainOutput().
+  // 2) If the number of returned tensors equals the total number of outputs
+  // (including in-place outputs), validate that the addresses of in-place
+  // outputs match their corresponding inputs.
+  // 3) Otherwise, throw an error.
+  if (orig_outs->size() == outs.size()) {
+    // Case 1: Returned tensor count matches non-inplace output count; assign
+    // directly.
+    for (size_t i = 0; i < outs.size(); ++i) {
+      AssignTensorImpl(outs.at(i), orig_outs->at(i));
+    }
+  } else if (outs.size() == ctx->AllMutableOutput()->size()) {
+    // Case 2: Returned tensor count matches total output count (including
+    // in-place outputs).
+    if (!ctx->GetInplaceIndexMap().empty()) {
+      LOG(WARNING) << "[CustomOp] In-place outputs detected, "
+                   << "but the number of returned outputs matches the declared "
+                      "output count.";
+    }
+    // Ensure in-place output tensors share memory with their corresponding
+    // inputs
+    for (auto& [inputs_idx, outputs_idx] : ctx->GetInplaceIndexMap()) {
+      PADDLE_ENFORCE_EQ(ctx->InputAt(inputs_idx).impl().get(),
+                        outs.at(outputs_idx).impl().get(),
+                        common::errors::PreconditionNotMet(
+                            "In-place output tensor `%s` at index %d does not "
+                            "share the same address as "
+                            "the input tensor `%s` at index %d.",
+                            (*ctx->outputs_names_)[outputs_idx],
+                            outputs_idx,
+                            (*ctx->inputs_names_)[inputs_idx],
+                            inputs_idx));
+    }
+    // Copy non-in-place outputs as usual
+    for (size_t i = 0; i < outs.size(); ++i) {
+      if (ctx->GetInplaceIndexMap().find(i) ==
+          ctx->GetInplaceIndexMap().end()) {
+        AssignTensorImpl(outs.at(i), &(ctx->AllMutableOutput()->at(i)));
+      }
+    }
+  } else {
+    // Case 3: Output count mismatch; throw an error.
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "The number of output tensors does not match the expected number. "
+        "Please ensure that the number of outputs matches the definition in "
+        "the PD_BUILD_OP macro, or equals the number of non-inplace outputs.")
+
+    );
+  }
+}
+
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.has_allocation() || !dst->defined()) {
     VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
@@ -241,6 +299,10 @@ void CustomOpKernelContext::ConstructInplaceIndex(
     VLOG(4) << "Custom operator ConstructInplaceIndex no need to recompute.";
     return;
   }
+
+  this->inputs_names_ = &inputs;
+  this->outputs_names_ = &outputs;
+
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
     auto& input = inputs[in_idx];
     if (inplace_map.find(input) == inplace_map.end()) {

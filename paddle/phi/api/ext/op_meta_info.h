@@ -160,6 +160,9 @@ class PADDLE_API CustomOpKernelContext {
   std::unordered_map<size_t, size_t> GetInplaceIndexMap() const;
   std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap() const;
 
+  const std::vector<std::string>* inputs_names_;
+  const std::vector<std::string>* outputs_names_;
+
  private:
   // TODO(chenweihang): replaced be SmallVector
   std::vector<Tensor> inputs_;
@@ -199,6 +202,9 @@ struct TypeTag {};
 
 template <typename F, F f>
 struct KernelFuncImpl;
+
+void ValidateAndAssignOutputs(CustomOpKernelContext* ctx,
+                              std::vector<Tensor> outs);
 
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
@@ -400,17 +406,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                     "If return std::vector<Tensor> in Custom OpKernel, "
                     "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
-      auto* orig_outs = ctx->AllMutablePlainOutput();
-      PD_CHECK(orig_outs->size() == outs.size(),
-               "The number of element in custom operator outputs is wrong, "
-               "expected contains ",
-               orig_outs->size(),
-               " Tensors, but actually contains ",
-               outs.size(),
-               " Tensors.");
-      for (size_t i = 0; i < outs.size(); ++i) {
-        AssignTensorImpl(outs.at(i), orig_outs->at(i));
-      }
+      ValidateAndAssignOutputs(ctx, outs);
     }
   };
 
