@@ -1064,6 +1064,7 @@ def monkey_patch_value():
         device=None,
         dtype=None,
         blocking=None,
+        copy_tensor=None,
     ):
         if device is None and dtype is None and blocking is None:
             return self
@@ -1096,7 +1097,7 @@ def monkey_patch_value():
                 "blocking value error, must be the True, False or None"
             )
 
-        def transform(t, device, dtype, blocking):
+        def transform(t, device, dtype, blocking, copy_tensor):
             if dtype is None:
                 dtype = t.dtype
             t_used = t
@@ -1107,26 +1108,31 @@ def monkey_patch_value():
                     place=t_used.place
                 ):
                     t_casted = t_used.cast(dtype=dtype)
+                    copy_tensor = False
             else:
                 t_casted = t_used
 
             # 2. Copy casted Tensor(in CPU or GPU) to device
             if isinstance(device, paddle.CUDAPlace):
                 new_t = t_casted.cuda(blocking=blocking)
+                copy_tensor = False
             elif isinstance(device, paddle.CUDAPinnedPlace):
                 if blocking is not True:
                     warnings.warn(
                         "blocking is not supported, and it will be ignored."
                     )
                 new_t = _C_ops.memcpy(self, 2)
+                copy_tensor = False
             elif isinstance(device, paddle.CPUPlace):
                 new_t = t_casted.cpu()
+                copy_tensor = False
             else:
                 new_t = t_casted
-
+            if copy_tensor:
+                return copy.deepcopy(new_t)
             return new_t
 
-        return transform(self, device, dtype, blocking)
+        return transform(self, device, dtype, blocking, copy_tensor)
 
     def __deepcopy__(self, memo):
         if isinstance(self.place, paddle.CUDAPlace):
@@ -1319,9 +1325,8 @@ def monkey_patch_value():
         args["blocking"] = (
             False if not args.get("blocking", False) or non_blocking else True
         )
+        args["copy_tensor"] = copy_tensor
         res = self._to(**args)
-        if copy_tensor:
-            return copy.deepcopy(res)
         return res
 
     @fake_interface_only
