@@ -721,7 +721,11 @@ add_doc_and_signature(
               [2, 4, 6]]])
 
     """,
-    """def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor""",
+    """def multiply(x: Tensor,
+                    y: Tensor,
+                    name: str | None = None,
+                    *,
+                    out: Tensor | None = None) -> Tensor""",
 )
 add_doc_and_signature(
     "logsumexp",

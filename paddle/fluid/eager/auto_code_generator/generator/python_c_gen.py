@@ -135,6 +135,9 @@ CALL_PRE_PROCESS_TEMPLATE = """    {};
 PARAMS_DECLARE_TEMPLE = """    {type} {name};\n"""
 CALL_ARGS_MAPPER_TEMPLATE = """    {func_name}(args,kwargs{params});
 """
+GET_SINGLE_INPUT_FROM_POINTER_TEMPLATE = """
+    {type}& {name} = *({name}_ptr);
+"""
 DISABLE_TIPS = (
     "    // This part of the function will be performed by a custom args mapper"
 )
@@ -585,8 +588,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         args_mapper_str = "    // NO NEED"
         if args_mapper_func is not None:
             all_params_list = []
+            need_using_ref_inputs = {}
             args_mapper_str = ""
             for name, (ttype, pos) in forward_inputs_position_map.items():
+                # When the input type is Tensor and is not an optional parameter,
+                # we should avoid copying the Tensor passed in by Python.
+                if name not in optional_inputs and not IsVectorTensorType(
+                    ttype
+                ):
+                    need_using_ref_inputs.update({name: ttype})
+                    name += "_ptr"
+                    ttype += "*"
                 args_mapper_str += PARAMS_DECLARE_TEMPLE.format(
                     type=ttype, name=name
                 )
@@ -600,6 +612,15 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             args_mapper_str += CALL_ARGS_MAPPER_TEMPLATE.format(
                 func_name=args_mapper_func, params=params
             )
+            # Obtain input (Tensor) from a pointer and use references to avoid copy construction
+            if len(need_using_ref_inputs) > 0:
+                for name, ttype in need_using_ref_inputs.items():
+                    args_mapper_str += (
+                        GET_SINGLE_INPUT_FROM_POINTER_TEMPLATE.format(
+                            type=ttype, name=name
+                        )
+                    )
+
             # disable the generated args parser
             get_params_nums_and_check_str = DISABLE_TIPS
             get_eager_tensor_str = DISABLE_TIPS

@@ -63,6 +63,17 @@
   args_alias:
    use_default_mapping : True
 
+
+- op : argmax
+  name : [paddle.argmax, paddle.Tensor.argmax]
+  args_mapper :
+    func : ArgMaxMinMapper
+
+- op : argmin
+  name : [paddle.argmin, paddle.Tensor.argmin]
+  args_mapper :
+    func : ArgMaxMinMapper
+
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias:
