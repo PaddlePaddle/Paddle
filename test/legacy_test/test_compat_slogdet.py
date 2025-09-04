@@ -451,6 +451,35 @@ class TestSlogDet(unittest.TestCase):
             with paddle.device.device_guard("cpu"):
                 run()
 
+    def test_det_zero(self):
+        def run():
+            x = paddle.to_tensor(
+                [
+                    [0, 0, 0],
+                    [0, 1, 0],
+                    [0, 0, 1],
+                ],
+                dtype="float32",
+                place="cpu",
+            )
+            out = paddle.compat.slogdet(x)
+            self.assertTrue(hasattr(out, "sign"))
+            self.assertTrue(hasattr(out, "logabsdet"))
+            sign, logabsdet = out
+            self.assertEqual(sign.dtype, x.dtype)
+            self.assertFalse(logabsdet.is_complex())
+
+            sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
+            np.testing.assert_allclose(sign.numpy(), sign_ref, 1e-5, 1e-5)
+            np.testing.assert_allclose(
+                logabsdet.numpy(),
+                logdet_ref,
+                1e-5,
+                1e-5,
+            )
+
+        run()
+
     def test_complex_invertible_matrix_backward(self):
         def run():
             x = (
