@@ -127,8 +127,10 @@ class TestPaddleSize(unittest.TestCase):
 
     def test_repr(self):
         size = paddle.Size([2, 3, 4])
+        size1 = paddle.Size()
         self.assertEqual(repr(size), "paddle.Size([2, 3, 4])")
         self.assertEqual(str(size), "paddle.Size([2, 3, 4])")
+        self.assertEqual(str(size1), "paddle.Size([])")
 
     def test_numel(self):
         size = paddle.Size([2, 3, 4])

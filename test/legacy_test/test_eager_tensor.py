@@ -1758,7 +1758,7 @@ class TestEagerTensorInplaceVersion(unittest.TestCase):
 
 
 class TestEagerTensorIsCuda(unittest.TestCase):
-    def test_is_cuda(self):
+    def test_dynamic_is_cuda(self):
         paddle.disable_static()
         cpu_tensor = paddle.to_tensor(
             [2, 3], dtype="float32", place=paddle.CPUPlace()
@@ -1770,6 +1770,25 @@ class TestEagerTensorIsCuda(unittest.TestCase):
                 [2, 3], dtype="float32", place=paddle.CUDAPlace(0)
             )
             self.assertTrue(gpu_tensor.is_cuda)
+
+    def test_static_is_cuda(self):
+        paddle.enable_static()
+
+        if paddle.is_compiled_with_cuda():
+            with paddle.static.program_guard(paddle.static.Program()):
+                data = paddle.static.data(
+                    name='data', shape=[2], dtype='float32'
+                )
+                out = data + 1.0
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_result = gpu_exe.run(
+                    feed={'data': np.array([1.0, 2.0], dtype='float32')},
+                    fetch_list=[out],
+                )
+                self.assertTrue(data.is_cuda)
+
+        paddle.disable_static()
 
 
 class TestEagerTensorSlice(unittest.TestCase):

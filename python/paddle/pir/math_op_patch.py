@@ -227,7 +227,7 @@ def monkey_patch_value():
             return True
         else:
             expected_place = framework._current_expected_place_()
-            return expected_place == framework.core.CUDAPlace
+            return isinstance(expected_place, framework.core.CUDAPlace)
 
     @property
     def place(self):
@@ -1435,6 +1435,7 @@ def monkey_patch_value():
         ('cuda', cuda),
         ('place', place),
         ('contiguous', contiguous),
+        ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
