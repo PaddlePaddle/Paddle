@@ -102,7 +102,6 @@ if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
     import builtins
-    import math
 
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
@@ -156,7 +155,6 @@ else:
             original_init(self, *args, **kwargs)
 
     Tensor.__init__ = new_init
-
 
 import paddle.distributed.fleet
 import paddle.text
