@@ -381,6 +381,76 @@ class TestSlogDet(unittest.TestCase):
             with paddle.device.device_guard("cpu"):
                 run()
 
+    def test_zero_dim_complex_invertible_matrix_backward(self):
+        def run():
+            x = (
+                paddle.zeros(
+                    shape=[2, 0, 0],
+                    dtype="float32",
+                    device="cpu",
+                    requires_grad=True,
+                )
+                + paddle.randn(
+                    shape=[2, 0, 0],
+                    dtype="float32",
+                    device="cpu",
+                    requires_grad=True,
+                )
+                * 1j
+            )
+            out = paddle.compat.slogdet(x)
+            self.assertTrue(hasattr(out, "sign"))
+            self.assertTrue(hasattr(out, "logabsdet"))
+            sign, logabsdet = out
+            self.assertEqual(sign.dtype, x.dtype)
+            self.assertFalse(logabsdet.is_complex())
+
+            logdet_grad = paddle.randn_like(logabsdet)
+            sign_ref, logdet_ref = np.linalg.slogdet(x.numpy())
+
+            np.testing.assert_allclose(sign.numpy(), sign_ref, 1e-5, 1e-5)
+            np.testing.assert_allclose(
+                logabsdet.numpy(),
+                logdet_ref,
+                1e-5,
+                1e-5,
+            )
+
+            (x_grad,) = paddle.grad(logabsdet, x, logdet_grad)
+            x_grad_ref = self.slogdet_backward(
+                x.numpy(),
+                sign.numpy(),
+                logdet_grad.numpy()[..., None, None],
+            )
+            np.testing.assert_allclose(x_grad.numpy(), x_grad_ref, 1e-5, 1e-5)
+
+            # test pir + dynamic shape
+            st_f = paddle.jit.to_static(
+                paddle.compat.slogdet,
+                full_graph=True,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[-1, -1], dtype="float32"),
+                ],
+            )
+            sign, logabsdet = st_f(x)
+            self.assertTrue(hasattr(out, "sign"))
+            self.assertTrue(hasattr(out, "logabsdet"))
+            self.assertEqual(sign.dtype, x.dtype)
+            self.assertFalse(logabsdet.is_complex())
+
+            np.testing.assert_allclose(sign.numpy(), sign_ref, 1e-5, 1e-5)
+            np.testing.assert_allclose(
+                logabsdet.numpy(),
+                logdet_ref,
+                1e-5,
+                1e-5,
+            )
+
+        run()
+        if self.compiled_with_cuda():
+            with paddle.device.device_guard("cpu"):
+                run()
+
     def test_complex_invertible_matrix_backward(self):
         def run():
             x = (
