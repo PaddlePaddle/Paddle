@@ -14,7 +14,15 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
+
+
+def use_torch_inside_inner_function():
+    import torch
+
+    return torch.sin(torch.tensor([0.0, 1.0, 2.0])).numpy()
 
 
 class TestTorchProxy(unittest.TestCase):
@@ -55,6 +63,14 @@ class TestTorchProxy(unittest.TestCase):
             self.assertIs(torch.sin, paddle.sin)
         with self.assertRaises(ModuleNotFoundError):
             import torch
+
+    @paddle.compat.use_torch_proxy_guard()
+    def test_use_torch_inside_inner_function(self):
+        result = use_torch_inside_inner_function()
+
+        np.testing.assert_allclose(
+            result, np.sin([0.0, 1.0, 2.0]), atol=1e-6, rtol=1e-6
+        )
 
 
 if __name__ == "__main__":
