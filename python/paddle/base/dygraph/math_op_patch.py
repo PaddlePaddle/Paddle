@@ -541,6 +541,21 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
+    @property
+    def itemsize(self: Tensor) -> int:
+        """
+        Returns the number of bytes allocated on the machine for a single element of the Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x.itemsize
+                8
+        """
+        return self.element_size()
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -567,6 +582,7 @@ def monkey_patch_math_tensor():
         ("requires_grad", requires_grad),
         # for logical compare
         ('__array_ufunc__', None),
+        ('itemsize', itemsize),
     ]
 
     dtype_conversion_methods = _create_dtype_conversion_methods()

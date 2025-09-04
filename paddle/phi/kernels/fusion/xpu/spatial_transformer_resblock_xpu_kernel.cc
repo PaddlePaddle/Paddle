@@ -186,4 +186,4 @@ PD_REGISTER_KERNEL(spatial_transformer_resblock_xpu,
                    ALL_LAYOUT,
                    phi::fusion::SpatialTransformerResblockXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

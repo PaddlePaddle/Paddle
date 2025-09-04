@@ -340,7 +340,7 @@ PD_REGISTER_KERNEL(fused_transpose_split_quant,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    phi::dtype::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);

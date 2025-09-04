@@ -688,6 +688,41 @@ class TestEagerTensor(unittest.TestCase):
             x = paddle.to_tensor(1, dtype="complex128")
             self.assertEqual(x.element_size(), 16)
 
+    def test_itemsize(self):
+        with base.dygraph.guard():
+            x = paddle.to_tensor(1, dtype="bool")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="float16")
+            self.assertEqual(x.itemsize, 2)
+
+            x = paddle.to_tensor(1, dtype="float32")
+            self.assertEqual(x.itemsize, 4)
+
+            x = paddle.to_tensor(1, dtype="float64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="int8")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="int16")
+            self.assertEqual(x.itemsize, 2)
+
+            x = paddle.to_tensor(1, dtype="int32")
+            self.assertEqual(x.itemsize, 4)
+
+            x = paddle.to_tensor(1, dtype="int64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="uint8")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="complex64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="complex128")
+            self.assertEqual(x.itemsize, 16)
+
     def test_backward(self):
         var = paddle.to_tensor(self.array)
         var.stop_gradient = False

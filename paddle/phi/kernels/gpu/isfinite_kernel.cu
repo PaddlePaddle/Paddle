@@ -69,22 +69,18 @@ PD_REGISTER_KERNEL(isfinite,
 
 #ifdef _WIN32
 namespace phi {
-INSTANTIATE_ISFINITE_KERNEL_Isnan(float, GPUContext)        // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isnan(double, GPUContext)   // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isnan(int, GPUContext)      // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isnan(int64_t, GPUContext)  // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::float16,
-                                      GPUContext)  // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::dtype::bfloat16,
-                                      GPUContext)  // NOLINT
+INSTANTIATE_ISFINITE_KERNEL_Isnan(float, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(double, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(int, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(int64_t, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::float16, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isnan(phi::bfloat16, GPUContext);
 
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(float, GPUContext)    // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(double, GPUContext)   // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(int, GPUContext)      // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, GPUContext)  // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::float16,
-                                      GPUContext)  // NOLINT
-    INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::dtype::bfloat16,
-                                      GPUContext)  // NOLINT
+INSTANTIATE_ISFINITE_KERNEL_Isinf(float, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(double, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(int, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(int64_t, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::float16, GPUContext);
+INSTANTIATE_ISFINITE_KERNEL_Isinf(phi::bfloat16, GPUContext);
 }  // namespace phi
 #endif

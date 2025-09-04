@@ -132,4 +132,4 @@ PD_REGISTER_KERNEL(lookup_table_sr,
                    double,
                    int8_t,
                    int16_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

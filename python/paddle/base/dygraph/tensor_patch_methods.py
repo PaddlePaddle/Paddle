@@ -128,6 +128,7 @@ def monkey_patch_tensor():
             'strides',
             'offset',
             '__cuda_array_interface__',
+            'itemsize',
             'is_cuda',
         ]
         param_keys = ['stop_gradient', 'trainable']
