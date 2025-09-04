@@ -583,3 +583,46 @@ TEST(test_torch_library, TestConstRefParameterFix) {
   auto result = impl_it->second.call_with_args(function_args);
   ASSERT_TRUE(result.get_value().is_none());  // void function returns None
 }
+
+TEST(test_torch_library, TestClassRegistryHasClass) {
+  auto qualified_name = "example_library::TestClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+  bool has_class = class_registry.has_class(qualified_name);
+  ASSERT_TRUE(has_class);
+}
+
+TEST(test_torch_library, TestClassRegistryHasNonExistentClass) {
+  auto qualified_name = "example_library::NonExistentClass";
+  const auto& class_registry = torch::ClassRegistry::instance();
+  bool has_class = class_registry.has_class(qualified_name);
+  ASSERT_FALSE(has_class);
+}
+
+TEST(test_torch_library, TestClassRegistryPrintAllClasses) {
+  const auto& class_registry = torch::ClassRegistry::instance();
+  class_registry.print_all_classes();
+}
+
+TEST(test_torch_library, TestOperatorRegistryHasOperator) {
+  auto qualified_name = "example_library::mymuladd";
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  bool has_operator = operator_registry.has_operator(qualified_name);
+  ASSERT_TRUE(has_operator);
+}
+
+TEST(test_torch_library, TestOperatorRegistryHasNonExistentOperator) {
+  auto qualified_name = "example_library::non_existent_op";
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  bool has_operator = operator_registry.has_operator(qualified_name);
+  ASSERT_FALSE(has_operator);
+}
+
+TEST(test_torch_library, TestOperatorRegistryPrintAllOperators) {
+  const auto& operator_registry = torch::OperatorRegistry::instance();
+  operator_registry.print_all_operators();
+}
+
+TEST(test_torch_library, TestLibraryPrintInfo) {
+  torch::Library lib("example_library_test_print_info");
+  lib.print_info();
+}

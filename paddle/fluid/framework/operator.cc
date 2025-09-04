@@ -1839,7 +1839,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `"
+        VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `"
                 << phi_kernel_name << "` not found.";
       }
     } else {
@@ -2306,7 +2306,7 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
             << phi_kernel_name << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;

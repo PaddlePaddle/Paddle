@@ -16,6 +16,11 @@
   name : [paddle.multiply,paddle.Tensor.multiply]
   args_alias :
     use_default_mapping : True
+- op : log2
+  name : [paddle.log2,paddle.Tensor.log2]
+  args_alias :
+    use_default_mapping : True
+
 - op : maximum
   name : [paddle.maximum,paddle.Tensor.maximum]
   args_alias :
@@ -57,3 +62,20 @@
   name : [paddle.logical_not, paddle.Tensor.logical_not]
   args_alias:
    use_default_mapping : True
+
+
+- op : argmax
+  name : [paddle.argmax, paddle.Tensor.argmax]
+  args_mapper :
+    func : ArgMaxMinMapper
+
+- op : argmin
+  name : [paddle.argmin, paddle.Tensor.argmin]
+  args_mapper :
+    func : ArgMaxMinMapper
+
+- op : dot
+  name : [paddle.dot, paddle.Tensor.dot]
+  args_alias:
+    x : [input]
+    y : [tensor]
