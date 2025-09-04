@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This file implements most of the public API compatible with PyTorch. 
-# Note that this file does not depend on PyTorch in any way. 
+# This file implements most of the public API compatible with PyTorch.
+# Note that this file does not depend on PyTorch in any way.
 # This is a standalone implementation.
 
 from .tensor.compat import (

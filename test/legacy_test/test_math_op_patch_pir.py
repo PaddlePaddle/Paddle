@@ -788,6 +788,11 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 (output_x,) = exe.run(main_program, fetch_list=[x_new])
                 self.assertEqual(output_x.shape, (2, 3))
 
+                x_new = x.new_zeros(2, 3)
+                self.assertEqual(x_new.shape, [2, 3])
+                (output_x,) = exe.run(main_program, fetch_list=[x_new])
+                self.assertEqual(output_x.shape, (2, 3))
+
         # test mT with dynamic shape
         with paddle.pir_utils.IrGuard():
             main_program, exe, program_guard = new_program()

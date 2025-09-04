@@ -24,5 +24,5 @@ PD_REGISTER_KERNEL(partial_concat_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

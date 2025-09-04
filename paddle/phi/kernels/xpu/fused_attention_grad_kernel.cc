@@ -537,7 +537,7 @@ PD_REGISTER_KERNEL(fused_attention_grad,
                    ALL_LAYOUT,
                    phi::FusedAttentionGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);

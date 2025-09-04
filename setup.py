@@ -1588,6 +1588,11 @@ def get_package_data_and_package_dir():
             env_dict.get("CINN_INCLUDE_DIR")
             + '/paddle/cinn/runtime/cuda/float16.h'
         )
+        if env_dict.get("WITH_ROCM") == 'ON':
+            cinn_fp16_file = (
+                env_dict.get("CINN_INCLUDE_DIR")
+                + '/paddle/cinn/runtime/hip/float16.h'
+            )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
@@ -1872,6 +1877,14 @@ def get_headers():
         )
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
+        )
+        # torch compatible apis
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/include/compat',
+                recursive=True,
+            )
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header

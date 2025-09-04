@@ -96,4 +96,4 @@ PD_REGISTER_KERNEL(layer_norm_relu_xpu,
                    ALL_LAYOUT,
                    phi::fusion::LayerNormalizeReluXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

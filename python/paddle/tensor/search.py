@@ -21,6 +21,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -43,7 +44,6 @@ from .creation import assign
 if TYPE_CHECKING:
     from paddle import Tensor
 
-from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS

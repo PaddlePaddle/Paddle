@@ -711,6 +711,6 @@ PD_REGISTER_KERNEL(fc,
                    ONEDNN,
                    phi::fusion::FCKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t) {}

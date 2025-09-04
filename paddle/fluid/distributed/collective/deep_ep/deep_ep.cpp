@@ -90,9 +90,10 @@ Buffer::Buffer(int rank,
   int64_t barrier_signal_ptr_bytes = NUM_MAX_NVL_PEERS * sizeof(int*);
 
   // Common checks
-  EP_HOST_ASSERT(num_nvl_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
-                 (num_nvl_bytes <= std::numeric_limits<int>::max() ||
-                  num_rdma_bytes == 0));
+  EP_HOST_ASSERT(
+      num_nvl_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
+      ((low_latency_mode || num_nvl_bytes <= std::numeric_limits<int>::max()) ||
+       num_rdma_bytes == 0));
   EP_HOST_ASSERT(
       num_rdma_bytes % NUM_BUFFER_ALIGNMENT_BYTES == 0 &&
       (low_latency_mode || num_rdma_bytes <= std::numeric_limits<int>::max()));

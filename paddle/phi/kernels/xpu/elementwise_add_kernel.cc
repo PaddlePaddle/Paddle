@@ -158,20 +158,16 @@ void AddKernel<phi::dtype::complex<float>, XPUContext>(
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(grad_add,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::GradAddXPUKernel,
-                   phi::dtype::float16,
-                   float) {}
+PD_REGISTER_KERNEL(
+    grad_add, XPU, ALL_LAYOUT, phi::GradAddXPUKernel, phi::float16, float) {}
 
 PD_REGISTER_KERNEL(add,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddKernel,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::dtype::complex<float>,
 #endif
