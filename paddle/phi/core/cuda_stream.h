@@ -47,6 +47,8 @@ class CUDAStream {
  public:
   PADDLE_API CUDAStream(const Place& place, const Stream& stream)
       : place_(place), stream_(stream) {}
+  explicit CUDAStream(const Place& place, gpuStream_t external_raw_stream);
+
   PADDLE_API CUDAStream(
       const Place& place,
       const int priority = 0,

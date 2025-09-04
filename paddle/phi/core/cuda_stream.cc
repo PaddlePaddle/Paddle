@@ -61,6 +61,13 @@ CUDAStream::CUDAStream(const Place& place,
   owned_ = true;
 }
 
+CUDAStream::CUDAStream(const Place& place, gpuStream_t external_raw_stream) {
+  // 不创建，只包装；不接管生命周期
+  place_ = place;
+  stream_ = Stream(reinterpret_cast<StreamId>(external_raw_stream));
+  owned_ = false;
+}
+
 bool CUDAStream::Query() const {
 #ifdef PADDLE_WITH_HIP
   hipError_t err = hipStreamQuery(raw_stream());
