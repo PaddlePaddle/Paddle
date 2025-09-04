@@ -30,6 +30,9 @@ from paddle.cuda import (
 )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+)
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test

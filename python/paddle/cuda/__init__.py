@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 import paddle
-from paddle import CUDAPlace, CustomPlace
+from paddle import CPUPlace, CUDAPlace, CustomPlace
 from paddle.device import (
     Stream as _PaddleStream,
     stream_guard as _PaddleStreamGuard,
@@ -28,16 +28,21 @@ from paddle.device import (
 if TYPE_CHECKING:
     from paddle.base import core
 
-DeviceLike = Union[CUDAPlace, CustomPlace, int, str, None]
+DeviceLike = Union[CPUPlace, CUDAPlace, CustomPlace, int, str, None]
 
 
-def _device_to_paddle(device: DeviceLike) -> str:
+def _device_to_paddle(
+    device: DeviceLike,
+) -> CPUPlace | CUDAPlace | CustomPlace | str | None:
     """
-    Convert a device spec (int, str, None) to Paddle device string 'gpu:X'.
+    Convert a device spec to Paddle device representation.
+    It may return a Place object (CPUPlace, CUDAPlace, CustomPlace) or a string like 'gpu:0'.
+
     Args:
-        device: None, int, or str like 'cuda:0' / 'gpu:0'
+        device: None, int, str, or Paddle Place (CPUPlace, CUDAPlace, CustomPlace, etc.)
     Returns:
-        str: Paddle device string
+        Union[CPUPlace, CUDAPlace, CustomPlace, str, None]:
+            Paddle device object or device string
     """
     if isinstance(device, (CUDAPlace, CustomPlace)) or device is None:
         return device
@@ -144,6 +149,40 @@ class Stream(_PaddleStream):
         )
 
 
+def get_stream_from_external(
+    data_ptr: int, device: DeviceLike = None
+) -> Stream:
+    r"""Return a :class:`paddle.cuda.Stream` from an externally allocated CUDA stream.
+
+    This function is used to wrap streams allocated in other libraries in order
+    to facilitate data exchange and multi-library interactions.
+
+    .. note:: This function doesn't manage the stream life-cycle, it is the user
+        responsibility to keep the referenced stream alive while this returned
+        stream is being used.
+
+    Args:
+        data_ptr(int): Integer representation of the `cudaStream_t` value that
+            is allocated externally.
+        device(paddle.CUDAPlace or int, optional): the device where the stream
+            was originally allocated. If device is specified incorrectly,
+            subsequent launches using this stream may fail.
+
+    Returns:
+        paddle.cuda.Stream: A Stream object wrapping the given external CUDA stream.
+    """
+    if not paddle.is_compiled_with_cuda():
+        raise RuntimeError(
+            "CUDA is not available, cannot get stream from external."
+        )
+
+    device = _device_to_paddle(device)
+    print('---------------++++++++++++------------------')
+    stream_ex = paddle.device.get_stream_from_external(data_ptr, device)
+
+    return stream_ex
+
+
 __all__ = [
     "is_available",
     "synchronize",
@@ -153,4 +192,5 @@ __all__ = [
     "get_device_capability",
     "stream",
     "Stream",
+    "get_stream_from_external",
 ]

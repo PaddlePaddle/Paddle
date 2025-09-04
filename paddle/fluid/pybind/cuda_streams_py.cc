@@ -61,6 +61,20 @@ PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   gpu_context->SetCUDAStream(stream, /*clear=*/false);
   return original_stream;
 }
+
+PY_STREAM_TYPE get_stream_from_external(uintptr_t data_ptr, int device_id) {
+  if (device_id == -1) {
+    device_id = phi::backends::gpu::GetCurrentDeviceId();
+  }
+
+  // ⚠️ 虚拟实现：暂不使用 data_ptr
+  // 直接调用内部的 get_current_stream 作为占位
+  auto current_stream = get_current_stream(device_id);
+
+  // 返回当前流，模拟 external stream
+  return current_stream;
+}
+
 #endif
 }  // namespace platform
 namespace pybind {
@@ -78,6 +92,19 @@ void BindCudaStream(py::module *m_ptr) {
         PADDLE_THROW(common::errors::Unavailable(
             "Paddle do not support _get_current_stream "
             "Cannot visit device synchronize."));
+#endif
+      },
+      py::return_value_policy::reference);
+
+  m.def(
+      "_get_stream_from_external",
+      [](uintptr_t data_ptr, int deviceId) {
+#if defined(PADDLE_WITH_CUDA)
+        return platform::get_stream_from_external(data_ptr, deviceId);
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CUDA, "
+            "so `_get_stream_from_external` cannot be used."));
 #endif
       },
       py::return_value_policy::reference);
