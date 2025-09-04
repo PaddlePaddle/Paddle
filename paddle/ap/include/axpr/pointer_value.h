@@ -23,7 +23,7 @@ namespace ap::axpr {
 using PointerValueImpl = std::variant<
 #define MAKE_ARG_VALUE_ALTERNATIVE(cpp_type, enum_type) \
   cpp_type*, const cpp_type*,
-    PD_FOR_EACH_DATA_TYPE(MAKE_ARG_VALUE_ALTERNATIVE) void*,
+    PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_ARG_VALUE_ALTERNATIVE) void*,
     const void*
 #undef MAKE_ARG_VALUE_ALTERNATIVE
     >;

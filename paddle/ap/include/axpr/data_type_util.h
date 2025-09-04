@@ -24,7 +24,7 @@ inline Result<DataType> GetDataTypeFromPhiDataType(::phi::DataType data_type) {
       {::phi::DataType::UNDEFINED, DataType{CppDataType<adt::Undefined>{}}},
 #define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
   {::phi::enum_type, DataType{CppDataType<cpp_type>{}}},
-      PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
+      PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
 #undef MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE
   };
   const auto& iter = map.find(data_type);
@@ -43,7 +43,7 @@ inline Result<::phi::DataType> GetPhiDataTypeFromDataType(DataType data_type) {
       {DataType{CppDataType<adt::Undefined>{}}, ::phi::DataType::UNDEFINED},
 #define MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE(cpp_type, enum_type) \
   {DataType{CppDataType<cpp_type>{}}, ::phi::enum_type},
-      PD_FOR_EACH_DATA_TYPE(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
+      PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE)
 #undef MAKE_PHI_DATA_TYPE_TO_ARG_TYPE_CASE
   };
   const auto& iter = map.find(data_type);

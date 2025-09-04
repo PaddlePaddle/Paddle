@@ -126,6 +126,26 @@ inline size_t SizeOf(DataType data_type) {
   return 0;
 }
 
+#define PD_FOR_EACH_DATA_TYPE_NOFP4(_)      \
+  _(bool, DataType::BOOL)                   \
+  _(int8_t, DataType::INT8)                 \
+  _(uint8_t, DataType::UINT8)               \
+  _(int16_t, DataType::INT16)               \
+  _(uint16_t, DataType::UINT16)             \
+  _(int32_t, DataType::INT32)               \
+  _(uint32_t, DataType::UINT32)             \
+  _(int64_t, DataType::INT64)               \
+  _(uint64_t, DataType::UINT64)             \
+  _(bfloat16, DataType::BFLOAT16)           \
+  _(float8_e4m3fn, DataType::FLOAT8_E4M3FN) \
+  _(float8_e5m2, DataType::FLOAT8_E5M2)     \
+  _(float16, DataType::FLOAT16)             \
+  _(float, DataType::FLOAT32)               \
+  _(double, DataType::FLOAT64)              \
+  _(complex64, DataType::COMPLEX64)         \
+  _(complex128, DataType::COMPLEX128)       \
+  _(pstring, DataType::PSTRING)
+
 #define PD_FOR_EACH_DATA_TYPE(_)                  \
   _(bool, DataType::BOOL)                         \
   _(int8_t, DataType::INT8)                       \

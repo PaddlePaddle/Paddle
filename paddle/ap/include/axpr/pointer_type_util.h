@@ -39,7 +39,7 @@ struct TypeConverter;
     using remove_const_type = CppPointerType<cpp_type*>;  \
   };
 
-PD_FOR_EACH_DATA_TYPE(SPECIALIZE_TYPE_CONVERTER);
+PD_FOR_EACH_DATA_TYPE_NOFP4(SPECIALIZE_TYPE_CONVERTER);
 #undef SPECIALIZE_TYPE_CONVERTER
 
 template <>

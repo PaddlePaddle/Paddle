@@ -110,7 +110,7 @@ struct TypeImplDataTypeMethodClass {
                                        // and DataType.int8 are treated
                                        // identical.
 
-        PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
+        PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
 
 #define MAKE_INT_CPP_TYPE_CASE(cpp_type)              \

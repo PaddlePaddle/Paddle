@@ -45,44 +45,12 @@ namespace dtype {
 
 struct PADDLE_ALIGN(1) float4_e2m1fn_x2 {
  public:
-  uint8_t _x;
+  uint8_t x;
 
   // Constructors
   float4_e2m1fn_x2() = default;
-  HOSTDEVICE inline float4_e2m1fn_x2(uint8_t val) : _x(val) {}
+  HOSTDEVICE inline float4_e2m1fn_x2(uint8_t val) : x(val) {}
   ~float4_e2m1fn_x2() = default;
-
-  //   HOSTDEVICE inline explicit operator int8_t() const {
-  //     return static_cast<int8_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator uint8_t() const {
-  //     return static_cast<uint8_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator int16_t() const {
-  //     return static_cast<int16_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator uint16_t() const {
-  //     return static_cast<uint16_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator int32_t() const {
-  //     return static_cast<int32_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator uint32_t() const {
-  //     return static_cast<uint32_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator int64_t() const {
-  //     return static_cast<int64_t>(static_cast<float>(*this));
-  //   }
-
-  //   HOSTDEVICE inline explicit operator uint64_t() const {
-  //     return static_cast<uint64_t>(static_cast<float>(*this));
-  //   }
 };
 
 }  // namespace dtype
