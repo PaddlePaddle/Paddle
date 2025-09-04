@@ -1086,10 +1086,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     # If cflags is given, there may already be user-provided arch flags in it
     if cflags is not None:
         for flag in cflags:
-            if any(
-                x in flag
-                for x in ['PADDLE_EXTENSION_NAME', 'TORCH_EXTENSION_NAME']
-            ):
+            if any(x in flag for x in ['PADDLE_EXTENSION_NAME']):
                 continue
             if 'arch' in flag:
                 return []
@@ -1133,18 +1130,12 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         s + "+PTX" for s in supported_arches
     ]
 
-    paddle_arch = os.environ.get("PADDLE_CUDA_ARCH_LIST")
-    torch_arch = os.environ.get("TORCH_CUDA_ARCH_LIST")
-
-    if paddle_arch and torch_arch:
-        _arch_list = paddle_arch + ";" + torch_arch
-    else:
-        _arch_list = paddle_arch or torch_arch or None
+    _arch_list = os.environ.get("PADDLE_CUDA_ARCH_LIST")
 
     if not _arch_list:
         warnings.warn(
-            "PADDLE_CUDA_ARCH_LIST and TORCH_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
-            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST'] or os.environ['TORCH_CUDA_ARCH_LIST']."
+            "PADDLE_CUDA_ARCH_LIST are not set, all archs for visible cards are included for compilation. \n"
+            "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
         )
         arch_list = []
         if core.is_compiled_with_cuda():
