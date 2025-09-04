@@ -1436,6 +1436,7 @@ __all__ = [
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
     'softmax',
+    'Stream',
 ]
 import os
 
