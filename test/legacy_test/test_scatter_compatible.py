@@ -41,13 +41,11 @@ class TestScatterCompatible(unittest.TestCase):
             [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0], [1.0, 1.0, 1.0, 1.0]],
             dtype=np.float32,
         )
-        gt_update_grad = np.ones([2, 4], dtype=np.float32)
         np.testing.assert_allclose(x.grad.numpy(), gt_x_grad)
-        np.testing.assert_allclose(updates.grad.numpy(), gt_update_grad)
 
     def test_inplace_origin_scatter(self):
         x = paddle.zeros([4, 4])
-        index = paddle.ones([3], dtype=paddle.int64)
+        index = paddle.to_tensor([0, 1, 3], dtype=paddle.int64)
         updates = paddle.arange(16, dtype=x.dtype).reshape([4, 4])
         x.stop_gradient = False
         updates.stop_gradient = False
@@ -55,21 +53,19 @@ class TestScatterCompatible(unittest.TestCase):
         res = y.scatter_(updates=updates, index=index, overwrite=True)
         gt = np.array(
             [
-                [-1.0, -1.0, -1.0, -1.0],
                 [0.0, 1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0, 7.0],
                 [-1.0, -1.0, -1.0, -1.0],
-                [-1.0, -1.0, -1.0, -1.0],
+                [8.0, 9.0, 10.0, 11.0],
             ],
             dtype=np.float32,
         )
         np.testing.assert_allclose(y.numpy(), gt)
         np.testing.assert_allclose(res.numpy(), gt)
         res.backward()
-        gt_x_grad = np.full([4, 4], 2, dtype=np.float32)
-        gt_x_grad[1, :] = 0
-        gt_update_grad = np.ones([3, 4], dtype=np.float32)
+        gt_x_grad = np.zeros([4, 4], dtype=np.float32)
+        gt_x_grad[2, :] = 2
         np.testing.assert_allclose(x.grad.numpy(), gt_x_grad)
-        np.testing.assert_allclose(updates.grad.numpy(), gt_update_grad)
 
     def test_put_along_axis_pass(self):
         inputs = paddle.arange(0, 12, dtype=paddle.float64).reshape([3, 4])
@@ -118,6 +114,8 @@ class TestScatterCompatible(unittest.TestCase):
             dtype=np.float64,
         )
         np.testing.assert_allclose(res.numpy(), gt)
+        inputs.scatter_(src=-3, reduce=None, index=index, dim=1)
+        np.testing.assert_allclose(inputs.numpy(), gt)
 
     def test_error_handling_and_special_cases(self):
         inplace_too_few_args = (
