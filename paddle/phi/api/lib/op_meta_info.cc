@@ -397,14 +397,11 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     const int num_outputs = ctx->outputs_names_->size();
 
     PADDLE_THROW(common::errors::PreconditionNotMet(
-        "Output tensor count mismatch. "
-        "Expected outputs: [%s] (including %d in-place), "
-        "or [%s] (excluding in-place). "
-        "Returned %d outputs. "
+        "Output tensor count mismatch. Expected outputs: [%s] (including %d "
+        "in-place), or [%s] (excluding in-place), but returned %d outputs. "
         "Please ensure your outputs match the operator definition "
-        "(PD_BUILD_OP), "
-        "or the count of non-inplace outputs, and that in-place outputs share "
-        "the same memory address as their corresponding inputs.",
+        "(PD_BUILD_OP), or the count of non-inplace outputs, and that in-place "
+        "outputs share the same memory address as their corresponding inputs.",
         output_str_with_inplace,
         num_inplace_outputs,
         output_str_wo_inplace,
