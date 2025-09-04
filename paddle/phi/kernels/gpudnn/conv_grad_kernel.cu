@@ -1458,34 +1458,34 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_grad,
@@ -1494,8 +1494,8 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    phi::ConvCudnnGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
@@ -1503,16 +1503,16 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    phi::Conv3DCudnnGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::ConvCudnnGradGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
@@ -1520,8 +1520,8 @@ PD_REGISTER_KERNEL(conv3d_double_grad,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
@@ -1529,8 +1529,8 @@ PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(conv2d_grad,
                    GPUDNN,
@@ -1538,7 +1538,7 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    phi::ConvCudnnGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv3d_grad,
                    GPUDNN,
@@ -1546,7 +1546,7 @@ PD_REGISTER_KERNEL(conv3d_grad,
                    phi::Conv3DCudnnGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv2d_double_grad,
                    GPUDNN,
@@ -1554,7 +1554,7 @@ PD_REGISTER_KERNEL(conv2d_double_grad,
                    phi::ConvCudnnGradGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(conv3d_double_grad,
                    GPUDNN,
@@ -1562,7 +1562,7 @@ PD_REGISTER_KERNEL(conv3d_double_grad,
                    phi::Conv3DCudnnDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    GPU,
@@ -1570,7 +1570,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d_double_grad,
                    phi::DepthwiseConvDoubleGradGPUDNNKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 
 #endif

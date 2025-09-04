@@ -23,5 +23,5 @@ PD_REGISTER_KERNEL(determinant_grad,
                    phi::DeterminantGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

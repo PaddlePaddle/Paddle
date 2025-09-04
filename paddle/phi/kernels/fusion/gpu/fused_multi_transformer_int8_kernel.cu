@@ -684,6 +684,6 @@ PD_REGISTER_KERNEL(fused_multi_transformer_int8,
                    ALL_LAYOUT,
                    phi::fusion::FusedMultiTransformerINT8OpKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
 }

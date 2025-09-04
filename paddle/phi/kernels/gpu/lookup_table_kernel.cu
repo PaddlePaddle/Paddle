@@ -128,6 +128,6 @@ PD_REGISTER_KERNEL(lookup_table,
                    phi::LookupTableCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t,
                    int16_t) {}

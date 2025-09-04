@@ -34,14 +34,14 @@ template <typename T, typename RealT>
 using NoComplex = typename std::enable_if<std::is_same<T, RealT>::value>::type;
 
 template <typename T>
-using EnableComplex = typename std::enable_if<
-    std::is_same<T, phi::dtype::complex<float>>::value ||
-    std::is_same<T, phi::dtype::complex<double>>::value>::type;
+using EnableComplex =
+    typename std::enable_if<std::is_same<T, phi::complex64>::value ||
+                            std::is_same<T, phi::complex128>::value>::type;
 
 template <typename T>
-using DisableComplex = typename std::enable_if<
-    !std::is_same<T, phi::dtype::complex<float>>::value &&
-    !std::is_same<T, phi::dtype::complex<double>>::value>::type;
+using DisableComplex =
+    typename std::enable_if<!std::is_same<T, phi::complex64>::value &&
+                            !std::is_same<T, phi::complex128>::value>::type;
 
 template <typename T, typename Enable = void>
 struct RealFunctor;
@@ -133,70 +133,70 @@ struct AbsGradFunctor {
 };
 
 template <>
-struct AbsGradFunctor<phi::dtype::bfloat16> {
-  AbsGradFunctor(const dtype::Real<phi::dtype::bfloat16>* dout,
-                 const phi::dtype::bfloat16* x,
-                 phi::dtype::bfloat16* output,
+struct AbsGradFunctor<phi::bfloat16> {
+  AbsGradFunctor(const dtype::Real<phi::bfloat16>* dout,
+                 const phi::bfloat16* x,
+                 phi::bfloat16* output,
                  int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == static_cast<phi::dtype::bfloat16>(0)) {
-      output_[idx] = static_cast<phi::dtype::bfloat16>(0);
+    if (x_[idx] == static_cast<phi::bfloat16>(0)) {
+      output_[idx] = static_cast<phi::bfloat16>(0);
     } else {
       output_[idx] = dout_[idx] * (x_[idx] / (abs(x_[idx])));
     }
   }
 
-  const dtype::Real<phi::dtype::bfloat16>* dout_;
-  const phi::dtype::bfloat16* x_;
-  phi::dtype::bfloat16* output_;
+  const dtype::Real<phi::bfloat16>* dout_;
+  const phi::bfloat16* x_;
+  phi::bfloat16* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradFunctor<phi::dtype::complex<float>> {
+struct AbsGradFunctor<phi::complex64> {
   AbsGradFunctor(const float* dout,
-                 const phi::dtype::complex<float>* x,
-                 phi::dtype::complex<float>* output,
+                 const phi::complex64* x,
+                 phi::complex64* output,
                  int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == phi::dtype::complex<float>(0)) {
-      output_[idx] = phi::dtype::complex<float>(0);
+    if (x_[idx] == phi::complex64(0)) {
+      output_[idx] = phi::complex64(0);
     } else {
-      output_[idx] = phi::dtype::complex<float>(dout_[idx]) *
-                     (x_[idx] / phi::dtype::complex<float>(abs(x_[idx])));
+      output_[idx] =
+          phi::complex64(dout_[idx]) * (x_[idx] / phi::complex64(abs(x_[idx])));
     }
   }
 
   const float* dout_;
-  const phi::dtype::complex<float>* x_;
-  phi::dtype::complex<float>* output_;
+  const phi::complex64* x_;
+  phi::complex64* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradFunctor<phi::dtype::complex<double>> {
+struct AbsGradFunctor<phi::complex128> {
   AbsGradFunctor(const double* dout,
-                 const phi::dtype::complex<double>* x,
-                 phi::dtype::complex<double>* output,
+                 const phi::complex128* x,
+                 phi::complex128* output,
                  int64_t numel)
       : dout_(dout), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == phi::dtype::complex<double>(0)) {
-      output_[idx] = phi::dtype::complex<double>(0);
+    if (x_[idx] == phi::complex128(0)) {
+      output_[idx] = phi::complex128(0);
     } else {
-      output_[idx] = phi::dtype::complex<double>(dout_[idx]) *
-                     (x_[idx] / phi::dtype::complex<double>(abs(x_[idx])));
+      output_[idx] = phi::complex128(dout_[idx]) *
+                     (x_[idx] / phi::complex128(abs(x_[idx])));
     }
   }
 
   const double* dout_;
-  const phi::dtype::complex<double>* x_;
-  phi::dtype::complex<double>* output_;
+  const phi::complex128* x_;
+  phi::complex128* output_;
   int64_t numel_;
 };
 
@@ -220,48 +220,48 @@ struct AbsGradGradFunctor {
 };
 
 template <>
-struct AbsGradGradFunctor<phi::dtype::complex<double>> {
-  AbsGradGradFunctor(const phi::dtype::complex<double>* ddx,
-                     const phi::dtype::complex<double>* x,
-                     phi::dtype::complex<double>* output,
+struct AbsGradGradFunctor<phi::complex128> {
+  AbsGradGradFunctor(const phi::complex128* ddx,
+                     const phi::complex128* x,
+                     phi::complex128* output,
                      int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == phi::dtype::complex<double>(0)) {
-      output_[idx] = phi::dtype::complex<double>(0);
+    if (x_[idx] == phi::complex128(0)) {
+      output_[idx] = phi::complex128(0);
     } else {
-      output_[idx] = phi::dtype::complex<double>(ddx_[idx]) * x_[idx] /
-                     phi::dtype::complex<double>(abs(x_[idx]));
+      output_[idx] =
+          phi::complex128(ddx_[idx]) * x_[idx] / phi::complex128(abs(x_[idx]));
     }
   }
 
-  const phi::dtype::complex<double>* ddx_;
-  const phi::dtype::complex<double>* x_;
-  phi::dtype::complex<double>* output_;
+  const phi::complex128* ddx_;
+  const phi::complex128* x_;
+  phi::complex128* output_;
   int64_t numel_;
 };
 
 template <>
-struct AbsGradGradFunctor<phi::dtype::complex<float>> {
-  AbsGradGradFunctor(const phi::dtype::complex<float>* ddx,
-                     const phi::dtype::complex<float>* x,
-                     phi::dtype::complex<float>* output,
+struct AbsGradGradFunctor<phi::complex64> {
+  AbsGradGradFunctor(const phi::complex64* ddx,
+                     const phi::complex64* x,
+                     phi::complex64* output,
                      int64_t numel)
       : ddx_(ddx), x_(x), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if (x_[idx] == phi::dtype::complex<float>(0)) {
-      output_[idx] = phi::dtype::complex<float>(0);
+    if (x_[idx] == phi::complex64(0)) {
+      output_[idx] = phi::complex64(0);
     } else {
-      output_[idx] = phi::dtype::complex<float>(ddx_[idx]) * x_[idx] /
-                     phi::dtype::complex<float>(abs(x_[idx]));
+      output_[idx] =
+          phi::complex64(ddx_[idx]) * x_[idx] / phi::complex64(abs(x_[idx]));
     }
   }
 
-  const phi::dtype::complex<float>* ddx_;
-  const phi::dtype::complex<float>* x_;
-  phi::dtype::complex<float>* output_;
+  const phi::complex64* ddx_;
+  const phi::complex64* x_;
+  phi::complex64* output_;
   int64_t numel_;
 };
 template <typename T, typename Enable = void>
@@ -377,8 +377,8 @@ struct AngleFunctor<T, phi::funcs::NoComplex<T, dtype::Real<T>>> {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    if constexpr (std::is_same_v<T, phi::dtype::bfloat16> ||
-                  std::is_same_v<T, phi::dtype::float16>) {
+    if constexpr (std::is_same_v<T, phi::bfloat16> ||
+                  std::is_same_v<T, phi::float16>) {
       if (phi::dtype::isnan(input_[idx])) {
         output_[idx] = input_[idx];
         return;

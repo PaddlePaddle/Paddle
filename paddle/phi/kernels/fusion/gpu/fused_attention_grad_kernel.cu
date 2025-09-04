@@ -616,7 +616,7 @@ PD_REGISTER_KERNEL(fused_attention_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedAttentionGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    float) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {

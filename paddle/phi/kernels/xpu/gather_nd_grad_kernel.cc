@@ -132,6 +132,6 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    phi::GatherNdGradKernel,
                    float,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t) {}

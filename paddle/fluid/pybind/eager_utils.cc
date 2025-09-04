@@ -1524,6 +1524,7 @@ paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
+
 paddle::Tensor& GetTensorFromArgsOrKWArgs(
     const std::string& op_type,
     const std::string& arg_name,

@@ -80,7 +80,9 @@ void IndexSampleKernel(const Context& dev_ctx,
   size_t batch_size = input_dim[0];
   size_t input_length = input_dim[1];
   size_t index_length = index_dim[1];
-
+  if (batch_size == 0 || input_length == 0 || index_length == 0) {
+    return;
+  }
   auto block_width = phi::backends::gpu::RoundToPowerOfTwo(index_length);
   block_width = MIN(block_width, PREDEFINED_BLOCK_SIZE_X);
   int block_height =
@@ -144,11 +146,11 @@ PD_REGISTER_KERNEL(index_sample,
                    GPU,
                    ALL_LAYOUT,
                    phi::IndexSampleKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

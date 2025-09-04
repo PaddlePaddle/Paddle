@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/funcs/lapack/lapack_function.h"
 
 #include "paddle/phi/backends/dynload/lapack.h"
-#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace phi::funcs {
 
@@ -31,23 +31,15 @@ void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
 }
 
 template <>
-void lapackLu<phi::dtype::complex<float>>(int m,
-                                          int n,
-                                          phi::dtype::complex<float> *a,
-                                          int lda,
-                                          int *ipiv,
-                                          int *info) {
+void lapackLu<phi::complex64>(
+    int m, int n, phi::complex64 *a, int lda, int *ipiv, int *info) {
   dynload::cgetrf_(
       &m, &n, reinterpret_cast<std::complex<float> *>(a), &lda, ipiv, info);
 }
 
 template <>
-void lapackLu<phi::dtype::complex<double>>(int m,
-                                           int n,
-                                           phi::dtype::complex<double> *a,
-                                           int lda,
-                                           int *ipiv,
-                                           int *info) {
+void lapackLu<phi::complex128>(
+    int m, int n, phi::complex128 *a, int lda, int *ipiv, int *info) {
   dynload::zgetrf_(
       &m, &n, reinterpret_cast<std::complex<double> *>(a), &lda, ipiv, info);
 }
@@ -80,15 +72,15 @@ void lapackLuSolve<float>(char trans,
 }
 
 template <>
-void lapackLuSolve<phi::dtype::complex<float>>(char trans,
-                                               int n,
-                                               int nrhs,
-                                               phi::dtype::complex<float> *a,
-                                               int lda,
-                                               int *ipiv,
-                                               phi::dtype::complex<float> *b,
-                                               int ldb,
-                                               int *info) {
+void lapackLuSolve<phi::complex64>(char trans,
+                                   int n,
+                                   int nrhs,
+                                   phi::complex64 *a,
+                                   int lda,
+                                   int *ipiv,
+                                   phi::complex64 *b,
+                                   int ldb,
+                                   int *info) {
   dynload::cgetrs_(&trans,
                    &n,
                    &nrhs,
@@ -101,15 +93,15 @@ void lapackLuSolve<phi::dtype::complex<float>>(char trans,
 }
 
 template <>
-void lapackLuSolve<phi::dtype::complex<double>>(char trans,
-                                                int n,
-                                                int nrhs,
-                                                phi::dtype::complex<double> *a,
-                                                int lda,
-                                                int *ipiv,
-                                                phi::dtype::complex<double> *b,
-                                                int ldb,
-                                                int *info) {
+void lapackLuSolve<phi::complex128>(char trans,
+                                    int n,
+                                    int nrhs,
+                                    phi::complex128 *a,
+                                    int lda,
+                                    int *ipiv,
+                                    phi::complex128 *b,
+                                    int ldb,
+                                    int *info) {
   dynload::zgetrs_(&trans,
                    &n,
                    &nrhs,
@@ -163,20 +155,19 @@ void lapackEigh<double>(char jobz,
 }
 
 template <>
-void lapackEigh<phi::dtype::complex<float>, float>(
-    char jobz,
-    char uplo,
-    int n,
-    phi::dtype::complex<float> *a,
-    int lda,
-    float *w,
-    phi::dtype::complex<float> *work,
-    int lwork,
-    float *rwork,
-    int lrwork,
-    int *iwork,
-    int liwork,
-    int *info) {
+void lapackEigh<phi::complex64, float>(char jobz,
+                                       char uplo,
+                                       int n,
+                                       phi::complex64 *a,
+                                       int lda,
+                                       float *w,
+                                       phi::complex64 *work,
+                                       int lwork,
+                                       float *rwork,
+                                       int lrwork,
+                                       int *iwork,
+                                       int liwork,
+                                       int *info) {
   dynload::cheevd_(&jobz,
                    &uplo,
                    &n,
@@ -193,20 +184,19 @@ void lapackEigh<phi::dtype::complex<float>, float>(
 }
 
 template <>
-void lapackEigh<phi::dtype::complex<double>, double>(
-    char jobz,
-    char uplo,
-    int n,
-    phi::dtype::complex<double> *a,
-    int lda,
-    double *w,
-    phi::dtype::complex<double> *work,
-    int lwork,
-    double *rwork,
-    int lrwork,
-    int *iwork,
-    int liwork,
-    int *info) {
+void lapackEigh<phi::complex128, double>(char jobz,
+                                         char uplo,
+                                         int n,
+                                         phi::complex128 *a,
+                                         int lda,
+                                         double *w,
+                                         phi::complex128 *work,
+                                         int lwork,
+                                         double *rwork,
+                                         int lrwork,
+                                         int *iwork,
+                                         int liwork,
+                                         int *info) {
   dynload::zheevd_(&jobz,
                    &uplo,
                    &n,
@@ -292,21 +282,20 @@ void lapackEig<float>(char jobvl,
 }
 
 template <>
-void lapackEig<phi::dtype::complex<double>, double>(
-    char jobvl,
-    char jobvr,
-    int n,
-    phi::dtype::complex<double> *a,
-    int lda,
-    phi::dtype::complex<double> *w,
-    phi::dtype::complex<double> *vl,
-    int ldvl,
-    phi::dtype::complex<double> *vr,
-    int ldvr,
-    phi::dtype::complex<double> *work,
-    int lwork,
-    double *rwork,
-    int *info) {
+void lapackEig<phi::complex128, double>(char jobvl,
+                                        char jobvr,
+                                        int n,
+                                        phi::complex128 *a,
+                                        int lda,
+                                        phi::complex128 *w,
+                                        phi::complex128 *vl,
+                                        int ldvl,
+                                        phi::complex128 *vr,
+                                        int ldvr,
+                                        phi::complex128 *work,
+                                        int lwork,
+                                        double *rwork,
+                                        int *info) {
   dynload::zgeev_(&jobvl,
                   &jobvr,
                   &n,
@@ -324,21 +313,20 @@ void lapackEig<phi::dtype::complex<double>, double>(
 }
 
 template <>
-void lapackEig<phi::dtype::complex<float>, float>(
-    char jobvl,
-    char jobvr,
-    int n,
-    phi::dtype::complex<float> *a,
-    int lda,
-    phi::dtype::complex<float> *w,
-    phi::dtype::complex<float> *vl,
-    int ldvl,
-    phi::dtype::complex<float> *vr,
-    int ldvr,
-    phi::dtype::complex<float> *work,
-    int lwork,
-    float *rwork,
-    int *info) {
+void lapackEig<phi::complex64, float>(char jobvl,
+                                      char jobvr,
+                                      int n,
+                                      phi::complex64 *a,
+                                      int lda,
+                                      phi::complex64 *w,
+                                      phi::complex64 *vl,
+                                      int ldvl,
+                                      phi::complex64 *vr,
+                                      int ldvr,
+                                      phi::complex64 *work,
+                                      int lwork,
+                                      float *rwork,
+                                      int *info) {
   dynload::cgeev_(&jobvl,
                   &jobvr,
                   &n,
@@ -526,15 +514,14 @@ void lapackGelss<float>(int m,
 }
 
 template <>
-void lapackCholeskySolve<phi::dtype::complex<double>>(
-    char uplo,
-    int n,
-    int nrhs,
-    phi::dtype::complex<double> *a,
-    int lda,
-    phi::dtype::complex<double> *b,
-    int ldb,
-    int *info) {
+void lapackCholeskySolve<phi::complex128>(char uplo,
+                                          int n,
+                                          int nrhs,
+                                          phi::complex128 *a,
+                                          int lda,
+                                          phi::complex128 *b,
+                                          int ldb,
+                                          int *info) {
   dynload::zpotrs_(&uplo,
                    &n,
                    &nrhs,
@@ -546,15 +533,14 @@ void lapackCholeskySolve<phi::dtype::complex<double>>(
 }
 
 template <>
-void lapackCholeskySolve<phi::dtype::complex<float>>(
-    char uplo,
-    int n,
-    int nrhs,
-    phi::dtype::complex<float> *a,
-    int lda,
-    phi::dtype::complex<float> *b,
-    int ldb,
-    int *info) {
+void lapackCholeskySolve<phi::complex64>(char uplo,
+                                         int n,
+                                         int nrhs,
+                                         phi::complex64 *a,
+                                         int lda,
+                                         phi::complex64 *b,
+                                         int ldb,
+                                         int *info) {
   dynload::cpotrs_(&uplo,
                    &n,
                    &nrhs,
@@ -632,22 +618,21 @@ void lapackSvd<float>(char jobz,
 }
 
 template <>
-void lapackSvd<phi::dtype::complex<double>, double>(
-    char jobz,
-    int m,
-    int n,
-    phi::dtype::complex<double> *a,
-    int lda,
-    double *s,
-    phi::dtype::complex<double> *u,
-    int ldu,
-    phi::dtype::complex<double> *vt,
-    int ldvt,
-    phi::dtype::complex<double> *work,
-    int lwork,
-    double *rwork,
-    int *iwork,
-    int *info) {
+void lapackSvd<phi::complex128, double>(char jobz,
+                                        int m,
+                                        int n,
+                                        phi::complex128 *a,
+                                        int lda,
+                                        double *s,
+                                        phi::complex128 *u,
+                                        int ldu,
+                                        phi::complex128 *vt,
+                                        int ldvt,
+                                        phi::complex128 *work,
+                                        int lwork,
+                                        double *rwork,
+                                        int *iwork,
+                                        int *info) {
   dynload::zgesdd_(&jobz,
                    &m,
                    &n,
@@ -666,22 +651,21 @@ void lapackSvd<phi::dtype::complex<double>, double>(
 }
 
 template <>
-void lapackSvd<phi::dtype::complex<float>, float>(
-    char jobz,
-    int m,
-    int n,
-    phi::dtype::complex<float> *a,
-    int lda,
-    float *s,
-    phi::dtype::complex<float> *u,
-    int ldu,
-    phi::dtype::complex<float> *vt,
-    int ldvt,
-    phi::dtype::complex<float> *work,
-    int lwork,
-    float *rwork,
-    int *iwork,
-    int *info) {
+void lapackSvd<phi::complex64, float>(char jobz,
+                                      int m,
+                                      int n,
+                                      phi::complex64 *a,
+                                      int lda,
+                                      float *s,
+                                      phi::complex64 *u,
+                                      int ldu,
+                                      phi::complex64 *vt,
+                                      int ldvt,
+                                      phi::complex64 *work,
+                                      int lwork,
+                                      float *rwork,
+                                      int *iwork,
+                                      int *info) {
   dynload::cgesdd_(&jobz,
                    &m,
                    &n,
