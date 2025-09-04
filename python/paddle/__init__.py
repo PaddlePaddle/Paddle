@@ -157,27 +157,6 @@ else:
 
     Tensor.__init__ = new_init
 
-    class CallableInt(int):
-        def __new__(cls, shape):
-            num = int(math.prod(shape))
-            instance = super().__new__(cls, num)
-            instance.shape = shape
-            return instance
-
-        def __call__(self, dim=None):
-            if dim is None:
-                return self.shape
-            else:
-                return self.shape[dim]
-
-        def __instancecheck__(self, instance):
-            return isinstance(int, instance)
-
-    @property
-    def size_method(self):
-        return CallableInt(self.shape)
-
-    Tensor.size = size_method
 
 import paddle.distributed.fleet
 import paddle.text

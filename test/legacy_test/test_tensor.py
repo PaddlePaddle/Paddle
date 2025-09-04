@@ -483,7 +483,6 @@ class TestTensorSize(unittest.TestCase):
     def test_tensor_size(self):
         shape = [3, 4]
         tensor = paddle.tensor(np.random.randn(*shape))
-        self.assertEqual(tensor.size, np.prod(shape))
         self.assertEqual(tensor.size(), shape)
 
 
