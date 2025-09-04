@@ -31,8 +31,19 @@ from .tensor.compat import (
 )
 from .tensor.compat_softmax import softmax
 
+__all__ = [
+    'softmax',
+    'split',
+    'sort',
+    'Unfold',
+    'min',
+    'max',
+    'median',
+    'nanmedian',
+]
 
-class TorchAliasMetaFinder:
+
+class TorchProxyMetaFinder:
     """
     PyTorch compatibility layer for PaddlePaddle.
 
@@ -55,7 +66,7 @@ class TorchAliasMetaFinder:
 
         is_pkg = hasattr(source_module, "__path__")
 
-        class TorchAliasLoader(importlib.abc.Loader):
+        class TorchProxyLoader(importlib.abc.Loader):
             def __init__(self, source, target_name):
                 self._source = source
                 self._target_name = target_name
@@ -87,44 +98,33 @@ class TorchAliasMetaFinder:
         # statements like `import torch.nn.functional` work correctly.
         return importlib.util.spec_from_loader(
             fullname,
-            TorchAliasLoader(source_module, fullname),
+            TorchProxyLoader(source_module, fullname),
             is_package=is_pkg,
             origin=getattr(source_module, "__file__", None),
         )
 
 
-TORCH_ALIAS_FINDER = TorchAliasMetaFinder()
+TORCH_PROXY_FINDER = TorchProxyMetaFinder()
 
 
-def install_torch_alias():
-    sys.meta_path.insert(0, TORCH_ALIAS_FINDER)
+def enable_torch_proxy():
+    """ """
+    sys.meta_path.insert(0, TORCH_PROXY_FINDER)
 
 
-def uninstall_torch_alias():
-    if TORCH_ALIAS_FINDER in sys.meta_path:
-        sys.meta_path.remove(TORCH_ALIAS_FINDER)
+def disable_torch_proxy():
+    if TORCH_PROXY_FINDER in sys.meta_path:
+        sys.meta_path.remove(TORCH_PROXY_FINDER)
         if 'torch' in sys.modules:
             del sys.modules['torch']
         return
-    warnings.warn("torch alias is not installed.")
+    warnings.warn("torch proxy is not installed.")
 
 
 @contextmanager
-def enable_torch_alias_guard():
-    install_torch_alias()
+def use_torch_proxy_guard():
+    enable_torch_proxy()
     try:
         yield
     finally:
-        uninstall_torch_alias()
-
-
-__all__ = [
-    'softmax',
-    'split',
-    'sort',
-    'Unfold',
-    'min',
-    'max',
-    'median',
-    'nanmedian',
-]
+        disable_torch_proxy()
