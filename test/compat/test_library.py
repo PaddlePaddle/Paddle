@@ -14,21 +14,41 @@
 
 import unittest
 
-import collective.test_communication_api_base as test_base
+import paddle
 
 
-class TestReshardE2E(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=4, timeout=120)
+@paddle.library.custom_op(
+    "test_namespace::add_one",
+    mutates_args=(),
+)
+def add_one(x):
+    return x + 1
 
-    def test_co_shard(self):
-        self.run_test_case("co_shard.py")
 
-    def test_reshape_co_shard(self):
-        self.run_test_case("reshape_co_shard.py")
+@add_one.register_fake
+def add_one_fake_fn(x):
+    return x
 
-    def test_transpose_co_shard(self):
-        self.run_test_case("transpose_co_shard.py")
+
+@paddle.library.custom_op(
+    "test_namespace::add_two",
+    mutates_args=(),
+)
+def add_two(x):
+    return x + 2
+
+
+class TestCallCustomOp(unittest.TestCase):
+    def test_call_custom_op(self):
+        self.assertEqual(paddle.ops.test_namespace.add_one(1), 2)
+
+
+class TestRegisterFake(unittest.TestCase):
+    def test_register_fake(self):
+        paddle.library.register_fake(
+            "test_namespace::add_two",
+            lambda x: x,
+        )
 
 
 if __name__ == "__main__":

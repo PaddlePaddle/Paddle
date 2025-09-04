@@ -46,29 +46,27 @@ struct TolerableValue {
 // Also. In standard implementation of cross entropy, other
 // framework not has the ValueClipping.
 template <>
-struct TolerableValue<phi::dtype::float16> {
-  HOSTDEVICE phi::dtype::float16 operator()(
-      const phi::dtype::float16& x) const {
+struct TolerableValue<phi::float16> {
+  HOSTDEVICE phi::float16 operator()(const phi::float16& x) const {
     if (phi::dtype::isfinite(x)) {
       return x;
-    } else if (x > static_cast<phi::dtype::float16>(0)) {
-      return std::numeric_limits<phi::dtype::float16>::max();
+    } else if (x > static_cast<phi::float16>(0)) {
+      return std::numeric_limits<phi::float16>::max();
     } else {
-      return std::numeric_limits<phi::dtype::float16>::min();
+      return std::numeric_limits<phi::float16>::min();
     }
   }
 };
 
 template <>
-struct TolerableValue<phi::dtype::bfloat16> {
-  HOSTDEVICE phi::dtype::bfloat16 operator()(
-      const phi::dtype::bfloat16& x) const {
+struct TolerableValue<phi::bfloat16> {
+  HOSTDEVICE phi::bfloat16 operator()(const phi::bfloat16& x) const {
     if (phi::dtype::isfinite(x)) {
       return x;
-    } else if (x > static_cast<phi::dtype::bfloat16>(0)) {
-      return std::numeric_limits<phi::dtype::bfloat16>::max();
+    } else if (x > static_cast<phi::bfloat16>(0)) {
+      return std::numeric_limits<phi::bfloat16>::max();
     } else {
-      return std::numeric_limits<phi::dtype::bfloat16>::min();
+      return std::numeric_limits<phi::bfloat16>::min();
     }
   }
 };
