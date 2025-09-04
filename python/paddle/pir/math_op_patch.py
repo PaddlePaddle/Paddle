@@ -1393,6 +1393,21 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
+    @property
+    def itemsize(self) -> int:
+        """
+        Returns the number of bytes allocated on the machine for a single element of the Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x.itemsize
+                8
+        """
+        return self.element_size()
+
     import paddle
 
     value_methods = [
@@ -1557,6 +1572,7 @@ def monkey_patch_value():
         ('__int__', _int_),
         ('__bool__', _bool_),
         ('__complex__', _complex_),
+        ('itemsize', itemsize),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)
