@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
-
+#include "paddle/utils/string/string_helper.h"
 namespace paddle {
 
 // remove leading and tailing spaces
@@ -363,9 +363,9 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
                             "In-place output tensor `%s` at index %d does not "
                             "share the same address as "
                             "the input tensor `%s` at index %d.",
-                            (*ctx->outputs_names_)[outputs_idx],
+                            ctx->outputs_names_->at(outputs_idx),
                             outputs_idx,
-                            (*ctx->inputs_names_)[inputs_idx],
+                            ctx->inputs_names_->at(inputs_idx),
                             inputs_idx));
     }
     // Copy non-in-place outputs as usual
@@ -375,12 +375,39 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     }
   } else {
     // Case 3: Output count mismatch; throw an error.
-    PADDLE_THROW(common::errors::PreconditionNotMet(
-        "The number of output tensors does not match the expected number. "
-        "Please ensure that the number of outputs matches the definition in "
-        "the PD_BUILD_OP macro, or equals the number of non-inplace outputs.")
+    std::vector<std::string> outputs_names_wo_inplace;
+    std::vector<std::string> outputs_names_with_inplace;
 
-    );
+    for (size_t i = 0; i < ctx->outputs_names_->size(); ++i) {
+      if (ctx->GetInplaceIndexMap().count(i)) {
+        outputs_names_with_inplace.push_back(ctx->outputs_names_->at(i) +
+                                             "(inplaced)");
+      } else {
+        outputs_names_with_inplace.push_back(ctx->outputs_names_->at(i));
+        outputs_names_wo_inplace.push_back(ctx->outputs_names_->at(i));
+      }
+    }
+    const std::string output_str_wo_inplace =
+        join_strings<std::vector<std::string>>(outputs_names_wo_inplace, ", ");
+    const std::string output_str_with_inplace =
+        join_strings<std::vector<std::string>>(outputs_names_with_inplace,
+                                               ", ");
+    const int num_inplace_outputs = ctx->GetInplaceIndexMap().size();
+    const int num_outputs = ctx->outputs_names_->size();
+
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Output tensor count mismatch. "
+        "Expected outputs: [%s] (including %d in-place), "
+        "or [%s] (excluding in-place). "
+        "Returned %d outputs. "
+        "Please ensure your outputs match the operator definition "
+        "(PD_BUILD_OP), "
+        "or the count of non-inplace outputs, and that in-place outputs share "
+        "the same memory address as their corresponding inputs.",
+        output_str_with_inplace,
+        num_inplace_outputs,
+        output_str_wo_inplace,
+        outs.size()));
   }
 }
 
