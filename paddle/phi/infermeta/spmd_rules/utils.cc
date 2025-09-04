@@ -321,6 +321,9 @@ ShardingMergeForTensorsMatmul(
     }
     forbidden.insert(dim);
   }
+  for (int64_t dim : final_non_contracting_rhs_dims) {
+    forbidden.insert(dim);
+  }
   filter_out(contracting_lhs_dims, forbidden);
   filter_out(contracting_rhs_dims, forbidden);
 
@@ -560,33 +563,6 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
   }
   // Mesh Dimension Reuse Conflict
   std::unordered_map<int64_t, std::string> mesh_dim_to_axes;
-  for (const auto& pair : tensor_axes_to_dim_pairs) {
-    for (size_t i = 0; i < pair.second.size(); ++i) {
-      std::string axis = pair.first.substr(i, 1);
-      for (const auto& mesh_dim : pair.second[i]) {
-        mesh_dim_to_axes[mesh_dim] += axis;
-      }
-    }
-  }
-  for (auto const& [mesh_dim, competing_axes] : mesh_dim_to_axes) {
-    if (competing_axes.size() > 1) {
-      if (!merge_conflicts) {
-        PADDLE_THROW(common::errors::PreconditionNotMet(
-            "Multiple Tensor Axes [%s] is sharded by same mesh dimension "
-            "[%d].",
-            competing_axes,
-            mesh_dim));
-      }
-      for (size_t i = 1; i < competing_axes.size(); i++) {
-        auto& vec = current_sharding.at(competing_axes.substr(i, 1));
-        vec.erase(std::remove(vec.begin(), vec.end(), mesh_dim), vec.end());
-      }
-      VLOG(4) << "Be careful!!! Multiple Tensor Axes [" << competing_axes
-              << "] is sharded by same mesh dimension [" << mesh_dim
-              << "], we choose first axis [" << competing_axes.substr(0, 1)
-              << "]";
-    }
-  }
   for (auto const& [axis, sharding_vec] : current_sharding) {
     for (int64_t mesh_dim : sharding_vec) {
       mesh_dim_to_axes[mesh_dim] += axis;
@@ -596,8 +572,7 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     if (competing_axes.size() > 1) {
       if (!merge_conflicts) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "Multiple Tensor Axes [%s] is sharded by same mesh dimension "
-            "[%d].",
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
             competing_axes,
             mesh_dim));
       }
@@ -612,9 +587,6 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
           winning_axis = axis_char;
         }
       }
-      VLOG(4) << "Be careful!!! Multiple Tensor Axes [" << competing_axes
-              << "] is sharded by same mesh dimension [" << mesh_dim
-              << "], we choose axis [" << winning_axis << "]";
       for (auto const& axis_char : competing_axes) {
         std::string axis_str(1, axis_char);
         if (axis_str != winning_axis) {
