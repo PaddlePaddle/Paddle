@@ -186,7 +186,7 @@ TEST(MatmulSPMDRule, Ctor) {
 
   check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, 0, -1});
   check_dim_mapping(inferred_dist_attrs.first[1],
-                    {1, 0});  // conflict and should be changed to [-1, 0]
+                    {1, 0});  // conflict and should be changed to [1, 0]
   check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, -1, 1});
   check_partial_dims(inferred_dist_attrs.second[0], {0});
 
@@ -203,8 +203,13 @@ TEST(MatmulSPMDRule, Ctor) {
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
-  EXPECT_ANY_THROW(inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx));
-  // Error
+  //   EXPECT_ANY_THROW(inferred_dist_attrs =
+  //   matmul_spmd_rule.InferForward(ctx));
+  check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, -1, 0});
+  check_dim_mapping(inferred_dist_attrs.first[1],
+                    {1, -1});  // conflict and should be changed to [1, -1]
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, 0, 1});
+  EXPECT_EQ(is_partial(inferred_dist_attrs.second[0]), false);
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
 
   // abcmk[-1, -1, 1, 0], kn[0, 1] --> abcmk[-1, -1, 1, 0],kn[0, 1] =

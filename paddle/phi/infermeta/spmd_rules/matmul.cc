@@ -194,7 +194,7 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   const auto& axis_sizes = GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}});
   const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
   auto axis_to_dim_map =
-      ShardingMergeForTensors({x_pair, y_pair}, axis_sizes, mesh_shape);
+      ShardingMergeForTensorsMatmul({x_pair, y_pair}, axis_sizes, mesh_shape);
 
   // Step2.2: Infer Output's Dims Mapping.
   TensorDistAttr output_dist_attr_dst =

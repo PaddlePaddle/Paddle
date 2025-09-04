@@ -44,7 +44,8 @@ std::string GetBroadcastAxes(const int64_t& tensor_ndim,
 
 std::unordered_map<std::string, int64_t> GetAxesSizes(
     const std::vector<std::pair<std::string, std::vector<int64_t>>>&
-        axes_to_size);
+        axes_to_size,
+    bool with_broadcast = false);
 
 // Merge the sharding specification (dims mapping) for one tensor Axis.
 // Rule1: A replicated dimension could be merged by any sharded dimension.
@@ -63,6 +64,24 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const bool merge_conflicts = true);
 
 std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts = true);
+
+std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsMatmul(
+    const std::vector<
+        std::pair<std::string, std::vector<std::vector<int64_t>>>>&
+        tensor_axes_to_dim_pairs,
+    const std::unordered_map<std::string, int64_t>& axis_sizes,
+    const std::vector<int64_t>& mesh_shape,
+    const bool merge_conflicts = true);
+
+std::unordered_map<std::string, std::vector<int64_t>>
+ShardingMergeForTensorsElementWise(
     const std::vector<
         std::pair<std::string, std::vector<std::vector<int64_t>>>>&
         tensor_axes_to_dim_pairs,
@@ -131,7 +150,7 @@ struct ArgsIterator {
   template <typename... Args>
   inline Functor& apply() {
     return self();
-  }
+  }  // namespace distributed
 
   template <typename T, typename... Args>
   inline Functor& apply(T&& arg, Args&&... args) {
@@ -147,7 +166,7 @@ struct ArgsIterator {
 
  private:
   inline Functor& self() { return *static_cast<Functor*>(this); }
-};
+};  // namespace phi
 
 using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
                             const std::vector<const DistMetaTensor*>& outs);
@@ -212,11 +231,10 @@ struct ReplicateInferSpmdDynamicHelper
 }  // namespace detail
 
 // Get dims mapping for the given axes according to sharding information of
-// the annotated axes after inferring forward or backward. The parameter axis
-// stores the axes of the tensor. "1" is a special axis, for the axis "1", set
-// its dims mapping to -1.
-// if unsharded_miss_axis, "-1" is assigned to axes that has no key in
-// axis_to_dim_map.
+// the annotated axes after inferring forward or backward. The parameter
+// axis stores the axes of the tensor. "1" is a special axis, for the axis
+// "1", set its dims mapping to -1. if unsharded_miss_axis, "-1" is assigned
+// to axes that has no key in axis_to_dim_map.
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
