@@ -72,12 +72,12 @@ namespace {  // NOLINT
         break;                                                                \
       }                                                                       \
       case paddle::DataType::FLOAT16: {                                       \
-        using SCALE_TYPE = phi::dtype::float16;                               \
+        using SCALE_TYPE = phi::float16;                                      \
         __VA_ARGS__;                                                          \
         break;                                                                \
       }                                                                       \
       case paddle::DataType::BFLOAT16: {                                      \
-        using SCALE_TYPE = phi::dtype::bfloat16;                              \
+        using SCALE_TYPE = phi::bfloat16;                                     \
         __VA_ARGS__;                                                          \
         break;                                                                \
       }                                                                       \
@@ -272,7 +272,7 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 }
 
 template <>
-__device__ void cuWelfordMuSigma2(const phi::dtype::float16* __restrict__ vals,
+__device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
                                   const int n1,
                                   const int n2,
                                   const int i1,

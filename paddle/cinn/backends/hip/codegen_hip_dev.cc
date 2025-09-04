@@ -33,6 +33,30 @@ CodeGenHipDevice::CodeGenHipDevice(Target target) : CodeGenGpuDev(target) {}
 
 void CodeGenHipDevice::PrintIncludes() { str_ += GetSourceHeader(); }
 
+void CodeGenHipDevice::Visit(const ir::Min *op) {
+  str_ += "std::min(";
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&this->DynamicShapeMap(), op);
+  this->ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
+  str_ += ", ";
+  IrPrinter::Visit(b);
+  str_ += ")";
+}
+
+void CodeGenHipDevice::Visit(const ir::Max *op) {
+  str_ += "std::max(";
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&this->DynamicShapeMap(), op);
+  this->ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
+  str_ += ", ";
+  IrPrinter::Visit(b);
+  str_ += ")";
+}
+
 }  // namespace hip
 }  // namespace backends
 }  // namespace cinn

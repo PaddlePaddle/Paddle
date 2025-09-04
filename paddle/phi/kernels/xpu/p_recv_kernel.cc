@@ -95,8 +95,8 @@ PD_REGISTER_KERNEL(p_recv,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_recv_array,
                    XPU,
@@ -107,5 +107,5 @@ PD_REGISTER_KERNEL(p_recv_array,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

@@ -178,4 +178,4 @@ PD_REGISTER_KERNEL(send_uv,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

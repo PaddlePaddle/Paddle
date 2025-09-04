@@ -449,5 +449,82 @@ class TestUnbindGradOptionalInput(unittest.TestCase):
         np.testing.assert_array_equal(a.grad.numpy(False), a_grad.numpy(False))
 
 
+class TestUnbindAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.shape = [3, 4, 5]
+        self.dtype = 'float32'
+        self.axis = 0
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.split(
+            self.np_input,
+            indices_or_sections=self.np_input.shape[self.axis],
+            axis=self.axis,
+        )
+        # Remove the extra dimension added by np.split
+        self.np_out = [np.squeeze(arr, axis=self.axis) for arr in self.np_out]
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+
+        # Positional args (args)
+        out1 = paddle.unbind(x, self.axis)
+        paddle_dygraph_out.append(out1)
+
+        # Keyword args (kwargs)
+        out2 = paddle.unbind(input=x, axis=self.axis)
+        paddle_dygraph_out.append(out2)
+
+        # Duplicate kwargs test (should be same as out2)
+        out3 = paddle.unbind(input=x, dim=self.axis)
+        paddle_dygraph_out.append(out3)
+
+        # Default axis (axis=0)
+        out4 = paddle.unbind(x)
+        paddle_dygraph_out.append(out4)
+
+        # Check all variants
+        for out in paddle_dygraph_out:
+            for i, array in enumerate(out):
+                np.testing.assert_allclose(self.np_out[i], array.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+
+            # Positional args
+            out1 = paddle.unbind(x, self.axis)
+
+            # Keyword args
+            out2 = paddle.unbind(input=x, axis=self.axis)
+
+            out3 = paddle.unbind(input=x, dim=self.axis)
+
+            # Default axis
+            out4 = paddle.unbind(x)
+
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4],
+            )
+
+            paddle_static_out = [fetches[3 * i : 3 * (i + 1)] for i in range(4)]
+            for out in paddle_static_out:
+                for i, array in enumerate(out):
+                    np.testing.assert_allclose(self.np_out[i], array)
+
+
 if __name__ == '__main__':
     unittest.main()

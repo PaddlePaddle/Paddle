@@ -21,7 +21,7 @@ PD_REGISTER_KERNEL(cross_entropy,
                    phi::CrossEntropyOpKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(cross_entropy2,
                    GPU,
@@ -29,4 +29,4 @@ PD_REGISTER_KERNEL(cross_entropy2,
                    phi::CrossEntropyOpKernel2,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

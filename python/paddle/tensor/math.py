@@ -31,6 +31,7 @@ from paddle._C_ops import (  # noqa: F401
     isinf,
     isnan,
     log,
+    log2,
     logsumexp,
     maximum,
     minimum,
@@ -3323,78 +3324,6 @@ def log1p_(x: Tensor, name: str | None = None) -> None:
         return _C_ops.log1p_(x)
 
 
-def log2(x: Tensor, name: str | None = None) -> Tensor:
-    r"""
-    Calculates the log to the base 2 of the given input tensor, element-wise.
-
-    .. math::
-
-        Out = \log_2x
-
-    Args:
-        x (Tensor): Input tensor must be one of the following types: int32, int64, float16, bfloat16, float32, float64, complex64, complex128.
-        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-
-    Returns:
-        Tensor: The log to the base 2 of the input Tensor computed element-wise.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # example 1: x is a float
-            >>> x_i = paddle.to_tensor([[1.0], [2.0]])
-            >>> res = paddle.log2(x_i)
-            >>> res
-            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[0.],
-             [1.]])
-
-            >>> # example 2: x is float32
-            >>> x_i = paddle.full(shape=[1], fill_value=2, dtype='float32')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log2(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [1.])
-
-            >>> # example 3: x is float64
-            >>> x_i = paddle.full(shape=[1], fill_value=2, dtype='float64')
-            >>> paddle.to_tensor(x_i)
-            >>> res = paddle.log2(x_i)
-            >>> res
-            Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            [1.])
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.log2(x)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'int32',
-                'int64',
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'complex64',
-                'complex128',
-            ],
-            "log2",
-        )
-        inputs = {'X': [x]}
-        helper = LayerHelper('log2', **locals())
-        dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(type="log2", inputs={"X": x}, outputs={"Out": out})
-        return out
-
-
 @inplace_apis_in_dygraph_only
 def log2_(x: Tensor, name: str | None = None) -> Tensor:
     r"""
@@ -4386,6 +4315,7 @@ def prod(
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
     name: str | None = None,
 ) -> Tensor:
     """
@@ -4409,6 +4339,7 @@ def prod(
             float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before
             operator performed. This is very useful for avoiding data type overflows. The default value is None,
             the dtype of output is the same as input Tensor `x`.
+        out (Tensor|None, optional): The output tensor. Default: None.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4486,7 +4417,7 @@ def prod(
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if in_dynamic_or_pir_mode():
-        return _C_ops.prod(x, axis, keepdim, reduce_all)
+        return _C_ops.prod(x, axis, keepdim, reduce_all, out=out)
     else:
         helper = LayerHelper('reduce_prod', **locals())
         check_variable_and_dtype(

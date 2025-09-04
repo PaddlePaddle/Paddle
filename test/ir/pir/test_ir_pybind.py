@@ -62,45 +62,45 @@ class TestPybind(unittest.TestCase):
     def test_operation(self):
         pir_program = get_ir_program()
         ops = pir_program.global_block().ops
-        mamul_op = ops[1]
+        matmul_op = ops[1]
         add_op = ops[2]
         tanh_op = ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
         self.assertEqual(tanh_op.num_results(), 1)
-        self.assertEqual(len(mamul_op.get_input_names()), 2)
-        self.assertEqual(len(mamul_op.get_attr_names()), 2)
-        self.assertEqual(len(mamul_op.get_output_names()), 1)
+        self.assertEqual(len(matmul_op.get_input_names()), 2)
+        self.assertEqual(len(matmul_op.get_attr_names()), 2)
+        self.assertEqual(len(matmul_op.get_output_names()), 1)
         # test operand.index
-        self.assertEqual(mamul_op.operand(0).index(), 0)
-        self.assertEqual(mamul_op.operand(1).index(), 1)
+        self.assertEqual(matmul_op.operand(0).index(), 0)
+        self.assertEqual(matmul_op.operand(1).index(), 1)
         self.assertEqual(add_op.operand(0).index(), 0)
         self.assertEqual(add_op.operand(1).index(), 1)
         self.assertEqual(tanh_op.operand(0).index(), 0)
 
     def test_value(self):
         pir_program = get_ir_program()
-        mamul_op = pir_program.global_block().ops[1]
+        matmul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         tanh_op = pir_program.global_block().ops[3]
 
         self.assertEqual(
-            mamul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
+            matmul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
         )
-        self.assertEqual(mamul_op.result(0).shape, [4, 4])
+        self.assertEqual(matmul_op.result(0).shape, [4, 4])
         self.assertEqual(
-            mamul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
+            matmul_op.results()[0].get_defining_op().name(), "pd_op.matmul"
         )
         self.assertEqual(
-            mamul_op.result(0).get_defining_op().name(), "pd_op.matmul"
+            matmul_op.result(0).get_defining_op().name(), "pd_op.matmul"
         )
-        mamul_op.result(0).stop_gradient = True
-        self.assertEqual(mamul_op.result(0).stop_gradient, True)
+        matmul_op.result(0).stop_gradient = True
+        self.assertEqual(matmul_op.result(0).stop_gradient, True)
 
         # test opresult hash
         result_set = ValueSet()
-        for opresult in mamul_op.results():
+        for opresult in matmul_op.results():
             result_set.add(opresult)
         # test opresult hash and hash(opresult) == hash(operesult)
         self.assertTrue(add_op.operands()[0].source() in result_set)
@@ -112,7 +112,7 @@ class TestPybind(unittest.TestCase):
         )
         # test value == opresult
         self.assertTrue(
-            add_op.operands_source()[0].is_same(mamul_op.results()[0])
+            add_op.operands_source()[0].is_same(matmul_op.results()[0])
         )
         # test opresult print
         self.assertTrue(
@@ -124,7 +124,7 @@ class TestPybind(unittest.TestCase):
         )
         # test opresult == opresult
         self.assertTrue(
-            add_op.operands()[0].source().is_same(mamul_op.results()[0])
+            add_op.operands()[0].source().is_same(matmul_op.results()[0])
         )
 
         # test opresult print
@@ -134,7 +134,7 @@ class TestPybind(unittest.TestCase):
         self.assertTrue(
             'tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
         )
-        add_op.replace_all_uses_with(mamul_op.results())
+        add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
             "pd_op.matmul",
@@ -149,10 +149,10 @@ class TestPybind(unittest.TestCase):
 
     def test_type(self):
         pir_program = get_ir_program()
-        mamul_op = pir_program.global_block().ops[1]
+        matmul_op = pir_program.global_block().ops[1]
         add_op = pir_program.global_block().ops[2]
         self.assertEqual(
-            mamul_op.result(0).type() == add_op.result(0).type(), True
+            matmul_op.result(0).type() == add_op.result(0).type(), True
         )
         add_op.result(0).set_type(
             paddle.base.libpaddle.pir.create_selected_rows_type_by_dense_tensor(
@@ -199,14 +199,14 @@ class TestPybind(unittest.TestCase):
 
     def test_operands(self):
         pir_program = get_ir_program()
-        mamul_op = pir_program.global_block().ops[1]
-        operands = mamul_op.operands()
+        matmul_op = pir_program.global_block().ops[1]
+        operands = matmul_op.operands()
         self.assertEqual(len(operands), 2)
 
     def test_results(self):
         pir_program = get_ir_program()
-        mamul_op = pir_program.global_block().ops[1]
-        results = mamul_op.results()
+        matmul_op = pir_program.global_block().ops[1]
+        results = matmul_op.results()
         self.assertEqual(len(results), 1)
 
     def test_get_output_intermediate_status(self):

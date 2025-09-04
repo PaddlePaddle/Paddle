@@ -370,4 +370,4 @@ PD_REGISTER_KERNEL(moe_permute,
                    ALL_LAYOUT,
                    phi::MoePermuteKernel,
                    phi::dtype::float8_e4m3fn,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

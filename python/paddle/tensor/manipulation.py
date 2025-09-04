@@ -29,6 +29,7 @@ from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
     VariableArgsDecorator,
     expand_decorator,
+    param_one_alias,
     param_two_alias,
     reshape_decorator,
     view_decorator,
@@ -4211,15 +4212,21 @@ def gather(
         return out
 
 
+@param_one_alias(['axis', 'dim'])
 def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
     """
 
     Removes a tensor dimension, then split the input tensor into multiple sub-Tensors.
 
+    .. note::
+        Alias Support: The parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``unbind(input=tensor_x, dim=0)`` is equivalent to ``unbind(input=tensor_x, axis=0)``.
+
     Args:
         input (Tensor): The input variable which is an N-D Tensor, data type being bool, float16, float32, float64, int32, int64, complex64 or complex128.
         axis (int, optional): A 0-D Tensor with shape [] and type is ``int32|int64``. The dimension along which to unbind.
             If :math:`axis < 0`, the dimension to unbind along is :math:`rank(input) + axis`. Default is 0.
+            alias: ``dim``.
     Returns:
         list(Tensor), The list of segmented Tensor variables.
 

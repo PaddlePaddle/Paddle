@@ -32,7 +32,8 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   auto x_shape = common::vectorize(x.dims());
   int x_ndim = static_cast<int>(x_shape.size());
   auto x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       x_ndim,
       x_dims_mapping.size(),
@@ -60,22 +61,25 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   // naive support for sharding on softmax_axis
   // softmax_axis should be resharded as replicated (TODO: support sharding on
   // softmax_axis efficiently)
-  if (x_dims_mapping[axis] >= 0) {
-    x_dims_mapping[axis] = -1;
+  if (!x_dims_mapping[axis].empty()) {
+    x_dims_mapping[axis] = std::vector<int64_t>({});
     VLOG(6) << "SoftmaxSPMDRule InferForward: softmax axis is reshard to be "
                "replicated: "
             << "original dims_mapping["
-            << str_join(x_dist_attr_src.dims_mapping()) << "], "
+            << str_join(x_dist_attr_src.multi_dims_mapping()) << "], "
             << "resharded dims_mapping[" << str_join(x_dims_mapping) << "].";
   }
 
   // Avoid multiple tensor axes sharded by same mesh dimension
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{x_axes, x_dims_mapping}}, false);
+  const auto& axes_size = GetAxesSizes({{x_axes, x_shape}});
+  const auto& mesh_shape = x.dist_attr().process_mesh().shape();
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensors(
+          {{x_axes, x_dims_mapping}}, axes_size, mesh_shape, false);
 
   // Step3: Infer Output's Dims Mapping.
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
-  std::vector<int64_t> out_dims_mapping =
+  std::vector<std::vector<int64_t>> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
   out_dist_attr.set_dims_mapping(out_dims_mapping);
 
@@ -86,7 +90,7 @@ SpmdInfo SoftmaxInferSpmd(const DistMetaTensor& x, int axis) {
   VLOG(4) << "SoftmaxInferSpmd:\n"
           << "Einsum notation: [" << x_axes << " --> " << out_axes << "].\n"
           << "Input shape: [" << str_join(x_shape) << "], src_dims_mapping: ["
-          << str_join(x_dist_attr_src.dims_mapping())
+          << str_join(x_dist_attr_src.multi_dims_mapping())
           << "], dst_dims_mapping: [" << str_join(x_dims_mapping) << "]\n"
           << "Output dims_mapping: [" << str_join(out_dims_mapping) << "]\n\n";
 
@@ -102,7 +106,8 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
   int x_ndim = static_cast<int>(x_shape.size());
   int out_ndim = static_cast<int>(out_shape.size());
   auto out_dist_attr_src = out.dist_attr();
-  std::vector<int64_t> out_dims_mapping = out_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> out_dims_mapping =
+      out_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(
       out_ndim,
       out_dims_mapping.size(),
@@ -123,14 +128,17 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
 
   // sharding on softmax_axis is not supported now,
   // so set its dim mapping to -1
-  out_dims_mapping[axis] = -1;
+  out_dims_mapping[axis] = std::vector<int64_t>({});
 
   // Step2: Sharding Propagation
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{out_axes, out_dims_mapping}});
+  const auto& axes_size = GetAxesSizes({{out_axes, out_shape}});
+  const auto& mesh_shape = out.dist_attr().process_mesh().shape();
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensors(
+          {{out_axes, out_dims_mapping}}, axes_size, mesh_shape);
 
   // infer input's dims mapping.
-  std::vector<int64_t> x_dims_mapping =
+  std::vector<std::vector<int64_t>> x_dims_mapping =
       GetDimsMappingForAxes(x_axes, axis_to_dim_map);
   TensorDistAttr x_dist_attr = CopyTensorDistAttrForOutput(x.dist_attr());
   x_dist_attr.set_dims_mapping(x_dims_mapping);
@@ -145,7 +153,7 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
           << "Einsum notation: [" << x_axes << " --> " << out_axes << "].\n"
           << "Output shape: [" << str_join(out_shape)
           << "], src_dims_mapping: ["
-          << str_join(out_dist_attr_src.dims_mapping())
+          << str_join(out_dist_attr_src.multi_dims_mapping())
           << "], dst_dims_mapping: [" << str_join(out_dims_mapping) << "]\n"
           << "Input dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
@@ -158,51 +166,64 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
   axis = axis < 0 ? out.dims().size() + axis : axis;
 
   PADDLE_ENFORCE_EQ(out_grad.dims().size(),
-                    out_grad.dist_attr().dims_mapping().size(),
+                    out_grad.dist_attr().multi_dims_mapping().size(),
                     common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] and out_grad's "
                         "dims_mapping size [%d] are not matched.",
                         out_grad.dims().size(),
-                        out_grad.dist_attr().dims_mapping().size()));
+                        out_grad.dist_attr().multi_dims_mapping().size()));
 
-  PADDLE_ENFORCE_GE(out_grad.dist_attr().dims_mapping().size(),
+  PADDLE_ENFORCE_GE(out_grad.dist_attr().multi_dims_mapping().size(),
                     axis,
                     common::errors::InvalidArgument(
                         "The Tensor out_grad's rank [%d] must be "
                         "greater than axis [%d].",
-                        out_grad.dist_attr().dims_mapping().size(),
+                        out_grad.dist_attr().multi_dims_mapping().size(),
                         axis));
-
+  std::string alphabet = "abcdefghijlopqrstuvwxyz";
+  std::string out_grad_axes = alphabet.substr(0, out_grad.dims().size());
+  std::string out_axes = out_grad_axes;
   // To keeping consistent with forward propagation, sharding on softmax_axis
   // is not supported now, the axis should be resharded as replicated.
-  auto out_grad_dims_mapping = out_grad.dist_attr().dims_mapping();
-  if (out_grad_dims_mapping[axis] >= 0) {
-    out_grad_dims_mapping[axis] = -1;
+  auto out_grad_dims_mapping = out_grad.dist_attr().multi_dims_mapping();
+  if (!out_grad_dims_mapping[axis].empty()) {
+    out_grad_dims_mapping[axis] = std::vector<int64_t>({});
     VLOG(6) << "SoftmaxGradInferSpmd: The out_grad's softmax_axis is reshard "
                "to be replicated: "
             << "original dims_mapping["
-            << str_join(out_grad.dist_attr().dims_mapping()) << "], "
+            << str_join(out_grad.dist_attr().multi_dims_mapping()) << "], "
             << "resharded dims_mapping[" << str_join(out_grad_dims_mapping)
             << "].";
   }
-  auto out_dims_mapping = out.dist_attr().dims_mapping();
-  if (out_dims_mapping[axis] >= 0) {
-    out_dims_mapping[axis] = -1;
+  auto out_dims_mapping = out.dist_attr().multi_dims_mapping();
+  if (!out_dims_mapping[axis].empty()) {
+    out_dims_mapping[axis] = std::vector<int64_t>({});
     VLOG(6) << "SoftmaxGradInferSpmd: The out's softmax_axis is reshard "
                "to be replicated: "
             << "original dims_mapping["
-            << str_join(out.dist_attr().dims_mapping()) << "], "
+            << str_join(out.dist_attr().multi_dims_mapping()) << "], "
             << "resharded dims_mapping[" << str_join(out_dims_mapping) << "].";
   }
+  const auto& out_grad_shape = common::vectorize(out_grad.dims());
+  const auto& out_shape = common::vectorize(out.dims());
+  const auto& axes_size =
+      GetAxesSizes({{out_axes, out_shape}, {out_grad_axes, out_grad_shape}});
+  const auto& mesh_shape = out_grad.dist_attr().process_mesh().shape();
+  auto axis_to_dim_map = ShardingMergeForTensors(
+      {{out_axes, out_dims_mapping}, {out_grad_axes, out_grad_dims_mapping}},
+      axes_size,
+      mesh_shape);
+  std::vector<std::vector<int64_t>> out_grad_dims_mapping_dst =
+      GetDimsMappingForAxes(out_grad_axes, axis_to_dim_map);
+  auto out_dist_attr_dst = CopyTensorDistAttrForOutput(out.dist_attr());
+  out_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
+  auto out_grad_dist_attr_dst =
+      CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  out_grad_dist_attr_dst.set_dims_mapping(out_grad_dims_mapping_dst);
 
-  auto out_dist_attr = CopyTensorDistAttrForOutput(out.dist_attr());
-  out_dist_attr.set_dims_mapping(out_dims_mapping);
-  auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
-  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
-
-  return ElementwiseBinaryInferSpmd(
-      DistMetaTensor(out.dims(), out_dist_attr),
-      DistMetaTensor(out_grad.dims(), out_grad_dist_attr));
+  auto x_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  x_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping_dst);
+  return {{out_dist_attr_dst, out_grad_dist_attr_dst}, {x_grad_dist_attr}};
 }
 
 }  // namespace phi::distributed

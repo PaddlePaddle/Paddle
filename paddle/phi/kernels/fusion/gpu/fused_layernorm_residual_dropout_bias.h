@@ -494,7 +494,7 @@ struct FusedLayernormResidualDropoutBiasFunctor {
   }
 };
 
-template struct FusedLayernormResidualDropoutBiasFunctor<phi::dtype::float16,
+template struct FusedLayernormResidualDropoutBiasFunctor<phi::float16,
                                                          uint8_t,
                                                          8,
                                                          float,

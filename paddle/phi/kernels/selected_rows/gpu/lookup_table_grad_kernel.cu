@@ -190,7 +190,7 @@ PD_REGISTER_KERNEL(lookup_table_grad_sr,
                    phi::sr::LookupTableGradCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(lookup_table_sparse_grad_sr,
                    GPU,
@@ -198,4 +198,4 @@ PD_REGISTER_KERNEL(lookup_table_sparse_grad_sr,
                    phi::sr::LookupTableSparseGradCUDAKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

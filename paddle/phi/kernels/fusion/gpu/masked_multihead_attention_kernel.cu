@@ -1225,7 +1225,7 @@ void MMHAKernel(const Context &dev_ctx,
   if (x.dtype() == phi::DataType::INT32) {
     switch (str2int(compute_dtype.c_str())) {
       case str2int("fp16"):
-        DispatchWithDtype<phi::dtype::float16, Context>(
+        DispatchWithDtype<phi::float16, Context>(
             dev_ctx,
             x,
             cache_kv,
@@ -1248,11 +1248,11 @@ void MMHAKernel(const Context &dev_ctx,
             out,
             cache_kv_out,
             beam_cache_offset_out,
-            typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+            typename DispatchDtypeTrait<phi::float16>::FuncVersion{});
         break;
 #if CUDA_VERSION >= 11000
       case str2int("bf16"):
-        DispatchWithDtype<phi::dtype::bfloat16, Context>(
+        DispatchWithDtype<phi::bfloat16, Context>(
             dev_ctx,
             x,
             cache_kv,
@@ -1275,7 +1275,7 @@ void MMHAKernel(const Context &dev_ctx,
             out,
             cache_kv_out,
             beam_cache_offset_out,
-            typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+            typename DispatchDtypeTrait<phi::bfloat16>::FuncVersion{});
         break;
 #endif
       case str2int("fp32"):
@@ -1349,8 +1349,8 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int32_t) {}
 #else
 PD_REGISTER_KERNEL(masked_multihead_attention,
@@ -1358,6 +1358,6 @@ PD_REGISTER_KERNEL(masked_multihead_attention,
                    ALL_LAYOUT,
                    phi::fusion::MMHAKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int32_t) {}
 #endif

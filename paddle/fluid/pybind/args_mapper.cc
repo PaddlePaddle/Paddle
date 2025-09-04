@@ -29,7 +29,7 @@ namespace paddle {
 namespace pybind {
 void ArgMaxMinMapper(PyObject* args,
                      PyObject* kwargs,
-                     Tensor* x,
+                     Tensor** x_ptr_ptr,
                      paddle::experimental::Scalar* axis,
                      bool* keepdims,
                      bool* flatten,
@@ -47,15 +47,16 @@ void ArgMaxMinMapper(PyObject* args,
 
   VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
   // Get EagerTensors from args
-  *x = GetTensorFromArgsOrKWArgs("argmax",
-                                 "x",
-                                 args,
-                                 0,
-                                 kwargs,
-                                 {"x", "input"},
-                                 nargs,
-                                 &remaining_kwargs,
-                                 false);
+  auto& x = GetTensorFromArgsOrKWArgs("argmax",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"x", "input"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
 
   // Parse Attributes if needed
 
