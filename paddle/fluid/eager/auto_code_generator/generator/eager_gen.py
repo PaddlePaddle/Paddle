@@ -1865,20 +1865,76 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             append_predefined_out
             and not grad_flag
             and not is_inplaced
-            and len(self.forward_outputs_position_map) == 1
-            and next(iter(self.forward_outputs_position_map.values()))[0]
-            == "Tensor"
             and forward_api_name != "empty_like"
         ):
-            inputs_args_declaration_str = (
-                inputs_args_declaration_str
-                + ", paddle::optional<paddle::Tensor*> predefined_out = paddle::none"
+            forward_outputs_position_list = list(
+                self.forward_outputs_position_map.values()
             )
-            inputs_args_definition_str = (
-                inputs_args_definition_str
-                + ", paddle::optional<paddle::Tensor*> predefined_out"
-            )
+            if (
+                len(forward_outputs_position_list) == 1
+                and forward_outputs_position_list[0][0] == "Tensor"
+            ):
+                inputs_args_declaration_str = (
+                    inputs_args_declaration_str
+                    + ", paddle::optional<paddle::Tensor*> predefined_out = paddle::none"
+                )
+                inputs_args_definition_str = (
+                    inputs_args_definition_str
+                    + ", paddle::optional<paddle::Tensor*> predefined_out"
+                )
+            elif (
+                len(forward_outputs_position_list) == 2
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+            ):
+                inputs_args_declaration_str = (
+                    inputs_args_declaration_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+                inputs_args_definition_str = (
+                    inputs_args_definition_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            elif (
+                len(forward_outputs_position_list) == 3
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+                and forward_outputs_position_list[2][0] == "Tensor"
+            ):
+                inputs_args_declaration_str = (
+                    inputs_args_declaration_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+                inputs_args_definition_str = (
+                    inputs_args_definition_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            elif (
+                len(forward_outputs_position_list) == 4
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+                and forward_outputs_position_list[2][0] == "Tensor"
+                and forward_outputs_position_list[3][0] == "Tensor"
+            ):
+                inputs_args_declaration_str = (
+                    inputs_args_declaration_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+                inputs_args_definition_str = (
+                    inputs_args_definition_str
+                    + ", paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            else:
+                inputs_args_declaration_str = (
+                    inputs_args_declaration_str
+                    + ", paddle::optional<void*> predefined_out = paddle::none"
+                )
+                inputs_args_definition_str = (
+                    inputs_args_definition_str
+                    + ", paddle::optional<void*> predefined_out"
+                )
             inputs_call_list.append("predefined_out")
+
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
 
@@ -2137,9 +2193,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             append_predefined_out
             and not grad_flag
             and not is_inplaced
-            and len(self.forward_outputs_position_map) == 1
-            and next(iter(self.forward_outputs_position_map.values()))[0]
-            == "Tensor"
             and forward_api_name != "empty_like"
         ):
             amp_inputs_call_args_str = (
@@ -2172,9 +2225,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 append_predefined_out
                 and not grad_flag
                 and not is_inplaced
-                and len(self.forward_outputs_position_map) == 1
-                and next(iter(self.forward_outputs_position_map.values()))[0]
-                == "Tensor"
                 and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (
@@ -2206,9 +2256,6 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 append_predefined_out
                 and not grad_flag
                 and not is_inplaced
-                and len(self.forward_outputs_position_map) == 1
-                and next(iter(self.forward_outputs_position_map.values()))[0]
-                == "Tensor"
                 and forward_api_name != "empty_like"
             ):
                 type_promote_inputs_call_args_str = (

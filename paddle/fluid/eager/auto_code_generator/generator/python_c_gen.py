@@ -700,19 +700,43 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
         get_predefined_out_str = ""
-        if (
-            not no_predefined_out_tensor
-            and len(self.forward_outputs_position_map) == 1
-            and next(iter(self.forward_outputs_position_map.values()))[0]
-            == "Tensor"
-            and forward_api_name != "empty_like"
-        ):
+        if not no_predefined_out_tensor and forward_api_name != "empty_like":
             dygraph_function_call_str = (
                 dygraph_function_call_str + ", predefined_out"
             )
-            get_predefined_out_str = (
-                "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+            forward_outputs_position_list = list(
+                self.forward_outputs_position_map.values()
             )
+            if (
+                len(forward_outputs_position_list) == 1
+                and forward_outputs_position_list[0][0] == "Tensor"
+            ):
+                get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+            elif (
+                len(forward_outputs_position_list) == 2
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+            ):
+                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_2(kwargs);"
+            elif (
+                len(forward_outputs_position_list) == 3
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+                and forward_outputs_position_list[2][0] == "Tensor"
+            ):
+                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_3(kwargs);"
+            elif (
+                len(forward_outputs_position_list) == 4
+                and forward_outputs_position_list[0][0] == "Tensor"
+                and forward_outputs_position_list[1][0] == "Tensor"
+                and forward_outputs_position_list[2][0] == "Tensor"
+                and forward_outputs_position_list[3][0] == "Tensor"
+            ):
+                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_4(kwargs);"
+            else:
+                get_predefined_out_str = (
+                    "    auto predefined_out = paddle::none;"
+                )
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(

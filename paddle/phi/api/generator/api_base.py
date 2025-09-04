@@ -254,13 +254,46 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            declare_args.append(
-                "paddle::optional<Tensor*> predefined_out = paddle::none"
-            )
+            if (
+                len(self.outputs['names']) == 1
+                and self.outputs['types'][0] == "Tensor"
+            ):
+                declare_args.append(
+                    "paddle::optional<Tensor*> predefined_out = paddle::none"
+                )
+            elif (
+                len(self.outputs['names']) == 2
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+            ):
+                declare_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+            elif (
+                len(self.outputs['names']) == 3
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+                and self.outputs['types'][2] == "Tensor"
+            ):
+                declare_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+            elif (
+                len(self.outputs['names']) == 4
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+                and self.outputs['types'][2] == "Tensor"
+                and self.outputs['types'][3] == "Tensor"
+            ):
+                declare_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                )
+            else:
+                declare_args.append(
+                    "paddle::optional<void*> predefined_out = paddle::none"
+                )
 
         return ", ".join(declare_args)
 
@@ -275,11 +308,42 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            define_args.append("paddle::optional<Tensor*> predefined_out")
+            if (
+                len(self.outputs['names']) == 1
+                and self.outputs['types'][0] == "Tensor"
+            ):
+                define_args.append("paddle::optional<Tensor*> predefined_out")
+            elif (
+                len(self.outputs['names']) == 2
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+            ):
+                define_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            elif (
+                len(self.outputs['names']) == 3
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+                and self.outputs['types'][2] == "Tensor"
+            ):
+                define_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            elif (
+                len(self.outputs['names']) == 4
+                and self.outputs['types'][0] == "Tensor"
+                and self.outputs['types'][1] == "Tensor"
+                and self.outputs['types'][2] == "Tensor"
+                and self.outputs['types'][3] == "Tensor"
+            ):
+                define_args.append(
+                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                )
+            else:
+                define_args.append("paddle::optional<void*> predefined_out")
 
         return ", ".join(define_args)
 

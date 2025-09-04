@@ -1146,12 +1146,49 @@ class DistForwardAPI(ForwardAPI):
                     return_type, inplace_assign_code
                 )
             else:
-                if (
-                    len(self.outputs['names']) == 1
-                    and self.outputs['types'][0] == "Tensor"
-                    and self.api != "empty_like"
-                ):
-                    output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                if self.api != "empty_like":
+                    if (
+                        len(self.outputs['names']) == 1
+                        and self.outputs['types'][0] == "Tensor"
+                    ):
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    elif (
+                        len(self.outputs['names']) == 2
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor>> predefined_out_value;"
+                            + "if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out));}}"
+                            + "std::tuple<Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    elif (
+                        len(self.outputs['names']) == 3
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                        and self.outputs['types'][2] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor, Tensor>> predefined_out_value;"
+                            + "if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out), *std::get<2>(*predefined_out));}}"
+                            + "std::tuple<Tensor, Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    elif (
+                        len(self.outputs['names']) == 4
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                        and self.outputs['types'][2] == "Tensor"
+                        and self.outputs['types'][3] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor, Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor, Tensor, Tensor>> predefined_out_value;"
+                            + "if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out), *std::get<2>(*predefined_out), *std::get<3>(*predefined_out));}}"
+                            + "std::tuple<Tensor, Tensor, Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    else:
+                        output_creation_code += (
+                            API_OUT_CREATION_TEMPLATE.format(return_type, "")
+                        )
                 else:
                     output_creation_code += API_OUT_CREATION_TEMPLATE.format(
                         return_type, ""
@@ -1227,9 +1264,53 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if self.api != "empty_like":
+                    if (
+                        len(self.outputs['names']) == 1
+                        and self.outputs['types'][0] == "Tensor"
+                    ):
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    elif (
+                        len(self.outputs['names']) == 2
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor>> predefined_out_value;"
+                            + "\n    if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out));}}"
+                            + "\n    std::tuple<Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    elif (
+                        len(self.outputs['names']) == 3
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                        and self.outputs['types'][2] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor, Tensor>> predefined_out_value;"
+                            + "\n    if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out), *std::get<2>(*predefined_out));}}"
+                            + "\n    std::tuple<Tensor, Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    elif (
+                        len(self.outputs['names']) == 4
+                        and self.outputs['types'][0] == "Tensor"
+                        and self.outputs['types'][1] == "Tensor"
+                        and self.outputs['types'][2] == "Tensor"
+                        and self.outputs['types'][3] == "Tensor"
+                    ):
+                        output_creation_code += (
+                            "std::tuple<Tensor, Tensor, Tensor, Tensor> out_tmp;paddle::optional<std::tuple<Tensor, Tensor, Tensor, Tensor>> predefined_out_value;"
+                            + "\n    if(predefined_out) {{predefined_out_value = std::make_tuple(*std::get<0>(*predefined_out), *std::get<1>(*predefined_out), *std::get<2>(*predefined_out), *std::get<3>(*predefined_out));}}"
+                            + "\n    std::tuple<Tensor, Tensor, Tensor, Tensor>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                    else:
+                        output_creation_code += (
+                            API_OUT_CREATION_TEMPLATE.format(return_type, "")
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
