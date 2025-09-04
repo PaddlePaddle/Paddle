@@ -119,6 +119,11 @@ class TestCudaCompat(unittest.TestCase):
             current = paddle.cuda.current_stream()
             self.assertEqual(current.stream_base, s1.stream_base)
 
+    def test_version_cuda(self):
+        cudaVersion = paddle.version.cuda()
+        cudaVersionClass = paddle.version.cuda
+        assert cudaVersion == cudaVersionClass
+
 
 if __name__ == '__main__':
     unittest.main()
