@@ -1528,8 +1528,12 @@ void HandleForCudaGraphOp(
   auto cuda_graph_op = op_item->dyn_cast<CudaGraphOp>();
   std::vector<pir::Type> new_outputs;
   for (size_t i = 0; i < cuda_graph_op.num_results(); ++i) {
-    new_outputs.push_back(
-        ConvertOpTypeToKernelType(ctx, cuda_graph_op.result(i).type(), place));
+    // Here, we set place as the base `phi::Place` type to avoid unnecessary
+    // memcpy operations that may occur if the place is fixed to GPU. The actual
+    // output place type will be inferred later in `ProcessBlock`, and the
+    // inferred type will eventually be assigned to the outputs of new_cg_op.
+    new_outputs.push_back(ConvertOpTypeToKernelType(
+        ctx, cuda_graph_op.result(i).type(), phi::Place()));
   }
   auto new_cg_op = builder.Build<CudaGraphOp>(std::move(new_outputs));
 
@@ -1540,7 +1544,25 @@ void HandleForCudaGraphOp(
                ctx,
                map_op_pair,
                map_value_pair,
-               true);
+               false  // for_if_block
+  );
+
+  PADDLE_ENFORCE_EQ(new_cg_op.block()->back().isa<::pir::YieldOp>(),
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "CudaGraphOp's block should end with YieldOp"));
+
+  auto yield_op = new_cg_op.block()->back().dyn_cast<::pir::YieldOp>();
+
+  PADDLE_ENFORCE_EQ(
+      yield_op.num_operands(),
+      new_cg_op.num_results(),
+      common::errors::PreconditionNotMet(
+          "CudaGraphOp's num_operands must equal to its YieldOp's"));
+
+  for (size_t i = 0; i < yield_op.num_operands(); ++i) {
+    new_cg_op->result(i).set_type(yield_op.operand_type(i));
+  }
 
   // update map
   (*map_op_pair)[op_item] = new_cg_op;
@@ -1879,18 +1901,16 @@ void HandleForSpecialOp(
   if (op_item->isa<::pir::CombineOp>()) {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
-    if (op_item->num_operands() > 0) {
-      for (size_t i = 0; i < op_item->num_operands(); ++i) {
-        auto cur_in = op_item->operand_source(i);
-        if (!cur_in) {
-          vec_inputs.emplace_back();
-          continue;
-        }
-        auto new_in = GetNewInput(
-            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-        vec_inputs.push_back(new_in);
-        vec_inner_types.push_back(new_in.type());
+    for (size_t i = 0; i < op_item->num_operands(); ++i) {
+      auto cur_in = op_item->operand_source(i);
+      if (!cur_in) {
+        vec_inputs.emplace_back();
+        continue;
       }
+      auto new_in = GetNewInput(
+          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+      vec_inputs.push_back(new_in);
+      vec_inner_types.push_back(new_in.type());
     }
     // Copy op output type
 
