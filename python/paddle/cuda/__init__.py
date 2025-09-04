@@ -120,6 +120,7 @@ def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
     """
     return StreamContext(stream_obj)
 
+
 class Stream(_PaddleStream):
     """
     Torch API: torch.cuda.Stream -> Paddle: paddle.device.Stream
