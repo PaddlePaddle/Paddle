@@ -28,6 +28,7 @@ import pir  # noqa: F401
 import program_translator_util
 import topo_drr_pass
 import umprime  # noqa: F401
+import matmul_variadic_dcu_tpl
 
 
 class MatmulEpilogueFusion(abstract_drr.DrrPass):
@@ -161,7 +162,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         init_pass_manager.run(program)
 
     def _make_kernel_arg_translator(self):
-        return matmul_variadic_tpl.make_kernel_arg_translator()
+        return matmul_variadic_dcu_tpl.make_kernel_arg_translator()
 
     def _apply_topo_access_passes(self, mut_program, anchor_data_op_name):
         init_pass_manager = ir_tools.create_pass_manager()
@@ -339,7 +340,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         index_program_translator_map = index_program_translator_util.IndexProgramTranslatorMap(
             index_func_unique_id2index_program=index_func_unique_id2index_program,
             kernel_arg_translator=kernel_arg_translator,
-            anchor_iter_var_names=matmul_variadic_tpl.get_anchor_iter_var_names(),
+            anchor_iter_var_names=matmul_variadic_dcu_tpl.get_anchor_iter_var_names(),
         )
         self._replace_with_load_from_register(
             mut_program, load_ir_value_name="mm_out", register_var_name="x"
@@ -366,7 +367,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         )
         print('after registry')
 
-        template_module = matmul_variadic_tpl.MatmulVariadicTemplate(
+        template_module = matmul_variadic_dcu_tpl.MatmulVariadicTemplate(
             program_translator=program_translator,
             mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
         )

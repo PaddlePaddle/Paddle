@@ -66,7 +66,7 @@ Makefile
 third_party/
 *~
 bazel-*
-
+python/paddle/apy/matmul_pass/matmul/composable_kernel/
 
 build_*
 # clion workspace.

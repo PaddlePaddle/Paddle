@@ -14,19 +14,32 @@
 
 #pragma once
 
-#include <cuda.h>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
 #include <iostream>
 #include <map>
 #include <vector>
+
+#ifdef __NVCC__
+#include <cuda.h>
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm_coord.h"
 #include "cutlass/layout/matrix.h"
 
 #include "cutlass_patch/batched_matrix_coord.h"
+#endif
 
+#ifdef __HIPCC__
+#include <hip/hip_runtime.h>
+#include <hip/hip_fp16.h>
+
+#include "ck/ck.hpp"
+
+#include "ck_patch/batched_matrix_coord.h"
+#endif
+
+#ifdef __NVCC__
 #define CHECK_CUTLASS(status)                                             \
   {                                                                       \
     cutlass::Status error = status;                                       \
@@ -48,6 +61,7 @@
       exit(EXIT_FAILURE);                                                     \
     }                                                                         \
   }
+#endif
 
 #define ASSERT_CHECK(__cond)                                            \
   do {                                                                  \
@@ -75,10 +89,18 @@ struct Alignment<float, Dim> {
       ((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1);
 };
 
+#ifdef __NVCC__
 template <typename T, int N>
 using Array = cutlass::Array<T, N>;
 
 using MatrixCoord = cutlass::BatchedMatrixCoord;
+using stream_t = cudaStream_t;
+#endif
+
+#ifdef __HIPCC__
+using MatrixCoord=ck::BatchedMatrixCoord;
+using stream_t = hipStream_t;
+#endif
 
 struct GemmEpilogueParams {
   int batch_count;
@@ -108,7 +130,7 @@ struct GemmEpilogueParams {
   const void *bias;
   void *output;
 
-  cudaStream_t stream;
+  stream_t stream;
 
   std::vector<int64_t> input0_shape;
   std::vector<int64_t> input1_shape;
@@ -118,7 +140,7 @@ struct GemmEpilogueParams {
   std::vector<std::vector<int64_t>> epilogue_out_shapes;
 
   GemmEpilogueParams() {}
-  GemmEpilogueParams(cudaStream_t stream,
+  GemmEpilogueParams(stream_t stream,
                      const void *input,
                      const void *weight,
                      const void *bias,
@@ -216,7 +238,7 @@ struct GemmBroadcastEpilogueParams : GemmEpilogueParams {
   void *broadcast;
   void *broadcast_out;
 
-  GemmBroadcastEpilogueParams(cudaStream_t stream,
+  GemmBroadcastEpilogueParams(stream_t stream,
                               const void *input,
                               const void *weight,
                               const void *bias,
@@ -245,6 +267,7 @@ struct GemmBroadcastEpilogueParams : GemmEpilogueParams {
 };
 
 // Convert CUDA data type to cutlass data type
+#ifdef __NVCC__
 template <typename T>
 struct CutlassDataType {
   using Type = T;
@@ -270,5 +293,6 @@ template <>
 struct MatrixLayout<true> {
   using Type = cutlass::layout::ColumnMajor;
 };
+#endif
 
 }  // namespace ap
