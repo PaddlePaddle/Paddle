@@ -108,9 +108,8 @@ struct BinaryNotEqual {
 
 // The core logic of computing Unique for a flattened DenseTensor
 template <typename Context, typename InT, typename IndexT>
-static typename std::enable_if<
-    !std::is_same<InT, phi::dtype::float16>::value &&
-    !std::is_same<InT, phi::dtype::bfloat16>::value>::type
+static typename std::enable_if<!std::is_same<InT, phi::float16>::value &&
+                               !std::is_same<InT, phi::bfloat16>::value>::type
 UniqueFlattenedCUDATensor(const Context& dev_ctx,
                           const DenseTensor& in,
                           DenseTensor* out,
@@ -244,9 +243,8 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 
 // The core logic of computing Unique for a flattened DenseTensor
 template <typename Context, typename InT, typename IndexT>
-static typename std::enable_if<
-    std::is_same<InT, phi::dtype::float16>::value ||
-    std::is_same<InT, phi::dtype::bfloat16>::value>::type
+static typename std::enable_if<std::is_same<InT, phi::float16>::value ||
+                               std::is_same<InT, phi::bfloat16>::value>::type
 UniqueFlattenedCUDATensor(const Context& dev_ctx,
                           const DenseTensor& in,
                           DenseTensor* out,
@@ -712,8 +710,8 @@ PD_REGISTER_KERNEL(unique,
                    phi::UniqueKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t,
                    int) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
@@ -727,8 +725,8 @@ PD_REGISTER_KERNEL(unique_raw,
                    phi::UniqueRawKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t,
                    int) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);

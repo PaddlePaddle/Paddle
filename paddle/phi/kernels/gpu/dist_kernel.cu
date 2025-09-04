@@ -212,5 +212,5 @@ PD_REGISTER_KERNEL(dist,
                    phi::DistKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

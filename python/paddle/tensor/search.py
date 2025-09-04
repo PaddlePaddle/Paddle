@@ -21,6 +21,7 @@ from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
@@ -30,10 +31,9 @@ from paddle.utils.decorator_utils import (
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..base.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.data_feeder import check_variable_and_dtype
 from ..framework import (
     LayerHelper,
-    convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
@@ -43,7 +43,6 @@ from .creation import assign
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
@@ -186,210 +185,6 @@ def argsort(
             attrs={'axis': axis, 'descending': descending, 'stable': stable},
         )
         return ids
-
-
-@param_two_alias(["x", "input"], ["axis", "dim"])
-def argmax(
-    x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the indices of the max elements of the input tensor's
-    element along the provided axis.
-
-    Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
-            int32, int64, uint8.
-        axis (int|None, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
-        dtype (str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is ``int64`` , and it will
-                    return the int64 indices.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[5,8,9,5],
-            ...                       [0,0,1,7],
-            ...                       [6,9,2,4]])
-            >>> out1 = paddle.argmax(x)
-            >>> print(out1.numpy())
-            2
-            >>> out2 = paddle.argmax(x, axis=0)
-            >>> print(out2.numpy())
-            [2 2 0 1]
-            >>> out3 = paddle.argmax(x, axis=-1)
-            >>> print(out3.numpy())
-            [2 3 1]
-            >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
-            >>> print(out4.numpy())
-            [[2 2 0 1]]
-    """
-    if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.Value)
-    ):
-        raise TypeError(
-            f"The type of 'axis'  must be int or Tensor or None in argmax, but received {type(axis)}."
-        )
-
-    if dtype is None:
-        raise ValueError(
-            "the value of 'dtype' in argmax could not be None, but received None"
-        )
-
-    var_dtype = convert_np_dtype_to_dtype_(dtype)
-    flatten = False
-    if axis is None:
-        flatten = True
-        axis = 0
-
-    if in_dynamic_mode():
-        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
-    elif in_pir_mode():
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
-        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
-    else:
-        helper = LayerHelper("argmax", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
-            'paddle.argmax',
-        )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
-        attrs = {}
-        out = helper.create_variable_for_type_inference(var_dtype)
-        attrs['keepdims'] = keepdim
-        attrs['axis'] = axis
-        attrs['flatten'] = flatten
-        attrs['dtype'] = var_dtype
-        helper.append_op(
-            type='arg_max', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
-        )
-        out.stop_gradient = True
-        return out
-
-
-@param_two_alias(["x", "input"], ["axis", "dim"])
-def argmin(
-    x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the indices of the min elements of the input tensor's
-    element along the provided axis.
-
-    Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
-            int32, int64, uint8.
-        axis (int|None, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
-        dtype (str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is 'int64', and it will
-                    return the int64 indices.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x =  paddle.to_tensor([[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]])
-            >>> out1 = paddle.argmin(x)
-            >>> print(out1.numpy())
-            4
-            >>> out2 = paddle.argmin(x, axis=0)
-            >>> print(out2.numpy())
-            [1 1 1 2]
-            >>> out3 = paddle.argmin(x, axis=-1)
-            >>> print(out3.numpy())
-            [0 0 2]
-            >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
-            >>> print(out4.numpy())
-            [[1 1 1 2]]
-    """
-    if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.Value)
-    ):
-        raise TypeError(
-            f"The type of 'axis'  must be int or Tensor or None in argmin, but received {type(axis)}."
-        )
-
-    if dtype is None:
-        raise ValueError(
-            "the value of 'dtype' in argmin could not be None, but received None"
-        )
-
-    var_dtype = convert_np_dtype_to_dtype_(dtype)
-    flatten = False
-    if axis is None:
-        flatten = True
-        axis = 0
-
-    if in_dynamic_mode():
-        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
-    elif in_pir_mode():
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
-        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
-    else:
-        helper = LayerHelper("argmin", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
-            'paddle.argmin',
-        )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
-        out = helper.create_variable_for_type_inference(var_dtype)
-        attrs = {}
-        attrs['keepdims'] = keepdim
-        attrs['axis'] = axis
-        attrs['flatten'] = flatten
-        attrs['dtype'] = var_dtype
-        helper.append_op(
-            type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
-        )
-        out.stop_gradient = True
-        return out
 
 
 @index_select_decorator()

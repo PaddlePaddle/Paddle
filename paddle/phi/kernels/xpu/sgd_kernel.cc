@@ -142,10 +142,10 @@ void SGDDenseParamSparseGradKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sgd, XPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::dtype::float16, float) {}
+    sgd, XPU, ALL_LAYOUT, phi::SGDDenseKernel, phi::float16, float) {}
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::SGDDenseParamSparseGradKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float) {}

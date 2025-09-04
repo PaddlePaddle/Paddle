@@ -178,10 +178,5 @@ void NAdamKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(nadam,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::NAdamKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    nadam, GPU, ALL_LAYOUT, phi::NAdamKernel, float, double, phi::float16) {}

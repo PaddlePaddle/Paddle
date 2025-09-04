@@ -104,14 +104,13 @@ scale_fp32x4_to_fp8x4(const float4 &vec, const float scale) {
 }
 
 template <bool using_pow2_scaling, bool with_prob, int thread_per_block>
-__global__ void FusedSPAQKernelVec4(
-    const phi::dtype::bfloat16 *__restrict__ Xin,
-    const float *__restrict__ prob,
-    phi::dtype::float8_e4m3fn *__restrict__ out,
-    float *__restrict__ scales,
-    const int64_t rows,
-    const int64_t cols,
-    const int64_t scale_cols) {
+__global__ void FusedSPAQKernelVec4(const phi::bfloat16 *__restrict__ Xin,
+                                    const float *__restrict__ prob,
+                                    phi::dtype::float8_e4m3fn *__restrict__ out,
+                                    float *__restrict__ scales,
+                                    const int64_t rows,
+                                    const int64_t cols,
+                                    const int64_t scale_cols) {
   constexpr int elements_per_thread = 4;
   constexpr int warp_size = 32;
   constexpr int warp_num = thread_per_block / warp_size;
@@ -195,7 +194,7 @@ __global__ void FusedSPAQKernelVec4(
 }
 
 template <bool using_pow2_scaling, bool with_prob>
-__global__ void FusedSPAQKernel(const phi::dtype::bfloat16 *__restrict__ Xin,
+__global__ void FusedSPAQKernel(const phi::bfloat16 *__restrict__ Xin,
                                 const float *__restrict__ prob,
                                 phi::dtype::float8_e4m3fn *__restrict__ out,
                                 float *__restrict__ scales,
@@ -295,7 +294,7 @@ __global__ void FusedSPAQKernel(const phi::dtype::bfloat16 *__restrict__ Xin,
   }
 }
 
-void dispatch_fused_spaq(const phi::dtype::bfloat16 *x_data,
+void dispatch_fused_spaq(const phi::bfloat16 *x_data,
                          const float *prob_data,
                          phi::dtype::float8_e4m3fn *out_data,
                          float *scale_data,
@@ -391,7 +390,7 @@ void FusedWeightedSwigluActQuantKernel(
   dev_ctx.template Alloc<float>(scale);
 
   // Get data pointers
-  const auto *x_data = x.data<phi::dtype::bfloat16>();
+  const auto *x_data = x.data<phi::bfloat16>();
   const float *prob_data = prob ? prob.get().data<float>() : nullptr;
   auto *out_data = out->data<phi::dtype::float8_e4m3fn>();
   auto *scale_data = scale->data<float>();
@@ -418,7 +417,7 @@ PD_REGISTER_KERNEL(fused_weighted_swiglu_act_quant,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

@@ -73,5 +73,5 @@ PD_REGISTER_KERNEL(weight_quantize,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

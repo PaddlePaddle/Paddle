@@ -63,4 +63,4 @@ PD_REGISTER_KERNEL(group_norm_silu_xpu,
                    ALL_LAYOUT,
                    phi::fusion::GroupNormalizeSiluXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -162,7 +162,7 @@ PD_REGISTER_KERNEL(fused_conv2d,
                    ONEDNN,
                    phi::fusion::FusedConv2DKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::fusion::ConvGetKernelTypeForVar;

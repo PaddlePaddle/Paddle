@@ -31,9 +31,9 @@ jobs:
   build-and-test:
     name: Build and test
     needs: check-bypass
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && false }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
-      group: win-inference
+      group: win-infer
     env:
       NIGHTLY_MODE: "OFF"
       WITH_UNITY_BUILD: "ON"
@@ -45,7 +45,7 @@ jobs:
       PRECISION_TEST: "OFF"
       PYTHON_ROOT: C:\Python310
       vcvars64_dir: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat'
-      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.2'
+      CUDA_TOOLKIT_ROOT_DIR: 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7'
       TENSORRT_ROOT: D:/TensorRT-8.0.1.6
       CTEST_PARALLEL_LEVEL: 1
       GENERATOR: "Ninja"
