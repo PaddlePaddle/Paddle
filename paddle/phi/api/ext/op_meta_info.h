@@ -177,8 +177,8 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<std::pair<size_t, size_t>> input_range_;
   std::vector<std::pair<size_t, size_t>> output_range_;
 
-  const std::vector<std::string>* inputs_names_;
-  const std::vector<std::string>* outputs_names_;
+  std::vector<std::string>* inputs_names_;
+  std::vector<std::string>* outputs_names_;
 };
 
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////

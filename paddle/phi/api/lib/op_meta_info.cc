@@ -388,10 +388,11 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
       }
     }
     const std::string output_str_wo_inplace =
-        join_strings<std::vector<std::string>>(outputs_names_wo_inplace, ", ");
+        paddle::string::join_strings<std::vector<std::string>>(
+            outputs_names_wo_inplace, ", ");
     const std::string output_str_with_inplace =
-        join_strings<std::vector<std::string>>(outputs_names_with_inplace,
-                                               ", ");
+        paddle::string::join_strings<std::vector<std::string>>(
+            outputs_names_with_inplace, ", ");
     const int num_inplace_outputs = ctx->GetInplaceIndexMap().size();
     const int num_outputs = ctx->outputs_names_->size();
 
