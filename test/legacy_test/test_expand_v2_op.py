@@ -432,7 +432,7 @@ class TestExpandV2Error(unittest.TestCase):
             shape_empty = paddle.static.data(
                 name='shape_empty', shape=[0], dtype="int32"
             )
-            self.assertRaises(ValueError, paddle.tensor.expand, x3, shape_empty)
+            self.assertRaises(TypeError, paddle.tensor.expand, x3, shape_empty)
 
 
 # Test python API
