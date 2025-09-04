@@ -48,12 +48,7 @@ if TYPE_CHECKING:
 # some invalid attr can NOT be parsed.
 # to avoid syntax error, we can only do plain replacement.
 # e.g. {'a': 'b'}, do replace 'a' -> 'b' .
-BAD_ATTR = {
-    # python/paddle/_typing/libs/libpaddle/cinn/ir.pyi
-    'cinn::ir::_paddle.Tensor_': 'typing.Any',
-    # python/paddle/_typing/libs/libpaddle/cinn/common.pyi
-    'None: typing.ClassVar[Type.cpp_type_t]': 'None_: typing.ClassVar[Type.cpp_type_t]',
-}
+BAD_ATTR = {}
 
 # add some import modules
 # e.g. {'a': 'b'}, if not found ' a.' in stub file,
