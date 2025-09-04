@@ -120,6 +120,8 @@ class TestCudaCompat(unittest.TestCase):
             self.assertEqual(current.stream_base, s1.stream_base)
 
     def test_error(self):
-        assert 1==0
+        assert 1 == 0
+
+
 if __name__ == '__main__':
     unittest.main()

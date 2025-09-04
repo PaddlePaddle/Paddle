@@ -922,12 +922,10 @@ except ImportError:
             raise RuntimeError(
                 "The current device does not support using paddle.Stream."
             )
-
     Stream = _DummyStream
 
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
-
 
 
 # Constants
