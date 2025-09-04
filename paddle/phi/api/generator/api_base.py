@@ -256,39 +256,18 @@ class BaseAPI:
             and append_predefined_out
             and self.api != "empty_like"
         ):
-            if (
-                len(self.outputs['names']) == 1
-                and self.outputs['types'][0] == "Tensor"
-            ):
+            types = self.outputs['types']
+            length = len(self.outputs['names'])
+
+            if all(t == "Tensor" for t in types) and 1 <= length <= 4:
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
                 declare_args.append(
-                    "paddle::optional<Tensor*> predefined_out = paddle::none"
-                )
-            elif (
-                len(self.outputs['names']) == 2
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-            ):
-                declare_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
-                )
-            elif (
-                len(self.outputs['names']) == 3
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-                and self.outputs['types'][2] == "Tensor"
-            ):
-                declare_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
-                )
-            elif (
-                len(self.outputs['names']) == 4
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-                and self.outputs['types'][2] == "Tensor"
-                and self.outputs['types'][3] == "Tensor"
-            ):
-                declare_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out = paddle::none"
+                    f"paddle::optional<{type_str}> predefined_out = paddle::none"
                 )
             else:
                 declare_args.append(
@@ -310,37 +289,18 @@ class BaseAPI:
             and append_predefined_out
             and self.api != "empty_like"
         ):
-            if (
-                len(self.outputs['names']) == 1
-                and self.outputs['types'][0] == "Tensor"
-            ):
-                define_args.append("paddle::optional<Tensor*> predefined_out")
-            elif (
-                len(self.outputs['names']) == 2
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-            ):
+            types = self.outputs['types']
+            length = len(self.outputs['names'])
+
+            if all(t == "Tensor" for t in types) and 1 <= length <= 4:
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
                 define_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*>> predefined_out"
-                )
-            elif (
-                len(self.outputs['names']) == 3
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-                and self.outputs['types'][2] == "Tensor"
-            ):
-                define_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
-                )
-            elif (
-                len(self.outputs['names']) == 4
-                and self.outputs['types'][0] == "Tensor"
-                and self.outputs['types'][1] == "Tensor"
-                and self.outputs['types'][2] == "Tensor"
-                and self.outputs['types'][3] == "Tensor"
-            ):
-                define_args.append(
-                    "paddle::optional<std::tuple<paddle::Tensor*, paddle::Tensor*, paddle::Tensor*, paddle::Tensor*>> predefined_out"
+                    f"paddle::optional<{type_str}> predefined_out"
                 )
             else:
                 define_args.append("paddle::optional<void*> predefined_out")

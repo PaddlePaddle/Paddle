@@ -704,35 +704,20 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             dygraph_function_call_str = (
                 dygraph_function_call_str + ", predefined_out"
             )
+
             forward_outputs_position_list = list(
                 self.forward_outputs_position_map.values()
             )
-            if (
-                len(forward_outputs_position_list) == 1
-                and forward_outputs_position_list[0][0] == "Tensor"
-            ):
-                get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
-            elif (
-                len(forward_outputs_position_list) == 2
-                and forward_outputs_position_list[0][0] == "Tensor"
-                and forward_outputs_position_list[1][0] == "Tensor"
-            ):
-                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_2(kwargs);"
-            elif (
-                len(forward_outputs_position_list) == 3
-                and forward_outputs_position_list[0][0] == "Tensor"
-                and forward_outputs_position_list[1][0] == "Tensor"
-                and forward_outputs_position_list[2][0] == "Tensor"
-            ):
-                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_3(kwargs);"
-            elif (
-                len(forward_outputs_position_list) == 4
-                and forward_outputs_position_list[0][0] == "Tensor"
-                and forward_outputs_position_list[1][0] == "Tensor"
-                and forward_outputs_position_list[2][0] == "Tensor"
-                and forward_outputs_position_list[3][0] == "Tensor"
-            ):
-                get_predefined_out_str = "    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_4(kwargs);"
+            all_tensor = all(
+                pos[0] == "Tensor" for pos in forward_outputs_position_list
+            )
+            length = len(forward_outputs_position_list)
+
+            if all_tensor and 1 <= length <= 4:
+                if length == 1:
+                    get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+                else:
+                    get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
             else:
                 get_predefined_out_str = (
                     "    auto predefined_out = paddle::none;"

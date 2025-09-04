@@ -3431,64 +3431,54 @@ paddle::optional<Tensor*> GetInputOutTensorFromKwargs(PyObject* kwargs) {
   return paddle::none;
 }
 
+template <size_t N>
+struct TensorTupleType;
+
+template <>
+struct TensorTupleType<2> {
+  using type = std::tuple<Tensor*, Tensor*>;
+};
+
+template <>
+struct TensorTupleType<3> {
+  using type = std::tuple<Tensor*, Tensor*, Tensor*>;
+};
+
+template <>
+struct TensorTupleType<4> {
+  using type = std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>;
+};
+
+template <size_t... Is>
+paddle::optional<typename TensorTupleType<sizeof...(Is)>::type>
+GetPredefinedOutTupleTensorFromKwargs_Impl(PyObject* kwargs,
+                                           std::index_sequence<Is...>) {
+  if (!kwargs) return paddle::none;
+
+  PyObject* obj = PyDict_GetItemString(kwargs, "out");
+  if (!obj || !PyTuple_Check(obj)) return paddle::none;
+  if (PyTuple_Size(obj) != sizeof...(Is)) return paddle::none;
+
+  return std::make_tuple(
+      &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, Is))->tensor)...);
+}
+
 paddle::optional<std::tuple<Tensor*, Tensor*>>
 GetPredefinedOutTupleTensorFromKwargs_2(PyObject* kwargs) {
-  if (!kwargs) {
-    return paddle::none;
-  }
-  PyObject* obj = PyDict_GetItemString(kwargs, "out");
-  if (obj && PyTuple_Check(obj)) {
-    if (PyTuple_Size(obj) != 2) {
-      return paddle::none;
-    }
-    PyObject* py_t0 = PyTuple_GetItem(obj, 0);
-    PyObject* py_t1 = PyTuple_GetItem(obj, 1);
-    return std::make_tuple(&(reinterpret_cast<TensorObject*>(py_t0)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t1)->tensor));
-  }
-  return paddle::none;
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1>(
+      kwargs, std::make_index_sequence<2>{});
 }
 
 paddle::optional<std::tuple<Tensor*, Tensor*, Tensor*>>
 GetPredefinedOutTupleTensorFromKwargs_3(PyObject* kwargs) {
-  if (!kwargs) {
-    return paddle::none;
-  }
-  PyObject* obj = PyDict_GetItemString(kwargs, "out");
-  if (obj && PyTuple_Check(obj)) {
-    if (PyTuple_Size(obj) != 3) {
-      return paddle::none;
-    }
-    PyObject* py_t0 = PyTuple_GetItem(obj, 0);
-    PyObject* py_t1 = PyTuple_GetItem(obj, 1);
-    PyObject* py_t2 = PyTuple_GetItem(obj, 2);
-    return std::make_tuple(&(reinterpret_cast<TensorObject*>(py_t0)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t1)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t2)->tensor));
-  }
-  return paddle::none;
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2>(
+      kwargs, std::make_index_sequence<3>{});
 }
 
 paddle::optional<std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>>
 GetPredefinedOutTupleTensorFromKwargs_4(PyObject* kwargs) {
-  if (!kwargs) {
-    return paddle::none;
-  }
-  PyObject* obj = PyDict_GetItemString(kwargs, "out");
-  if (obj && PyTuple_Check(obj)) {
-    if (PyTuple_Size(obj) != 4) {
-      return paddle::none;
-    }
-    PyObject* py_t0 = PyTuple_GetItem(obj, 0);
-    PyObject* py_t1 = PyTuple_GetItem(obj, 1);
-    PyObject* py_t2 = PyTuple_GetItem(obj, 2);
-    PyObject* py_t3 = PyTuple_GetItem(obj, 3);
-    return std::make_tuple(&(reinterpret_cast<TensorObject*>(py_t0)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t1)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t2)->tensor),
-                           &(reinterpret_cast<TensorObject*>(py_t3)->tensor));
-  }
-  return paddle::none;
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2, 3>(
+      kwargs, std::make_index_sequence<4>{});
 }
 
 void Check_PIR_not_support_out(PyObject* kwargs) {
