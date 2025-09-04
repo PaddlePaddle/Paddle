@@ -30,6 +30,9 @@ from paddle.cuda import (
 )
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+)
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test
@@ -118,9 +121,6 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertEqual(current.stream_base, s2.stream_base)
             current = paddle.cuda.current_stream()
             self.assertEqual(current.stream_base, s1.stream_base)
-
-    def test_error(self):
-        assert 1 == 0
 
 
 if __name__ == '__main__':
