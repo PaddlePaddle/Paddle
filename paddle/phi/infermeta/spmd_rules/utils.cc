@@ -338,10 +338,10 @@ ShardingMergeForTensorsMatmul(
   for (auto& kv : contracting_dims_mapping) {
     batch_dim_map.emplace(kv.first, std::move(kv.second));
   }
-  if (!final_non_contracting_lhs_dims.empty() && has_lhs) {
+  if (has_lhs) {
     batch_dim_map[lhs_axis_str] = std::move(final_non_contracting_lhs_dims);
   }
-  if (!final_non_contracting_rhs_dims.empty() && has_rhs) {
+  if (has_rhs) {
     batch_dim_map[rhs_axis_str] = std::move(final_non_contracting_rhs_dims);
   }
   return batch_dim_map;

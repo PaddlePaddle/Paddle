@@ -203,8 +203,7 @@ TEST(MatmulSPMDRule, Ctor) {
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
-  //   EXPECT_ANY_THROW(inferred_dist_attrs =
-  //   matmul_spmd_rule.InferForward(ctx));
+  inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx);
   check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, -1, 0});
   check_dim_mapping(inferred_dist_attrs.first[1],
                     {1, -1});  // conflict and should be changed to [1, -1]

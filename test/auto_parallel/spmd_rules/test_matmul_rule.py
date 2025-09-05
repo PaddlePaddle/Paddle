@@ -35,7 +35,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         # forward setup
         x_shape = [64, 32]
         y_shape = [32, 48]
-        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
+        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         x_tensor_dist_attr = TensorDistAttr()
         x_tensor_dist_attr.dims_mapping = [1, 0]
@@ -248,20 +248,31 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.y_dist_tensor_spec.set_dims_mapping([-1, 0])
         self.attrs['trans_x'] = True
         self.attrs['trans_y'] = True
-        with self.assertRaises(NotImplementedError):
-            result_dist_attrs = self.rule.infer_forward(
-                self.x_dist_tensor_spec,
-                self.y_dist_tensor_spec,
-                self.attrs['trans_x'],
-                self.attrs['trans_y'],
-            )
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec,
+            self.y_dist_tensor_spec,
+            self.attrs['trans_x'],
+            self.attrs['trans_y'],
+        )
+        inferred_input_dist_attrs = result_dist_attrs[0]
+        inferred_output_dist_attrs = result_dist_attrs[1]
+        self.assertEqual(
+            inferred_input_dist_attrs[0].multi_dims_mapping,
+            [[], [], [1, 0], []],
+        )
+        self.assertEqual(
+            inferred_input_dist_attrs[1].multi_dims_mapping, [[], [1, 0]]
+        )
+        self.assertEqual(
+            inferred_output_dist_attrs[0].multi_dims_mapping, [[], [], [], []]
+        )
 
     def test_matmul_infer_backward(self):
         # backward setup
         x_shape = [64, 32]
         y_shape = [32, 48]
         out_shape = [64, 48]
-        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
+        process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
         x_tensor_dist_attr = TensorDistAttr()
         x_tensor_dist_attr.dims_mapping = [-1, -1]
