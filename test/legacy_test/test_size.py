@@ -26,7 +26,7 @@ class TestPaddleSize(unittest.TestCase):
         self.assertIsInstance(size, paddle.Size)
 
         int_size = x.size(dim=1)
-        self.assertEqual(int_size, 3)
+        self.assertEqual(int_size, 4)
         self.assertIsInstance(int_size, int)
 
     def test_creation_size(self):
