@@ -145,6 +145,8 @@ std::unordered_map<std::string, int64_t> GetAxesSizes(
           axis_to_size_map[axis] = pair.second[i];
         } else if (axis_to_size_map[axis] == 1) {
           axis_to_size_map[axis] = pair.second[i];
+        } else if (pair.second[i] == 1) {
+          continue;
         } else {
           PADDLE_ENFORCE_EQ(
               pair.second[i],
@@ -404,7 +406,8 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     if (competing_axes.size() > 1) {
       if (!merge_conflicts) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension "
+            "[%d].",
             competing_axes,
             mesh_dim));
       }
