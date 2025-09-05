@@ -51,7 +51,6 @@ function gen_full_report_cinn(){
         "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
         "${PADDLE_ROOT}/paddle/cinn/optim/*" \
         "${PADDLE_ROOT}/paddle/cinn/pass/*" \
-        "${PADDLE_ROOT}/paddle/cinn/pybind/*" \
         "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
         "${PADDLE_ROOT}/paddle/cinn/utils/*" \
         -o coverage-full.tmp \

@@ -250,10 +250,10 @@ void IndexPutKernel_V2(const Context& dev_ctx,
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(index_put,
                    GPU,
@@ -267,9 +267,9 @@ PD_REGISTER_KERNEL(index_put,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #endif

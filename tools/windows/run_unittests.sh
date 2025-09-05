@@ -105,7 +105,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_dygraph_mnist_fp16$|\
 ^test_sparse_conv_op$|\
 ^test_sparse_conv_op_static_build$|\
-^test_conv2d_transpose_mkldnn_op$|\
+^test_conv2d_transpose_onednn_op$|\
 ^test_ptq$|\
 ^test_stub$|\
 ^test_lu_unpack_op$|\
@@ -172,7 +172,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_decorator$|\
 ^test_flash_attention$|\
 ^test_flash_attention_deterministic$|\
-^test_conv3d_mkldnn_op$|\
+^test_conv3d_onednn_op$|\
 ^test_functional_conv2d$|\
 ^test_functional_conv2d_transpose$|\
 ^test_functional_conv3d$|\
@@ -513,7 +513,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_asp_optimize_dynamic_deprecated$|\
 ^test_amp_decorate$|\
 ^test_amp_promote$|\
-^test_conv2d_transpose_mkldnn_op$|\
+^test_conv2d_transpose_onednn_op$|\
 ^test_conv2d_transpose_op_depthwise_conv$|\
 ^test_dygraph_mnist_fp16$|\
 ^test_stub$|\

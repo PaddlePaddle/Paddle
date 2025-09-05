@@ -133,7 +133,7 @@ void SliceKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void SliceKernel<phi::dtype::complex<float>, XPUContext>(
+void SliceKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
     const DenseTensor& input,
     const std::vector<int64_t>& axes,
@@ -142,7 +142,7 @@ void SliceKernel<phi::dtype::complex<float>, XPUContext>(
     const std::vector<int64_t>& infer_flags,
     const std::vector<int64_t>& decrease_axis,
     DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+  using T = phi::complex64;
   if (out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -271,7 +271,7 @@ PD_REGISTER_KERNEL(slice,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    double,
                    uint8_t,

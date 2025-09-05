@@ -1939,9 +1939,9 @@ DispatchMatmulFP8Kernel(const Context& dev_ctx,
   phi::DenseTensor workspace;
   workspace.Resize({30 * 1024 * 1024});
   dev_ctx.template Alloc<int8_t>(&workspace);
-  dev_ctx.template Alloc<phi::dtype::float16>(out);
+  dev_ctx.template Alloc<phi::float16>(out);
 
-  CublasLtMatmulFP8<phi::dtype::float16>(dev_ctx, x, y, &workspace, out);
+  CublasLtMatmulFP8<phi::float16>(dev_ctx, x, y, &workspace, out);
 }
 
 template <typename Context>

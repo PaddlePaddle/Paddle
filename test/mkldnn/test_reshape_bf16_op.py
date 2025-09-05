@@ -36,7 +36,7 @@ class TestReshapeBf16Op(OpTest):
         self.attrs = {
             'shape': self.new_shape,
             'use_onednn': self.use_onednn,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.inferred_shape),

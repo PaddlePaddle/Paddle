@@ -396,4 +396,4 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_and_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::MoeDispatchAndQuantKernel,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
