@@ -222,7 +222,6 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
-from .cuda import Stream as Stream
 from .device import (  # noqa: F401
     device_guard,
     get_cudnn_version,
@@ -918,6 +917,7 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
+from .cuda import Stream as Stream
 
 # Constants
 newaxis: None = None
