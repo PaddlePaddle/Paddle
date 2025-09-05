@@ -513,13 +513,13 @@ PD_REGISTER_KERNEL(qkv_unpack_mha,
                    ALL_LAYOUT,
                    phi::fusion::QKVMMHAKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(qkv_unpack_mha,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::QKVMMHAKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

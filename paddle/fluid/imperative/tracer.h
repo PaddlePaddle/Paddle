@@ -90,38 +90,41 @@ class Tracer {
       paddle::framework::AttributeMap* passed_default_attrs_ = nullptr,
       bool use_default_attr_map = true);
 
-  void TraceOp(const std::string& type,
-               const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs,
-               framework::AttributeMap attrs,
-               const std::map<std::string, std::string>& inplace_map = {});
+  PADDLE_API void TraceOp(
+      const std::string& type,
+      const NameVarBaseMap& ins,
+      const NameVarBaseMap& outs,
+      framework::AttributeMap attrs,
+      const std::map<std::string, std::string>& inplace_map = {});
 
-  void TraceOp(const std::string& type,
-               const NameTensorMap& ins,
-               const NameTensorMap& outs,
-               paddle::framework::AttributeMap& attrs,  // NOLINT
-               const std::map<std::string, std::string>& inplace_map = {});
+  PADDLE_API void TraceOp(
+      const std::string& type,
+      const NameTensorMap& ins,
+      const NameTensorMap& outs,
+      paddle::framework::AttributeMap& attrs,  // NOLINT
+      const std::map<std::string, std::string>& inplace_map = {});
 
-  void TraceOp(const std::string& type,
-               const NameTensorMap& ins,
-               const NameTensorMap& outs,
-               paddle::framework::AttributeMap attrs);
+  PADDLE_API void TraceOp(const std::string& type,
+                          const NameTensorMap& ins,
+                          const NameTensorMap& outs,
+                          paddle::framework::AttributeMap attrs);
 
-  void TraceOp(const std::string& type,
-               const NameTensorMap& ins,
-               const NameTensorMap& outs,
-               paddle::framework::AttributeMap& attrs,  // NOLINT
-               const phi::Place& place,
-               paddle::framework::AttributeMap* default_attrs,
-               bool use_default_attr_map,
-               const std::map<std::string, std::string>& inplace_map = {});
+  PADDLE_API void TraceOp(
+      const std::string& type,
+      const NameTensorMap& ins,
+      const NameTensorMap& outs,
+      paddle::framework::AttributeMap& attrs,  // NOLINT
+      const phi::Place& place,
+      paddle::framework::AttributeMap* default_attrs,
+      bool use_default_attr_map,
+      const std::map<std::string, std::string>& inplace_map = {});
 
-  bool ComputeRequiredGrad(const NameVarBaseMap& ins,
-                           const NameVarBaseMap& outs,
-                           bool trace_backward);
-  bool ComputeRequiredGrad(const NameTensorMap& ins,
-                           const NameTensorMap& outs,
-                           bool trace_backward);
+  PADDLE_API bool ComputeRequiredGrad(const NameVarBaseMap& ins,
+                                      const NameVarBaseMap& outs,
+                                      bool trace_backward);
+  PADDLE_API bool ComputeRequiredGrad(const NameTensorMap& ins,
+                                      const NameTensorMap& outs,
+                                      bool trace_backward);
 
   // Note(Aurelius84): The `tmp` is used as prefix key while naming a temporary
   // intermediate var both in imperative and static graph mode. But the
@@ -152,11 +155,11 @@ class Tracer {
 
   TEST_API AmpLevel GetAmpLevel() const;
 
-  void SetAmpDtype(std::string amp_dtype);
+  PADDLE_API void SetAmpDtype(std::string amp_dtype);
 
-  std::string GetAmpDtype() const;
+  PADDLE_API std::string GetAmpDtype() const;
 
-  phi::DataType GetAmpPhiDtype() const;
+  PADDLE_API phi::DataType GetAmpPhiDtype() const;
 
   TEST_API void DisableLayoutAutoTune();
 
@@ -165,14 +168,14 @@ class Tracer {
   TEST_API bool UseLayoutAutoTune();
   TEST_API void SetPythonStack(std::string stack_str);
   TEST_API std::string GetPythonStack();
-  phi::KernelSignature GetExpectedKernelSignature(
+  PADDLE_API phi::KernelSignature GetExpectedKernelSignature(
       const std::string& type,
       const NameTensorMap& ins,
       const NameTensorMap& outs,
       framework::AttributeMap attrs) const;
 
-  paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
-      const phi::Place& place);
+  PADDLE_API paddle::framework::GarbageCollector*
+  MutableGarbageCollectorIfNotExists(const phi::Place& place);
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
@@ -185,13 +188,14 @@ class Tracer {
 };
 
 // To access static variable current_tracer
-const std::shared_ptr<Tracer>& GetCurrentTracer();
+PADDLE_API const std::shared_ptr<Tracer>& GetCurrentTracer();
 TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
-const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs();
-void IncreaseVarbaseReferenceCountUntilCopyComplete(
+PADDLE_API const std::shared_ptr<AmpAttrs>& GetCurrentAmpAttrs();
+PADDLE_API void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var, const phi::Place& place);
 
-void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad);
+PADDLE_API void PassStopGradient(const NameVarBaseMap& outs,
+                                 bool generate_grad);
 
 }  // namespace imperative
 }  // namespace paddle

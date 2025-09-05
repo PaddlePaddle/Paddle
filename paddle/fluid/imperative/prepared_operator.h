@@ -42,7 +42,13 @@ COMMON_DECLARE_bool(use_onednn);
 namespace paddle {
 namespace imperative {
 
-const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
+#ifdef _WIN32
+PADDLE_API void TestHandleComplexGradToRealGradEager(
+    const NameVarMap<egr::EagerVariable>& outs);
+#endif
+
+PADDLE_API const phi::DenseTensor* GetTensorFromVar(
+    const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -151,7 +157,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
   return tmp_ins_ptr;
 }
 
-class PreparedOp {
+class PADDLE_API PreparedOp {
  public:
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,

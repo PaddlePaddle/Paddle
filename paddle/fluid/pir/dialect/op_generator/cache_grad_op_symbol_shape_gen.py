@@ -205,7 +205,9 @@ class CacheGradOpSymbolShapeCodeGen:
                     assert (
                         mutable_attribute_name
                         in op_info_item.mutable_attribute_name_list
-                    ), f"{mutable_attribute_name} is not found in {op_info_item.backward_name}'s mutable_attribute name list."
+                    ), (
+                        f"{mutable_attribute_name} is not found in {op_info_item.backward_name}'s mutable_attribute name list."
+                    )
                     index = len(
                         op_info_item.input_name_list
                     ) + op_info_item.mutable_attribute_name_list.index(

@@ -34,9 +34,6 @@ void SumKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 PD_REGISTER_KERNEL(sum,
                    CPU,
                    ALL_LAYOUT,
@@ -51,8 +48,8 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    uint8_t,
                    int8_t,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -71,8 +68,8 @@ PD_REGISTER_KERNEL(sum,
                    int64_t,
                    uint8_t,
                    int8_t,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

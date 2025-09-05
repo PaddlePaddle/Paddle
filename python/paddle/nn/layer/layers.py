@@ -51,6 +51,10 @@ from paddle.base.framework import (
     paddle_type_to_proto_type,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
+    ShardedStateDict,
+    build_sharded_state_dict,
+)
 from paddle.framework import ParamAttr
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
@@ -785,6 +789,7 @@ class Layer:
         dtype: DTypeLike | None = None,
         is_bias: bool = False,
         default_initializer: Initializer | None = None,
+        device: PlaceLike | None = None,
     ) -> Tensor:
         """Create parameters for this layer.
 
@@ -798,6 +803,7 @@ class Layer:
             default_initializer(Initializer, optional): the default initializer for this parameter.
                 If set None, default initializer will be set to paddle.nn.initializer.Xavier and paddle.nn.initializer.Constant
                 for non-bias and bias parameter, respectively. Default: None.
+            device(PlaceLike, optional): the device place for the parameter. Default: None.
 
         Returns:
             :Tensor, created parameter.
@@ -835,7 +841,7 @@ class Layer:
         if isinstance(temp_attr, str) and temp_attr == "":
             temp_attr = None
         return self._helper.create_parameter(
-            temp_attr, shape, dtype, is_bias, default_initializer
+            temp_attr, shape, dtype, is_bias, default_initializer, device=device
         )
 
     @deprecated(
@@ -1516,7 +1522,6 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
-
         for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
             if hook_id in self._forward_pre_hooks_with_kwargs_flag:
                 args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
@@ -1698,9 +1703,9 @@ class Layer:
                 self._parameters[name] = None
 
             if len(self._loaddict_holder) > 0:
-                assert (
-                    parameter.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                assert parameter.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {parameter.name} ] in state_dict"
+                )
 
                 parameter.set_value(self._loaddict_holder[parameter.name])
 
@@ -1811,9 +1816,9 @@ class Layer:
             if params is None:
                 raise ValueError("super().__init__() should be called first")
             if len(self._loaddict_holder) > 0:
-                assert (
-                    value.name in self._loaddict_holder
-                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                assert value.name in self._loaddict_holder, (
+                    f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
+                )
 
                 value.set_value(self._loaddict_holder[value.name])
 
@@ -2156,6 +2161,44 @@ class Layer:
             use_hook=use_hook,
             keep_vars=keep_vars,
         )
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ) -> ShardedStateDict:
+        """Recursively builds a sharded state dictionary for the model and its sub-layers.
+
+        Args:
+            structured_name_prefix: Prefix to prepend to all tensor names for hierarchical naming.
+
+        Returns:
+            Dictionary mapping tensor names to ShardedWeight.
+            The dictionary contains both the current layer's parameters and all sub-layer parameters.
+        """
+        sharded_state_dict = {}
+        # Get current layer's state dict (without sub-layers)
+        state_dict = self.state_dict(
+            structured_name_prefix="",  # We handle prefixing ourselves
+            include_sublayers=False,
+        )
+
+        # Convert to sharded state dict
+        current_sharded_dict = build_sharded_state_dict(
+            state_dict=state_dict,
+            shard_rules=None,  # No tensor parallelism rules by default
+            prefix=structured_name_prefix,
+        )
+        sharded_state_dict.update(current_sharded_dict)
+
+        # Recursively process sub-layers
+        for layer_name, layer_item in self._sub_layers.items():
+            if layer_item is not None:
+                sub_sharded = layer_item.sharded_state_dict(
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                )
+                sharded_state_dict.update(sub_sharded)
+
+        return sharded_state_dict
 
     @framework.deprecate_stat_dict
     def set_state_dict(
@@ -2514,9 +2557,9 @@ class Layer:
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if floating_only and (not paddle.is_floating_point(t)):

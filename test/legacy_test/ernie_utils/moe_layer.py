@@ -19,6 +19,7 @@
 Returns:
     _type_: _description_
 """
+
 from __future__ import annotations
 
 import logging
@@ -232,8 +233,8 @@ def fuse_logging(gate_logits, combine_weights, token_type_ids):
                 combine_weights, token_type_ids
             )
         else:
-            gate_experts_per_token = paddle.count_nonzero(combine_weights) / (
-                gate_logits.shape[0]
+            gate_experts_per_token = (
+                paddle.count_nonzero(combine_weights) / (gate_logits.shape[0])
             )
 
         return (

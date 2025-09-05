@@ -41,7 +41,7 @@ PredictorEngine::PredictorEngine(
   } else if (phi::is_cpu_place(place_)) {
     config.DisableGpu();
     config.EnableONEDNN();
-    config.EnableMkldnnInt8();
+    config.EnableOnednnInt8();
     config.SetOnednnCacheCapacity(0);
   }
   config.SetSkipLoadParams(true);

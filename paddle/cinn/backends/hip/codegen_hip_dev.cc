@@ -19,7 +19,10 @@ namespace backends {
 namespace hip {
 
 const std::string CodeGenHipDevice::source_header_ =  // NOLINT
-    R"(#include "cinn_hip_runtime_source.h"
+    R"(#define CINN_WITH_HIP
+     #include "float16.h"
+     using cinn::common::float16;
+     #include "cinn_hip_runtime_source.h"
 )";
 
 const std::string &CodeGenHipDevice::GetSourceHeader() {
@@ -29,6 +32,30 @@ const std::string &CodeGenHipDevice::GetSourceHeader() {
 CodeGenHipDevice::CodeGenHipDevice(Target target) : CodeGenGpuDev(target) {}
 
 void CodeGenHipDevice::PrintIncludes() { str_ += GetSourceHeader(); }
+
+void CodeGenHipDevice::Visit(const ir::Min *op) {
+  str_ += "std::min(";
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&this->DynamicShapeMap(), op);
+  this->ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
+  str_ += ", ";
+  IrPrinter::Visit(b);
+  str_ += ")";
+}
+
+void CodeGenHipDevice::Visit(const ir::Max *op) {
+  str_ += "std::max(";
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&this->DynamicShapeMap(), op);
+  this->ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
+  str_ += ", ";
+  IrPrinter::Visit(b);
+  str_ += ")";
+}
 
 }  // namespace hip
 }  // namespace backends

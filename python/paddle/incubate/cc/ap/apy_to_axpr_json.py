@@ -31,7 +31,6 @@ def convert_python_stmts_to_axpr_json(python_code_stmts_str):
 
 @dataclass
 class AnfExpr:
-
     def DumpToFileAsJson(self, file_name):
         with open(file_name, "w") as f:
             json.dump(self.value, f, indent=2)
@@ -115,9 +114,9 @@ class PyToAnfParser:
             for func_def in tree.body:
                 if isinstance(func_def, ast.Pass):
                     continue
-                assert isinstance(
-                    func_def, ast.FunctionDef
-                ), f"only method supported in class definition, {type(func_def)} were given."
+                assert isinstance(func_def, ast.FunctionDef), (
+                    f"only method supported in class definition, {type(func_def)} were given."
+                )
                 func_code = self.BindToTmpVar(
                     [
                         '__builtin_getattr__',

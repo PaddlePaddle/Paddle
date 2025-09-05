@@ -189,7 +189,7 @@ void BroadcastTensorsGradKernel(const Context& dev_ctx,
 
         default: {
           PADDLE_THROW(
-              errors::InvalidArgument("Detected reduce size: %d out of range"
+              errors::InvalidArgument("Detected reduce size: %d out of range. "
                                       "While maximum supported is: 5",
                                       reduce_size));
         }
@@ -208,6 +208,6 @@ PD_REGISTER_KERNEL(broadcast_tensors_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}

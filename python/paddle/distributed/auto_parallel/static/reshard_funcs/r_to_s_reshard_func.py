@@ -133,9 +133,9 @@ class RToSReshardFunctionCrossMesh(ReshardFunction):
         curr_global_rank = paddle.distributed.get_rank()
         if curr_global_rank in dst_dist_attr.process_mesh.process_ids:
             r_to_s_func = RToSReshardFunction()
-            assert r_to_s_func.is_suitable(
-                tmp_dist_attr, dst_dist_attr
-            ), f"Invoke the r to s reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+            assert r_to_s_func.is_suitable(tmp_dist_attr, dst_dist_attr), (
+                f"Invoke the r to s reshard function is not valid from {tmp_dist_attr} to {dst_dist_attr}"
+            )
             return r_to_s_func.reshard(
                 tmp_dist_attr, dst_dist_attr, out_value, dst_type
             )

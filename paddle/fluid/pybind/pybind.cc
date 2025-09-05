@@ -80,6 +80,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
@@ -244,9 +245,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/tensorrt/trt_plugin.h"
 #endif
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/eager/activation_offloader.h"
+#endif
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
 COMMON_DECLARE_bool(use_onednn);
+COMMON_DECLARE_int64(offload_retry_times);
 COMMON_DECLARE_string(prim_backward_blacklist);
 
 // disable auto conversion to list in Python
@@ -1693,6 +1699,70 @@ PYBIND11_MODULE(libpaddle, m) {
                               phi::DataLayout::NCHW,
                               phi::CPUPlace());
            });
+  m.def(
+      "frombuffer",
+      [](py::object buffer,
+         phi::DataType dtype,
+         int64_t count,
+         int64_t offset) {
+        int64_t actual_count = 0;
+        auto elsize = phi::SizeOf(dtype);
+        Py_buffer view;
+        if (PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_WRITABLE) < 0) {
+          PADDLE_ENFORCE_EQ(
+              PyObject_GetBuffer(buffer.ptr(), &view, PyBUF_SIMPLE) >= 0,
+              true,
+              common::errors::InvalidArgument(
+                  "could not retrieve buffer from object"));
+          PyErr_Clear();
+        }
+        Py_INCREF(view.obj);
+        std::unique_ptr<PyObject> obj(view.obj);
+        auto len = view.len;
+        auto buf = view.buf;
+        PyBuffer_Release(&view);
+        PADDLE_ENFORCE_EQ(
+            len > 0 && count != 0,
+            true,
+            common::errors::InvalidArgument(
+                "both buffer length and count must be greater than 0"));
+        PADDLE_ENFORCE_EQ(
+            offset >= 0 && offset < len,
+            true,
+            common::errors::InvalidArgument("offset must be non-negative and "
+                                            "no greater than buffer length"));
+        PADDLE_ENFORCE_EQ(
+            count > 0 || (len - offset) % elsize == 0,
+            true,
+            common::errors::InvalidArgument("buffer length after offset must "
+                                            "be a multiple of element size"));
+        if (count < 0) {
+          actual_count = static_cast<int64_t>(len - offset) / elsize;
+        } else {
+          actual_count = static_cast<int64_t>(count);
+        }
+
+        PADDLE_ENFORCE_LE(static_cast<int64_t>(offset) + actual_count * elsize,
+                          static_cast<int64_t>(len),
+                          common::errors::InvalidArgument(
+                              "requested buffer length after offset must not "
+                              "be greater than actual buffer length"));
+
+        auto offset_buf = static_cast<char *>(buf) + offset;
+        return from_blob(offset_buf,
+                         phi::IntArray({actual_count}),
+                         dtype,
+                         phi::DataLayout::NCHW,
+                         phi::CPUPlace(),
+                         [obj = obj.release()](void *) {
+                           pybind11::gil_scoped_acquire gil;
+                           Py_DECREF(obj);
+                         });
+      },
+      py::arg("buffer"),
+      py::arg("dtype"),
+      py::arg("count") = -1,
+      py::arg("offset") = 0);
 
   m.def("from_dlpack", [](py::object data) {
     DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
@@ -2596,7 +2666,7 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(1) << string::Sprintf(
               "Cannot use get_all_device_type because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
-              "If you want to use get_all_device_type, please try to install"
+              "If you want to use get_all_device_type, please try to install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2624,7 +2694,7 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(1) << string::Sprintf(
               "Cannot use get_available_device because you have installed "
               "CPU/GPU version PaddlePaddle.\n"
-              "If you want to use get_available_device, please try to install"
+              "If you want to use get_available_device, please try to install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2639,7 +2709,7 @@ All parameter, weight, gradient are variables in Paddle.
               "Cannot use get_available_custom_device because you have "
               "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_available_custom_device, please try to "
-              "install"
+              "install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2657,7 +2727,7 @@ All parameter, weight, gradient are variables in Paddle.
               "Cannot use get_custom_device_count because you have "
               "installed CPU/GPU version PaddlePaddle.\n"
               "If you want to use get_custom_device_count, please try to "
-              "install"
+              "install "
               "CustomDevice version "
               "PaddlePaddle by: pip install paddlepaddle\n");
 #endif
@@ -2969,8 +3039,16 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_glog", framework::InitGLOG);
   m.def("init_memory_method", framework::InitMemoryMethod);
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
-    egr::Controller::Instance().MergeOpMetaInfoMap(
-        framework::LoadOpMetaInfoAndRegisterOp(dso_name));
+    const auto &new_op_meta_info_map =
+        framework::LoadOpMetaInfoAndRegisterOp(dso_name);
+    // Merging failed?
+    egr::Controller::Instance().MergeOpMetaInfoMap(new_op_meta_info_map);
+
+    py::list key_list;
+    for (const auto &pair : new_op_meta_info_map) {
+      key_list.append(pair.first);
+    }
+    return key_list;
   });
   m.def("init_devices", []() { framework::InitDevices(); });
   m.def("init_default_kernel_signatures",
@@ -3109,7 +3187,23 @@ All parameter, weight, gradient are variables in Paddle.
             .GetAutoGrowthAllocator(place));
     allocator->DumpInfo();
   });
+
+  m.def("set_skip_offload_callback_tensors",
+        [](const std::vector<paddle::Tensor> &tensors) {
+          egr::ActivationOffloader::Instance()->SetSkipTensors(tensors);
+        });
+  m.def("register_offload_callback", [] {
+    paddle::memory::allocation::RegisterOOMCallback(
+        [](phi::Place place, size_t size) -> size_t {
+          return egr::ActivationOffloader::Instance()->Offload(place, size);
+        });
+  });
+  m.def("clear_offload_callback",
+        [] { paddle::memory::allocation::RegisterOOMCallback(nullptr); });
+  m.def("offload_cached_size",
+        [] { return egr::ActivationOffloader::Instance()->CachedSize(); });
 #endif
+
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDesc(&m);
@@ -3340,6 +3434,17 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::copy);
 
+  m.def("device_empty_cache", [] {
+    std::vector<std::string> dev_types =
+        phi::DeviceManager::GetAllCustomDeviceTypes();
+    std::string dev_type = dev_types[0];
+    std::vector<size_t> devices =
+        phi::DeviceManager::GetSelectedDeviceList(dev_type);
+    for (auto device : devices) {
+      memory::Release(phi::CustomPlace(dev_type, device));
+    }
+  });
+
   py::class_<phi::DeviceProp>(m, "_customDeviceProperties", py::module_local())
       .def_property_readonly(
           "name", [](const phi::DeviceProp &prop) { return prop.name; })
@@ -3447,11 +3552,11 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_extra_info", &paddle::platform::ProfilerResult::GetExtraInfo)
       .def("get_version", &paddle::platform::ProfilerResult::GetVersion)
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx)
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex)
       .def("get_device_property",
            &paddle::platform::ProfilerResult::GetDeviceProperty);
 #else
-      .def("get_span_indx", &paddle::platform::ProfilerResult::GetSpanIndx);
+      .def("get_span_index", &paddle::platform::ProfilerResult::GetSpanIndex);
 #endif
 
   py::class_<paddle::platform::MemPythonNode>(m, "MemPythonNode")
@@ -4035,6 +4140,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindVjp(&m);
   BindDecompRule(&m);
   BindDecompVjp(&m);
+  py::module torch_compat = m.def_submodule(
+      "torch_compat", "Compatibility layer for PyTorch-like APIs");
+  BindTorchCompat(&torch_compat);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif

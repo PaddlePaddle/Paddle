@@ -550,7 +550,9 @@ __inline__ __device__ void cuLoadAddStridedInputs(const int64_t i1_block,
   for (int k = 0; k < VPT; ++k) {
     const int i2 = i2_off + k;
     const int64_t load_idx = i1 * n2 + i2;
-    const int write_idx = thr_load_row_off * row_stride + thr_load_col_off + k;
+    const int64_t write_idx =
+        static_cast<int64_t>(thr_load_row_off) * row_stride + thr_load_col_off +
+        k;
     if (i2 < n2) {
       U curr_input = static_cast<U>(input[load_idx]);
       U curr_dout = static_cast<U>(dout[load_idx]);

@@ -71,7 +71,6 @@ def fused_bias_act(
             [3, 5]
     """
     if in_dynamic_or_pir_mode():
-
         return _C_ops.fused_bias_act(
             x,
             bias,

@@ -42,9 +42,9 @@ cuda_graph_id = 0
 
 class CUDAGraph:
     def __init__(self, place=None, mode="thread_local", pool_id=None):
-        assert (
-            CoreCUDAGraph is not None
-        ), "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
+        assert CoreCUDAGraph is not None, (
+            "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
+        )
 
         self._graph = None
         if place is None:
@@ -73,9 +73,9 @@ class CUDAGraph:
         if not isinstance(dirname, (str, bytes)):
             dirname = dirname.name
         os.makedirs(name=dirname, exist_ok=True)
-        assert os.path.isdir(
-            dirname
-        ), f"The dirname {dirname} should be a directory"
+        assert os.path.isdir(dirname), (
+            f"The dirname {dirname} should be a directory"
+        )
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
@@ -238,16 +238,16 @@ def get_cuda_graph_sections(program):
 
     for idx, op in enumerate(block.ops):
         if op.type == 'conditional_block' or op.type == 'while':
-            assert (
-                op._cuda_graph_attr is None
-            ), "Cuda graph not support conditional block op and while op."
+            assert op._cuda_graph_attr is None, (
+                "Cuda graph not support conditional block op and while op."
+            )
         if op.has_attr('is_test') and op.attr('is_test'):
             is_test = True
         # find cuda graph sections
         if op._cuda_graph_attr is not None:
-            assert isinstance(
-                op._cuda_graph_attr, str
-            ), "cuda_graph_attr should be a str"
+            assert isinstance(op._cuda_graph_attr, str), (
+                "cuda_graph_attr should be a str"
+            )
             cuda_graph_attrs = op._cuda_graph_attr.split(';')
             assert len(cuda_graph_attrs) == 3, (
                 "cuda graph attr should have three fields: "
@@ -256,9 +256,9 @@ def get_cuda_graph_sections(program):
             local_cuda_graph_id = int(cuda_graph_attrs[2])
             if local_cuda_graph_id == current_cuda_graph_id:
                 if len(internal_section) > 0:
-                    assert len(internal_section) == len(
-                        internal_idx
-                    ), "len of internal section should be equal with len of internal idx"
+                    assert len(internal_section) == len(internal_idx), (
+                        "len of internal section should be equal with len of internal idx"
+                    )
                     for internal_op in internal_section:
                         loss_related = (
                             int(internal_op.attr(op_role_attr_name))
@@ -283,9 +283,9 @@ def get_cuda_graph_sections(program):
                             internal_section = []
                             internal_idx = []
                             # Beside clear the internal section, a new cuda graph section should be recorded
-                            assert len(current_section) == len(
-                                current_idx
-                            ), "num of section's op is not equal with the idx"
+                            assert len(current_section) == len(current_idx), (
+                                "num of section's op is not equal with the idx"
+                            )
                             if len(current_section) > 0:
                                 # store previous section
                                 cuda_graph_sections.append(current_section)
@@ -309,9 +309,9 @@ def get_cuda_graph_sections(program):
                 current_cuda_graph_id = (
                     local_cuda_graph_id  # start record a new section
                 )
-                assert len(current_section) == len(
-                    current_idx
-                ), "num of section's op is not equal with num of idx"
+                assert len(current_section) == len(current_idx), (
+                    "num of section's op is not equal with num of idx"
+                )
                 if len(current_section) > 0:
                     # store previous section
                     cuda_graph_sections.append(current_section)
@@ -324,9 +324,9 @@ def get_cuda_graph_sections(program):
             internal_idx.append(idx)
 
     # handle the last section
-    assert len(current_section) == len(
-        current_idx
-    ), "num of section's op is not equal with num of idx"
+    assert len(current_section) == len(current_idx), (
+        "num of section's op is not equal with num of idx"
+    )
     if len(current_section) > 0:
         # store previous section
         cuda_graph_sections.append(current_section)
@@ -377,9 +377,9 @@ def replace_cuda_graph_section(
             memory_pool_id = int(attrs[1])
             break
 
-    assert (
-        mode is not None and memory_pool_id is not None
-    ), "mode and memory pool id should be specified in cuda graph attr"
+    assert mode is not None and memory_pool_id is not None, (
+        "mode and memory pool id should be specified in cuda graph attr"
+    )
 
     cuda_graph_var = origin_block.create_var(
         name="cuda_graph_" + str(order),
@@ -445,9 +445,9 @@ def cuda_graph_transform(program):
     cuda_graph_sections, sections_idx, is_test = get_cuda_graph_sections(
         program
     )
-    assert len(cuda_graph_sections) == len(
-        sections_idx
-    ), "num of cuda graph sections is not equal with num of idx sections"
+    assert len(cuda_graph_sections) == len(sections_idx), (
+        "num of cuda graph sections is not equal with num of idx sections"
+    )
 
     # step 2: construct new program for each section and find inputs and outputs of each section.
     # The inputs are variables generated outside the section but will be used by this section.
@@ -461,9 +461,9 @@ def cuda_graph_transform(program):
         )
         ins_and_outs.append(ins_outs)
         section_programs.append(section_program)
-    assert len(section_programs) == len(
-        cuda_graph_sections
-    ), "the num of cuda graph sections should be equal with the num of new program"
+    assert len(section_programs) == len(cuda_graph_sections), (
+        "the num of cuda graph sections should be equal with the num of new program"
+    )
 
     # step 3: replace the ops in original program with run_program_op.
     # Will remove all ops in the section from origin program, and use run_program_op to replace them.

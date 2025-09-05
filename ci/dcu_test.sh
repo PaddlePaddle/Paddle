@@ -68,6 +68,7 @@ function hybrid_paddlex() {
 function main(){
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
+    /opt/py310/bin/pip install safetensors
     if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     fi

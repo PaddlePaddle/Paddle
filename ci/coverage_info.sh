@@ -42,17 +42,15 @@ mkdir coverage_files
 function gen_full_report_cinn(){
     lcov --extract coverage.info \
         "${PADDLE_ROOT}/paddle/cinn/adt/*" \
-        "${PADDLE_ROOT}/paddle/cinn/api/*" \
         "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
         "${PADDLE_ROOT}/paddle/cinn/backends/*" \
         "${PADDLE_ROOT}/paddle/cinn/common/*" \
-        "${PADDLE_ROOT}/paddle/cinn/frontend/*" \
         "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
         "${PADDLE_ROOT}/paddle/cinn/ir/*" \
         "${PADDLE_ROOT}/paddle/cinn/lang/*" \
         "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
         "${PADDLE_ROOT}/paddle/cinn/optim/*" \
-        "${PADDLE_ROOT}/paddle/cinn/poly/*" \
+        "${PADDLE_ROOT}/paddle/cinn/pass/*" \
         "${PADDLE_ROOT}/paddle/cinn/pybind/*" \
         "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
         "${PADDLE_ROOT}/paddle/cinn/utils/*" \
@@ -68,8 +66,6 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/fluid/inference/*" \
         "${PADDLE_ROOT}/paddle/fluid/memory/*" \
         "${PADDLE_ROOT}/paddle/fluid/operators/*" \
-        "${PADDLE_ROOT}/paddle/fluid/recordio/*" \
-        "${PADDLE_ROOT}/paddle/fluid/string/*" \
         "${PADDLE_ROOT}/paddle/fluid/eager/*" \
         "${PADDLE_ROOT}/paddle/fluid/pir/*" \
         "${PADDLE_ROOT}/paddle/fluid/ir_adaptor/*" \

@@ -1,9 +1,16 @@
-name: Slice-baseline
+name: Slice-baseline-paddle
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 20 * * *'
+    inputs:
+      PR_ID:
+        required: false
+        type: string
+      COMMIT_ID:
+        required: false
+        type: string
+        # schedule:
+        #   - cron: '0 20 * * 0'
 
 permissions: read-all
 
@@ -43,3 +50,5 @@ jobs:
       docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
       slice-check: 'true'
       SLICE_TEST_MODE: insert_baseline
+      MANUALLY_PR_ID: ${{ inputs.PR_ID }}
+      MANUALLY_COMMIT_ID: ${{ inputs.COMMIT_ID }}

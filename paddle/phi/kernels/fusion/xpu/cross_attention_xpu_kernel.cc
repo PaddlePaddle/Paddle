@@ -214,18 +214,17 @@ void CrossAttentionXPUKernel(
       input_kv.dtype() == DataType::FLOAT16 && qkv_dtype == DataType::FLOAT16) {
     // float16 kernel
     CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        phi::dtype::float16, int16_t, phi::dtype::float16, int16_t);
+        phi::float16, int16_t, phi::float16, int16_t);
     return;
   }
   if (input_q.dtype() == DataType::FLOAT32 &&
       input_kv.dtype() == DataType::FLOAT32 && qkv_dtype == DataType::FLOAT32) {
     // float32 kernel
-    CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        float, int16_t, phi::dtype::float16, int16_t);
+    CROSS_ATTENTION_XPU_KERNEL_IMPL(float, int16_t, phi::float16, int16_t);
     return;
   }
   PADDLE_THROW(common::errors::Unimplemented(
-      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+      "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
       "and qkv_dtype is %s.",
       DataTypeToString(input_q.dtype()),
       DataTypeToString(input_kv.dtype()),
@@ -240,4 +239,4 @@ PD_REGISTER_KERNEL(cross_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::CrossAttentionXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

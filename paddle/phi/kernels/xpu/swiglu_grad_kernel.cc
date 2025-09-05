@@ -76,13 +76,13 @@ void SwiGluGradKernel(const Context& dev_ctx,
   }
   int ret = xpu::swiglu_grad(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x_data),
+                             y_ptr,
                              reinterpret_cast<const XPUType*>(dz_data),
                              reinterpret_cast<XPUType*>(dx_data),
+                             dy_ptr,
                              dims_vec,
                              axis,
-                             true,
-                             y_ptr,
-                             dy_ptr);
+                             true);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "swiglu_grad");
 }
 }  // namespace phi
@@ -91,5 +91,5 @@ PD_REGISTER_KERNEL(swiglu_grad,
                    ALL_LAYOUT,
                    phi::SwiGluGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16){};
+                   phi::float16,
+                   phi::bfloat16){};

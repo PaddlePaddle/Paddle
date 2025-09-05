@@ -62,7 +62,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
   // topk_grad_with_mask_launcher<float>(combine_weights_grad,
   //                                     expert_id,
   //                                     combine_weights,
-  //                                     gate_logtis_grad,
+  //                                     gate_logits_grad,
   //                                     num_rows, k, num_experts, stream);
 }
 

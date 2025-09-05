@@ -417,8 +417,12 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         return ""
 
     # override BaseAPI's method
-    def gene_api_declaration(self) -> str:
-        return BackwardAPI.gene_api_declaration(self)
+    def gene_api_declaration(
+        self, grad_flag=False, append_predefined_out=False
+    ) -> str:
+        return BackwardAPI.gene_api_declaration(
+            self, grad_flag=grad_flag, append_predefined_out=not grad_flag
+        )
 
     def generate_reshard_output_code(self):
         reshard_output_code = ""

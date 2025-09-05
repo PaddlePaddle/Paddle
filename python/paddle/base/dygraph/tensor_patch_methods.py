@@ -128,6 +128,7 @@ def monkey_patch_tensor():
             'strides',
             'offset',
             '__cuda_array_interface__',
+            'itemsize',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -206,26 +207,26 @@ def monkey_patch_tensor():
         """
         if id(self) == id(value):
             return
-        assert isinstance(
-            value, (np.ndarray, paddle.Tensor, dict, str)
-        ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        assert isinstance(value, (np.ndarray, paddle.Tensor, dict, str)), (
+            "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        )
         if self.is_dist():
-            assert isinstance(
-                value, (np.ndarray, paddle.Tensor)
-            ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
+            assert isinstance(value, (np.ndarray, paddle.Tensor)), (
+                "For set_value function of dist tensor, arguments type only support numpy or Tensor."
+            )
 
         if isinstance(value, (dict, str)):
-            assert len(self) == len(
-                value
-            ), f"Variable length not match, Variable [ {self.name} ] need tensor with length {len(self)} but load set tensor with length {len(value)}"
+            assert len(self) == len(value), (
+                f"Variable length not match, Variable [ {self.name} ] need tensor with length {len(self)} but load set tensor with length {len(value)}"
+            )
             if isinstance(value, dict):
                 self.value().set_vocab(value)
             else:
                 self.value().set_string_list(value)
         else:
-            assert self.shape == list(
-                value.shape
-            ), f"Variable Shape not match, Variable [ {self.name} ] need tensor with shape {self.shape} but load set tensor with shape {value.shape}"
+            assert self.shape == list(value.shape), (
+                f"Variable Shape not match, Variable [ {self.name} ] need tensor with shape {self.shape} but load set tensor with shape {value.shape}"
+            )
 
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
@@ -234,9 +235,9 @@ def monkey_patch_tensor():
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
-            assert (
-                self.dtype == dtype
-            ), f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
+            assert self.dtype == dtype, (
+                f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
+            )
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
@@ -248,9 +249,14 @@ def monkey_patch_tensor():
                     )
 
                     # TODO: support reshard later
-                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
-                        value.placements, self.value().placements
-                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                    assert (
+                        value.process_mesh == self.value().process_mesh
+                        or check_placements_equal(
+                            value.placements, self.value().placements
+                        )
+                    ), (
+                        f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                    )
                 else:
                     # calling set method bound for DistTensor
                     value = paddle.distributed.shard_tensor(
@@ -344,13 +350,13 @@ def monkey_patch_tensor():
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                assert isinstance(
-                    grad_tensor, core.eager.Tensor
-                ), "The type of grad_tensor must be paddle.Tensor"
+                assert isinstance(grad_tensor, core.eager.Tensor), (
+                    "The type of grad_tensor must be paddle.Tensor"
+                )
 
-                assert (
-                    grad_tensor.shape == self.shape
-                ), f"Tensor shape not match, Tensor of grad_tensor [ {grad_tensor.name} ] with shape {grad_tensor.shape} mismatch Tensor [ {self.name} ] with shape {self.shape}"
+                assert grad_tensor.shape == self.shape, (
+                    f"Tensor shape not match, Tensor of grad_tensor [ {grad_tensor.name} ] with shape {grad_tensor.shape} mismatch Tensor [ {self.name} ] with shape {self.shape}"
+                )
 
             if grad_tensor is None:
                 grad_tensor = []
@@ -643,9 +649,9 @@ def monkey_patch_tensor():
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if device is None:
@@ -996,9 +1002,9 @@ def monkey_patch_tensor():
     def __nonzero__(self: Tensor) -> bool:
         # np.prod([]) -> np.float64, so use int
         numel = int(np.prod(self.shape))
-        assert (
-            numel == 1
-        ), "When Variable is used as the condition of if/while , Variable can only contain one element."
+        assert numel == 1, (
+            "When Variable is used as the condition of if/while , Variable can only contain one element."
+        )
         # resolve the error issue in scenario of pipeline parallel
         # where some devices do not have this data, return True or False does not affect
         # the execution result in those devices, so currently we return False
@@ -1152,10 +1158,16 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
-        if self.place.is_cuda_pinned_place():
+        if (
+            self.place.is_cuda_pinned_place()
+            or self.place.is_xpu_pinned_place()
+        ):
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
+            if paddle.device.is_compiled_with_xpu():
+                res = self._copy_to(core.XPUPinnedPlace(), blocking)
+            else:
+                res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res

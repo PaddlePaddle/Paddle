@@ -573,7 +573,7 @@ std::vector<paddle::Tensor> RunProgramImpl(
 #endif
 
     auto passed_kernel_program = paddle::framework::ApplyIrPass(
-        forward_program.get(), place, no_need_buffer_name_set);
+        program.get(), place, no_need_buffer_name_set);
     const auto &new_block = passed_kernel_program->block();
     passed_kernel_program = paddle::framework::ApplyRemoveShadowFeedPass(
         std::move(passed_kernel_program), new_block, place, global_inner_scope);
@@ -1068,7 +1068,7 @@ void LegacyRunProgramGradImpl(
   if (!cache.Has(cache_key)) {
     phi::RecordEvent record_event(
         "create_new_interpretercore", phi::TracerEventType::UserDefined, 1);
-    VLOG(2) << "No interpretercore cache, so create a new interpretercore"
+    VLOG(2) << "No interpretercore cache, so create a new interpretercore "
                "for program: "
             << program_id;
     details::ShareTensorsIntoScope(out_grad, global_inner_scope);

@@ -515,7 +515,6 @@ create_bf16_case('not_equal', lambda _a, _b: _a != _b, True)
 
 
 class TestCompareOpError(unittest.TestCase):
-
     def test_int16_support(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -530,7 +529,6 @@ class TestCompareOpError(unittest.TestCase):
 
 
 class API_TestElementwise_Equal(unittest.TestCase):
-
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -571,7 +569,6 @@ class API_TestElementwise_Equal(unittest.TestCase):
 
 
 class API_TestElementwise_Greater_Than(unittest.TestCase):
-
     def test_api_fp16(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -588,7 +585,6 @@ class API_TestElementwise_Greater_Than(unittest.TestCase):
 
 
 class TestCompareOpPlace(unittest.TestCase):
-
     def test_place_1(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
@@ -615,6 +611,27 @@ class TestCompareOpPlace(unittest.TestCase):
         data_tensor = paddle.to_tensor(data, place=data_place)
         result = data_tensor == 0
         self.assertEqual((result.numpy() == np.array([False])).all(), True)
+
+
+class TestCompareOut(unittest.TestCase):
+    def setUp(self) -> None:
+        self.shape = [2, 3, 4, 5]
+        self.apis = [paddle.eq, paddle.gt]
+        self.np_apis = [np.equal, np.greater]
+        self.input = np.random.rand(*self.shape).astype(np.float32)
+        self.other = np.random.rand(*self.shape).astype(np.float32)
+        self.other[0, 0, 3, 0] = self.input[0, 0, 3, 0]
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for api, np_api in zip(self.apis, self.np_apis):
+            x = paddle.to_tensor(self.input)
+            y = paddle.to_tensor(self.other)
+            out_holder = paddle.zeros_like(x)
+            api(x, y, out=out_holder)
+            np.testing.assert_allclose(
+                out_holder.numpy(), np_api(self.input, self.other)
+            )
 
 
 if __name__ == '__main__':

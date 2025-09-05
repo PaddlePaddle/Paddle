@@ -1104,6 +1104,56 @@ class TestWhereBoolInput(unittest.TestCase):
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
 
+class TestWhereAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_where_alias(self):
+        """
+        Test the alias of where function.
+        ``where(condition=cond, input=x, other=y)`` is equivalent to
+        ``where(condition=cond, x=x, y=y)``
+        """
+        shape = [2, 4]
+        cond = paddle.randint(0, 2, shape).astype("bool")
+        x = paddle.rand(shape).astype("float32")
+        y = paddle.rand(shape).astype("float32")
+
+        # Test all alias combinations
+        combinations = [
+            {"condition": cond, "x": x, "y": y},
+            {"condition": cond, "input": x, "y": y},
+            {"condition": cond, "x": x, "other": y},
+            {"condition": cond, "input": x, "other": y},
+        ]
+
+        # Get baseline result
+        expected = np.where(cond.numpy(), x.numpy(), y.numpy())
+
+        for params in combinations:
+            out = paddle.where(**params)
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+
+class TestWhereOut(unittest.TestCase):
+    def setUp(self):
+        self.cond_np = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        self.x_np = np.random.random([2, 3, 5]).astype('float32')
+        self.y_np = np.random.random([2, 3, 5]).astype('float32')
+
+    def test_api_with_dygraph(self):
+        paddle.disable_static()
+        cond = paddle.to_tensor(self.cond_np)
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        out_holder = paddle.zeros_like(cond)
+        out_ref = paddle.where(cond, x, y)
+
+        paddle.where(cond, x, y, out=out_holder)
+        np.testing.assert_allclose(out_holder, out_ref, rtol=1e-20)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

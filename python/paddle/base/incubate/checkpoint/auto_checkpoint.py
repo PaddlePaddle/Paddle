@@ -62,9 +62,9 @@ def _get_logger(log_level, name="auto_checkpoint"):
 
 
 def _thread_checker():
-    assert (
-        current_thread().name == "MainThread"
-    ), "auto checkpoint must run under main thread"
+    assert current_thread().name == "MainThread", (
+        "auto checkpoint must run under main thread"
+    )
 
 
 class AutoCheckpointChecker:
@@ -282,9 +282,9 @@ class TrainEpochRange(SerializableBase):
             self._save_checkpoint_inter = checkpoint_inter
         else:
             self._save_checkpoint_inter = self._checker.save_checkpoint_inter
-        assert (
-            self._save_checkpoint_inter >= 0
-        ), f"checkpoint inter:{self._save_checkpoint_inter} must >=0"
+        assert self._save_checkpoint_inter >= 0, (
+            f"checkpoint inter:{self._save_checkpoint_inter} must >=0"
+        )
         self._last_checkpoint_time = time.time()
 
         self._load_cp_nos = None
@@ -446,9 +446,9 @@ class TrainEpochRange(SerializableBase):
         if self._max_epoch_num < 0:
             self._max_epoch_num = sys.maxint
 
-        assert (
-            self._epoch_no >= -1
-        ), f"self._epoch_no:{self._epoch_no} must >=-1"
+        assert self._epoch_no >= -1, (
+            f"self._epoch_no:{self._epoch_no} must >=-1"
+        )
 
         self._last_checkpoint_time = time.time()
         start = self._epoch_no + 1
@@ -669,9 +669,9 @@ def _auto_checkpoint(exe, prog):
     )
 
     if g_train_epoch_range.restored_from == CONST_CHECKPOINT:
-        assert (
-            key in exe_status
-        ), f"when restored key:{key} must be in train_epoch_range:{g_train_epoch_range}"
+        assert key in exe_status, (
+            f"when restored key:{key} must be in train_epoch_range:{g_train_epoch_range}"
+        )
 
     t = None
     if key in exe_status:

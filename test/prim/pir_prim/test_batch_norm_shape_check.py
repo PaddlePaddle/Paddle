@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import pir
 from paddle.decomposition import decompose
 from paddle.framework import core
 
@@ -48,23 +47,21 @@ class TestBuildOp(unittest.TestCase):
 
     def get_ir_program(self):
         paddle.enable_static()
-        with paddle.pir_utils.OldIrGuard():
-            x = paddle.randn([4, 4])
-            main_program, start_program = (
-                paddle.static.Program(),
-                paddle.static.Program(),
-            )
-            with paddle.static.program_guard(main_program, start_program):
-                x = paddle.static.data('x', self.x_shape, x.dtype)
-                x.stop_gradients = False
-                r_m = paddle.static.data('r_m', self.c_shape, x.dtype)
-                r_v = paddle.static.data('r_v', self.c_shape, x.dtype)
-                w = paddle.static.data('w', self.c_shape, x.dtype)
-                b = paddle.static.data('b', self.c_shape, x.dtype)
-                y = batch_norm_net1(x, r_m, r_v, w, b)
-                res = paddle.tanh(y)
-            pir_program = pir.translate_to_pir(main_program.desc)
-            return pir_program
+        x = paddle.randn([4, 4])
+        main_program, start_program = (
+            paddle.static.Program(),
+            paddle.static.Program(),
+        )
+        with paddle.static.program_guard(main_program, start_program):
+            x = paddle.static.data('x', self.x_shape, x.dtype)
+            x.stop_gradient = False
+            r_m = paddle.static.data('r_m', self.c_shape, x.dtype)
+            r_v = paddle.static.data('r_v', self.c_shape, x.dtype)
+            w = paddle.static.data('w', self.c_shape, x.dtype)
+            b = paddle.static.data('b', self.c_shape, x.dtype)
+            y = batch_norm_net1(x, r_m, r_v, w, b)
+            res = paddle.tanh(y)
+        return main_program
 
     def test_build_op(self):
         pir_program = self.get_ir_program()
@@ -75,9 +72,9 @@ class TestBuildOp(unittest.TestCase):
             y_new = decompose(pir_program, y)
             core._set_prim_forward_enabled(False)
             new_shape = y_new[0].shape
-            assert (
-                orig_shape == new_shape
-            ), f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            assert orig_shape == new_shape, (
+                f"Original shape {orig_shape} is not equal to new shape {new_shape}"
+            )
             op_name_list = [op.name() for op in pir_program.global_block().ops]
             assert "pd_op.batch_norm_" not in op_name_list
 

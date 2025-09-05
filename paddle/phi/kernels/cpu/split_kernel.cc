@@ -30,8 +30,8 @@ PD_REGISTER_KERNEL(split,
                    uint8_t,
                    int8_t,
                    int16_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::complex64,
                    phi::complex128) {}
 
@@ -46,5 +46,5 @@ PD_REGISTER_KERNEL(split_with_num,
                    bool,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

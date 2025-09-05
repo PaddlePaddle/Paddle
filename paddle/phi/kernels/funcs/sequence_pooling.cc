@@ -492,9 +492,9 @@ class SequencePoolGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template class SequencePoolFunctor<phi::CPUContext, float>;
-template class SequencePoolFunctor<phi::CPUContext, double>;
-template class SequencePoolGradFunctor<phi::CPUContext, float>;
-template class SequencePoolGradFunctor<phi::CPUContext, double>;
+template class PADDLE_API SequencePoolFunctor<phi::CPUContext, float>;
+template class PADDLE_API SequencePoolFunctor<phi::CPUContext, double>;
+template class PADDLE_API SequencePoolGradFunctor<phi::CPUContext, float>;
+template class PADDLE_API SequencePoolGradFunctor<phi::CPUContext, double>;
 
 }  // namespace phi::funcs

@@ -671,7 +671,7 @@ class FMHARef {
                   qk_out_grad_tensor);
       } else {
         PADDLE_THROW(errors::InvalidArgument(
-            "Only used for the backward elementwise_add op when"
+            "Only used for the backward elementwise_add op when "
             "dy is not needed and dx is not reduce"));
         return;
       }

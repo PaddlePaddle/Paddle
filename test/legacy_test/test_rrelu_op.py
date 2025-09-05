@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -50,13 +50,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_0 = 0.25
         self.upper_1 = 0.33
 
-        self.places = [
-            (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
-        ]
+        self.places = [get_device_place()]
 
     def check_static_result(self, place):
         with paddle.static.program_guard(

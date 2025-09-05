@@ -36,7 +36,7 @@ class TestReshape2OneDNNOp(OpTest):
             'XShape': np.random.random(self.ori_shape).astype("float32"),
         }
         self.x = self.inputs["X"]
-        self.attrs['use_mkldnn'] = True
+        self.attrs['use_onednn'] = True
         self.set_additional_inputs()
         self.set_outputs()
 
@@ -208,7 +208,7 @@ def create_reshape_bf16_test_classes(parent):
             super().setUp()
             self.dtype = np.uint16
             self.inputs = {"X": convert_float_to_uint16(self.x)}
-            self.attrs['use_mkldnn'] = True
+            self.attrs['use_onednn'] = True
 
         def calculate_grads(self):
             self.dout = self.outputs['Out']

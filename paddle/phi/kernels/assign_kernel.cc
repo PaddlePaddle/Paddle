@@ -109,6 +109,12 @@ void AssignValueKernel(const Context& dev_ctx,
   out->Resize(common::make_ddim(shape));
 }
 
+#ifdef _WIN32
+template PADDLE_API void AssignKernel<CPUContext>(const CPUContext& dev_ctx,
+                                                  const DenseTensor& x,
+                                                  DenseTensor* out);
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,

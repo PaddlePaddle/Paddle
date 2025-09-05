@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import functional, initializer, quant, utils  # noqa: F401
+
+from . import functional, init, initializer, quant, utils  # noqa: F401
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
 
@@ -86,10 +87,13 @@ from .layer.container import (
 )
 from .layer.conv import (
     Conv1D,
+    Conv1d,
     Conv1DTranspose,
     Conv2D,
+    Conv2d,
     Conv2DTranspose,
     Conv3D,
+    Conv3d,
     Conv3DTranspose,
 )
 from .layer.distance import PairwiseDistance
@@ -174,6 +178,7 @@ from .layer.transformer import (
     TransformerEncoderLayer,
 )
 from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
+from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
 __all__ = [
@@ -243,6 +248,7 @@ __all__ = [
     'NLLLoss',
     'PoissonNLLLoss',
     'Conv1D',
+    'Conv1d',
     'Sequential',
     'Hardswish',
     'Conv1DTranspose',
@@ -253,6 +259,7 @@ __all__ = [
     'ParameterDict',
     'ParameterList',
     'Conv2D',
+    'Conv2d',
     'Softshrink',
     'Hardtanh',
     'TransformerDecoderLayer',
@@ -270,6 +277,7 @@ __all__ = [
     'Layer',
     'TransformerDecoder',
     'Conv3D',
+    'Conv3d',
     'Tanh',
     'Conv3DTranspose',
     'Flatten',
@@ -319,4 +327,5 @@ __all__ = [
     'LPPool2D',
     'ZeroPad1D',
     'ZeroPad3D',
+    'Parameter',
 ]

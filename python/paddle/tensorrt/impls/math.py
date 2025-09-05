@@ -159,9 +159,9 @@ def max_converter(network, paddle_op, inputs):
     input_shape = input_tensor.shape
     keepdim = paddle_op.attrs()["keepdim"]
     if network.has_implicit_batch_dimension:
-        assert (
-            axis != 0
-        ), "can't reduce on axis == 0 when network has implicit batch dimension"
+        assert axis != 0, (
+            "can't reduce on axis == 0 when network has implicit batch dimension"
+        )
     output_shape = []
     if len(axis) == 0:
         axis = list(range(len(input_shape)))
@@ -204,7 +204,6 @@ def clip_converter(network, paddle_op, inputs):
     def _get_constant_or_expand_tensor(
         value, constant_inputs, input_shape_tensor, rank, name=None
     ):
-
         if value is not None:
             return fill_constant_layer(
                 network,

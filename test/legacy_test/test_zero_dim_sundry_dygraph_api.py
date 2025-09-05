@@ -21,11 +21,11 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_devices
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base, core
+from paddle import base
 from paddle.framework import in_dynamic_mode
 
 
@@ -550,6 +550,98 @@ class TestSundryAPI(unittest.TestCase):
         x = paddle.rand([3, 5])
         out = paddle.argmax(x, keepdim=True)
         self.assertEqual(out.shape, [1, 1])
+
+    def _make_compat_minmax_test(self, func_name):
+        # 1) x is 0D
+        x = paddle.rand([])
+        val1, ind1 = func_name(x, 0)
+        val2, ind2 = func_name(x, -1)
+        val3 = func_name(x)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, x)
+        np.testing.assert_allclose(ind1, 0)
+
+        self.assertEqual(val2.shape, [])
+        self.assertEqual(ind2.shape, [])
+        np.testing.assert_allclose(val2, x)
+        np.testing.assert_allclose(ind2, 0)
+
+        self.assertEqual(val3.shape, [])
+        np.testing.assert_allclose(val3, x)
+
+        # 2) x is 1D
+        x = paddle.rand([5])
+        val, ind = func_name(x, 0)
+        self.assertEqual(val.shape, [])
+        self.assertEqual(ind.shape, [])
+
+        # 3) x is ND
+        x = paddle.rand([3, 5])
+        val, ind = func_name(x, dim=1)
+        self.assertEqual(val.shape, [3])
+        self.assertEqual(ind.shape, [3])
+
+        val = func_name(x)
+        self.assertEqual(val.shape, [])
+
+        # 4) x is ND, keepdim=True
+        x = paddle.rand([3, 5])
+        val, ind = func_name(x, dim=0, keepdim=True)
+        self.assertEqual(val.shape, [1, 5])
+        self.assertEqual(ind.shape, [1, 5])
+
+        # 5) test backward
+        x = paddle.randn([4, 5])
+        x.stop_gradient = False
+
+        val, ind = func_name(x, dim=0)
+        val.backward()
+        self.assertEqual(x.grad.shape, [4, 5])
+
+    def test_minmax_with_index(self):
+        # min/max_with_index is a GPU only op
+        if not paddle.is_compiled_with_cuda():
+            return
+        # 1) x is 0D
+        x = paddle.to_tensor(1)
+        val1, ind1 = paddle._C_ops.min_with_index(x, 0, False, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 1)
+        np.testing.assert_allclose(ind1, 0)
+
+        # 2) x is 1D
+        x = paddle.to_tensor([1, 1, 1])
+        val1, ind1 = paddle._C_ops.max_with_index(x, 0, False, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 1)
+        np.testing.assert_allclose(ind1, 0)
+
+        # 3) x is 2D
+        x = paddle.zeros([2, 3])
+        val1, ind1 = paddle._C_ops.min_with_index(x, 1, False, True)
+        val2, ind2 = paddle._C_ops.max_with_index(x, 1, True, True)
+
+        self.assertEqual(val1.shape, [])
+        self.assertEqual(ind1.shape, [])
+        np.testing.assert_allclose(val1, 0)
+        np.testing.assert_allclose(ind1, 0)
+
+        self.assertEqual(val2.shape, [1, 1])
+        self.assertEqual(ind2.shape, [1, 1])
+        np.testing.assert_allclose(val2, 0)
+        np.testing.assert_allclose(ind2, 0)
+
+    def test_compat_min(self):
+        self._make_compat_minmax_test(paddle.compat.min)
+
+    def test_compat_max(self):
+        self._make_compat_minmax_test(paddle.compat.max)
 
     def test_kthvalue(self):
         # 1) x is 0D
@@ -1691,7 +1783,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(y2.grad.shape, [])
 
     def test_repeat_interleave(self):
-        for place in get_places(string_format=True):
+        for place in get_devices():
             paddle.set_device(place)
 
             x = paddle.randn(())
@@ -2031,11 +2123,7 @@ class TestSundryAPI(unittest.TestCase):
                     di = g
                 elif p.is_same(x):
                     dx = g
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             main_program = paddle.static.default_main_program()
             out_i, out_x, di, dx = exe.run(

@@ -328,9 +328,9 @@ def ParseYamlArgs(string):
             else None
         )
 
-        assert (
-            arg_type in yaml_types_mapping.keys()
-        ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        assert arg_type in yaml_types_mapping.keys(), (
+            f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
+        )
         if arg_type in ["DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
         if arg_type in ["DataType"] and default_value is not None:
@@ -369,9 +369,9 @@ def ParseYamlReturns(string):
         else:
             ret_type = ret.strip()
 
-        assert (
-            ret_type in yaml_types_mapping.keys()
-        ), f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        assert ret_type in yaml_types_mapping.keys(), (
+            f"The return type {ret_type} in yaml config is not supported in yaml_types_mapping."
+        )
         ret_type = yaml_types_mapping[ret_type]
 
         assert "Tensor" in ret_type, AssertMessage("Tensor", ret_type)
@@ -379,6 +379,32 @@ def ParseYamlReturns(string):
         returns_list.append([ret_name, ret_type, i])
 
     return returns_list
+
+
+def ParsePythonAPIInfoFromYAML(path) -> dict:
+    """
+    Parse Python API information from a YAML file.
+
+    Args:
+        path (str): The path to the YAML file.
+
+    Returns:
+        dict: A dictionary containing Python API information, where the keys are operation names and the values are related api information.
+
+    Raises:
+        RuntimeError: This exception is raised if an error occurs while parsing the YAML file.
+    """
+    res_dict = {}
+    with open(path, "r", encoding="utf-8") as f:
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise RuntimeError(f"read_python_api_info load error: {e}")
+    # Trans list to dict, the key is op in yaml item
+    for item in data:
+        if "op" in item.keys():
+            res_dict.update({item["op"]: item})
+    return res_dict
 
 
 def ParseYamlForwardFromBackward(string):
@@ -389,7 +415,7 @@ def ParseYamlForwardFromBackward(string):
     fargs = r'(.*?)'
     frets = r'(.*)'
     pattern = (
-        fr'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
+        rf'{fname}{wspace}\({wspace}{fargs}{wspace}\){wspace}->{wspace}{frets}'
     )
 
     m = re.search(pattern, string)
@@ -409,7 +435,7 @@ def ParseYamlForward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'^\({fargs}\)$'
+    args_pattern = rf'^\({fargs}\)$'
     args_str = re.search(args_pattern, args_str.strip()).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -424,7 +450,7 @@ def ParseYamlBackward(args_str, returns_str):
 
     fargs = r'(.*?)'
     wspace = r'\s*'
-    args_pattern = fr'\({fargs}\)'
+    args_pattern = rf'\({fargs}\)'
     args_str = re.search(args_pattern, args_str).group(1)
 
     inputs_list, attrs_list = ParseYamlArgs(args_str)
@@ -451,7 +477,7 @@ def ParseYamlCompositeInfo(string):
     fname = r'(.*?)'
     wspace = r'\s*'
     fargs = r'(.*?)'
-    pattern = fr'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
+    pattern = rf'{fname}{wspace}\({wspace}{fargs}{wspace}\)'
 
     m = re.search(pattern, string)
     composite_fun_info = {}
@@ -479,33 +505,29 @@ class FunctionGeneratorBase:
         )
 
         self.forward_api_name = ""
+        self.python_api_info = {}
 
-        self.orig_forward_inputs_list = (
-            []
-        )  # [ [arg_name, arg_type, orig_position], ...]
-        self.orig_forward_attrs_list = (
-            []
-        )  # [ [attr_name, attr_type, default_value, orig_position], ...]
-        self.orig_forward_returns_list = (
-            []
-        )  # [ [ret_name, ret_type, orig_position], ...]
+        self.orig_forward_inputs_list = []  # [ [arg_name, arg_type, orig_position], ...]
+        self.orig_forward_attrs_list = []  # [ [attr_name, attr_type, default_value, orig_position], ...]
+        self.orig_forward_returns_list = []  # [ [ret_name, ret_type, orig_position], ...]
 
         # Processed Forward Data
-        self.forward_inputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
-        self.forward_outputs_position_map = (
-            {}
-        )  # { "name" : [type, fwd_position] }
+        self.forward_inputs_position_map = {}  # { "name" : [type, fwd_position] }
+        self.forward_outputs_position_map = {}  # { "name" : [type, fwd_position] }
 
         # Special Op Attributes
         self.optional_inputs = []  # [name, ...]
         self.no_need_buffers = []  # [name, ...]
-        self.composite_func_info = (
-            {}
-        )  # {name: func_name, args: [input_name, ...]}
+        self.composite_func_info = {}  # {name: func_name, args: [input_name, ...]}
         self.intermediate_outputs = []  # [name, ...]
         self.forward_inplace_map = {}  # {name : name, ...}
+        self.args_alias_map = {}  # {arg_name: alias_vector, ...}
+        self.dygraph_pre_process = (
+            ""  # The pre_process function calling code for dygraph
+        )
+
+        self.args_mapper_func_name = None  # The custom args parser function
+        self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
         forward_api_contents = self.forward_api_contents
@@ -514,6 +536,42 @@ class FunctionGeneratorBase:
 
         inplace_map_str = forward_api_contents['inplace']
         self.forward_inplace_map = ParseYamlInplaceInfo(inplace_map_str)
+
+    # Function for parameters parse
+    def ParsePythonAPIInfo(self):
+        python_api_info = self.python_api_info
+        args_alias = {}
+        if 'name' in python_api_info.keys():
+            self.python_api_names = python_api_info['name']
+        if 'args_alias' in python_api_info.keys():
+            for arg, alias_or_mode in python_api_info['args_alias'].items():
+                if arg == 'use_default_mapping':
+                    args_alias.update({arg: alias_or_mode})
+                    continue
+                alias_set = set(alias_or_mode)
+                # Add the original argument name to the alias set
+                alias_set.add(arg)
+                # Convert to C++ vector format
+                alias_vector = (
+                    "{" + ",".join(f'"{name}"' for name in alias_set) + "}"
+                )
+                args_alias.update({arg: alias_vector})
+            self.args_alias_map = args_alias
+        if 'pre_process' in python_api_info.keys():
+            pre_process = python_api_info['pre_process']
+            if pre_process is not None:
+                if 'dygraph_func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['dygraph_func']
+                elif 'func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['func']
+
+        if 'args_mapper' in python_api_info.keys():
+            args_mapper = python_api_info['args_mapper']
+            if args_mapper is not None:
+                if 'dygraph_func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['dygraph_func']
+                elif 'func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents
@@ -564,17 +622,19 @@ class FunctionGeneratorBase:
         elif 'backward_op' in forward_api_contents.keys():
             self.forward_api_name = forward_api_contents['backward_op']
 
-        assert (
-            'args' in forward_api_contents.keys()
-        ), 'Unable to find "args" in forward_api_contents keys'
+        assert 'args' in forward_api_contents.keys(), (
+            'Unable to find "args" in forward_api_contents keys'
+        )
 
         forward_args_str = forward_api_contents['args']
 
-        assert (
-            'output' in forward_api_contents.keys()
-        ), 'Unable to find "output" in forward_api_contents keys'
+        assert 'output' in forward_api_contents.keys(), (
+            'Unable to find "output" in forward_api_contents keys'
+        )
 
         forward_returns_str = forward_api_contents['output']
+        if 'python_api' in forward_api_contents.keys():
+            self.python_api_info = forward_api_contents['python_api']
 
         # Collect Original Forward Inputs/Outputs and then perform validation checks
         (

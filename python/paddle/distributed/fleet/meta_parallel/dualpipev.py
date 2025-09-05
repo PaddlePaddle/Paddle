@@ -37,7 +37,8 @@ from .pipeline_parallel import (
     PipelineParallel,
 )
 from .pp_utils.batch_comm_helper import BatchCommHelper
-from .zero_bubble_utils import WeightGradStore
+from .pp_utils.forward_backward_overlap_utils import ScheduleChunk
+from .zero_bubble_utils import EventStore, WeightGradStore
 
 __all__ = []
 
@@ -202,9 +203,9 @@ class DualPipeVParallel(PipelineParallel):
             if isinstance(loss_tensor, (tuple, list)):
                 assert len(loss_tensor) == 1
                 loss_tensor = loss_tensor[0]
-            assert isinstance(
-                loss_tensor, paddle.Tensor
-            ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            assert isinstance(loss_tensor, paddle.Tensor), (
+                "Currently, loss_fn should obtain Paddle.Tensor dtype"
+            )
 
             self.loss_tensors.append(loss_tensor)
             self.loss_fn_chunks.append(loss_fn_node)
@@ -225,9 +226,20 @@ class DualPipeVParallel(PipelineParallel):
                 loss = self.loss_tensors[acc_id]
                 if self.overlapped_forward_backward:
                     loss_fn_node = self.loss_fn_chunks[acc_id]
-                    input_grads = loss_fn_node.backward(scaler=self.scaler)
                     backward_chunk = self.schedule_chunks[phase][acc_id]
-                    input_grads = backward_chunk.backward(input_grads)
+                    _, _, input_grads = (
+                        self._layers.overlapped_forward_backward(
+                            ScheduleChunk([]),  # forward_chunk
+                            None,  # forward_inputs
+                            None,  # forward_loss_fn_node
+                            backward_chunk,
+                            loss_fn_node,
+                            None,  # input_grads
+                            self.scaler,
+                            combine_bw_event_to_wait=None,
+                            pp_stream=None,
+                        )
+                    )
                     self.loss_fn_chunks[acc_id] = None
                     self.schedule_chunks[phase][acc_id] = None
                 else:
@@ -239,7 +251,19 @@ class DualPipeVParallel(PipelineParallel):
                 outputs, output_grads = self._get_backward_inputs(phase, acc_id)
                 if self.overlapped_forward_backward:
                     backward_chunk = self.schedule_chunks[phase][acc_id]
-                    input_grads = backward_chunk.backward(output_grads)
+                    _, _, input_grads = (
+                        self._layers.overlapped_forward_backward(
+                            ScheduleChunk([]),  # forward_chunk
+                            None,  # forward_inputs
+                            None,  # forward_loss_fn_node
+                            backward_chunk,
+                            None,  # backward_loss_fn_node
+                            output_grads,
+                            None,  # scaler
+                            combine_bw_event_to_wait=None,
+                            pp_stream=None,
+                        )
+                    )
                     self.schedule_chunks[phase][acc_id] = None
                 else:
                     if len(outputs) > 0:
@@ -358,6 +382,10 @@ class DualPipeVParallel(PipelineParallel):
             else 0
         )
         if common_forward_ops_num == 0 and common_backward_ops_num == 0:
+            if EventStore.event is not None:
+                e_t = EventStore.event
+                EventStore.event = None
+                return e_t
             return deep_ep.get_event_from_custom_stream(
                 paddle.device.current_stream().stream_base
             )
@@ -387,12 +415,27 @@ class DualPipeVParallel(PipelineParallel):
                 pp_raw_stream
             )
 
+        backward_outer_event_wait = False
+        if EventStore.event is not None:
+            with paddle.device.stream_guard(
+                paddle.device.Stream(stream_base=pp_raw_stream)
+            ):
+                EventStore.event.current_stream_wait()
+
+            EventStore.set(None)
+            self.pp_group.process_group.set_outer_wait(True)
+
+            backward_outer_event_wait = True
+
         if common_backward_ops_num > 0:
             bwd_reqs = batch_isend_irecv(self.comm_backward_ops)
 
             if not use_stream_wait_event:
                 for req in bwd_reqs:
                     req.wait()
+
+        if backward_outer_event_wait:
+            self.pp_group.process_group.set_outer_wait(False)
 
         if use_stream_wait_event:
             forward_event_to_wait.current_stream_wait()
@@ -604,18 +647,18 @@ class DualPipeVParallel(PipelineParallel):
         return micro_dataset
 
     def _prepare_training(self, data, optimizer, lr_scheduler):
-        assert isinstance(
-            optimizer, HybridParallelOptimizer
-        ), 'optimizer should be HybridParallelOptimizer subclass.'
+        assert isinstance(optimizer, HybridParallelOptimizer), (
+            'optimizer should be HybridParallelOptimizer subclass.'
+        )
 
-        assert (
-            framework._dygraph_tracer()._has_grad
-        ), 'Please enable the generation of gradients.'
+        assert framework._dygraph_tracer()._has_grad, (
+            'Please enable the generation of gradients.'
+        )
 
         if self.is_pipeline_first_stage():
-            assert (
-                data is not None
-            ), "For the first and the last stage, the data must be set."
+            assert data is not None, (
+                "For the first and the last stage, the data must be set."
+            )
         else:
             data = None
 
@@ -629,9 +672,9 @@ class DualPipeVParallel(PipelineParallel):
     def _broadcast_final_loss(self):
         loss_sum_tensor = paddle.zeros([1], "float32")
         if self.is_pipeline_first_stage():
-            assert (
-                len(self.loss_tensors) > 0
-            ), "train_batch() in last stage should obtain valid loss"
+            assert len(self.loss_tensors) > 0, (
+                "train_batch() in last stage should obtain valid loss"
+            )
             for loss in self.loss_tensors:
                 loss_sum_tensor += loss.detach().astype("float32")
             if self._delay_scale_loss:
@@ -740,7 +783,6 @@ class DualPipeVParallel(PipelineParallel):
                         main_stage=True,
                     )
             else:
-
                 self._forward_backward_pass(
                     0,
                     1,

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -70,11 +70,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
 
@@ -118,11 +114,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
         def test_static():
@@ -165,11 +157,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
         def test_static():
@@ -213,11 +201,7 @@ class SmoothL1Loss(unittest.TestCase):
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
         def test_static():
@@ -295,11 +279,7 @@ class SmoothL1LossDivDelta(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = smooth_l1_loss_div_delta_np(
             input_np, label_np, reduction='mean'
@@ -345,11 +325,7 @@ class SmoothL1LossDivDelta(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_div_delta_np(
             input_np, label_np, reduction='sum'
         )
@@ -398,11 +374,7 @@ class SmoothL1LossDivDelta(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_div_delta_np(
             input_np, label_np, reduction='none'
         )
@@ -452,11 +424,7 @@ class SmoothL1LossDivDelta(unittest.TestCase):
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_div_delta_np(input_np, label_np, delta=delta)
 
         def test_static():

@@ -40,7 +40,7 @@ cudaDataType_t GetGpuDataType() {
     return CUDA_R_32F;
   } else if (std::is_same<T, double>::value) {
     return CUDA_R_64F;
-  } else if (std::is_same<T, phi::dtype::float16>::value) {
+  } else if (std::is_same<T, phi::float16>::value) {
     return CUDA_R_16F;
   }
 }

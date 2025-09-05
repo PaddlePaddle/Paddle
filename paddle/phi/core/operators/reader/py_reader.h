@@ -27,7 +27,7 @@ namespace reader {
 
 class DenseTensorBlockingQueue;
 
-class PyReader : public framework::FileReader {
+class PADDLE_API PyReader : public framework::FileReader {
  public:
   explicit PyReader(
       const std::shared_ptr<DenseTensorBlockingQueue>& queue,

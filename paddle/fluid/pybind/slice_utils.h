@@ -525,11 +525,11 @@ static void ParseIndex(const paddle::Tensor& tensor,
         if (slice_tensor.dtype() == phi::DataType::BOOL) {
           // bool tensor consumes (rank of index tensor) dimensions of input
           // tensor
-          for (int i = 0; i < slice_tensor.shape().size(); i++) {
+          for (size_t i = 0; i < slice_tensor.shape().size(); i++) {
             PADDLE_ENFORCE_EQ(slice_tensor.shape()[i],
                               dim_len,
                               common::errors::OutOfRange(
-                                  "The shape of boolean index %d did not match"
+                                  "The shape of boolean index %d did not match "
                                   "indexed tensor %d along axis %d.",
                                   slice_tensor.shape()[0],
                                   dim_len,
@@ -684,7 +684,7 @@ static paddle::Tensor dealWithAdvancedIndex(
       if (index.dtype() == phi::DataType::BOOL) {
         *rank_of_new_dim = std::max(*rank_of_new_dim, 1);
         i--;
-        for (int j = 0; j < index.shape().size(); j++) {
+        for (size_t j = 0; j < index.shape().size(); j++) {
           i++;
           index_dim = (*advanced_index_dim)[i];
           trans_dim->push_back(index_dim);
@@ -820,7 +820,45 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
       indices_int64.push_back(indice);
     }
 
+    // AMP Logic
+    if (egr::Controller::Instance().GetAMPLevel() !=
+        paddle::imperative::AmpLevel::O0) {
+      auto op_name = phi::TransToFluidOpName("index_elementwise_get");
+      paddle::small_vector<std::vector<paddle::Tensor>,
+                           egr::kSlotSmallVectorSize>
+          amp_tensors_vector = {{self_tensor}};
+
+      auto amp_dst_dtype =
+          paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+      auto new_self_tensor = paddle::imperative::AmpAutoCast(
+          "self_tensor", self_tensor, amp_dst_dtype, op_name);
+      auto new_tensor = paddle::imperative::AmpAutoCast(
+          "tensor", tensor, amp_dst_dtype, op_name);
+
+      {
+        paddle::imperative::AutoCastGuard guard(
+            egr::Controller::Instance().GetCurrentAmpAttrs(),
+            paddle::imperative::AmpLevel::O0);
+
+        AdvancedIndex ad = AdvancedIndex(new_tensor, indices_int64);
+        const bool is_combined = false;
+        const bool accumulate = false;
+
+        return index_elementwise_get_ad_func(new_self_tensor,
+                                             ad.indices,
+                                             ad.src_sizes,
+                                             ad.src_strides,
+                                             ad.indexed_sizes,
+                                             ad.indexed_strides,
+                                             slice_offset,
+                                             accumulate,
+                                             is_combined);
+      }
+    }
+
     AdvancedIndex ad = AdvancedIndex(tensor, indices_int64);
+    const bool is_combined = false;
     const bool accumulate = false;
 
     return index_elementwise_get_ad_func(self_tensor,
@@ -830,7 +868,8 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
                                          slice_offset,
-                                         accumulate);
+                                         accumulate,
+                                         is_combined);
   } else {
     if (bool_index.shape().size() == 1)
       return gather_ad_func(tensor, bool_2_idx);
@@ -1285,24 +1324,62 @@ static void ApplyGetitem(const int index_size,
                     transed_tensor,
                     &transed_index_int64);
 
-      AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
-      if (index_size == 1) {
-        paddle::Tensor flattened_tensor =
-            flatten_ad_func((*transed_index)[0], 0, -1);
-        *out = gather_ad_func(*transed_tensor, flattened_tensor);
-        *out = reshape_ad_func(*out, ad.src_sizes);
-      } else {
-        const bool accumulate = true;
-        *out = index_elementwise_get_ad_func(*self_tensor,
-                                             ad.indices,
-                                             ad.src_sizes,
-                                             ad.src_strides,
-                                             ad.indexed_sizes,
-                                             ad.indexed_strides,
-                                             slice_offset,
-                                             accumulate);
+      // AMP Logic
+      if (egr::Controller::Instance().GetAMPLevel() !=
+          paddle::imperative::AmpLevel::O0) {
+        auto op_name = phi::TransToFluidOpName("index_elementwise_get");
+        paddle::small_vector<std::vector<paddle::Tensor>,
+                             egr::kSlotSmallVectorSize>
+            amp_tensors_vector = {{*self_tensor}};
+
+        auto amp_dst_dtype =
+            paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
+
+        auto new_self_tensor = paddle::imperative::AmpAutoCast(
+            "self_tensor", *self_tensor, amp_dst_dtype, op_name);
+        auto new_transed_tensor = paddle::imperative::AmpAutoCast(
+            "transed_tensor", *transed_tensor, amp_dst_dtype, op_name);
+
+        {
+          paddle::imperative::AutoCastGuard guard(
+              egr::Controller::Instance().GetCurrentAmpAttrs(),
+              paddle::imperative::AmpLevel::O0);
+
+          AdvancedIndex ad =
+              AdvancedIndex(new_transed_tensor, transed_index_int64);
+
+          const bool is_combined = (index_size == 1) ? false : true;
+          const bool accumulate = true;
+          *out = index_elementwise_get_ad_func(new_self_tensor,
+                                               ad.indices,
+                                               ad.src_sizes,
+                                               ad.src_strides,
+                                               ad.indexed_sizes,
+                                               ad.indexed_strides,
+                                               slice_offset,
+                                               accumulate,
+                                               is_combined);
+        }
+        return;
       }
 
+      AdvancedIndex ad = AdvancedIndex(*transed_tensor, transed_index_int64);
+      // is_combined:
+      //   Distinguishes between regular indexing (single index) and combined
+      //   indexing (multiple indices). When false (single index case), enables
+      //   optimized backward pass using IndexPutWithSortKernel for better
+      //   performance.
+      const bool is_combined = (index_size == 1) ? false : true;
+      const bool accumulate = true;
+      *out = index_elementwise_get_ad_func(*self_tensor,
+                                           ad.indices,
+                                           ad.src_sizes,
+                                           ad.src_strides,
+                                           ad.indexed_sizes,
+                                           ad.indexed_strides,
+                                           slice_offset,
+                                           accumulate,
+                                           is_combined);
       return;
     } else {
       paddle::Tensor transed_advanced_index_tensor;

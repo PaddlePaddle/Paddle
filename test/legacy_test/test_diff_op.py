@@ -306,7 +306,6 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 class TestDiffOpFp16(TestDiffOp):
-
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
@@ -342,6 +341,114 @@ class TestDiffOp_ZeroSize(TestDiffOp):
         self.axis = 0
         self.prepend = None
         self.append = None
+
+
+class TestDiffOpFp16_TorchAlias(TestDiffOp):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.base.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([4, 4]).astype("float16")
+                x = paddle.static.data(
+                    name="input", shape=[4, 4], dtype="float16"
+                )
+                exe = paddle.static.Executor(place)
+                out = paddle.diff(
+                    x,
+                    n=self.n,
+                    dim=self.axis,
+                    prepend=self.prepend,
+                    append=self.append,
+                )
+                fetches = exe.run(
+                    feed={
+                        "input": input,
+                    },
+                    fetch_list=[out],
+                )
+        paddle.disable_static()
+
+
+class TestDiffOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.test_configs = [
+            {'shape': [20], 'dtype': 'float32', 'n': 1, 'axis': -1},
+            {'shape': [10, 15], 'dtype': 'float64', 'n': 2, 'axis': 0},
+            {'shape': [6, 8, 10], 'dtype': 'int32', 'n': 3, 'axis': 1},
+            {'shape': [5, 7, 9, 11], 'dtype': 'int64', 'n': 1, 'axis': -1},
+            {
+                'shape': [12, 18],
+                'dtype': 'float64',
+                'n': 1,
+                'axis': 1,
+                'prepend': 3,
+            },
+            {
+                'shape': [8, 10, 12],
+                'dtype': 'int64',
+                'n': 2,
+                'axis': 0,
+                'append': 2,
+            },
+            {
+                'shape': [10, 15],
+                'dtype': 'float32',
+                'n': 1,
+                'axis': -1,
+                'prepend': 2,
+                'append': 2,
+            },
+        ]
+
+    def generate_aux_tensor_np(self, shape, dtype):
+        if 'int' in dtype:
+            return np.random.randint(0, 100, size=shape).astype(dtype)
+        return np.random.randn(*shape).astype(dtype)
+
+    def test_out_parameter(self):
+        for config in self.test_configs:
+            with self.subTest(config=config):
+                shape = config['shape']
+                dtype = config['dtype']
+
+                if 'int' in dtype:
+                    x_np = np.random.randint(0, 100, size=shape).astype(dtype)
+                else:
+                    x_np = np.random.randn(*shape).astype(dtype)
+
+                x_tensor = paddle.to_tensor(x_np)
+
+                paddle_kwargs = {
+                    'n': config.get('n', 1),
+                    'axis': config.get('axis', -1),
+                }
+
+                prepend_size = config.get('prepend')
+                if prepend_size:
+                    p_shape = list(shape)
+                    p_shape[paddle_kwargs['axis']] = prepend_size
+                    prepend_np = self.generate_aux_tensor_np(p_shape, dtype)
+                    paddle_kwargs['prepend'] = paddle.to_tensor(prepend_np)
+
+                append_size = config.get('append')
+                if append_size:
+                    a_shape = list(shape)
+                    a_shape[paddle_kwargs['axis']] = append_size
+                    append_np = self.generate_aux_tensor_np(a_shape, dtype)
+                    paddle_kwargs['append'] = paddle.to_tensor(append_np)
+
+                expected_tensor = paddle.diff(x_tensor, **paddle_kwargs)
+
+                out_tensor = paddle.zeros_like(expected_tensor)
+                paddle.diff(x_tensor, out=out_tensor, **paddle_kwargs)
+
+                np.testing.assert_allclose(
+                    out_tensor.numpy(), expected_tensor.numpy(), rtol=1e-20
+                )
 
 
 if __name__ == '__main__':

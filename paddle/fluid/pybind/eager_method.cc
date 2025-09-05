@@ -707,13 +707,31 @@ static PyObject* tensor_method_copy_(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
   EAGER_TRY
-  paddle::Tensor& src_tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  PyObject* other_tensor = nullptr;
+  bool blocking = true;
+  bool non_blocking = false;
+  static char* kwlist[] = {const_cast<char*>("other"),
+                           const_cast<char*>("blocking"),
+                           const_cast<char*>("non_blocking"),
+                           nullptr};
+  bool flag = PyArg_ParseTupleAndKeywords(
+      args, kwargs, "|Obb", kwlist, &other_tensor, &blocking, &non_blocking);
+  blocking = !blocking || non_blocking ? false : true;
+  PADDLE_ENFORCE_EQ(flag,
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "Could not parse args and kwargs successfully, "
+                        "please check your input first and make "
+                        "sure you are on the right way. "
+                        "The expected arguments as follow: ("
+                        "other, blocking, non_blocking)"));
+
+  paddle::Tensor& src_tensor = CastPyArg2Tensor(other_tensor, 0);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, src_tensor, self->tensor)) {
     ConvertAllInputsToDistTensor(mesh, src_tensor, self->tensor);
   }
 
-  bool blocking = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 1), 1);
   VLOG(6) << "Start Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
   if (!self->tensor.initialized()) {
@@ -742,7 +760,7 @@ static PyObject* tensor_method_copy_(TensorObject* self,
 
   VLOG(6) << "Finish Copy Tensor " << src_tensor.name() << " to "
           << self->tensor.name();
-  RETURN_PY_NONE
+  return ToPyObject(self->tensor);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
@@ -931,8 +949,8 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
   } else {
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
@@ -995,8 +1013,8 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
     PADDLE_ENFORCE(
         grad != nullptr,
-        common::errors::Fatal("Detected nullptr grad"
-                              "Please check if you have manually cleared"
+        common::errors::Fatal("Detected nullptr grad. "
+                              "Please check if you have manually cleared "
                               "the grad inside autograd_meta"));
     if (grad->initialized()) {
       if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
@@ -1414,10 +1432,10 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
     if (self->tensor.is_dense_tensor()) {
       auto* dst_tensor =
           static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-      if (self->tensor.has_allocation() &&
-              !dst_tensor->meta().is_contiguous() ||
-          !src_tensor->meta().is_contiguous()) {
-        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous";
+      if (self->tensor.has_allocation() && self->tensor.initialized() &&
+          (!dst_tensor->meta().is_contiguous() ||
+           !src_tensor->meta().is_contiguous())) {
+        VLOG(8) << "set_tensor() method , src or dst tensor is not contiguous ";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
               "FLAGS_use_stride_kernel is closed. Strided kernel "
@@ -1450,7 +1468,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
           "The `set_tensor()` method of non DenseTensor get a DenseTensor src "
           "value"));
     }
-
   } else if (value.is_dist_tensor()) {
 #ifdef PADDLE_WITH_DISTRIBUTE
     auto* src_tensor =
@@ -1484,7 +1501,6 @@ static PyObject* tensor_method_set_underline_tensor(TensorObject* self,
         "current PaddlePaddle, please recompile and installPaddlePaddle "
         "with the option of `WITH_DISTRIBUTE=ON`."));
 #endif
-
   } else {
     PADDLE_THROW(common::errors::Unavailable(
         "The `set_tensor()` method of (Dist)Tensor get a non "
