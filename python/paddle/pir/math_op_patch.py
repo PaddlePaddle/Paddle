@@ -1135,12 +1135,7 @@ def monkey_patch_value():
         return transform(self, device, dtype, blocking, copy_tensor)
 
     def __deepcopy__(self, memo):
-        if isinstance(self.place, paddle.CUDAPlace):
-            new_tensor = _C_ops.memcpy(self, 1)
-        elif isinstance(self.place, paddle.CUDAPinnedPlace):
-            new_tensor = _C_ops.memcpy(self, 2)
-        else:
-            new_tensor = _C_ops.memcpy(self, 0)
+        new_tensor = self.clone().detach()
         memo[id(self)] = new_tensor
         return new_tensor
 

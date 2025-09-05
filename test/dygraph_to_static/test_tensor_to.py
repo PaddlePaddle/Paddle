@@ -253,12 +253,22 @@ class TensorToTest(Dy2StTestBase):
             tensor3, device="cpu", copy=True
         )
         self.assertEqual(tensor7.place, paddle.CPUPlace())
+        # dtype, copy
+        tensor8 = paddle.jit.to_static(to_kwargs_dtype_copy)(
+            tensor3, dtype=tensor3.dtype, copy=True
+        )
+        self.assertEqual(tensor8.dtype, tensor3.dtype)
+        self.assertEqual(tensor3.place, tensor8.place)
 
         if paddle.is_compiled_with_cuda():
             tensor8 = paddle.jit.to_static(to_kwargs_device_copy)(
                 tensor3, device="gpu", copy=True
             )
             self.assertEqual(tensor8.place, paddle.CUDAPlace(0))
+            tensor9 = paddle.jit.to_static(to_kwargs_device_copy)(
+                tensor3, device=paddle.CUDAPinnedPlace(), copy=False
+            )
+            self.assertEqual(tensor9.place, paddle.CUDAPinnedPlace())
 
     @test_ast_only
     def test_ast_error(self):

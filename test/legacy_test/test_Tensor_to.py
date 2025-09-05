@@ -147,6 +147,8 @@ class TensorToTest(unittest.TestCase):
         self.assertTrue(tensor5.dtype, "paddle.int8")
         tensor6 = tensor3.to(dtype="int8", non_blocking=True, copy=True)
         self.assertTrue(tensor6.dtype, "paddle.int8")
+        tensor7 = tensor3.to(dtype=tensor3.dtype, copy=True)
+        self.assertTrue(tensor7.dtype, tensor3.dtype)
 
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])
