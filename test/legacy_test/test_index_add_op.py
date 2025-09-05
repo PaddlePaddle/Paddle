@@ -513,5 +513,27 @@ class TestIndexAddOp_ZeroSize(OpTest):
         )
 
 
+class TestIndexAdd_ZeroSize2(TestIndexAddOp_ZeroSize):
+    def setUp(self):
+        index_np = np.array([], dtype=self.index_type)
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = x_np.copy()
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.x_shape = (10,)
+        self.index_size = 0
+        self.axis = 0
+        self.add_value_shape = (0,)
+
+
 if __name__ == '__main__':
     unittest.main()
