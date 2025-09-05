@@ -363,9 +363,9 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
                             "In-place output tensor `%s` at index %d does not "
                             "share the same address as "
                             "the input tensor `%s` at index %d.",
-                            ctx->outputs_names_->at(outputs_idx),
+                            ctx->outputs_names_.at(outputs_idx),
                             outputs_idx,
-                            ctx->inputs_names_->at(inputs_idx),
+                            ctx->inputs_names_.at(inputs_idx),
                             inputs_idx));
     }
     // Copy non-in-place outputs as usual
@@ -378,13 +378,13 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     std::vector<std::string> outputs_names_wo_inplace;
     std::vector<std::string> outputs_names_with_inplace;
 
-    for (size_t i = 0; i < ctx->outputs_names_->size(); ++i) {
+    for (size_t i = 0; i < ctx->outputs_names_.size(); ++i) {
       if (ctx->GetInplaceIndexMap().count(i)) {
-        outputs_names_with_inplace.push_back(ctx->outputs_names_->at(i) +
+        outputs_names_with_inplace.push_back(ctx->outputs_names_.at(i) +
                                              "(inplaced)");
       } else {
-        outputs_names_with_inplace.push_back(ctx->outputs_names_->at(i));
-        outputs_names_wo_inplace.push_back(ctx->outputs_names_->at(i));
+        outputs_names_with_inplace.push_back(ctx->outputs_names_.at(i));
+        outputs_names_wo_inplace.push_back(ctx->outputs_names_.at(i));
       }
     }
     const std::string output_str_wo_inplace =
@@ -394,7 +394,7 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
         paddle::string::join_strings<std::vector<std::string>>(
             outputs_names_with_inplace, ", ");
     const int num_inplace_outputs = ctx->GetInplaceIndexMap().size();
-    const int num_outputs = ctx->outputs_names_->size();
+    const int num_outputs = ctx->outputs_names_.size();
 
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output tensor count mismatch. Expected outputs: [%s] (including %d "
