@@ -73,6 +73,11 @@
   args_mapper :
     func : ArgMaxMinMapper
 
+- op : ceil
+    name : [paddle.ceil, paddle.Tensor.ceil]
+    args_alias:
+      use_default_mapping : True
+
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
   args_alias:
@@ -122,6 +127,8 @@
   name : [paddle.logsumexp,paddle.Tensor.logsumexp]
   args_alias:
     use_default_mapping : True
+  pre_process:
+    func: LogsumexpPreProcess(x, axis, reduce_all)
 
 - op : roll
   name : [paddle.roll, paddle.Tensor.roll]
