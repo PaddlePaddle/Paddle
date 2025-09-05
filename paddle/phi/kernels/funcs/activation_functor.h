@@ -100,7 +100,7 @@ struct Cosine<dtype::bfloat16> {
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
-// T is phi::dtype::complex<float> or phi::dtype::complex<double>
+// T is phi::complex64 or phi::complex128
 template <typename T>
 struct Conj {
   HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
@@ -108,7 +108,7 @@ struct Conj {
   }
 };
 
-// T is phi::dtype::complex<float> or phi::dtype::complex<double>
+// T is phi::complex64 or phi::complex128
 template <typename T>
 struct Real {
   HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {

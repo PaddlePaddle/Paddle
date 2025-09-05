@@ -121,8 +121,8 @@ struct TensorSetConstantXPU {
     auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place_);
     auto begin = dev_ctx->Alloc<T>(tensor_);
     int numel = tensor_->numel();
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       std::unique_ptr<T[]> data_cpu(new T[numel]);
       std::fill(data_cpu.get(), data_cpu.get() + numel, static_cast<T>(value_));
       memory_utils::Copy(place_,

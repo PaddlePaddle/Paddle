@@ -130,8 +130,8 @@ void QrGradKernel(const Context& dev_ctx,
     M = Add<T, Context>(
         dev_ctx, M_tril_0, TransposeLast2Dim<T, Context>(dev_ctx, M_tril_1));
 #else
-    if (std::is_same<T, phi::dtype::complex<float>>::value ||
-        std::is_same<T, phi::dtype::complex<double>>::value) {
+    if (std::is_same<T, phi::complex64>::value ||
+        std::is_same<T, phi::complex128>::value) {
       DenseTensor M_tril_tmp = TrilTriu<T, Context>(dev_ctx, M_tmp1, -1, true);
       DenseTensor M_tril =
           Add<T, Context>(dev_ctx,
