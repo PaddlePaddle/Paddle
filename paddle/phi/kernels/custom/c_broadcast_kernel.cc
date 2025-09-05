@@ -81,5 +81,5 @@ PD_REGISTER_KERNEL(c_broadcast,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

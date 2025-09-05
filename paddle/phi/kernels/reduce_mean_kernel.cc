@@ -60,8 +60,8 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(mean,
@@ -73,11 +73,11 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::float8_e4m3fn,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
@@ -86,7 +86,7 @@ PD_REGISTER_KERNEL(mean, KPS, ALL_LAYOUT, phi::MeanKernel, float) {}
 
 #if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
-    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::dtype::bfloat16) {
+    mean, OneDNN, ONEDNN, phi::MeanKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceMeanCheckIfOneDNNSupport;
 }
 #endif
@@ -97,6 +97,6 @@ PD_REGISTER_KERNEL(mean,
                    ALL_LAYOUT,
                    phi::MeanKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

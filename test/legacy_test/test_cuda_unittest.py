@@ -103,7 +103,7 @@ class TestCudaCompat(unittest.TestCase):
     def test_stream_creation(self):
         if paddle.is_compiled_with_cuda():
             s = Stream()
-            s1 = paddle.Stream()  # test paddle.Stream
+            s1 = Stream()
             self.assertIsInstance(s, paddle.device.Stream)
             self.assertIsInstance(s1, paddle.device.Stream)
 

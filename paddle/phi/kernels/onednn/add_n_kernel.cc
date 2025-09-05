@@ -130,6 +130,6 @@ void AddNKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    add_n, OneDNN, ONEDNN, phi::AddNKernel, float, phi::dtype::bfloat16) {
+    add_n, OneDNN, ONEDNN, phi::AddNKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::AddNCheckIfOneDNNSupport;
 }

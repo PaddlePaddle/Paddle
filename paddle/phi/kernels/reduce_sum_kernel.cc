@@ -41,8 +41,8 @@ PD_REGISTER_KERNEL(sum,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int16_t,
                    int,
                    int64_t,
@@ -61,8 +61,8 @@ PD_REGISTER_KERNEL(sum,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int16_t,
                    int,
                    int64_t,
@@ -81,8 +81,7 @@ PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
 #endif
 
 #if defined(PADDLE_WITH_DNNL)
-PD_REGISTER_KERNEL(
-    sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
 }
 #endif
@@ -93,8 +92,8 @@ PD_REGISTER_KERNEL(sum,
                    ALL_LAYOUT,
                    phi::SumKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int8_t,
                    int,
                    int64_t,
