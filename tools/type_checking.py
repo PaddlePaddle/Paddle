@@ -199,14 +199,13 @@ class MypyChecker(TypeChecker):
 
         if not failed_apis:
             logger.info(">>> Type checking is successful!")
-            logger.info("----------------End of the Check--------------------")
             return
 
         for codeblock_identifier, msg in error_messages.items():
-            logger.error(f" {codeblock_identifier} ".center(80, '-'))
+            logger.error(f" {codeblock_identifier} ".center(80, '='))
             logger.error(f">>> Type checking failed for {codeblock_identifier}")
             logger.error(msg)
-            logger.error("-" * 80)
+            logger.error("=" * 80)
         logger.error(">>> Mypy summary:")
         logger.error(raw_summary)
         logger.error(">>> Mistakes found in type checking!")
@@ -214,12 +213,12 @@ class MypyChecker(TypeChecker):
             ">>> Please recheck the type annotations. Run `tools/type_checking.py` to check the typing issues:"
         )
         logger.error(
-            "> python tools/type_checking.py " + " ".join(sorted(failed_apis))
+            "    $ python tools/type_checking.py "
+            + " ".join(sorted(failed_apis))
         )
         logger.error(
             ">>> For more information: https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/dev_guides/style_guide_and_references/type_annotations_specification_cn.html"
         )
-        logger.error("----------------End of the Check--------------------")
 
 
 def parse_args() -> argparse.Namespace:
