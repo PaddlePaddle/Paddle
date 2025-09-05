@@ -84,17 +84,19 @@ def get_device_properties(device: DeviceLike = None):
     return paddle.device.cuda.get_device_properties(dev)
 
 
-def get_device_name(device: int | None = None) -> str:
+def get_device_name(device: DeviceLike = None) -> str:
     """
     Returns the name of a given CUDA device.
     """
+    dev = _device_to_paddle(device)
     return paddle.device.cuda.get_device_name(device)
 
 
-def get_device_capability(device: int | None = None) -> tuple[int, int]:
+def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     """
     Returns the major and minor compute capability of a given device.
     """
+    dev = _device_to_paddle(device)
     return paddle.device.cuda.get_device_capability(device)
 
 
