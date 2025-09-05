@@ -74,9 +74,9 @@
     func : ArgMaxMinMapper
 
 - op : ceil
-    name : [paddle.ceil, paddle.Tensor.ceil]
-    args_alias:
-      use_default_mapping : True
+  name : [paddle.ceil, paddle.Tensor.ceil]
+  args_alias:
+    use_default_mapping : True
 
 - op : dot
   name : [paddle.dot, paddle.Tensor.dot]
