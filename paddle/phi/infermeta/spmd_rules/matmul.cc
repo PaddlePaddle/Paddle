@@ -191,7 +191,8 @@ SpmdInfo MatmulInferSpmd(const DistMetaTensor& x,
   if (trans_y) {
     std::iter_swap(y_shape.end() - 2, y_shape.end() - 1);
   }
-  const auto& axis_sizes = GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}});
+  const auto& axis_sizes =
+      GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}}, true);
   const auto& mesh_shape = x_dist_attr_src.process_mesh().shape();
   auto axis_to_dim_map =
       ShardingMergeForTensorsMatmul({x_pair, y_pair}, axis_sizes, mesh_shape);
@@ -262,7 +263,7 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
 
   // step2: Sharding Propagation
   // should not use input dims mapping for backward sharding merge
-  const auto& axis_size = GetAxesSizes({{out_axes, out_shape}});
+  const auto& axis_size = GetAxesSizes({{out_axes, out_shape}}, true);
   const auto& mesh_shape = out_dist_attr_src.process_mesh().shape();
   auto axis_to_dim_map = ShardingMergeForTensors(
       {{out_axes, out_dims_mapping}}, axis_size, mesh_shape, false);
@@ -362,6 +363,10 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
     y = DistMetaTensor(y.dims(), infer_y_dist_attr);
   }
 
+  const std::vector<int64_t> x_shape = phi::vectorize(x.dims());
+  const std::vector<int64_t> y_shape = phi::vectorize(y.dims());
+  const std::vector<int64_t> out_grad_shape = phi::vectorize(out_grad.dims());
+
   SpmdInfo dx_spmd_info;
   SpmdInfo dy_spmd_info;
   if (trans_x) {
@@ -377,10 +382,10 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans x&y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans x&y: dy-x");
-      auto x_grad =
-          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
-      auto y_grad =
-          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
+      auto x_grad = ReduceGradBroadCastDims(
+          x.dist_attr(), dx_spmd_info.second[0], x_shape, out_grad_shape);
+      auto y_grad = ReduceGradBroadCastDims(
+          y.dist_attr(), dy_spmd_info.second[0], y_shape, out_grad_shape);
       return {
           {dy_spmd_info.first[1], dx_spmd_info.first[0], dx_spmd_info.first[1]},
           {x_grad, y_grad}};
@@ -396,10 +401,10 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
       confirm_dist_attr_same_fn(dy_spmd_info.first[0], x, "trans x: dy-x");
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[1], out_grad, "trans x: dy-out_grad");
-      auto x_grad =
-          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
-      auto y_grad =
-          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
+      auto x_grad = ReduceGradBroadCastDims(
+          x.dist_attr(), dx_spmd_info.second[0], x_shape, out_grad_shape);
+      auto y_grad = ReduceGradBroadCastDims(
+          y.dist_attr(), dy_spmd_info.second[0], y_shape, out_grad_shape);
       return {
           {dy_spmd_info.first[0], dx_spmd_info.first[0], dx_spmd_info.first[1]},
           {x_grad, y_grad}};
@@ -417,10 +422,10 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
       confirm_dist_attr_same_fn(
           dy_spmd_info.first[0], out_grad, "trans y: dy-out_grad");
       confirm_dist_attr_same_fn(dy_spmd_info.first[1], x, "trans y: dy-x");
-      auto x_grad =
-          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
-      auto y_grad =
-          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
+      auto x_grad = ReduceGradBroadCastDims(
+          x.dist_attr(), dx_spmd_info.second[0], x_shape, out_grad_shape);
+      auto y_grad = ReduceGradBroadCastDims(
+          y.dist_attr(), dy_spmd_info.second[0], y_shape, out_grad_shape);
       return {
           {dy_spmd_info.first[1], dx_spmd_info.first[1], dx_spmd_info.first[0]},
           {x_grad, y_grad}};
@@ -435,10 +440,10 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x_,
       confirm_dist_attr_with_arg_same_fn(dx_spmd_info.first[0],
                                          dy_spmd_info.first[1],
                                          "no trans: dy-out_grad");
-      auto x_grad =
-          ReduceGradBroadCastDims(x.dist_attr(), dx_spmd_info.second[0]);
-      auto y_grad =
-          ReduceGradBroadCastDims(y.dist_attr(), dy_spmd_info.second[0]);
+      auto x_grad = ReduceGradBroadCastDims(
+          x.dist_attr(), dx_spmd_info.second[0], x_shape, out_grad_shape);
+      auto y_grad = ReduceGradBroadCastDims(
+          y.dist_attr(), dy_spmd_info.second[0], y_shape, out_grad_shape);
       return {
           {dy_spmd_info.first[0], dx_spmd_info.first[1], dx_spmd_info.first[0]},
           {x_grad, y_grad}};

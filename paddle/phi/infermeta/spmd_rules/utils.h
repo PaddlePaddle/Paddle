@@ -250,10 +250,14 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result);
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad);
+                                       const ArgDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape);
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const TensorDistAttr& grad);
+                                       const TensorDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape);
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
                                        const TensorDistAttr& grad);

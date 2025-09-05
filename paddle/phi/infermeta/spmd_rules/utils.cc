@@ -147,6 +147,8 @@ std::unordered_map<std::string, int64_t> GetAxesSizes(
           axis_to_size_map[axis] = pair.second[i];
         } else if (axis_to_size_map[axis] == 1) {
           axis_to_size_map[axis] = pair.second[i];
+        } else if (pair.second[i] == 1) {
+          continue;
         } else {
           PADDLE_ENFORCE_EQ(
               pair.second[i],
@@ -1080,9 +1082,11 @@ void DebugInfoForInferSpmd(const std::string& rule_name,
 }
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const ArgDistAttr& grad) {
+                                       const ArgDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape) {
   const auto& grad_in = PADDLE_GET_CONST(TensorDistAttr, grad);
-  return ReduceGradBroadCastDims(input, grad_in);
+  return ReduceGradBroadCastDims(input, grad_in, input_shape, grad_shape);
 }
 
 TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
@@ -1090,49 +1094,15 @@ TensorDistAttr ReduceGradBroadCastDims(int64_t input_dims,
   TensorDistAttr input = CopyTensorDistAttrForOutput(grad);
   std::vector<int64_t> dim_mapping(input_dims, -1);
   input.set_dims_mapping(dim_mapping);
-  return ReduceGradBroadCastDims(input, grad);
+  return ReduceGradBroadCastDims(input, grad, {}, {});
 }
 
 TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
-                                       const TensorDistAttr& grad) {
-  bool is_co_shard_status = input.is_co_shard() && grad.is_co_shard();
-  if (is_co_shard_status) {
-    auto grad_dim = grad.multi_dims_mapping().size();
-    auto input_dim = input.multi_dims_mapping().size();
-    PADDLE_ENFORCE_GE(grad_dim,
-                      input_dim,
-                      common::errors::InvalidArgument(
-                          "grad dim must ge than input dim, but we "
-                          "got grad_dim [%d], input_dim[%d]",
-                          grad_dim,
-                          input_dim));
-    if (grad_dim == input_dim) {
-      return grad;
-    }
-    size_t broadcast_dim = grad_dim - input_dim;
-    // gather partial status
-    auto partial_dims = grad.partial_dims();
-    auto& grad_dims_mapping = grad.multi_dims_mapping();
-    auto dims_mapping = input.multi_dims_mapping();
-    for (size_t i = 0; i < grad_dim; ++i) {
-      auto mapping = grad_dims_mapping[i];
-      if (i < broadcast_dim) {
-        for (auto& dim : mapping) {
-          partial_dims.insert(dim);
-        }
-      } else {
-        dims_mapping[i - broadcast_dim] = mapping;
-      }
-    }
-    auto grad_out = CopyTensorDistAttrForOutput(input);
-    grad_out.set_dims_mapping(dims_mapping);
-    std::vector<int64_t> partial_status(partial_dims.begin(),
-                                        partial_dims.end());
-    grad_out.set_partial_status(partial_status);
-    return grad_out;
-  }
-  auto grad_dim = grad.dims_mapping().size();
-  auto input_dim = input.dims_mapping().size();
+                                       const TensorDistAttr& grad,
+                                       const std::vector<int64_t>& input_shape,
+                                       const std::vector<int64_t>& grad_shape) {
+  auto grad_dim = grad.multi_dims_mapping().size();
+  auto input_dim = input.multi_dims_mapping().size();
   PADDLE_ENFORCE_GE(
       grad_dim,
       input_dim,
@@ -1146,16 +1116,29 @@ TensorDistAttr ReduceGradBroadCastDims(const TensorDistAttr& input,
   size_t broadcast_dim = grad_dim - input_dim;
   // gather partial status
   auto partial_dims = grad.partial_dims();
-  auto& grad_dims_mapping = grad.dims_mapping();
-  auto dims_mapping = input.dims_mapping();
+  auto& grad_dims_mapping = grad.multi_dims_mapping();
+  auto dims_mapping = input.multi_dims_mapping();
   for (size_t i = 0; i < grad_dim; ++i) {
     auto mapping = grad_dims_mapping[i];
     if (i < broadcast_dim) {
-      if (mapping >= 0) {
-        partial_dims.insert(mapping);
+      for (auto& dim : mapping) {
+        partial_dims.insert(dim);
       }
     } else {
       dims_mapping[i - broadcast_dim] = mapping;
+      // non_batch
+      if (input_shape.size() <= 2 || grad_shape.size() <= 2) {
+        continue;
+      }
+      // partial status for broadcast dims
+      // batch dims && input == 1 && grad != 1 && grad_sharding dim
+      if ((i - broadcast_dim) < input_dim - 2 && !mapping.empty() &&
+          input_shape[i - broadcast_dim] == 1 && grad_shape[i] != 1) {
+        dims_mapping[i - broadcast_dim].clear();
+        for (auto& dim : mapping) {
+          partial_dims.insert(dim);
+        }
+      }
     }
   }
   auto grad_out = CopyTensorDistAttrForOutput(input);
