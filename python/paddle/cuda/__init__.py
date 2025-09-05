@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 import paddle
-from paddle import CPUPlace, CUDAPlace, CustomPlace
+from paddle import CUDAPlace, CustomPlace
 from paddle.device import (
     Stream as _PaddleStream,
     stream_guard as _PaddleStreamGuard,
@@ -28,21 +28,16 @@ from paddle.device import (
 if TYPE_CHECKING:
     from paddle.base import core
 
-DeviceLike = Union[CPUPlace, CUDAPlace, CustomPlace, int, str, None]
+DeviceLike = Union[CUDAPlace, CustomPlace, int, str, None]
 
 
-def _device_to_paddle(
-    device: DeviceLike,
-) -> CPUPlace | CUDAPlace | CustomPlace | str | None:
+def _device_to_paddle(device: DeviceLike) -> str:
     """
-    Convert a device spec to Paddle device representation.
-    It may return a Place object (CPUPlace, CUDAPlace, CustomPlace) or a string like 'gpu:0'.
-
+    Convert a device spec (int, str, None) to Paddle device string 'gpu:X'.
     Args:
-        device: None, int, str, or Paddle Place (CPUPlace, CUDAPlace, CustomPlace, etc.)
+        device: None, int, or str like 'cuda:0' / 'gpu:0'
     Returns:
-        Union[CPUPlace, CUDAPlace, CustomPlace, str, None]:
-            Paddle device object or device string
+        str: Paddle device string
     """
     if isinstance(device, (CUDAPlace, CustomPlace)) or device is None:
         return device
