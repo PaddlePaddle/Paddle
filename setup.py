@@ -2628,6 +2628,8 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
             paddle_source_dir
             + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
         ],
+        python_api_info_yaml_path=paddle_source_dir
+        + "/paddle/phi/ops/yaml/python_api_info.yaml",
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
