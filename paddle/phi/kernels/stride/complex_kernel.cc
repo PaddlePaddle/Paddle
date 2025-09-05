@@ -85,8 +85,8 @@ PD_REGISTER_KERNEL(real,
                    CPU,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -94,8 +94,8 @@ PD_REGISTER_KERNEL(imag,
                    CPU,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -104,8 +104,8 @@ PD_REGISTER_KERNEL(real,
                    GPU,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -113,8 +113,8 @@ PD_REGISTER_KERNEL(imag,
                    GPU,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif
@@ -124,8 +124,8 @@ PD_REGISTER_KERNEL(real,
                    Custom,
                    STRIDED,
                    phi::RealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -133,8 +133,8 @@ PD_REGISTER_KERNEL(imag,
                    Custom,
                    STRIDED,
                    phi::ImagStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif

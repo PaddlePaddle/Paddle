@@ -98,7 +98,7 @@ void SGDDenseParamSparseGradKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sgd, OneDNN, ONEDNN, phi::SGDDenseKernel, float, phi::dtype::bfloat16) {
+    sgd, OneDNN, ONEDNN, phi::SGDDenseKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::SgdCheckIfOneDNNSupport;
 }
 
@@ -107,6 +107,6 @@ PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,
                    ONEDNN,
                    phi::SGDDenseParamSparseGradKernel,
                    float,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::SgdSparseCheckIfOneDNNSupport;
 }

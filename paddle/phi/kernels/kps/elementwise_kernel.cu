@@ -217,10 +217,10 @@ void NextafterKernel(const Context& dev_ctx,
       const context&, const DenseTensor&, const DenseTensor&, DenseTensor*);
 INSTANTIATE_ADD_KERNEL(float, GPUContext)
 INSTANTIATE_ADD_KERNEL(double, GPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::float16, GPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::bfloat16, GPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, GPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::float16, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::bfloat16, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex64, GPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex128, GPUContext)
 #endif
 }  // namespace phi
 
@@ -234,8 +234,8 @@ PD_REGISTER_KERNEL(maximum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(minimum,
                    KPS,
                    ALL_LAYOUT,
@@ -244,8 +244,8 @@ PD_REGISTER_KERNEL(minimum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(remainder,
                    GPU,
                    ALL_LAYOUT,
@@ -254,10 +254,10 @@ PD_REGISTER_KERNEL(remainder,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(floor_divide,
                    KPS,
                    ALL_LAYOUT,
@@ -269,8 +269,8 @@ PD_REGISTER_KERNEL(floor_divide,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,
@@ -279,10 +279,10 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(copysign,
                    GPU,
                    ALL_LAYOUT,
@@ -295,8 +295,8 @@ PD_REGISTER_KERNEL(copysign,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(
     nextafter, GPU, ALL_LAYOUT, phi::NextafterKernel, float, double) {}
 
@@ -315,10 +315,10 @@ PD_REGISTER_KERNEL(
     elementwise_pow, KPS, ALL_LAYOUT, phi::ElementwisePowKernel, float) {}
 
 #else
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(fmax,
                    KPS,
@@ -365,8 +365,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    complex64,
                    complex128) {}
 
@@ -382,8 +382,8 @@ PD_REGISTER_KERNEL(grad_add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    complex64,
                    complex128) {}
 
