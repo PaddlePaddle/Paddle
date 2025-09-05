@@ -135,6 +135,15 @@ class TestTensorCreation(unittest.TestCase):
                 )
                 self.assertEqual(x.data_ptr(), y.data_ptr())
 
+    def test_pin_memory_error_cases(self):
+        """Test pin_memory error cases"""
+        if not paddle.device.is_compiled_with_cuda():
+            return
+
+        with dygraph_guard(), self.assertRaises(RuntimeError):
+            # Test unsupported device with pin_memory=True
+            paddle.rand([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+
 
 class TestCreationOut(unittest.TestCase):
     def setUp(self):
