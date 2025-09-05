@@ -200,6 +200,7 @@ from . import (
     compat as compat,
     fft as fft,
     hub as hub,
+    library as library,
     linalg as linalg,
     signal as signal,
     special as special,
@@ -698,6 +699,7 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -995,6 +997,7 @@ __all__ = [
     'logit',
     'logit_',
     'LazyGuard',
+    'Size',
     'sign',
     'is_empty',
     'equal',

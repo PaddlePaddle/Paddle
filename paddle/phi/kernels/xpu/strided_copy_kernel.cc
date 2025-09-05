@@ -87,14 +87,14 @@ void StridedCopyKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void StridedCopyKernel<phi::dtype::complex<float>, XPUContext>(
+void StridedCopyKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
     const DenseTensor& input,
     const std::vector<int64_t>& dims,
     const std::vector<int64_t>& out_stride,
     int64_t offset,
     DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
   const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
   const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
@@ -124,7 +124,7 @@ PD_REGISTER_KERNEL(strided_copy,
                    float,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    ::phi::float16,
                    ::phi::bfloat16) {

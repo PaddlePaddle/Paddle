@@ -303,19 +303,6 @@ class TestPaddleDivide(unittest.TestCase):
 
             out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
             inv_out_f32 = paddle.divide(y_mat, zero_f32, rounding_mode='trunc')
-            try:
-                out_i32 = paddle.divide(
-                    y_int32, zero_int32, rounding_mode='trunc'
-                )
-            except:
-                out_i32 = None
-
-            try:
-                inv_out_i32 = paddle.divide(
-                    y_int32_mat, zero_int32, rounding_mode='trunc'
-                )
-            except:
-                inv_out_i32 = None
 
         run_test(paddle.CPUPlace())
 

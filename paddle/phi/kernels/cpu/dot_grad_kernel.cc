@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/dot_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 

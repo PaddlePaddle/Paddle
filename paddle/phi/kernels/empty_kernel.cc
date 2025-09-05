@@ -50,12 +50,12 @@ PD_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(empty_like,
                    CPU,
@@ -69,10 +69,10 @@ PD_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
@@ -89,12 +89,12 @@ PD_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(empty_like,
                    GPU,
@@ -108,10 +108,10 @@ PD_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif
@@ -129,9 +129,9 @@ PD_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64) {}
 PD_REGISTER_KERNEL(empty_like,
                    XPU,
                    ALL_LAYOUT,
@@ -144,9 +144,9 @@ PD_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif
@@ -164,8 +164,8 @@ PD_REGISTER_KERNEL(empty,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(empty_like,
                    Custom,
                    ALL_LAYOUT,
@@ -178,8 +178,8 @@ PD_REGISTER_KERNEL(empty_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

@@ -24,13 +24,11 @@ namespace phi {
 namespace kps {
 namespace details {
 
-static __device__ __forceinline__ phi::dtype::float16 Exp(
-    phi::dtype::float16 x) {
+static __device__ __forceinline__ phi::float16 Exp(phi::float16 x) {
   return ::Eigen::numext::exp(x);
 }
 
-static __device__ __forceinline__ phi::dtype::bfloat16 Exp(
-    phi::dtype::bfloat16 x) {
+static __device__ __forceinline__ phi::bfloat16 Exp(phi::bfloat16 x) {
   return ::Eigen::numext::exp(x);
 }
 
@@ -38,13 +36,11 @@ static __device__ __forceinline__ float Exp(float x) { return expf(x); }
 
 static __device__ __forceinline__ double Exp(double x) { return exp(x); }
 
-static __device__ __forceinline__ phi::dtype::float16 Log(
-    phi::dtype::float16 x) {
+static __device__ __forceinline__ phi::float16 Log(phi::float16 x) {
   return ::Eigen::numext::log(x);
 }
 
-static __device__ __forceinline__ phi::dtype::bfloat16 Log(
-    phi::dtype::bfloat16 x) {
+static __device__ __forceinline__ phi::bfloat16 Log(phi::bfloat16 x) {
   return ::Eigen::numext::log(x);
 }
 

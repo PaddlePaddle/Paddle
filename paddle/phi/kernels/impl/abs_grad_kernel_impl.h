@@ -40,14 +40,14 @@ struct AbsGradCUDAFunctor {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::bfloat16> {
+struct AbsGradCUDAFunctor<phi::bfloat16> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
 
-  HOSTDEVICE inline phi::dtype::bfloat16 operator()(
-      const phi::dtype::bfloat16 x, const phi::dtype::bfloat16 dout) const {
-    phi::dtype::bfloat16 output;
-    if (x == phi::dtype::bfloat16(0)) {
-      output = static_cast<phi::dtype::bfloat16>(0);
+  HOSTDEVICE inline phi::bfloat16 operator()(const phi::bfloat16 x,
+                                             const phi::bfloat16 dout) const {
+    phi::bfloat16 output;
+    if (x == phi::bfloat16(0)) {
+      output = static_cast<phi::bfloat16>(0);
     } else {
       output = (dout) * (x / abs(x));
     }
@@ -56,32 +56,30 @@ struct AbsGradCUDAFunctor<phi::dtype::bfloat16> {
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
+struct AbsGradCUDAFunctor<phi::complex64> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<float> operator()(
-      const phi::dtype::complex<float> x, const float dout) const {
-    phi::dtype::complex<float> output;
-    if (x == phi::dtype::complex<float>(0)) {
-      output = phi::dtype::complex<float>(0);
+  HOSTDEVICE inline phi::complex64 operator()(const phi::complex64 x,
+                                              const float dout) const {
+    phi::complex64 output;
+    if (x == phi::complex64(0)) {
+      output = phi::complex64(0);
     } else {
-      output = phi::dtype::complex<float>(dout) *
-               (x / phi::dtype::complex<float>(abs(x)));
+      output = phi::complex64(dout) * (x / phi::complex64(abs(x)));
     }
     return output;
   }
 };
 
 template <>
-struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
+struct AbsGradCUDAFunctor<phi::complex128> {
   HOSTDEVICE inline AbsGradCUDAFunctor() {}
-  HOSTDEVICE inline phi::dtype::complex<double> operator()(
-      const phi::dtype::complex<double> x, const double dout) const {
-    phi::dtype::complex<double> output;
-    if (x == phi::dtype::complex<double>(0)) {
-      output = phi::dtype::complex<double>(0);
+  HOSTDEVICE inline phi::complex128 operator()(const phi::complex128 x,
+                                               const double dout) const {
+    phi::complex128 output;
+    if (x == phi::complex128(0)) {
+      output = phi::complex128(0);
     } else {
-      output = phi::dtype::complex<double>(dout) *
-               (x / phi::dtype::complex<double>(abs(x)));
+      output = phi::complex128(dout) * (x / phi::complex128(abs(x)));
     }
     return output;
   }

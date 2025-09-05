@@ -103,11 +103,11 @@ void SqueezeWithXShapeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    squeeze, OneDNN, ONEDNN, phi::SqueezeKernel, float, phi::dtype::bfloat16) {}
+    squeeze, OneDNN, ONEDNN, phi::SqueezeKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(squeeze_with_xshape,
                    OneDNN,
                    ONEDNN,
                    phi::SqueezeWithXShapeKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
