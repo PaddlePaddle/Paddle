@@ -26,6 +26,10 @@ class TestCudaCompat(unittest.TestCase):
             s.synchronize()
             status = s.query()
             self.assertIsInstance(status, bool)
+        else:
+            # Non-CUDA build: constructing Stream should raise
+            with self.assertRaises(RuntimeError):
+                s = paddle.Stream()
 
 
 if __name__ == '__main__':
