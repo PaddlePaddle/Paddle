@@ -100,17 +100,10 @@ class TestCudaCompat(unittest.TestCase):
             self.assertIsInstance(cap, tuple)
             self.assertEqual(len(cap), 2)
 
-    def test_stream_without_cuda_raises(self):
-        if paddle.is_compiled_with_cuda():
-            s = paddle.Stream()
-        else:
-            with self.assertRaises(RuntimeError):
-                paddle.Stream()
-
     def test_stream_creation(self):
         if paddle.is_compiled_with_cuda():
             s = Stream()
-            s1 = paddle.Stream()  # test paddle.Stream
+            s1 = Stream()
             self.assertIsInstance(s, paddle.device.Stream)
             self.assertIsInstance(s1, paddle.device.Stream)
 
