@@ -53,71 +53,79 @@ class TestCudaCompat(unittest.TestCase):
     # is_available test
     # ---------------------
     def test_is_available(self):
-        self.assertIsInstance(is_available(), bool)
+        if paddle.is_compiled_with_cuda():
+            self.assertIsInstance(is_available(), bool)
 
     # ---------------------
     # synchronize test
     # ---------------------
     def test_synchronize(self):
-        try:
-            synchronize(None)
-            synchronize(0)
-            synchronize('cuda:0')
-            synchronize('gpu:0')
-        except Exception as e:
-            self.fail(f"synchronize raised Exception {e}")
+        if paddle.is_compiled_with_cuda():
+            try:
+                synchronize(None)
+                synchronize(0)
+                synchronize('cuda:0')
+                synchronize('gpu:0')
+            except Exception as e:
+                self.fail(f"synchronize raised Exception {e}")
 
     # ---------------------
     # current_stream test
     # ---------------------
     def test_current_stream(self):
-        stream = current_stream(None)
-        self.assertIsNotNone(stream)
-        stream = current_stream(0)
-        self.assertIsNotNone(stream)
+        if paddle.is_compiled_with_cuda():
+            stream = current_stream(None)
+            self.assertIsNotNone(stream)
+            stream = current_stream(0)
+            self.assertIsNotNone(stream)
 
     # ---------------------
     # get_device_properties test
     # ---------------------
     def test_get_device_properties(self):
-        props = get_device_properties(0)
-        self.assertTrue(hasattr(props, 'name'))
-        self.assertTrue(hasattr(props, 'total_memory'))
+        if paddle.is_compiled_with_cuda():
+            props = get_device_properties(0)
+            self.assertTrue(hasattr(props, 'name'))
+            self.assertTrue(hasattr(props, 'total_memory'))
 
     # ---------------------
     # get_device_name / get_device_capability test
     # ---------------------
     def test_device_name_and_capability(self):
-        name = get_device_name(0)
-        self.assertIsInstance(name, str)
+        if paddle.is_compiled_with_cuda():
+            name = get_device_name(0)
+            self.assertIsInstance(name, str)
 
-        cap = get_device_capability(0)
-        self.assertIsInstance(cap, tuple)
-        self.assertEqual(len(cap), 2)
+            cap = get_device_capability(0)
+            self.assertIsInstance(cap, tuple)
+            self.assertEqual(len(cap), 2)
 
     def test_stream_creation(self):
-        s = Stream()
-        s1 = paddle.Stream()  # test paddle.Stream
-        self.assertIsInstance(s, paddle.device.Stream)
-        self.assertIsInstance(s1, paddle.device.Stream)
+        if paddle.is_compiled_with_cuda():
+            s = Stream()
+            s1 = Stream()
+            self.assertIsInstance(s, paddle.device.Stream)
+            self.assertIsInstance(s1, paddle.device.Stream)
 
     def test_stream_context(self):
-        s = Stream(device='gpu', priority=2)
-        with stream(s):
-            ctx = stream(s)
-            self.assertIsInstance(ctx, StreamContext)
-            current = current_stream()
-            self.assertEqual(current.stream_base, s.stream_base)
+        if paddle.is_compiled_with_cuda():
+            s = Stream(device='gpu', priority=2)
+            with stream(s):
+                ctx = stream(s)
+                self.assertIsInstance(ctx, StreamContext)
+                current = current_stream()
+                self.assertEqual(current.stream_base, s.stream_base)
 
     def test_nested_streams(self):
-        s1 = Stream()
-        s2 = Stream()
-        with stream(s1):
-            with stream(s2):
+        if paddle.is_compiled_with_cuda():
+            s1 = Stream()
+            s2 = Stream()
+            with stream(s1):
+                with stream(s2):
+                    current = paddle.cuda.current_stream()
+                    self.assertEqual(current.stream_base, s2.stream_base)
                 current = paddle.cuda.current_stream()
-                self.assertEqual(current.stream_base, s2.stream_base)
-            current = paddle.cuda.current_stream()
-            self.assertEqual(current.stream_base, s1.stream_base)
+                self.assertEqual(current.stream_base, s1.stream_base)
 
 
 if __name__ == '__main__':

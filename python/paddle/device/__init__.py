@@ -1672,11 +1672,22 @@ def synchronize(device: PlaceLike | None = None) -> None:
 
 class Device:
     """
-    Torch-like device class for Paddle.
-    Mimics torch.device, supports cpu, gpu/cuda, xpu.
+    Device class for Paddle.
+
+    This class provides a unified way to describe and manage devices
+    in Paddle, such as CPU, GPU (CUDA), and XPU. It supports both
+    string-based and index-based initialization, e.g.:
+
+        paddle.device("cpu")  >>>  "cpu"
+        paddle.device("cuda", 0)   >>>   "gpu:0"
+        paddle.device("gpu:1")   >>>   "gpu:1"
+        paddle.device(2)   # equivalent to "gpu:2"
+
+    The class ensures consistent parsing and validation of device
+    specifications across Paddle.
     """
 
-    def __init__(self, type, index: int | None = None):
+    def __init__(self, type: Device | str | int, index: int | None = None):
         if isinstance(type, Device):
             # support Device(gpu1)
             self.type = type.type
