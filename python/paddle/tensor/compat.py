@@ -223,9 +223,7 @@ class SlogdetResult(NamedTuple):
     logabsdet: Tensor
 
 
-def slogdet(
-    x: Tensor, out: tuple[paddle.Tensor, paddle.Tensor] | None = None
-) -> SlogdetResult:
+def slogdet(x: Tensor, out: SlogdetResult | None = None) -> SlogdetResult:
     """
     (PyTorch Compatible API) Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp`` (logabsdet).
@@ -244,10 +242,10 @@ def slogdet(
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
-        out(tuple[paddle.Tensor, paddle.Tensor], optional): The output tensor.
+        out(SlogdetResult, optional): The tuple of output tensor, contains ``abs`` and ``logabsdet``.
 
     Returns:
-        tuple(Tensor, Tensor): A tuple containing two Tensors: (sign, logabsdet).
+        SlogdetResult: A tuple containing two Tensors: (sign, logabsdet).
         The first Tensor represents the signs of the determinants and the second Tensor
         represents the natural logarithms of the absolute values of the determinants.
         Each output Tensor has a shape of :math:`(*)`, where :math:`*` matches the
@@ -258,12 +256,14 @@ def slogdet(
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x = paddle.randn([3, 3, 3])
-            >>> A = paddle.compat.slogdet(x) # Updated example
-            >>> print(A)
-           (Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                  [-1.,  1.,  1.]), Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                  [ 0.25681755, -0.25061053, -0.10809596]))
+            >>> x = paddle.randn([4, 3, 3])
+            >>> A = paddle.compat.slogdet(x)
+            >>> print(A.sign)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [-1., -1., -1.,  1.])
+            >>> print(A.logabsdet)
+            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [-1.39344728, -2.30671787, -2.53045821, -0.90754318])
     """
     sign, logabsdet = _C_ops.slogdet_v2(x, out=out)
     if out is not None:
