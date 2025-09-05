@@ -225,9 +225,8 @@ class SlogdetResult(NamedTuple):
 
 def slogdet(
     x: Tensor, out: tuple[paddle.Tensor, paddle.Tensor] | None = None
-) -> tuple[Tensor, Tensor]:
+) -> SlogdetResult:
     """
-
     (PyTorch Compatible API) Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp`` (logabsdet).
 
