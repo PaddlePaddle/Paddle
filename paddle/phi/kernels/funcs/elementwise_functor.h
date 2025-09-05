@@ -97,7 +97,7 @@ struct IsZeroFunctor {
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor) divide. Please check the input value."
+  "(floor/trunc) divide. Please check the input value."
 
 template <typename T, typename Enable = void>
 struct DivideFunctor {
@@ -1253,6 +1253,9 @@ struct InverseFloorDivideFunctor<dtype::bfloat16> {
 template <typename T, typename Enable = void>
 struct TruncDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(a / b);
   }
 };
@@ -1292,6 +1295,9 @@ struct TruncDivideFunctor<dtype::bfloat16> {
 template <typename T, typename Enable = void>
 struct InverseTruncDivideFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
     return static_cast<T>(b / a);
   }
 };

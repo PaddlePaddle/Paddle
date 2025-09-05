@@ -164,16 +164,11 @@ void TruncDivideKernel(const Context& dev_ctx,
                        const DenseTensor& y,
                        DenseTensor* out) {
   int axis = -1;
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
-  if (x_dims.size() >= y_dims.size()) {  // NOLINT
-    funcs::ElementwiseCompute<funcs::TruncDivideFunctor<T>, T>(
-        dev_ctx, x, y, funcs::TruncDivideFunctor<T>(), out, axis);
-  } else {
-    funcs::ElementwiseCompute<funcs::InverseTruncDivideFunctor<T>, T>(
-        dev_ctx, x, y, funcs::InverseTruncDivideFunctor<T>(), out, axis);
-  }
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::TruncDivideFunctor<T>(), axis);
 }
 
 // Create the definition of Heaviside
