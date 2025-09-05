@@ -62,19 +62,6 @@ PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   return original_stream;
 }
 
-PY_STREAM_TYPE get_stream_from_external(uintptr_t data_ptr, int device_id) {
-  if (device_id == -1) {
-    device_id = phi::backends::gpu::GetCurrentDeviceId();
-  }
-
-  // ⚠️ 虚拟实现：暂不使用 data_ptr
-  // 直接调用内部的 get_current_stream 作为占位
-  auto current_stream = get_current_stream(device_id);
-
-  // 返回当前流，模拟 external stream
-  return current_stream;
-}
-
 #endif
 }  // namespace platform
 namespace pybind {
@@ -115,7 +102,6 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
         gpuStream_t raw = reinterpret_cast<gpuStream_t>(data_ptr);
 
-        // 构造一个“不拥有外部流”的包装对象，所有权交给 Python
         return std::make_unique<phi::CUDAStream>(phi::GPUPlace(deviceId), raw);
 #else
         PADDLE_THROW(common::errors::Unavailable(
