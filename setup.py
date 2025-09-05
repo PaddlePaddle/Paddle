@@ -1348,7 +1348,6 @@ def get_apy_files():
 def get_typing_libs_packages(paddle_binary_dir):
     """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
     e.g.
-        'paddle._typing.libs.libpaddle.cinn'
         'paddle._typing.libs.libpaddle.pir'
         'paddle._typing.libs.libpaddle.eager'
         'paddle._typing.libs.libpaddle.eager.ops'

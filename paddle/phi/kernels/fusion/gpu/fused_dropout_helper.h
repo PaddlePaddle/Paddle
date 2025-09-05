@@ -93,7 +93,7 @@ struct DataTypeTraits {
 };
 
 template <>
-struct DataTypeTraits<phi::dtype::float16> {
+struct DataTypeTraits<phi::float16> {
   // Since LayerNormDirectCUDAFunctor register half type, we need to convert
   // phi::float16 to half.
   using DataType = half;

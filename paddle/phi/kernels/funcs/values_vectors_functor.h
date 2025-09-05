@@ -96,9 +96,8 @@ inline void syevjBatched_bufferSize<double>(
 }
 
 template <>
-inline void syevjBatched_bufferSize<phi::dtype::complex<float>, float>(
-    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::dtype::complex<float>,
-                                                 float)) {
+inline void syevjBatched_bufferSize<phi::complex64, float>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::complex64, float)) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCheevjBatched_bufferSize(
       handle,
       jobz,
@@ -113,9 +112,8 @@ inline void syevjBatched_bufferSize<phi::dtype::complex<float>, float>(
 }
 
 template <>
-inline void syevjBatched_bufferSize<phi::dtype::complex<double>, double>(
-    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::dtype::complex<double>,
-                                                 double)) {
+inline void syevjBatched_bufferSize<phi::complex128, double>(
+    CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(phi::complex128, double)) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevjBatched_bufferSize(
       handle,
       jobz,
@@ -155,8 +153,8 @@ inline void syevjBatched<double>(CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(double,
 }
 
 template <>
-inline void syevjBatched<phi::dtype::complex<float>, float>(
-    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::dtype::complex<float>, float)) {
+inline void syevjBatched<phi::complex64, float>(
+    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::complex64, float)) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       dynload::cusolverDnCheevjBatched(handle,
                                        jobz,
@@ -173,8 +171,8 @@ inline void syevjBatched<phi::dtype::complex<float>, float>(
 }
 
 template <>
-inline void syevjBatched<phi::dtype::complex<double>, double>(
-    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::dtype::complex<double>, double)) {
+inline void syevjBatched<phi::complex128, double>(
+    CUDASOLVER_SYEVJ_BATCHED_ARGTYPES(phi::complex128, double)) {
   PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevjBatched(
       handle,
       jobz,

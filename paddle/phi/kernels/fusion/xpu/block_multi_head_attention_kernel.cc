@@ -664,7 +664,7 @@ PD_REGISTER_KERNEL(block_multihead_attention_xpu,
                    XPU,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionXPUKernel,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(26).SetBackend(phi::Backend::CPU);
   kernel->InputAt(27).SetBackend(phi::Backend::CPU);
 }

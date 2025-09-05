@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#  #The file has been adapted from pytorch project
+#  #Licensed under  BSD-style license -
+#  https://github.com/pytorch/pytorch/blob/main/LICENSE
+
 from __future__ import annotations
 
 import contextlib
@@ -68,6 +72,27 @@ def load_library(path: str):
         ctypes.CDLL(path)
 
 
+class PythonOpRegistry:
+    def __init__(self):
+        self._registry: dict[str, Callable[..., object]] = {}
+
+    def register(self, name: str, fn: Callable[..., object]):
+        if name in self._registry:
+            raise ValueError(f"Operator '{name}' is already registered.")
+        self._registry[name] = fn
+
+    def has_operator(self, name: str) -> bool:
+        return name in self._registry
+
+    def get_operator(self, name: str) -> Callable[..., object]:
+        if name not in self._registry:
+            raise ValueError(f"Operator '{name}' is not registered.")
+        return self._registry[name]
+
+
+PYTHON_OP_REGISTRY = PythonOpRegistry()
+
+
 class OverloadedOpFunction(Generic[_InputT, _RetT]):
     def __init__(self, namespace: str, name: str):
         self.namespace = namespace
@@ -75,6 +100,10 @@ class OverloadedOpFunction(Generic[_InputT, _RetT]):
 
     @cached_property
     def callable_fn(self) -> Callable[_InputT, _RetT]:
+        if PYTHON_OP_REGISTRY.has_operator(f"{self.namespace}::{self.name}"):
+            return PYTHON_OP_REGISTRY.get_operator(  # type: ignore
+                f"{self.namespace}::{self.name}"
+            )
         return paddle.base.core.torch_compat._get_operation(
             f"{self.namespace}::{self.name}"
         )

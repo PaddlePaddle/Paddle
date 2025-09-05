@@ -41,7 +41,7 @@ void SetOp(ProgramDesc* prog,
   op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   }
 
   if (type == "conv2d") {
@@ -223,7 +223,7 @@ void MainTest(const ProgramDesc& prog,
       auto* op = node->Op();
       if (expected_operators.count(op->Type()) > 0) {
         expected_operators[op->Type()]--;
-        if (op->GetAttrIfExists<std::string>("mkldnn_data_type") == "int8")
+        if (op->GetAttrIfExists<std::string>("onednn_data_type") == "int8")
           CheckScales(op, scale, shift);
       }
     }
@@ -775,7 +775,7 @@ void SetMultiGruOp(ProgramDesc* prog,
   op->SetAttr("origin_mode", false);
   op->SetAttr("use_onednn", true);
   op->SetAttr("name", std::string("Multi_gru"));
-  op->SetAttr("mkldnn_data_type", std::string("int8"));
+  op->SetAttr("onednn_data_type", std::string("int8"));
   op->SetAttr("Scale_data", 1.0f);
   op->SetAttr("Shift_data", 0.0f);
 }

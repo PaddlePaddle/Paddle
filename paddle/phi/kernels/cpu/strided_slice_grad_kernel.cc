@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/strided_slice_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/strided_slice_grad_kernel_impl.h"
 
@@ -30,10 +29,10 @@ PD_REGISTER_KERNEL(strided_slice_raw_grad,
                    int16_t,
                    int8_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(strided_slice_array_grad,
                    CPU,
@@ -47,7 +46,7 @@ PD_REGISTER_KERNEL(strided_slice_array_grad,
                    int,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

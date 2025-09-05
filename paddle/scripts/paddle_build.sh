@@ -1347,13 +1347,10 @@ function check_cinn_file_diff() {
         CMakeLists.txt
         cmake
         paddle/cinn
-        python/cinn
         python/CMakeLists.txt
-        python/setup_cinn.py.in
         test/CMakeLists.txt
         test/cinn
         test/cpp/cinn
-        tools/cinn
     )
 
     run_cinn_ut="OFF"

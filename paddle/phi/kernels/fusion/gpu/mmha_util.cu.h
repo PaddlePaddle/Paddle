@@ -96,7 +96,7 @@ struct kernel_dtype_is_same<_Tp, _Tp> : public true_type {};
 
 namespace phi {
 template <>
-class PDDataTypeTraits<phi::dtype::bfloat16> {
+class PDDataTypeTraits<phi::bfloat16> {
  public:
   using DataType = __hip_bfloat16;
 };

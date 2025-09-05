@@ -144,7 +144,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
 };
 
 using CPU = phi::CPUContext;
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 template class SegmentPoolFunctor<CPU, float, int>;
 template class SegmentPoolFunctor<CPU, float, int64_t>;
 template class SegmentPoolFunctor<CPU, double, int>;

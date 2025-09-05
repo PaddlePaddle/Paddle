@@ -234,12 +234,12 @@ inline cudaDataType_t GetCublasLtDataType() {
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::float16>() {
   return CUDA_R_16F;
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
   return CUDA_R_16BF;
 }
 
