@@ -614,8 +614,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "bfloat16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'bfloat16'
             )
         )
 
@@ -635,8 +636,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'float16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "float16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'float16'
             )
         )
 

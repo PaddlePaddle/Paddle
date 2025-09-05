@@ -16,8 +16,11 @@
 from __future__ import annotations
 
 import ctypes
+import importlib
 import os
 import re
+import sys
+import types
 from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
@@ -1665,3 +1668,115 @@ def synchronize(device: PlaceLike | None = None) -> None:
                 ",".join(paddle.device.get_all_custom_device_type())
             )
         )
+
+
+class Device:
+    """
+    Torch-like device class for Paddle.
+    Mimics torch.device, supports cpu, gpu/cuda, xpu.
+    """
+
+    def __init__(self, type, index: int | None = None):
+        if isinstance(type, Device):
+            # support Device(gpu1)
+            self.type = type.type
+            self.index = type.index
+            return
+        if isinstance(type, str) and index is not None:
+            # Case: Device("cuda", 0), Device("xpu", 1), Device("cpu", 0)
+            t = type.lower()
+            if t in ["cuda", "gpu"]:
+                self.type = "gpu"
+                self.index = index
+            elif t == "xpu":
+                self.type = "xpu"
+                self.index = index
+            elif t == "cpu":
+                if index not in (None, 0):
+                    raise ValueError(
+                        "CPU device does not support index > 0 in Paddle"
+                    )
+                self.type = "cpu"
+                self.index = None
+            else:
+                raise ValueError(f"Unsupported device type: {t}")
+
+        elif isinstance(type, str) and index is None:
+            # Case: Device("cuda:0"), Device("xpu:1"), Device("cpu")
+            if ":" in type:
+                t, i = type.split(":")
+                t = t.lower()
+                i = int(i)
+                if t in ["cuda", "gpu"]:
+                    self.type = "gpu"
+                    self.index = i
+                elif t == "xpu":
+                    self.type = "xpu"
+                    self.index = i
+                else:
+                    raise ValueError(f"Unsupported device type: {t}")
+            else:
+                t = type.lower()
+                if t == "cpu":
+                    self.type = "cpu"
+                    self.index = None
+                elif t in ["cuda", "gpu"]:
+                    self.type = "gpu"
+                    self.index = 0
+                elif t == "xpu":
+                    self.type = "xpu"
+                    self.index = 0
+                else:
+                    raise ValueError(f"Unsupported device type: {t}")
+
+        elif isinstance(type, int):
+            # Case: Device(1) → gpu:1
+            self.type = "gpu"
+            self.index = type
+
+        else:
+            raise TypeError(f"Unsupported device spec: {type}, {index}")
+
+    def __call__(self) -> str:
+        if self.type == "cpu":
+            return "cpu"
+        return f"{self.type}:{self.index}"
+
+    def __str__(self):
+        if self.type == "cpu":
+            return "cpu"
+        return f"{self.type}:{self.index}"
+
+    def __eq__(self, other):
+        """
+        Device("cuda",1) == "gpu:1" → True
+        """
+        if isinstance(other, str):
+            return str(self()) == other
+        if isinstance(other, Device):
+            return self.type == other.type and self.index == other.index
+        return False
+
+
+class _DeviceModule(types.ModuleType):
+    """A callable package module: paddle.device(...) -> Device(...)"""
+
+    def __call__(self, *args, **kwargs) -> Device:
+        return Device(*args, **kwargs)
+
+    def __getattr__(self, name: str):
+        # support lazy import submodeule：paddle.device.cuda / paddle.device.xpu / ...
+        if name in self.__dict__:
+            return self.__dict__[name]
+        try:
+            mod = importlib.import_module(f"{self.__name__}.{name}")
+            setattr(self, name, mod)
+            return mod
+        except ModuleNotFoundError as e:
+            raise AttributeError(name) from e
+
+
+_self = sys.modules[__name__]
+_proxy = _DeviceModule(__name__, _self.__doc__)
+_proxy.__dict__.update(_self.__dict__)
+sys.modules[__name__] = _proxy

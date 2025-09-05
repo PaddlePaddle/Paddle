@@ -581,8 +581,8 @@ struct MaximumFunctor {
 template <typename T>
 struct MaximumFunctor<
     T,
-    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
-                            std::is_same_v<T, phi::dtype::float16>>::type> {
+    typename std::enable_if<std::is_same_v<T, phi::bfloat16> ||
+                            std::is_same_v<T, phi::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if (phi::dtype::isnan(a)) return a;
     if (phi::dtype::isnan(b)) return b;
@@ -654,8 +654,8 @@ struct MinimumFunctor {
 template <typename T>
 struct MinimumFunctor<
     T,
-    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
-                            std::is_same_v<T, phi::dtype::float16>>::type> {
+    typename std::enable_if<std::is_same_v<T, phi::bfloat16> ||
+                            std::is_same_v<T, phi::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if (phi::dtype::isnan(a)) return a;
     if (phi::dtype::isnan(b)) return b;
@@ -1343,13 +1343,12 @@ inline HOSTDEVICE auto copysign_func(const T& a, const T& b) {
 #endif
 }
 
-inline HOSTDEVICE phi::dtype::float16 copysign_func(phi::dtype::float16 a,
-                                                    phi::dtype::float16 b) {
+inline HOSTDEVICE phi::float16 copysign_func(phi::float16 a, phi::float16 b) {
   return phi::dtype::raw_uint16_to_float16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
-inline HOSTDEVICE phi::dtype::bfloat16 copysign_func(phi::dtype::bfloat16 a,
-                                                     phi::dtype::bfloat16 b) {
+inline HOSTDEVICE phi::bfloat16 copysign_func(phi::bfloat16 a,
+                                              phi::bfloat16 b) {
   return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 

@@ -609,8 +609,8 @@ struct gpu_gather_scatter_functor {
     }
 
     if constexpr ((is_same_type<func_t, ReduceMul>)&&(
-                      is_same_type<tensor_t, phi::dtype::bfloat16> ||
-                      is_same_type<tensor_t, phi::dtype::float16>)) {
+                      is_same_type<tensor_t, phi::bfloat16> ||
+                      is_same_type<tensor_t, phi::float16>)) {
       DenseTensor promoted_self(self),
           promoted_src(src);  // shallow copy tensor meta
 
