@@ -57,9 +57,7 @@ void IndexAddKernel(const Context& dev_ctx,
                     int axis,
                     DenseTensor* output) {
   if (x.numel() == 0) {
-    if (output->numel() > 0) {
-      dev_ctx.template Alloc<T>(output);
-    }
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
     return;
   }
   if (index.numel() == 0) {
@@ -68,10 +66,6 @@ void IndexAddKernel(const Context& dev_ctx,
   }
   if (add_value.numel() == 0) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, output);
-    return;
-  }
-  if (output->numel() == 0) {
-    dev_ctx.template Alloc<T>(output);
     return;
   }
   auto input_dim = x.dims();
