@@ -355,17 +355,22 @@ class HookRemoveHelper:
         self._hook_id = HookRemoveHelper.next_hook_id
         HookRemoveHelper.next_hook_id += 1
 
-        self._extra_hooks_ref = None
+        self._extra_hooks_ref: tuple = ()
         if extra_hook_dict is not None:
-            self._extra_hooks_ref = weakref.ref(extra_hook_dict)
+            if isinstance(extra_hook_dict, list):
+                self._extra_hooks_ref = tuple(
+                    weakref.ref(d) for d in extra_hook_dict
+                )
+            else:
+                self._extra_hooks_ref = (weakref.ref(extra_hook_dict),)
 
     def remove(self) -> None:
         hooks = self._hooks_ref()
         if hooks is not None and self._hook_id in hooks:
             del hooks[self._hook_id]
 
-        if self._extra_hooks_ref is not None:
-            extra_hooks = self._extra_hooks_ref()
+        for ref in self._extra_hooks_ref:
+            extra_hooks = ref()
             if extra_hooks is not None and self._hook_id in extra_hooks:
                 del extra_hooks[self._hook_id]
 
@@ -739,7 +744,13 @@ class Layer:
                 >>> assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         """
-        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        hook_remove_helper = HookRemoveHelper(
+            self._forward_post_hooks,
+            extra_hook_dict=[
+                self._forward_post_hooks_with_kwargs_flag,
+                self._forward_post_hooks_always_called,
+            ],
+        )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
         if with_kwargs:
             self._forward_post_hooks_with_kwargs_flag[
