@@ -515,6 +515,7 @@ class TestIndexAddOp_ZeroSize(OpTest):
 
 class TestIndexAdd_ZeroSize2(TestIndexAddOp_ZeroSize):
     def setUp(self):
+        self.init_dtype_type()
         index_np = np.array([], dtype=self.index_type)
         x_np = np.random.random(self.x_shape).astype(self.x_type)
         add_value_np = np.random.random(self.add_value_shape).astype(
