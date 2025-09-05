@@ -158,7 +158,7 @@ class TestSemiAutoParallelGlobalInput:
     def __init__(self):
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
-        self._run_static = False
+        self._run_static = eval(os.getenv("run_static"))
         paddle.seed(self._seed)
         np.random.seed(self._seed)
         paddle.set_device(self._backend)
@@ -193,6 +193,7 @@ class TestSemiAutoParallelGlobalInput:
         cur_rank = paddle.distributed.get_rank()
         if self._run_static:
             dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+            dist_model.train()
 
             for step, (input, label) in enumerate(dist_dataloader()):
                 loss = dist_model(input, label)
