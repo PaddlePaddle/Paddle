@@ -328,7 +328,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
-  VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<< \"Running AD API GRAD: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -359,7 +359,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Inplace Strategy
 {}
 
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
+  VLOG(5) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
   // Before log info
 {}
   // Call grad_api function
@@ -370,7 +370,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 {}
   // Create Grad Node
 {}
-  VLOG(4) << \"Finish AD API GRAD: {}";
+  VLOG(4) << \"\\n\"<<separator<<\"Finish AD API GRAD: {}\"<<separator;
   VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 {}
@@ -391,7 +391,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"Running AD API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running AD API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -409,7 +409,7 @@ TEST_API {} {}({}) {{
   // Get Input AutoGradMeta
 {}
 
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
  // Before log info
 {}
 
@@ -440,7 +440,7 @@ TEST_API {} {}({}) {{
   // Set grad_node after API call
 {}
 
-  VLOG(4) << \"Finish AD API: {}";
+  VLOG(3) << \"\\n\"<<separator<<\"Finish AD API: {}\"<<separator;
   // LOG IF DEBUG
 {}
   if (FLAGS_check_cuda_error) [[unlikely]] {{
@@ -452,18 +452,18 @@ TEST_API {} {}({}) {{
 """
 
 AFTER_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(4)) {{
-    const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
+  if (VLOG_IS_ON(6)) {{
+    const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]  \\n Output: [%s] }} \";
 {}
-    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
 """
 
 BEFORE_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(3)) {{
+  if (VLOG_IS_ON(5)) {{
     const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]}} \";
 {}
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+    VLOG(5) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }}
 """
 
@@ -476,7 +476,7 @@ STRIDED_FLAGS_CHECK_TEMPLATE = """
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"Running AD API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running AD API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -491,7 +491,7 @@ TEST_API {} {}({}) {{
 {}
   // Layout autotune
 {}
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
   // Before log info
 {}
   // Forward API Call
@@ -502,7 +502,7 @@ TEST_API {} {}({}) {{
 {}
   // Get Outputs
 {}
-  VLOG(4) << \"Finish AD API: {}";
+  VLOG(3) << \"\\n\"<<separator<<\"Finish AD API: {}\"<<separator;
 
   // Check Inplace if needed
 {}{}
@@ -520,7 +520,7 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 {}
     // Node Construction
 {}
-    VLOG(3) << "Create node " << grad_node->name() << " addr " << grad_node;
+    VLOG(4) << "Create node " << grad_node->name() << " addr " << grad_node;
 
     // Set for forward trace
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
@@ -598,6 +598,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+static std::string separator = "==========================";
 {}
 """
 
@@ -642,6 +643,7 @@ COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
+static std::string separator = "==========================";
 {}
 {}
 """
@@ -2274,13 +2276,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         var_str = f'\n{indent}  std::string input_str = "";'
         var_str += f'\n{indent}  std::string output_str = "";'
         for name, (ttype, pos) in forward_inputs_position_map.items():
-            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , %s), ";'
             var_str += f"\n{indent}  std::string input_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  input_str += input_{name}_str;"
 
         before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
         for name, (ttype, pos) in forward_outputs_position_map.items():
-            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , %s), ";'
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str;"
 

@@ -370,11 +370,11 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
-      VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+      VLOG(4) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
       auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
           "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
       const auto& kernel = kernel_result.kernel;
-      VLOG(6) << "{} kernel: " << kernel;
+      VLOG(4) << "{} kernel: " << kernel;
       dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 

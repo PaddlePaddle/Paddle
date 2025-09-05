@@ -217,7 +217,7 @@ std::vector<paddle::Tensor> RunBackward(
             input_info.first, input_info.second, grad_tensors[i]);
       }
     } else {
-      VLOG(3) << "Fill grad input tensor " << i << " with 1.0";
+      VLOG(4) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
       // Forward Tensor "tensor" is passed to indicate tensortype, datatype and
       // dims

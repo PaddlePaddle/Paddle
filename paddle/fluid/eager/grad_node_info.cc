@@ -86,7 +86,7 @@ GradNodeBase::MutableOutputMeta() {
 
 void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
                                  size_t slot_rank) {
-  VLOG(7) << "Set GradSlotMeta for Grad Inputs";
+  VLOG(6) << "Set GradSlotMeta for Grad Inputs";
   auto* fwd_out_meta = egr::EagerUtils::nullable_autograd_meta(fwd_out);
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -108,11 +108,11 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   if (!fwd_out.has_allocation()) {
     if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
         phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
-      VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
+      VLOG(5) << "Tensor " << fwd_out.name() << " is DistTensor,"
               << " and needs computation clip for pipeline parallel."
               << " Still SetGradInMeta for it.";
     } else {
-      VLOG(7)
+      VLOG(6)
           << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
       return;
     }
@@ -143,7 +143,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
             ->dims());
     SetIsRunAutoParallel(true);
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
   PADDLE_ENFORCE_NE(
@@ -164,7 +164,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
 
 void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                                  size_t slot_rank) {
-  VLOG(7) << "Set GradSlotMeta for Grad Inputs";
+  VLOG(6) << "Set GradSlotMeta for Grad Inputs";
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -176,7 +176,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
   auto& metas = bwd_in_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
   if (metas.size() < slot_size) {
-    VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
+    VLOG(6) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
     metas.resize(slot_size);
   }
   for (size_t i = 0; i < slot_size; i++) {
@@ -198,11 +198,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
     if (!fwd_out_tensor.has_allocation()) {
       if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
           phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
-        VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
+        VLOG(5) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
                 << " and needs computation clip for pipeline parallel."
                 << " Still SetGradInMeta for it.";
       } else {
-        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
+        VLOG(6) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
                    "Tensor";
         return;
       }
@@ -256,7 +256,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
         need_complex_to_real_ = true;
       }
     } else {
-      VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+      VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
                  "with non-DenseTensor argument.";
     }
   }
@@ -264,7 +264,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
 
 void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
                                  size_t slot_rank) {
-  VLOG(7) << "Set GradSlotMeta for Grad Inputs";
+  VLOG(6) << "Set GradSlotMeta for Grad Inputs";
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(
       slot_rank,
@@ -276,7 +276,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
   auto& metas = bwd_in_meta_.at(slot_rank);
   // Init stop gradient vector before use to avoid push back
   if (metas.size() < slot_size) {
-    VLOG(7) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
+    VLOG(6) << "Init bwd_in_meta_ with slot rank: " << slot_rank;
     metas.resize(slot_size);
   }
   for (size_t i = 0; i < slot_size; i++) {
@@ -298,11 +298,11 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
     if (!fwd_out_tensor.has_allocation()) {
       if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
           phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
-        VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
+        VLOG(5) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
                 << " and needs computation clip for pipeline parallel."
                 << " Still SetGradInMeta for it.";
       } else {
-        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
+        VLOG(5) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
                    "Tensor";
         return;
       }
@@ -356,7 +356,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
         need_complex_to_real_ = true;
       }
     } else {
-      VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+      VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
                  "with non-DenseTensor argument.";
     }
   }
@@ -391,7 +391,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -463,12 +463,12 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
     } else {
-      VLOG(7)
+      VLOG(5)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
              "non-DenseTensor argument.";
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta because the Tensor "
                "is not initialized.";
   }
 }
@@ -508,7 +508,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -551,7 +551,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetPlace(fwd_in.place());
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
 }
@@ -592,7 +592,7 @@ void GradNodeBase::SetGradOutMeta(
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -626,12 +626,12 @@ void GradNodeBase::SetGradOutMeta(
       meta.SetDistTensorGlobalDims(fwd_in_dims);
       SetIsRunAutoParallel(true);
     } else {
-      VLOG(7)
+      VLOG(5)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
              "non-DistTensor argument.";
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta because the Tensor "
                "is not initialized.";
   }
 }
@@ -666,7 +666,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -709,7 +709,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
-      VLOG(7)
+      VLOG(5)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
              "non-DenseTensor argument.";
     }
@@ -746,7 +746,7 @@ void GradNodeBase::SetGradOutMeta(
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -791,7 +791,7 @@ void GradNodeBase::SetGradOutMeta(
         meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
-      VLOG(7)
+      VLOG(5)
           << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
              "non-DenseTensor argument.";
     }
