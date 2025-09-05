@@ -62,10 +62,15 @@ CUDAStream::CUDAStream(const Place& place,
 }
 
 CUDAStream::CUDAStream(const Place& place, gpuStream_t external_raw_stream) {
-  // 不创建，只包装；不接管生命周期
   place_ = place;
+  backends::gpu::GPUDeviceGuard guard(place_.device);
+
   stream_ = Stream(reinterpret_cast<StreamId>(external_raw_stream));
+
   owned_ = false;
+
+  VLOG(10) << "Create CUDAStream from external stream " << external_raw_stream
+           << " on device " << place_.device;
 }
 
 bool CUDAStream::Query() const {

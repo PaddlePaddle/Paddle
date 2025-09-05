@@ -400,7 +400,12 @@ class ForbidKeywordsDecorator(DecoratorBase):
         self.correct_name = correct_name
         self.warn_msg = None
         if url_suffix:
-            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
+            self.warn_msg = (
+                f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
+                f"Refer to the compatibility guide for details:\n"
+                f"https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
+                f"convert_from_pytorch/api_difference/{url_suffix}.html"
+            )
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -419,7 +424,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
         if self.warn_msg is not None:
             warnings.warn(
                 self.warn_msg,
-                category=Warning,
+                category=UserWarning,
             )
             self.warn_msg = None
         return args, kwargs

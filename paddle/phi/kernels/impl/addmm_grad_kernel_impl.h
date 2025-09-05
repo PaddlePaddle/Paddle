@@ -93,8 +93,8 @@ void AddmmGradKernel(const Context& dev_ctx,
       y.numel() * y.dims()[1] > std::numeric_limits<int>::max()) {
     is_big_tensor = true;
   }
-  if (std::is_same<T, phi::dtype::float16>::value ||
-      std::is_same<T, phi::dtype::bfloat16>::value) {
+  if (std::is_same<T, phi::float16>::value ||
+      std::is_same<T, phi::bfloat16>::value) {
     is_float16_or_bfloat16 = true;
   }
 

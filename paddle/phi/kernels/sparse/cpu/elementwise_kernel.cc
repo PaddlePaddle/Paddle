@@ -328,8 +328,8 @@ DEFINE_COO_ELEMENTWISE_KERNEL(Divide)
 
 }  // namespace phi::sparse
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(add_csr_csr,
                    CPU,

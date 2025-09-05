@@ -177,7 +177,6 @@ def get_stream_from_external(
         )
 
     device = _device_to_paddle(device)
-    print('---------------++++++++++++------------------')
     stream_ex = paddle.device.get_stream_from_external(data_ptr, device)
 
     return stream_ex

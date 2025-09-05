@@ -30,9 +30,6 @@ from paddle.cuda import (
 )
 
 
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
-)
 class TestCudaCompat(unittest.TestCase):
     # ---------------------
     # _device_to_paddle test
@@ -129,6 +126,38 @@ class TestCudaCompat(unittest.TestCase):
                     self.assertEqual(current.stream_base, s2.stream_base)
                 current = paddle.cuda.current_stream()
                 self.assertEqual(current.stream_base, s1.stream_base)
+
+
+class TestExternalStream(unittest.TestCase):
+    def test_get_stream_from_external(self):
+        #  test if CUDA is  available
+        if paddle.cuda.is_available():
+            device_id = 2
+
+            # Create a native CUDA stream
+            original_stream = paddle.cuda.Stream(device_id)
+            original_raw_ptr = original_stream.stream_base.raw_stream
+
+            # Create a Paddle stream from an external raw pointer
+            external_stream = paddle.cuda.get_stream_from_external(
+                original_raw_ptr, device_id
+            )
+
+            # Verify that the raw pointers match
+            self.assertEqual(
+                original_raw_ptr, external_stream.stream_base.raw_stream
+            )
+
+            # Delete the external stream to ensure it does not affect the original stream
+            del external_stream
+
+            # Current stream should still match the original stream
+            with paddle.cuda.stream(original_stream):
+                current_stream = paddle.cuda.current_stream(device_id)
+
+            self.assertEqual(
+                current_stream.stream_base.raw_stream, original_raw_ptr
+            )
 
 
 if __name__ == '__main__':
