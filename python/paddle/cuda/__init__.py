@@ -51,7 +51,6 @@ def _device_to_paddle(device: DeviceLike) -> str:
 
 def is_available() -> bool:
     """
-    Mimics torch.cuda.is_available()
     Returns True if CUDA is available and Paddle was built with CUDA support.
     """
     return paddle.device.cuda.device_count() >= 1
@@ -59,7 +58,6 @@ def is_available() -> bool:
 
 def synchronize(device: DeviceLike = None) -> None:
     """
-    Mimics torch.cuda.synchronize()
     Args:
         device (int | str | None): Device to synchronize.
             - None: synchronize current device
@@ -72,7 +70,6 @@ def synchronize(device: DeviceLike = None) -> None:
 
 def current_stream(device: DeviceLike = None) -> core.CUDAStream:
     """
-    Mimics torch.cuda.current_stream()
     Returns the current stream for the specified device.
     """
     dev = _device_to_paddle(device)
@@ -81,7 +78,6 @@ def current_stream(device: DeviceLike = None) -> core.CUDAStream:
 
 def get_device_properties(device: DeviceLike = None):
     """
-    Mimics torch.cuda.get_device_properties()
     Returns the properties of a given device.
     """
     dev = _device_to_paddle(device)
@@ -90,7 +86,6 @@ def get_device_properties(device: DeviceLike = None):
 
 def get_device_name(device: int | None = None) -> str:
     """
-    Mimics torch.cuda.get_device_name()
     Returns the name of a given CUDA device.
     """
     return paddle.device.cuda.get_device_name(device)
@@ -98,7 +93,6 @@ def get_device_name(device: int | None = None) -> str:
 
 def get_device_capability(device: int | None = None) -> tuple[int, int]:
     """
-    Mimics torch.cuda.get_device_capability()
     Returns the major and minor compute capability of a given device.
     """
     return paddle.device.cuda.get_device_capability(device)
@@ -106,7 +100,7 @@ def get_device_capability(device: int | None = None) -> tuple[int, int]:
 
 class StreamContext(_PaddleStreamGuard):
     """
-    Torch style Stream context manager, inherited from Paddle's stream_guard.
+    Stream context manager, inherited from Paddle's stream_guard.
     """
 
     def __init__(self, stream: _PaddleStream):
@@ -115,7 +109,6 @@ class StreamContext(_PaddleStreamGuard):
 
 def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
     """
-    Mimics torch.cuda.stream()
     A context manager that sets a given stream as the current stream.
     """
     return StreamContext(stream_obj)
@@ -123,20 +116,34 @@ def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
 
 class Stream(_PaddleStream):
     """
-    Torch API: torch.cuda.Stream -> Paddle: paddle.device.Stream
+    A CUDA/XPU stream in Paddle.
+
+    This class provides an interface for creating and managing
+    asynchronous computation streams on the specified device.
+
+    Attributes:
+        _priority_map (dict): Internal mapping of user priority values
+            to Paddle's internal priority representation.
     """
 
-    # PyTorch priority -> Paddle priority
-    _priority_map = {-1: 1, 0: 2}
+    _priority_map = {-1: 1, 0: 2, 1: 1, 2: 2}
 
     def __init__(self, device=None, priority=0, *args, **kwargs):
         """
+        Initialize a new Stream.
+
         Args:
-            device (int | str | None): device id/str/None
-            priority (int): PyTorch priority (-1, 0)
+            device (int | str | None): The device where the stream is created.
+                Can be:
+                  - int: device index, e.g., 0 for "gpu:0"
+                  - str: device type and index, e.g., "gpu:0"
+                  - None: defaults to the current device
+            priority (int): Priority of the stream. 1/-1 (high priority) or 0/2 (low priority). By default, streams have
+            low priority.
+
+                Other values fall back to normal priority.
         """
         paddle_device = _device_to_paddle(device)
-
         paddle_priority = self._priority_map.get(priority, 2)
 
         super().__init__(
