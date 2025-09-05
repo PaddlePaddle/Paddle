@@ -701,10 +701,6 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
 
         get_predefined_out_str = ""
         if not no_predefined_out_tensor and forward_api_name != "empty_like":
-            dygraph_function_call_str = (
-                dygraph_function_call_str + ", predefined_out"
-            )
-
             forward_outputs_position_list = list(
                 self.forward_outputs_position_map.values()
             )
@@ -713,14 +709,14 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             )
             length = len(forward_outputs_position_list)
 
-            if all_tensor and 1 <= length <= 4:
+            if all_tensor and 1 <= length <= 7:
                 if length == 1:
                     get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
                 else:
                     get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
-            else:
-                get_predefined_out_str = (
-                    "    auto predefined_out = paddle::none;"
+
+                dygraph_function_call_str = (
+                    dygraph_function_call_str + ", predefined_out"
                 )
 
         # Generate Python-C Function Definitions

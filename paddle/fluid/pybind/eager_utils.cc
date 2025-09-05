@@ -3449,6 +3449,22 @@ struct TensorTupleType<4> {
   using type = std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>;
 };
 
+template <>
+struct TensorTupleType<5> {
+  using type = std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>;
+};
+
+template <>
+struct TensorTupleType<6> {
+  using type = std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>;
+};
+
+template <>
+struct TensorTupleType<7> {
+  using type =
+      std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>;
+};
+
 template <size_t... Is>
 paddle::optional<typename TensorTupleType<sizeof...(Is)>::type>
 GetPredefinedOutTupleTensorFromKwargs_Impl(PyObject* kwargs,
@@ -3456,8 +3472,12 @@ GetPredefinedOutTupleTensorFromKwargs_Impl(PyObject* kwargs,
   if (!kwargs) return paddle::none;
 
   PyObject* obj = PyDict_GetItemString(kwargs, "out");
-  if (!obj || !PyTuple_Check(obj)) return paddle::none;
-  if (PyTuple_Size(obj) != sizeof...(Is)) return paddle::none;
+  if (!obj || obj == Py_None) return paddle::none;
+  if (!PyTuple_Check(obj) || PyTuple_Size(obj) != sizeof...(Is)) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "The out argument must be a tuple with %d elements.", sizeof...(Is)));
+    return paddle::none;
+  }
 
   return std::make_tuple(
       &(reinterpret_cast<TensorObject*>(PyTuple_GetItem(obj, Is))->tensor)...);
@@ -3479,6 +3499,26 @@ paddle::optional<std::tuple<Tensor*, Tensor*, Tensor*, Tensor*>>
 GetPredefinedOutTupleTensorFromKwargs_4(PyObject* kwargs) {
   return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2, 3>(
       kwargs, std::make_index_sequence<4>{});
+}
+
+paddle::optional<std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>>
+GetPredefinedOutTupleTensorFromKwargs_5(PyObject* kwargs) {
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2, 3, 4>(
+      kwargs, std::make_index_sequence<5>{});
+}
+
+paddle::optional<
+    std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>>
+GetPredefinedOutTupleTensorFromKwargs_6(PyObject* kwargs) {
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2, 3, 4, 5>(
+      kwargs, std::make_index_sequence<6>{});
+}
+
+paddle::optional<
+    std::tuple<Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*, Tensor*>>
+GetPredefinedOutTupleTensorFromKwargs_7(PyObject* kwargs) {
+  return GetPredefinedOutTupleTensorFromKwargs_Impl<0, 1, 2, 3, 4, 5, 6>(
+      kwargs, std::make_index_sequence<7>{});
 }
 
 void Check_PIR_not_support_out(PyObject* kwargs) {

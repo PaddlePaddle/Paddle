@@ -1232,7 +1232,7 @@ class DistForwardAPI(ForwardAPI):
                     types = self.outputs['types']
                     if (
                         all(t == "Tensor" for t in types)
-                        and 1 <= names_len <= 4
+                        and 1 <= names_len <= 7
                     ):
                         if names_len == 1:
                             output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
@@ -1244,7 +1244,7 @@ class DistForwardAPI(ForwardAPI):
                             )
                             output_creation_code += (
                                 f"std::tuple<{tuple_types}> out_tmp;"
-                                f"paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                                f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
                                 f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
                                 f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
                             )

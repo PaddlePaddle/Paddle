@@ -259,7 +259,7 @@ class BaseAPI:
             types = self.outputs['types']
             length = len(self.outputs['names'])
 
-            if all(t == "Tensor" for t in types) and 1 <= length <= 4:
+            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
@@ -268,10 +268,6 @@ class BaseAPI:
                     )
                 declare_args.append(
                     f"paddle::optional<{type_str}> predefined_out = paddle::none"
-                )
-            else:
-                declare_args.append(
-                    "paddle::optional<void*> predefined_out = paddle::none"
                 )
 
         return ", ".join(declare_args)
@@ -292,7 +288,7 @@ class BaseAPI:
             types = self.outputs['types']
             length = len(self.outputs['names'])
 
-            if all(t == "Tensor" for t in types) and 1 <= length <= 4:
+            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
@@ -302,8 +298,6 @@ class BaseAPI:
                 define_args.append(
                     f"paddle::optional<{type_str}> predefined_out"
                 )
-            else:
-                define_args.append("paddle::optional<void*> predefined_out")
 
         return ", ".join(define_args)
 

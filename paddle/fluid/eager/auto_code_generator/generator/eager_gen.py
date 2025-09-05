@@ -1875,21 +1875,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
             length = len(forward_outputs_position_list)
 
-            if is_all_tensor and 1 <= length <= 4:
+            if is_all_tensor and 1 <= length <= 7:
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
                     ptrs = ", ".join(["paddle::Tensor*"] * length)
                     type_str = f"std::tuple<{ptrs}>"
                 optional_str = f"paddle::optional<{type_str}>"
-            else:
-                optional_str = "paddle::optional<void*>"
 
-            inputs_args_declaration_str += (
-                f", {optional_str} predefined_out = paddle::none"
-            )
-            inputs_args_definition_str += f", {optional_str} predefined_out"
-            inputs_call_list.append("predefined_out")
+                inputs_args_declaration_str += (
+                    f", {optional_str} predefined_out = paddle::none"
+                )
+                inputs_args_definition_str += f", {optional_str} predefined_out"
+                inputs_call_list.append("predefined_out")
 
         inputs_call_args_str = ", ".join(inputs_call_list)
         self.inputs_call_list = inputs_call_list
@@ -2151,9 +2149,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             and not is_inplaced
             and forward_api_name != "empty_like"
         ):
-            amp_inputs_call_args_str = (
-                amp_inputs_call_args_str + ", predefined_out"
+            forward_outputs_position_list = list(
+                self.forward_outputs_position_map.values()
             )
+            is_all_tensor = all(
+                item[0] == "Tensor" for item in forward_outputs_position_list
+            )
+            length = len(forward_outputs_position_list)
+
+            if is_all_tensor and 1 <= length <= 7:
+                amp_inputs_call_args_str = (
+                    amp_inputs_call_args_str + ", predefined_out"
+                )
+
         amp_call_str = (
             f"return {forward_ad_function_name}({amp_inputs_call_args_str});"
         )
@@ -2183,9 +2191,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and not is_inplaced
                 and forward_api_name != "empty_like"
             ):
-                type_promote_inputs_call_args_str = (
-                    type_promote_inputs_call_args_str + ", predefined_out"
+                forward_outputs_position_list = list(
+                    self.forward_outputs_position_map.values()
                 )
+                is_all_tensor = all(
+                    item[0] == "Tensor"
+                    for item in forward_outputs_position_list
+                )
+                length = len(forward_outputs_position_list)
+                if is_all_tensor and 1 <= length <= 7:
+                    type_promote_inputs_call_args_str = (
+                        type_promote_inputs_call_args_str + ", predefined_out"
+                    )
+
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 
             x_cast = (
@@ -2214,9 +2232,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 and not is_inplaced
                 and forward_api_name != "empty_like"
             ):
-                type_promote_inputs_call_args_str = (
-                    type_promote_inputs_call_args_str + ", predefined_out"
+                forward_outputs_position_list = list(
+                    self.forward_outputs_position_map.values()
                 )
+                is_all_tensor = all(
+                    item[0] == "Tensor"
+                    for item in forward_outputs_position_list
+                )
+                length = len(forward_outputs_position_list)
+
+                if is_all_tensor and 1 <= length <= 7:
+                    type_promote_inputs_call_args_str = (
+                        type_promote_inputs_call_args_str + ", predefined_out"
+                    )
 
             type_promote_call_list = f"return {forward_ad_function_name}({type_promote_inputs_call_args_str});"
 

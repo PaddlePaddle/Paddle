@@ -306,7 +306,7 @@ class ForwardAPI(BaseAPI):
             ):
                 types = self.outputs['types']
                 names_len = len(self.outputs['names'])
-                if all(t == "Tensor" for t in types) and 1 <= names_len <= 4:
+                if all(t == "Tensor" for t in types) and 1 <= names_len <= 7:
                     if names_len == 1:
                         output_create = f"""
 {code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
