@@ -179,6 +179,7 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0]._partial_dims(), {0})
 
         # trans_x = True, abcmk[1, -1, -1, 0], kn[-1, -1] --> abcmk[1, -1, -1, 0],kn[-1, -1] = abcmn[1, -1, 0, -1] partial[]
+        self.x_dist_tensor_spec.shape = [512, 48, 32, 64]
         self.x_dist_tensor_spec.set_dims_mapping([1, -1, -1, 0])
         self.y_dist_tensor_spec.set_dims_mapping([-1, -1])
 
@@ -198,6 +199,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_output_dist_attrs[0]._is_partial(), False)
 
         # trans_y = True, abcmk[-1, -1, -1, -1], kn[1, 0] --> abcmk[-1, -1, -1, 0],kn[1, 0] = abcmn[-1, -1, -1, 1] partial[0]: done
+        self.x_dist_tensor_spec.shape = [512, 48, 64, 32]
+        self.y_dist_tensor_spec.shape = [48, 32]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
 
@@ -221,6 +224,8 @@ class TestMatmulSPMDRule(unittest.TestCase):
 
         # trans_y = True, trans_x = True, abcmk[-1, -1, 0, 1], kn[1, 0] --> abcmk[-1, -1, 0, 1]],kn[-1, 0] = abcmn[-1, -1, 1, -1] partial[0]
         # multiple mesh dim shard same tensor axis
+        self.x_dist_tensor_spec.shape = [512, 48, 32, 64]
+        self.y_dist_tensor_spec.shape = [48, 32]
         self.x_dist_tensor_spec.set_dims_mapping([-1, -1, 0, 1])
         self.y_dist_tensor_spec.set_dims_mapping([1, 0])
 

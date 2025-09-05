@@ -150,7 +150,7 @@ struct ArgsIterator {
   template <typename... Args>
   inline Functor& apply() {
     return self();
-  }  // namespace distributed
+  }
 
   template <typename T, typename... Args>
   inline Functor& apply(T&& arg, Args&&... args) {
@@ -166,7 +166,7 @@ struct ArgsIterator {
 
  private:
   inline Functor& self() { return *static_cast<Functor*>(this); }
-};  // namespace phi
+};
 
 using SpmdFn = SpmdInfo (*)(const std::vector<const DistMetaTensor*>& ins,
                             const std::vector<const DistMetaTensor*>& outs);
@@ -231,10 +231,11 @@ struct ReplicateInferSpmdDynamicHelper
 }  // namespace detail
 
 // Get dims mapping for the given axes according to sharding information of
-// the annotated axes after inferring forward or backward. The parameter
-// axis stores the axes of the tensor. "1" is a special axis, for the axis
-// "1", set its dims mapping to -1. if unsharded_miss_axis, "-1" is assigned
-// to axes that has no key in axis_to_dim_map.
+// the annotated axes after inferring forward or backward. The parameter axis
+// stores the axes of the tensor. "1" is a special axis, for the axis "1", set
+// its dims mapping to -1.
+// if unsharded_miss_axis, "-1" is assigned to axes that has no key in
+// axis_to_dim_map.
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
