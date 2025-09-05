@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import hashlib
 import inspect
-import math
 import warnings
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -81,22 +80,6 @@ class TensorHookRemoveHelper:
                     RuntimeWarning,
                 )
         return False
-
-
-class TensorSize(int):
-    as_shape: list[int]
-
-    def __new__(cls, shape):
-        as_numel = int(math.prod(shape))
-        as_shape = shape
-        instance = super().__new__(cls, as_numel)
-        instance.as_shape = as_shape
-        return instance
-
-    def __call__(self, dim=None):
-        if dim is None:
-            return self.as_shape
-        return self.as_shape[dim]
 
 
 _already_patch_repr = False
@@ -937,10 +920,6 @@ def monkey_patch_tensor():
         return scalar.item()
 
     @property
-    def size_method(self):
-        return TensorSize(self.shape)
-
-    @property
     def inplace_version(self: Tensor) -> int:
         """
         The inplace version of current Tensor.
@@ -1480,7 +1459,6 @@ def monkey_patch_tensor():
         ("__nonzero__", __nonzero__),
         ("_to_static_var", _to_static_var),
         ("set_value", set_value),
-        ("size", size_method),
         ("block", block),
         ("backward", backward),
         ("clear_grad", clear_grad),
