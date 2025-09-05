@@ -30,22 +30,22 @@ if(WIN32)
 
     set(LIBUV_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
     set(LIBUV_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-    foreach(
-      flag_var
-      CMAKE_CXX_FLAGS
-      CMAKE_CXX_FLAGS_DEBUG
-      CMAKE_CXX_FLAGS_RELEASE
-      CMAKE_CXX_FLAGS_MINSIZEREL
-      CMAKE_CXX_FLAGS_RELWITHDEBINFO
-      CMAKE_C_FLAGS
-      CMAKE_C_FLAGS_DEBUG
-      CMAKE_C_FLAGS_RELEASE
-      CMAKE_C_FLAGS_MINSIZEREL
-      CMAKE_C_FLAGS_RELWITHDEBINFO)
-      if(${flag_var} MATCHES "/MD")
-        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-      endif()
-    endforeach()
+    # foreach(
+    #   flag_var
+    #   CMAKE_CXX_FLAGS
+    #   CMAKE_CXX_FLAGS_DEBUG
+    #   CMAKE_CXX_FLAGS_RELEASE
+    #   CMAKE_CXX_FLAGS_MINSIZEREL
+    #   CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    #   CMAKE_C_FLAGS
+    #   CMAKE_C_FLAGS_DEBUG
+    #   CMAKE_C_FLAGS_RELEASE
+    #   CMAKE_C_FLAGS_MINSIZEREL
+    #   CMAKE_C_FLAGS_RELWITHDEBINFO)
+    #   if(${flag_var} MATCHES "/MD")
+    #     string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+    #   endif()
+    # endforeach()
   else()
     if(CMAKE_BUILD_TYPE MATCHES Debug)
       set(LIDUV_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDLL")
@@ -86,6 +86,7 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LIBUV_INSTALL_DIR}
              -DCMAKE_INSTALL_LIBDIR=${LIBUV_INSTALL_DIR}/lib
+             -DCMAKE_MSVC_RUNTIME_LIBRARY=${LIDUV_MSVC_RUNTIME_LIBRARY}
              -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
