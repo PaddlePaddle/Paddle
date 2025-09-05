@@ -776,9 +776,6 @@ void ProcessGroupFlagcx::CreateFlagcxEnvCache(const Place& place,
                                               CommType comm_type,
                                               int p2p_rank) {
   // TODO(changtao): we only support one flagcx comm ctx
-  // if (flagcx_comm_ != nullptr) {
-  //  return;
-  //}
   VLOG(3) << "init flagcx rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", store_key: " << store_key;
@@ -971,7 +968,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupFlagcx::Point2Point(
 
   int p2p_rank = 0;
   int p2p_target_rank = 0;
-  bool is_batch_p2p = s_group_call_counter > 0;
   std::string key = "";
 
   key = GetKeyFromPlace(place);
