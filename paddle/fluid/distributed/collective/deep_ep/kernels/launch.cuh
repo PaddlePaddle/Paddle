@@ -135,6 +135,9 @@
   } else if (hidden == 8192) {                     \
     constexpr size_t kHidden = 8192;               \
     __VA_ARGS__                                    \
+  } else if (hidden == 1536) {                     \
+    constexpr size_t kHidden = 1536;               \
+    __VA_ARGS__                                    \
   } else {                                         \
     EP_HOST_ASSERT(false && "Unsupported hidden"); \
   }
@@ -202,6 +205,12 @@
     __VA_ARGS__                                                        \
   } else if (num_warp_groups == 4) {                                   \
     constexpr int kNumWarpGroups = 4;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 5) {                                   \
+    constexpr int kNumWarpGroups = 5;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 6) {                                   \
+    constexpr int kNumWarpGroups = 6;                                  \
     __VA_ARGS__                                                        \
   } else {                                                             \
     EP_HOST_ASSERT(false && "Unsupported num_warp_groups");            \
