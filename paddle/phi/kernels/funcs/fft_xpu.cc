@@ -293,7 +293,7 @@ struct FFTR2CFunctor<phi::XPUContext, Ti, To> {
   }
 };
 
-using complex64_t = phi::dtype::complex<float>;
+using complex64_t = phi::complex64;
 template struct FFTC2CFunctor<phi::XPUContext, complex64_t, complex64_t>;
 template struct FFTC2RFunctor<phi::XPUContext, complex64_t, float>;
 template struct FFTR2CFunctor<phi::XPUContext, float, complex64_t>;

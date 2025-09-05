@@ -371,8 +371,8 @@ struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
 };
 #endif
 
-using complex64_t = phi::dtype::complex<float>;
-using complex128_t = phi::dtype::complex<double>;
+using complex64_t = phi::complex64;
+using complex128_t = phi::complex128;
 template struct FFTC2CFunctor<phi::CPUContext, complex64_t, complex64_t>;
 template struct FFTC2CFunctor<phi::CPUContext, complex128_t, complex128_t>;
 template struct FFTC2RFunctor<phi::CPUContext, complex64_t, float>;

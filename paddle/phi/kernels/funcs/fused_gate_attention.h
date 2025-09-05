@@ -91,10 +91,10 @@ inline void WaitWithDebugInfo(const phi::GPUContext& dev_ctx) {
 template <typename T>
 inline void TypeDebugInfo() {
   if (VLOG_IS_ON(4)) {
-    if (std::is_same<T, phi::dtype::float16>::value) {
-      VLOG(4) << "[Grad]: T is phi::dtype::float16.";
-    } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-      VLOG(4) << "[Grad]: T is phi::dtype::bfloat16.";
+    if (std::is_same<T, phi::float16>::value) {
+      VLOG(4) << "[Grad]: T is phi::float16.";
+    } else if (std::is_same<T, phi::bfloat16>::value) {
+      VLOG(4) << "[Grad]: T is phi::bfloat16.";
     } else if (std::is_same<T, float>::value) {
       VLOG(4) << "[Grad]: T is float.";
     }
@@ -205,8 +205,8 @@ struct GateAttentionConfig {
 
   bool CanUseFlashAttn() const {
 #if defined(PADDLE_WITH_FLASHATTN) && !defined(PADDLE_WITH_HIP)
-    if (!std::is_same<T, phi::dtype::bfloat16>::value &&
-        !std::is_same<T, phi::dtype::float16>::value) {
+    if (!std::is_same<T, phi::bfloat16>::value &&
+        !std::is_same<T, phi::float16>::value) {
       return false;
     }
 

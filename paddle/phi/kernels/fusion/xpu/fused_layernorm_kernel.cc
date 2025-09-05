@@ -134,7 +134,7 @@ void FusedLayerNormKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
     }
     if (residual) {
-      if (std::is_same<T, phi::dtype::bfloat16>::value) {
+      if (std::is_same<T, phi::bfloat16>::value) {
         PD_THROW("NOT supported quant bfloat16. ");
       }
       r = baidu::xpu::api::add_layer_norm_fusion(
@@ -182,5 +182,5 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

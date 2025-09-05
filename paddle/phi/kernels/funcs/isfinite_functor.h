@@ -39,15 +39,15 @@ struct IsNanFunctor<T,
 // "error: call to 'isnan' is ambiguous".
 // So use phi::dtype::isnan here.
 template <>
-struct IsNanFunctor<phi::dtype::float16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+struct IsNanFunctor<phi::float16, void> {
+  HOSTDEVICE bool operator()(const phi::float16& a) const {
     return phi::dtype::isnan(a);
   }
 };
 
 template <>
-struct IsNanFunctor<phi::dtype::bfloat16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::bfloat16& a) const {
+struct IsNanFunctor<phi::bfloat16, void> {
+  HOSTDEVICE bool operator()(const phi::bfloat16& a) const {
     return phi::dtype::isnan(a);
   }
 };
@@ -70,15 +70,15 @@ struct IsInfFunctor<T,
 };
 
 template <>
-struct IsInfFunctor<phi::dtype::float16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+struct IsInfFunctor<phi::float16, void> {
+  HOSTDEVICE bool operator()(const phi::float16& a) const {
     return phi::dtype::isinf(a);
   }
 };
 
 template <>
-struct IsInfFunctor<phi::dtype::bfloat16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::bfloat16& a) const {
+struct IsInfFunctor<phi::bfloat16, void> {
+  HOSTDEVICE bool operator()(const phi::bfloat16& a) const {
     return phi::dtype::isinf(a);
   }
 };
@@ -102,15 +102,15 @@ struct IsFiniteFunctor<
 };
 
 template <>
-struct IsFiniteFunctor<phi::dtype::float16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+struct IsFiniteFunctor<phi::float16, void> {
+  HOSTDEVICE bool operator()(const phi::float16& a) const {
     return phi::dtype::isfinite(a);
   }
 };
 
 template <>
-struct IsFiniteFunctor<phi::dtype::bfloat16, void> {
-  HOSTDEVICE bool operator()(const phi::dtype::bfloat16& a) const {
+struct IsFiniteFunctor<phi::bfloat16, void> {
+  HOSTDEVICE bool operator()(const phi::bfloat16& a) const {
     return phi::dtype::isfinite(a);
   }
 };

@@ -1154,7 +1154,7 @@ PD_REGISTER_KERNEL(fused_dconv_drelu_dbn,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedDconvDreluDbnKernel,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);

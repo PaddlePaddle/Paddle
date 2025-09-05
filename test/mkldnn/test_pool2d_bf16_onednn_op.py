@@ -172,7 +172,7 @@ def pool2d_backward_naive(
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
+class TestPoolBf16OneDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
     def init_kernel_type(self):
         self.use_onednn = True
 
@@ -181,7 +181,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
 
     def setUp(self):
         super().setUp()
-        self.attrs['mkldnn_data_type'] = "bfloat16"
+        self.attrs['onednn_data_type'] = "bfloat16"
         self.x_fp32 = np.random.random(self.shape).astype(np.float32)
 
         output = self.pool2D_forward_naive(
@@ -227,7 +227,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
-class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
+class TestPoolBf16OneDNNOp(TestPool2D_Op_Mixin, OpTest):
     def init_kernel_type(self):
         self.use_onednn = True
 
@@ -260,7 +260,7 @@ class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
         pass
 
 
-class TestCase1Avg(TestPoolBf16MklDNNOp):
+class TestCase1Avg(TestPoolBf16OneDNNOp):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -274,7 +274,7 @@ class TestCase1Avg(TestPoolBf16MklDNNOp):
         self.exclusive = True
 
 
-class TestCase2Avg(TestPoolBf16MklDNNOp):
+class TestCase2Avg(TestPoolBf16OneDNNOp):
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -288,7 +288,7 @@ class TestCase2Avg(TestPoolBf16MklDNNOp):
         self.exclusive = False
 
 
-class TestCase0Max(TestPoolBf16MklDNNOp):
+class TestCase0Max(TestPoolBf16OneDNNOp):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -306,7 +306,7 @@ class TestCase2Max(TestCase2Avg):
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
-class TestCase1PadZeroExclusiveAvgGrad(TestPoolBf16MklDNNOpGrad):
+class TestCase1PadZeroExclusiveAvgGrad(TestPoolBf16OneDNNOpGrad):
     def init_test_case(self):
         self.ksize = [3, 3]
         self.strides = [1, 1]
@@ -329,7 +329,7 @@ class TestCase2PadOneNonExclusiveAvgGrad(TestCase1PadZeroExclusiveAvgGrad):
         self.exclusive = False
 
 
-class TestCase0InitialMaxGrad(TestPoolBf16MklDNNOpGrad):
+class TestCase0InitialMaxGrad(TestPoolBf16OneDNNOpGrad):
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
