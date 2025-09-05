@@ -111,7 +111,7 @@ class TensorSize(int):
 
     def __call__(self, dim=None):
         if dim is None:
-            return self.as_shape
+            return paddle.Size(self.as_shape)
         return self.as_shape[dim]
 
 
