@@ -62,7 +62,7 @@
   name : [paddle.logical_not, paddle.Tensor.logical_not]
   args_alias:
    use_default_mapping : True
- 
+
 - op : argmax
   name : [paddle.argmax, paddle.Tensor.argmax]
   args_mapper :
@@ -170,4 +170,3 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias:
     x : [input]
-
