@@ -1553,6 +1553,7 @@ class SyncBatchNorm(_BatchNormBase):
             >>> import paddle
             >>> import paddle.nn as nn
             >>> paddle.device.set_device('gpu')
+            >>> a: int = float(2)
             >>> x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
             >>> if paddle.is_compiled_with_cuda():
