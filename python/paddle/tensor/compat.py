@@ -259,10 +259,10 @@ def slogdet(x: Tensor, out: SlogdetResult | None = None) -> SlogdetResult:
             >>> x = paddle.randn([4, 3, 3])
             >>> A = paddle.compat.slogdet(x)
             >>> print(A.sign)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [-1., -1., -1.,  1.])
             >>> print(A.logabsdet)
-            Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [-1.39344728, -2.30671787, -2.53045821, -0.90754318])
     """
     sign, logabsdet = _C_ops.slogdet_v2(x, out=out)
