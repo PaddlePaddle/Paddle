@@ -19,17 +19,16 @@ import paddle
 
 class TestCudaCompat(unittest.TestCase):
     def test_paddle_stream(self):
-        if paddle.is_compiled_with_cuda() and paddle.cuda.is_available() > 0:
+        if (
+            paddle.is_compiled_with_cuda()
+            and paddle.device.cuda.device_count() >= 1
+        ):
             s = paddle.Stream()
             self.assertIsNotNone(s)
             # Call member functions
             s.synchronize()
             status = s.query()
             self.assertIsInstance(status, bool)
-        else:
-            # Non-CUDA build: constructing Stream should raise
-            with self.assertRaises(RuntimeError):
-                s = paddle.Stream()
 
 
 if __name__ == '__main__':

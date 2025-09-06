@@ -223,6 +223,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
     get_device,
@@ -918,22 +919,6 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
-if paddle.device.cuda.device_count() >= 1:
-    from .cuda import Stream as Stream
-else:
-
-    class _DummyStream:
-        """
-        Dummy Stream for non-CUDA builds.
-        Any attempt to initialize or use it raises RuntimeError.
-        """
-
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError(
-                "The current device does not support using paddle.Stream."
-            )
-
-    Stream = _DummyStream
 # Constants
 newaxis: None = None
 inf = math.inf

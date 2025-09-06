@@ -1386,6 +1386,65 @@ class Stream:
         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
+def _device_to_paddle(
+    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None,
+):
+    if isinstance(dev, (paddle.CUDAPlace, paddle.CustomPlace)):
+        return dev
+    elif dev is None:
+        return dev
+    elif isinstance(dev, int):
+        if dev < 0:
+            raise ValueError(f"Device index must be non-negative, got {dev}")
+        return f"gpu:{dev}"
+    elif isinstance(dev, str):
+        cleaned_device = dev.strip()
+        return (
+            cleaned_device.replace("cuda:", "gpu:")
+            if "cuda:" in cleaned_device
+            else cleaned_device
+        )
+    else:
+        raise TypeError(
+            f"Unsupported device type: {type(dev).__name__}. "
+            f"Expected one of [CUDAPlace, CustomPlace, int, str, None]."
+        )
+
+
+class PaddleStream(Stream):
+    """Wrapper class for Paddle CUDA/XPU Stream, supporting standard device/priority handling.
+
+    This class inherits from the base `Stream` (renamed to `StreamBase` to avoid naming conflict)
+    and adds:
+    1. Unified device string conversion via `_device_to_paddle`
+    2. Priority mapping for user-friendly priority values
+    3. Clear parameter validation and error handling
+
+    Attributes:
+        _priority_map (dict[int, int]): Mapping from user-facing priority values to Paddle internal priority codes.
+            - User input: -1 (high priority), 0/2 (low priority), 1 (high priority)
+            - Internal code: 1 (high), 2 (low)
+    """
+
+    _priority_map: dict[int, int] = {-1: 1, 0: 2, 1: 1, 2: 2}
+
+    def __init__(
+        self,
+        device: paddle.CUDAPlace | paddle.CustomPlace | int | str | None = None,
+        priority: int = 0,
+        *args,
+        **kwargs,
+    ):
+        paddle_device = _device_to_paddle(device)
+        paddle_priority = self._priority_map.get(priority, 2)
+        super().__init__(
+            device=paddle_device,
+            priority=paddle_priority,
+            *args,
+            **kwargs,
+        )
+
+
 def current_stream(device: PlaceLike | None = None) -> Stream:
     '''
 
