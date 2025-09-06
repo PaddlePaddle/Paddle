@@ -132,8 +132,7 @@ class TestExternalStream(unittest.TestCase):
     def test_get_stream_from_external(self):
         #  test if CUDA is  available
         if paddle.cuda.is_available():
-            device_id = 2
-
+            device_id = 0
             # Create a native CUDA stream
             original_stream = paddle.cuda.Stream(device_id)
             original_raw_ptr = original_stream.stream_base.raw_stream
