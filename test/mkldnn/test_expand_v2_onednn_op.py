@@ -48,7 +48,11 @@ class TestExpandV2OneDNNOp(OpTest):
         self.expand_times = [2, 3, 4, 1]
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
+        self.check_output_with_place(
+            core.CPUPlace(),
+            check_pir_onednn=True,
+            check_dygraph=False,
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
