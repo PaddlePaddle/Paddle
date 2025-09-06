@@ -380,6 +380,25 @@ def generate_code_snippets(
     return filename_to_codeblock_identifier
 
 
+def get_test_results(
+    type_checker: TypeChecker,
+    docstrings_to_test: dict[str, str],
+) -> tuple[dict[str, str], str] | None:
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_dir = pathlib.Path(tmp_dir)
+
+        logger.info(f">>> Store code snippets to {tmp_dir} ...")
+        filename_to_codeblock_identifier = generate_code_snippets(
+            type_checker, tmp_dir, docstrings_to_test
+        )
+
+        logger.info(">>> Preprocess code snippets and run type checker ...")
+        results = type_checker.run_on_directory(
+            tmp_dir, filename_to_codeblock_identifier
+        )
+    return results
+
+
 def run_type_checker(
     args: argparse.Namespace, type_checker: TypeChecker
 ) -> None:
@@ -399,19 +418,7 @@ def run_type_checker(
         filter_api=filter_api,
         apis=[(api, api) for api in args.apis],
     )
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_dir = pathlib.Path(tmp_dir)
-
-        logger.info(f">>> Store code snippets to {tmp_dir} ...")
-        filename_to_codeblock_identifier = generate_code_snippets(
-            type_checker, tmp_dir, docstrings_to_test
-        )
-
-        logger.info(">>> Preprocess code snippets and run type checker ...")
-        results = type_checker.run_on_directory(
-            tmp_dir, filename_to_codeblock_identifier
-        )
+    results = get_test_results(type_checker, docstrings_to_test)
 
     if results is None:
         logger.info(">>> No type errors found.")
