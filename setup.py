@@ -615,25 +615,15 @@ def nccl() -> str:
     """
     return nccl_version
 
-class CudaVersion:
-    def __init__(self, version: str):
-        self.version = version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
 
     def __call__(self) -> str:
-        return self.version
-
-    def __str__(self) -> str:
-        return self.version
+        return str(self)
 
     def __repr__(self) -> str:
-        return f"CudaVersion('{self.version}')"
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, str):
-            return self.version == other
-        if isinstance(other, CudaVersion):
-            return self.version == other.version
-        return NotImplemented
+        return f"CudaVersion('{self}')"
 
 cuda = CudaVersion(cuda_version)
 
