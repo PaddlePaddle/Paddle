@@ -31,7 +31,7 @@ struct GetPointerTypeNameHelper;
   struct GetPointerTypeNameHelper<const cpp_type*> {                \
     static const char* Name() { return "const_" #cpp_type "_ptr"; } \
   };
-PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
+PD_FOR_EACH_DATA_TYPE_NOFP4(SPECIALIZE_GET_CPP_TYPE_NAME);
 #undef SPECIALIZE_GET_CPP_TYPE_NAME
 
 template <>
@@ -56,7 +56,7 @@ using PointerTypeImpl = std::variant<
 #define MAKE_POINTER_TYPE_ALTERNATIVE(cpp_type, enum_type)    \
     CppPointerType<cpp_type*>,                                \
     CppPointerType<const cpp_type*>,
-    PD_FOR_EACH_DATA_TYPE(MAKE_POINTER_TYPE_ALTERNATIVE)
+    PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_POINTER_TYPE_ALTERNATIVE)
 #undef MAKE_POINTER_TYPE_ALTERNATIVE
     CppPointerType<void*>,
     CppPointerType<const void*>>;

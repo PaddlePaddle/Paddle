@@ -17,6 +17,7 @@
 #include <functional>
 #include "paddle/ap/include/axpr/type.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float4_e2m1fn_x2.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/common/float8_e5m2.h"
 #include "paddle/phi/common/pstring.h"
@@ -81,7 +82,8 @@ struct GetDataTypeNameHelper;
   struct GetDataTypeNameHelper<const cpp_type> {             \
     static const char* Name() { return "const_" #cpp_type; } \
   };
-PD_FOR_EACH_DATA_TYPE(SPECIALIZE_GET_CPP_TYPE_NAME);
+PD_FOR_EACH_DATA_TYPE_NOFP4(SPECIALIZE_GET_CPP_TYPE_NAME)
+
 #undef SPECIALIZE_GET_CPP_TYPE_NAME
 template <>
 struct GetDataTypeNameHelper<adt::Undefined> {
@@ -104,7 +106,7 @@ struct CppDataType : public std::monostate {
 using DataTypeImpl = std::variant<
 #define MAKE_ARITHMETIC_TYPE_ALTERNATIVE(cpp_type, enum_type)    \
     CppDataType<cpp_type>,
-    PD_FOR_EACH_DATA_TYPE(MAKE_ARITHMETIC_TYPE_ALTERNATIVE)
+    PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_ARITHMETIC_TYPE_ALTERNATIVE)
 #undef MAKE_ARITHMETIC_TYPE_ALTERNATIVE
     CppDataType<adt::Undefined>>;
 // clang-format on

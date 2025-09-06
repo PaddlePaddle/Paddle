@@ -109,7 +109,7 @@ struct TypeImplPointerTypeMethodClass {
 #define MAKE_CPP_TYPE_CASE(cpp_type, enum_type)     \
   {PtrTypeName<cpp_type*>(), PtrType<cpp_type*>()}, \
       {PtrTypeName<const cpp_type*>(), PtrType<const cpp_type*>()},
-        PD_FOR_EACH_DATA_TYPE(MAKE_CPP_TYPE_CASE)
+        PD_FOR_EACH_DATA_TYPE_NOFP4(MAKE_CPP_TYPE_CASE)
 #undef MAKE_CPP_TYPE_CASE
 #define MAKE_INT_CPP_TYPE_CASE(cpp_type)        \
   {#cpp_type "_ptr", PtrType<cpp_type##_t*>()}, \
