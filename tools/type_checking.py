@@ -25,7 +25,9 @@ from __future__ import annotations
 
 import argparse
 import doctest
+import os
 import pathlib
+import pty
 import re
 import subprocess
 import sys
@@ -39,6 +41,11 @@ from sampcd_processor_utils import (
     get_docstring,
     init_logger as init_samplecode_logger,
 )
+
+COLOR_CYAN = '\033[96m'
+COLOR_RED = '\033[91m'
+COLOR_BOLD = '\033[1m'
+COLOR_CLEAR = '\033[0m'
 
 
 class TypeCheckingLogger:
@@ -94,6 +101,57 @@ class TestResult:
     extra_info: dict[str, Any] = field(default_factory=dict)
 
 
+def pty_run(command: list[str]) -> subprocess.CompletedProcess[str]:
+    """Run a command in a pseudo-terminal to capture colored output."""
+    master_fd, slave_fd = pty.openpty()
+    try:
+        # Start subprocess with its stdout/stderr attached to the pty slave.
+        # Do not use text=True here because we're passing raw fds; we'll decode
+        # the bytes we read from master_fd ourselves.
+        proc = subprocess.Popen(
+            command,
+            stdout=slave_fd,
+            stderr=slave_fd,
+            close_fds=True,
+        )
+
+        # Parent no longer needs the slave fd — close it so the child can
+        # receive EOF properly when it exits.
+        try:
+            os.close(slave_fd)
+            slave_fd = -1
+        except OSError:
+            pass
+
+        stdout_chunks: list[str] = []
+        while True:
+            try:
+                chunk = os.read(master_fd, 4096)
+                if not chunk:
+                    break
+                stdout_chunks.append(chunk.decode(errors="ignore"))
+            except OSError:
+                break
+
+        proc.wait()
+        stdout = ''.join(stdout_chunks)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=proc.returncode,
+            stdout=stdout,
+            stderr=None,
+        )
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+        try:
+            os.close(slave_fd)
+        except OSError:
+            pass
+
+
 class MypyChecker(TypeChecker):
     REGEX_MYPY_ERROR_ITEM = re.compile(
         r'^(?P<filepath>.*\.py):(?P<lineno>\d+):(?P<colno>\d+): (?P<level>error|note):(?P<msg>.*)$'
@@ -101,6 +159,7 @@ class MypyChecker(TypeChecker):
     REGEX_MYPY_ERROR_SUMMARY = re.compile(
         r'Found (?P<num_errors>\d+) errors? in (?P<num_files>\d+) files?'
     )
+    REGEX_TRIM_COLOR = re.compile(r'\x1b\[[0-9;]*m')
 
     def __init__(
         self,
@@ -123,10 +182,11 @@ class MypyChecker(TypeChecker):
         summary = ''
 
         for line in output.splitlines():
-            if self.REGEX_MYPY_ERROR_SUMMARY.match(line.strip()):
+            line_no_color = self.REGEX_TRIM_COLOR.sub('', line)
+            if self.REGEX_MYPY_ERROR_SUMMARY.match(line_no_color.strip()):
                 summary = line.strip()
                 continue
-            m = self.REGEX_MYPY_ERROR_ITEM.match(line)
+            m = self.REGEX_MYPY_ERROR_ITEM.match(line_no_color)
             if m:
                 filename = pathlib.Path(m.group('filepath')).stem
                 if filename not in filename_to_codeblock_identifier:
@@ -151,7 +211,7 @@ class MypyChecker(TypeChecker):
         dir: pathlib.Path,
         filename_to_codeblock_identifier: dict[str, str],
     ) -> tuple[dict[str, str], str] | None:
-        res = subprocess.run(
+        res = pty_run(
             [
                 sys.executable,
                 '-m',
@@ -161,8 +221,6 @@ class MypyChecker(TypeChecker):
                 "--pretty",
                 str(dir),
             ],
-            capture_output=True,
-            text=True,
         )
         if res.returncode == 0:
             print(f'No type errors found in directory {dir}')
@@ -202,10 +260,10 @@ class MypyChecker(TypeChecker):
             return
 
         for codeblock_identifier, msg in error_messages.items():
-            logger.error(f" {codeblock_identifier} ".center(80, '='))
-            logger.error(f">>> Type checking failed for {codeblock_identifier}")
+            logger.error(
+                f"{COLOR_RED}{COLOR_BOLD}TYPE CHECKING FAILED{COLOR_CLEAR} in {COLOR_CYAN}{COLOR_BOLD}{codeblock_identifier}{COLOR_CLEAR}"
+            )
             logger.error(msg)
-            logger.error("=" * 80)
         logger.error(">>> Mypy summary:")
         logger.error(raw_summary)
         logger.error(">>> Mistakes found in type checking!")
