@@ -19,9 +19,7 @@ limitations under the License. */
 #include <cmath>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

@@ -27,7 +27,6 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
