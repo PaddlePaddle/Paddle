@@ -17,4 +17,4 @@
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
 PD_REGISTER_KERNEL(
-    dirichlet, CPU, ALL_LAYOUT, phi::Dirichletkernel, float, double) {}
+    dirichlet, CPU, ALL_LAYOUT, phi::DirichletKernel, float, double) {}
