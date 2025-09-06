@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/infermeta/binary.h"
+#include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/impl/box_coder.h"
 
@@ -443,6 +444,47 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void CrossEntropyWithSoftmaxBwdWithDowncastInferMeta(
+    const MetaTensor& label,
+    const MetaTensor& softmax,
+    const MetaTensor& loss_grad,
+    MetaTensor* logits_grad) {
+  int axis = -1;
+  auto softmax_dims = softmax.dims();
+  auto labels_dims = label.dims();
+  auto softmax_rank = softmax_dims.size();
+  PADDLE_ENFORCE_EQ(
+      axis,
+      -1,
+      common::errors::InvalidArgument("Attr(axis) value should be -1"));
+  PADDLE_ENFORCE_EQ(
+      softmax.dtype(),
+      phi::DataType::FLOAT32,
+      common::errors::InvalidArgument("softmax dtype should be float32"));
+
+  axis = phi::funcs::CanonicalAxis(axis, softmax_rank);
+  for (int i = 0; i < softmax_rank; i++) {
+    if (i != axis) {
+      PADDLE_ENFORCE_EQ(
+          softmax_dims[i],
+          labels_dims[i],
+          common::errors::InvalidArgument(
+              "Input(Logits) and Input(Label) should in same shape in "
+              "dimensions except axis."));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      labels_dims[axis],
+      1UL,
+      common::errors::InvalidArgument("If Attr(soft_label) == false, "
+                                      "the axis dimension of "
+                                      "Input(Label) should be 1."));
+
+  logits_grad->set_dims(softmax.dims());
+  logits_grad->set_dtype(phi::DataType::BFLOAT16);
+}
+
 void CSoftmaxWithMultiLabelCrossEntropyInferMeta(
     const MetaTensor& logits,
     const MetaTensor& label,
@@ -714,6 +756,27 @@ void CalcReducedAttnScoresInferMeta(const MetaTensor& q,
   reduced_scores->set_dims({batch_size, num_heads, 1, seqlen_k});
 }
 
+void FlashMaskV2InferMeta(const MetaTensor& q,
+                          const MetaTensor& k,
+                          const MetaTensor& v,
+                          MetaTensor* out,
+                          MetaTensor* softmax_lse) {
+  const int batch_size = q.dims()[0];
+  const int seqlen_q = q.dims()[1];
+  const int num_heads = q.dims()[q.dims().size() - 2];
+  const int head_size_v = v.dims()[v.dims().size() - 1];
+  auto q_type = q.dtype();
+  auto out_type =
+      q_type == phi::DataType::FLOAT8_E4M3FN ? phi::DataType::BFLOAT16 : q_type;
+
+  out->set_dims({batch_size, seqlen_q, num_heads, head_size_v});
+
+  out->set_dtype(out_type);
+
+  softmax_lse->set_dims({batch_size, num_heads, seqlen_q});
+  softmax_lse->set_dtype(phi::DataType::FLOAT32);
+}
+
 void FlashAttnV3InferMeta(const MetaTensor& q,
                           const MetaTensor& k,
                           const MetaTensor& v,
@@ -756,6 +819,32 @@ void ArangeTensorInferMeta(const MetaTensor& start,
                            const MetaTensor& end,
                            const MetaTensor& step,
                            MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(common::product(start.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(start) should be 1, but got %d",
+                        common::product(start.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(end.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(end) should be 1, but got %d",
+                        common::product(end.dims())));
+
+  PADDLE_ENFORCE_EQ(common::product(step.dims()),
+                    1,
+                    common::errors::InvalidArgument(
+                        "The numel of Input(step) should be 1, but got %d",
+                        common::product(step.dims())));
+
+  out->set_dims({-1});
+  out->set_dtype(start.dtype());
+}
+
+void RangeTensorInferMeta(const MetaTensor& start,
+                          const MetaTensor& end,
+                          const MetaTensor& step,
+                          MetaTensor* out) {
   PADDLE_ENFORCE_EQ(common::product(start.dims()),
                     1,
                     common::errors::InvalidArgument(

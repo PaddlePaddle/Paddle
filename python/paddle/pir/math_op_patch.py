@@ -25,6 +25,9 @@ import numpy as np
 from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.utils.decorator_utils import (
+    size_args_decorator_patch,
+)
 
 from . import Value
 
@@ -205,6 +208,26 @@ def monkey_patch_value():
 
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
+
+    @property
+    def is_cuda(self):
+        """
+        Value don't have 'is_cuda' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
+        )
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CUDAPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return isinstance(expected_place, framework.core.CUDAPlace)
 
     @property
     def place(self):
@@ -647,6 +670,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -682,8 +706,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_empty_(
         self,
         size: ShapeLike,
@@ -691,6 +717,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -721,9 +748,14 @@ def monkey_patch_value():
             device = self.place
 
         return paddle.empty(
-            size, dtype=dtype, device=device, requires_grad=requires_grad
+            size,
+            dtype=dtype,
+            device=device,
+            requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_ones_(
         self,
         size: ShapeLike,
@@ -731,6 +763,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -766,8 +799,10 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
+    @size_args_decorator_patch
     def _new_zeros_(
         self,
         size: ShapeLike,
@@ -775,6 +810,7 @@ def monkey_patch_value():
         dtype: DTypeLike | None = None,
         device: PlaceLike | None = None,
         requires_grad: bool = False,
+        pin_memory: bool = False,
     ):
         """
 
@@ -810,6 +846,7 @@ def monkey_patch_value():
             dtype=dtype,
             device=device,
             requires_grad=requires_grad,
+            pin_memory=pin_memory,
         )
 
     def _int_(self):
@@ -1026,9 +1063,9 @@ def monkey_patch_value():
         return _C_ops.sparse_indices(self)
 
     def set_shape(self, shape):
-        assert (
-            paddle.base.dygraph.base.in_to_static_mode()
-        ), "We only support call 'set_shape' in to_static mode."
+        assert paddle.base.dygraph.base.in_to_static_mode(), (
+            "We only support call 'set_shape' in to_static mode."
+        )
 
         if self.is_dense_tensor_type() or self.is_selected_row_type():
             type = paddle.pir.create_shaped_type(self.type(), shape)
@@ -1074,9 +1111,9 @@ def monkey_patch_value():
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
         def transform(t, device, dtype, blocking):
             if dtype is None:
@@ -1376,6 +1413,21 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
+    @property
+    def itemsize(self) -> int:
+        """
+        Returns the number of bytes allocated on the machine for a single element of the Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x.itemsize
+                8
+        """
+        return self.element_size()
+
     import paddle
 
     value_methods = [
@@ -1383,6 +1435,7 @@ def monkey_patch_value():
         ('cuda', cuda),
         ('place', place),
         ('contiguous', contiguous),
+        ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
@@ -1540,6 +1593,7 @@ def monkey_patch_value():
         ('__int__', _int_),
         ('__bool__', _bool_),
         ('__complex__', _complex_),
+        ('itemsize', itemsize),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)

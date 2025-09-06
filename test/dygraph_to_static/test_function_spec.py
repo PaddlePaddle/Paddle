@@ -17,7 +17,6 @@ import unittest
 from test_declarative import foo_func
 
 import paddle
-from paddle.framework import in_pir_mode
 from paddle.jit.dy2static.function_spec import FunctionSpec
 from paddle.static import InputSpec
 
@@ -97,12 +96,7 @@ class TestFunctionSpec(unittest.TestCase):
         )
         self.assertTrue(len(input_with_spec) == 2)
         self.assertTrue(input_with_spec[0] == a_spec)  # a
-
-        if in_pir_mode():
-            self.assertEqual(input_with_spec[1].shape, [4, 10])  # b.shape
-        else:
-            self.assertTupleEqual(input_with_spec[1].shape, (4, 10))  # b.shape
-
+        self.assertEqual(input_with_spec[1].shape, [4, 10])  # b.shape
         self.assertEqual(input_with_spec[1].name, 'b_var')  # b.name
 
         # case 3

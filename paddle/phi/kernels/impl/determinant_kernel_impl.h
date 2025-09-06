@@ -33,10 +33,10 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::dtype::float16> {
+class EigenMatrix<phi::float16> {
  public:
   using MatrixType =
-      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>

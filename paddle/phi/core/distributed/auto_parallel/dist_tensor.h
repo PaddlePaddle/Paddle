@@ -30,13 +30,13 @@ class Shard;
 class Partial;
 class Replicate;
 
-TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
-                                const Placements& placements,
-                                const DDim& dims);
+PADDLE_API TensorDistAttr ToTensorDistAttr(const ProcessMesh& process_mesh,
+                                           const Placements& placements,
+                                           const DDim& dims);
 
-Placements ToPlacements(const TensorDistAttr& dist_attr);
+PADDLE_API Placements ToPlacements(const TensorDistAttr& dist_attr);
 
-class DistTensor final
+class PADDLE_API DistTensor final
     : public phi::TensorBase,
       public phi::TypeInfoTraits<phi::TensorBase, DistTensor> {
  public:

@@ -568,9 +568,9 @@ def save_pir(program, model_path, protocol=4, **configs):
     """
 
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != ""
-    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    assert base_name != "", (
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    )
     if 'pickle_protocol' in configs:
         protocol = configs['pickle_protocol']
         warnings.warn(
@@ -672,16 +672,16 @@ def load_pir(program, model_prefix, executor=None, var_list=None):
         load_dict = _pack_loaded_dict(load_dict)
     for var in parameter_list:
         if var.persistable:
-            assert (
-                var.name in load_dict
-            ), f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            assert var.name in load_dict, (
+                f"Can not find [{var.name}] in model file [{parameter_file_name}]"
+            )
             set_var(var.name, load_dict[var.name])
 
     if len(optimizer_param_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
-        assert os.path.exists(
-            opt_file_name
-        ), f"Optimizer file [{opt_file_name}] not exits"
+        assert os.path.exists(opt_file_name), (
+            f"Optimizer file [{opt_file_name}] not exits"
+        )
 
         if executor:
             paddle.base.libpaddle.pir.create_loaded_parameter(
@@ -692,9 +692,9 @@ def load_pir(program, model_prefix, executor=None, var_list=None):
             load_dict = _safe_load_pickle(f, encoding='latin1')
         for var in optimizer_param_list:
             if var.persistable:
-                assert (
-                    var.name in load_dict
-                ), f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                assert var.name in load_dict, (
+                    f"Can not find [{var.name}] in model file [{opt_file_name}]"
+                )
                 set_var(var.name, load_dict[var.name])
 
 

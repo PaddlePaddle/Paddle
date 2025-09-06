@@ -646,6 +646,32 @@ class TestBatchNormAPI_ZeroSize(unittest.TestCase):
                 np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
+class TestBatchNormAPI_Error(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.nn.functional.batch_norm,
+                    x=paddle.rand([16, 16, 16, 8], dtype="float32"),
+                    running_mean=paddle.rand([0], dtype="float32"),
+                    running_var=paddle.rand([16], dtype="float32"),
+                    use_global_stats=True,
+                )
+            with paddle.base.dygraph.guard(place):
+                self.assertRaises(
+                    ValueError,
+                    paddle.nn.functional.batch_norm,
+                    x=paddle.rand([16, 16, 16, 8], dtype="float32"),
+                    running_mean=paddle.rand([16], dtype="float32"),
+                    running_var=paddle.rand([0], dtype="float32"),
+                    use_global_stats=True,
+                )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

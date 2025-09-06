@@ -600,5 +600,28 @@ class TestFlattenZeroSizedTensorAPI(unittest.TestCase):
         np.testing.assert_equal(fetch_out, out_np)
 
 
+class TestFlattenAPI_Compatible(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        data = np.random.randn(2, 3, 5)
+        x = paddle.to_tensor(data)
+        out = paddle.flatten(input=x, start_dim=0, end_dim=-1)
+        out_np = data.flatten()
+        np.testing.assert_equal(out.numpy(), out_np)
+
+    def test_static(self):
+        paddle.enable_static()
+        data = np.random.randn(2, 3, 5)
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
+            x = paddle.static.data(name="x", shape=[2, 3, 5], dtype='float64')
+            out = paddle.flatten(input=x, start_dim=0, end_dim=-1)
+
+        exe = paddle.static.Executor(place=paddle.CPUPlace())
+        fetch_out = exe.run(main_prog, feed={"x": data}, fetch_list=[out])[0]
+        out_np = data.flatten()
+        np.testing.assert_equal(fetch_out, out_np)
+
+
 if __name__ == "__main__":
     unittest.main()

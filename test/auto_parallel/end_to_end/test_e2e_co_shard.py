@@ -21,8 +21,14 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
     def setUp(self):
         super().setUp(num_of_devices=4, timeout=120)
 
-    def test_reshard_co_shard(self):
+    def test_co_shard(self):
+        self.run_test_case("co_shard.py")
+
+    def test_reshape_co_shard(self):
         self.run_test_case("reshape_co_shard.py")
+
+    def test_transpose_co_shard(self):
+        self.run_test_case("transpose_co_shard.py")
 
 
 if __name__ == "__main__":

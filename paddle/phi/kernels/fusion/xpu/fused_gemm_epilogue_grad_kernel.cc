@@ -74,5 +74,5 @@ PD_REGISTER_KERNEL(fused_gemm_epilogue_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedGemmEpilogueXPUGradKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

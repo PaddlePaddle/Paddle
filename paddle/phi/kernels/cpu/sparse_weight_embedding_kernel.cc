@@ -113,4 +113,4 @@ PD_REGISTER_KERNEL(sparse_weight_embedding,
                    phi::SparseWeightEmbeddingKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

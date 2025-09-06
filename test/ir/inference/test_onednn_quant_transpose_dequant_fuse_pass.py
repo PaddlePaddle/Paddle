@@ -62,8 +62,8 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 'axis': axis,
-                'use_mkldnn': True,
-                'mkldnn_data_type': 'int8',
+                'use_onednn': True,
+                'onednn_data_type': 'int8',
             },
             use_onednn=True,
         )
@@ -77,8 +77,8 @@ class TestQuantTranspose2DequantOneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 'axis': axis,
-                'use_mkldnn': True,
-                'mkldnn_data_type': 'int8',
+                'use_onednn': True,
+                'onednn_data_type': 'int8',
             },
             use_onednn=True,
         )

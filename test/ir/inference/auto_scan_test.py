@@ -38,7 +38,7 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensort
+# windows and xpu not support tensorrt
 if os.name != 'nt' and (not os.getenv('WITH_XPU')):
     try:
         from paddle.tensorrt.export import (
@@ -171,7 +171,7 @@ class AutoScanTest(unittest.TestCase):
             trt_config.precision_mode = PrecisionMode.FP16
 
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
-        # translalte pir program to trt program
+        # translate pir program to trt program
         scope = paddle.static.global_scope()
         program_with_trt = convert_to_trt(pir_program, trt_config, scope)
 
@@ -465,9 +465,9 @@ class PassAutoScanTest(AutoScanTest):
             report_multiple_bugs=False,
         )
         settings.load_profile("ci")
-        assert (
-            passes is not None
-        ), "Parameter of passes must be defined in function run_and_statis."
+        assert passes is not None, (
+            "Parameter of passes must be defined in function run_and_statis."
+        )
         self.passes = passes
 
         self.add_ignore_pass_case()
@@ -979,7 +979,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         assert any(
                             op.name() == "pd_op.tensorrt_engine"
                             for op in trt_program.global_block().ops
-                        ), "trt_program does not contain any tensorrt_engine ops."
+                        ), (
+                            "trt_program does not contain any tensorrt_engine ops."
+                        )
 
                         feed_data = prog_config.get_feed_data()
                         for key, value in feed_data.items():

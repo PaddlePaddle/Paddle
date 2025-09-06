@@ -123,12 +123,12 @@ inline hipDataType_t GetCublasLtDataType() {
 }
 
 template <>
-inline hipDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+inline hipDataType_t GetCublasLtDataType<phi::float16>() {
   return HIP_DATATYPE_R_16F;
 }
 
 template <>
-inline hipDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+inline hipDataType_t GetCublasLtDataType<phi::bfloat16>() {
   return HIP_DATATYPE_R_16BF;
 }
 

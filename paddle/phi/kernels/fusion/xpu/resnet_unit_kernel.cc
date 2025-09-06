@@ -190,5 +190,5 @@ PD_REGISTER_KERNEL(resnet_unit,
                    XPU,
                    ALL_LAYOUT,
                    phi::ResNetUnitXPUKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float) {}

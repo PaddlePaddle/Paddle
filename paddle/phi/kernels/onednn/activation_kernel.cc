@@ -219,8 +219,7 @@ void SwishKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(                             \
-      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
+  PD_REGISTER_KERNEL(name, OneDNN, ONEDNN, phi::func, float, phi::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)

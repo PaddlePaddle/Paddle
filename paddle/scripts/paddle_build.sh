@@ -1347,13 +1347,10 @@ function check_cinn_file_diff() {
         CMakeLists.txt
         cmake
         paddle/cinn
-        python/cinn
         python/CMakeLists.txt
-        python/setup_cinn.py.in
         test/CMakeLists.txt
         test/cinn
         test/cpp/cinn
-        tools/cinn
     )
 
     run_cinn_ut="OFF"
@@ -3288,10 +3285,14 @@ function is_run_distribute_in_op_test() {
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
         fi
     done
-    ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"|| true`
+    ALL_CHANGE_FILES=$(git diff --name-only upstream/$BRANCH | grep ".py"|| true)
     echo ${ALL_CHANGE_FILES}
     for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
-        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_auto_parallel=" || true`
+        TARGET_FILE="${PADDLE_ROOT}/${CHANGE_FILE}"
+        if [ ! -f "$TARGET_FILE" ]; then
+            continue
+        fi
+        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH -- "$TARGET_FILE" | grep "+" | grep "check_auto_parallel=" || true`
         if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
         fi

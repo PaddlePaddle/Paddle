@@ -37,7 +37,7 @@ def build_program():
     ):
         data = paddle.ones([1024, 2048], dtype='float32', name='data')
         weight = paddle.randn([2048, 2048], name='weight')  # gpu
-        matmul_out = paddle.matmul(data, weight, name='matmul_out')  # gpus
+        matmul_out = data @ weight
         bias = paddle.ones([1024, 2048], dtype='float32', name='bias')
         add_out = paddle.add(matmul_out, bias, name='add_out')
         # add_out -> [sub] -> sub_out -> [tanh] -> tanh_out
@@ -46,7 +46,7 @@ def build_program():
         bias_1 = paddle.add(bias, sub_out, name='bias_1')
         out_before = paddle.tanh(bias_1, name='out_before')
         out_last = paddle.subtract(tanh_out, data, name='out_last')
-        out_last2 = paddle.matmul(out_last, weight, name="matmul_2_out")
+        out_last2 = out_last @ weight
 
         out = paddle.add(out_before, out_last2, name='out')
         mean = paddle.mean(out, name='mean_out')

@@ -17,7 +17,6 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -263,7 +262,7 @@ PD_REGISTER_KERNEL(eigvals,
                    phi::EigvalsKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }

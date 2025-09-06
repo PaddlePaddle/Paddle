@@ -1,0 +1,5 @@
+collect_srcs(api_srcs SRCS ATen/cuda/EmptyTensor.cpp)
+collect_srcs(api_srcs SRCS ATen/core/TensorMethods.cpp)
+collect_srcs(api_srcs SRCS ATen/AccumulateType.cpp)
+collect_srcs(api_srcs SRCS torch/csrc/api/include/torch/cuda.cpp)
+collect_srcs(api_srcs SRCS torch/library.cpp)

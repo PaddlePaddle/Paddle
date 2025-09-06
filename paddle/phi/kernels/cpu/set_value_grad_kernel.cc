@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -372,10 +371,10 @@ PD_REGISTER_KERNEL(set_value_grad,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(set_value_with_scalar_grad,
                    CPU,
@@ -389,7 +388,7 @@ PD_REGISTER_KERNEL(set_value_with_scalar_grad,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}
