@@ -155,7 +155,6 @@ def jvp(func, xs, v=None):
             ...     return paddle.matmul(x, x)
             ...
             >>> x = paddle.ones(shape=[2, 2], dtype='float32')
-            >>> y: int = 'xxxx'
             >>> _, jvp_result = paddle.incubate.autograd.jvp(func, x)
             >>> print(jvp_result)
             Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
