@@ -182,7 +182,7 @@ PD_REGISTER_KERNEL(add_raw,
                    ONEDNN,
                    phi::AddRawKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
@@ -193,7 +193,7 @@ PD_REGISTER_KERNEL(add,
                    ONEDNN,
                    phi::AddKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
@@ -204,7 +204,7 @@ PD_REGISTER_KERNEL(subtract_raw,
                    ONEDNN,
                    phi::SubtractRawKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
@@ -215,7 +215,7 @@ PD_REGISTER_KERNEL(subtract,
                    ONEDNN,
                    phi::SubtractKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
@@ -226,7 +226,7 @@ PD_REGISTER_KERNEL(multiply_raw,
                    ONEDNN,
                    phi::MultiplyRawKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
@@ -237,20 +237,16 @@ PD_REGISTER_KERNEL(multiply,
                    ONEDNN,
                    phi::MultiplyKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
 }
 
-PD_REGISTER_KERNEL(divide_raw,
-                   OneDNN,
-                   ONEDNN,
-                   phi::DivideRawKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    divide_raw, OneDNN, ONEDNN, phi::DivideRawKernel, float, phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(
-    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::dtype::bfloat16) {
+    divide, OneDNN, ONEDNN, phi::DivideKernel, float, phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::ElementwiseGetKernelTypeForVar;
 }

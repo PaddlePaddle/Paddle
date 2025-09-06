@@ -210,6 +210,26 @@ def monkey_patch_value():
         return _C_ops.memcpy(self, 1)
 
     @property
+    def is_cuda(self):
+        """
+        Value don't have 'is_cuda' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
+        )
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CUDAPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return isinstance(expected_place, framework.core.CUDAPlace)
+
+    @property
     def place(self):
         """
         Value don't have 'place' interface in static graph mode
@@ -1415,6 +1435,7 @@ def monkey_patch_value():
         ('cuda', cuda),
         ('place', place),
         ('contiguous', contiguous),
+        ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),

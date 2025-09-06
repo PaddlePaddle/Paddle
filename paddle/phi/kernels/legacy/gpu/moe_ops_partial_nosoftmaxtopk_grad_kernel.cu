@@ -143,5 +143,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_partial_nosoftmaxtopk_grad,
                    phi::MoeGateDispatchPartialNoSoftMaxTopkGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
