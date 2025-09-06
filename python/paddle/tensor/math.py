@@ -3878,7 +3878,7 @@ def kron(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     $$
 
     Args:
-        x (Tensor): the fist operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64.
+        x (Tensor): the first operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64.
         y (Tensor): the second operand of kron op, data type: bfloat16, float16, float32, float64, int32 or int64. Its data type should be the same with x.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
