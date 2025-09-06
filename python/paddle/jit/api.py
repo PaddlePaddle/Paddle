@@ -261,7 +261,7 @@ def to_static(
             >>> import paddle
             >>> from paddle.jit import to_static
 
-            >>> @to_static(0)
+            >>> @to_static
             >>> def func(x):
             ...     if paddle.mean(x) < 0:
             ...         x_v = x - 1
@@ -1003,7 +1003,7 @@ def save(
             ...     batch_size=BATCH_SIZE,
             ...     shuffle=True,
             ...     drop_last=True,
-            ...     num_workers=2 # type: ignore[arg-type]
+            ...     num_workers=2
             ... )
 
             >>> # train
@@ -1552,7 +1552,7 @@ def load(
                 >>> # 1. train & save model.
 
                 >>> # create network
-                >>> layer = LinearNet(11111)
+                >>> layer = LinearNet()
                 >>> loss_fn = nn.CrossEntropyLoss()
                 >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
