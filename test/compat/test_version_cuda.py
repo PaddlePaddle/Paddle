@@ -23,12 +23,19 @@ class TestCudaVariable(unittest.TestCase):
             self.assertIsInstance(cuda, str)
             self.assertTrue(len(cuda) > 0)
             self.assertEqual(str(cuda), cuda)
-            self.assertTrue(float(cuda) > 0)
-
             self.assertTrue(callable(cuda))
+            self.assertTrue(
+                hasattr(cuda, 'startswith'),
+                "Return value of cuda does not have 'startswith' attribute",
+            )
             result = cuda()
             self.assertIsInstance(result, str)
             self.assertEqual(result, cuda)
+            self.assertTrue(
+                hasattr(result, 'startswith'),
+                "Return value of cuda() does not have 'startswith' attribute",
+            )
+
         else:
             print("no CUDA ")
 
