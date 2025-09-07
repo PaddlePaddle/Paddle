@@ -22,6 +22,7 @@ import paddle
 from paddle import CUDAPlace, CustomPlace
 from paddle.device import (
     Stream as _PaddleStream,
+    _device_to_paddle as _device_to_paddle,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -29,24 +30,6 @@ if TYPE_CHECKING:
     from paddle.base import core
 
 DeviceLike = Union[CUDAPlace, CustomPlace, int, str, None]
-
-
-def _device_to_paddle(device: DeviceLike) -> str:
-    """
-    Convert a device spec (int, str, None) to Paddle device string 'gpu:X'.
-    Args:
-        device: None, int, or str like 'cuda:0' / 'gpu:0'
-    Returns:
-        str: Paddle device string
-    """
-    if isinstance(device, (CUDAPlace, CustomPlace)) or device is None:
-        return device
-    elif isinstance(device, int):
-        return f"gpu:{device}"
-    elif isinstance(device, str):
-        return device.replace("cuda", "gpu")
-    else:
-        raise TypeError(f"Unsupported device type: {type(device)}")
 
 
 def is_available() -> bool:
