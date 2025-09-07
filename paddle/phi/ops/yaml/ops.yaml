@@ -183,10 +183,6 @@
 
 - op : all
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api:
-    name : [paddle.all,paddle.Tensor.all]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -274,10 +270,6 @@
 
 - op : any
   args : (Tensor x, int64_t[] axis={}, bool keepdim=false)
-  python_api:
-    name : [paddle.any, paddle.Tensor.any]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -778,11 +770,6 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  python_api :
-    name : [paddle.bmm, paddle.Tensor.bmm]
-    args_alias:
-      x : [input]
-      y : [mat2]
   output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
@@ -945,10 +932,6 @@
 
 - op : ceil
   args : (Tensor x)
-  python_api:
-    name : [paddle.ceil, paddle.Tensor.ceil]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -1214,10 +1197,6 @@
 
 - op : cos
   args : (Tensor x)
-  python_api:
-    name: [paddle.cos, paddle.Tensor.cos]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2209,10 +2188,6 @@
 
 - op : floor
   args : (Tensor x)
-  python_api:
-    name: [paddle.floor, paddle.Tensor.floor]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -2993,10 +2968,6 @@
 
 - op : isfinite
   args : (Tensor x)
-  python_api:
-    name : [paddle.isfinite, paddle.Tensor.isfinite]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3008,10 +2979,6 @@
 
 - op : isinf
   args : (Tensor x)
-  python_api:
-    name : [paddle.isinf, paddle.Tensor.isinf]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3023,10 +2990,6 @@
 
 - op : isnan
   args : (Tensor x)
-  python_api:
-    name : [paddle.isnan, paddle.Tensor.isnan]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : IsfiniteInferMeta
@@ -3209,10 +3172,6 @@
 
 - op : log
   args : (Tensor x)
-  python_api:
-    name: [paddle.log, paddle.Tensor.log]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -3393,12 +3352,6 @@
 
 - op : logsumexp
   args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
-  python_api:
-    name : [paddle.logsumexp,paddle.Tensor.logsumexp]
-    args_alias:
-      use_default_mapping : True
-    pre_process:
-      func : LogsumexpPreProcess(x, axis, reduce_all)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -4697,13 +4650,6 @@
 
 - op : roll
   args : (Tensor x, IntArray shifts={}, int64_t[] axis={})
-  python_api:
-    name : [paddle.roll, paddle.Tensor.roll]
-    args_alias:
-      axis : [dims]
-      use_default_mapping : True
-    pre_process:
-      func : RollPreProcess(x, shifts, axis)
   output : Tensor(out)
   infer_meta :
     func : RollInferMeta
@@ -4755,10 +4701,6 @@
 
 - op : rsqrt
   args : (Tensor x)
-  python_api:
-    name: [paddle.sqrt, paddle.Tensor.rsqrt]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5026,10 +4968,6 @@
 
 - op : sigmoid
   args : (Tensor x)
-  python_api:
-    name : [paddle.sigmoid,paddle.Tensor.sigmoid,paddle.nn.functional.sigmoid]
-    args_alias:
-      use_default_mapping : True
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
@@ -5055,10 +4993,6 @@
 
 - op : sign
   args : (Tensor x)
-  python_api :
-    name: [paddle.sign, paddle.Tensor.sign]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5084,10 +5018,6 @@
 
 - op : sin
   args : (Tensor x)
-  python_api :
-    name: [paddle.sin, paddle.Tensor.sin]
-    args_alias:
-      use_default_mapping : True
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5232,10 +5162,6 @@
 
 - op : sqrt
   args : (Tensor x)
-  python_api :
-    name : [paddle.sqrt,paddle.Tensor.sqrt]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -5591,10 +5517,6 @@
 
 - op : tril
   args : (Tensor x, int diagonal=0)
-  python_api :
-    name : [paddle.tril, paddle.Tensor.tril]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -5634,10 +5556,6 @@
 
 - op : triu
   args : (Tensor x, int diagonal=0)
-  python_api :
-    name : [paddle.triu, paddle.Tensor.triu]
-    args_alias:
-      x : [input]
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta
