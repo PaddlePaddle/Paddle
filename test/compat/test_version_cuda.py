@@ -12,32 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 from paddle.version import cuda
 
 
 class TestCudaVariable(unittest.TestCase):
-    def test_cuda_functionality(self):
-        if cuda:
-            self.assertIsInstance(cuda, str)
-            self.assertTrue(len(cuda) > 0)
-            self.assertEqual(str(cuda), cuda)
-            self.assertTrue(callable(cuda))
-            self.assertTrue(
-                hasattr(cuda, 'startswith'),
-                "Return value of cuda does not have 'startswith' attribute",
-            )
-            result = cuda()
-            self.assertIsInstance(result, str)
-            self.assertEqual(result, cuda)
-            self.assertTrue(
-                hasattr(result, 'startswith'),
-                "Return value of cuda() does not have 'startswith' attribute",
-            )
+    def test_has_signature(self):
+        self.assertTrue(hasattr(cuda, '__signature__'))
+        self.assertIsInstance(cuda.__signature__, inspect.Signature)
+        self.assertEqual(len(cuda.__signature__.parameters), 0)
 
-        else:
-            print("no CUDA ")
+    def test_has_doc(self):
+        self.assertTrue(hasattr(cuda, '__doc__'))
+        self.assertIsInstance(cuda.__doc__, str)
+        self.assertTrue(len(cuda.__doc__.strip()) > 0)
+
+    def test_inspect_recognizes(self):
+        self.assertTrue(inspect.getdoc(cuda))
+        self.assertIsInstance(inspect.signature(cuda), inspect.Signature)
+
+    def test_cuda_functionality(self):
+        self.assertIsInstance(cuda, str)
+        self.assertTrue(len(cuda) > 0)
+        self.assertEqual(str(cuda), cuda)
+        self.assertTrue(callable(cuda))
+        self.assertTrue(
+            hasattr(cuda, 'startswith'),
+            "Return value of cuda does not have 'startswith' attribute",
+        )
+        result = cuda()
+        self.assertIsInstance(result, str)
+        self.assertEqual(result, cuda)
+        self.assertTrue(
+            hasattr(result, 'startswith'),
+            "Return value of cuda() does not have 'startswith' attribute",
+        )
 
 
 if __name__ == "__main__":

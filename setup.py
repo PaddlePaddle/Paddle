@@ -615,6 +615,22 @@ def nccl() -> str:
     """
     return nccl_version
 
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
+
+    Returns:
+        string: Return the version information of cuda. If paddle package is CPU version, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.version.cuda()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '10.2'
+
+    """
 class CudaVersion(str):
     def __new__(cls, version: str):
         return super().__new__(cls, version)
@@ -624,6 +640,17 @@ class CudaVersion(str):
 
     def __repr__(self) -> str:
         return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
 
 cuda = CudaVersion(cuda_version)
 
