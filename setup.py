@@ -636,6 +636,8 @@ class CudaVersion(str):
         return super().__new__(cls, version)
 
     def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
         return str(self)
 
     def __repr__(self) -> str:
