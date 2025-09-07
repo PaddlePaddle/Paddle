@@ -166,10 +166,6 @@ def get_stream_from_external(
     Returns:
         paddle.cuda.Stream: A Stream object wrapping the given external CUDA stream.
     """
-    if not paddle.is_compiled_with_cuda():
-        raise RuntimeError(
-            "CUDA is not available, cannot get stream from external."
-        )
 
     device = _device_to_paddle(device)
     stream_ex = paddle.device.get_stream_from_external(data_ptr, device)

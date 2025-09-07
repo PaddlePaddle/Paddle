@@ -130,33 +130,54 @@ class TestCudaCompat(unittest.TestCase):
 
 class TestExternalStream(unittest.TestCase):
     def test_get_stream_from_external(self):
-        #  test if CUDA is  available
-        if paddle.cuda.is_available():
-            device_id = 0
-            # Create a native CUDA stream
-            original_stream = paddle.cuda.Stream(device_id)
-            original_raw_ptr = original_stream.stream_base.raw_stream
+        # Only run test if CUDA is available
+        if not paddle.cuda.is_available():
+            return
 
-            # Create a Paddle stream from an external raw pointer
-            external_stream = paddle.cuda.get_stream_from_external(
-                original_raw_ptr, device_id
-            )
+        # Test case 1: Device specified by integer ID
+        device_id = 0
+        original_stream = paddle.cuda.Stream(device_id)
+        original_raw_ptr = original_stream.stream_base.raw_stream
 
-            # Verify that the raw pointers match
-            self.assertEqual(
-                original_raw_ptr, external_stream.stream_base.raw_stream
-            )
+        external_stream = paddle.cuda.get_stream_from_external(
+            original_raw_ptr, device_id
+        )
+        self.assertEqual(
+            original_raw_ptr, external_stream.stream_base.raw_stream
+        )
 
-            # Delete the external stream to ensure it does not affect the original stream
-            del external_stream
+        # Test case 2: Device specified by CUDAPlace
+        device_place = paddle.CUDAPlace(0)
+        original_stream = paddle.device.Stream(device_place)
+        original_raw_ptr = original_stream.stream_base.raw_stream
 
-            # Current stream should still match the original stream
-            with paddle.cuda.stream(original_stream):
-                current_stream = paddle.cuda.current_stream(device_id)
+        external_stream = paddle.device.get_stream_from_external(
+            original_raw_ptr, device_place
+        )
+        self.assertEqual(
+            original_raw_ptr, external_stream.stream_base.raw_stream
+        )
 
-            self.assertEqual(
-                current_stream.stream_base.raw_stream, original_raw_ptr
-            )
+        # Test case 3: Device not specified (None)
+        device_none = None
+        original_stream = paddle.cuda.Stream(device_none)
+        original_raw_ptr = original_stream.stream_base.raw_stream
+
+        external_stream = paddle.cuda.get_stream_from_external(
+            original_raw_ptr, device_none
+        )
+        self.assertEqual(
+            original_raw_ptr, external_stream.stream_base.raw_stream
+        )
+
+        # Test case 4: Verify original stream remains valid after external stream deletion
+        del external_stream
+        with paddle.cuda.stream(original_stream):
+            current_stream = paddle.cuda.current_stream(device_none)
+
+        self.assertEqual(
+            current_stream.stream_base.raw_stream, original_raw_ptr
+        )
 
 
 if __name__ == '__main__':
