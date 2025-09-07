@@ -1709,14 +1709,6 @@ def get_stream_from_external(
     else:
         place = device
 
-    if not paddle.is_compiled_with_cuda():
-        raise RuntimeError(
-            "Paddle is not compiled with CUDA, get_stream_from_external is unavailable."
-        )
-
-    if not isinstance(place, paddle.CUDAPlace):
-        raise TypeError("device must be a CUDAPlace or string like 'gpu:x'.")
-
     return Stream(
         stream_base=core._get_stream_from_external(
             data_ptr, place.get_device_id()
