@@ -60,7 +60,7 @@ int CPUBfloat16PlacementPass::SetOnednnDataType(ir::Graph* graph) const {
       VLOG(4) << "---    marked " << op->Op()->Type()
               << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));
-      op->Op()->SetAttr("onednn_data_type", std::string("bfloat16"));
+      op->Op()->SetAttr("onednn_data_type", std::string(""));
       detected_operators++;
     }
   };
