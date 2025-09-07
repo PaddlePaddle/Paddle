@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Union
 import paddle
 from paddle import CUDAPlace, CustomPlace
 from paddle.device import (
-    Stream as _PaddleStream,
+    PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
     stream_guard as _PaddleStreamGuard,
 )
@@ -88,7 +88,7 @@ class StreamContext(_PaddleStreamGuard):
     Stream context manager, inherited from Paddle's stream_guard.
     """
 
-    def __init__(self, stream: _PaddleStream):
+    def __init__(self, stream: paddle.device.Stream):
         super().__init__(stream)
 
 
@@ -97,43 +97,6 @@ def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
     A context manager that sets a given stream as the current stream.
     """
     return StreamContext(stream_obj)
-
-
-class Stream(_PaddleStream):
-    """
-    A CUDA/XPU stream in Paddle.
-
-    This class provides an interface for creating and managing
-    asynchronous computation streams on the specified device.
-
-    Attributes:
-        _priority_map (dict): Internal mapping of user priority values
-            to Paddle's internal priority representation.
-    """
-
-    _priority_map = {-1: 1, 0: 2, 1: 1, 2: 2}
-
-    def __init__(self, device=None, priority=0, *args, **kwargs):
-        """
-        Initialize a new Stream.
-
-        Args:
-            device (int | str | None): The device where the stream is created.
-                Can be:
-                  - int: device index, e.g., 0 for "gpu:0"
-                  - str: device type and index, e.g., "gpu:0"
-                  - None: defaults to the current device
-            priority (int): Priority of the stream. 1/-1 (high priority) or 0/2 (low priority). By default, streams have
-            low priority.
-
-                Other values fall back to normal priority.
-        """
-        paddle_device = _device_to_paddle(device)
-        paddle_priority = self._priority_map.get(priority, 2)
-
-        super().__init__(
-            device=paddle_device, priority=paddle_priority, *args, **kwargs
-        )
 
 
 __all__ = [
