@@ -12,8 +12,18 @@ env:
   token: ${{ vars.ACTION_GITHUB_TOKEN }}
 
 jobs:
-  check-approvers:
-    name: Check approval
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'skip ci'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  data-storage:
+    name: Performance data storage
+    needs: check-bypass
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
