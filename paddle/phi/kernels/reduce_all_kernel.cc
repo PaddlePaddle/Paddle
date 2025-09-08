@@ -19,9 +19,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -61,8 +58,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -76,8 +73,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif
