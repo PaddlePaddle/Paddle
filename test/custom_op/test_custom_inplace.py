@@ -290,14 +290,27 @@ def inplace_static_relu_net(func, device, dtype, np_x, np_y, np_z):
     return x_v, y_v, out_v, x_grad_v, y_grad_v
 
 
-def dynamic_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
+def dynamic_multi_inplace(
+    custom_func,
+    device,
+    dtype,
+    np_x,
+    np_y,
+    np_a,
+    np_b,
+    custom_func_with_all_return=False,
+):
     paddle.set_device(device)
     x = paddle.to_tensor(np_x, dtype=dtype, stop_gradient=True)
     y = paddle.to_tensor(np_y, dtype=dtype, stop_gradient=False)
     a = paddle.to_tensor(np_a, dtype=dtype, stop_gradient=True)
     b = paddle.to_tensor(np_b, dtype=dtype, stop_gradient=False)
-    if custom_func:
+    if custom_func and not custom_func_with_all_return:
         out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
+    elif custom_func_with_all_return:
+        out_xy, out_ab = custom_inplace.custom_multi_inplace_with_all_return(
+            x, y, a, b
+        )
     else:
         out_xy = x.add_(y)
         out_ab = a.add_(b)
@@ -318,7 +331,16 @@ def dynamic_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
     )
 
 
-def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
+def static_multi_inplace(
+    custom_func,
+    device,
+    dtype,
+    np_x,
+    np_y,
+    np_a,
+    np_b,
+    custom_func_with_all_return=False,
+):
     paddle.enable_static()
     paddle.set_device(device)
     with (
@@ -333,8 +355,12 @@ def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
         y.stop_gradient = False
         a.stop_gradient = False
         b.stop_gradient = False
-        if custom_func:
+        if custom_func and not custom_func_with_all_return:
             out_xy, out_ab = custom_inplace.custom_multi_inplace(x, y, a, b)
+        elif custom_func_with_all_return:
+            out_xy, out_ab = (
+                custom_inplace.custom_multi_inplace_with_all_return(x, y, a, b)
+            )
         else:
             out_xy = paddle.add(x, y)
             out_ab = paddle.add(a, b)
@@ -343,7 +369,7 @@ def static_multi_inplace(custom_func, device, dtype, np_x, np_y, np_a, np_b):
 
         if paddle.framework.in_pir_mode():
             ops = static.default_main_program().global_block().ops
-            if custom_func:
+            if custom_func or custom_func_with_all_return:
                 fetch_list = [
                     x,
                     out_xy,
@@ -705,6 +731,27 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_a,
                     self.np_b,
                 )
+                (
+                    custom_x_with_all_return,
+                    custom_out_xy_with_all_return,
+                    custom_x_grad_with_all_return,
+                    custom_y_grad_with_all_return,
+                    custom_out_xy_grad_with_all_return,
+                    custom_a_with_all_return,
+                    custom_out_ab_with_all_return,
+                    custom_a_grad_with_all_return,
+                    custom_b_grad_with_all_return,
+                    custom_out_ab_grad_with_all_return,
+                ) = static_multi_inplace(
+                    False,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                    True,
+                )
                 check_output(custom_x, pd_out_xy, "inplace_custom_x")
                 check_output(
                     custom_x_grad, custom_out_xy_grad, "inplace_custom_x_grad"
@@ -722,6 +769,40 @@ class TestCustomInplaceJit(unittest.TestCase):
                 check_output(custom_a_grad, pd_a_grad, "a_grad")
                 check_output(custom_b_grad, pd_b_grad, "b_grad")
                 check_output(custom_out_ab_grad, pd_out_ab_grad, "outab_grad")
+
+                check_output(
+                    custom_x_with_all_return, pd_out_xy, "inplace_custom_x"
+                )
+                check_output(
+                    custom_x_grad_with_all_return,
+                    custom_out_xy_grad,
+                    "inplace_custom_x_grad",
+                )
+                check_output(
+                    custom_a_with_all_return, pd_out_ab, "inplace_custom_a"
+                )
+                check_output(
+                    custom_a_grad_with_all_return,
+                    custom_out_ab_grad,
+                    "inplace_custom_a_grad",
+                )
+
+                check_output(custom_out_xy_with_all_return, pd_out_xy, "outxy")
+                check_output(custom_x_grad_with_all_return, pd_x_grad, "x_grad")
+                check_output(custom_y_grad_with_all_return, pd_y_grad, "y_grad")
+                check_output(
+                    custom_out_xy_grad_with_all_return,
+                    pd_out_xy_grad,
+                    "outxy_grad",
+                )
+                check_output(custom_out_ab_with_all_return, pd_out_ab, "outab")
+                check_output(custom_a_grad_with_all_return, pd_a_grad, "a_grad")
+                check_output(custom_b_grad_with_all_return, pd_b_grad, "b_grad")
+                check_output(
+                    custom_out_ab_grad_with_all_return,
+                    pd_out_ab_grad,
+                    "outab_grad",
+                )
 
     def test_dynamic_multi_inplace(self):
         for device in self.devices:
@@ -766,7 +847,27 @@ class TestCustomInplaceJit(unittest.TestCase):
                     self.np_a,
                     self.np_b,
                 )
-
+                (
+                    custom_x_with_all_return,
+                    custom_y_with_all_return,
+                    custom_out_xy_with_all_return,
+                    custom_x_grad_with_all_return,
+                    custom_y_grad_with_all_return,
+                    custom_a_with_all_return,
+                    custom_b_with_all_return,
+                    custom_out_ab_with_all_return,
+                    custom_a_grad_with_all_return,
+                    custom_b_grad_with_all_return,
+                ) = dynamic_multi_inplace(
+                    False,
+                    device,
+                    dtype,
+                    self.np_x,
+                    self.np_y,
+                    self.np_a,
+                    self.np_b,
+                    True,
+                )
                 check_output(custom_x, custom_out_xy, "inplace_custom_x")
                 check_output(pd_x, pd_out_xy, "inplace_pd_x")
                 check_output(custom_a, custom_out_ab, "inplace_custom_a")
@@ -782,6 +883,28 @@ class TestCustomInplaceJit(unittest.TestCase):
                 check_output(custom_out_ab, pd_out_ab, "outab")
                 check_output(custom_a_grad, pd_a_grad, "a_grad")
                 check_output(custom_b_grad, pd_b_grad, "b_grad")
+
+                check_output(
+                    custom_x_with_all_return,
+                    custom_out_xy_with_all_return,
+                    "inplace_custom_x",
+                )
+                check_output(
+                    custom_a_with_all_return,
+                    custom_out_ab_with_all_return,
+                    "inplace_custom_a",
+                )
+
+                check_output(custom_x_with_all_return, pd_x, "x")
+                check_output(custom_y_with_all_return, pd_y, "y")
+                check_output(custom_out_xy_with_all_return, pd_out_xy, "outxy")
+                check_output(custom_x_grad_with_all_return, pd_x_grad, "x_grad")
+                check_output(custom_y_grad_with_all_return, pd_y_grad, "y_grad")
+                check_output(custom_a_with_all_return, pd_a, "a")
+                check_output(custom_b_with_all_return, pd_b, "b")
+                check_output(custom_out_ab_with_all_return, pd_out_ab, "outab")
+                check_output(custom_a_grad_with_all_return, pd_a_grad, "a_grad")
+                check_output(custom_b_grad_with_all_return, pd_b_grad, "b_grad")
 
 
 if __name__ == "__main__":
