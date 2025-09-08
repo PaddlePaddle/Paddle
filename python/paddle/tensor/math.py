@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 import warnings
 from typing import TYPE_CHECKING, Literal
 
@@ -1120,7 +1121,14 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def floor_divide(
+    x: Tensor,
+    y: Number | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward negative infinite. The equation is:
 
@@ -1165,7 +1173,9 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.floor_divide(x, y)
+        if isinstance(y, numbers.Number):
+            return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
+        return _C_ops.floor_divide(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 

@@ -977,7 +977,14 @@ def index_sample(x: Tensor, index: Tensor) -> Tensor:
         return out
 
 
-def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def masked_select(
+    x: Tensor,
+    mask: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
@@ -1022,7 +1029,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             check_variable_and_dtype(
                 mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
             )
-        return _C_ops.masked_select(x, mask)
+        return _C_ops.masked_select(x, mask, out=out)
     else:
         check_variable_and_dtype(
             x,
