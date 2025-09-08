@@ -40,6 +40,13 @@ jobs:
     needs: check-bypass
     if: false
     runs-on: ubuntu-latest
+
+  build:
+    name: Coverage build
+    runs-on:
+      group: GZ_BD-CPU
+    outputs:
+      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
     steps:
       - name: Check docker image and run container
         env:
