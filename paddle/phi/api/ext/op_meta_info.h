@@ -159,8 +159,7 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<Tensor*>* AllMutablePlainOutput();
   std::unordered_map<size_t, size_t> GetInplaceIndexMap() const;
   std::unordered_map<size_t, size_t> GetInplaceReverseIndexMap() const;
-  void ValidateAndAssignOutputs(CustomOpKernelContext* ctx,
-                                const std::vector<Tensor>& outs);
+  void ValidateAndAssignOutputs(const std::vector<Tensor>& outs);
 
  private:
   // TODO(chenweihang): replaced be SmallVector
@@ -405,7 +404,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                     "If return std::vector<Tensor> in Custom OpKernel, "
                     "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
-      ValidateAndAssignOutputs(ctx, outs);
+      ctx->ValidateAndAssignOutputs(outs);
     }
   };
 

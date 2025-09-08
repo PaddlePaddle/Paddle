@@ -328,14 +328,13 @@ CustomOpKernelContext::GetInplaceReverseIndexMap() const {
 }
 
 void CustomOpKernelContext::ValidateAndAssignOutputs(
-    CustomOpKernelContext* ctx, const std::vector<Tensor>& outs) {
-  auto* orig_outs = ctx->AllMutablePlainOutput();  // without inplaced outputs
-  auto* all_outs = ctx->AllMutableOutput();
+    const std::vector<Tensor>& outs) {
+  auto* orig_outs = AllMutablePlainOutput();  // without inplaced outputs
+  auto* all_outs = AllMutableOutput();
 
   // NOTE: This logic contains three branches:
   // 1) If the number of returned tensors equals the number of non-inplace
-  // outputs, directly assign the returned tensors to
-  // ctx->AllMutablePlainOutput().
+  // outputs, directly assign the returned tensors to AllMutablePlainOutput().
   // 2) If the number of returned tensors equals the total number of outputs
   // (including in-place outputs), validate that the addresses of in-place
   // outputs match their corresponding inputs.
@@ -349,28 +348,28 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
   } else if (outs.size() == all_outs->size()) {
     // Case 2: Returned tensor count matches total output count (including
     // in-place outputs).
-    if (!ctx->GetInplaceIndexMap().empty()) {
+    if (!GetInplaceIndexMap().empty()) {
       LOG(WARNING) << "[CustomOp] In-place outputs detected, "
                    << "but the number of returned outputs matches the declared "
                       "output count.";
     }
     // Ensure in-place output tensors share memory with their corresponding
     // inputs
-    for (auto& [inputs_idx, outputs_idx] : ctx->GetInplaceIndexMap()) {
-      PADDLE_ENFORCE_EQ(ctx->InputAt(inputs_idx).impl().get(),
+    for (auto& [inputs_idx, outputs_idx] : GetInplaceIndexMap()) {
+      PADDLE_ENFORCE_EQ(InputAt(inputs_idx).impl().get(),
                         outs.at(outputs_idx).impl().get(),
                         common::errors::PreconditionNotMet(
                             "In-place output tensor `%s` at index %d does not "
                             "share the same address as "
                             "the input tensor `%s` at index %d.",
-                            ctx->outputs_names_.at(outputs_idx),
+                            this->outputs_names_.at(outputs_idx),
                             outputs_idx,
-                            ctx->inputs_names_.at(inputs_idx),
+                            this->inputs_names_.at(inputs_idx),
                             inputs_idx));
     }
     // Copy non-in-place outputs as usual
     for (size_t i = 0; i < outs.size(); ++i) {
-      if (ctx->GetInplaceIndexMap().count(i)) continue;
+      if (GetInplaceIndexMap().count(i)) continue;
       AssignTensorImpl(outs.at(i), &(all_outs->at(i)));
     }
   } else {
@@ -378,13 +377,13 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     std::vector<std::string> outputs_names_wo_inplace;
     std::vector<std::string> outputs_names_with_inplace;
 
-    for (size_t i = 0; i < ctx->outputs_names_.size(); ++i) {
-      if (ctx->GetInplaceIndexMap().count(i)) {
-        outputs_names_with_inplace.push_back(ctx->outputs_names_.at(i) +
+    for (size_t i = 0; i < this->outputs_names_.size(); ++i) {
+      if (GetInplaceIndexMap().count(i)) {
+        outputs_names_with_inplace.push_back(this->outputs_names_.at(i) +
                                              "(inplaced)");
       } else {
-        outputs_names_with_inplace.push_back(ctx->outputs_names_.at(i));
-        outputs_names_wo_inplace.push_back(ctx->outputs_names_.at(i));
+        outputs_names_with_inplace.push_back(this->outputs_names_.at(i));
+        outputs_names_wo_inplace.push_back(this->outputs_names_.at(i));
       }
     }
     const std::string output_str_wo_inplace =
@@ -393,8 +392,8 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     const std::string output_str_with_inplace =
         paddle::string::join_strings<std::vector<std::string>>(
             outputs_names_with_inplace, ", ");
-    const int num_inplace_outputs = ctx->GetInplaceIndexMap().size();
-    const int num_outputs = ctx->outputs_names_.size();
+    const int num_inplace_outputs = GetInplaceIndexMap().size();
+    const int num_outputs = outputs_names_.size();
 
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output tensor count mismatch. Expected outputs: [%s] (including %d "
