@@ -46,7 +46,7 @@ class TestConv3dAPI_Compatibility(unittest.TestCase):
             "pad": [0, 0, 0],
             "dilation": [1, 1, 1],
         }
-        self.np_ref_out, _, _, _, _, _ = conv3d_forward_naive(
+        self.np_ref_out = conv3d_forward_naive(
             self.np_x, self.np_w, 1, conv_param
         )
 
