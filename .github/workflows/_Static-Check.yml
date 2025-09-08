@@ -26,12 +26,6 @@ defaults:
     shell: bash
 
 jobs:
-  build:
-    name: Test
-    if: ${{ inputs.can-skip != 'true' }}
-    runs-on:
-      group: BD_BJ-V100
-
   check-bypass:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml

@@ -27,12 +27,6 @@ defaults:
     shell: bash
 
 jobs:
-  build:
-    name: Coverage build
-    runs-on:
-      group: GZ_BD-CPU
-    outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
   check-bypass:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
