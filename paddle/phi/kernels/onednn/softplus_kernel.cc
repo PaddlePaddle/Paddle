@@ -53,9 +53,5 @@ void SoftplusKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(softplus,
-                   OneDNN,
-                   ONEDNN,
-                   phi::SoftplusKernel,
-                   float,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    softplus, OneDNN, ONEDNN, phi::SoftplusKernel, float, phi::bfloat16) {}

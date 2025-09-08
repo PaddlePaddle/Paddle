@@ -155,7 +155,7 @@ class TestInt8ScaleCalculationOnednnPass(PassAutoScanTest):
             dilations=dilations,
             data_format=data_format,
             use_onednn=use_onednn,
-            mkldnn_data_type="int8",
+            onednn_data_type="int8",
         )
 
         ops = [conv2d_op]

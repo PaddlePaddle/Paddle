@@ -67,8 +67,8 @@ void GradAddKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_ADD_KERNEL(float, CPUContext)
 INSTANTIATE_ADD_KERNEL(double, CPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, CPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex64, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex128, CPUContext)
 #endif
 }  // namespace phi
 
