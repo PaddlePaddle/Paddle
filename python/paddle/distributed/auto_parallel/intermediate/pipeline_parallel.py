@@ -120,7 +120,7 @@ class PipelineParallel(ParallelModel):
                 )
             else:
                 raise ValueError(
-                    f"output should be a dict/tensors/list of tensors/tuple of tensor/tensor, but {type(output)}"
+                    f"output between pp stages should be a dict of tensors or list of tensors or tuple of tensors or tensor, but {type(output)}"
                 )
             return output
 
