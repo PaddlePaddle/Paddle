@@ -111,7 +111,7 @@ class TestConv2DBF16Op(TestConv2DOp):
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
             'use_onednn': self.use_onednn,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'fuse_residual_connection': self.fuse_residual,
         }

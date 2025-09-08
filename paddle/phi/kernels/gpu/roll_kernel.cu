@@ -15,9 +15,6 @@
 #include "paddle/phi/kernels/roll_kernel.h"
 
 #include "paddle/common/array.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/roll_kernel_impl.h"
 

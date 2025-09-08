@@ -20,7 +20,6 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/common/hostdevice.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 
 namespace phi {
