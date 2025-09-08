@@ -61,6 +61,20 @@ jobs:
       docker_npu_image: ${{ steps.build-docker-images.outputs.docker_npu_image }}
       docker_dcu_image: ${{ steps.build-docker-images.outputs.docker_dcu_image }}
       docker_doc_image: ${{ steps.build-docker-images.outputs.docker_doc_image }}
+
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'skip ci'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  data-storage:
+    name: Performance data storage
+    needs: check-bypass
+    if: false
+    runs-on: ubuntu-latest
     steps:
       - id: build-docker-images
         name: Build docker images
