@@ -661,6 +661,7 @@ class DygraphShardingOptimizerV2:
 
         comm_buffer_size_MB = sharding_config.comm_buffer_size_MB
         free_grads_in_comm = sharding_config.free_grads_in_comm
+        self.offload_opt_buffer_size = sharding_config.offload_opt_buffer_size
 
         self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]
 
@@ -808,11 +809,13 @@ class DygraphShardingOptimizerV2:
                 params.sort(key=lambda x: str(x.dtype))
 
         group_idx = 0
+        enable_offload_all_opt = self.offload_opt_buffer_size < 0
+        offload_buffer_size = self.offload_opt_buffer_size
         for color, params in color_dict.items():
             g_color = color[0]
             g_group = color[1]
             logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
-            var_groups = assign_group_by_size(params, group_size)
+            var_groups, param_sizes = assign_group_by_size(params, group_size)
             for _, parameters in var_groups.items():
                 buffer = FusedCommBuffer(
                     group_idx,
@@ -827,6 +830,12 @@ class DygraphShardingOptimizerV2:
                     slice_params=self._slice_params,
                 )
                 group_idx += 1
+                if enable_offload_all_opt or offload_buffer_size > 0:
+                    for param in parameters:
+                        self._slice_params[param.name].is_offload_opt = True
+                    # 这里group_size是param的大小, 优化器状态(float32)是6倍于param(bfloat16)的大小
+                    offload_buffer_size -= sum(param_sizes) * 6
+
                 self._comm_buffer_list.append(buffer)
 
                 if g_color not in self._color_to_comm_buffer_list.keys():
