@@ -58,5 +58,38 @@ class TestIsTensorStatic(unittest.TestCase):
         self.assertTrue(paddle.is_tensor(x))
 
 
+class TestIsTensorCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.data = []
+        self.data.append({'data': paddle.rand([3, 2, 4]), 'expected': True})
+        self.data.append({'data': [1, 2, 3], 'expected': False})
+        self.data.append({'data': 5, 'expected': False})
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for case in self.data:
+            data = case['data']
+
+            result_x = paddle.is_tensor(x=data)
+            result_obj = paddle.is_tensor(obj=data)
+
+            self.assertEqual(result_x, result_obj)
+            self.assertEqual(result_x, case['expected'])
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        for case in self.data:
+            data = case['data']
+
+            result_x = paddle.is_tensor(x=data)
+            result_obj = paddle.is_tensor(obj=data)
+
+            self.assertEqual(result_x, result_obj)
+            self.assertEqual(result_x, case['expected'])
+
+
 if __name__ == '__main__':
     unittest.main()
