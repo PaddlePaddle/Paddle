@@ -17,47 +17,48 @@
 #include <iostream>
 #include <limits>
 
-#include "paddle/cinn/common/float8e4m3.h"
+#include "paddle/common/float8_e4m3fn.h"
 
 namespace std {
-// Override the std::is_pod::value for float8e4m3
+// Override the std::is_pod::value for float8_e4m3fn
 template <>
-struct is_pod<cinn::common::float8e4m3> {
-  static const bool value = is_trivial<cinn::common::float8e4m3>::value &&
-                            is_standard_layout<cinn::common::float8e4m3>::value;
+struct is_pod<cinn::common::float8_e4m3fn> {
+  static const bool value =
+      is_trivial<cinn::common::float8_e4m3fn>::value &&
+      is_standard_layout<cinn::common::float8_e4m3fn>::value;
 };
 
 template <>
-struct is_floating_point<cinn::common::float8e4m3>
+struct is_floating_point<cinn::common::float8_e4m3fn>
     : std::integral_constant<
           bool,
-          std::is_same<
-              cinn::common::float8e4m3,
-              typename std::remove_cv<cinn::common::float8e4m3>::type>::value> {
-};
+          std::is_same<cinn::common::float8_e4m3fn,
+                       typename std::remove_cv<
+                           cinn::common::float8_e4m3fn>::type>::value> {};
 
 template <>
-struct is_signed<cinn::common::float8e4m3> {
+struct is_signed<cinn::common::float8_e4m3fn> {
   static const bool value = true;
 };
 
 template <>
-struct is_unsigned<cinn::common::float8e4m3> {
+struct is_unsigned<cinn::common::float8_e4m3fn> {
   static const bool value = false;
 };
 
-__host__ __device__ inline cinn::common::float8e4m3 abs(
-    const cinn::common::float8e4m3& a) {
+__host__ __device__ inline cinn::common::float8_e4m3fn abs(
+    const cinn::common::float8_e4m3fn& a) {
 #if defined(CINN_CUDA_FP8)
   __half fp16_val = __nv_cvt_fp8_to_halfraw(a.x, __NV_E4M3);
   __half fp16_abs = __habs(fp16_val);
-  return cinn::common::float8e4m3(__nv_cvt_halfraw_to_fp8(fp16_abs, __NV_E4M3));
+  return cinn::common::float8_e4m3fn(
+      __nv_cvt_halfraw_to_fp8(fp16_abs, __NV_E4M3));
 #else
-  return cinn::common::float8e4m3(a.x & 0x7F);
+  return cinn::common::float8_e4m3fn(a.x & 0x7F);
 #endif
 }
 
-__host__ __device__ inline bool isnan(const cinn::common::float8e4m3& a) {
+__host__ __device__ inline bool isnan(const cinn::common::float8_e4m3fn& a) {
 #if defined(CINN_CUDA_FP8)
   __half fp16_val = __nv_cvt_fp8_to_halfraw(a.x, __NV_E4M3);
   return __hisnan(fp16_val);
@@ -67,7 +68,7 @@ __host__ __device__ inline bool isnan(const cinn::common::float8e4m3& a) {
 #endif
 }
 
-__host__ __device__ inline bool isinf(const cinn::common::float8e4m3& a) {
+__host__ __device__ inline bool isinf(const cinn::common::float8_e4m3fn& a) {
 #if defined(CINN_CUDA_FP8)
   __half fp16_val = __nv_cvt_fp8_to_halfraw(a.x, __NV_E4M3);
   return __hisinf(fp16_val);
@@ -77,7 +78,7 @@ __host__ __device__ inline bool isinf(const cinn::common::float8e4m3& a) {
 #endif
 }
 
-__host__ __device__ inline bool isfinite(const cinn::common::float8e4m3& a) {
+__host__ __device__ inline bool isfinite(const cinn::common::float8_e4m3fn& a) {
 #if defined(CINN_CUDA_FP8)
   __half fp16_val = __nv_cvt_fp8_to_halfraw(a.x, __NV_E4M3);
   return !__hisnan(fp16_val) && !__hisinf(fp16_val);
@@ -87,7 +88,7 @@ __host__ __device__ inline bool isfinite(const cinn::common::float8e4m3& a) {
 }
 
 template <>
-struct numeric_limits<cinn::common::float8e4m3> {
+struct numeric_limits<cinn::common::float8_e4m3fn> {
   static const bool is_specialized = true;
   static const bool is_signed = true;
   static const bool is_integer = false;
@@ -112,31 +113,31 @@ struct numeric_limits<cinn::common::float8e4m3> {
   static const bool traps = true;
   static const bool tinyness_before = false;
 
-  __host__ __device__ static cinn::common::float8e4m3(min)() {
-    return cinn::common::raw_uint8_to_float8e4m3(0x04);
+  __host__ __device__ static cinn::common::float8_e4m3fn(min)() {
+    return cinn::common::raw_uint8_to_float8_e4m3fn(0x04);
   }
-  __host__ __device__ static cinn::common::float8e4m3 lowest() {
-    return cinn::common::raw_uint8_to_float8e4m3(0xFB);
+  __host__ __device__ static cinn::common::float8_e4m3fn lowest() {
+    return cinn::common::raw_uint8_to_float8_e4m3fn(0xFB);
   }
-  __host__ __device__ static cinn::common::float8e4m3(max)() {
-    return cinn::common::raw_uint8_to_float8e4m3(0x7B);
+  __host__ __device__ static cinn::common::float8_e4m3fn(max)() {
+    return cinn::common::raw_uint8_to_float8_e4m3fn(0x7B);
   }
-  __host__ __device__ static cinn::common::float8e4m3 epsilon() {
-    return cinn::common::raw_uint8_to_float8e4m3(0x08);
+  __host__ __device__ static cinn::common::float8_e4m3fn epsilon() {
+    return cinn::common::raw_uint8_to_float8_e4m3fn(0x08);
   }
-  __host__ __device__ static cinn::common::float8e4m3 round_error() {
-    return cinn::common::float8e4m3(0.5);
+  __host__ __device__ static cinn::common::float8_e4m3fn round_error() {
+    return cinn::common::float8_e4m3fn(0.5);
   }
-  __host__ __device__ static cinn::common::float8e4m3 infinity() {
+  __host__ __device__ static cinn::common::float8_e4m3fn infinity() {
     return cinn::common::raw_uint8_to_float8e4m3(0x7C);
   }
-  __host__ __device__ static cinn::common::float8e4m3 quiet_NaN() {
+  __host__ __device__ static cinn::common::float8_e4m3fn quiet_NaN() {
     return cinn::common::raw_uint8_to_float8e4m3(0x7E);
   }
-  __host__ __device__ static cinn::common::float8e4m3 signaling_NaN() {
+  __host__ __device__ static cinn::common::float8_e4m3fn signaling_NaN() {
     return cinn::common::raw_uint8_to_float8e4m3(0x7E);
   }
-  __host__ __device__ static cinn::common::float8e4m3 denorm_min() {
+  __host__ __device__ static cinn::common::float8_e4m3fn denorm_min() {
     return cinn::common::raw_uint8_to_float8e4m3(0x01);
   }
 };
@@ -145,7 +146,7 @@ struct numeric_limits<cinn::common::float8e4m3> {
 
 namespace cinn {
 namespace common {
-inline std::ostream& operator<<(std::ostream& os, const float8e4m3& a) {
+inline std::ostream& operator<<(std::ostream& os, const float8_e4m3fn& a) {
   os << std::showpoint << static_cast<float>(a);
   return os;
 }

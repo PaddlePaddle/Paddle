@@ -96,11 +96,10 @@ if(WITH_GPU)
 
   message(
     STATUS
-      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h paddle/cinn/common/float8e4m3.h to $ENV{runtime_include_dir}"
+      "copy paddle/common/float16.h paddle/common/bfloat16.h paddle/common/float8_e4m3fn.h to $ENV{runtime_include_dir}"
   )
-  file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h
-            paddle/cinn/common/float8e4m3.h
-       DESTINATION $ENV{runtime_include_dir})
+  file(COPY paddle/common/float16.h paddle/common/bfloat16.h
+            paddle/common/float8_e4m3fn.h DESTINATION $ENV{runtime_include_dir})
 
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
                                          REQUIRED)
@@ -128,9 +127,8 @@ if(WITH_ROCM)
   endif()
   link_libraries(${ROCM_HIPRTC_LIB})
 
-  message(
-    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
-  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
+  message(STATUS "copy paddle/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)

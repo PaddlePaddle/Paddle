@@ -19,11 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/common/bfloat16.h"
-#include "paddle/cinn/common/float16.h"
-#include "paddle/cinn/common/float8e4m3.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/common/bfloat16.h"
+#include "paddle/common/float16.h"
+#include "paddle/common/float8_e4m3fn.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
@@ -54,8 +54,8 @@ std::vector<Expr *> GetForloopStackToStore(Expr *expr,
 inline Expr make_const(int32_t x) { return Expr(static_cast<int32_t>(x)); }
 inline Expr make_const(int64_t x) { return Expr(static_cast<int64_t>(x)); }
 inline Expr make_const(bfloat16 x) { return Expr(static_cast<bfloat16>(x)); }
-inline Expr make_const(float8e4m3 x) {
-  return Expr(static_cast<float8e4m3>(x));
+inline Expr make_const(float8_e4m3fn x) {
+  return Expr(static_cast<float8_e4m3fn>(x));
 }
 inline Expr make_const(float16 x) { return Expr(static_cast<float16>(x)); }
 inline Expr make_const(float x) { return Expr(static_cast<float>(x)); }

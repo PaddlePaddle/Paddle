@@ -137,8 +137,8 @@ class CINNValue : public cinn_pod_value_t {
   explicit CINNValue(float value) : cinn_pod_value_t(value) {
     type_code_ = ::cinn_type_code<float>();
   }
-  explicit CINNValue(float8e4m3 value) : cinn_pod_value_t(value) {
-    type_code_ = ::cinn_type_code<float8e4m3>();
+  explicit CINNValue(float8_e4m3fn value) : cinn_pod_value_t(value) {
+    type_code_ = ::cinn_type_code<float8_e4m3fn>();
   }
   explicit CINNValue(bfloat16 value) : cinn_pod_value_t(value) {
     type_code_ = ::cinn_type_code<bfloat16>();
@@ -166,7 +166,7 @@ class CINNValue : public cinn_pod_value_t {
   using cinn_pod_value_t::operator double;
   using cinn_pod_value_t::operator float;
   using cinn_pod_value_t::operator cinn::common::bfloat16;
-  using cinn_pod_value_t::operator cinn::common::float8e4m3;
+  using cinn_pod_value_t::operator cinn::common::float8_e4m3fn;
   using cinn_pod_value_t::operator cinn::common::float16;
   using cinn_pod_value_t::operator bool;
   using cinn_pod_value_t::operator int32_t;
@@ -193,7 +193,7 @@ class CINNValue : public cinn_pod_value_t {
   CINNValue& operator=(float value);
   CINNValue& operator=(double value);
   CINNValue& operator=(bfloat16 value);
-  CINNValue& operator=(float8e4m3 value);
+  CINNValue& operator=(float8_e4m3fn value);
   CINNValue& operator=(float16 value);
   CINNValue& operator=(char* value);
   CINNValue& operator=(const std::string& value);
