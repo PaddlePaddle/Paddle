@@ -220,7 +220,7 @@ def get_cudnn_version() -> int | None:
         return _cudnn_version
 
 
-def _convert_to_place(device: PlaceLike) -> PlaceLike:
+def _convert_to_place(device: PlaceLike) -> Place:
     if not isinstance(device, str):
         return device  # return directly if not a string
 

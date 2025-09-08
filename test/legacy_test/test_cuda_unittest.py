@@ -13,7 +13,11 @@
 # limitations under the License.
 
 # test_cuda_unittest.py
+import ctypes
+import types
 import unittest
+
+import numpy as np
 
 import paddle
 from paddle.cuda import (
@@ -126,6 +130,89 @@ class TestCudaCompat(unittest.TestCase):
                     self.assertEqual(current.stream_base, s2.stream_base)
                 current = paddle.cuda.current_stream()
                 self.assertEqual(current.stream_base, s1.stream_base)
+
+    @unittest.skipIf(
+        (
+            not paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ),
+        reason="Skip if not in CUDA env",
+    )
+    def test_cudart_integrity(self):
+        cuda_rt_module = paddle.cuda.cudart()
+        self.assertIsNotNone(cuda_rt_module)
+        self.assertIsInstance(cuda_rt_module, types.ModuleType)
+
+        cuda_version = paddle.version.cuda()
+        if int(cuda_version.split(".")[0]) < 12:
+            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode"))
+            self.assertTrue(hasattr(cuda_rt_module, "cudaProfilerInitialize"))
+
+            self.assertTrue(
+                hasattr(cuda_rt_module.cudaOutputMode, "KeyValuePair")
+            )
+            self.assertEqual(cuda_rt_module.cudaOutputMode.KeyValuePair, 0)
+
+            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode, "CSV"))
+            self.assertEqual(cuda_rt_module.cudaOutputMode.CSV, 1)
+
+        self.assertTrue(hasattr(cuda_rt_module, "cudaError"))
+        self.assertTrue(hasattr(cuda_rt_module.cudaError, "success"))
+        self.assertEqual(cuda_rt_module.cudaError.success, 0)
+
+        # 函数绑定检查
+        func_list = [
+            "cudaGetErrorString",
+            "cudaProfilerStart",
+            "cudaProfilerStop",
+            "cudaHostRegister",
+            "cudaHostUnregister",
+            "cudaStreamCreate",
+            "cudaStreamDestroy",
+            "cudaMemGetInfo",
+        ]
+        for f in func_list:
+            self.assertTrue(hasattr(cuda_rt_module, f))
+
+    def test_cudart_function(self):
+        cuda_rt_module = paddle.cuda.cudart()
+
+        # cudaGetErrorString
+        err_str = cuda_rt_module.cudaGetErrorString(
+            cuda_rt_module.cudaError.success
+        )
+        self.assertIsInstance(err_str, str)
+
+        # cudaMemGetInfo
+        free_mem, total_mem = cuda_rt_module.cudaMemGetInfo(0)
+        self.assertIsInstance(free_mem, int)
+        self.assertIsInstance(total_mem, int)
+        self.assertGreaterEqual(total_mem, free_mem)
+        self.assertGreater(free_mem, 0)
+
+        # cudaHostRegister / cudaHostUnregister
+        buf = np.zeros(1024, dtype=np.float32)
+        ptr = buf.ctypes.data
+        err = cuda_rt_module.cudaHostRegister(ptr, buf.nbytes, 0)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        err = cuda_rt_module.cudaHostUnregister(ptr)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
+
+        # cudaStreamCreate / cudaStreamDestroy
+        # 注意绑定要求传整数，内部会 cast
+        stream = ctypes.c_size_t(0)  # 等价于 uintptr_t
+        err = cuda_rt_module.cudaStreamCreate(ctypes.addressof(stream))
+        assert err == cuda_rt_module.cudaError.success
+
+        # stream.value 中保存了 cudaStream_t
+        err = cuda_rt_module.cudaStreamDestroy(stream.value)
+        assert err == cuda_rt_module.cudaError.success
+
+        # Profiler start/stop 测试
+        err = cuda_rt_module.cudaProfilerStart()
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        err = cuda_rt_module.cudaProfilerStop()
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
 
 
 if __name__ == '__main__':
