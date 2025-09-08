@@ -255,15 +255,14 @@ def slogdet(x: Tensor, out: SlogdetResult | None = None) -> SlogdetResult:
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.seed(2023)
-            >>> x = paddle.randn([4, 3, 3])
+            >>> x = paddle.to_tensor([[1., 0.], [0., 1.]])
             >>> A = paddle.compat.slogdet(x)
             >>> print(A.sign)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [-1., -1., -1.,  1.])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   1.)
             >>> print(A.logabsdet)
-            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [-1.39344728, -2.30671787, -2.53045821, -0.90754318])
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.)
     """
     sign, logabsdet = _C_ops.slogdet_v2(x, out=out)
     if out is not None:
