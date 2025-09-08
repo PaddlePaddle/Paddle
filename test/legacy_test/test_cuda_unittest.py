@@ -160,7 +160,6 @@ class TestCudaCompat(unittest.TestCase):
         self.assertTrue(hasattr(cuda_rt_module.cudaError, "success"))
         self.assertEqual(cuda_rt_module.cudaError.success, 0)
 
-        # 函数绑定检查
         func_list = [
             "cudaGetErrorString",
             "cudaProfilerStart",
@@ -199,16 +198,13 @@ class TestCudaCompat(unittest.TestCase):
         self.assertEqual(err, cuda_rt_module.cudaError.success)
 
         # cudaStreamCreate / cudaStreamDestroy
-        # 注意绑定要求传整数，内部会 cast
-        stream = ctypes.c_size_t(0)  # 等价于 uintptr_t
+        stream = ctypes.c_size_t(0)
         err = cuda_rt_module.cudaStreamCreate(ctypes.addressof(stream))
         assert err == cuda_rt_module.cudaError.success
 
-        # stream.value 中保存了 cudaStream_t
         err = cuda_rt_module.cudaStreamDestroy(stream.value)
         assert err == cuda_rt_module.cudaError.success
 
-        # Profiler start/stop 测试
         err = cuda_rt_module.cudaProfilerStart()
         self.assertEqual(err, cuda_rt_module.cudaError.success)
         err = cuda_rt_module.cudaProfilerStop()
