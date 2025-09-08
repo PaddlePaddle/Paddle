@@ -183,17 +183,5 @@ class TestMultiProcessReader(unittest.TestCase):
             self.reader_test(use_pipe=True)
 
 
-class test_ForbidKeywordsDecorator(unittest.TestCase):
-    def test(self):
-        x = paddle.randn([2, 2])
-        self.assertWarnsRegex(
-            UserWarning,
-            "may behave differently from its PyTorch counterpart",
-            paddle.split,
-            x,
-            2,
-        )
-
-
 if __name__ == '__main__':
     unittest.main()

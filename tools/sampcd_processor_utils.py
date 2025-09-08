@@ -610,7 +610,7 @@ def get_docstring(
     full_test: bool = False,
     filter_api: typing.Callable[[str], bool] | None = None,
     apis: list[tuple[str, str]] | None = None,
-):
+) -> tuple[dict[str, str], list[str]]:
     '''
     this function will get the docstring for test.
 
