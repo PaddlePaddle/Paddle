@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
     is_custom_device,
 )
@@ -226,7 +227,10 @@ class TestCase10(TestPad3dOp):
 
 def create_test_fp16(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            (core.is_compiled_with_cuda() or is_custom_device())
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestPad3dFp16(parent):
@@ -267,8 +271,8 @@ create_test_fp16(TestCase10)
 
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestPad3dBf16(parent):
@@ -276,7 +280,7 @@ def create_test_bf16(parent):
             return np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place,
                 atol=1e-2,
@@ -285,7 +289,7 @@ def create_test_bf16(parent):
             )
 
         def test_check_grad_normal(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place, ['X'], 'Out', max_relative_error=1e-2, check_pir=True
             )
@@ -310,7 +314,10 @@ create_test_bf16(TestCase10)
 # ----------------Pad3d complex64----------------
 def create_test_complex64(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            (core.is_compiled_with_cuda() or is_custom_device())
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestPad3dComplex64(parent):
@@ -351,7 +358,10 @@ create_test_complex64(TestCase10)
 
 def create_test_complex128(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            (core.is_compiled_with_cuda() or is_custom_device())
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestPad3dComplex128(parent):

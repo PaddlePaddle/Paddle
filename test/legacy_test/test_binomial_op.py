@@ -16,7 +16,12 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -221,9 +226,9 @@ class TestRandomValue(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the float16",
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBinomialFP16Op(TestBinomialOp):
     def init_dtype(self):
@@ -232,7 +237,7 @@ class TestBinomialFP16Op(TestBinomialOp):
         self.outputs_dtype = np.int64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place_customized(self.verify_output, place)
 
     def verify_output(self, outs):
@@ -243,8 +248,8 @@ class TestBinomialFP16Op(TestBinomialOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestBinomialBF16Op(TestBinomialOp):
@@ -254,7 +259,8 @@ class TestBinomialBF16Op(TestBinomialOp):
         self.outputs_dtype = np.int64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
+
         self.check_output_with_place_customized(self.verify_output, place)
 
     def init_test_case(self):

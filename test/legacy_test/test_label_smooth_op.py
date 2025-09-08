@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -52,7 +57,8 @@ class TestLabelSmoothOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.supports_bfloat16(),
     "core is not compiled with CUDA or place do not support bfloat16",
 )
 class TestLabelSmoothOpBF16(OpTest):
@@ -76,13 +82,13 @@ class TestLabelSmoothOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(smoothed_label)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ["X"], "Out", check_pir=True)
 
 

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16, get_device_place, get_places
+from op_test import (
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -173,7 +178,8 @@ class TestMaskedFillGrad(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API1(TestMaskedFillAPI):
     def init(self):
@@ -184,7 +190,8 @@ class TestMaskedFillFP16API1(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API2(TestMaskedFillAPI):
     def init(self):
@@ -195,7 +202,8 @@ class TestMaskedFillFP16API2(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16API3(TestMaskedFillAPI):
     def init(self):
@@ -273,7 +281,8 @@ class TestMaskedFillAPIBroadcast8(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
     def init(self):
@@ -284,7 +293,8 @@ class TestMaskedFillFP16APIBroadcast(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
     def init(self):
@@ -295,7 +305,8 @@ class TestMaskedFillFP16APIBroadcast2(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaskedFillFP16APIBroadcast3(TestMaskedFillAPI):
     def init(self):
@@ -306,8 +317,8 @@ class TestMaskedFillFP16APIBroadcast3(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedFillBF16(TestMaskedFillAPI):
@@ -334,8 +345,8 @@ class TestMaskedFillBF16(TestMaskedFillAPI):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMaskedFillBF16APIBroadcast2(TestMaskedFillBF16):

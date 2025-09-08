@@ -21,6 +21,8 @@ import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
 
+paddle.enable_static()
+
 
 class GridSampleTestCase(unittest.TestCase):
     def __init__(
