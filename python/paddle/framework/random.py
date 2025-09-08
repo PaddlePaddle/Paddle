@@ -195,7 +195,7 @@ def set_rng_state(
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
     elif isinstance(place, paddle.CustomPlace):
-        dev_types = core.get_available_custom_device()
+        dev_types = core.get_all_custom_device_type()
         dev_type = dev_types[0]
         dev_cnt = core.get_custom_device_count(dev_type)
         if not len(state_list) == dev_cnt:
