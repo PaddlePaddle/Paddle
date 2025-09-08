@@ -1148,8 +1148,7 @@ void ConvertToDistTensor(paddle::Tensor* x,
 }
 std::string ConcatNodeName(GradNodeBase* node) {
   std::ostringstream oss;
-  oss << node->name() << "\\nPtr:" << std::hex
-      << reinterpret_cast<uintptr_t>(node);
+  oss << node->name() << "\\nPtr: " << std::hex << node;
   return oss.str();
 }
 }  // namespace egr

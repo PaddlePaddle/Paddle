@@ -21,11 +21,11 @@
 
 #include <glog/logging.h>
 
+#include <regex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -54,14 +54,24 @@ class Dot {
   struct Node {
     std::string name;
     std::vector<Attr> attrs;
+    std::string comments;
 
-    Node(const std::string& name, const std::vector<Attr>& attrs)
+    Node(const std::string& name,
+         const std::vector<Attr>& attrs,
+         std::string comments)
         : name(name),
           attrs(attrs),
+          comments(comments),
           id_("node_" + std::to_string(dot_node_counter++)) {}
 
-    Node(const std::string& name, const std::vector<Attr>& attrs, size_t id)
-        : name(name), attrs(attrs), id_("node_" + std::to_string(id)) {}
+    Node(const std::string& name,
+         const std::vector<Attr>& attrs,
+         size_t id,
+         std::string comments)
+        : name(name),
+          attrs(attrs),
+          comments(comments),
+          id_("node_" + std::to_string(id)) {}
 
     std::string id() const { return id_; }
 
@@ -71,6 +81,10 @@ class Dot {
           !name.empty(),
           true,
           common::errors::InvalidArgument("Sorry,but name is empty"));
+      if (comments != "") {
+        ss << "\n#" << std::regex_replace(comments, std::regex("\n"), "\n\t#")
+           << "\n\t";
+      }
       ss << id_;
       if (attrs.empty()) {
         ss << "[label=" << '"' << name << '"' << "]";
@@ -129,16 +143,17 @@ class Dot {
   void AddNode(const std::string& id,
                const std::vector<Attr>& attrs,
                std::string label = "",
-               bool use_local_id = false) {
+               bool use_local_id = false,
+               std::string comments = "") {
     PADDLE_ENFORCE_EQ(
         !nodes_.count(id),
         true,
         common::errors::InvalidArgument("Sorry,but duplicate Node"));
     if (label.empty()) label = id;
     if (use_local_id) {
-      nodes_.emplace(id, Node{label, attrs, local_node_counter_++});
+      nodes_.emplace(id, Node{label, attrs, local_node_counter_++, comments});
     } else {
-      nodes_.emplace(id, Node{label, attrs});
+      nodes_.emplace(id, Node{label, attrs, comments});
     }
   }
   bool ContainsNode(const std::string& id) const { return nodes_.count(id); }
@@ -162,7 +177,7 @@ class Dot {
   // Compile to DOT language codes.
   std::string Build() const {
     std::stringstream ss;
-    const std::string indent = "   ";
+    const std::string indent = "\t";
     ss << "digraph G {" << '\n';
 
     // Add graph attrs

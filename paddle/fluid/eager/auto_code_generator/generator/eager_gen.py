@@ -359,18 +359,18 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Inplace Strategy
 {}
 
-  VLOG(5) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Before log info
 {}
+  VLOG(4) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Call grad_api function
 {}
+  VLOG(4) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Check NaN and Inf id needed
 {}
   // Get GradOut autograd_meta
 {}
   // Create Grad Node
 {}
-  VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
   VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 {}
@@ -382,6 +382,8 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
+    VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
+
 
   // Return
 {}
@@ -409,7 +411,6 @@ TEST_API {} {}({}) {{
   // Get Input AutoGradMeta
 {}
 
-  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
  // Before log info
 {}
 
@@ -424,9 +425,10 @@ TEST_API {} {}({}) {{
 
   // Set grad_node before API Call
 {}
-
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Forward API Call
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -440,12 +442,12 @@ TEST_API {} {}({}) {{
   // Set grad_node after API call
 {}
 
-  VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
   // LOG IF DEBUG
 {}
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
+    VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
   // Returns
   return {};
 }}
@@ -476,7 +478,7 @@ STRIDED_FLAGS_CHECK_TEMPLATE = """
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"\\n\"<<separator<<\"Running AD API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Running_AD_API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -491,18 +493,20 @@ TEST_API {} {}({}) {{
 {}
   // Layout autotune
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
+
   // Before log info
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Forward API Call
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
 {}
   // Get Outputs
 {}
-  VLOG(3) << \"\\n\"<<separator<<\"Finish AD API: {}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
 
   // Check Inplace if needed
 {}{}
@@ -2310,9 +2314,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     type_promotion_logic_str,
                     type_autocast_logic_str,
                     layout_logic_str,
-                    forward_api_name,
                     before_log_str,
+                    forward_api_name,
                     forward_call_str,
+                    forward_api_name,
                     log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
@@ -2338,13 +2343,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_autocast_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
-                forward_api_name,
                 before_log_str,
                 compute_require_grad_args_str,
                 self.grad_node_name,
                 node_creation_pre_contiguous_str,
                 node_creation_before_call_str,
+                forward_api_name,
                 forward_call_str,
+                forward_api_name,
                 log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,
@@ -2352,9 +2358,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 check_inplace_str,
                 bump_inplace_version_str,
                 node_creation_after_call_str,
-                forward_api_name,
                 log_str,
                 forward_ad_function_name,
+                forward_api_name,
                 returns_str,
             )
 
@@ -3247,15 +3253,16 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             set_out_dist_attr_str,
             inplace_check_str,
             inplace_for_grad_outs_str,
-            self.backward_api_name,
             before_log_str,
+            self.backward_api_name,
             grad_function_call_str,
+            self.backward_api_name,
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,
-            self.backward_api_name,
             log_str,
             grad_node_name,
+            self.backward_api_name,
             returns_str,
         )
 

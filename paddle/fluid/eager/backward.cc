@@ -43,7 +43,7 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     }
     visited.insert(node);
     if (!dot.ContainsNode(node_id)) {
-      dot.AddNode(node_id, {}, node_id);
+      dot.AddNode(node_id, {}, node_id, false, node->GetForwardTrace());
     }
 
     PADDLE_ENFORCE_NOT_NULL(
@@ -64,7 +64,11 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
         if (!next_node) continue;
         std::string next_node_id = ConcatNodeName(next_node);
         if (!dot.ContainsNode(next_node_id)) {
-          dot.AddNode(next_node_id, {}, next_node_id);
+          dot.AddNode(next_node_id,
+                      {},
+                      next_node_id,
+                      false,
+                      next_node->GetForwardTrace());
         }
         dot.AddEdge(next_node_id, node_id, {});
         // Update in_degree
