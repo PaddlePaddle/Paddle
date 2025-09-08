@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #pragma once
 
 #include <pybind11/pybind11.h>
@@ -19,7 +20,9 @@
 namespace paddle {
 namespace pybind {
 
-void BindCudaRt(pybind11::module *m_ptr);
+void BindCudaRt(pybind11::module *m);
 
 }  // namespace pybind
 }  // namespace paddle
+
+#endif

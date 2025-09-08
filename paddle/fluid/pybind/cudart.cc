@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/pybind/cudart.h"
 
 #include <cuda.h>
@@ -134,3 +135,5 @@ void BindCudaRt(py::module* m) {
 }
 }  // namespace pybind
 }  // namespace paddle
+
+#endif  // if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
