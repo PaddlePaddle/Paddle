@@ -292,6 +292,7 @@ def _conv_nd(
     return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def conv1d(
     x: Tensor,
     weight: Tensor,
@@ -348,9 +349,13 @@ def conv1d(
 
             L_{out} = \frac{(L_{in} + 2 * padding - (dilation * (L_f - 1) + 1))}{stride} + 1
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+
     Args:
         x (Tensor): The input is 3-D Tensor with shape [N, C, L], the data type
             of input is float16 or float32 or float64.
+            Alias: ``input``.
         weight (Tensor): The convolution kernel with shape [M, C/g, K], where M is
             the number of output channels, g is the number of groups, K is the kernel's size.
         bias (Tensor, optional): The bias with shape [M,]. Default: None.
