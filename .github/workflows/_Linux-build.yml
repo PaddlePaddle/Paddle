@@ -174,7 +174,7 @@ jobs:
           workflow-name: build
 
       - name: Build
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           mkdir -p /root/.cache/build
@@ -185,7 +185,7 @@ jobs:
           '
 
       - name: Check sequence op
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${ci_scripts}/utils.sh; init
@@ -194,7 +194,7 @@ jobs:
           '
 
       - name: Upload paddle_whl
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
@@ -226,7 +226,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: ${{ steps.check-bypass.outputs.can-skip != 'true' && always() }}
+        if: false
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'

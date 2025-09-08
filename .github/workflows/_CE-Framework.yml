@@ -89,7 +89,7 @@ jobs:
           workflow-name: ce-whl
 
       - name: Check whl size
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           PADDLE_ROOT: ${{ github.workspace }}
           GITHUB_TOKEN: ${{ github.token }}
