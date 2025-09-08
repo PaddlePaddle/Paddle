@@ -144,7 +144,7 @@ jobs:
           workflow-name: distribute
 
       - name: Download flashattn cache
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set +e
@@ -157,7 +157,7 @@ jobs:
           '
 
       - name: Build
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
@@ -166,7 +166,7 @@ jobs:
           '
 
       - name: Packaging of products
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           if [ "${{ env.flashattn_cached_package }}" == "true" ]; then
@@ -182,7 +182,7 @@ jobs:
           '
 
       - name: Upload product to bos
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -217,7 +217,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'

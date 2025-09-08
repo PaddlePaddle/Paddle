@@ -144,7 +144,7 @@ jobs:
           workflow-name: coverage
 
       - name: Build
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
@@ -155,7 +155,7 @@ jobs:
           '
 
       - name: Check added unittests
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -164,7 +164,7 @@ jobs:
           '
 
       - name: Check coverage build size requires approval
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -173,7 +173,7 @@ jobs:
           '
 
       - name: Clean up env
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
@@ -194,7 +194,7 @@ jobs:
           '
 
       - name: Upload coverage product
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           home_path: ${{ github.workspace }}/..
           bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
@@ -225,7 +225,7 @@ jobs:
           '
 
       - name: Terminate and delete the container
-        if: false
+        if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
           set +e
           docker exec -t ${{ env.container_name }} /bin/bash -c 'rm -rf * .[^.]*'
