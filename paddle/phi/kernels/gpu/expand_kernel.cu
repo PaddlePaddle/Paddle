@@ -29,8 +29,20 @@ void ExpandKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   auto in_dims = x.dims();
   auto expand_shape = shape.GetData();
+  if (expand_shape.empty()) {
+    *out = x;
+    return;
+  }
   auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   auto diff = expand_shape.size() - vec_in_dims.size();
+  PADDLE_ENFORCE_GE(
+      diff,
+      0,
+      common::errors::InvalidArgument(
+          "The rank of the target shape (%d) must be greater than or equal to "
+          "the rank of the input tensor (%d).",
+          expand_shape.size(),
+          vec_in_dims.size()));
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   auto out_shape = vec_in_dims;
   bool has_zero_dim = false;
