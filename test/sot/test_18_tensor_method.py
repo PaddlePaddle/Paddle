@@ -85,7 +85,12 @@ def middle_tensor_name(a: paddle.Tensor, b: paddle.Tensor):
 
 @check_no_breakgraph
 def tensor_numel(x: paddle.Tensor):
-    return x.numel(), x.size
+    return x.numel(), int(x.size)
+
+
+@check_no_breakgraph
+def tensor_size_method(x: paddle.Tensor):
+    return x.size(), x.shape
 
 
 @check_no_breakgraph
@@ -138,6 +143,10 @@ class TestTensorMethod(TestCaseBase):
         self.assert_results(tensor_numel, x)
         x = paddle.rand([3, 3], dtype='float32')
         self.assert_results(tensor_numel, x)  # test dynamic shape
+
+    def test_tensor_size_method(self):
+        x = paddle.rand([2, 3], dtype='float32')
+        self.assert_results(tensor_size_method, x)
 
     def test_tensor_dim(self):
         x = paddle.rand([2, 3], dtype='float32')
