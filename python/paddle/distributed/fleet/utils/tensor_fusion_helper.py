@@ -81,6 +81,7 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
 
     var_groups = OrderedDict()
     group_msg = []
+    param_sizes = []
     for group_idx, indices in enumerate(group_indices):
         group_size = 0
         for index in indices:
@@ -90,9 +91,11 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
         bytes = group_size * core.size_of_dtype(dtype)
         msg = f"group_{group_idx}: {bytes / 1024 ** 2:.4f} MB, dtype: {dtype!s}"
         group_msg.append(msg)
+        param_size_G = bytes / 1024**3
+        param_sizes.append(param_size_G)
 
     logger.info(f"Tensor Fusion Group Info:\n{group_msg}\n")
-    return var_groups
+    return var_groups, group_size
 
 
 def flatten_dense_tensors(

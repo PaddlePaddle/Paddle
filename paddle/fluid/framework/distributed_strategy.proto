@@ -115,6 +115,7 @@ message DygraphShardingConfig {
   optional bool enable_fuse_optimizer_states = 10 [ default = false ];
   optional NCCLConfig nccl_config = 11;
   optional NCCLConfig check_nccl_config = 12;
+  optional int32 offload_opt_buffer_size = 13 [ default = -1 ];
 }
 
 message HybridConfig {
