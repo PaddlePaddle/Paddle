@@ -17,12 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    get_device_place,
-    get_places,
-)
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base
@@ -354,7 +349,8 @@ class TestTileFP16OP(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_bfloat16_supported(get_device_place()),
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTileBF16OP(OpTest):
@@ -376,7 +372,7 @@ class TestTileBF16OP(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        place = get_device_place()
+        place = core.CUDAPlace(0)
         self.check_output_with_place(
             place,
             check_cinn=self.check_cinn,
@@ -390,7 +386,7 @@ class TestTileBF16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_grad(self):
-        place = get_device_place()
+        place = core.CUDAPlace(0)
         self.check_grad_with_place(
             place,
             ['X'],
@@ -619,12 +615,14 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 class Testfp16TileOp(unittest.TestCase):
     def testfp16(self):
+        if not paddle.is_compiled_with_cuda():
+            return
         input_x = (np.random.random([1, 2, 3])).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[1, 2, 3], dtype='float16')
             repeat_times = [2, 2]
             out = paddle.tile(x, repeat_times=repeat_times)
-            place = get_device_place()
+            place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(feed={'x': input_x}, fetch_list=[out])
