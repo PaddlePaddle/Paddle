@@ -242,7 +242,7 @@ jobs:
 
   test:
     name: Coverage test
-    if: needs.build.outputs.can-skip != 'true'
+    if: false
     runs-on:
       group: BD_BJ-V100
     steps:

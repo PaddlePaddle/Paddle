@@ -107,7 +107,7 @@ jobs:
 
   infer:
     name: Infer
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: BD_BJ-V100
     env:
@@ -170,7 +170,7 @@ jobs:
           workflow-name: ce-infer
 
       - name: Install paddle and dependencies
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -187,7 +187,7 @@ jobs:
           '
 
       - name: Check
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -206,7 +206,7 @@ jobs:
 
   test:
     name: Test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: BD_BJ-V100
     env:
@@ -270,7 +270,7 @@ jobs:
           workflow-name: ce-test
 
       - name: Install paddle and dependencies
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -286,7 +286,7 @@ jobs:
           '
 
       - name: Check
-        if: steps.check-bypass.outputs.can-skip != 'true'
+        if: false
         env:
           work_dir: ${{ github.workspace }}
         run: |

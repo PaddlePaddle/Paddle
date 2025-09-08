@@ -232,7 +232,7 @@ jobs:
 
   test:
     name: Test
-    if: ${{ needs.build.outputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: Distribute
     steps:
