@@ -27,7 +27,6 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/funcs/multihead_matmul_functor.h"
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
@@ -39,7 +38,7 @@ struct CUDATypeTraits;
 
 template <>
 struct CUDATypeTraits<half> {
-  typedef phi::dtype::float16 TYPE;
+  typedef phi::float16 TYPE;
 };
 
 template <>

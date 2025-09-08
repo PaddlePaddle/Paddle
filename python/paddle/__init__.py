@@ -200,6 +200,7 @@ from . import (
     compat as compat,
     fft as fft,
     hub as hub,
+    library as library,
     linalg as linalg,
     signal as signal,
     special as special,
@@ -222,6 +223,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
     get_device,
@@ -698,6 +700,7 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -916,7 +919,6 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
-
 # Constants
 newaxis: None = None
 inf = math.inf
@@ -995,6 +997,7 @@ __all__ = [
     'logit',
     'logit_',
     'LazyGuard',
+    'Size',
     'sign',
     'is_empty',
     'equal',

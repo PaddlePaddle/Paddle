@@ -54,7 +54,7 @@ PD_REGISTER_KERNEL(shape,
                    ONEDNN,
                    phi::ShapeKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);

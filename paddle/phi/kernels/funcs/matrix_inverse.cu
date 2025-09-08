@@ -142,8 +142,8 @@ void MatrixInverseFunctor<Context, T>::operator()(const Context& dev_ctx,
 
 template class MatrixInverseFunctor<GPUContext, float>;
 template class MatrixInverseFunctor<GPUContext, double>;
-template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<float>>;
-template class MatrixInverseFunctor<GPUContext, phi::dtype::complex<double>>;
+template class MatrixInverseFunctor<GPUContext, phi::complex64>;
+template class MatrixInverseFunctor<GPUContext, phi::complex128>;
 
 }  // namespace funcs
 }  // namespace phi

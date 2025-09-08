@@ -120,15 +120,14 @@ void AddGradKernel(const Context& dev_ctx,
 }
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void AddGradKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    const DenseTensor& dout,
-    int axis,
-    DenseTensor* dx,
-    DenseTensor* dy) {
-  using T = phi::dtype::complex<float>;
+void AddGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                               const DenseTensor& x,
+                                               const DenseTensor& y,
+                                               const DenseTensor& dout,
+                                               int axis,
+                                               DenseTensor* dx,
+                                               DenseTensor* dy) {
+  using T = phi::complex64;
   const bool compute_dx = (dx != nullptr);
   const bool compute_dy = (dy != nullptr);
 
@@ -187,7 +186,7 @@ PD_REGISTER_KERNEL(add_grad,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    float,
                    int,

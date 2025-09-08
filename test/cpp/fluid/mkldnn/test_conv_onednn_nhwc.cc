@@ -96,7 +96,7 @@ TEST(test_conv2d_output, int8) {
   conv2d_op.SetAttr("dilations", dilations);
   conv2d_op.SetAttr("groups", groups);
   conv2d_op.SetAttr("use_onednn", true);
-  conv2d_op.SetAttr("mkldnn_data_type", std::string("int8"));
+  conv2d_op.SetAttr("onednn_data_type", std::string("int8"));
   conv2d_op.SetAttr("force_fp32_output", false);
 
   auto op = paddle::framework::OpRegistry::CreateOp(conv2d_op);

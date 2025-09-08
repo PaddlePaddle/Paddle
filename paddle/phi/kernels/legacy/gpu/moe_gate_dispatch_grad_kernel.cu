@@ -153,5 +153,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_grad,
                    phi::MoeGateDispatchGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

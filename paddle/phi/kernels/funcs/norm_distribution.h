@@ -32,31 +32,31 @@ inline void NormalDistribution(T* data,
 }
 
 template <>
-inline void NormalDistribution(phi::dtype::float16* data,
+inline void NormalDistribution(phi::float16* data,
                                const int64_t& size,
                                const float& mean,
                                const float& std,
                                std::shared_ptr<std::mt19937_64> engine) {
   std::normal_distribution<float> dist(mean, std);
   for (int64_t i = 0; i < size; ++i) {
-    data[i] = static_cast<phi::dtype::float16>(dist(*engine));
+    data[i] = static_cast<phi::float16>(dist(*engine));
   }
 }
 
 template <>
-inline void NormalDistribution(phi::dtype::bfloat16* data,
+inline void NormalDistribution(phi::bfloat16* data,
                                const int64_t& size,
                                const float& mean,
                                const float& std,
                                std::shared_ptr<std::mt19937_64> engine) {
   std::normal_distribution<float> dist(mean, std);
   for (int64_t i = 0; i < size; ++i) {
-    data[i] = static_cast<phi::dtype::bfloat16>(dist(*engine));
+    data[i] = static_cast<phi::bfloat16>(dist(*engine));
   }
 }
 
 template <>
-inline void NormalDistribution(phi::dtype::complex<float>* data,
+inline void NormalDistribution(phi::complex64* data,
                                const int64_t& size,
                                const float& mean,
                                const float& std,
@@ -66,12 +66,12 @@ inline void NormalDistribution(phi::dtype::complex<float>* data,
   for (int64_t i = 0; i < size; ++i) {
     float real = dist(*engine);
     float imag = dist(*engine);
-    data[i] = phi::dtype::complex<float>(real, imag);
+    data[i] = phi::complex64(real, imag);
   }
 }
 
 template <>
-inline void NormalDistribution(phi::dtype::complex<double>* data,
+inline void NormalDistribution(phi::complex128* data,
                                const int64_t& size,
                                const float& mean,
                                const float& std,
@@ -81,7 +81,7 @@ inline void NormalDistribution(phi::dtype::complex<double>* data,
   for (int64_t i = 0; i < size; ++i) {
     double real = dist(*engine);
     double imag = dist(*engine);
-    data[i] = phi::dtype::complex<double>(real, imag);
+    data[i] = phi::complex128(real, imag);
   }
 }
 

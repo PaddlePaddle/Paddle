@@ -156,12 +156,11 @@ void CastKernel(const Context& dev_ctx,
 }
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void CastKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    DataType out_dtype,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void CastKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                            const DenseTensor& x,
+                                            DataType out_dtype,
+                                            DenseTensor* out) {
+  using T = phi::complex64;
   if (x.dtype() == out_dtype) {
     if (x.dims() == phi::make_ddim({-1})) {
       *out = x;
@@ -188,7 +187,7 @@ PD_REGISTER_KERNEL(cast,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    int64_t,
                    bool,
