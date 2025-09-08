@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from test_conv2d_op import conv2d_forward_naive
 
 import paddle
 from paddle import base
@@ -40,14 +41,15 @@ class TestConv2dAPI_Compatibility(unittest.TestCase):
     def init_data(self):
         self.np_x = np.random.rand(*self.shape_x).astype(self.dtype)
         self.np_w = np.random.rand(*self.shape_w).astype(self.dtype)
+        conv_param = {"stride": [1, 1], "pad": [0, 0], "dilation": [1, 1]}
+        self.np_ref_out, _, _, _, _ = conv2d_forward_naive(
+            self.np_x, self.np_w, 1, conv_param
+        )
 
     def test_dygraph_Compatibility(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.np_x)
         w = paddle.to_tensor(self.np_w)
-
-        # Reference output
-        ref_out = paddle.nn.functional.conv2d(x, w)
 
         paddle_dygraph_out = []
         # Position args (args)
@@ -65,16 +67,11 @@ class TestConv2dAPI_Compatibility(unittest.TestCase):
 
         # Check all dygraph results against reference
         for out in paddle_dygraph_out:
-            np.testing.assert_allclose(ref_out.numpy(), out.numpy(), rtol=1e-05)
+            np.testing.assert_allclose(self.np_ref_out, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
-
-        # Calculate reference output in dygraph mode for comparison
-        ref_out = paddle.nn.functional.conv2d(
-            paddle.to_tensor(self.np_x), paddle.to_tensor(self.np_w)
-        ).numpy()
 
         fetch_list = []
         main = paddle.static.Program()
@@ -108,7 +105,7 @@ class TestConv2dAPI_Compatibility(unittest.TestCase):
                     fetch_list=fetch_list,
                 )
                 for out in fetches:
-                    np.testing.assert_allclose(out, ref_out, rtol=1e-05)
+                    np.testing.assert_allclose(out, self.np_ref_out, rtol=1e-05)
 
 
 if __name__ == "__main__":
