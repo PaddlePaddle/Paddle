@@ -608,53 +608,18 @@ struct gpu_gather_scatter_functor {
           atomic_cnt_buffer);
     }
 
-    if constexpr ((is_same_type<func_t, ReduceMul>)&&(
-                      is_same_type<tensor_t, phi::bfloat16> ||
-                      is_same_type<tensor_t, phi::float16>)) {
-      DenseTensor promoted_self(self),
-          promoted_src(src);  // shallow copy tensor meta
-
-      dev_ctx.Alloc<float>(&promoted_self);
-      dev_ctx.Alloc<float>(&promoted_src);
-
-      constexpr int block_size = 256;
-      const int64_t src_size = src.numel();
-      const int64_t self_grid = (self_size + block_size - 1) / block_size;
-      const int64_t src_grid = (src_size + block_size - 1) / block_size;
-      CastMemcpy<<<self_grid, block_size, 0, stream>>>(
-          self_data, promoted_self.data<float>(), self_size);
-      CastMemcpy<<<src_grid, block_size, 0, stream>>>(
-          src_data, promoted_src.data<float>(), src_size);
-      // promote tp float32 and compute, then cast back to fp16/bfp16
-      GatherScatterGPUKernel<float, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_bytes, stream>>>(
-              promoted_self.data<float>(),
-              index_data,
-              shape_strides,
-              promoted_src.data<float>(),
-              self_select_dim_size,
-              src_select_dim_size,
-              index_size,
-              dim,
-              ndim,
-              reduce_op,
-              atomic_cnt_buffer);
-      CastMemcpy<<<self_grid, block_size, 0, stream>>>(
-          promoted_self.data<float>(), self_data, self_size);
-    } else {
-      GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
-          <<<grid, block, shared_mem_bytes, stream>>>(self_data,
-                                                      index_data,
-                                                      shape_strides,
-                                                      src_data,
-                                                      self_select_dim_size,
-                                                      src_select_dim_size,
-                                                      index_size,
-                                                      dim,
-                                                      ndim,
-                                                      reduce_op,
-                                                      atomic_cnt_buffer);
-    }
+    GatherScatterGPUKernel<tensor_t, index_t, func_t, is_scatter_like>
+        <<<grid, block, shared_mem_bytes, stream>>>(self_data,
+                                                    index_data,
+                                                    shape_strides,
+                                                    src_data,
+                                                    self_select_dim_size,
+                                                    src_select_dim_size,
+                                                    index_size,
+                                                    dim,
+                                                    ndim,
+                                                    reduce_op,
+                                                    atomic_cnt_buffer);
     if (method_name == "mean") {
       constexpr int _block = 512;
       int64_t grid = (self_size + _block - 1) / _block;

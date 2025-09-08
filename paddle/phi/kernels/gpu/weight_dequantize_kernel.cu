@@ -22,9 +22,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
