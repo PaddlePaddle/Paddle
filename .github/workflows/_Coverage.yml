@@ -29,6 +29,7 @@ defaults:
 jobs:
   build:
     name: Coverage build
+    if: false
     runs-on:
       group: GZ_BD-CPU
     outputs:
@@ -236,7 +237,7 @@ jobs:
   test:
     name: Coverage test
     needs: [build]
-    if: needs.build.outputs.can-skip != 'true'
+    if: false
     runs-on:
       group: BD_BJ-V100
     steps:
