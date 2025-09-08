@@ -209,6 +209,43 @@ def param_two_alias(alias_list1, alias_list2):
     return decorator
 
 
+def tensor_split_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if not kwargs:
+            return func(*args, **kwargs)
+        contains_num_or_indices = "num_or_indices" in kwargs
+        # Process parameters to handle alias mapping
+        if "input" in kwargs and "x" not in kwargs:
+            kwargs["x"] = kwargs.pop("input")
+        if "dim" in kwargs and "axis" not in kwargs:
+            kwargs["axis"] = kwargs.pop("dim")
+        if (
+            "indices_or_sections" in kwargs
+            and not contains_num_or_indices
+            and "num_or_indices" not in kwargs
+        ):
+            kwargs["num_or_indices"] = kwargs.pop("indices_or_sections")
+        if (
+            "indices" in kwargs
+            and not contains_num_or_indices
+            and "num_or_indices" not in kwargs
+        ):
+            kwargs["num_or_indices"] = kwargs.pop("indices")
+        if (
+            "sections" in kwargs
+            and not contains_num_or_indices
+            and "num_or_indices" not in kwargs
+        ):
+            kwargs["num_or_indices"] = kwargs.pop("sections")
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
 def param_two_alias_one_default(alias_list1, alias_list2, default_param):
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
@@ -400,7 +437,12 @@ class ForbidKeywordsDecorator(DecoratorBase):
         self.correct_name = correct_name
         self.warn_msg = None
         if url_suffix:
-            self.warn_msg = f"\nNon compatible API. Please refer to https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/convert_from_pytorch/api_difference/{url_suffix}.html first."
+            self.warn_msg = (
+                f"The API '{func_name}' may behave differently from its PyTorch counterpart. "
+                f"Refer to the compatibility guide for details:\n"
+                f"https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/model_convert/"
+                f"convert_from_pytorch/api_difference/{url_suffix}.html"
+            )
 
     def process(
         self, args: tuple[Any, ...], kwargs: dict[str, Any]
@@ -419,7 +461,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
         if self.warn_msg is not None:
             warnings.warn(
                 self.warn_msg,
-                category=Warning,
+                category=UserWarning,
             )
             self.warn_msg = None
         return args, kwargs

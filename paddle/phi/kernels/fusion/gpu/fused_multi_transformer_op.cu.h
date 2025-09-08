@@ -37,7 +37,7 @@ namespace fusion {
 
 namespace {  // NOLINT
 
-using float16 = phi::dtype::float16;
+using float16 = phi::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT

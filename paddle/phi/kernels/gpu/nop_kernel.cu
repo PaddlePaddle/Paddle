@@ -17,11 +17,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(nop,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::NopKernel,
-                   float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    nop, GPU, ALL_LAYOUT, phi::NopKernel, float, phi::bfloat16, phi::float16) {}
 #endif

@@ -69,4 +69,4 @@ PD_REGISTER_KERNEL(bce_loss,
                    phi::BCELossKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -28,17 +28,28 @@ from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
 def bind_vartype():
     global dtype
     global uint8
+    global uint16
+    global uint32
+    global uint64
     global int8
+    global short
     global int16
+    global int
     global int32
+    global long
     global int64
+    global float
     global float32
+    global double
     global float64
+    global half
     global float16
     global bfloat16
     global float8_e4m3fn
     global float8_e5m2
+    global cfloat
     global complex64
+    global cdouble
     global complex128
     global bool
     global pstring
@@ -51,18 +62,26 @@ def bind_vartype():
     uint8 = VarDesc.VarType.UINT8
     int8 = VarDesc.VarType.INT8
     int16 = VarDesc.VarType.INT16
+    short = int16
     int32 = VarDesc.VarType.INT32
+    int = int32
     int64 = VarDesc.VarType.INT64
+    long = int64
 
     float32 = VarDesc.VarType.FP32
+    float = float32
     float64 = VarDesc.VarType.FP64
+    double = float64
     float16 = VarDesc.VarType.FP16
+    half = float16
     bfloat16 = VarDesc.VarType.BF16
     float8_e4m3fn = VarDesc.VarType.FP8_E4M3FN
     float8_e5m2 = VarDesc.VarType.FP8_E5M2
 
     complex64 = VarDesc.VarType.COMPLEX64
+    cfloat = complex64
     complex128 = VarDesc.VarType.COMPLEX128
+    cdouble = complex128
 
     bool = VarDesc.VarType.BOOL
     pstring = VarDesc.VarType.STRING
@@ -72,19 +91,26 @@ def bind_vartype():
     paddle.uint8 = uint8
     paddle.int8 = int8
     paddle.int16 = int16
+    paddle.short = short
     paddle.int32 = int32
+    paddle.int = int
     paddle.int64 = int64
-    paddle.long = int64
+    paddle.long = long
 
     paddle.float32 = float32
+    paddle.float = float
     paddle.float64 = float64
+    paddle.double = double
     paddle.float16 = float16
+    paddle.half = half
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
     paddle.float8_e5m2 = float8_e5m2
 
     paddle.complex64 = complex64
+    paddle.cfloat = cfloat
     paddle.complex128 = complex128
+    paddle.cdouble = cdouble
     paddle.bool = bool
     paddle.pstring = pstring
     paddle.raw = raw
@@ -93,17 +119,27 @@ def bind_vartype():
 def bind_datatype():
     global dtype
     global uint8
+    global uint16
+    global uint32
+    global uint64
     global int8
+    global short
     global int16
+    global int
     global int32
+    global long
     global int64
+    global float
     global float32
+    global double
     global float64
     global float16
     global bfloat16
     global float8_e4m3fn
     global float8_e5m2
+    global cfloat
     global complex64
+    global cdouble
     global complex128
     global bool
     global pstring
@@ -114,20 +150,32 @@ def bind_datatype():
     dtype.__module__ = "paddle"
 
     uint8 = DataType.UINT8
+    uint16 = DataType.UINT16
+    uint32 = DataType.UINT32
+    uint64 = DataType.UINT64
+
     int8 = DataType.INT8
     int16 = DataType.INT16
+    short = int16
     int32 = DataType.INT32
+    int = int32
     int64 = DataType.INT64
+    long = int64
 
     float32 = DataType.FLOAT32
+    float = float32
     float64 = DataType.FLOAT64
+    double = float64
     float16 = DataType.FLOAT16
+    half = float16
     bfloat16 = DataType.BFLOAT16
     float8_e4m3fn = DataType.FLOAT8_E4M3FN
     float8_e5m2 = DataType.FLOAT8_E5M2
 
     complex64 = DataType.COMPLEX64
+    cfloat = complex64
     complex128 = DataType.COMPLEX128
+    cdouble = complex128
 
     bool = DataType.BOOL
     pstring = DataType.PSTRING
@@ -136,20 +184,28 @@ def bind_datatype():
     paddle.dtype = dtype
     paddle.uint8 = uint8
     paddle.int8 = int8
+    paddle.short = short
     paddle.int16 = int16
+    paddle.int = int
     paddle.int32 = int32
+    paddle.long = long
     paddle.int64 = int64
     paddle.long = int64
 
+    paddle.float = float
     paddle.float32 = float32
     paddle.float64 = float64
+    paddle.double = double
     paddle.float16 = float16
+    paddle.half = half
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
     paddle.float8_e5m2 = float8_e5m2
 
     paddle.complex64 = complex64
+    paddle.cfloat = cfloat
     paddle.complex128 = complex128
+    paddle.cdouble = cdouble
     paddle.bool = bool
     paddle.pstring = pstring
     paddle.raw = raw

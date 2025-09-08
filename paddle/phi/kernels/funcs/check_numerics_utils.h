@@ -42,8 +42,7 @@ HOSTDEVICE bool NeedPrint(MT max_value, MT min_value, int check_nan_inf_level) {
   if (check_nan_inf_level >= 3) {
     return true;
   } else if (check_nan_inf_level >= 2) {
-    MT fp16_max =
-        static_cast<MT>(std::numeric_limits<phi::dtype::float16>::max());
+    MT fp16_max = static_cast<MT>(std::numeric_limits<phi::float16>::max());
     return max_value > fp16_max || min_value < -fp16_max;
   }
   return false;
@@ -209,11 +208,10 @@ inline std::string GetCpuHintString(const std::string& op_type,
   return ss.str();
 }
 
-template <
-    typename T,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const int64_t numel,
                                  const std::string& cpu_hint_str,
@@ -321,11 +319,10 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
   }
 }
 
-template <
-    typename T,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 void CheckNumericsCpuImpl(const T* value_ptr,
                           const int64_t numel,
                           const std::string& cpu_hint_str,

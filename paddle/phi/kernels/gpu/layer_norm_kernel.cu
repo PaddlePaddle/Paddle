@@ -683,12 +683,8 @@ template PADDLE_API void LayerNormKernel<float, GPUContext>(
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(layer_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LayerNormKernel,
-                   float,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    layer_norm, GPU, ALL_LAYOUT, phi::LayerNormKernel, float, phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
@@ -699,8 +695,8 @@ PD_REGISTER_KERNEL(layer_norm,
                    phi::LayerNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
@@ -711,7 +707,7 @@ PD_REGISTER_KERNEL(layer_norm,
                    phi::LayerNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }

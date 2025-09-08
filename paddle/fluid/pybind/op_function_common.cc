@@ -1534,8 +1534,9 @@ void BindOpFunctionCommon(PyObject* module) {
     return;
   }
 }
-// for parse argruments from args and kwargs
-//  Get Item From PyObject* args Or PyObject* kwargs
+
+// For parse argruments from args and kwargs
+// Get item from PyObject* args or PyObject* kwargs
 PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
                                   int pos,
                                   PyObject* kwargs,
@@ -1544,24 +1545,25 @@ PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
                                   int* remaining_kwargs,
                                   bool dispensable) {
   // get item from args first if pos < nargs
-  if (nargs > pos) {
+  if (pos < nargs) {
     PyObject* arg = PyTuple_GetItem(args, pos);
     if (arg) {
       return arg;
     }
-  }
-  // get item from kwargs if pos is out of args range and kwargs has unused
-  // items
-  if (kwargs && *remaining_kwargs > 0) {
-    PyObject* arg = nullptr;
-    for (std::string keyword : keywords) {
-      arg = PyDict_GetItemString(kwargs, keyword.c_str());
-      if (arg) {
-        *remaining_kwargs = *remaining_kwargs - 1;
-        return arg;
+  } else {
+    // get item from kwargs if kwargs has unused items
+    if (kwargs && *remaining_kwargs > 0) {
+      PyObject* arg = nullptr;
+      for (const std::string& keyword : keywords) {
+        arg = PyDict_GetItemString(kwargs, keyword.c_str());
+        if (arg) {
+          *remaining_kwargs = *remaining_kwargs - 1;
+          return arg;
+        }
       }
     }
   }
+
   if (!dispensable) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Argument '%s' (position %d) must be provided", keywords[0], pos));

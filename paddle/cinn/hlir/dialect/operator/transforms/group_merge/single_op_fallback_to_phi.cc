@@ -19,6 +19,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
@@ -144,12 +145,35 @@ class FusionOpPattern : public pir::OpRewritePattern<cinn::dialect::FusionOp> {
     return paddle_cast_op;
   }
 
+  pir::Operation* ConcatOpPattern(
+      pir::Operation* op,
+      pir::PatternRewriter& rewriter) const {  // NOLINT
+    PADDLE_ENFORCE(
+        op->isa<cinn::dialect::ConcatOp>(),
+        ::common::errors::InvalidArgument(
+            "Input should be cinn::dialect::ConcatOp, but got %s", op->name()));
+    auto concat_op = op->dyn_cast<cinn::dialect::ConcatOp>();
+    int axis = concat_op.attribute("axis")
+                   .dyn_cast<paddle::dialect::ScalarAttribute>()
+                   .data()
+                   .to<int32_t>();
+    auto inputs = concat_op->operands_source();
+    auto combine_out = rewriter.Build<pir::CombineOp>(inputs).result(0);
+
+    auto paddle_concat_op =
+        rewriter.Build<paddle::dialect::ConcatOp>(combine_out, axis);
+    return paddle_concat_op;
+  }
+
   const std::unordered_map<std::string, CinnOpHandler>& op_handler_map() const {
     static std::unordered_map<std::string, CinnOpHandler> handler_map = {
-        {cinn::dialect::ReshapeOp::name(), &FusionOpPattern::ReshapeOpPattern},
-        {paddle::dialect::AssignOut_Op::name(),
-         &FusionOpPattern::AssignOutOpPattern},
-        {paddle::dialect::CastOp::name(), &FusionOpPattern::CastOpPattern},
+      {cinn::dialect::ReshapeOp::name(), &FusionOpPattern::ReshapeOpPattern},
+      {paddle::dialect::AssignOut_Op::name(),
+       &FusionOpPattern::AssignOutOpPattern},
+      {paddle::dialect::CastOp::name(), &FusionOpPattern::CastOpPattern},
+#if defined(PADDLE_WITH_HIP)
+      {cinn::dialect::ConcatOp::name(), &FusionOpPattern::ConcatOpPattern},
+#endif
     };
     return handler_map;
   }

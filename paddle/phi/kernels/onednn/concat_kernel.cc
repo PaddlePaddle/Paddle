@@ -162,7 +162,7 @@ PD_REGISTER_KERNEL(concat,
                    ONEDNN,
                    phi::ConcatKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->check_if_onednn_kernel_support_ = phi::ConcatCheckIfOneDNNSupport;

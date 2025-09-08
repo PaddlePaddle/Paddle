@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import warnings
 from argparse import REMAINDER, ArgumentParser
 
 from paddle.utils import strtobool
@@ -47,8 +48,16 @@ env_args_mapping = {
 
 
 def fetch_envs():
-    os.environ.pop('http_proxy', None)
-    os.environ.pop('https_proxy', None)
+    if os.environ.pop('http_proxy', None) is not None:
+        warnings.warn(
+            "Removed 'http_proxy' from the environment to prevent NCCL connection failures in distributed training.",
+            category=UserWarning,
+        )
+    if os.environ.pop('https_proxy', None) is not None:
+        warnings.warn(
+            "Removed 'https_proxy' from the environment to prevent NCCL connection failures in distributed training.",
+            category=UserWarning,
+        )
 
     return os.environ.copy()
 
