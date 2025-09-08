@@ -13,6 +13,20 @@ jobs:
       PR_ID: ${{ github.event.pull_request.number }}
       BRANCH: develop
 
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'skip ci'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  data-storage:
+    name: Performance data storage
+    needs: check-bypass
+    if: false
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout base repo
         uses: actions/checkout@v4

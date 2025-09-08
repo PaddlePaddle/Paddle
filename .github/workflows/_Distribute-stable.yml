@@ -38,12 +38,6 @@ jobs:
     if: false
     runs-on: ubuntu-latest
 
-  build:
-    name: Build
-    outputs:
-      can-skip: ${{ steps.check-bypass.outputs.can-skip }}
-    runs-on:
-      group: GZ_BD-CPU
     steps:
       - name: Check docker image and run container
         env:
@@ -238,7 +232,6 @@ jobs:
 
   test:
     name: Test
-    needs: build
     if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
