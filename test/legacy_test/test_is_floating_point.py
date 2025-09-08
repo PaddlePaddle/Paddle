@@ -57,8 +57,8 @@ class TestIsFloatPoint_Compatibility(unittest.TestCase):
             result_x = paddle.is_floating_point(x=tensor)
             result_input = paddle.is_floating_point(input=tensor)
 
-            self.assertEqual(result_x, result_input)
-            self.assertEqual(result_x, case['expected'])
+            np.testing.assert_array_equal(result_x, result_input)
+            np.testing.assert_array_equal(result_x, case['expected'])
 
         paddle.enable_static()
 
@@ -71,8 +71,8 @@ class TestIsFloatPoint_Compatibility(unittest.TestCase):
             result_x = paddle.is_floating_point(x=tensor)
             result_input = paddle.is_floating_point(input=tensor)
 
-            self.assertEqual(result_x, result_input)
-            self.assertEqual(result_x, case['expected'])
+            np.testing.assert_array_equal(result_x, result_input)
+            np.testing.assert_array_equal(result_x, case['expected'])
 
 
 if __name__ == '__main__':

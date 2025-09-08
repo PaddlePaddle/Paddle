@@ -350,9 +350,9 @@ class TestIsinCompatibility(unittest.TestCase):
             )
             result_4 = paddle.isin(x_tensor, test_elements=test_x_tensor)
 
-            self.assertTrue(np.array_equal(result_1.numpy(), result_2.numpy()))
-            self.assertTrue(np.array_equal(result_1.numpy(), result_3.numpy()))
-            self.assertTrue(np.array_equal(result_1.numpy(), result_4.numpy()))
+            np.testing.assert_array_equal(result_1.numpy(), result_2.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_3.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_4.numpy())
 
         paddle.enable_static()
 
@@ -388,7 +388,7 @@ class TestIsinCompatibility(unittest.TestCase):
                 )
 
                 for i in range(1, len(results)):
-                    self.assertTrue(np.array_equal(results[0], results[i]))
+                    np.testing.assert_array_equal(results[0], results[i])
 
 
 if __name__ == '__main__':
