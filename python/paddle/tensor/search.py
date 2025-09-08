@@ -996,8 +996,10 @@ def masked_select(
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
+            alias: ``input``.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A 1-D Tensor which is the same data type  as ``x``.
