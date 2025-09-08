@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -65,8 +71,8 @@ class TestAccuracyOpFp16(TestAccuracyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestAccuracyOpBf16(OpTest):
@@ -101,8 +107,8 @@ class TestAccuracyOpBf16(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
 

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -26,8 +31,8 @@ class ApiFMaxTest(unittest.TestCase):
 
     def setUp(self):
         """setUp"""
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -256,8 +261,8 @@ class TestElementwiseFmax3Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFmaxBF16OP(OpTest):
@@ -278,13 +283,13 @@ class TestFmaxBF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
@@ -305,8 +310,8 @@ class ApiFMaxTestZeroSize(unittest.TestCase):
 
     def setUp(self):
         """setUp"""
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -324,7 +329,8 @@ class ApiFMaxTestZeroSize(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseFmaxOp_Stride(OpTest):
     no_need_check_grad = True
@@ -355,7 +361,7 @@ class TestElementwiseFmaxOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

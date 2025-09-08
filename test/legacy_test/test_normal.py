@@ -36,7 +36,10 @@ class TestNormalAPI(unittest.TestCase):
         self.dtype = self.get_dtype()
         self.place = (
             get_device_place()
-            if (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+            if (
+                (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+                or is_custom_device()
+            )
             else paddle.CPUPlace()
         )
 
@@ -232,7 +235,10 @@ class TestNormalAPIComplex(unittest.TestCase):
         self.dtype = self.get_dtype()
         self.place = (
             get_device_place()
-            if (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+            if (
+                (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+                or is_custom_device()
+            )
             else paddle.CPUPlace()
         )
 

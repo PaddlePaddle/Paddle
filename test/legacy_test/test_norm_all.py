@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -220,8 +225,8 @@ class TestFrobeniusNormOpZeroSize(TestFrobeniusNormOp):
 
     def test_check_output(self):
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -431,8 +436,8 @@ class TestPnormOpZeroSize(TestPnormOp):
 
     def test_check_output(self):
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -477,19 +482,20 @@ class TestPnormOpZeroSize4(TestPnormOpZeroSize):
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPnormFP16Op(parent):
         def init_dtype(self):
             self.dtype = "float16"
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -513,7 +519,8 @@ create_test_fp16_class(TestPnormOp6)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPnormBF16Op(OpTest):
     def setUp(self):
@@ -536,11 +543,11 @@ class TestPnormBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(self.norm)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=1e-3, check_prim_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],

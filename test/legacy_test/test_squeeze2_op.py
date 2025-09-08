@@ -261,7 +261,7 @@ class TestSqueezeCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+            self.places.append(get_device_place())
         self.func = paddle.squeeze
         self.init_data()
         self.init_case()

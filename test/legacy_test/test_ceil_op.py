@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -22,8 +22,8 @@ from paddle import base
 
 def get_places():
     places = []
-    if base.is_compiled_with_cuda():
-        places.append(paddle.CUDAPlace(0))
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
     places.append(paddle.CPUPlace())
     return places
 

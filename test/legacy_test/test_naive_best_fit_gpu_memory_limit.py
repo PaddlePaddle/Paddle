@@ -11,31 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 from paddle import base
 
 base.core.globals()['FLAGS_allocator_strategy'] = 'naive_best_fit'
 
-if base.is_compiled_with_cuda():
+if base.is_compiled_with_cuda() or is_custom_device():
     base.core.globals()['FLAGS_gpu_memory_limit_mb'] = 10
 
 
 class TestBase(unittest.TestCase):
     def setUp(self):
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             self._limit = base.core.globals()['FLAGS_gpu_memory_limit_mb']
 
     def test_allocate(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
 
         other_dim = int(1024 * 1024 / 4)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         t = base.DenseTensor()
         t.set(
             np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),

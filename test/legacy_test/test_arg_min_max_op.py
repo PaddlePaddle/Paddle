@@ -19,7 +19,12 @@ import unittest
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -77,7 +82,8 @@ class TestCase2(BaseTestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestCase0FP16(BaseTestCase):
     def initTestCase(self):
@@ -89,7 +95,8 @@ class TestCase0FP16(BaseTestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestCase1FP16(BaseTestCase):
     def initTestCase(self):
@@ -101,7 +108,8 @@ class TestCase1FP16(BaseTestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "BFP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "BFP16 test runs only on GPU",
 )
 class TestArgMinBF16OP(OpTest):
     def initTestType(self):
@@ -126,7 +134,7 @@ class TestArgMinBF16OP(OpTest):
             self.outputs = {'Out': np.argmax(x, axis=self.axis)}
 
     def test_check_output(self):
-        self.check_output_with_place(paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
 
 class TestArgMaxBF16OP(TestArgMinBF16OP):
@@ -145,7 +153,7 @@ class TestArgMinMaxTypeCheck(unittest.TestCase):
 
     def test_bfp16(self):
         # in static mode
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         with program_guard(Program(), Program()):
             x = paddle.zeros(name='x', shape=[100, 10], dtype='uint16')

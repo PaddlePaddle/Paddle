@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     is_custom_device,
     skip_check_grad_ci,
 )
@@ -220,7 +221,8 @@ class TestElementwiseMulOp_ZeroSize3(TestElementwiseMulOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestBF16ElementwiseMulOp(OpTest):
@@ -703,7 +705,7 @@ class TestMulApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            [paddle.CPUPlace(), get_device_place()]
             if core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
@@ -760,7 +762,7 @@ class TestElementwiseMulop_Stride(ElementwiseMulOp):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

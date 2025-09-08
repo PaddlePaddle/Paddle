@@ -15,6 +15,7 @@ import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 os.environ['FLAGS_enable_pir_api'] = '0'
 import paddle
@@ -27,8 +28,8 @@ class TestPaddleAddNewFeatures(unittest.TestCase):
         self.y_np = np.array([2, 3], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 

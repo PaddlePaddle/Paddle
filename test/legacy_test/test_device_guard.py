@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 
@@ -20,8 +21,8 @@ paddle.enable_static()
 
 
 def execute(main_program, startup_program):
-    if paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if paddle.is_compiled_with_cuda() or is_custom_device():
+        place = get_device_place()
     else:
         place = paddle.CPUPlace()
     exe = paddle.static.Executor(place)
@@ -73,7 +74,7 @@ class TestDeviceGuard(unittest.TestCase):
                 326,
             ]
             anchor_mask = [0, 1, 2]
-            with paddle.static.device_guard("gpu"):
+            with paddle.static.device_guard(get_device()):
                 # yolo_loss only has cpu kernel, so its cpu kernel will be executed
                 loss = paddle.vision.ops.yolo_loss(
                     x=x,

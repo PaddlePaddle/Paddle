@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import ast
 import os
+
+from op_test import get_device_place, is_custom_device
 
 os.environ['FLAGS_enable_pir_api'] = '0'
 
@@ -226,7 +227,7 @@ class TestDistRunnerBase:
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
         eprint(type(self).__name__, f"device_id: {device_id}.")
-        place = base.CUDAPlace(device_id)
+        place = get_device_place()
 
         exe = base.Executor(place)
         exe.run(base.default_startup_program())
@@ -272,9 +273,9 @@ class TestDistRunnerBase:
             predict,
         ) = self.get_model(batch_size=args.batch_size)
 
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(device_id)
+            place = get_device_place()
         elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = base.XPUPlace(device_id)
@@ -370,9 +371,9 @@ class TestDistRunnerBase:
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
 
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(device_id)
+            place = get_device_place()
         elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = base.XPUPlace(device_id)
@@ -612,7 +613,7 @@ class TestDistRunnerBase:
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(device_id)
+            place = get_device_place()
         else:
             place = base.CPUPlace()
 
@@ -714,9 +715,9 @@ class TestParallelDyGraphRunnerBase:
         seed = 90
         if args.update_method == 'gloo':
             place = base.CPUPlace()
-        elif base.core.is_compiled_with_cuda():
+        elif base.core.is_compiled_with_cuda() or is_custom_device():
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(device_id)
+            place = get_device_place()
         elif base.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = base.XPUPlace(device_id)
@@ -971,7 +972,7 @@ class TestDistBase(unittest.TestCase):
             self.__use_xpu = True
             self._use_dgc = False
         else:
-            if base.core.is_compiled_with_cuda():
+            if base.core.is_compiled_with_cuda() or is_custom_device():
                 self.__use_cuda = True
             else:
                 self.__use_cuda = False

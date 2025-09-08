@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
 import op_test
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -70,7 +70,8 @@ def get_redefined_allclose(cum_count):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAssignPosOpInt64(op_test.OpTest):
     def setUp(self):
@@ -91,7 +92,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
         paddle.enable_static()
         np.testing.assert_allclose = get_redefined_allclose(self.cum_count)
         self.check_output_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             check_dygraph=False,
             check_pir=True,
             check_symbol_infer=False,
@@ -99,7 +100,8 @@ class TestAssignPosOpInt64(op_test.OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAssignPosAPI(unittest.TestCase):
     def setUp(self):
@@ -107,7 +109,7 @@ class TestAssignPosAPI(unittest.TestCase):
         y = count(self.x, 16)
         self.cum_count = np.cumsum(y).astype(self.x.dtype)
         self.out = assign_pos(self.x, self.cum_count)
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()

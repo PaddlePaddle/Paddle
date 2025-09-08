@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -106,8 +111,8 @@ class TestExpandAs_ZeroSize2(TestExpandAs_ZeroSize):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
@@ -130,11 +135,11 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=False, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
@@ -150,8 +155,8 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
@@ -180,8 +185,8 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
@@ -210,8 +215,8 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
@@ -249,8 +254,8 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
@@ -268,7 +273,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         pass

@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 
 
 class TestCPUVersion(unittest.TestCase):
     def test_cuda_cudnn_version_in_cpu_package(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             self.assertEqual(paddle.version.cuda(), 'False')
             self.assertEqual(paddle.version.cudnn(), 'False')
 

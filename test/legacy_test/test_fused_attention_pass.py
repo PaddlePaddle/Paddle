@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -96,7 +96,8 @@ class MultiHeadAttention(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedAttentionPass(unittest.TestCase):
     def setUp(self):

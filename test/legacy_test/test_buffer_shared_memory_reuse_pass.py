@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import random
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import simple_fc_net
 
 import paddle
@@ -39,14 +39,16 @@ class InplaceTestBase(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.initParameter()
-        if self.use_cuda and base.core.is_compiled_with_cuda():
+        if self.use_cuda and (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        ):
             self.device_count = base.core.get_cuda_device_count()
         else:
             self.device_count = 4
         assert batch_size % self.device_count == 0
 
     def build_program_and_scope(self):
-        self.place = base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
+        self.place = get_device_place() if self.use_cuda else base.CPUPlace()
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
         startup_program = base.Program()
@@ -63,14 +65,16 @@ class InplaceTestBase(unittest.TestCase):
 
             with base.scope_guard(scope):
                 exe = base.Executor(
-                    base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
+                    get_device_place() if self.use_cuda else base.CPUPlace()
                 )
                 exe.run(startup_program)
 
         return main_program, scope, exe, loss
 
     def is_invalid_test(self):
-        return self.use_cuda and not base.core.is_compiled_with_cuda()
+        return self.use_cuda and not (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        )
 
     def get_all_vars(self, program):
         all_vars = program.global_block().vars

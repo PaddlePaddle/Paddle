@@ -16,7 +16,11 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, is_custom_device, paddle_static_guard
+from op_test import (
+    OpTest,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax

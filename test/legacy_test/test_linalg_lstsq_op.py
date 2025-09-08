@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -25,8 +25,10 @@ class LinalgLstsqTestCase(unittest.TestCase):
     def setUp(self):
         self.devices = ["cpu"]
         self.init_config()
-        if core.is_compiled_with_cuda() and self.driver == "gels":
-            self.devices.append("gpu")
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and self.driver == "gels":
+            self.devices.append(get_device())
         self.generate_input()
         self.generate_output()
         np.random.seed(2022)
@@ -75,7 +77,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
         paddle.disable_static()
         for dev in self.devices:
             paddle.set_device(dev)
-            place = paddle.CPUPlace() if dev == "cpu" else paddle.CUDAPlace(0)
+            place = paddle.CPUPlace() if dev == "cpu" else get_device_place()
             x = paddle.to_tensor(
                 self._input_data_1, place=place, dtype=self.dtype
             )
@@ -95,7 +97,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
         paddle.enable_static()
         for dev in self.devices:
             paddle.set_device(dev)
-            place = base.CPUPlace() if dev == "cpu" else base.CUDAPlace(0)
+            place = base.CPUPlace() if dev == "cpu" else get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

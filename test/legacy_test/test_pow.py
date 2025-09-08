@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_devices
+from op_test import get_device_place, get_devices
 
 import paddle
 from paddle.static import Program, program_guard
@@ -52,9 +52,7 @@ def _run_power(mode, x, y, device='cpu'):
                 y_ = y
                 res = paddle.pow(x_, y_)
                 place = (
-                    paddle.CPUPlace()
-                    if device == 'cpu'
-                    else paddle.CUDAPlace(0)
+                    paddle.CPUPlace() if device == 'cpu' else get_device_place()
                 )
                 exe = paddle.static.Executor(place)
                 outs = exe.run(feed={'x': x}, fetch_list=[res])
@@ -66,9 +64,7 @@ def _run_power(mode, x, y, device='cpu'):
                 y_ = paddle.static.data(name="y", shape=y.shape, dtype=y.dtype)
                 res = paddle.pow(x_, y_)
                 place = (
-                    paddle.CPUPlace()
-                    if device == 'cpu'
-                    else paddle.CUDAPlace(0)
+                    paddle.CPUPlace() if device == 'cpu' else get_device_place()
                 )
                 exe = paddle.static.Executor(place)
                 outs = exe.run(feed={'x': x, 'y': y}, fetch_list=[res])

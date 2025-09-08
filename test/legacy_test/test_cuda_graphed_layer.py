@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import nn
@@ -54,7 +54,8 @@ class DropoutModel(nn.Layer):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or float(paddle.version.cuda()) < 11.0,
     "only support cuda >= 11.0",
 )
 class TestSimpleModel(unittest.TestCase):

@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -313,7 +318,8 @@ class TestSplitByrefOp(OpTest):
 
 def create_test_fp16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestSplitFP16Op(parent):
         def get_dtype(self):
@@ -332,8 +338,8 @@ create_test_fp16(TestSplitWithNumOp)
 
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA or not support bfloat16",
     )
     class TestSplitBF16Op(parent):
@@ -341,11 +347,11 @@ def create_test_bf16(parent):
             return np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -550,9 +556,11 @@ class API_TestSplit4(unittest.TestCase):
 class API_TestSplit5(unittest.TestCase):
     def test_out(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             with base.program_guard(base.Program(), base.Program()):
                 input_1 = np.random.random([5, 4]).astype("int32")
                 # input is a variable which shape is [5, 4]

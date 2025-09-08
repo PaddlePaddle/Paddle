@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base import core
@@ -22,7 +22,7 @@ from paddle.base import core
 
 class TestTensorCopyFrom(unittest.TestCase):
     def test_main(self):
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             place = paddle.CPUPlace()
             np_value = np.random.random(size=[10, 30]).astype('float32')
             tensor = paddle.to_tensor(np_value, place=place)
@@ -32,7 +32,7 @@ class TestTensorCopyFrom(unittest.TestCase):
 
 class TestUVATensorFromNumpy(unittest.TestCase):
     def test_uva_tensor_creation(self):
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             dtype_list = [
                 "int32",
                 "int64",
@@ -54,7 +54,7 @@ class TestUVATensorFromNumpy(unittest.TestCase):
                 np.testing.assert_allclose(tensor2.numpy(), data, rtol=1e-05)
 
     def test_uva_tensor_correctness(self):
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             a = np.arange(0, 100, dtype="int32")
             a = a.reshape([10, 10])
             slice_a = a[:, 5]

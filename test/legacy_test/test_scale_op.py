@@ -18,7 +18,14 @@ import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -144,7 +151,8 @@ class TestScaleRaiseError(unittest.TestCase):
 
 # Add FP16 test
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScaleFp16Op(TestScaleOp):
     def init_dtype_type(self):
@@ -158,7 +166,8 @@ class TestScaleFp16Op(TestScaleOp):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestScaleBF16Op(OpTest):
@@ -188,19 +197,20 @@ class TestScaleBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
     def init_dtype_type(self):
         self.dtype = np.float16
 
     def test_scale_selected_rows(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_with_place(place, 'in', 'out')
 
     def test_scale_selected_rows_inplace(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_with_place(place, 'in', 'in')
 
@@ -309,8 +319,8 @@ class TestScaleOpZeroNumelVariable(unittest.TestCase):
             out = paddle.scale(data, 2)
             self.assertEqual(out, data)
 
-            if paddle.is_compiled_with_cuda():
-                paddle.set_device('gpu')
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                paddle.set_device(get_device())
                 data = paddle.ones([0, 1])
                 out = paddle.scale(data, 2)
                 self.assertEqual(out, data)

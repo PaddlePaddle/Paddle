@@ -19,7 +19,7 @@ import unittest
 
 sys.path.append("../../legacy_test")
 import numpy as np
-from op_test import OpTest, get_device_place
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 import paddle.inference as paddle_infer
@@ -42,8 +42,8 @@ class TestBincountOpAPI(unittest.TestCase):
             )
             output = paddle.bincount(inputs, weights=weights)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
@@ -296,7 +296,7 @@ class TestTensorMinlength(unittest.TestCase):
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()

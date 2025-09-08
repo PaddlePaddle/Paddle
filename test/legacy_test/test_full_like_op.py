@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -58,8 +63,8 @@ class TestFullLikeOp(unittest.TestCase):
             output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
             place = paddle.CPUPlace()
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(startup_program)
 
@@ -211,7 +216,8 @@ class TestFullLikeOp3(TestFullLikeOp1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFullLikeOp4(unittest.TestCase):
     def test_skip_data_transform(self):
@@ -244,8 +250,8 @@ class TestFullLikeFP16Op(TestFullLikeOp1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFullLikeBF16Op(TestFullLikeOp1):
@@ -267,7 +273,8 @@ class TestFullKernelZeroSize(unittest.TestCase):
         paddle.enable_static()
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "Paddle is not compiled with CUDA",
     )
     def test_full_kernel_gpu_zero_size(self):
         paddle.disable_static()
@@ -292,12 +299,13 @@ class TestFullLikeKernelZeroSize(unittest.TestCase):
         paddle.enable_static()
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "Paddle is not compiled with CUDA",
     )
     def test_full_like_kernel_gpu_zero_size(self):
         paddle.disable_static()
         base_tensor = paddle.to_tensor(
-            np.empty((0, 3), dtype=np.float32), place=paddle.CUDAPlace(0)
+            np.empty((0, 3), dtype=np.float32), place=get_device_place()
         )
         value = 20.0
         result = paddle.full_like(base_tensor, value, dtype="float32")

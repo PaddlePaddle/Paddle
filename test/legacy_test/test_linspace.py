@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -86,8 +92,8 @@ class TestLinspaceOpNumOneCaseFP16(TestLinspaceOpNumOneCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     'not supported bf16',
 )
 class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
@@ -107,7 +113,7 @@ class TestLinspaceOpCommonCaseBF16(TestLinspaceOpCommonCaseFP16):
 
     def test_check_output(self):
         return self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
 
@@ -250,8 +256,8 @@ class TestLinspaceOpError(unittest.TestCase):
 class TestLinspaceOpEmptyTensor(unittest.TestCase):
     def _get_places(self):
         places = [base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _test_linspace_empty_static(self, place):

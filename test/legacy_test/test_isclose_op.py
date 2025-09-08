@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -204,7 +204,7 @@ class TestIscloseError(unittest.TestCase):
 
 class TestIscloseOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x_data = np.random.rand(10, 10).astype('float16')
             y_data = np.random.rand(10, 10).astype('float16')
             main = paddle.static.Program()
@@ -218,7 +218,7 @@ class TestIscloseOpFp16(unittest.TestCase):
                 )
                 out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
 
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -233,8 +233,8 @@ class TestIscloseOpFloat16(TestIscloseOp):
         self.equal_nan = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
@@ -274,8 +274,8 @@ class TestIscloseOpCp64(unittest.TestCase):
             x = paddle.static.data(shape=[10, 10], name='x', dtype=np.complex64)
             y = paddle.static.data(shape=[10, 10], name='y', dtype=np.complex64)
             out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])
@@ -299,8 +299,8 @@ class TestIscloseOpCp128(unittest.TestCase):
                 shape=[10, 10], name='y', dtype=np.complex128
             )
             out = paddle.isclose(x, y, rtol=1e-05, atol=1e-08)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(startup)
                 out = exe.run(feed={'x': x_data, 'y': y_data}, fetch_list=[out])

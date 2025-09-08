@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -46,7 +51,7 @@ class TestFlattenOp(OpTest):
     def test_check_output(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_output_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 no_check_set=["XShape"],
                 check_prim=True,
                 check_pir=True,
@@ -63,7 +68,7 @@ class TestFlattenOp(OpTest):
     def test_check_grad(self):
         if str(self.dtype) in {"float16", "uint16"}:
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ["X"],
                 "Out",
                 check_prim=True,
@@ -103,7 +108,7 @@ class TestFlattenFP32Op(TestFlattenOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op(TestFlattenOp):
@@ -112,8 +117,8 @@ class TestFlattenFP16Op(TestFlattenOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op(TestFlattenOp):
@@ -144,7 +149,7 @@ class TestFlattenFP32Op_1(TestFlattenOp_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_1(TestFlattenOp_1):
@@ -153,8 +158,8 @@ class TestFlattenFP16Op_1(TestFlattenOp_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_1(TestFlattenOp_1):
@@ -185,7 +190,7 @@ class TestFlattenFP32Op_2(TestFlattenOp_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_2(TestFlattenOp_2):
@@ -194,8 +199,8 @@ class TestFlattenFP16Op_2(TestFlattenOp_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_2(TestFlattenOp_2):
@@ -226,7 +231,7 @@ class TestFlattenFP32Op_3(TestFlattenOp_3):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_3(TestFlattenOp_3):
@@ -235,8 +240,8 @@ class TestFlattenFP16Op_3(TestFlattenOp_3):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_3(TestFlattenOp_3):
@@ -267,7 +272,7 @@ class TestFlattenFP32Op_4(TestFlattenOp_4):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_4(TestFlattenOp_4):
@@ -276,8 +281,8 @@ class TestFlattenFP16Op_4(TestFlattenOp_4):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_4(TestFlattenOp_4):
@@ -308,7 +313,7 @@ class TestFlattenFP32Op_5(TestFlattenOp_5):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_5(TestFlattenOp_5):
@@ -317,8 +322,8 @@ class TestFlattenFP16Op_5(TestFlattenOp_5):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16Op_5(TestFlattenOp_5):
@@ -352,7 +357,7 @@ class TestFlattenFP32Op_ZeroDim(TestFlattenOp_ZeroDim):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16Op_ZeroDim(TestFlattenOp_ZeroDim):
@@ -380,7 +385,7 @@ class TestFlattenFP32OpSixDims(TestFlattenOpSixDims):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestFlattenFP16OpSixDims(TestFlattenOpSixDims):
@@ -389,8 +394,8 @@ class TestFlattenFP16OpSixDims(TestFlattenOpSixDims):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestFlattenBF16OpSixDims(TestFlattenOpSixDims):

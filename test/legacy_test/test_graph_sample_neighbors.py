@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -79,7 +79,7 @@ class TestGraphSampleNeighbors(unittest.TestCase):
 
     def test_sample_result_fisher_yates_sampling(self):
         paddle.disable_static()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             row = paddle.to_tensor(self.row)
             colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)
@@ -318,7 +318,7 @@ class TestGeometricGraphSampleNeighbors(unittest.TestCase):
 
     def test_sample_result_fisher_yates_sampling(self):
         paddle.disable_static()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             row = paddle.to_tensor(self.row)
             colptr = paddle.to_tensor(self.colptr)
             nodes = paddle.to_tensor(self.nodes)

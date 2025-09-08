@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -128,8 +129,8 @@ def add_group_norm_silu_static_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestGroupNormNHWC_StaticOp(unittest.TestCase):
@@ -145,7 +146,7 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
         self.groups = 2
         self.data_layout = 'NHWC'
         self.activation = ''
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def check_residual_add_groupnorm(
         self, x_np, scale_np, bias_np, residual_np, activation, dtype
@@ -207,7 +208,7 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
         return (out_s[0], out_s[1]), navie_groupnorm_out, navie_residual_out
 
     def test_residual_add_groupnorm_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         self.dtype = np.float16
         (
@@ -237,8 +238,8 @@ class TestGroupNormNHWC_StaticOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestGroupNormNHWCSilu_StaticOp(TestGroupNormNHWC_StaticOp):
@@ -254,12 +255,12 @@ class TestGroupNormNHWCSilu_StaticOp(TestGroupNormNHWC_StaticOp):
         self.groups = 2
         self.data_layout = 'NHWC'
         self.activation = 'silu'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestGroupNormNHWC_StaticOp_1(TestGroupNormNHWC_StaticOp):
@@ -275,12 +276,12 @@ class TestGroupNormNHWC_StaticOp_1(TestGroupNormNHWC_StaticOp):
         self.groups = 2
         self.data_layout = 'NHWC'
         self.activation = 'silu'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestGroupNormNHWCSilu_StaticOp_1(TestGroupNormNHWC_StaticOp):
@@ -296,12 +297,12 @@ class TestGroupNormNHWCSilu_StaticOp_1(TestGroupNormNHWC_StaticOp):
         self.groups = 2
         self.data_layout = 'NHWC'
         self.activation = 'silu'
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestGroupNormNHWCSingleC_StaticOp(TestGroupNormNHWC_StaticOp):
@@ -317,7 +318,7 @@ class TestGroupNormNHWCSingleC_StaticOp(TestGroupNormNHWC_StaticOp):
         self.groups = 6
         self.data_layout = 'NHWC'
         self.activation = ''
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 if __name__ == "__main__":

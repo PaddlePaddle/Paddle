@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 from paddle.base import core
 
@@ -20,7 +21,8 @@ from paddle.base import core
 class TestOpSupportGPU(unittest.TestCase):
     def test_case(self):
         self.assertEqual(
-            core.is_compiled_with_cuda(), core.op_support_gpu("sum")
+            (core.is_compiled_with_cuda() or is_custom_device()),
+            core.op_support_gpu("sum"),
         )
 
 

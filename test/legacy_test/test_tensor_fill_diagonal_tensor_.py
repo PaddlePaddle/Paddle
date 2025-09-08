@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 
@@ -37,7 +37,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
@@ -69,7 +69,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((3,), dtype=dtype)
                 var = np.random.random() + 1
@@ -101,7 +101,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.ones((2,), dtype=dtype)
                 var = np.random.random() + 1
@@ -159,7 +159,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.to_tensor(
                     np.arange(12).reshape(2, 2, 3), dtype=dtype
@@ -186,7 +186,7 @@ class TensorFillDiagTensor_Test(unittest.TestCase):
         if len(self.places) > 1:
             bsdim = 1024
             fsdim = 128
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.arange(bsdim * fsdim, dtype=dtype).reshape(
                     (bsdim, fsdim)

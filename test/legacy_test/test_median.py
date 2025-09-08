@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -221,12 +221,12 @@ class TestMedianAvg(unittest.TestCase):
             self.dygraph_single_test_median_cpu(lis_test)
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_float16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support float16",
     )
     def test_float16(self):
-        paddle.disable_static(core.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         x = np.array(
             [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
         ).astype('float16')
@@ -346,12 +346,12 @@ class TestMedianMin(unittest.TestCase):
             self.dygraph_single_test_median(lis_test)
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_float16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support float16",
     )
     def test_float16(self):
-        paddle.disable_static(core.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         x = np.array(
             [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
         ).astype('float16')

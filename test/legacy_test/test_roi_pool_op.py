@@ -18,7 +18,7 @@ import unittest
 from decimal import ROUND_HALF_UP, Decimal
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -285,15 +285,15 @@ class TestROIPoolInLodOp_ZeroSize(TestROIPoolOp):
         self.check_output_with_place(
             core.CPUPlace(),
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
             )
 
     def test_check_grad(self):
         self.check_grad_with_place(core.CPUPlace(), ['X'], 'Out')
-        if paddle.is_compiled_with_cuda():
-            self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(get_device_place(), ['X'], 'Out')
 
 
 if __name__ == '__main__':

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import nn
@@ -46,7 +46,8 @@ class SimpleModel(nn.Layer):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or float(paddle.version.cuda()) < 11.0,
     "only support cuda >= 11.0",
 )
 class TestCudaGraphAttrAll(unittest.TestCase):
@@ -96,7 +97,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
                 run_program_op_num += 1
         assert run_program_op_num == 4
 
-        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        exe = paddle.static.Executor(get_device_place())
         exe.run(start_prog)
 
         for i in range(10):
@@ -114,7 +115,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         with paddle.static.program_guard(main_prog, start_prog):
             loss = self.get_model()
 
-        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        exe = paddle.static.Executor(get_device_place())
         exe.run(start_prog)
 
         for i in range(10):

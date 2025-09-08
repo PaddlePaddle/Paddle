@@ -797,7 +797,9 @@ class TestScatterAPI(unittest.TestCase):
                 )
 
     def test_large_data(self):
-        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+        if os.name == "nt" or not (
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ):
             return
 
         x = np.random.rand(183826, 256).astype("float32")

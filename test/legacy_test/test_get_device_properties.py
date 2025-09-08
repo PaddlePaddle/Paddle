@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 from paddle.base import core
 from paddle.device.cuda import device_count, get_device_properties
@@ -20,32 +21,32 @@ from paddle.device.cuda import device_count, get_device_properties
 
 class TestGetDeviceProperties(unittest.TestCase):
     def test_get_device_properties_default(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             props = get_device_properties()
             self.assertIsNotNone(props)
 
     def test_get_device_properties_str(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             props = get_device_properties('gpu:0')
             self.assertIsNotNone(props)
 
     def test_get_device_properties_int(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             gpu_num = device_count()
             for i in range(gpu_num):
                 props = get_device_properties(i)
                 self.assertIsNotNone(props)
 
-    def test_get_device_properties_CUDAPlace(self):
-        if core.is_compiled_with_cuda():
-            device = core.CUDAPlace(0)
+    def test_get_device_properties_device_place(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            device = get_device_place()
             props = get_device_properties(device)
             self.assertIsNotNone(props)
 
 
 class TestGetDevicePropertiesError(unittest.TestCase):
     def test_error_api(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
 
             def test_device_indexError_error():
                 device_error = device_count() + 1

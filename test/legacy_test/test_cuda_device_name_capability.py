@@ -11,44 +11,45 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
 
 class TestDeviceName(unittest.TestCase):
     def test_device_name_default(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             name = paddle.device.cuda.get_device_name()
             self.assertIsNotNone(name)
 
     def test_device_name_int(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             name = paddle.device.cuda.get_device_name(0)
             self.assertIsNotNone(name)
 
-    def test_device_name_CUDAPlace(self):
-        if paddle.is_compiled_with_cuda():
-            name = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
+    def test_device_name_device_place(self):
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            name = paddle.device.cuda.get_device_name(get_device_place())
             self.assertIsNotNone(name)
 
 
 class TestDeviceCapability(unittest.TestCase):
     def test_device_capability_default(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             capability = paddle.device.cuda.get_device_capability()
             self.assertIsNotNone(capability)
 
     def test_device_capability_int(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             capability = paddle.device.cuda.get_device_capability(0)
             self.assertIsNotNone(capability)
 
-    def test_device_capability_CUDAPlace(self):
-        if paddle.is_compiled_with_cuda():
+    def test_device_capability_device_place(self):
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             capability = paddle.device.cuda.get_device_capability(
-                paddle.CUDAPlace(0)
+                get_device_place()
             )
             self.assertIsNotNone(capability)
 

@@ -17,7 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -371,8 +377,8 @@ class TestExpandV2FP16Op(OpTest):
 
 #  Situation 8: input x is BF16
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestExpandV2BF16Op(OpTest):
@@ -389,11 +395,11 @@ class TestExpandV2BF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -723,16 +729,16 @@ class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
     def init_place(self):
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
@@ -743,7 +749,7 @@ class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestExpandV2ZeroSizeGPUOp2(TestExpandV2ZeroSizeGPUOp):

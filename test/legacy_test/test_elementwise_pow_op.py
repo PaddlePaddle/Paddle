@@ -18,7 +18,9 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
+    is_custom_device,
     skip_check_grad_ci,
 )
 
@@ -315,8 +317,8 @@ class TestElementwisePowComplexOp(OpTest):
 
     def _get_places(self):
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def test_check_output(self):
@@ -471,7 +473,8 @@ class TestElementwisePowOpFP16(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestElementwisePowBF16Op(OpTest):
@@ -496,9 +499,9 @@ class TestElementwisePowBF16Op(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out')
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ['X', 'Y'],
                 'Out',
                 check_prim=True,

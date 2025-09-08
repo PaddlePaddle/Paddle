@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -33,7 +33,7 @@ class TestException(unittest.TestCase):
         self.assertIsNotNone(exception)
 
     def test_gpu_success(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         try:

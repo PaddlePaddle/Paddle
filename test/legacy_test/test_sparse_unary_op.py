@@ -11,15 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.base.framework import convert_np_dtype_to_dtype_, in_pir_mode
 
-devices = ['cpu', 'gpu']
+devices = ['cpu', get_device()]
 
 
 class TestSparseUnary(unittest.TestCase):
@@ -108,7 +108,8 @@ class TestSparseUnary(unittest.TestCase):
         for device in devices:
             # The sparse unary op is only compatible with float16 on the CUDA.
             if (device == 'cpu' and dtype != 'float16') or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 self.check_result(dense_func, sparse_func, 'coo', device, dtype)
                 self.check_result(dense_func, sparse_func, 'csr', device, dtype)
@@ -116,7 +117,8 @@ class TestSparseUnary(unittest.TestCase):
     def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 self.check_result(
                     dense_func, sparse_func, 'coo', device, 'float32', attr1
@@ -130,7 +132,8 @@ class TestSparseUnary(unittest.TestCase):
     ):
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 self.check_result(
                     dense_func,
@@ -396,7 +399,8 @@ class TestSparseUnaryStatic(unittest.TestCase):
             for device in devices:
                 # The sparse unary op is only compatible with float16 on the CUDA.
                 if (device == 'cpu' and dtype != 'float16') or (
-                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                    device == get_device()
+                    and (paddle.is_compiled_with_cuda() or is_custom_device())
                 ):
                     self.check_result_coo(
                         dense_func, sparse_func, device, dtype
@@ -406,7 +410,8 @@ class TestSparseUnaryStatic(unittest.TestCase):
         if in_pir_mode():
             for device in devices:
                 if device == 'cpu' or (
-                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                    device == get_device()
+                    and (paddle.is_compiled_with_cuda() or is_custom_device())
                 ):
                     self.check_result_coo(
                         dense_func, sparse_func, device, 'float32', attr1
@@ -418,7 +423,8 @@ class TestSparseUnaryStatic(unittest.TestCase):
         if in_pir_mode():
             for device in devices:
                 if device == 'cpu' or (
-                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                    device == get_device()
+                    and (paddle.is_compiled_with_cuda() or is_custom_device())
                 ):
                     self.check_result_coo(
                         dense_func,

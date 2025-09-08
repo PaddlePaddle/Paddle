@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from scipy import special
 from utils import dygraph_guard, static_guard
 
@@ -867,7 +867,8 @@ class TestXavierInitializerPir(unittest.TestCase):
         return main, startup
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_xavier_initializer_fp16(self):
         """Test the Xavier initializer with float16"""
@@ -875,7 +876,7 @@ class TestXavierInitializerPir(unittest.TestCase):
             "float16"
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_1)
             exe.run(main_1)
 
@@ -883,13 +884,13 @@ class TestXavierInitializerPir(unittest.TestCase):
             "float16", uniform=False
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_2)
             exe.run(main_2)
 
     @unittest.skipIf(
-        not paddle.base.core.is_compiled_with_cuda()
-        or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+        not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+        or not paddle.base.core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     def test_xavier_initializer_bf16(self):
@@ -898,7 +899,7 @@ class TestXavierInitializerPir(unittest.TestCase):
             "uint16"
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_1)
             exe.run(main_1)
 
@@ -906,7 +907,7 @@ class TestXavierInitializerPir(unittest.TestCase):
             "uint16", False
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_2)
             exe.run(main_2)
 
@@ -1221,7 +1222,8 @@ class TestMSRAInitializerPir(unittest.TestCase):
         return main, startup
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_msra_initializer_fp16(self):
         """Test the MSRA initializer with float16"""
@@ -1229,7 +1231,7 @@ class TestMSRAInitializerPir(unittest.TestCase):
             "float16"
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_1)
             exe.run(main_1)
 
@@ -1237,13 +1239,13 @@ class TestMSRAInitializerPir(unittest.TestCase):
             "float16", uniform=False
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_2)
             exe.run(main_2)
 
     @unittest.skipIf(
-        not paddle.base.core.is_compiled_with_cuda()
-        or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+        not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+        or not paddle.base.core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     def test_msra_initializer_bf16(self):
@@ -1252,7 +1254,7 @@ class TestMSRAInitializerPir(unittest.TestCase):
             "uint16"
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_1)
             exe.run(main_1)
 
@@ -1260,7 +1262,7 @@ class TestMSRAInitializerPir(unittest.TestCase):
             "uint16", uniform=False
         )
         with paddle.pir_utils.IrGuard():
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             exe.run(startup_2)
             exe.run(main_2)
 

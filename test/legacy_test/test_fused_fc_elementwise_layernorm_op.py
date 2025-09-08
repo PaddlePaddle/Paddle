@@ -16,7 +16,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 sys.path.append("../deprecated/legacy_test")
 from test_fc_op import MatrixGenerate, fc_refer
@@ -28,7 +28,8 @@ np.random.random(123)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle core is not compiled with CUDA",
 )
 class TestFusedFCElementwiseLayerNormOp(OpTest):
     def config(self):
@@ -72,7 +73,7 @@ class TestFusedFCElementwiseLayerNormOp(OpTest):
         self.outputs = {"Out": out, "Mean": mean, "Variance": variance}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=2e-3, check_dygraph=False)
 
 

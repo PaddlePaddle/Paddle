@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_devices, get_places
+from op_test import get_devices, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -26,7 +26,7 @@ class TestIndexSelectStrided(unittest.TestCase):
         self.shape = [3, 3]
         self.typelist = ['float32', 'float64', 'int32', 'int64', 'float16']
         self.places = get_places()
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             self.places.append(base.CUDAPinnedPlace())
 
     def test_index_select_strided_forward(self):

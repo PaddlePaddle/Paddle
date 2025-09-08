@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 from numpy import linalg as LA
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 import paddle.distributed as dist
@@ -137,8 +137,8 @@ class TestL2LossDeterministic(unittest.TestCase):
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            self.check_place(paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_place(get_device_place())
 
 
 if __name__ == "__main__":

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import core
@@ -567,7 +567,7 @@ class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "CPU FP16 is not supported",
 )
 class TestPutAlongAxisFP16MulDuplicatedIndices(unittest.TestCase):
@@ -634,12 +634,12 @@ class TestPutAlongAxisIntegerMean(unittest.TestCase):
 
     def test_mean_int(self):
         # try testing with both CPU and GPU places
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self._make_static_mean_int(
-                self.gt_include_self, True, paddle.CUDAPlace(0)
+                self.gt_include_self, True, get_device_place()
             )
             self._make_static_mean_int(
-                self.gt_exclude_self, False, paddle.CUDAPlace(0)
+                self.gt_exclude_self, False, get_device_place()
             )
         self._make_static_mean_int(
             self.gt_include_self, True, paddle.CPUPlace()

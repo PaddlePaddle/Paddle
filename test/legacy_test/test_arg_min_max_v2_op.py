@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle.base import Program, core, program_guard
@@ -365,14 +365,14 @@ class TestArgMinMaxOpError(unittest.TestCase):
 
 class TestArgMaxOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x_np = np.random.random((10, 16)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     shape=[10, 16], name='x', dtype='float16'
                 )
                 out = paddle.argmax(x)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
@@ -380,14 +380,14 @@ class TestArgMaxOpFp16(unittest.TestCase):
 
 class TestArgMinOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x_np = np.random.random((10, 16)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     shape=[10, 16], name='x', dtype='float16'
                 )
                 out = paddle.argmin(x)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 
@@ -30,11 +30,11 @@ class TestTensorApplyAPI(unittest.TestCase):
             self.test_dygraph()
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
         "only support cuda",
     )
     def test_on_gpu(self):
-        self.x.to("gpu")
+        self.x.to(get_device())
         self.test_dygraph()
 
     def test_dygraph(self):

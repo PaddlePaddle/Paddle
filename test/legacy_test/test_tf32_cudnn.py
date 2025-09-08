@@ -11,15 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 from paddle.base import core
 
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.assertTrue(core.get_cudnn_switch())  # default
             core.set_cudnn_switch(0)
             self.assertFalse(core.get_cudnn_switch())  # turn off

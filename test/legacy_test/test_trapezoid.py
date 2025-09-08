@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 
@@ -232,8 +232,8 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
 
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -257,8 +257,8 @@ class Testfp16Trapezoid(TestTrapezoidAPI):
                 )
 
     def test_fp16_func_dygraph(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.disable_static()
             input_y = np.random.random([4, 4])
             y = paddle.to_tensor(input_y, dtype='float16', place=place)

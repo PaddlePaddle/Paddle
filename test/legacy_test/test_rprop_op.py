@@ -18,7 +18,9 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device,
     get_device_place,
+    is_custom_device,
 )
 from utils import dygraph_guard
 
@@ -194,7 +196,7 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
     def dygraph_rprop_mp(self, mp):
         paddle.disable_static()
         paddle.seed(10)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.Rprop(
@@ -277,7 +279,7 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
                 optimizer.minimize(loss)
                 if mp:
                     optimizer.amp_init(
-                        place=paddle.CUDAPlace(0),
+                        place=get_device_place(),
                         scope=paddle.static.global_scope(),
                     )
                     x = np.random.random(size=(2, 2)).astype('float16')
@@ -286,7 +288,7 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
 
         if mp:
             optimizer.amp_init(
-                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+                place=get_device_place(), scope=paddle.static.global_scope()
             )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
@@ -307,7 +309,7 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
         return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_rprop_mp(mp=True)
@@ -390,7 +392,7 @@ class TestRpropSimple(unittest.TestCase):
             return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         out1 = self.run_dygraph()
         out2 = self.run_static()

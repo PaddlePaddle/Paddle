@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import to_tensor
@@ -23,7 +23,7 @@ from paddle.nn import ZeroPad1D
 
 class TestZeroPad1dAPI(unittest.TestCase):
     def setUp(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             paddle.device.set_device('gpu:0')
         else:
             paddle.device.set_device('cpu')

@@ -1,3 +1,5 @@
+from op_test import get_device_place
+
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,7 +166,7 @@ class FleetDistRunnerBase:
             if device_env == 'cpu':
                 device = base.CPUPlace()
             elif device_env == 'gpu':
-                device = base.CUDAPlace(0)
+                device = get_device_place()
             self._exe = base.Executor(device)
         return self._exe
 

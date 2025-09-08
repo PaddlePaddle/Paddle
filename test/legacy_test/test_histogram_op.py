@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -32,8 +32,8 @@ class TestHistogramOpAPI(unittest.TestCase):
             )
             output = paddle.histogram(inputs, bins=5, min=1, max=5)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             img = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
             res = exe.run(feed={'input': img}, fetch_list=[output])
@@ -196,8 +196,8 @@ class TestHistogram(unittest.TestCase):
                     density=self.density,
                 )
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             if self.is_weight:
                 res = exe.run(

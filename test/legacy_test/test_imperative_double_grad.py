@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -749,8 +749,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -809,8 +809,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -866,8 +866,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -923,8 +923,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -980,8 +980,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1034,8 +1034,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1100,8 +1100,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if (paddle.is_compiled_with_cuda() or is_custom_device()):
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()
@@ -1162,8 +1162,8 @@ class TestDygraphDoubleGradMatmul(TestCase):
 
         expected_results = expected()
         places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            places.append("gpu")
+        if (paddle.is_compiled_with_cuda() or is_custom_device()):
+            places.append(get_device())
         for place in places:
             paddle.device.set_device(place)
             actual_results = actual()

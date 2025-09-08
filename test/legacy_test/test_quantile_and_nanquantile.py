@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 
@@ -375,8 +375,8 @@ class TestQuantileRuntime(unittest.TestCase):
         self.input_data = np.random.rand(4, 7)
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
-        if paddle.device.is_compiled_with_cuda():
-            self.devices.append('gpu')
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
 
     def test_dygraph(self):
         paddle.disable_static()

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_devices
+from op_test import get_device, get_devices
 
 import paddle
 from paddle import _C_ops
@@ -133,7 +133,11 @@ class TestMergedAdam(unittest.TestCase):
     def prepare_data(self, shapes, multi_precision, seed, place):
         np.random.seed(seed)
         mp_dtype = np.float32
-        dtype = np.float16 if multi_precision and place == 'gpu' else np.float32
+        dtype = (
+            np.float16
+            if multi_precision and place == get_device()
+            else np.float32
+        )
         params = self.gen_rand_data(shapes, dtype)
         grads = self.gen_rand_data(shapes, dtype)
         lrs = self.gen_rand_data([[1], [1], [1], [1]], mp_dtype)

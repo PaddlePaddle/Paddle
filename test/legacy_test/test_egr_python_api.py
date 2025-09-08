@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -301,8 +301,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         print("Test_constructor")
         paddle.set_device("cpu")
         place_list = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            place_list.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place_list.append(get_device_place())
 
         for p in place_list:
             self.constructor(p)
@@ -625,8 +625,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         print("Test_constructor_with_kwargs")
         paddle.set_device("cpu")
         place_list = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            place_list.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place_list.append(get_device_place())
 
         for p in place_list:
             self.constructor_with_kwargs(p)
@@ -662,8 +662,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(tensor2.place.is_cpu_place())
         tensor2.persistable = True
         tensor2.stop_gradient = False
-        if core.is_compiled_with_cuda():
-            tensor3 = tensor2._copy_to(core.CUDAPlace(0), True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            tensor3 = tensor2._copy_to(get_device_place(), True)
             np.testing.assert_array_equal(tensor3.numpy(), arr2)
             self.assertEqual(tensor3.persistable, True)
             self.assertEqual(tensor3.stop_gradient, True)
@@ -682,7 +682,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
             self.assertTrue(tensor5.place.is_cpu_place())
 
             tensor10 = paddle.to_tensor([1, 2, 3], place='gpu_pinned')
-            tensor11 = tensor10._copy_to(core.CUDAPlace(0), True)
+            tensor11 = tensor10._copy_to(get_device_place(), True)
             np.testing.assert_array_equal(tensor10.numpy(), tensor11.numpy())
         else:
             tensor3 = tensor2._copy_to(core.CPUPlace(), True)
@@ -707,8 +707,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         tensor2 = None
         tensor = paddle.to_tensor(arr, paddle.float32, core.CPUPlace())
         tensor3 = core.eager.Tensor(value=tensor, place=core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            tensor2 = paddle.to_tensor(arr2, paddle.float32, core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            tensor2 = paddle.to_tensor(arr2, paddle.float32, get_device_place())
         else:
             tensor2 = paddle.to_tensor(arr2, paddle.float32, core.CPUPlace())
         np.testing.assert_array_equal(tensor.numpy(), arr)
@@ -737,8 +737,8 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         tensor2 = None
         tensor = paddle.to_tensor(arr, paddle.float32, core.CPUPlace())
         tensor3 = core.eager.Tensor()
-        if core.is_compiled_with_cuda():
-            tensor2 = paddle.to_tensor(arr2, paddle.float32, core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            tensor2 = paddle.to_tensor(arr2, paddle.float32, get_device_place())
         else:
             tensor2 = paddle.to_tensor(arr2, paddle.float32, core.CPUPlace())
         np.testing.assert_array_equal(tensor.numpy(), arr)
@@ -779,7 +779,7 @@ class EagerVariablePropertiesAndMethodsTestCase(unittest.TestCase):
         self.assertTrue(in_dygraph_mode())
 
     def test_place_guard(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             paddle.set_device("gpu:0")
             with paddle.base.framework._dygraph_place_guard(core.CPUPlace()):
                 self.assertTrue(

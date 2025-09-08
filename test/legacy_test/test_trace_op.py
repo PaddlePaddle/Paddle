@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, tensor
@@ -119,8 +125,8 @@ class TestTraceFP16Op2(TestTraceOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestTraceBF16Op1(OpTest):
@@ -132,7 +138,7 @@ class TestTraceBF16Op1(OpTest):
 
         self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_pir=True)
@@ -156,8 +162,8 @@ class TestTraceBF16Op1(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestTraceBF16Op2(TestTraceBF16Op1):

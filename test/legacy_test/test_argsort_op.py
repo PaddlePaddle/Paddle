@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -83,8 +88,8 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -98,8 +103,8 @@ class TestArgsort(unittest.TestCase):
         self.data = np.random.rand(*self.input_shape)
 
     def test_api_static1(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -118,8 +123,8 @@ class TestArgsort(unittest.TestCase):
             self.assertEqual((result == np_result).all(), True)
 
     def test_api_static2(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -195,8 +200,8 @@ class TestStableArgsort(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def gpu_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -346,8 +351,8 @@ class TestArgsortImperative(unittest.TestCase):
     def setUp(self):
         self.init()
         self.input_data = np.random.rand(*self.input_shape)
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -398,8 +403,8 @@ class TestStableArgsortImperative(unittest.TestCase):
         self.place = core.CPUPlace()
 
     def gpu_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -482,8 +487,8 @@ class TestArgsortWithInputNaN(unittest.TestCase):
     def setUp(self):
         self.init()
         self.input_data = np.array([1.0, np.nan, 3.0, 2.0])
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -500,7 +505,7 @@ class TestArgsortWithInputNaN(unittest.TestCase):
 
 class TestArgsortOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             x_np = np.random.random((2, 8)).astype('float16')
             with paddle.static.program_guard(
@@ -508,7 +513,7 @@ class TestArgsortOpFp16(unittest.TestCase):
             ):
                 x = paddle.static.data(shape=[2, 8], name='x', dtype='float16')
                 out = paddle.argsort(x)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[out])
@@ -564,8 +569,8 @@ class TestArgsortFP16OpDescendingTrue(TestArgsortFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestArgsortBF16Op(OpTest):
@@ -600,11 +605,11 @@ class TestArgsortBF16Op(OpTest):
         self.descending = False
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -623,8 +628,8 @@ class TestArgsortBF16OpDescendingTrue(TestArgsortBF16Op):
 class TestArgsortCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.argsort
         self.init_data()
         self.init_case()

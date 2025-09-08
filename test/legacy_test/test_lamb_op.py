@@ -16,7 +16,13 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -229,8 +235,8 @@ class TestLambFP16Op1(TestLambOp1):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
@@ -241,8 +247,8 @@ class TestLambFP16Op2(TestLambOp2):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
@@ -253,8 +259,8 @@ class TestLambFP16Op3(TestLambOp3):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place)
 
@@ -271,8 +277,8 @@ class TestLambBF16Op1(TestLambOp1):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place)
 
@@ -283,8 +289,8 @@ class TestLambBF16Op2(TestLambOp2):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place)
 
@@ -295,8 +301,8 @@ class TestLambBF16Op3(TestLambOp3):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place)
 
@@ -325,8 +331,8 @@ class TestLambBF16OpMultipleSteps(TestLambOpMultipleSteps):
             }
 
             # Verify output for this step
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_bfloat16_supported(place):
                     self.check_output_with_place(place)
 

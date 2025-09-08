@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -153,14 +153,15 @@ class TestMaxoutFP16Case2(TestMaxOutOpFP16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMaxoutStaticAPIFP16(unittest.TestCase):
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
         self.groups = 2
         self.axis = 1
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):

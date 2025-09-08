@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, is_custom_device
 
 import paddle
 
@@ -56,7 +56,7 @@ class LayoutAutoTune(unittest.TestCase):
         self.use_autotune()
 
     def use_autotune(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             paddle.incubate.autotune.set_config(
                 config={"layout": {"enable": True}}
             )

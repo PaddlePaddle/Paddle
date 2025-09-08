@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -94,8 +100,8 @@ class TestWhereOpComplex128(TestWhereOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestWhereBF16OP(OpTest):
@@ -117,13 +123,13 @@ class TestWhereBF16OP(OpTest):
         }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_cinn=self.check_cinn, check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X', 'Y'],
@@ -202,10 +208,15 @@ class TestWhereAPI(unittest.TestCase):
                     result.stop_gradient = False
                     append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
-                        if use_cuda and (not base.core.is_compiled_with_cuda()):
+                        if use_cuda and (
+                            not (
+                                base.core.is_compiled_with_cuda()
+                                or is_custom_device()
+                            )
+                        ):
                             break
                         place = (
-                            base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                            get_device_place() if use_cuda else base.CPUPlace()
                         )
                         exe = base.Executor(place)
                         if paddle.framework.use_pir_api():
@@ -280,10 +291,15 @@ class TestWhereAPI(unittest.TestCase):
                     if y_stop_gradient is False:
                         fetch_list.append(y_grad)
                     for use_cuda in [False, True]:
-                        if use_cuda and (not base.core.is_compiled_with_cuda()):
+                        if use_cuda and (
+                            not (
+                                base.core.is_compiled_with_cuda()
+                                or is_custom_device()
+                            )
+                        ):
                             break
                         place = (
-                            base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                            get_device_place() if use_cuda else base.CPUPlace()
                         )
                         exe = base.Executor(place)
 
@@ -323,9 +339,13 @@ class TestWhereAPI(unittest.TestCase):
             )
             result = paddle.where((x > 1), x=x, y=y)
             for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
+                if use_cuda and (
+                    not (
+                        base.core.is_compiled_with_cuda() or is_custom_device()
+                    )
+                ):
                     return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = base.Executor(place)
                 out = exe.run(
                     paddle.static.default_main_program(),
@@ -348,9 +368,13 @@ class TestWhereAPI(unittest.TestCase):
             cond_data = np.array([False, False, True, True]).astype('bool')
             result = paddle.where(condition=cond, x=x_data, y=y_data)
             for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
+                if use_cuda and (
+                    not (
+                        base.core.is_compiled_with_cuda() or is_custom_device()
+                    )
+                ):
                     return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = base.Executor(place)
                 out = exe.run(
                     paddle.static.default_main_program(),
@@ -375,9 +399,13 @@ class TestWhereAPI(unittest.TestCase):
             y_data = np.random.random(size=y_shape).astype('float32')
             result = paddle.where(condition=cond, x=x, y=y)
             for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
+                if use_cuda and (
+                    not (
+                        base.core.is_compiled_with_cuda() or is_custom_device()
+                    )
+                ):
                     return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = base.Executor(place)
                 out = exe.run(
                     paddle.static.default_main_program(),
@@ -414,9 +442,13 @@ class TestWhereAPI(unittest.TestCase):
                 )
             result = paddle.where(condition=cond, x=x, y=y)
             for use_cuda in [False, True]:
-                if use_cuda and (not base.core.is_compiled_with_cuda()):
+                if use_cuda and (
+                    not (
+                        base.core.is_compiled_with_cuda() or is_custom_device()
+                    )
+                ):
                     return
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = base.Executor(place)
                 out = exe.run(
                     paddle.static.default_main_program(),
@@ -510,7 +542,7 @@ class TestWhereAPI(unittest.TestCase):
 
     @unittest.skipIf(
         not (
-            paddle.is_compiled_with_cuda()
+            (paddle.is_compiled_with_cuda() or is_custom_device())
             and paddle.base.core.supports_bfloat16()
         ),
         "bf16 is not supported in current device",
@@ -523,7 +555,7 @@ class TestWhereAPI(unittest.TestCase):
 
     @unittest.skipIf(
         not (
-            paddle.is_compiled_with_cuda()
+            (paddle.is_compiled_with_cuda() or is_custom_device())
             and paddle.base.core.supports_bfloat16()
         ),
         "bf16 is not supported in current device",
@@ -536,7 +568,7 @@ class TestWhereAPI(unittest.TestCase):
 
     @unittest.skipIf(
         not (
-            paddle.is_compiled_with_cuda()
+            (paddle.is_compiled_with_cuda() or is_custom_device())
             and paddle.base.core.supports_bfloat16()
         ),
         "bf16 is not supported in current device",

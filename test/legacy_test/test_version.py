@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 import paddle.version as base_version
@@ -49,7 +50,7 @@ class VersionTest(unittest.TestCase):
             self.assertEqual(base_version.rc, "0")
             self.assertEqual(base_version.full_version, "0.0.0")
 
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.assertTrue(isinstance(base_version.cuda(), str))
             self.assertTrue(isinstance(base_version.cuda_archs(), list))
         else:

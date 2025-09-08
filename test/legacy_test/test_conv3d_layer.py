@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -201,8 +201,8 @@ class Conv3DTestCase(unittest.TestCase):
         place = base.CPUPlace()
         self._test_pir_equivalence(place)
 
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self._test_pir_equivalence(place)
 
 

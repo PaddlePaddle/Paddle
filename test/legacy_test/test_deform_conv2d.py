@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.initializer as I
@@ -224,8 +224,8 @@ class TestDeformConv2D(TestCase):
         self.place = paddle.CPUPlace()
         self._test_identity()
 
-        if paddle.is_compiled_with_cuda():
-            self.place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
             self._test_identity()
 
 

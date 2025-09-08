@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 
@@ -36,7 +36,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((3, 3), dtype=dtype)
                 x.stop_gradient = False
@@ -69,7 +69,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((3, 3), dtype=dtype)
                 x.stop_gradient = False
@@ -99,7 +99,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((3, 3), dtype=dtype)
                 x.stop_gradient = True
@@ -138,7 +138,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((7, 3), dtype=dtype)
                 x.stop_gradient = False
@@ -187,7 +187,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((7, 3), dtype=dtype)
                 x.stop_gradient = False
@@ -228,7 +228,7 @@ class TensorFillDiagonal_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in typelist:
                 x = paddle.ones((3, 3, 3), dtype=dtype)
                 x.stop_gradient = False
@@ -258,7 +258,7 @@ class TensorFillDiagonal_ZeroSize(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
 
             x = paddle.ones(shape)
             x.stop_gradient = False

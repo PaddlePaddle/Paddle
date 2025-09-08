@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_imperative_base import new_program_scope
 from test_imperative_ptb_rnn import PtbModel
 
@@ -146,8 +146,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
 
             exe = base.Executor(
                 base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
+                if not (core.is_compiled_with_cuda() or is_custom_device())
+                else get_device_place()
             )
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             x = paddle.static.data(

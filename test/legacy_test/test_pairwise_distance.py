@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 
@@ -316,9 +316,9 @@ class TestPairwiseDistance(unittest.TestCase):
 
     def test_pairwise_distance_fp16(self):
         shape = [100, 100]
-        if not paddle.device.is_compiled_with_cuda():
+        if not (paddle.device.is_compiled_with_cuda() or is_custom_device()):
             return
-        place = paddle.CUDAPlace(0)
+        place = get_device_place()
         x_np = np.random.random(shape).astype('float16')
         y_np = np.random.random(shape).astype('float16')
         static_ret = test_static(place, x_np, y_np)

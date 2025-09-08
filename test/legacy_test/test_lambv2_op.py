@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -343,10 +343,10 @@ class TestLambOpMultiPrecision(unittest.TestCase):
 
     @switch_to_static_graph
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        place = paddle.CUDAPlace(0)
+        place = get_device_place()
         x_np = np.random.random(size=[5, 10]).astype('float32')
         weight_1, bias_1 = self.check_main(x_np, place, multi_precision=False)
         weight_2, bias_2 = self.check_main(x_np, place, multi_precision=True)

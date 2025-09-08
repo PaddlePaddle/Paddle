@@ -16,7 +16,13 @@ import platform
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -380,8 +386,8 @@ class TestLinearInterpOpFP16(TestLinearInterpOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestLinearInterpOpBF16(OpTest):
@@ -440,11 +446,11 @@ class TestLinearInterpOpBF16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(output_np)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -567,7 +573,8 @@ class TestLinearInterpOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):

@@ -16,7 +16,14 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -215,15 +222,15 @@ class TestElementwiseDivOp_ZeroSize3(TestElementwiseDivOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestElementwiseDivOpBF16(ElementwiseDivOp):
     def init_args(self):
         # In due to output data type inconsistency of bfloat16 paddle op, we disable the dygraph check.
         self.check_dygraph = False
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -464,7 +471,8 @@ class TestElementwiseDivOpInt(ElementwiseDivOp):
 
 def create_test_fp16_class(parent, max_relative_error=2e-3):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestElementwiseDivFP16Op(parent):
         def init_dtype(self):
@@ -752,8 +760,8 @@ class TestDivApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -787,8 +795,8 @@ class TestDivComplexDtype(unittest.TestCase):
     def test(self):
         with dygraph_guard():
             places = ['cpu']
-            if core.is_compiled_with_cuda():
-                places.append('gpu')
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device())
             shapes = [[], [1], [1, 1]]
             values = [
                 -paddle.inf,
@@ -841,7 +849,8 @@ class TestDivComplexDtype(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseDivOp_Stride(OpTest):
     no_need_check_grad = True
@@ -872,7 +881,7 @@ class TestElementwiseDivOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

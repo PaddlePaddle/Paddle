@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -24,7 +24,7 @@ paddle.seed(0)
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
         or paddle.get_cudnn_version() < 8906
     )
@@ -76,7 +76,7 @@ class TestFuseDotProductAttention(unittest.TestCase):
         self._pre_test_hook()
         self.hidden_dim = self.num_heads * self.head_size
         paddle.enable_static()
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self._create_input()
         self.init_weight = np.random.normal(
             loc=0.0, scale=0.01, size=(self.hidden_dim, self.hidden_dim)

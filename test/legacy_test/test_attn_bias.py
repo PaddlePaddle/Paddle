@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.incubate.nn.attn_bias import (
@@ -30,7 +30,9 @@ from paddle.incubate.nn.attn_bias import (
 
 def all_dtypes():
     dtypes = [paddle.float32, paddle.float64]
-    if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
+    if (
+        paddle.is_compiled_with_cuda() or is_custom_device()
+    ) and not paddle.is_compiled_with_rocm():
         dtypes.append(paddle.float16)
         prop = paddle.device.cuda.get_device_properties()
         if prop.major >= 8:

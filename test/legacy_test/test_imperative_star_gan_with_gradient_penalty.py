@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import _legacy_C_ops, base
 from paddle.tensor import random
 
-if base.is_compiled_with_cuda():
+if base.is_compiled_with_cuda() or is_custom_device():
     base.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
@@ -645,8 +645,8 @@ class TestStarGANWithGradientPenalty(unittest.TestCase):
     def func_main(self):
         self.place_test(base.CPUPlace())
 
-        if base.is_compiled_with_cuda():
-            self.place_test(base.CUDAPlace(0))
+        if base.is_compiled_with_cuda() or is_custom_device():
+            self.place_test(get_device_place())
 
     def place_test(self, place):
         cfg = Config(place, False)

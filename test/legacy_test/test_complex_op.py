@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import static
@@ -152,8 +152,8 @@ class TestComplexAPI(unittest.TestCase):
 class OutTest(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 

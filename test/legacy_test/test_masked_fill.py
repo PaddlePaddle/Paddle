@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import (
     convert_float_to_uint16,
+    get_device,
     get_device_place,
     get_places,
     is_custom_device,
@@ -150,7 +151,7 @@ class TestMaskedFillGrad(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             for dtype in self.typelist:
                 v = paddle.to_tensor(np.array(1).astype(self.dtype))
                 x = paddle.ones((4, 3), dtype=self.dtype)

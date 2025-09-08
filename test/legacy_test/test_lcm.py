@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -28,8 +28,8 @@ class TestLcmAPI(unittest.TestCase):
         self.y_shape = []
 
     def test_static_graph(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with paddle.static.program_guard(

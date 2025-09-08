@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 from paddle.base import core
@@ -67,7 +67,7 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 )
 class TestFusedMatmulBias(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
     def rand_data(self, shape, dtype):
         return np.random.randint(low=-20, high=20, size=shape).astype(dtype)

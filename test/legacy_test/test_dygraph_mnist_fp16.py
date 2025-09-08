@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -120,11 +120,11 @@ class MNIST(paddle.nn.Layer):
 
 class TestMnist(unittest.TestCase):
     def func_mnist_fp16(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         x = np.random.randn(1, 3, 224, 224).astype("float32")
         y = np.random.randint(10, size=[1, 1], dtype="int64")
-        with base.dygraph.guard(base.CUDAPlace(0)):
+        with base.dygraph.guard(get_device_place()):
             model = MNIST(dtype="float32")
             x = paddle.to_tensor(x)
             y = paddle.to_tensor(y)

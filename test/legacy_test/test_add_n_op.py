@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 
@@ -45,7 +46,7 @@ class TestAddnOp(unittest.TestCase):
         return y_np, x_g_np
 
     def test_add_n_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         y_np_16, x_g_np_16 = self.check_main(self.x_np, 'float16')
         y_np_32, x_g_np_32 = self.check_main(self.x_np, 'float32')
@@ -55,7 +56,7 @@ class TestAddnOp(unittest.TestCase):
             np.testing.assert_allclose(x_g_np_16[i], x_g_np_32[i], rtol=1e-03)
 
     def test_add_n_fp16_mixed_dtype(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         y_np_16, x_g_np_16 = self.check_main(
             self.x_np, 'float16', mixed_dtype=True
@@ -67,7 +68,7 @@ class TestAddnOp(unittest.TestCase):
             np.testing.assert_allclose(x_g_np_16[i], x_g_np_32[i], rtol=1e-03)
 
     def test_add_n_api(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         dtypes = ['float32', 'complex64', 'complex128']
         for dtype in dtypes:
@@ -109,7 +110,7 @@ class TestAddnOp_ZeroSize(unittest.TestCase):
         return y_np, x_g_np
 
     def test_add_n_zerosize(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         y_np_32, x_g_np_32 = self.check_main(self.x_np, 'float32')
 

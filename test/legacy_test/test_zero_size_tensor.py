@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # Note:
 # 0-Size Tensor indicates that the tensor's shape contains 0
 # 0-Size Tensor's shape can be [2, 0, 3], [0, 2]...etc, numel is 0
 # which can be created by paddle.rand([2, 0, 3])
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -82,8 +81,8 @@ class TestSundryAPI(unittest.TestCase):
     def test_reshape_static(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
 
         input_cases = [
             # (x, new_shape, desired_shape)

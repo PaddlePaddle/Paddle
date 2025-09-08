@@ -17,7 +17,9 @@ import unittest
 import numpy as np
 from op_test import (
     OpTest,
+    get_device_place,
     get_places,
+    is_custom_device,
     paddle_static_guard,
     randomize_probability,
 )
@@ -385,19 +387,20 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
 # Add Fp16 test
 def create_test_class(parent, cls_name):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestCrossEntropyFP16Op(parent):
         def init_dtype_type(self):
             return np.float16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=2e-1)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['X'], 'Y', max_relative_error=0.9

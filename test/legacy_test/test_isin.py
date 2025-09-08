@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -81,8 +81,8 @@ def run_dygraph(
     use_gpu=False,
 ):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x_data = x_data.astype(type)
     test_x_data = test_x_data.astype(type)
@@ -103,8 +103,8 @@ def run_static(
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = base.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x_data = x_data.astype(type)
@@ -166,8 +166,8 @@ def run_dygraph_bf16(
     use_gpu=False,
 ):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x_e = paddle.to_tensor(convert_float_to_uint16(x_data))
     x_t = paddle.to_tensor(convert_float_to_uint16(test_x_data))
@@ -185,8 +185,8 @@ def run_static_bf16(
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = base.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x_data = convert_float_to_uint16(x_data)
@@ -276,8 +276,8 @@ class TestIsIn(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestIsInFP16(unittest.TestCase):
@@ -301,8 +301,8 @@ class TestIsInFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestIsInBF16(unittest.TestCase):

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -73,7 +73,7 @@ class LinearTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(res_nn, res_np)
 
     def test_weight_init(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.seed(100)
         linear = paddle.nn.Linear(

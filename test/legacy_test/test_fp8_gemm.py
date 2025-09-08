@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 from paddle.incubate.nn.functional import fp8
@@ -24,7 +25,7 @@ class TestFP8GemmBlockwise(unittest.TestCase):
     def setUp(self):
         """Set up test environment"""
         # Skip tests if FP8 is not supported
-        if not paddle.device.is_compiled_with_cuda():
+        if not (paddle.device.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest("CUDA is required for FP8 operations")
 
     def cal_rmse(self, y_pred, y_true):

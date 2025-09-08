@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -56,8 +61,8 @@ class TestLogspaceFP16Op(TestLogspaceOpCommonCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestLogspaceBF16Op(OpTest):
@@ -84,7 +89,7 @@ class TestLogspaceBF16Op(OpTest):
         self.inputs["Stop"] = convert_float_to_uint16(self.inputs["Stop"])
         self.inputs["Base"] = convert_float_to_uint16(self.inputs["Base"])
         self.outputs["Out"] = convert_float_to_uint16(self.outputs["Out"])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(

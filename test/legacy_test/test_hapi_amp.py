@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+
+from op_test import get_device, is_custom_device
 
 os.environ['FLAGS_cudnn_deterministic'] = '1'
 
@@ -31,7 +32,8 @@ from paddle.vision.models import LeNet
 
 
 @unittest.skipIf(
-    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not (base.is_compiled_with_cuda() or is_custom_device()),
+    'CPU testing is not supported',
 )
 class TestHapiWithAmp(unittest.TestCase):
     def get_model(self, amp_config):
@@ -64,7 +66,7 @@ class TestHapiWithAmp(unittest.TestCase):
 
             paddle.seed(2021)
             (paddle.enable_static() if not dynamic else paddle.disable_static())
-            paddle.set_device('gpu')
+            paddle.set_device(get_device())
             model = self.get_model(amp_level)
             self.run_model(model)
 
@@ -87,7 +89,7 @@ class TestHapiWithAmp(unittest.TestCase):
 
     def test_save_load(self):
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         amp_level = {"level": "O1", "init_loss_scaling": 128}
         paddle.seed(2021)
         model = self.get_model(amp_level)
@@ -143,9 +145,9 @@ class TestHapiWithAmp(unittest.TestCase):
             {"level": "O1", "use_fp16_guard": True},
             "O3",
         ]
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest('module not tested when ONLY_CPU compiling')
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         net = LeNet()
         model = Model(net)
         optim = paddle.optimizer.Adam(
@@ -170,9 +172,9 @@ class TestHapiWithAmp(unittest.TestCase):
     def test_static_check_input(self):
         paddle.enable_static()
         amp_configs = {"level": "O2", "use_pure_fp16": True}
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest('module not tested when ONLY_CPU compiling')
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
         net = LeNet()
         inputs = InputSpec([None, 1, 28, 28], "float32", 'x')

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -91,7 +91,7 @@ class TestGraphKhopSampler(unittest.TestCase):
 
     def test_uva_sample_result(self):
         paddle.disable_static()
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             row = None
             if base.framework.in_dygraph_mode():
                 row = paddle.base.core.eager.to_uva_tensor(

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.framework import core
@@ -30,7 +30,8 @@ def api_wrapper(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedTokenPruneOp(OpTest):
     def setDtype(self):
@@ -82,11 +83,12 @@ class TestFusedTokenPruneOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedTokenPruneOpFloat64(TestFusedTokenPruneOp):
     def setDtype(self):
@@ -94,7 +96,8 @@ class TestFusedTokenPruneOpFloat64(TestFusedTokenPruneOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedTokenPruneOp2(TestFusedTokenPruneOp):
     def setInOuts(self):

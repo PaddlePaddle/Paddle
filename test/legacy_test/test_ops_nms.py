@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import sys
 import tempfile
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 sys.path.append("../../legacy_test")
 from test_nms_op import nms
@@ -85,8 +85,8 @@ class TestOpsNMS(unittest.TestCase):
         self.topk = 20
         self.dtypes = ['float32']
         self.devices = ['cpu']
-        if paddle.is_compiled_with_cuda():
-            self.devices.append('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.devices.append(get_device())
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, './net')
 
@@ -172,7 +172,7 @@ class TestOpsNMS(unittest.TestCase):
                     )
                     place = paddle.CPUPlace()
                     if device == 'gpu':
-                        place = paddle.CUDAPlace(0)
+                        place = get_device_place()
                     exe = paddle.static.Executor(place)
                     out = exe.run(
                         paddle.static.default_main_program(),

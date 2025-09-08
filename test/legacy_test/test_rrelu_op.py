@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -425,8 +430,8 @@ class RReluTestFP16OP(RReluTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class RReluTestBF16OP(RReluTest):
@@ -442,13 +447,13 @@ class RReluTestBF16OP(RReluTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, no_check_set=['Noise'], check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
@@ -458,8 +463,8 @@ class RReluTrainingTestFP16OP(RReluTrainingTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class RReluTrainingTestBF16OP(RReluTrainingTest):
@@ -475,13 +480,13 @@ class RReluTrainingTestBF16OP(RReluTrainingTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, no_check_set=['Noise'], check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 

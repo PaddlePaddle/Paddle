@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_class, is_custom_device
 
 import paddle
 from paddle import base
@@ -39,8 +40,8 @@ class TestStaticDeviceManage(unittest.TestCase):
         self._test_device("cpu", core.CPUPlace)
 
     def test_gpu_device(self):
-        if core.is_compiled_with_cuda():
-            self._test_device("gpu:0", core.CUDAPlace)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._test_device("gpu:0", get_device_class())
 
     def test_xpu_device(self):
         if core.is_compiled_with_xpu():
@@ -62,7 +63,7 @@ class TestImperativeDeviceManage(unittest.TestCase):
             self.assertEqual(device, "cpu")
 
     def test_gpu(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with base.dygraph.guard():
                 paddle.set_device('gpu:0')
                 out1 = paddle.zeros(shape=[1, 3], dtype='float32')
@@ -71,7 +72,7 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 device = paddle.get_device()
                 self.assertEqual(
                     isinstance(
-                        framework._current_expected_place(), core.CUDAPlace
+                        framework._current_expected_place(), get_device_class()
                     ),
                     True,
                 )

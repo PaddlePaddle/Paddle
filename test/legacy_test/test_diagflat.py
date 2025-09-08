@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.static import Program
@@ -64,7 +64,7 @@ class TestDiagFlatAPI(unittest.TestCase):
             result0 = paddle.diagflat(x)
             result3 = paddle.diagflat(x2)
 
-            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
+            place = get_device_place() if use_gpu else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             exe.run(startup)
             res0, res3 = exe.run(
@@ -85,10 +85,10 @@ class TestDiagFlatAPI(unittest.TestCase):
             self.run_static()
 
     def test_gpu(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
@@ -96,8 +96,8 @@ class TestDiagFlatAPI(unittest.TestCase):
             self.run_static(use_gpu=True)
 
     def test_fp16_with_gpu(self, use_gpu=False):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

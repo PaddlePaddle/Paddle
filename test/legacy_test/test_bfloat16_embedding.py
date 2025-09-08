@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
@@ -59,7 +59,10 @@ class BF16EmbeddingTest(unittest.TestCase):
         return ids, weight, dout
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000:
+        if (
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
+            or get_cuda_version() < 11000
+        ):
             return
 
         ret1 = self.run_main('float32')

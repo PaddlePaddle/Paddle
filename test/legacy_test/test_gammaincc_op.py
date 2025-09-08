@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from scipy import special
 from utils import static_guard
 
@@ -64,8 +64,8 @@ class TestGammainccOpApi(unittest.TestCase):
         self.x_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.y_np = np.random.random(self.shape).astype(self.dtype) + 1
         self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 

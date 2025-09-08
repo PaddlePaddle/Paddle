@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
@@ -50,7 +50,7 @@ class TestSiluOpClass(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = silu(x)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         with dg.guard(place) as g:
             x_var = paddle.to_tensor(x)
             y_var1 = F.silu(x_var)
@@ -64,11 +64,11 @@ class TestSiluOpClass(unittest.TestCase):
 
     def test_cases(self):
         self._test_case1_cpu()
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             self._test_case1_gpu()
 
     def test_fast_math(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         def use_fast_math(enabled):
@@ -154,7 +154,7 @@ class TestSiluOpClass_ZeroSize(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(0, 17)).astype(np.float32)
         y_ref = silu(x)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         with dg.guard(place) as g:
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
@@ -182,7 +182,7 @@ class TestSiluOpClass_ZeroSize(unittest.TestCase):
 
     def test_cases(self):
         self._test_case1_cpu()
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             self._test_case1_gpu()
 
 
@@ -217,7 +217,7 @@ class TestSiluOpClass_Inplace(unittest.TestCase):
         x = np.random.uniform(-1, 1, size=(15, 17)).astype(np.float32)
         y_ref = silu(x)
 
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         with dg.guard(place) as g:
             x_var1 = paddle.to_tensor(x)
             x_var2 = paddle.to_tensor(x)
@@ -241,7 +241,7 @@ class TestSiluOpClass_Inplace(unittest.TestCase):
 
     def test_cases(self):
         self._test_case1_cpu()
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             self._test_case1_gpu()
 
 

@@ -16,7 +16,12 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, get_devices, get_places
+from op_test import (
+    OpTest,
+    get_device,
+    get_devices,
+    get_places,
+)
 
 import paddle
 from paddle import base
@@ -1217,11 +1222,11 @@ class TestMultiTensorAdam(unittest.TestCase):
             )
 
         for idx in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 
@@ -37,7 +37,7 @@ class Corr_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
 
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)
@@ -60,7 +60,7 @@ class Corr_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
 
             for dtype in typelist:
                 np_arr = np.random.rand(*self.shape).astype(dtype)

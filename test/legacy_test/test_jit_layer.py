@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import sys
 import tempfile
@@ -19,6 +18,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base.framework import _dygraph_place_guard
@@ -80,8 +80,8 @@ class TestMultiLoad(unittest.TestCase):
         model_path = os.path.join(self.temp_dir.name, 'multi_program')
         paddle.jit.save(model, model_path, combine_params=True)
         place = paddle.CPUPlace()
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         jit_layer = Layer()
         jit_layer.load(model_path, place)
         forward_out2 = jit_layer.forward(x)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle import base, incubate
@@ -38,7 +38,8 @@ def _get_softmax_upper(x, fp16=True):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
@@ -51,17 +52,18 @@ class TestSoftmaxMaskFuseOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+            get_device_place(), ["X"], "Out", check_pir=True
         )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp_ZeroSize(TestSoftmaxMaskFuseOp):
     def setUp(self):
@@ -74,7 +76,8 @@ class TestSoftmaxMaskFuseOp_ZeroSize(TestSoftmaxMaskFuseOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxMaskFuseOp1(OpTest):
     def setUp(self):
@@ -103,7 +106,8 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
@@ -124,7 +128,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
 
-                exe = base.Executor(base.CUDAPlace(0))
+                exe = base.Executor(get_device_place())
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={"x": x_in_np},
@@ -134,7 +138,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
     def test_dygraph(self):
         for dtype in self.dtypes:
-            with base.dygraph.guard(base.CUDAPlace(0)):
+            with base.dygraph.guard(get_device_place()):
                 x_in_np = np.random.random((1, 4, 32, 32)).astype(dtype)
                 rst_np = _get_softmax_upper(x_in_np, dtype == 'float16')
                 input_x = paddle.to_tensor(x_in_np)

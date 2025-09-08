@@ -126,7 +126,7 @@ class TestCastOpFp32ToFp16(OpTest):
 
 @unittest.skipIf(
     not (
-        paddle.is_compiled_with_cuda()
+        (paddle.is_compiled_with_cuda() or is_custom_device())
         or is_custom_device()
         or paddle.is_compiled_with_rocm()
     ),
@@ -165,7 +165,7 @@ class TestCastOpBf16ToFp32(OpTest):
 
 @unittest.skipIf(
     not (
-        paddle.is_compiled_with_cuda()
+        (paddle.is_compiled_with_cuda() or is_custom_device())
         or is_custom_device()
         or paddle.is_compiled_with_rocm()
     ),

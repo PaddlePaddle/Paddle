@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -30,9 +30,9 @@ def convert_place_to_device(place):
 
 def devices_and_type():
     devices = {paddle.CPUPlace(): 0, "cpu": 0}
-    if paddle.device.is_compiled_with_cuda():
+    if paddle.device.is_compiled_with_cuda() or is_custom_device():
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
-        devices[paddle.CUDAPlace(0)] = 1
+        devices[get_device_place()] = 1
         devices['gpu:0'] = 1
     if paddle.device.is_compiled_with_xpu():
         devices[paddle.device.XPUPlace(0)] = 3

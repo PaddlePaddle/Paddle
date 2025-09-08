@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 
@@ -20,9 +21,8 @@ import paddle
 class TestCudaCompat(unittest.TestCase):
     def test_paddle_stream(self):
         if (
-            paddle.is_compiled_with_cuda()
-            and paddle.device.cuda.device_count() >= 1
-        ):
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.device.cuda.device_count() >= 1:
             s = paddle.Stream()
             self.assertIsNotNone(s)
             # Call member functions

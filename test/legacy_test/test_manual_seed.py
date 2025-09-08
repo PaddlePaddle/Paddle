@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -39,7 +39,7 @@ class TestManualSeed(unittest.TestCase):
         x3_np = x3.numpy()
 
         if (
-            not base.core.is_compiled_with_cuda()
+            not (base.core.is_compiled_with_cuda() or is_custom_device())
             and not base.core.is_compiled_with_xpu()
         ):
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)

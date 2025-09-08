@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -120,8 +120,8 @@ class TestSoftmaxWithXe(unittest.TestCase):
 
     def test_main(self):
         self.main_with_place(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            self.main_with_place(base.CUDAPlace(0))
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            self.main_with_place(get_device_place())
 
 
 class TestSoftmaxWithXe1(TestSoftmaxWithXe):

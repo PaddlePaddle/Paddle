@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import inspect
 import unittest
 import warnings
 
 import numpy as np
+from op_test import get_device, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -583,8 +583,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
             x.cpu()
 
     def test_cuda(self):
-        if base.is_compiled_with_cuda():
-            paddle.device.set_device("gpu")
+        if base.is_compiled_with_cuda() or is_custom_device():
+            paddle.device.set_device(get_device())
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 with paddle.pir_utils.IrGuard():

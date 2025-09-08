@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -94,8 +94,8 @@ class TestPyReaderCombination(unittest.TestCase):
             self._reset_iterable_reader(py_reader2)
 
     def get_places(self):
-        if base.is_compiled_with_cuda():
-            return [base.CUDAPlace(0), base.CPUPlace()]
+        if base.is_compiled_with_cuda() or is_custom_device():
+            return [get_device_place(), base.CPUPlace()]
         else:
             return [base.CPUPlace()]
 

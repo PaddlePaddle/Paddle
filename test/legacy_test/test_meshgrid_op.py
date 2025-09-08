@@ -496,8 +496,8 @@ class TestMeshgridEager(unittest.TestCase):
 class TestMeshgridEmptyTensor(unittest.TestCase):
     def _get_places(self):
         places = [base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _generate_inputs(self, shapes):

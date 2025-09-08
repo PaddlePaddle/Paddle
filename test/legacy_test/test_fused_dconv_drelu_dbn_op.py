@@ -16,7 +16,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import nn
@@ -26,7 +31,7 @@ from paddle.base.executor import Executor
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
 
@@ -97,7 +102,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.bn2_running_var_input = self.bn2._variance.numpy()
 
     def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        return core.is_compiled_with_cuda() or is_custom_device()
 
     def get_feed_map(self, inputs, place):
         feed_map = {}
@@ -382,7 +387,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
 
     def test_check_output(self):
         if self.has_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             outputs_expected = self.calc_normal_pass()
             outputs_actual, _ = self.calc_fused_pass(place)
 

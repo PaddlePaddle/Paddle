@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -101,7 +102,8 @@ def naive_residual_biasadd_rms_norm_int8(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCM",
 )
 class TestRMSNormOp(unittest.TestCase):
@@ -232,7 +234,7 @@ class TestRMSNormOp(unittest.TestCase):
 
     def test_rmsnorm_fp16(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -249,7 +251,7 @@ class TestRMSNormOp(unittest.TestCase):
 
     def test_rmsnorm_int8(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -265,7 +267,7 @@ class TestRMSNormOp(unittest.TestCase):
 
     def test_residual_bias_add_rmsnorm_fp16(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -287,7 +289,7 @@ class TestRMSNormOp(unittest.TestCase):
 
     def test_residual_bias_add_rmsnorm_int8(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -327,9 +329,9 @@ class TestRMSNormOp(unittest.TestCase):
             return out, (x.grad, scale.grad)
 
         dtypes = [paddle.float32]
-        if paddle.amp.is_bfloat16_supported('gpu'):
+        if paddle.amp.is_bfloat16_supported(get_device()):
             dtypes.append(paddle.bfloat16)
-        if paddle.amp.is_float16_supported('gpu'):
+        if paddle.amp.is_float16_supported(get_device()):
             dtypes.append(paddle.float16)
         for dtype in dtypes:
             raw_out, raw_grads = get_forward_backward(
@@ -363,7 +365,8 @@ class TestRMSNormOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCM",
 )
 class TestRMSNormStaticOp(unittest.TestCase):
@@ -381,7 +384,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
         self.quant_round_type = 1
         self.quant_max_bound = 127
         self.quant_min_bound = -127
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def check_rmsnorm(self, x_np, gamma_np, beta_np, dtype):
         paddle.disable_static()
@@ -528,7 +531,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     def test_rmsnorm_fp16(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -545,7 +548,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     def test_residual_bias_add_rmsnorm_fp16(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -567,7 +570,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
 
     def test_rmsnorm_int8(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -801,7 +804,7 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
 
     def test_rmsnorm(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -818,7 +821,7 @@ class TestRMSNormStaticOpCPU(unittest.TestCase):
 
     def test_residual_bias_add_rmsnorm(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -900,7 +903,8 @@ class TestRMSNormAxisEquivalence(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not paddle.is_compiled_with_rocm(),
     "core is not compiled with CUDA or ROCM",
 )
 class TestRMSNormOp_ZeroSize(unittest.TestCase):
@@ -936,7 +940,7 @@ class TestRMSNormOp_ZeroSize(unittest.TestCase):
 
     def test_rmsnorm_fp16(self):
         if (
-            not paddle.is_compiled_with_cuda()
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
             and not paddle.is_compiled_with_rocm()
         ):
             return
@@ -969,7 +973,7 @@ class TestRMSNormOp_ZeroSize(unittest.TestCase):
             return out, (x.grad, scale.grad)
 
         dtypes = [paddle.float32]
-        if paddle.amp.is_float16_supported('gpu'):
+        if paddle.amp.is_float16_supported(get_device()):
             dtypes.append(paddle.float16)
         for dtype in dtypes:
             raw_out, raw_grads = get_forward_backward(

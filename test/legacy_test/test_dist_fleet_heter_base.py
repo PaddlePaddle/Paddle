@@ -1,3 +1,5 @@
+from op_test import get_device
+
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -139,7 +141,7 @@ class FleetDistHeterRunnerBase:
         self.strategy.a_sync = True
         self.strategy.a_sync_configs = {
             "launch_barrier": True,
-            "heter_worker_device_guard": 'gpu',
+            "heter_worker_device_guard": get_device(),
         }
         self.strategy.pipeline = True
         self.strategy.pipeline_configs = {
@@ -457,7 +459,7 @@ def runtime_main(test_class):
         '--heter_trainer_endpoints', type=str, required=False, default=""
     )
     parser.add_argument(
-        '--heter_trainer_device', type=str, required=False, default="gpu"
+        '--heter_trainer_device', type=str, required=False, default=get_device()
     )
     parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)

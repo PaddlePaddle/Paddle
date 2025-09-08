@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -133,7 +133,8 @@ class TestBitwiseAndBool(TestBitwiseAnd):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseBitwiseAndOp_Stride(OpTest):
     no_need_check_grad = True
@@ -164,7 +165,7 @@ class TestElementwiseBitwiseAndOp_Stride(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output_with_place(
             place,
@@ -398,7 +399,8 @@ class TestBitwiseOrBool(TestBitwiseOr):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseBitwiseOrOp_Stride(OpTest):
     no_need_check_grad = True
@@ -429,7 +431,7 @@ class TestElementwiseBitwiseOrOp_Stride(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output_with_place(
             place,
@@ -664,7 +666,8 @@ class TestBitwiseXorBool(TestBitwiseXor):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseBitwiseXorOp_Stride(OpTest):
     no_need_check_grad = True
@@ -695,7 +698,7 @@ class TestElementwiseBitwiseXorOp_Stride(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output_with_place(
             place,

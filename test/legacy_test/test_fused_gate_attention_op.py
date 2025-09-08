@@ -24,6 +24,7 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     is_custom_device,
 )
 from test_sparse_attention_op import get_cuda_version
@@ -121,7 +122,7 @@ class TestFusedGateAttentionOp(OpTest):
         return outputs
 
     def get_reference_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
         key = (
@@ -236,7 +237,7 @@ class TestFusedGateAttentionOp(OpTest):
         )
 
     def get_fused_gate_attention_out(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
 
         query = paddle.to_tensor(self.query, stop_gradient=False)
         if self.merge_qkv:
@@ -397,7 +398,7 @@ class TestMergeQKVFp16Case(TestFusedGateAttentionOp):
         self.dtype = "float16"
 
     def test_output_and_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_and_grad(atol=1e-1, rtol=1e-5)
 

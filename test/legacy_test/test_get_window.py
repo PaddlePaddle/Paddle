@@ -14,6 +14,7 @@
 import itertools
 import unittest
 
+from op_test import get_device_place, is_custom_device
 from parameterized import parameterized
 from scipy import signal
 
@@ -29,8 +30,8 @@ def parameterize(*params):
 class TestAudioFunctions(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 

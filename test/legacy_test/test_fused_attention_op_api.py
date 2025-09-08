@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle.incubate.nn.layer.fused_transformer import FusedMultiHeadAttention
@@ -384,7 +384,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         else:
             final_out = fused_attn(x, x, x)
 
-        place = paddle.CUDAPlace(0)
+        place = get_device_place()
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
 
@@ -586,7 +586,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
         np.testing.assert_allclose(ref_out, out, rtol=self.rtol, atol=self.atol)
 
     def test_dynamic_api(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
 
 

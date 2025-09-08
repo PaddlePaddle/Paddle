@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -74,12 +74,12 @@ def attention_naive_with_bool_mask(q, k, v, bool_mask):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
     "CUDA is not available, this test requires GPU support.",
 )
 class TestAttentionWithBoolMask(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (1, 1, 8, 8)
         self.dtype = 'float32'
         self.dropout = 0.0
@@ -222,7 +222,7 @@ class TestAttentionWith3DInput(unittest.TestCase):
 
 class TestAttentionWithBoolMaskZeroSize(TestAttentionWithBoolMask):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (0, 1, 8, 8)
         self.dtype = 'float32'
         self.dropout = 0.0

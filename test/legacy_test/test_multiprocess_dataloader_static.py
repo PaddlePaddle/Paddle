@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import time
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -99,7 +99,7 @@ def prepare_places(with_cpu=False, with_gpu=True):
     if with_cpu:
         places.append([base.CPUPlace()])
 
-    if with_gpu and base.core.is_compiled_with_cuda():
+    if with_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
         tmp = base.cuda_places()[:2]
         assert len(tmp) > 0, "no gpu detected"
         places.append([tmp[0]])

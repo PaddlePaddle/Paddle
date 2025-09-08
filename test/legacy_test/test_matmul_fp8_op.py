@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
@@ -24,7 +24,7 @@ from paddle.base import core
 E4M3_MAX_POS = 448.0
 E5M2_MAX_POS = 57344.0
 
-is_sm_supported = core.is_compiled_with_cuda() and (
+is_sm_supported = (core.is_compiled_with_cuda() or is_custom_device()) and (
     (
         paddle.device.cuda.get_device_capability()[0] == 8
         and paddle.device.cuda.get_device_capability()[1] == 9
@@ -60,7 +60,8 @@ def _to_fp8_saturated(x: paddle.Tensor, float8_dtype) -> paddle.Tensor:
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not check_fp8_support(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not check_fp8_support(),
     "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
 )
 class TestMatmulFp8(unittest.TestCase):

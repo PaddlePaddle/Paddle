@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import multiprocessing
 import os
 import unittest
+
+from op_test import get_device, is_custom_device
 
 import paddle
 import paddle.distributed as dist
@@ -31,7 +32,8 @@ from paddle.distributed.spawn import (
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestInitParallelEnv(unittest.TestCase):
     def test_check_env_failed(self):
@@ -56,7 +58,8 @@ class TestInitParallelEnv(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSpawnAssistMethod(unittest.TestCase):
     def test_nprocs_greater_than_device_num_error(self):
@@ -96,7 +99,7 @@ class TestSpawnAssistMethod(unittest.TestCase):
         nprocs = _get_default_nprocs()
         self.assertEqual(nprocs, multiprocessing.cpu_count())
 
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         nprocs = _get_default_nprocs()
         self.assertEqual(nprocs, core.get_cuda_device_count())
 

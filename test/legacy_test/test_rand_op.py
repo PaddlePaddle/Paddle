@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import base, rand
@@ -53,7 +53,7 @@ class TestRandOp(unittest.TestCase):
     """
 
     def run_net(self, use_cuda=False):
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        place = get_device_place() if use_cuda else base.CPUPlace()
         exe = base.Executor(place)
 
         train_program = base.Program()
@@ -88,7 +88,7 @@ class TestRandOp(unittest.TestCase):
 
     def test_run(self):
         self.run_net(False)
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.run_net(True)
 
 
@@ -98,7 +98,7 @@ class TestRandOpForDygraph(unittest.TestCase):
     """
 
     def run_net(self, use_cuda=False):
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        place = get_device_place() if use_cuda else base.CPUPlace()
         with base.dygraph.guard(place):
             rand([3, 4])
 
@@ -113,7 +113,7 @@ class TestRandOpForDygraph(unittest.TestCase):
 
     def test_run(self):
         self.run_net(False)
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.run_net(True)
 
 
@@ -136,8 +136,8 @@ class TestRandDtype(unittest.TestCase):
             out = paddle.tensor.random.rand([2, 3])
             self.assertEqual(out.dtype, paddle.float64)
 
-        if paddle.is_compiled_with_cuda():
-            paddle.set_device('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            paddle.set_device(get_device())
             test_default_fp16()
         test_default_fp64()
         test_default_fp32()

@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -106,8 +112,8 @@ class TestSearchSorted_ZeroSize(TestSearchSorted):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestSearchSortedFP16OP(TestSearchSorted):
@@ -130,7 +136,7 @@ class TestSearchSortedFP16OP(TestSearchSorted):
         }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def init_test_case(self):
@@ -147,8 +153,8 @@ class TestSearchSortedFP16OP_2(TestSearchSortedFP16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestSearchSortedBF16(TestSearchSorted):
@@ -174,7 +180,7 @@ class TestSearchSortedBF16(TestSearchSorted):
         }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def init_test_case(self):

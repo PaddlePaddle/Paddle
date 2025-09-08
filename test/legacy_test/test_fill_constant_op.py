@@ -22,7 +22,9 @@ from op import Operator
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
+    is_custom_device,
     paddle_static_guard,
 )
 
@@ -105,7 +107,8 @@ class TestFillConstantINT32Op(TestFillConstantOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFillConstantBF16Op(OpTest):
     def setUp(self):
@@ -122,7 +125,7 @@ class TestFillConstantBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(np.full((123, 92), 3.8))}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
 

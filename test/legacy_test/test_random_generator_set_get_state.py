@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_class
 
 import paddle
 from paddle.base import core, framework
@@ -25,7 +26,7 @@ def get_default_generator():
     place = framework._current_expected_place()
     if isinstance(place, core.CPUPlace):
         return core.default_cpu_generator()
-    elif isinstance(place, core.CUDAPlace):
+    elif isinstance(place, get_device_class()):
         return core.default_cuda_generator(0)
     elif isinstance(place, core.XPUPlace):
         return core.default_xpu_generator(0)

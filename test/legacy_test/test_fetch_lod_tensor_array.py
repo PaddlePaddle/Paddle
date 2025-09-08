@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from simple_nets import simple_fc_net, simple_fc_net_with_inputs
 
 import paddle
@@ -57,7 +57,7 @@ class TestFetchDenseTensorArray(unittest.TestCase):
         image = np.random.normal(size=(batch_size, 784)).astype('float32')
         label = np.random.randint(0, 10, (batch_size, 1), dtype="int64")
 
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        place = get_device_place() if use_cuda else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup_program)
         feed_dict = {'image': image, 'label': label}
@@ -81,7 +81,7 @@ class TestFetchDenseTensorArray(unittest.TestCase):
             np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)
 
     def test_fetch_dense_tensor_array(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             self.check_network(use_cuda=True)
         self.check_network(use_cuda=False)
 

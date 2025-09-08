@@ -19,6 +19,8 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
 )
 
 import paddle
@@ -89,8 +91,8 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
         self.initcase()
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place())
         elif core.is_compiled_with_xpu():
             self.check_output_with_place(core.XPUPlace(0))
         else:
@@ -99,8 +101,8 @@ class TestCEmbeddingOpBase(TestCEmbeddingCPU):
                 self.check_output_with_place(current_place)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_grad_with_place(get_device_place(), ['W'], 'Out')
         elif core.is_compiled_with_xpu():
             self.check_grad_with_place(core.XPUPlace(0), ['W'], 'Out')
         else:
