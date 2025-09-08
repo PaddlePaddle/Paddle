@@ -12,8 +12,8 @@ env:
   token: ${{ vars.ACTION_GITHUB_TOKEN }}
 
 jobs:
-  check-approvers:
-    name: Check approval
+  warning:
+    name: Warning
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -23,4 +23,4 @@ jobs:
           fetch-depth: 200
 
       - name: Update paddle
-        run: echo "Do not code in the incubate/fleety_20250421 branch, please go to incubate/fleety_12 branch!"
+        run: echo "Do not code in the incubate/fleety_20250421 branch, please go to incubate/fleety_12 branch!" && exit 1
