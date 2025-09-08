@@ -228,7 +228,6 @@ jobs:
     name: Test
     if: false
     needs: build
-    if: ${{ needs.build.outputs.can-skip != 'true' }}
     runs-on:
       group: Distribute
     steps:
