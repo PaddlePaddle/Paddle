@@ -158,7 +158,8 @@ GradNodeAccumulation::operator()(
                          kSlotSmallVectorSize>& grads,  // NOLINT
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
+  VLOG(3) << "\n==========================Running_AD_API_Grad: "
+             "GradNodeAccumulation==========================";
   PADDLE_ENFORCE(grads.size() == 1,
                  common::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor. "
@@ -195,7 +196,8 @@ GradNodeAccumulation::operator()(
     ApplyReduceHooks();
   }
 
-  VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
+  VLOG(3) << "\n==========================Finish_AD_API_Grad: "
+             "GradNodeAccumulation==========================";
   if (VLOG_IS_ON(6)) {
     const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], \nOutput: [%s] } ";
 

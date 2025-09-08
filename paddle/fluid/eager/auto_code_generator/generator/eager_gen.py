@@ -328,7 +328,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
-  VLOG(3) << \"\\n\"<<separator<< \"Running AD API GRAD: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<< \"Running_AD_API_GRAD: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -359,7 +359,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Inplace Strategy
 {}
 
-  VLOG(5) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
+  VLOG(5) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Before log info
 {}
   // Call grad_api function
@@ -370,7 +370,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 {}
   // Create Grad Node
 {}
-  VLOG(4) << \"\\n\"<<separator<<\"Finish AD API GRAD: {}\"<<separator;
+  VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
   VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 {}
@@ -391,7 +391,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"\\n\"<<separator<<\"Running AD API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Running_AD_API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -409,7 +409,7 @@ TEST_API {} {}({}) {{
   // Get Input AutoGradMeta
 {}
 
-  VLOG(3) << \"\\n\"<<separator<<\"Running C++ API: \" << \"{}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
  // Before log info
 {}
 
@@ -440,7 +440,7 @@ TEST_API {} {}({}) {{
   // Set grad_node after API call
 {}
 
-  VLOG(3) << \"\\n\"<<separator<<\"Finish AD API: {}\"<<separator;
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
   // LOG IF DEBUG
 {}
   if (FLAGS_check_cuda_error) [[unlikely]] {{

@@ -363,4 +363,5 @@ void inline CUDAErrorCheck(const std::string& check_tag) {
   std::cout << check_tag << " check done." << std::endl;
 #endif
 }
+std::string ConcatNodeName(GradNodeBase* node);
 }  // namespace egr

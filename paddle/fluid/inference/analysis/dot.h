@@ -141,6 +141,7 @@ class Dot {
       nodes_.emplace(id, Node{label, attrs});
     }
   }
+  bool ContainsNode(const std::string& id) const { return nodes_.count(id); }
 
   void AddEdge(const std::string& source,
                const std::string& target,
