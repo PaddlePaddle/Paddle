@@ -1,4 +1,4 @@
-name: Approval
+name: Warning
 
 on:
   pull_request:
