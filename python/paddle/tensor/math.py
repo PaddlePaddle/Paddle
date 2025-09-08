@@ -1193,6 +1193,9 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
         out = x \% y
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
+
     Note:
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
 
