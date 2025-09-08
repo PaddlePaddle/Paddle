@@ -20,17 +20,25 @@ from ..base.core import (
 class dtype: ...
 
 uint8: dtype
+uint16: dtype
+uint32: dtype
+uint64: dtype
 int8: dtype
 int16: dtype
 int32: dtype
 int64: dtype
 
 float32: dtype
+float: dtype
 float64: dtype
+double: dtype
 float16: dtype
+half: dtype
 bfloat16: dtype
 
+cfloat: dtype
 complex64: dtype
+cdouble: dtype
 complex128: dtype
 
 bool: dtype

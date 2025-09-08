@@ -930,6 +930,7 @@ def tensor(
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> import paddle
 
             >>> type(paddle.tensor(1))
@@ -3469,7 +3470,7 @@ def clone(x: paddle.Tensor, name: str | None = None) -> paddle.Tensor:
             >>> y.backward()
             >>> print(clone_x.grad.numpy())  # type: ignore
             [3. 3.]
-            >>> print(x.grad.numpy())  # type: ignore
+            >>> print(x.grad.numpy())
             [3. 3.]
     """
     return x.clone()

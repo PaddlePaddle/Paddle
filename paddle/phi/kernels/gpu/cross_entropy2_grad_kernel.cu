@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/impl/cross_entropy2_kernel_impl.h"
 
 PD_REGISTER_KERNEL(cross_entropy_grad,

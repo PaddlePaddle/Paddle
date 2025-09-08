@@ -20,7 +20,6 @@
 
 #include "glog/logging.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
