@@ -577,10 +577,33 @@ struct finfo {
         bits = 16;
         dtype = "bfloat16";
         break;
+      case framework::proto::VarType::FP8_E4M3FN:
+        eps = std::numeric_limits<phi::dtype::float8_e4m3fn>::epsilon();
+        min = std::numeric_limits<phi::dtype::float8_e4m3fn>::lowest();
+        max = std::numeric_limits<phi::dtype::float8_e4m3fn>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::float8_e4m3fn>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<phi::dtype::float8_e4m3fn>::digits10);
+        bits = 8;
+        dtype = "float8_e4m3fn";
+        break;
+      case framework::proto::VarType::FP8_E5M2:
+        eps = std::numeric_limits<phi::dtype::float8_e5m2>::epsilon();
+        min = std::numeric_limits<phi::dtype::float8_e5m2>::lowest();
+        max = std::numeric_limits<phi::dtype::float8_e5m2>::max();
+        smallest_normal = std::numeric_limits<phi::dtype::float8_e5m2>::min();
+        tiny = smallest_normal;
+        resolution = std::pow(
+            10, -std::numeric_limits<phi::dtype::float8_e5m2>::digits10);
+        bits = 8;
+        dtype = "float8_e5m2";
+        break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
             "the argument of paddle.finfo can only be paddle.float32, "
-            "paddle.float64, paddle.float16, paddle.bfloat16"
+            "paddle.float64, paddle.float16, paddle.bfloat16, "
+            "paddle.float8_e4m3fn, paddle.float8_e5m2, "
             "paddle.complex64, or paddle.complex128"));
         break;
     }
