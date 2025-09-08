@@ -1184,6 +1184,7 @@ def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.floor_divide_(x, y)
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Mod two tensors element-wise. The equation is:
@@ -1232,6 +1233,8 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
+        if isinstance(y, (int, float)):
+            y = paddle.to_tensor(y, dtype=x.dtype)
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
