@@ -1444,6 +1444,31 @@ def monkey_patch_tensor():
 
         return paddle.to_dlpack(self)
 
+    def get_device(self: Tensor) -> int:
+        r"""
+        Return the device id where the Tensor is located.
+
+        Returns:
+            int: The device id of the Tensor. Returns -1 for CPU tensors; for GPU tensors,
+                 returns the CUDA device id (e.g., 0 for `gpu:0`).
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> # CPU tensor
+                >>> x = paddle.ones([2, 3], place=paddle.CPUPlace())
+                >>> x.get_device()
+                -1
+
+                >>> # GPU tensor
+                >>> if paddle.device.is_compiled_with_cuda():
+                ...     y = paddle.ones([2, 3], place=paddle.CUDAPlace(0))
+                ...     y.get_device()
+                0
+        """
+        return self.place.gpu_device_id()
+
     if not hasattr(core, "eager"):
         return
 
@@ -1490,6 +1515,7 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("get_device", get_device),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
