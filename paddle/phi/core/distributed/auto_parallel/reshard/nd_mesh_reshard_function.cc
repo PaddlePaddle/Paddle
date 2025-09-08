@@ -373,7 +373,7 @@ void ProcessShardToReplicated(phi::DeviceContext* dev_ctx,
   };
   int64_t first_diff_axis =
       FindFirstDiffShardAxis(out->dist_attr(), out_dist_attr);
-  VLOG(3) << "In S to R, fist diff axis is " << first_diff_axis;
+  VLOG(3) << "In S to R, first diff axis is " << first_diff_axis;
   for (int cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0;
        --cur_tensor_dim) {
     auto in_mesh_axis = out->dist_attr().multi_dims_mapping()[cur_tensor_dim];
@@ -422,7 +422,7 @@ void ProcessReplicateOrPartialToShard(phi::DeviceContext* dev_ctx,
                                       DistTensor* out) {
   int64_t first_diff_axis =
       FindFirstDiffShardAxis(out->dist_attr(), out_dist_attr);
-  VLOG(3) << "In P or R to S, fist diff axis is " << first_diff_axis;
+  VLOG(3) << "In P or R to S, first diff axis is " << first_diff_axis;
   for (int64_t cur_tensor_dim = first_diff_axis; cur_tensor_dim >= 0;
        --cur_tensor_dim) {
     const auto& in_mesh_axis =

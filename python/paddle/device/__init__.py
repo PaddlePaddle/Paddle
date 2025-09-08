@@ -1729,6 +1729,52 @@ def synchronize(device: PlaceLike | None = None) -> None:
         )
 
 
+def get_stream_from_external(
+    data_ptr: int, device: PlaceLike | None = None
+) -> Stream:
+    r'''
+    Return a :class:`Stream` from an externally allocated CUDA stream.
+
+    This function is used to wrap streams allocated in other libraries in order
+    to facilitate data exchange and multi-library interactions.
+
+    .. note::
+        This function doesn't manage the stream life-cycle, it is the user
+        responsibility to keep the referenced stream alive while this returned
+        stream is being used.
+
+    Args:
+        data_ptr(int): Integer representation of the CUDA stream handle (``cudaStream_t``)
+            that is allocated externally.
+        device(str|paddle.CUDAPlace(n), optional):
+            The CUDA device where the stream was originally allocated.
+            If device is None, the current CUDA device is used.
+            It can be ``gpu``, ``gpu:x``, or ``paddle.CUDAPlace(n)``.
+
+    Returns:
+        Stream: The wrapped CUDA stream corresponding to the given external pointer.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # Suppose external_stream_ptr is from another CUDA library
+            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+    '''
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    elif isinstance(device, str):
+        place = paddle.device._convert_to_place(device)
+    else:
+        place = device
+
+    return Stream(
+        stream_base=core._get_stream_from_external(
+            data_ptr, place.get_device_id()
+        )
+    )
+
+
 class Device:
     """
     Device class for Paddle.

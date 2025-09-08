@@ -197,6 +197,35 @@ def mem_get_info(device: DeviceLike | int = None) -> tuple[int, int]:
     return paddle.cuda.cudart().cudaMemGetInfo(device_id)
 
 
+def get_stream_from_external(
+    data_ptr: int, device: DeviceLike = None
+) -> Stream:
+    r"""Return a :class:`paddle.cuda.Stream` from an externally allocated CUDA stream.
+
+    This function is used to wrap streams allocated in other libraries in order
+    to facilitate data exchange and multi-library interactions.
+
+    .. note:: This function doesn't manage the stream life-cycle, it is the user
+        responsibility to keep the referenced stream alive while this returned
+        stream is being used.
+
+    Args:
+        data_ptr(int): Integer representation of the `cudaStream_t` value that
+            is allocated externally.
+        device(paddle.CUDAPlace or int, optional): the device where the stream
+            was originally allocated. If device is specified incorrectly,
+            subsequent launches using this stream may fail.
+
+    Returns:
+        paddle.cuda.Stream: A Stream object wrapping the given external CUDA stream.
+    """
+
+    device = _device_to_paddle(device)
+    stream_ex = paddle.device.get_stream_from_external(data_ptr, device)
+
+    return stream_ex
+
+
 __all__ = [
     "cudart",
     "check_error",
@@ -210,4 +239,5 @@ __all__ = [
     "get_device_capability",
     "stream",
     "Stream",
+    "get_stream_from_external",
 ]

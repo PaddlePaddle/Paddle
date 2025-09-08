@@ -218,6 +218,59 @@ def split(
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
 
 
+class SlogdetResult(NamedTuple):
+    sign: Tensor
+    logabsdet: Tensor
+
+
+def slogdet(x: Tensor, out: SlogdetResult | None = None) -> SlogdetResult:
+    """
+    (PyTorch Compatible API) Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
+    The determinant can be computed with ``sign * exp`` (logabsdet).
+
+    Supports input of float, double, complex64, complex128.
+
+    Notes:
+        1. For matrices that have zero determinant, this returns ``(0, -inf)``.
+
+        2. For matrices with complex value, the :math:`abs(det)` is the modulus of the determinant,
+        and therefore :math:`sign = det / abs(det)`.
+
+        3. The return structure of this API has been revised **from a single stacked Tensor of shape `[2, *]` (where index 0 was sign and index 1 was logabsdet) to a tuple of two independent Tensors `(sign, logabsdet)`** (see `PR #72505 <https://github.com/PaddlePaddle/Paddle/pull/72505>`_).
+        This modification may cause incompatibility with models previously exported for inference that relied on the old return structure.
+
+    Args:
+        x (Tensor): the batch of matrices of size :math:`(*, n, n)`
+            where math:`*` is one or more batch dimensions.
+        out(SlogdetResult, optional): The tuple of output tensor, contains ``abs`` and ``logabsdet``.
+
+    Returns:
+        SlogdetResult: A tuple containing two Tensors: (sign, logabsdet).
+        The first Tensor represents the signs of the determinants and the second Tensor
+        represents the natural logarithms of the absolute values of the determinants.
+        Each output Tensor has a shape of :math:`(*)`, where :math:`*` matches the
+        batch dimensions of the input `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[1., 0.], [0., 1.]])
+            >>> A = paddle.compat.slogdet(x)
+            >>> print(A.sign)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   1.)
+            >>> print(A.logabsdet)
+            Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   0.)
+    """
+    sign, logabsdet = _C_ops.slogdet_v2(x, out=out)
+    if out is not None:
+        paddle.assign(sign, out[0])
+        paddle.assign(logabsdet, out[1])
+    return SlogdetResult(sign, logabsdet)
+
+
 class SortRetType(NamedTuple):
     values: Tensor
     indices: Tensor
