@@ -559,7 +559,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_mkldnn_matmul_op_output_fuse_pass',
     'test_mkldnn_matmul_transpose_reshape_fuse_pass',
     'test_mkldnn_scale_matmul_fuse_pass',
-    'test_mkldnn_conv_affine_channel_fuse_pass',
+    'test_onednn_conv_affine_channel_fuse_pass',
     'test_batch_fc_op',
     'test_fused_conv2d_add_act_op',
     'test_dataset_dataloader',
