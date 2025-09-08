@@ -852,11 +852,27 @@ def load_inference_model(
 
     Load inference model from a given path. By this API, you can get the model
     structure(Inference Program) and model parameters.
+    
+    .. note::
+        **Format Compatibility**: This API automatically detects and supports both
+        modern JSON format (.json) and legacy binary format (.pdmodel) models.
+        In PIR mode (Paddle 3.x default), the API prioritizes JSON format but
+        seamlessly falls back to legacy format when only .pdmodel files are available.
+        This ensures backward compatibility with models created in earlier versions
+        or by tools that generate .pdmodel format files.
 
     Args:
         path_prefix(str | None): One of the following:
           - Directory path to save model + model name without suffix.
           - Set to None when reading the model from memory.
+          
+          .. note::
+              **Format Detection**: The API automatically detects the model format:
+              
+              - If `path_prefix + ".json"` exists, uses PIR mode (Paddle 3.x format)
+              - If only `path_prefix + ".pdmodel"` exists, automatically falls back to legacy mode
+              - JSON format takes priority when both formats are present
+              
         executor(Executor): The executor to run for loading inference model.
                             See :ref:`api_guide_executor_en` for more details about it.
         kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
@@ -911,6 +927,9 @@ def load_inference_model(
             # By the inference program, feed_target_names and
             # fetch_targets, we can use an executor to run the inference
             # program to get the inference result.
+            
+            # Note: The API works with both .json (PIR format) and .pdmodel (legacy format)
+            # files, automatically detecting and using the appropriate loading method.
     """
     if in_pir_mode():
         return load_inference_model_pir(path_prefix, executor, **kwargs)

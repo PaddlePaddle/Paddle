@@ -58,6 +58,10 @@ _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
+# Environment variable to control auto-fallback behavior
+# Set PADDLE_DISABLE_PDMODEL_FALLBACK=1 to disable automatic fallback
+_DISABLE_PDMODEL_FALLBACK = os.getenv('PADDLE_DISABLE_PDMODEL_FALLBACK', '0') == '1'
+
 
 def get_pir_parameters(program):
     """
@@ -896,6 +900,33 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
         if not kwargs:
             model_path = path_prefix + ".json"
             params_path = path_prefix + ".pdiparams"
+            
+            # Auto-fallback: if .json doesn't exist but .pdmodel does, use legacy mode
+            if not os.path.exists(model_path):
+                pdmodel_path = path_prefix + ".pdmodel"
+                if os.path.exists(pdmodel_path):
+                    if _DISABLE_PDMODEL_FALLBACK:
+                        _logger.warning(
+                            f"JSON model file '{model_path}' not found, found legacy pdmodel file '{pdmodel_path}', "
+                            "but automatic fallback is disabled by PADDLE_DISABLE_PDMODEL_FALLBACK environment variable. "
+                            "Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 or use OldIrGuard manually to load legacy models."
+                        )
+                    else:
+                        _logger.info(
+                            f"JSON model file '{model_path}' not found, "
+                            f"but found legacy pdmodel file '{pdmodel_path}'. "
+                            "Automatically falling back to legacy loading mode for compatibility. "
+                            "Set PADDLE_DISABLE_PDMODEL_FALLBACK=1 to disable this behavior."
+                        )
+                        # Use OldIrGuard to temporarily switch to legacy mode
+                        from paddle.pir_utils import OldIrGuard
+                        with OldIrGuard():
+                            # Import here to avoid circular import
+                            from .io import load_inference_model as legacy_load_inference_model
+                            return legacy_load_inference_model(path_prefix, executor, **kwargs)
+                else:
+                    # Neither .json nor .pdmodel exists, let the original error handling take place
+                    pass
         # set model_path and params_path in old way for compatible,
         # path_prefix represents a directory path.
         else:
@@ -925,6 +956,27 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
+        
+        # Check if we need to fallback to legacy mode for .pdmodel files
+        if model_path.endswith('.pdmodel') or (not model_path.endswith('.json') and os.path.exists(model_path) and not model_path.endswith('__model__')):
+            # This is likely a .pdmodel file, use legacy mode
+            if _DISABLE_PDMODEL_FALLBACK:
+                _logger.warning(
+                    f"Detected legacy model format at '{model_path}', but automatic fallback is disabled. "
+                    "Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 or use OldIrGuard manually to load legacy models."
+                )
+                # Continue with PIR loading (will likely fail, but user requested no fallback)
+            else:
+                _logger.info(
+                    f"Detected legacy model format at '{model_path}'. "
+                    "Automatically falling back to legacy loading mode for compatibility. "
+                    "Set PADDLE_DISABLE_PDMODEL_FALLBACK=1 to disable this behavior."
+                )
+                from paddle.pir_utils import OldIrGuard
+                with OldIrGuard():
+                    from .io import load_inference_model as legacy_load_inference_model
+                    return legacy_load_inference_model(path_prefix, executor, **kwargs)
+        
         paddle.base.core.deserialize_pir_program(model_path, program)
         # load parameters
         params, opts = get_pir_parameters(program)
