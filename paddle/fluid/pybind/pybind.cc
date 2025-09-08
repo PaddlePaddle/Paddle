@@ -601,10 +601,10 @@ struct finfo {
         break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
-            "the argument of paddle.finfo can only be paddle.float32, "
+            "The argument of paddle.finfo can only be paddle.float32, "
             "paddle.float64, paddle.float16, paddle.bfloat16, "
             "paddle.float8_e4m3fn, paddle.float8_e5m2, "
-            "paddle.complex64, or paddle.complex128"));
+            "paddle.complex64 or paddle.complex128"));
         break;
     }
   }
