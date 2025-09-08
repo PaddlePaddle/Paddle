@@ -6,12 +6,6 @@ on:
     types: [opened, synchronize, reopened, edited]
 
 jobs:
-  check:
-    name: Check
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
   check-bypass:
     name: Check bypass
     uses: ./.github/workflows/check-bypass.yml
@@ -25,7 +19,6 @@ jobs:
     needs: check-bypass
     if: false
     runs-on: ubuntu-latest
-
     steps:
       - name: Clone paddle
         uses: actions/checkout@v4
