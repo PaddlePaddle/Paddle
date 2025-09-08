@@ -69,31 +69,57 @@ class CudaGraphRunner:
             self.cuda_graph_manager.batch_size = x.shape[0]
             self.captured = True
             with self.cuda_graph_manager.run_impl_guard():
-                self.runnable(x)
-            return
+                return self.runnable(x)
 
         # Replay
+        assert self.captured
         self.cuda_graph_manager.state = CUDAGraphState.REPLAY
         self.cuda_graph_manager.batch_size = x.shape[0]
         with self.cuda_graph_manager.run_impl_guard():
             return self.runnable(x)
 
 
-class TestCUDAGraph(unittest.TestCase):
-    def get_function(self):
-        return lambda x: x + x
+@unittest.skipIf(
+    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
+)
+class TestCUDAGraph1(unittest.TestCase):
+    def initialize(self):
+        self.fn = lambda x: x + x
+        self.static_fn = paddle.jit.to_static(self.fn)
+        self.x = paddle.rand([4, 3])
 
     def test_cuda_graph(self):
-        x = paddle.rand([32, 64])
-        fn = self.get_function()
-        runner = CudaGraphRunner(fn)
+        self.initialize()
+        runner = CudaGraphRunner(self.static_fn)
         # Captured
-        runner.run_static_model(x)
+        runner.run_static_model(self.x)
         # Replay
-        y_cg = runner.run_static_model(x)
-        y_dy = fn(x)
+        y_cg = runner.run_static_model(self.x)
+        y_dy = self.fn(self.x)
 
-        self.assertTrue(paddle.allclose(y_dy, y_cg))
+        np.testing.assert_allclose(y_dy, y_cg)
+
+
+@unittest.skipIf(
+    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
+)
+class TestCUDAGraph2(TestCUDAGraph1):
+    def initialize(self):
+        layer = paddle.nn.Conv2D(3, 3, 3)
+        self.fn = layer
+        self.static_fn = paddle.jit.to_static(self.fn)
+        self.x = paddle.rand([2, 3, 32, 32])
+
+
+@unittest.skipIf(
+    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
+)
+class TestCUDAGraph3(TestCUDAGraph1):
+    def initialize(self):
+        layer = paddle.nn.Linear(8, 4)
+        self.fn = layer
+        self.static_fn = paddle.jit.to_static(self.fn)
+        self.x = paddle.rand([4, 8])
 
 
 if __name__ == "__main__":
