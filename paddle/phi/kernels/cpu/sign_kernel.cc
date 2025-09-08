@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
-#include "paddle/phi/common/bfloat16.h"
-
 PD_REGISTER_KERNEL(sign,
                    CPU,
                    ALL_LAYOUT,
