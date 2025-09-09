@@ -1900,16 +1900,18 @@ void HandleForSpecialOp(
   if (op_item->isa<::pir::CombineOp>()) {
     // Copy op inputs
     std::vector<pir::Type> vec_inner_types;
-    for (size_t i = 0; i < op_item->num_operands(); ++i) {
-      auto cur_in = op_item->operand_source(i);
-      if (!cur_in) {
-        vec_inputs.emplace_back();
-        continue;
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+        vec_inner_types.push_back(new_in.type());
       }
-      auto new_in = GetNewInput(
-          cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
-      vec_inputs.push_back(new_in);
-      vec_inner_types.push_back(new_in.type());
     }
     // Copy op output type
 

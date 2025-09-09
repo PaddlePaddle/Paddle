@@ -16,110 +16,117 @@ import unittest
 from contextlib import contextmanager
 
 import numpy as np
+from dygraph_to_static_utils import Dy2StTestBase
 
 import paddle
 from paddle.jit.dy2static.utils import CUDAGraphState
 
 SEED = 2025
 np.random.seed(2025)
+GLOBAL_GRAPH_WITH_BUFFER = None
 
 
-class Dy2StCudaGraphManager:
-    def __init__(self):
-        self.state = CUDAGraphState.DISABLE
-        self.captured_batch_size = set()
-        self.batch_size = -1
+class GraphWithBuffer:
+    def __init__(self, inputs, outputs):
+        self.inputs_buffer = inputs
+        self.outputs_buffer = outputs
 
-    def run_impl(self, original_run_impl, inputs, parameters, attrs):
-        prog_attrs, cuda_graph_attrs = attrs
-        if self.state == CUDAGraphState.REPLAY:
-            if self.batch_size not in self.captured_batch_size:
-                self.state = CUDAGraphState.DISABLE
-        elif self.state == CUDAGraphState.CAPTURE:
-            self.captured_batch_size.add(self.batch_size)
+    def set_inputs_buffer(self, inputs):
+        assert len(self.inputs_buffer) == len(inputs)
+        for i, _ in enumerate(inputs):
+            self.inputs_buffer[i][:] = inputs[i]
 
-        cuda_graph_attrs |= {
-            "cuda_graph_state": self.state,
-            "cuda_graph_dispatch_key": self.batch_size
-            if self.state != CUDAGraphState.DISABLE
-            else 0,
-        }
-        return original_run_impl(
-            inputs, parameters, (prog_attrs, cuda_graph_attrs)
-        )
+    def get_inputs(self):
+        return self.inputs_buffer
 
-    @contextmanager
-    def run_impl_guard(self):
-        with paddle.jit.dy2static.pir_partial_program.replace_run_impl_guard(
-            self.run_impl,
-        ):
-            yield
+    def get_real_outputs(self):
+        return self.outputs_buffer
+
+    def get_outputs(self):
+        return [out.clone() for out in self.outputs_buffer]
 
 
-class CudaGraphRunner:
-    def __init__(self, runnable):
-        self.runnable = runnable
-        self.captured = False
-        self.cuda_graph_manager = Dy2StCudaGraphManager()
+def capture_run_impl(original_run_impl, inputs, parameters, attrs):
+    prog_attrs, cuda_graph_attrs = attrs
+    cuda_graph_attrs |= {
+        "cuda_graph_state": CUDAGraphState.CAPTURE,
+        "cuda_graph_dispatch_key": inputs[0].shape[0],
+    }
+    print("ptr in capture: ", inputs[0].data_ptr())
+    outputs = original_run_impl(
+        inputs, parameters, (prog_attrs, cuda_graph_attrs)
+    )
 
-    def run_static_model(self, x):
-        if not self.captured:
-            # Capture
-            self.cuda_graph_manager.state = CUDAGraphState.CAPTURE
-            self.cuda_graph_manager.batch_size = x.shape[0]
-            self.captured = True
-            with self.cuda_graph_manager.run_impl_guard():
-                return self.runnable(x)
+    global GLOBAL_GRAPH_WITH_BUFFER
+    if GLOBAL_GRAPH_WITH_BUFFER is None:
+        GLOBAL_GRAPH_WITH_BUFFER = GraphWithBuffer(inputs, outputs)
 
-        # Replay
-        assert self.captured
-        self.cuda_graph_manager.state = CUDAGraphState.REPLAY
-        self.cuda_graph_manager.batch_size = x.shape[0]
-        with self.cuda_graph_manager.run_impl_guard():
-            return self.runnable(x)
+    return outputs
 
 
-@unittest.skipIf(
-    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
-)
-class TestCUDAGraph1(unittest.TestCase):
+def replay_run_impl(original_run_impl, inputs, parameters, attrs):
+    prog_attrs, cuda_graph_attrs = attrs
+    cuda_graph_attrs |= {
+        "cuda_graph_state": CUDAGraphState.REPLAY,
+        "cuda_graph_dispatch_key": inputs[0].shape[0],
+    }
+    global GLOBAL_GRAPH_WITH_BUFFER
+    assert GLOBAL_GRAPH_WITH_BUFFER is not None
+    GLOBAL_GRAPH_WITH_BUFFER.set_inputs_buffer(inputs)
+
+    print(
+        "ptr in replay: ", GLOBAL_GRAPH_WITH_BUFFER.get_inputs()[0].data_ptr()
+    )
+    _ = original_run_impl(
+        GLOBAL_GRAPH_WITH_BUFFER.get_inputs(),
+        parameters,
+        (prog_attrs, cuda_graph_attrs),
+    )
+
+    return GLOBAL_GRAPH_WITH_BUFFER.get_outputs()
+
+
+@contextmanager
+def capture_run_impl_guard():
+    with paddle.jit.dy2static.pir_partial_program.replace_run_impl_guard(
+        capture_run_impl,
+    ):
+        yield
+
+
+@contextmanager
+def replay_run_impl_guard():
+    with paddle.jit.dy2static.pir_partial_program.replace_run_impl_guard(
+        replay_run_impl,
+    ):
+        yield
+
+
+@unittest.skipIf(not paddle.is_compiled_with_cuda(), "Skip test in CI")
+class TestCUDAGraph(Dy2StTestBase):
     def initialize(self):
-        self.fn = lambda x: x + x
-        self.static_fn = paddle.jit.to_static(self.fn)
-        self.x = paddle.rand([4, 3])
+        global GLOBAL_GRAPH_WITH_BUFFER
+        GLOBAL_GRAPH_WITH_BUFFER = None
 
-    def test_cuda_graph(self):
+        def func(x, y):
+            return x + y
+
+        self.fn = func
+        self.static_fn = paddle.jit.to_static(func)
+
+    def test_capture_replay(self):
         self.initialize()
-        runner = CudaGraphRunner(self.static_fn)
-        # Captured
-        runner.run_static_model(self.x)
-        # Replay
-        y_cg = runner.run_static_model(self.x)
-        y_dy = self.fn(self.x)
+        x = paddle.randn([2, 2, 3, 3], dtype='float32')
+        y = paddle.randn([2, 2, 3, 3], dtype='float32')
+        with capture_run_impl_guard():
+            _ = self.static_fn(x, y)
 
-        np.testing.assert_allclose(y_dy, y_cg)
+        a = paddle.randn([2, 2, 3, 3], dtype='float32')
+        b = paddle.randn([2, 2, 3, 3], dtype='float32')
+        with replay_run_impl_guard():
+            c = self.static_fn(a, b)
 
-
-@unittest.skipIf(
-    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
-)
-class TestCUDAGraph2(TestCUDAGraph1):
-    def initialize(self):
-        layer = paddle.nn.Conv2D(3, 3, 3)
-        self.fn = layer
-        self.static_fn = paddle.jit.to_static(self.fn)
-        self.x = paddle.rand([2, 3, 32, 32])
-
-
-@unittest.skipIf(
-    not paddle.device.is_compiled_with_cuda(), reason="Require CUDA."
-)
-class TestCUDAGraph3(TestCUDAGraph1):
-    def initialize(self):
-        layer = paddle.nn.Linear(8, 4)
-        self.fn = layer
-        self.static_fn = paddle.jit.to_static(self.fn)
-        self.x = paddle.rand([4, 8])
+        np.testing.assert_allclose(self.fn(a, b), c)
 
 
 if __name__ == "__main__":
