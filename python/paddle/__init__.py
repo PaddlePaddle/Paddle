@@ -172,6 +172,7 @@ from paddle import (
     onnx as onnx,
     optimizer as optimizer,
     quantization as quantization,
+    random as random,
     reader as reader,
     regularizer as regularizer,
     sparse as sparse,
