@@ -286,9 +286,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 100)
       set_tests_properties(test_conv_transpose_bn_fuse_pass PROPERTIES TIMEOUT
                                                                        300)
-      set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass
+      set_tests_properties(test_onednn_conv_hard_sigmoid_fuse_pass
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass
+      set_tests_properties(test_onednn_conv_hard_swish_fuse_pass
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_matmul_v2_transpose_reshape_fuse_pass
                            PROPERTIES TIMEOUT 100)
@@ -309,8 +309,8 @@ elseif(WITH_ONEDNN)
   set(PIR_COVERAGE_MKLDNN_TESTS
       test_mkldnn_conv_affine_channel_fuse_pass
       test_mkldnn_conv_gelu_fuse_pass
-      test_mkldnn_conv_hard_sigmoid_fuse_pass
-      test_mkldnn_conv_hard_swish_fuse_pass
+      test_onednn_conv_hard_sigmoid_fuse_pass
+      test_onednn_conv_hard_swish_fuse_pass
       test_mkldnn_conv_mish_fuse_pass
       test_mkldnn_conv_transpose_bias_fuse_pass
       test_mkldnn_conv3d_op
@@ -396,9 +396,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
                            PROPERTIES TIMEOUT 120)
       set_tests_properties(test_mkldnn_conv_gelu_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_hard_sigmoid_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_hard_sigmoid_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
-      set_tests_properties(test_mkldnn_conv_hard_swish_fuse_pass_pir
+      set_tests_properties(test_onednn_conv_hard_swish_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)
       set_tests_properties(test_mkldnn_conv_mish_fuse_pass_pir
                            PROPERTIES TIMEOUT 300)

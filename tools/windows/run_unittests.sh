@@ -146,8 +146,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_api_impl$|\
 ^test_mkldnn_conv_affine_channel_fuse_pass$|\
 ^test_mkldnn_conv_gelu_fuse_pass$|\
-^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
-^test_mkldnn_conv_hard_swish_fuse_pass$|\
+^test_onednn_conv_hard_sigmoid_fuse_pass$|\
+^test_onednn_conv_hard_swish_fuse_pass$|\
 ^test_mkldnn_conv_mish_fuse_pass$|\
 ^test_mkldnn_conv_transpose_bias_fuse_pass$|\
 ^test_mkldnn_depthwise_conv_pass$|\
@@ -348,8 +348,8 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_basic_api_transformation$|\
 ^test_deformable_conv_op$|\
 ^test_variable$|\
-^test_mkldnn_conv_hard_sigmoid_fuse_pass$|\
-^test_mkldnn_conv_hard_swish_fuse_pass$|\
+^test_onednn_conv_hard_sigmoid_fuse_pass$|\
+^test_onednn_conv_hard_swish_fuse_pass$|\
 ^test_conv_act_mkldnn_fuse_pass$|\
 ^test_matmul_scale_fuse_pass$|\
 ^test_addmm_op$|\
