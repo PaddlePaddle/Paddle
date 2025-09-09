@@ -222,7 +222,7 @@ def finfo(dtype):
 
     Args:
         dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
-            ``paddle.complex64``, and ``paddle.complex128``.
+            ``paddle.float8_e4m3fn``, ``paddle.float8_e5m2``, ``paddle.complex64`` and ``paddle.complex128``.
         type: An alias for ``dtype`` , with identical behavior.
 
     Returns:
