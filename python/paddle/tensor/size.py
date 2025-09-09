@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import functools
-import math
 from collections.abc import Iterable, Sequence
 
 
@@ -102,19 +101,3 @@ class Size(tuple):
         if isinstance(key, slice):
             return Size(result)
         return result
-
-
-class TensorSize(int):
-    as_shape: list[int]
-
-    def __new__(cls, shape):
-        as_numel = int(math.prod(shape))
-        as_shape = shape
-        instance = super().__new__(cls, as_numel)
-        instance.as_shape = as_shape
-        return instance
-
-    def __call__(self, dim=None):
-        if dim is None:
-            return Size(self.as_shape)
-        return self.as_shape[dim]
