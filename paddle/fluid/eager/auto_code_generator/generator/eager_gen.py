@@ -33,6 +33,7 @@ from codegen_utils import (
     GetIntermediateAPIFunctionName,
     GetSavedName,
     IsPlainTensorType,
+    IsUsePredefinedOut,
     IsVectorTensorType,
     ParseYamlBackward,
     ParseYamlForwardFromBackward,
@@ -1870,12 +1871,8 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             forward_outputs_position_list = list(
                 self.forward_outputs_position_map.values()
             )
-            is_all_tensor = all(
-                item[0] == "Tensor" for item in forward_outputs_position_list
-            )
-            length = len(forward_outputs_position_list)
-
-            if is_all_tensor and 1 <= length <= 7:
+            if IsUsePredefinedOut(forward_outputs_position_list):
+                length = len(forward_outputs_position_list)
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
@@ -2152,12 +2149,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             forward_outputs_position_list = list(
                 self.forward_outputs_position_map.values()
             )
-            is_all_tensor = all(
-                item[0] == "Tensor" for item in forward_outputs_position_list
-            )
-            length = len(forward_outputs_position_list)
-
-            if is_all_tensor and 1 <= length <= 7:
+            if IsUsePredefinedOut(forward_outputs_position_list):
                 amp_inputs_call_args_str = (
                     amp_inputs_call_args_str + ", predefined_out"
                 )
@@ -2194,12 +2186,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_outputs_position_list = list(
                     self.forward_outputs_position_map.values()
                 )
-                is_all_tensor = all(
-                    item[0] == "Tensor"
-                    for item in forward_outputs_position_list
-                )
-                length = len(forward_outputs_position_list)
-                if is_all_tensor and 1 <= length <= 7:
+                if IsUsePredefinedOut(forward_outputs_position_list):
                     type_promote_inputs_call_args_str = (
                         type_promote_inputs_call_args_str + ", predefined_out"
                     )
@@ -2235,13 +2222,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_outputs_position_list = list(
                     self.forward_outputs_position_map.values()
                 )
-                is_all_tensor = all(
-                    item[0] == "Tensor"
-                    for item in forward_outputs_position_list
-                )
-                length = len(forward_outputs_position_list)
-
-                if is_all_tensor and 1 <= length <= 7:
+                if IsUsePredefinedOut(forward_outputs_position_list):
                     type_promote_inputs_call_args_str = (
                         type_promote_inputs_call_args_str + ", predefined_out"
                     )

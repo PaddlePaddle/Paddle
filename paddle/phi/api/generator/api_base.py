@@ -17,6 +17,8 @@ from __future__ import annotations
 import collections
 import re
 
+from codegen_utils import IsUsePredefinedOut
+
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
@@ -256,10 +258,8 @@ class BaseAPI:
             and append_predefined_out
             and self.api != "empty_like"
         ):
-            types = self.outputs['types']
-            length = len(self.outputs['names'])
-
-            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
@@ -285,10 +285,8 @@ class BaseAPI:
             and append_predefined_out
             and self.api != "empty_like"
         ):
-            types = self.outputs['types']
-            length = len(self.outputs['names'])
-
-            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
+            if IsUsePredefinedOut(self.outputs['types']):
+                length = len(self.outputs['names'])
                 if length == 1:
                     type_str = "paddle::Tensor*"
                 else:
