@@ -96,6 +96,9 @@ class TestDevice(unittest.TestCase):
         with self.assertRaises(TypeError):
             Device(3.14)
 
+        with self.assertRaises(ValueError):
+            Device("abc:0")
+
 
 if __name__ == "__main__":
     unittest.main()
