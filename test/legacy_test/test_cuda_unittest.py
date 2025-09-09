@@ -24,11 +24,13 @@ from paddle.cuda import (
     Stream,
     StreamContext,
     _device_to_paddle,
+    check_error,
     current_stream,
     get_device_capability,
     get_device_name,
     get_device_properties,
     is_available,
+    mem_get_info,
     stream,
     synchronize,
 )
@@ -216,6 +218,31 @@ class TestCudaCompat(unittest.TestCase):
         self.assertEqual(err, cuda_rt_module.cudaError.success)
         err = cuda_rt_module.cudaProfilerStop()
         self.assertEqual(err, cuda_rt_module.cudaError.success)
+
+    def test_mem_get_info(self):
+        a, b = mem_get_info(paddle.device.get_device())
+        self.assertGreaterEqual(a, 0)
+        self.assertGreaterEqual(b, 0)
+
+        a, b = mem_get_info('cuda:0')
+        self.assertGreaterEqual(a, 0)
+        self.assertGreaterEqual(b, 0)
+
+        a, b = mem_get_info()
+        self.assertGreaterEqual(a, 0)
+        self.assertGreaterEqual(b, 0)
+
+        with self.assertRaises(ValueError):
+            a, b = mem_get_info(0)
+
+    def test_check_error(self):
+        check_error(0)
+
+        with self.assertRaisesRegex(RuntimeError, "invalid argument"):
+            check_error(1)
+
+        with self.assertRaisesRegex(RuntimeError, "out of memory"):
+            check_error(2)
 
 
 class TestExternalStream(unittest.TestCase):

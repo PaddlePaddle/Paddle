@@ -143,15 +143,6 @@ def cudart():
             >>> # print("CUDA operations completed.")
             >>> check_error(paddle.cuda.cudart().cudaProfilerStop())
             >>> # print("====== End nsys profiling ======")
-
-    This command profiles the CUDA operations in the provided script and saves
-    the profiling information to a file named `trace_name.prof`.
-    The `--profile-from-start off` option ensures that profiling starts only
-    after the `cudaProfilerStart` call in the script.
-    The `--csv` and `--print-summary` options format the profiling output as a
-    CSV file and print a summary, respectively.
-    The `-o` option specifies the output file name, and the `-f` option forces the
-    overwrite of the output file if it already exists.
     """
     return base.libpaddle._cudart
 
@@ -165,20 +156,51 @@ class CudaError(RuntimeError):
 
 
 def check_error(res: int) -> None:
+    r"""Check the return code of a CUDA runtime API call.
+
+    This function validates whether the given result code from a CUDA
+    runtime call indicates success. If the result code is not
+    :data:`base.libpaddle._cudart.cudaError.success`, it raises a
+    :class:`CudaError`.
+
+    Args:
+        res (int): The CUDA runtime return code.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> from paddle.cuda import check_error
+            >>> check_error(0) # check for cuda success code # will not raise Error
+            >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
+            >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
+    """
     if res != base.libpaddle._cudart.cudaError.success:
         raise CudaError(res)
 
 
-def mem_get_info(device: DeviceLike | int = None) -> tuple[int, int]:
-    r"""Return the global free and total GPU memory for a given device using cudaMemGetInfo.
+def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
+    r"""Return the free and total GPU memory (in bytes) for a given device using ``cudaMemGetInfo``.
+
+    This function queries the CUDA runtime for the amount of memory currently
+    available and the total memory capacity of the specified device.
 
     Args:
-        device (DeviceLike, optional): Selected device. Returns
-            statistic for the current device, given by :func:`~paddle.cuda.current_device`,
-            if :attr:`device` is ``None`` (default) or if the device index is not specified.
+        device (DeviceLike, optional): The target device. If ``None`` (default),
+            the current device, as returned by :func:`~paddle.device.cuda.current_device`,
+            will be used.
 
     Returns:
-        return
+        tuple[int, int]: A tuple ``(free, total)``, where
+            - ``free`` (int): The number of free bytes of GPU memory available.
+            - ``total`` (int): The total number of bytes of GPU memory.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> from paddle.cuda import mem_get_info
+            >>> free_bytes, total_bytes = mem_get_info()
     """
     if device is None:
         device: str = paddle_device.get_device()
@@ -192,9 +214,9 @@ def mem_get_info(device: DeviceLike | int = None) -> tuple[int, int]:
         raise ValueError(f"Expected a cuda device, but got: {device}")
 
     device_id = (
-        paddle_device.get_device_id()
+        device.get_device_id()
         if isinstance(device, core.CUDAPlace)
-        else paddle_device.gpu_device_id()
+        else device.gpu_device_id()
     )
     return cudart().cudaMemGetInfo(device_id)
 
