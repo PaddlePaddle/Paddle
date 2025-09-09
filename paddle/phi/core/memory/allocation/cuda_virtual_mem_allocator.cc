@@ -15,6 +15,7 @@
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <unistd.h>  // close
 #endif
 
 #include <string>
@@ -43,6 +44,8 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
+  // ★ 允许导出可共享句柄（Linux：POSIX FD）
+  prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
   prop_ = prop;
 
   // Prepare the access descriptor array indicating where and how the backings
@@ -94,6 +97,34 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
   virtual_mem_alloced_offset_ = 0;
+  // ★ 注册到全局：用于后续通过 device 找到 allocator
+  // —— 注册到每设备表
+  Register(place.device, this);
+}
+
+CUDAVirtualMemAllocator::~CUDAVirtualMemAllocator() {
+  // 1) 从注册表摘掉自己（防止后续 TryExportShareHandle 命中已销毁实例）
+  Unregister(place_.device, this);
+
+  // 2) 可选：在调试期确保没有未解除映射的区域
+  if (!virtual_2_physical_map_.empty()) {
+    VLOG(2) << "CUDAVirtualMemAllocator destroyed with "
+            << virtual_2_physical_map_.size()
+            << " mapped regions still tracked.";
+  }
+
+  // 3) 可选：释放保留的 VA 空间（如果设计允许在析构时做）
+#if CUDA_VERSION >= 10020
+  if (virtual_mem_base_ && virtual_mem_size_) {
+    auto r =
+        phi::dynload::cuMemAddressFree(virtual_mem_base_, virtual_mem_size_);
+    VLOG(6) << "cuMemAddressFree(" << reinterpret_cast<void*>(virtual_mem_base_)
+            << ", " << virtual_mem_size_ << ") -> " << r;
+    (void)r;
+    virtual_mem_base_ = 0;
+    virtual_mem_size_ = 0;
+  }
+#endif
 }
 
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
@@ -138,6 +169,7 @@ void CUDAVirtualMemAllocator::FreeImpl(phi::Allocation* allocation) {
 }
 
 phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
+  std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
   size = AlignedSize(size, granularity_);
 
   CUdeviceptr ptr = virtual_mem_base_ + virtual_mem_alloced_offset_;
@@ -222,6 +254,98 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
   return new Allocation(
       reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
 }
+
+// --------- VMM IPC: export/import helpers ----------
+
+// —— 实现：区间命中 + 导出 FD
+bool CUDAVirtualMemAllocator::ExportShareHandleFromVA(CUdeviceptr va,
+                                                      VmmShareInfo* out) {
+  if (virtual_2_physical_map_.empty()) return false;
+  auto it = virtual_2_physical_map_.upper_bound(va);  // first key > va
+  if (it == virtual_2_physical_map_.begin()) return false;
+  --it;  // now it->first <= va
+  CUdeviceptr region_base = it->first;
+  size_t region_size = it->second.second;
+  if (va < region_base || va >= region_base + region_size) return false;
+
+  int fd = -1;
+  auto r = phi::dynload::cuMemExportToShareableHandle(
+      &fd, it->second.first, CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, 0);
+  if (r != CUDA_SUCCESS) {
+    VLOG(10) << "cuMemExportToShareableHandle failed r=" << r
+             << " base=" << reinterpret_cast<void*>(region_base)
+             << " size=" << region_size;
+    return false;
+  }
+  out->device = place_.device;
+  out->os_fd = fd;
+  out->offset = static_cast<size_t>(va - region_base);
+  out->size = region_size;
+  return true;
+}
+
+void CUDAVirtualMemAllocator::Register(int device, CUDAVirtualMemAllocator* a) {
+  std::lock_guard<std::mutex> g(s_reg_mu_);
+  s_regs_[device].push_back(a);
+}
+
+void CUDAVirtualMemAllocator::Unregister(int device,
+                                         CUDAVirtualMemAllocator* a) {
+  std::lock_guard<std::mutex> g(s_reg_mu_);
+  auto it = s_regs_.find(device);
+  if (it == s_regs_.end()) return;
+  auto& v = it->second;
+  v.erase(std::remove(v.begin(), v.end(), a), v.end());
+  if (v.empty()) s_regs_.erase(it);
+}
+
+bool CUDAVirtualMemAllocator::TryExportShareHandle(int device,
+                                                   void* any_va,
+                                                   VmmShareInfo* out) {
+  std::lock_guard<std::mutex> g(s_reg_mu_);
+  auto it = s_regs_.find(device);
+  if (it == s_regs_.end()) return false;
+  CUdeviceptr va = reinterpret_cast<CUdeviceptr>(any_va);
+  for (auto* a : it->second) {
+    if (a && a->ExportShareHandleFromVA(va, out)) return true;
+  }
+  return false;
+}
+
+class CudaVmmImportedAllocation final : public Allocation {
+ public:
+  CudaVmmImportedAllocation(void* ptr,
+                            void* base_ptr,
+                            size_t size,
+                            phi::Place place,
+                            CUmemGenericAllocationHandle h,
+                            CUdeviceptr va,
+                            size_t va_size,
+                            int os_fd)
+      : Allocation(ptr, base_ptr, size, place),
+        handle_(h),
+        va_(va),
+        va_size_(va_size),
+        os_fd_(os_fd) {}
+
+  ~CudaVmmImportedAllocation() override {
+#if CUDA_VERSION >= 10020
+    // 尽量清理（忽略 DEINITIALIZED）
+    auto unmap = phi::dynload::cuMemUnmap(va_, va_size_);
+    if (unmap != CUDA_ERROR_DEINITIALIZED) PADDLE_ENFORCE_GPU_SUCCESS(unmap);
+    auto rel = phi::dynload::cuMemRelease(handle_);
+    if (rel != CUDA_ERROR_DEINITIALIZED) PADDLE_ENFORCE_GPU_SUCCESS(rel);
+    phi::dynload::cuMemAddressFree(va_, va_size_);
+    if (os_fd_ >= 0) ::close(os_fd_);
+#endif
+  }
+
+ private:
+  CUmemGenericAllocationHandle handle_{};
+  CUdeviceptr va_{0};
+  size_t va_size_{0};
+  int os_fd_{-1};
+};
 
 }  // namespace paddle::memory::allocation
 

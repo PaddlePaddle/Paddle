@@ -63,7 +63,9 @@ limitations under the License. */
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
+#include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
@@ -661,6 +663,163 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 #else
            })
 #ifdef PADDLE_WITH_CUDA
+      .def("_share_vmm", [](phi::DenseTensor self) {
+        if (!self.IsInitialized() || self.numel() == 0) {
+          throw std::runtime_error("Tensor not initialized or empty.");
+        }
+        auto* holder = dynamic_cast<memory::allocation::Allocation*>(
+          self.Holder().get());
+        PADDLE_ENFORCE_EQ(
+        phi::is_gpu_place(holder->place()), true,
+        common::errors::InvalidArgument(
+          "Tensor is not on GPU. _share_vmm only supports GPU Tensor."));
+
+        // 从当前 device 的 VMM allocator 导出 shareable handle
+        const int device_id = holder->place().GetDeviceId();
+        auto stream =
+            paddle::platform::get_current_stream(device_id);
+        stream->Synchronize();
+        // 取映射区起点和大小
+        CUdeviceptr base = 0;
+        size_t range = 0;
+        CUdeviceptr va = reinterpret_cast<CUdeviceptr>(holder->ptr());
+
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::cuMemGetAddressRange(&base, &range, va));
+        void* any_va = reinterpret_cast<void*>(base);  // 关键：用区间起点
+        VLOG(10) << "VMM export try: dev=" << device_id
+                 << " any_va=" << any_va
+                 << " range=(" << reinterpret_cast<void*>(base)
+                 << ",+" << range << ")";
+
+        memory::allocation::VmmShareInfo info{};
+        bool ok = memory::allocation::CUDAVirtualMemAllocator::
+             TryExportShareHandle(device_id, any_va, &info);
+        if (!ok) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+            "VMM export failed: dev=%d any_va=%p range=(%p,+%zu) place=%s",
+            device_id, any_va, reinterpret_cast<void*>(base), range,
+            holder->place().DebugString().c_str()));}
+
+        int type_idx = static_cast<int>(self.type());
+        size_t data_size = self.numel() * framework::SizeOfType(
+          framework::TransToProtoVarType(self.type()));
+        int fd = info.os_fd;
+        int fd_dup = ::fcntl(fd, F_DUPFD_CLOEXEC, 0);
+        PADDLE_ENFORCE_NE(fd_dup, -1,
+                          common::errors::External("dup FD failed"));
+        return py::make_tuple(py::int_(fd_dup),
+                              py::int_(info.offset),
+                              py::int_(info.size),
+                              py::int_(type_idx),
+                              common::vectorize(self.dims()),
+                              self.lod(),
+                              py::int_(info.device));
+      })
+      .def("_new_shared_vmm", [](py::tuple t) {
+        if (t.size() != 7)
+          throw std::runtime_error(
+            "Invalid Tensor meta info for _new_shared_vmm!");
+        // 1) 解析元信息
+        int fd         = t[0].cast<int>();
+        ptrdiff_t off  = (ptrdiff_t)t[1].cast<int64_t>();
+        size_t region  = t[2].cast<size_t>();
+        int dtype_i    = t[3].cast<int>();
+        auto dims      = common::make_ddim(t[4].cast<std::vector<int>>());
+        int export_dev = t[6].cast<int>();
+
+        int flags = fcntl(fd, F_GETFD);
+        PADDLE_ENFORCE_NE(flags, -1,
+          common::errors::InvalidArgument(
+            "VMM IPC fd is invalid (EBADF). "
+            "Did you pass it via SCM_RIGHTS / DupFd?"));
+
+        auto logR = [&](const char* tag, CUresult r) {
+          VLOG(0) << "[VMM-IPC] " << tag << " -> " << r
+          << " export_dev=" << export_dev << " size=" << region
+          << " fd=" << fd;};
+
+        int cur_dev = 0;
+        PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&cur_dev));
+        // 如果导出设备与当前设备不同
+        // 先判断是否具备 P2P 能力（否则后面的 SetAccess 多半失败）
+        if (export_dev != cur_dev) {
+          int can = 0;
+          PADDLE_ENFORCE_GPU_SUCCESS(
+            cudaDeviceCanAccessPeer(
+              &can, cur_dev, export_dev));
+          PADDLE_ENFORCE_NE(can, 0, common::errors::Unavailable(
+              "VMM: device %d cannot access peer device %d;"
+              "cannot map memory exported from it.",
+              cur_dev, export_dev));
+        }
+
+        // 2) 导入句柄 & 映射
+        CUmemGenericAllocationHandle handle;
+        CUresult r = phi::dynload::cuMemImportFromShareableHandle(
+          &handle, reinterpret_cast<void*>(static_cast<intptr_t>(fd)),
+          CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR);
+        logR("cuMemImportFromShareableHandle", r);
+        PADDLE_ENFORCE_GPU_SUCCESS(r);
+        /*
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cuMemImportFromShareableHandle(
+            &handle, &fd, CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR));
+        */
+
+        // 3) 预留 VA（对齐由驱动处理，alignment 传 0）
+        CUdeviceptr addr = 0;
+        r = phi::dynload::cuMemAddressReserve(&addr, region, 0, 0, 0);
+        logR("cuMemAddressReserve", r);
+        PADDLE_ENFORCE_GPU_SUCCESS(r);
+        /*
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cuMemAddressReserve(&addr, region, 0, 0, 0));
+        */
+
+        // 4) 映射
+        r = phi::dynload::cuMemMap(addr, region, 0, handle, 0);
+        logR("cuMemMap", r);
+        PADDLE_ENFORCE_GPU_SUCCESS(r);
+        /*
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cuMemMap(addr, region, 0, handle, 0));
+        */
+
+        // 5) 设置访问权限（当前设备读写)
+        CUmemAccessDesc desc{};
+        desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+        desc.location.id   = cur_dev;
+        desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+        r = phi::dynload::cuMemSetAccess(addr, region, &desc, 1);
+        logR("cuMemSetAccess", r);
+        PADDLE_ENFORCE_GPU_SUCCESS(r);
+
+        /*
+        CUmemAccessDesc desc{};
+        desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+        desc.location.id   = cur_dev;
+        desc.flags         = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+        PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cuMemSetAccess(addr, region, &desc, 1));
+        */
+
+        // 5) 释放导入句柄（映射后可释放），关闭 FD
+        phi::dynload::cuMemRelease(handle);
+        ::close(fd);
+
+        // 3) 构造 Allocation（导入版），并复原 Tensor
+        void* dev = reinterpret_cast<void*>(addr + off);
+        auto shared_holder =
+        std::make_shared<memory::allocation::Allocation>(
+            dev, /*base_ptr*/reinterpret_cast<void*>(addr),
+            /*size*/region, phi::GPUPlace(cur_dev));
+        phi::DenseTensor tensor;
+        tensor.ResetHolderWithType(
+            shared_holder, static_cast<phi::DataType>(dtype_i));
+        tensor.Resize(dims);
+        return tensor;
+      })
       .def("_share_buffer_with",
            [](phi::DenseTensor &self, const phi::DenseTensor src,
               py::tuple t) {
@@ -708,6 +867,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
        )DOC")
       .def("_share_cuda",
            [](phi::DenseTensor self) {
+            VLOG(10) << "============ debug cuda ipc _share_cuda start=====";
              if (!self.IsInitialized() || self.numel() == 0)
                throw std::runtime_error(
                    "Tensor not initialized or numel is 0.  could not pass "

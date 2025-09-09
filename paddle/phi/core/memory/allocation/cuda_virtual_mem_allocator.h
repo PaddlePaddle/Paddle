@@ -32,18 +32,37 @@ namespace memory {
 namespace allocation {
 
 // Allocate memory using NVIDIA's virtual memory management technology
+
+struct VmmShareInfo {
+  int os_fd{-1};     // Linux: file descriptor
+  size_t size{0};    // total mapped length (page aligned)
+  size_t offset{0};  // byte offset inside the handle (page aligned)
+  int device{-1};    // exporter device
+};
+
 class CUDAVirtualMemAllocator : public Allocator {
  public:
   explicit CUDAVirtualMemAllocator(const phi::GPUPlace& place);
-
+  ~CUDAVirtualMemAllocator() override;
   bool IsAllocThreadSafe() const override;
+  static bool TryExportShareHandle(int device,
+                                   void* base_ptr,
+                                   VmmShareInfo* out);
+  // —— 新增：静态注册/查找（每设备可能多个实例）
+  static std::shared_ptr<Allocation> ImportShareHandle(const VmmShareInfo& in);
+  static void Register(int device, CUDAVirtualMemAllocator* a);
+  static void Unregister(int device, CUDAVirtualMemAllocator* a);
 
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
 
+  // —— 新增：从任意 VA 做“区间命中”并导出句柄
+  bool ExportShareHandleFromVA(CUdeviceptr va, VmmShareInfo* out);
+
  private:
   phi::GPUPlace place_;
+  std::once_flag once_flag_;
 
   CUdeviceptr virtual_mem_base_;
   size_t virtual_mem_size_;
@@ -55,6 +74,11 @@ class CUDAVirtualMemAllocator : public Allocator {
 
   std::map<CUdeviceptr, std::pair<CUmemGenericAllocationHandle, size_t>>
       virtual_2_physical_map_;
+
+  // registry (device -> allocator) so pybind can find us to export
+  inline static std::mutex s_reg_mu_;
+  // —— 新增：每设备的分配器注册表
+  inline static std::map<int, std::vector<CUDAVirtualMemAllocator*>> s_regs_;
 };
 
 }  // namespace allocation

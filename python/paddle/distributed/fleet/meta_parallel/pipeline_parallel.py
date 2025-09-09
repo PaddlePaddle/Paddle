@@ -663,6 +663,9 @@ class PipelineParallel(MetaParallelBase):
                 var_groups = assign_group_by_size(parameter_list, group_size)
 
                 for group_idx, parameters in var_groups.items():
+                    print(
+                        "============== debug pipeline parallel FusedCommBuffer ========"
+                    )
                     buffer = FusedCommBuffer(
                         group_idx,
                         parameters,

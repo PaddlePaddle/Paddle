@@ -240,6 +240,7 @@ class DygraphShardingOptimizer:
             params = self._rank2params[i]
             dst = comm_group.ranks[i]
             # TODO(sharding dev): make scale_after_comm a field to be configured by user
+            print("======== debug _tensor_fusion fused_parameters ========")
             decay_fused, all_fused, all_buffer = fused_parameters(
                 params,
                 use_main_grad=self._use_main_grad,
@@ -814,6 +815,7 @@ class DygraphShardingOptimizerV2:
             logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
             var_groups = assign_group_by_size(params, group_size)
             for _, parameters in var_groups.items():
+                print("============== debug FusedCommBuffer ========")
                 buffer = FusedCommBuffer(
                     group_idx,
                     parameters,

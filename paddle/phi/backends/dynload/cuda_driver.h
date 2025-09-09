@@ -62,15 +62,18 @@ extern bool HasCUDADriver();
   __macro(cuDeviceGet)
 
 #if CUDA_VERSION >= 10020
-#define CUDA_ROUTINE_EACH_VVM(__macro)    \
-  __macro(cuMemGetAllocationGranularity); \
-  __macro(cuMemAddressReserve);           \
-  __macro(cuMemCreate);                   \
-  __macro(cuMemMap);                      \
-  __macro(cuMemSetAccess);                \
-  __macro(cuMemUnmap);                    \
-  __macro(cuMemRelease);                  \
-  __macro(cuMemAddressFree)
+#define CUDA_ROUTINE_EACH_VVM(__macro)     \
+  __macro(cuMemGetAllocationGranularity);  \
+  __macro(cuMemAddressReserve);            \
+  __macro(cuMemCreate);                    \
+  __macro(cuMemMap);                       \
+  __macro(cuMemSetAccess);                 \
+  __macro(cuMemUnmap);                     \
+  __macro(cuMemRelease);                   \
+  __macro(cuMemAddressFree);               \
+  __macro(cuMemExportToShareableHandle);   \
+  __macro(cuMemImportFromShareableHandle); \
+  __macro(cuMemGetAddressRange_v2)
 
 #define CUDA_ROUTINE_EACH_CUDA_GRAPH(__macro) \
   __macro(cuGraphNodeGetType);                \
