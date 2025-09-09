@@ -156,6 +156,19 @@ void FloorDivideKernel(const Context& dev_ctx,
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
 
+template <typename T, typename Context>
+void TruncDivideKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       DenseTensor* out) {
+  int axis = -1;
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::TruncDivideFunctor<T>(), axis);
+}
+
 // Create the definition of Heaviside
 template <typename T, typename Context>
 void HeavisideKernel(const Context& dev_ctx,
@@ -269,6 +282,19 @@ PD_REGISTER_KERNEL(floor_divide,
                    double,
                    phi::float16,
                    phi::bfloat16) {}
+PD_REGISTER_KERNEL(trunc_divide,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::TruncDivideKernel,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow,
                    KPS,
                    ALL_LAYOUT,

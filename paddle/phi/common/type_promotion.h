@@ -90,7 +90,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "divide",    "elementwise_div", "truediv",         "floor_divide",
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
-    "copysign",  "cross",
+    "copysign",  "cross",           "trunc_divide",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {
