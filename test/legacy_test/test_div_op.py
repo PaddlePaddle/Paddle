@@ -304,6 +304,12 @@ class TestPaddleDivide(unittest.TestCase):
             out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
             inv_out_f32 = paddle.divide(y_mat, zero_f32, rounding_mode='trunc')
 
+            try:
+                paddle.divide(y_int32, zero_int32, rounding_mode='trunc')
+                paddle.divide(y_int32_mat, zero_int32, rounding_mode='trunc')
+            except:
+                pass
+
         run_test(paddle.CPUPlace())
 
         if paddle.is_compiled_with_cuda():
