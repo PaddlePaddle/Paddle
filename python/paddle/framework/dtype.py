@@ -227,7 +227,7 @@ else:
     bind_vartype()
 
 
-def iinfo(dtype) -> core_iinfo:
+def iinfo(dtype: DTypeLike) -> core_iinfo:
     """
 
     paddle.iinfo is a function that returns an object that represents the numerical properties of
