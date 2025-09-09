@@ -1026,7 +1026,6 @@ add_doc_and_signature(
         otherwise it's data type is the same as `x`.
     Examples:
         .. code-block:: python
-            >>> # type: ignore
 
             >>> import paddle
             >>> # x is a Tensor with following elements:
