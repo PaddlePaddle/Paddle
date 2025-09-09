@@ -24,10 +24,10 @@ class Graph;
 /*
  * Quantize parameters of ops
  */
-class ParamsQuantizationMkldnnPass : public FusePassBase {
+class ParamsQuantizationOnednnPass : public FusePassBase {
  public:
-  ParamsQuantizationMkldnnPass();
-  virtual ~ParamsQuantizationMkldnnPass() = default;
+  ParamsQuantizationOnednnPass();
+  virtual ~ParamsQuantizationOnednnPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

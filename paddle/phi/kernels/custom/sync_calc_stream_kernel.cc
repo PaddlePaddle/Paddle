@@ -35,5 +35,5 @@ PD_REGISTER_KERNEL(sync_calc_stream,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

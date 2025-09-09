@@ -15,7 +15,6 @@
 #include <algorithm>
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"

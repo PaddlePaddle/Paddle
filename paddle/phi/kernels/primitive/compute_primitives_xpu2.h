@@ -122,7 +122,7 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  *
  * @param：
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
@@ -166,7 +166,7 @@ __device__ __forceinline__ void ElementwiseBinary(
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
@@ -240,7 +240,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * 1.
+ * in1: The register pointer of first input, size is NX * 1.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */

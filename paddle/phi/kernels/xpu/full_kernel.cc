@@ -16,9 +16,6 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -49,13 +46,12 @@ void FullKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void FullKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const IntArray& shape,
-    const Scalar& val,
-    DataType dtype,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                            const IntArray& shape,
+                                            const Scalar& val,
+                                            DataType dtype,
+                                            DenseTensor* out) {
+  using T = phi::complex64;
   out->Resize(common::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
 

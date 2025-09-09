@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 import math
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -32,6 +33,7 @@ from paddle.utils.decorator_utils import (
     param_one_alias,
     param_two_alias,
     reshape_decorator,
+    tensor_split_decorator,
     view_decorator,
 )
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -2970,6 +2972,7 @@ def split(
         return outs
 
 
+@tensor_split_decorator
 def tensor_split(
     x: Tensor,
     num_or_indices: int | Sequence[int],
@@ -2987,16 +2990,23 @@ def tensor_split(
     the size of the first int(6 % 4) part after splitting will be int(6 / 4) + 1
     and the size of the remaining parts will be int(6 / 4).
 
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, ``indices_or_sections`` can be used as an alias for ``num_or_indices``, and ``dim`` can be used as an alias for ``axis``.
+        For example, ``tensor_split(input=tensor_x, indices=[2,4], dim=1, ...)`` is equivalent to ``tensor_split(x=tensor_x, num_or_indices=[2,4], axis=1, ...)``.
+
     Args:
         x (Tensor): A Tensor whose dimension must be greater than 0. The data type is bool, bfloat16, float16, float32, float64, uint8, int32 or int64.
+            alias: ``input``
         num_or_indices (int|list|tuple): If ``num_or_indices`` is an int ``n``, ``x`` is split into ``n`` sections along ``axis``.
             If ``x`` is divisible by ``n``, each section will be ``x.shape[axis] / n``. If ``x`` is not divisible by ``n``, the first
             ``int(x.shape[axis] % n)`` sections will have size ``int(x.shape[axis] / n) + 1``, and the rest will be ``int(x.shape[axis] / n).
             If ``num_or_indices`` is a list or tuple of integer indices, ``x`` is split along ``axis`` at each of the indices. For instance,
             ``num_or_indices=[2, 4]`` with ``axis=0`` would split ``x`` into ``x[:2]``, ``x[2:4]`` and ``x[4:]`` along axis 0.
+            alias: ``indices`` or ``sections``
         axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
             with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
+            alias: ``dim``
         name (str|None, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     Returns:
@@ -4301,14 +4311,191 @@ def unbind(input: Tensor, axis: int = 0) -> list[Tensor]:
         return outs
 
 
-def scatter(
+def _put_along_axis_inplace_wrapper(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor | None = None,
+    reduce: str | None = None,
+    value: Tensor | None = None,
+) -> Tensor:
+    """Wrapper for inplace version of put_along_axis
+    This API is not directly available for users. One can only call this API via torch.Tensor.scatter_ or torch.scatter_
+    """
+    if src is None:
+        src = value
+        if src is None:
+            raise TypeError(
+                "'paddle.Tensor.scatter_' expect one of the following input pattern: \n"
+                " - (int dim, Tensor index, Tensor src (alias value), *, str reduce)\n"
+                " - (Tensor index, Tensor updates, bool overwrite, str name = None)\n"
+                "However, the input pattern does not match, please check."
+            )
+    elif value is not None:
+        raise TypeError(
+            "`value` is useless when `src` is specified. Be careful for conflicting parameters."
+        )
+    if reduce is None:
+        reduce = 'assign'
+
+    if len(input.shape) != len(index.shape):
+        raise ValueError(
+            "`index` and `input` must have the same number of dimensions!"
+        )
+    axis = non_negative_axis(input, dim)
+
+    if isinstance(src, (paddle.Tensor, paddle.pir.Value)):
+        if len(index.shape) != len(src.shape):
+            raise ValueError(
+                "`index` and `src` must have the same number of dimensions!"
+            )
+        for i in range(len(input.shape)):
+            if (i != axis and input.shape[i] < index.shape[i]) or index.shape[
+                i
+            ] > src.shape[i]:
+                raise RuntimeError(
+                    f"Size does not match at dimension {i} expected index {index.shape} to be smaller than self {input.shape} apart from dimension {axis} and to be smaller size than src {src.shape}"
+                )
+    else:
+        src = paddle.to_tensor(src).astype(input.dtype)
+        elements = 1
+        for num in src.shape:
+            elements *= num
+        if elements == 1:  # paddle.pir.Value has no attribute 'size'
+            src = paddle.broadcast_to(src, index.shape)
+    axis_max_size = input.shape[axis]
+    if not (index < axis_max_size).all():
+        raise RuntimeError(
+            f"one of element of index is out of bounds for dimension {axis} with size {axis_max_size}"
+        )
+
+    if convert_dtype(index.dtype) not in ['int32', 'int64']:
+        raise TypeError(
+            f"The data type of index should be one of ['int32', 'int64'], but got {convert_dtype(index.dtype)}"
+        )
+    return _C_ops.put_along_axis_(input, index, src, axis, reduce, True)
+
+
+def _scatter_inplace_wrapper(
     x: Tensor,
     index: Tensor,
     updates: Tensor,
     overwrite: bool = True,
     name: str | None = None,
 ) -> Tensor:
+    """Wrapper for inplace origin scatter"""
+    return _C_ops.scatter_(x, index, updates, overwrite)
+
+
+@inplace_apis_in_dygraph_only
+def scatter_(*args: Any, **kwargs: Any) -> Tensor:
     """
+    Inplace version of ``scatter`` API, the output Tensor will be inplaced with input.
+    Please refer to :ref:`api_paddle_tensor_scatter`.
+    """
+    len_args = len(args)
+    if len_args + len(kwargs) < 2:
+        raise TypeError(
+            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
+            " - (int dim, Tensor index, Tensor src, *, str reduce, Tensor out = None)\n"
+            " - (Tensor index, Tensor updates, bool overwrite, str name = None)"
+        )
+    is_put_along_axis = False
+    # put_along_axis (torch.scatter) must have 'dim' in either args or kwargs
+    if len_args >= 2:
+        is_put_along_axis = isinstance(args[1], int)
+    else:
+        is_put_along_axis = 'dim' in kwargs
+    if is_put_along_axis:
+        return _put_along_axis_inplace_wrapper(*args, **kwargs)
+    else:
+        return _scatter_inplace_wrapper(*args, **kwargs)
+
+
+scatter_.signature = inspect.signature(_scatter_inplace_wrapper)
+
+
+def _scatter_wrapper(
+    x: Tensor,
+    index: Tensor,
+    updates: Tensor,
+    overwrite: bool = True,
+    name: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor:
+    """Wrapper for original scatter
+    This API is not directly available for users. One can only call this API via torch.Tensor.scatter or torch.scatter
+    """
+    if in_dynamic_or_pir_mode():
+        res = _C_ops.scatter(x, index, updates, overwrite)
+    else:
+        check_variable_and_dtype(
+            x,
+            'dtype',
+            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
+            'scatter',
+        )
+        check_type(overwrite, 'overwrite', bool, 'scatter')
+        helper = LayerHelper('scatter', **locals())
+        output = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type="scatter",
+            inputs={"X": x, "Ids": index, "Updates": updates},
+            attrs={'overwrite': overwrite},
+            outputs={"Out": output},
+        )
+        res = output
+    if out is not None:
+        paddle.assign(res, out)
+    return res
+
+
+def _put_along_axis_wrapper(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor | None = None,
+    reduce: str | None = None,
+    out: Tensor | None = None,
+    value: Tensor | None = None,
+):
+    """A PyTorch Compatible wrapper for put_along_axis
+    This API is not directly available for users. One can only call this API via torch.Tensor.scatter or torch.scatter
+    """
+    if src is None:
+        src = value
+        if src is None:
+            raise TypeError(
+                "'paddle.scatter' expect one of the following input pattern: \n"
+                " - (Tensor input, int dim, Tensor index, Tensor src (alias value), *, str reduce, Tensor out = None)\n"
+                " - (Tensor x, Tensor index, Tensor updates, bool overwrite, str name = None)\n"
+                "However, the input pattern does not match, please check."
+            )
+    elif value is not None:
+        raise TypeError(
+            "`value` is useless when `src` is specified. Be careful for conflicting parameters."
+        )
+    if reduce is None:
+        reduce = 'assign'
+    res = paddle.put_along_axis(input, index, src, dim, reduce, broadcast=False)
+    if out is not None:
+        paddle.assign(res, out)
+    return res
+
+
+def scatter(*args: Any, **kwargs: Any) -> Tensor:
+    """
+
+    This function has two functionalities, depending on the parameters passed:
+
+    1. ``scatter(Tensor input, int dim, Tensor index, Tensor src (alias value), *, str reduce = None, Tensor out = None)``:
+        PyTorch compatible scatter, calls a non-broadcast `paddle.put_along_axis`.
+        Check out :ref:`api_paddle_put_along_axis` and also `[torch has more parameters] torch.scatter <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/torch/torch.scatter.html>`_
+
+    2. ``scatter(Tensor x, Tensor index, Tensor updates, bool overwrite, str name = None)``:
+        The original paddle.scatter, see the following docs.
+
+
     **Scatter Layer**
     Output is obtained by updating the input on selected indices based on updates.
 
@@ -4387,40 +4574,26 @@ def scatter(
             >>> #  [2., 2.],
             >>> #  [1., 1.]]
     """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.scatter(x, index, updates, overwrite)
+    len_args = len(args)
+    if len_args + len(kwargs) < 2:
+        raise TypeError(
+            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
+            " - (Tensor input, int dim, Tensor index, Tensor src, *, str reduce, Tensor out = None)\n"
+            " - (Tensor x, Tensor index, Tensor updates, bool overwrite, str name = None)"
+        )
+    is_put_along_axis = False
+    # put_along_axis (torch.scatter) must have 'dim' in either args or kwargs. index can never be int.
+    if len_args >= 2:
+        is_put_along_axis = isinstance(args[1], int)
     else:
-        check_variable_and_dtype(
-            x,
-            'dtype',
-            ['float32', 'float64', 'float16', 'int32', 'int64', 'uint16'],
-            'scatter',
-        )
-        check_type(overwrite, 'overwrite', bool, 'scatter')
-        helper = LayerHelper('scatter', **locals())
-        out = helper.create_variable_for_type_inference(x.dtype)
-        helper.append_op(
-            type="scatter",
-            inputs={"X": x, "Ids": index, "Updates": updates},
-            attrs={'overwrite': overwrite},
-            outputs={"Out": out},
-        )
-        return out
+        is_put_along_axis = 'dim' in kwargs
+    if is_put_along_axis:
+        return _put_along_axis_wrapper(*args, **kwargs)
+    else:
+        return _scatter_wrapper(*args, **kwargs)
 
 
-@inplace_apis_in_dygraph_only
-def scatter_(
-    x: Tensor,
-    index: Tensor,
-    updates: Tensor,
-    overwrite: bool = True,
-    name: str | None = None,
-) -> Tensor:
-    """
-    Inplace version of ``scatter`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_tensor_scatter`.
-    """
-    return _C_ops.scatter_(x, index, updates, overwrite)
+scatter.__signature__ = inspect.signature(_scatter_wrapper)
 
 
 def scatter_nd_add(
@@ -4938,6 +5111,8 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             [[1, 2, 3],
              [1, 2, 3]])
     """
+    if isinstance(shape, (list, tuple)) and len(shape) == 0:
+        return x
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     elif in_pir_mode():

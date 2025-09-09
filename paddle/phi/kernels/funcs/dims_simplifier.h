@@ -269,7 +269,7 @@ struct PermuteDimsSimplifier {
     int valid_map[phi::DDim::kMaxRank];
     int64_t combined_dims[phi::DDim::kMaxRank];
 
-    // Merge consecutive dims to the fist one dim and
+    // Merge consecutive dims to the first one dim and
     // leave original dim to be 1. Example below :
     // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
     // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]

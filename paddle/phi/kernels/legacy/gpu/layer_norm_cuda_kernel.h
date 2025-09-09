@@ -220,7 +220,7 @@ __device__ void cuWelfordMuSigma2(const T* __restrict__ vals,
 }
 
 template <>
-__device__ void cuWelfordMuSigma2(const phi::dtype::float16* __restrict__ vals,
+__device__ void cuWelfordMuSigma2(const phi::float16* __restrict__ vals,
                                   const int n1,
                                   const int n2,
                                   const int i1,

@@ -38,7 +38,7 @@ class TestTransposeOp(OpTest):
         self.attrs = {
             'axis': list(self.axis),
             'use_onednn': self.use_onednn,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
 
         self.outputs = {
