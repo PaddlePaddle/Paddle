@@ -532,7 +532,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_fusion_lstm_onednn_op',
     'test_fusion_lstm_int8_onednn_op',
     'test_fusion_lstm_bf16_onednn_op',
-    'test_gaussian_random_mkldnn_op',
+    'test_gaussian_random_onednn_op',
     'test_lrn_onednn_op',
     'test_matmul_mkldnn_op',
     'test_matmul_bf16_mkldnn_op',
