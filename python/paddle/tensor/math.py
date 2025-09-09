@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import math
-import numbers
 import warnings
 from typing import TYPE_CHECKING, Literal
 
@@ -45,6 +44,7 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
     sum_decorator,
@@ -1121,7 +1121,7 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-@param_two_alias(["x", "input"], ["y", "other"])
+@floor_divide_decorator()
 def floor_divide(
     x: Tensor,
     y: Number | Tensor,
@@ -1176,8 +1176,8 @@ def floor_divide(
             [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
-        if isinstance(y, numbers.Number):
-            return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
+        # if isinstance(y, numbers.Number):
+        #     return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
         return _C_ops.floor_divide(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
