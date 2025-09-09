@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 # test_cuda_unittest.py
 import unittest
-
-from op_test import get_device
 
 import paddle
 
@@ -33,11 +32,11 @@ class TestCudaCompat(unittest.TestCase):
     def test_paddle_device_gpu_variants(self):
         cases = [
             (("cuda", 2), "gpu:2"),
-            ((get_device(), 1), "gpu:1"),
+            (("gpu", 1), "gpu:1"),
             (("cuda:3",), "gpu:3"),
             (("gpu:4",), "gpu:4"),
             ((5,), "gpu:5"),  # int -> gpu
-            ((get_device(), None), "gpu:0"),  # None index defaults to 0
+            (("gpu", None), "gpu:0"),  # None index defaults to 0
         ]
         for args, expected in cases:
             d = paddle.device(*args)

@@ -444,7 +444,7 @@ def get_device_class():
     elif is_custom_device():
         return core.CustomPlace
     else:
-        return None
+        return core.CPUPlace
 
 
 def get_device_place(device_id: int = 0):
