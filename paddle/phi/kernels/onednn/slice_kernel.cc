@@ -118,6 +118,6 @@ PD_REGISTER_KERNEL(slice,
                    float,
                    int8_t,
                    uint8_t,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::SliceCheckIfOneDNNSupport;
 }

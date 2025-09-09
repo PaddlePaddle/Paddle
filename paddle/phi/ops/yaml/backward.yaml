@@ -3400,6 +3400,16 @@
     func : slogdet_grad
     data_type : out_grad
 
+- backward_op : slogdet_v2_grad
+  forward : slogdet_v2 (Tensor x) -> Tensor(sign), Tensor(logdet)
+  args : (Tensor x, Tensor sign, Tensor logdet, Tensor sign_grad, Tensor logdet_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : GeneralUnaryGradInferMeta
+    param : [x]
+  kernel :
+    func : slogdet_v2_grad
+
 - backward_op : softplus_double_grad
   forward : softplus_grad (Tensor x, Tensor grad_out, float beta, float threshold) -> Tensor(grad_x)
   args : (Tensor x, Tensor grad_out, Tensor grad_x_grad, float beta, float threshold)

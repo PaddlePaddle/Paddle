@@ -117,10 +117,10 @@ DEFINE_CUDA_COMPARE_STRIDE_OP(NotEqual, NotEqual)
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 #define REGISTER_STRIDE_COMPLEX_COMPARE_KERNEL(less_than, func) \
   PD_REGISTER_KERNEL(less_than,                                 \
@@ -133,12 +133,12 @@ using complex128 = ::phi::dtype::complex<double>;
                      int8_t,                                    \
                      int16_t,                                   \
                      int64_t,                                   \
-                     phi::dtype::complex<float>,                \
-                     phi::dtype::complex<double>,               \
+                     phi::complex64,                            \
+                     phi::complex128,                           \
                      float,                                     \
                      double,                                    \
-                     phi::dtype::float16,                       \
-                     phi::dtype::bfloat16) {                    \
+                     phi::float16,                              \
+                     phi::bfloat16) {                           \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);       \
   }
 

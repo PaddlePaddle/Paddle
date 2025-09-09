@@ -53,7 +53,6 @@ function gen_full_html_report_cinn(){
         '/paddle/paddle/cinn/operator_fusion/*' \
         '/paddle/paddle/cinn/optim/*' \
         '/paddle/paddle/cinn/poly/*' \
-        '/paddle/paddle/cinn/pybind/*' \
         '/paddle/paddle/cinn/runtime/*' \
         '/paddle/paddle/cinn/utils/*' \
         -o coverage-full.tmp \

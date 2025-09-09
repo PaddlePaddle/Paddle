@@ -55,12 +55,11 @@ void TransposeKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void TransposeKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const std::vector<int>& axis,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void TransposeKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                 const DenseTensor& x,
+                                                 const std::vector<int>& axis,
+                                                 DenseTensor* out) {
+  using T = phi::complex64;
   size_t x_rank = x.dims().size();
   std::vector<int64_t> formatted_axis(axis.begin(), axis.end());
   for (size_t i = 0; i < axis.size(); i++) {
@@ -114,7 +113,7 @@ PD_REGISTER_KERNEL(transpose,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    int64_t,
                    int,
