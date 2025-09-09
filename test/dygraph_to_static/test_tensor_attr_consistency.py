@@ -80,7 +80,6 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         "__cuda_array_interface__",
         '__dlpack__',
         "__dlpack_device__",
-        "get_device",
     ]
 )
 STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
