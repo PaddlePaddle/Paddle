@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 import warnings
 from typing import TYPE_CHECKING, Literal
 
@@ -1176,8 +1177,8 @@ def floor_divide(
             [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
-        # if isinstance(y, numbers.Number):
-        #     return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
+        if isinstance(y, numbers.Number):
+            return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
         return _C_ops.floor_divide(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
