@@ -103,16 +103,15 @@ class TensorSize(int):
     as_shape: list[int]
 
     def __new__(cls, shape):
-        as_numel = int(np.prod(shape))
-        as_shape = shape
-        instance = super().__new__(cls, as_numel)
-        instance.as_shape = paddle.Size(as_shape)
+        instance = super().__new__(cls, int(np.prod(shape)))
+        instance.as_shape = shape
         return instance
 
     def __call__(self, dim=None):
+        shape = paddle.Size(self.as_shape)
         if dim is None:
-            return self.as_shape
-        return self.as_shape[dim]
+            return shape
+        return shape[dim]
 
 
 def monkey_patch_math_tensor():
