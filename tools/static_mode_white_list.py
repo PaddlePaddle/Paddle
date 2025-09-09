@@ -513,7 +513,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_conv2d_transpose_onednn_op',
     'test_conv2d_transpose_bf16_onednn_op',
     'test_conv3d_onednn_op',
-    'test_dequantize_mkldnn_op',
+    'test_dequantize_onednn_op',
     'test_elementwise_add_onednn_op',
     'test_elementwise_add_bf16_onednn_op',
     'test_elementwise_div_onednn_op',
