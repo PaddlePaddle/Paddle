@@ -349,9 +349,10 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     // Case 2: Returned tensor count matches total output count (including
     // in-place outputs).
     if (!GetInplaceIndexMap().empty()) {
-      LOG(WARNING) << "[CustomOp] In-place outputs detected, "
-                   << "but the number of returned outputs matches the declared "
-                      "output count.";
+      LOG_FIRST_N(WARNING, 1)
+          << "[CustomOp] In-place outputs detected, "
+          << "but the number of returned outputs matches the declared "
+             "output count.";
     }
     // Ensure in-place output tensors share memory with their corresponding
     // inputs
@@ -369,7 +370,7 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     }
     // Copy non-in-place outputs as usual
     for (size_t i = 0; i < outs.size(); ++i) {
-      if (GetInplaceIndexMap().count(i)) continue;
+      if (GetInplaceReverseIndexMap().count(i)) continue;
       AssignTensorImpl(outs.at(i), &(all_outs->at(i)));
     }
   } else {
@@ -377,8 +378,10 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
     std::vector<std::string> outputs_names_wo_inplace;
     std::vector<std::string> outputs_names_with_inplace;
 
-    for (size_t i = 0; i < this->outputs_names_.size(); ++i) {
-      if (GetInplaceIndexMap().count(i)) {
+    const int num_outputs = this->outputs_names_.size();
+
+    for (size_t i = 0; i < num_outputs; ++i) {
+      if (GetInplaceReverseIndexMap().count(i)) {
         outputs_names_with_inplace.push_back(this->outputs_names_.at(i) +
                                              "(inplaced)");
       } else {
@@ -393,7 +396,6 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
         paddle::string::join_strings<std::vector<std::string>>(
             outputs_names_with_inplace, ", ");
     const int num_inplace_outputs = GetInplaceIndexMap().size();
-    const int num_outputs = outputs_names_.size();
 
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "Output tensor count mismatch. Expected outputs: [%s] (including %d "
