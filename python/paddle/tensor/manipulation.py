@@ -5111,6 +5111,8 @@ def expand(x: Tensor, shape: ShapeLike, name: str | None = None) -> Tensor:
             [[1, 2, 3],
              [1, 2, 3]])
     """
+    if isinstance(shape, (list, tuple)) and len(shape) == 0:
+        return x
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
     elif in_pir_mode():

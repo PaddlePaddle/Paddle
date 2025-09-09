@@ -33,7 +33,7 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_onednn': True,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
 
         self.output = np.concatenate(
@@ -118,7 +118,7 @@ class TestConcatLargeInputNum(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_onednn': True,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
 
         self.output = np.concatenate(

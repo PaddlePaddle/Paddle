@@ -15,13 +15,9 @@
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
-
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
 
 namespace phi {
 
@@ -62,8 +58,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -77,8 +73,8 @@ PD_REGISTER_KERNEL(all,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 #endif
