@@ -65,7 +65,7 @@ class TestPlaceGuard(unittest.TestCase):
             dygraph_guard(),
             self.assertRaisesRegex(
                 ValueError,
-                "The device must be a string which is like 'cpu', get_device(), 'gpu:x',",
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'dcu', 'dcu:x', 'xpu', 'xpu:x', 'npu', 'npu:x'",
             ),
             paddle.device.device_guard("xxx"),
         ):

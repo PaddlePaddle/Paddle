@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import is_custom_device
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -25,7 +25,7 @@ import paddle
 )
 class TestUnaryElementwiseOp_Stride(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.get_device_place()
+        self.place = get_device_place()
         self.dtype = np.float64
         self.init_api()
         self.init_input()

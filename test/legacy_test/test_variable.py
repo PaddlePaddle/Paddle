@@ -16,7 +16,7 @@ import unittest
 from functools import reduce
 
 import numpy as np
-from op_test import get_places, is_custom_device
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -530,7 +530,7 @@ class TestListIndex(unittest.TestCase):
                         paddle.base.core.is_compiled_with_cuda()
                         or is_custom_device()
                     )
-                    else paddle.get_device_place()
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -614,7 +614,7 @@ class TestListIndex(unittest.TestCase):
                     paddle.base.core.is_compiled_with_cuda()
                     or is_custom_device()
                 )
-                else paddle.get_device_place()
+                else get_device_place()
             )
 
             prog = paddle.static.default_main_program()
@@ -938,7 +938,7 @@ class TestListIndex(unittest.TestCase):
                         paddle.base.core.is_compiled_with_cuda()
                         or is_custom_device()
                     )
-                    else paddle.get_device_place()
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1020,7 +1020,7 @@ class TestListIndex(unittest.TestCase):
                         paddle.base.core.is_compiled_with_cuda()
                         or is_custom_device()
                     )
-                    else paddle.get_device_place()
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()

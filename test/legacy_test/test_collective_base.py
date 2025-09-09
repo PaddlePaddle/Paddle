@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import pickle
 import socket
@@ -22,7 +23,6 @@ import unittest
 from contextlib import closing
 
 import numpy as np
-from op_test import get_device_place
 
 import paddle.base.unique_name as nameGen
 from paddle import base
@@ -117,7 +117,9 @@ class TestCollectiveRunnerBase:
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = get_device_place()  # if args.use_gpu else base.CPUPlace()
+        place = base.CUDAPlace(
+            device_id
+        )  # if args.use_gpu else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())

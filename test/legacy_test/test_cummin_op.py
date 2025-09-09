@@ -216,7 +216,7 @@ class TestCumminAPI(unittest.TestCase):
     def test_gpu(self):
         if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.get_device_place())
+        paddle.disable_static(get_device_place())
         self.run_cases()
         paddle.enable_static()
         self.run_static(use_gpu=True)

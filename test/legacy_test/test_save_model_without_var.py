@@ -14,7 +14,7 @@
 import unittest
 import warnings
 
-from op_test import is_custom_device
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -26,7 +26,7 @@ class TestSaveModelWithoutVar(unittest.TestCase):
         data_plus = data + 1
 
         if base.core.is_compiled_with_cuda() or is_custom_device():
-            place = base.get_device_place()
+            place = get_device_place()
         else:
             place = base.core.CPUPlace()
 
@@ -48,4 +48,5 @@ class TestSaveModelWithoutVar(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

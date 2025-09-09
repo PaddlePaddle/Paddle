@@ -296,7 +296,7 @@ class TestCUDANormal(unittest.TestCase):
 
 @unittest.skipIf(
     not (base.core.is_compiled_with_cuda() or is_custom_device())
-    or not base.core.is_float16_supported(base.get_device_place()),
+    or not base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestCUDAFP16(unittest.TestCase):
@@ -309,7 +309,7 @@ class TestCUDAFP16(unittest.TestCase):
 
 @unittest.skipIf(
     not (base.core.is_compiled_with_cuda() or is_custom_device())
-    or not base.core.is_bfloat16_supported(base.get_device_place()),
+    or not base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCUDABFP16(unittest.TestCase):

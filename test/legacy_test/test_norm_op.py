@@ -128,12 +128,12 @@ class TestNormOp7(TestNormOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            base.get_device_place(), atol=5e-2, check_cinn=True
+            get_device_place(), atol=5e-2, check_cinn=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            base.get_device_place(),
+            get_device_place(),
             ['X'],
             'Out',
             max_relative_error=0.05,

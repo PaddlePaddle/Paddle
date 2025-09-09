@@ -190,7 +190,7 @@ class TestAtan2Broadcasting(unittest.TestCase):
     def _get_places(self):
         places = [paddle.base.CPUPlace()]
         if paddle.is_compiled_with_cuda() or is_custom_device():
-            places.append(paddle.get_device_place())
+            places.append(get_device_place())
         return places
 
     def _generate_inputs_outputs(self, shapes):

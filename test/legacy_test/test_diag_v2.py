@@ -324,7 +324,7 @@ class TestDiagV2API(unittest.TestCase):
         if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.get_device_place())
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
         self.run_static(use_gpu=True)
