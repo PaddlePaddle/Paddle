@@ -41,7 +41,7 @@ def IsUsePredefinedOut(position_list: list) -> bool:
     if not position_list:
         return False
 
-    is_all_tensor = all(pos[0] == "Tensor" for pos in position_list)
+    is_all_tensor = all(pos == "Tensor" for pos in position_list)
     length = len(position_list)
 
     return is_all_tensor and 1 <= length <= 7
