@@ -1552,7 +1552,7 @@ class Test1DReduce(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSum_ZeroDim(Test1DReduce):
@@ -1802,7 +1802,7 @@ class TestKeepDimReduceSumMultiAxes(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestKeepDimReduceSumMultiAxesForEager(OpTest):
@@ -1846,7 +1846,7 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumWithDimOneForEager(OpTest):
@@ -1918,7 +1918,7 @@ class TestReduceAll(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceAllFp32(OpTest):
@@ -1939,7 +1939,7 @@ class TestReduceAllFp32(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class Test1DReduceWithAxes1(OpTest):
@@ -1960,7 +1960,7 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 def reduce_sum_wrapper_fp64(
@@ -1993,7 +1993,7 @@ class TestReduceWithDtype(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):
@@ -2018,7 +2018,7 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype2(TestReduceWithDtype):
@@ -2043,7 +2043,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumOpError(unittest.TestCase):
