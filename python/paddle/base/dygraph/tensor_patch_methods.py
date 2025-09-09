@@ -1477,7 +1477,7 @@ def monkey_patch_tensor():
         return paddle.to_dlpack(self)
 
     def get_device(self: Tensor) -> int:
-        r"""
+        """
         Return the device id where the Tensor is located.
 
         Returns:

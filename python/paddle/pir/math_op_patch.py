@@ -1456,7 +1456,7 @@ def monkey_patch_value():
 
     import paddle
 
-    def get_device(self):
+    def get_device(self) -> None:
         """
         Value don't have 'get_device' interface in static graph mode
         But this interface can greatly facilitate dy2static.
