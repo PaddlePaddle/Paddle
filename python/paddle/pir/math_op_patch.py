@@ -598,9 +598,7 @@ def monkey_patch_value():
             ...
             value's size is: 24
         """
-        return paddle.tensor.size.TensorSize(
-            list(paddle.jit.dy2static.Shape(self).numpy())
-        )
+        return paddle.numel(self)
 
     @property
     def _T_(self):
