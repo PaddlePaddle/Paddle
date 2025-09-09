@@ -133,7 +133,7 @@ struct ShapeSignatureGenerator {
 
   void GetSymbolsForOneDimExpr(const symbol::DimExpr& dim_expr,
                                std::unordered_set<symbol::DimExpr>* symbols) {
-    auto DimExprVisitor = common::Overloaded{
+    auto DimExprVisitor = ::common::Overloaded{
         [&](std::int64_t) {},
         [&](const std::string& str) { symbols->insert(symbol::DimExpr(str)); },
         [&](const symbol::Negative<symbol::DimExpr>& negative) {
@@ -527,7 +527,7 @@ void DoInferMeta(const std::vector<std::vector<int64_t>>& input_shapes,
   const auto& types = interface.InferMeta(input_values, &attribute_map);
   for (const auto& type : types) {
     infer_meta_result->push_back(
-        common::vectorize(type.dyn_cast<pir::DenseTensorType>().dims()));
+        ::common::vectorize(type.dyn_cast<pir::DenseTensorType>().dims()));
   }
 }
 

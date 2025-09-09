@@ -31,3 +31,8 @@ Overloaded(Ts...) -> Overloaded<Ts...>;
   }
 
 }  // namespace common
+
+namespace cinn::common {
+template <typename... Ts>
+using Overloaded = ::common::Overloaded<Ts...>;
+}  // namespace cinn::common

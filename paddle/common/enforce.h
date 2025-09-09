@@ -362,3 +362,8 @@ inline bool is_error(const T& stat) {
 namespace pir {
 #define IR_THROW(...) PADDLE_THROW(common::errors::Fatal(__VA_ARGS__))
 }  // namespace pir
+
+namespace cinn::common {
+namespace enforce = ::common::enforce;
+
+}  // namespace cinn::common

@@ -68,7 +68,7 @@ static const std::string cinn_float16_header =  // NOLINT
 static const std::string cinn_bfloat16_header =  // NOLINT
     read_file_as_string("bfloat16.h");
 static const std::string cinn_float8e4m3_header =  // NOLINT
-    read_file_as_string("float8e4m3.h");
+    read_file_as_string("float8_e4m3fn.h");
 static const std::string cinn_with_cuda_header =  // NOLINT
     R"(
 #pragma once

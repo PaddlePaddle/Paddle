@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/function_prototype.h"
-#include "paddle/cinn/common/float16.h"
 #include "paddle/cinn/runtime/hip/hip_util.h"
+#include "paddle/common/float16.h"
 
 using cinn::common::float16;
 

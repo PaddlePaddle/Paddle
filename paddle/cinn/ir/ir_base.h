@@ -447,7 +447,7 @@ struct Expr : public IrNodeRef {
 
   explicit Expr(cinn::common::bfloat16 x)
       : IrNodeRef(new FloatImm(BFloat16(), x)) {}
-  explicit Expr(cinn::common::float8e4m3 x)
+  explicit Expr(cinn::common::float8_e4m3fn x)
       : IrNodeRef(new FloatImm(Float8e4m3(), x)) {}
   explicit Expr(cinn::common::float16 x)
       : IrNodeRef(new FloatImm(Float16(), x)) {}

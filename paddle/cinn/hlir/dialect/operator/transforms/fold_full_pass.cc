@@ -39,7 +39,7 @@ class FoldFullWithReshapeOpPattern : public pir::OpRewritePattern<OPTYPE> {
             .type()
             .template dyn_cast<paddle::dialect::DenseTensorType>()
             .dims();
-    if (common::contain_unknown_dim(out_shape)) {
+    if (::common::contain_unknown_dim(out_shape)) {
       return false;
     }
 
