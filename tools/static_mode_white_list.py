@@ -378,7 +378,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_reader_reset_deprecated',
     'test_reduce_op',
     'test_reduce_mkldnn_op',
-    'test_reduce_bf16_mkldnn_op',
+    'test_reduce_bf16_onednn_op',
     'test_ref_by_trainer_id_op',
     'test_registry',
     'test_regularizer',
