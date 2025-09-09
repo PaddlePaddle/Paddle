@@ -1775,103 +1775,113 @@ def get_stream_from_external(
     )
 
 
-class Device:
+class Device(str):
     """
-    Device class for Paddle.
+    Paddle computing device.
 
-    This class provides a unified way to describe and manage devices
-    in Paddle, such as CPU, GPU (CUDA), and XPU. It supports both
-    string-based and index-based initialization, e.g.:
+    This class represents a computing device in Paddle, such as CPU, GPU (CUDA), or XPU,
+    and can be passed directly to Paddle tensor creation APIs.
 
-        paddle.device("cpu")  >>>  "cpu"
-        paddle.device("cuda", 0)   >>>   "gpu:0"
-        paddle.device("gpu:1")   >>>   "gpu:1"
-        paddle.device(2)   # equivalent to "gpu:2"
+    Note:
+        - Only device types "cpu", "gpu", "cuda", and "xpu" are supported.
+        - The string representation of the device (e.g., "cuda:0") can be used directly
+          in Paddle APIs that accept a device argument.
+        - This class supports context manager usage to temporarily set the default device.
 
-    The class ensures consistent parsing and validation of device
-    specifications across Paddle.
+    Args:
+        type (str|int, optional): The device type or a legacy device index.
+            - str: "cpu", "cuda", "cuda:0", "gpu:1", "xpu:0"
+            - int: legacy, interpreted as the default GPU device index
+        index (int, optional): The device index, used with `type` string. Ignored for CPU.
+
+    Attributes:
+        type (str): Device type ("cpu", "cuda", "gpu", "xpu").
+        index (int|None): Device index. None for CPU.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            # String initialization
+            >>> d1 = paddle.device("cpu")
+            >>> d2 = paddle.device("cuda:0")
+            >>> d3 = paddle.device("xpu", 1)
+
+            # Type + index initialization
+            >>> d4 = paddle.device(type="cuda", index=0)
+
+            # Legacy int initialization
+            >>> d5 = paddle.device(0)  # equivalent to paddle.device("cuda", 0)
+
+            # Copy from another device
+            >>> d6 = paddle.device(d2)
+
+            # Using as context manager
+            >>> with paddle.device("cuda:1"):
+            ...     x = paddle.zeros([2, 3])  # created on CUDA device 1
+
+            >>> print(d2.type)   # "cuda"
+            >>> print(d2.index)  # 0
+            >>> print(d1)        # "cpu"
+            >>> print(d2)        # "cuda:0"
     """
 
-    def __init__(self, type: Device | str | int, index: int | None = None):
-        if isinstance(type, Device):
-            # support Device(gpu1)
-            self.type = type.type
-            self.index = type.index
-            return
-        if isinstance(type, str) and index is not None:
-            # Case: Device("cuda", 0), Device("xpu", 1), Device("cpu", 0)
+    _DEFAULT_DEVICE_STACK = []
+    _SUPPORTED_TYPES = {"cpu", "gpu", "cuda", "xpu"}
+
+    def __new__(cls, type: str | int | None = None, index: int | None = None):
+        if isinstance(type, str):
             t = type.lower()
-            if t in ["cuda", "gpu"]:
-                self.type = "gpu"
-                self.index = index
-            elif t == "xpu":
-                self.type = "xpu"
-                self.index = index
-            elif t == "cpu":
-                if index not in (None, 0):
-                    raise ValueError(
-                        "CPU device does not support index > 0 in Paddle"
-                    )
-                self.type = "cpu"
-                self.index = None
-            else:
+            if t not in cls._SUPPORTED_TYPES and ":" not in t:
                 raise ValueError(f"Unsupported device type: {t}")
-
-        elif isinstance(type, str) and index is None:
-            # Case: Device("cuda:0"), Device("xpu:1"), Device("cpu")
-            if ":" in type:
-                t, i = type.split(":")
-                t = t.lower()
-                i = int(i)
-                if t in ["cuda", "gpu"]:
-                    self.type = "gpu"
-                    self.index = i
-                elif t == "xpu":
-                    self.type = "xpu"
-                    self.index = i
-                else:
-                    raise ValueError(f"Unsupported device type: {t}")
+            if index is not None:
+                dev_type = t
+                dev_index = index if t != "cpu" else None
             else:
-                t = type.lower()
-                if t == "cpu":
-                    self.type = "cpu"
-                    self.index = None
-                elif t in ["cuda", "gpu"]:
-                    self.type = "gpu"
-                    self.index = 0
-                elif t == "xpu":
-                    self.type = "xpu"
-                    self.index = 0
+                if ":" in t:
+                    dev_type, idx = t.split(":")
+                    dev_type = dev_type.lower()
+                    if dev_type not in cls._SUPPORTED_TYPES:
+                        raise ValueError(f"Unsupported device type: {dev_type}")
+                    dev_index = int(idx)
                 else:
-                    raise ValueError(f"Unsupported device type: {t}")
+                    dev_type = t
+                    dev_index = 0 if t != "cpu" else None
 
         elif isinstance(type, int):
-            # Case: Device(1) → gpu:1
-            self.type = "gpu"
-            self.index = type
+            dev_type = "cuda"
+            dev_index = type
+
+        elif type is None and index is not None:
+            raise ValueError("Device type must be specified if index is given")
 
         else:
-            raise TypeError(f"Unsupported device spec: {type}, {index}")
+            raise TypeError(f"Unsupported type for Device: {type}")
 
-    def __call__(self) -> str:
-        if self.type == "cpu":
-            return "cpu"
-        return f"{self.type}:{self.index}"
+        s = f"{dev_type}:{dev_index}" if dev_type != "cpu" else "cpu"
+        obj = str.__new__(cls, s)
+        obj._dev_type = dev_type
+        obj._index = dev_index
+        return obj
 
-    def __str__(self):
-        if self.type == "cpu":
-            return "cpu"
-        return f"{self.type}:{self.index}"
+    @property
+    def type(self):
+        return self._dev_type
 
-    def __eq__(self, other):
-        """
-        Device("cuda",1) == "gpu:1" → True
-        """
-        if isinstance(other, str):
-            return str(self()) == other
-        if isinstance(other, Device):
-            return self.type == other.type and self.index == other.index
-        return False
+    @property
+    def index(self):
+        return self._index
+
+    def __enter__(self):
+        current_device = paddle.get_device()
+        Device._DEFAULT_DEVICE_STACK.append(current_device)
+        paddle.set_device(str(self))
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        previous_device = Device._DEFAULT_DEVICE_STACK.pop()
+        paddle.set_device(previous_device)
 
 
 class _DeviceModule(types.ModuleType):
@@ -1882,8 +1892,6 @@ class _DeviceModule(types.ModuleType):
 
     def __getattr__(self, name: str):
         # support lazy import submodeule：paddle.device.cuda / paddle.device.xpu / ...
-        if name in self.__dict__:
-            return self.__dict__[name]
         try:
             mod = importlib.import_module(f"{self.__name__}.{name}")
             setattr(self, name, mod)
