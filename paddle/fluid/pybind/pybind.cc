@@ -80,6 +80,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/amp_auto_cast.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/prim/utils/utils.h"
+#include "paddle/fluid/pybind/torch_compat.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/int_array.h"
@@ -204,7 +205,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
 
@@ -4139,6 +4139,9 @@ All parameter, weight, gradient are variables in Paddle.
   BindVjp(&m);
   BindDecompRule(&m);
   BindDecompVjp(&m);
+  py::module torch_compat = m.def_submodule(
+      "torch_compat", "Compatibility layer for PyTorch-like APIs");
+  BindTorchCompat(&torch_compat);
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindDistApi(&m);
 #endif

@@ -25,7 +25,7 @@ namespace platform {
 // Memory event tracing. A trace marks memory manipulation such as allocation
 // and free.
 // The events can be used to draw memory variation curve.
-class RecordMemEvent {
+class PADDLE_API RecordMemEvent {
  public:
   static bool IsEnabled();
   /**

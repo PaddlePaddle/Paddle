@@ -100,9 +100,9 @@ void FFTR2CKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    fft_c2c, XPU, ALL_LAYOUT, phi::FFTC2CKernel, phi::dtype::complex<float>) {}
+    fft_c2c, XPU, ALL_LAYOUT, phi::FFTC2CKernel, phi::complex64) {}
 PD_REGISTER_KERNEL(
-    fft_c2r, XPU, ALL_LAYOUT, phi::FFTC2RKernel, phi::dtype::complex<float>) {
+    fft_c2r, XPU, ALL_LAYOUT, phi::FFTC2RKernel, phi::complex64) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 PD_REGISTER_KERNEL(fft_r2c, XPU, ALL_LAYOUT, phi::FFTR2CKernel, float) {

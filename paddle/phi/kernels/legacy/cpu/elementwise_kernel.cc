@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -124,7 +122,7 @@ PD_REGISTER_KERNEL(maximum_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(minimum_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -133,15 +131,15 @@ PD_REGISTER_KERNEL(minimum_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(remainder_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::RemainderRawKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    int,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
@@ -155,8 +153,8 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    CPU,
                    ALL_LAYOUT,
@@ -165,6 +163,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

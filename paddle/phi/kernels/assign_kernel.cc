@@ -109,6 +109,12 @@ void AssignValueKernel(const Context& dev_ctx,
   out->Resize(common::make_ddim(shape));
 }
 
+#ifdef _WIN32
+template PADDLE_API void AssignKernel<CPUContext>(const CPUContext& dev_ctx,
+                                                  const DenseTensor& x,
+                                                  DenseTensor* out);
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
@@ -138,10 +144,10 @@ PD_REGISTER_KERNEL(assign_value,
                    double,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
@@ -170,10 +176,10 @@ PD_REGISTER_KERNEL(assign_value,
                    double,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
 
 #ifdef PADDLE_WITH_XPU
@@ -200,10 +206,10 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    double,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

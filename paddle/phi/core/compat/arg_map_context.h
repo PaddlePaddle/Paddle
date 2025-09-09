@@ -89,7 +89,8 @@ struct KernelSignature {
   }
 };
 
-std::ostream& operator<<(std::ostream& os, KernelSignature signature);
+PADDLE_API std::ostream& operator<<(std::ostream& os,
+                                    KernelSignature signature);
 
 // TODO(chenweihang): Add more methods if needed in future
 class ArgumentMappingContext {

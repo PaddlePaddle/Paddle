@@ -247,23 +247,25 @@ class GradNodeBase {
    * Set bwd ins and outs info with forward vars
    * **/
 
-  void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
-                     size_t slot_rank);
-  void SetGradInMeta(const paddle::Tensor& fwd_out, size_t slot_rank);
-  void SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
-                     size_t slot_rank);
-  void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
-                      size_t slot_rank);
-  void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
-                      size_t slot_rank);
+  PADDLE_API void SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
+                                size_t slot_rank);
+  PADDLE_API void SetGradInMeta(const paddle::Tensor& fwd_out,
+                                size_t slot_rank);
+  PADDLE_API void SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
+                                size_t slot_rank);
+  PADDLE_API void SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
+                                 size_t slot_rank);
+  PADDLE_API void SetGradOutMeta(
+      const std::vector<const paddle::Tensor*>& fwd_in, size_t slot_rank);
   TEST_API void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
-  void SetGradOutMeta(const paddle::Tensor& fwd_in,
-                      const AutogradMeta* fwd_in_other,
-                      size_t slot_rank);
-  void SetGradOutMeta(const paddle::Tensor& fwd_in,
-                      size_t slot_rank,
-                      const phi::distributed::TensorDistAttr& fwd_in_dist_attr,
-                      const phi::DDim& fwd_in_dims);
+  PADDLE_API void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                                 const AutogradMeta* fwd_in_other,
+                                 size_t slot_rank);
+  PADDLE_API void SetGradOutMeta(
+      const paddle::Tensor& fwd_in,
+      size_t slot_rank,
+      const phi::distributed::TensorDistAttr& fwd_in_dist_attr,
+      const phi::DDim& fwd_in_dims);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -272,9 +274,8 @@ class GradNodeBase {
   /**
    * Register GradientHook
    * **/
-  int64_t RegisterGradientHook(size_t slot_id,
-                               size_t rank,
-                               std::shared_ptr<egr::TensorHook>&& hook);
+  PADDLE_API int64_t RegisterGradientHook(
+      size_t slot_id, size_t rank, std::shared_ptr<egr::TensorHook>&& hook);
 
   /**
    * Remove GradientHook
@@ -310,13 +311,14 @@ class GradNodeBase {
   }
 
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
-  ApplyGradientHooks(const paddle::small_vector<std::vector<paddle::Tensor>,
-                                                kSlotSmallVectorSize>& tensors);
+      PADDLE_API ApplyGradientHooks(
+          const paddle::small_vector<std::vector<paddle::Tensor>,
+                                     kSlotSmallVectorSize>& tensors);
 
   /**
    * Handle Complex - Real Type Promotion
    * **/
-  void HandleComplexGradToRealGrad(
+  PADDLE_API void HandleComplexGradToRealGrad(
       paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>*
           out_grads);
   bool NeedComplexToRealConversion() { return need_complex_to_real_; }

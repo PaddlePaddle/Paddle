@@ -930,6 +930,7 @@ def tensor(
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> import paddle
 
             >>> type(paddle.tensor(1))
@@ -1792,6 +1793,8 @@ def eye(
         )
         if requires_grad is True:
             tensor.stop_gradient = False
+            if out is not None:
+                out.stop_gradient = False
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -1960,6 +1963,8 @@ def full(
     )
     if requires_grad is True:
         tensor.stop_gradient = False
+        if out is not None:
+            out.stop_gradient = False
     if pin_memory and in_dynamic_mode():
         tensor = tensor.pin_memory()
     return tensor
@@ -2109,6 +2114,8 @@ def arange(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -2161,6 +2168,8 @@ def arange(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         if pin_memory and in_dynamic_mode():
             tensor = tensor.pin_memory()
         return tensor
@@ -2299,6 +2308,8 @@ def range(
             out=out,
         )
         tensor.stop_gradient = not requires_grad
+        if out is not None:
+            out.stop_gradient = not requires_grad
         return tensor
 
     if not isinstance(start, (Variable, paddle.pir.Value)):
@@ -2332,6 +2343,8 @@ def range(
         out=out,
     )
     tensor.stop_gradient = not requires_grad
+    if out is not None:
+        out.stop_gradient = not requires_grad
     return tensor
 
 
@@ -3013,6 +3026,8 @@ def empty(
             tensor = tensor.pin_memory()
         if requires_grad is True:
             tensor.stop_gradient = False
+            if out is not None:
+                out.stop_gradient = False
         return tensor
     else:
         helper = LayerHelper("empty", **locals())

@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -152,7 +151,7 @@ PD_REGISTER_KERNEL(lookup_table_grad_sr,
                    phi::sr::LookupTableGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(lookup_table_sparse_grad_sr,
                    CPU,
@@ -160,4 +159,4 @@ PD_REGISTER_KERNEL(lookup_table_sparse_grad_sr,
                    phi::sr::LookupTableSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

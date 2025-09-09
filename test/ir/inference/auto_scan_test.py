@@ -38,7 +38,7 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensort
+# windows and xpu not support tensorrt
 if os.name != 'nt' and (not os.getenv('WITH_XPU')):
     try:
         from paddle.tensorrt.export import (
@@ -171,7 +171,7 @@ class AutoScanTest(unittest.TestCase):
             trt_config.precision_mode = PrecisionMode.FP16
 
         paddle.framework.set_flags({"FLAGS_trt_min_group_size": 1})
-        # translalte pir program to trt program
+        # translate pir program to trt program
         scope = paddle.static.global_scope()
         program_with_trt = convert_to_trt(pir_program, trt_config, scope)
 

@@ -11,7 +11,15 @@ if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
        gpu/gpu_resources.cc)
   if(WITH_GPU)
-    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+    if(WIN32)
+      nv_library(
+        cuda_graph_lib static
+        SRCS gpu/cuda/cuda_graph.cc
+        DEPS dynload_cuda)
+      list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
+    else()
+      list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+    endif()
   endif()
   if(WITH_ROCM)
     list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc gpu/rocm/hip_graph.cc)

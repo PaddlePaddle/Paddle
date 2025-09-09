@@ -21,8 +21,6 @@
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -138,8 +136,8 @@ PD_REGISTER_KERNEL(accuracy,
                    GPU,
                    ALL_LAYOUT,
                    phi::AccuracyKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->InputAt(1).SetDataType(phi::DataType::INT64);

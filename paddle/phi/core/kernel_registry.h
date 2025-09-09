@@ -29,9 +29,9 @@ namespace phi {
 template <typename Func>
 struct KernelArgsParseFunctor;
 
-void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
-                      const KernelKey& default_key,
-                      KernelArgsDef* args_def);
+PADDLE_API void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
+                                 const KernelKey& default_key,
+                                 KernelArgsDef* args_def);
 
 template <typename Return_, typename... Args_>
 struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
@@ -696,32 +696,32 @@ struct KernelRegistrar {
       kernel_unfold_macro(meta_kernel_fn<cpp_dtype, context>),                 \
       variadic_kernel_unfold_marco(meta_kernel_fn<cpp_dtype, context>));
 
-#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,                                \
-                                    kernel_name,                             \
-                                    backend,                                 \
-                                    context,                                 \
-                                    layout,                                  \
-                                    registrar_id,                            \
-                                    args_def_fn,                             \
-                                    meta_kernel_fn,                          \
-                                    arg_parse_functor_macro,                 \
-                                    kernel_unfold_macro,                     \
-                                    variadic_kernel_unfold_marco,            \
-                                    cpp_dtype)                               \
-  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                      \
-                              kernel_name,                                   \
-                              backend,                                       \
-                              context,                                       \
-                              layout,                                        \
-                              registrar_id,                                  \
-                              args_def_fn,                                   \
-                              meta_kernel_fn,                                \
-                              arg_parse_functor_macro,                       \
-                              kernel_unfold_macro,                           \
-                              variadic_kernel_unfold_marco,                  \
-                              cpp_dtype)                                     \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
+#define _PD_KERNEL_REGISTRAR_INIT_1(reg_type,                                  \
+                                    kernel_name,                               \
+                                    backend,                                   \
+                                    context,                                   \
+                                    layout,                                    \
+                                    registrar_id,                              \
+                                    args_def_fn,                               \
+                                    meta_kernel_fn,                            \
+                                    arg_parse_functor_macro,                   \
+                                    kernel_unfold_macro,                       \
+                                    variadic_kernel_unfold_marco,              \
+                                    cpp_dtype)                                 \
+  _PD_CREATE_REGISTRAR_OBJECT(reg_type,                                        \
+                              kernel_name,                                     \
+                              backend,                                         \
+                              context,                                         \
+                              layout,                                          \
+                              registrar_id,                                    \
+                              args_def_fn,                                     \
+                              meta_kernel_fn,                                  \
+                              arg_parse_functor_macro,                         \
+                              kernel_unfold_macro,                             \
+                              variadic_kernel_unfold_marco,                    \
+                              cpp_dtype)                                       \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
   }
 #define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,                         \
                                     kernel_name,                      \
@@ -1271,45 +1271,45 @@ struct KernelRegistrar {
       reg_type, kernel_name, backend, layout, kernel_fn)
 
 #ifndef _WIN32
-#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                  \
-    reg_type, kernel_name, backend, layout, kernel_fn)                       \
-  template decltype(kernel_fn) kernel_fn;                                    \
-  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(  \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);            \
-  static const ::phi::KernelRegistrar                                        \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
-          reg_type,                                                          \
-          #kernel_name,                                                      \
-          #backend,                                                          \
-          DATA_LAYOUT(layout),                                               \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
-          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,     \
-          PHI_KERNEL(kernel_fn),                                             \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                   \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
-  }                                                                          \
-  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(         \
+#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                    \
+    reg_type, kernel_name, backend, layout, kernel_fn)                         \
+  template decltype(kernel_fn) kernel_fn;                                      \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(    \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);              \
+  static const ::phi::KernelRegistrar                                          \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
+          reg_type,                                                            \
+          #kernel_name,                                                        \
+          #backend,                                                            \
+          DATA_LAYOUT(layout),                                                 \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
+          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,       \
+          PHI_KERNEL(kernel_fn),                                               \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
+  }                                                                            \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(           \
       const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
-#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                  \
-    reg_type, kernel_name, backend, layout, kernel_fn)                       \
-  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(  \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);            \
-  static const ::phi::KernelRegistrar                                        \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
-          reg_type,                                                          \
-          #kernel_name,                                                      \
-          #backend,                                                          \
-          DATA_LAYOUT(layout),                                               \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
-          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,     \
-          PHI_KERNEL(kernel_fn),                                             \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                   \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
-  }                                                                          \
-  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(         \
+#define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                    \
+    reg_type, kernel_name, backend, layout, kernel_fn)                         \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(    \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);              \
+  static const ::phi::KernelRegistrar                                          \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
+          reg_type,                                                            \
+          #kernel_name,                                                        \
+          #backend,                                                            \
+          DATA_LAYOUT(layout),                                                 \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
+          &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,       \
+          PHI_KERNEL(kernel_fn),                                               \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
+  }                                                                            \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(           \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
 #endif
 
@@ -1328,29 +1328,29 @@ struct KernelRegistrar {
           const ::phi::KernelKey kernel_key UNUSED,                      \
           ::phi::Kernel* kernel UNUSED)
 
-#define PD_CUSTOM_KERNEL_REGISTER_FOR_ALL_DTYPE(                             \
-    kernel_name, backend, layout, meta_kernel_fn)                            \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                         \
-      PD_REGISTER_nt_kernel_ns_check_##kernel_name##_##layout,               \
-      "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE must be called in global "   \
-      "namespace.");                                                         \
-  static void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(              \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);            \
-  static const ::phi::KernelRegistrar                                        \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
-          ::phi::RegType::OUTER,                                             \
-          #kernel_name,                                                      \
-          #backend,                                                          \
-          DATA_LAYOUT(layout),                                               \
-          ::phi::KernelArgsParseFunctor<                                     \
-              decltype(&meta_kernel_fn<::phi::CustomContext>)>::Parse,       \
-          &__PD_KERNEL_args_def_FN_##kernel_name##_##layout,                 \
-          PHI_KERNEL(meta_kernel_fn<::phi::CustomContext>),                  \
-          PHI_VARIADIC_KERNEL(meta_kernel_fn<::phi::CustomContext>));        \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
-  }                                                                          \
-  void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(                     \
+#define PD_CUSTOM_KERNEL_REGISTER_FOR_ALL_DTYPE(                               \
+    kernel_name, backend, layout, meta_kernel_fn)                              \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PD_REGISTER_nt_kernel_ns_check_##kernel_name##_##layout,                 \
+      "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE must be called in global "     \
+      "namespace.");                                                           \
+  static void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(                \
+      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);              \
+  static const ::phi::KernelRegistrar                                          \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
+          ::phi::RegType::OUTER,                                               \
+          #kernel_name,                                                        \
+          #backend,                                                            \
+          DATA_LAYOUT(layout),                                                 \
+          ::phi::KernelArgsParseFunctor<                                       \
+              decltype(&meta_kernel_fn<::phi::CustomContext>)>::Parse,         \
+          &__PD_KERNEL_args_def_FN_##kernel_name##_##layout,                   \
+          PHI_KERNEL(meta_kernel_fn<::phi::CustomContext>),                    \
+          PHI_VARIADIC_KERNEL(meta_kernel_fn<::phi::CustomContext>));          \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
+  }                                                                            \
+  void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(                       \
       const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
 #define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
@@ -1414,37 +1414,37 @@ struct KernelRegistrar {
                     const ::phi::KernelKey& kernel_key UNUSED,    \
                     ::phi::Kernel* kernel UNUSED))
 #ifndef _WIN32
-#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                         \
-    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)          \
-  template decltype(kernel_fn) kernel_fn;                                    \
-  static const ::phi::KernelRegistrar                                        \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
-          reg_type,                                                          \
-          #kernel_name,                                                      \
-          #backend,                                                          \
-          DATA_LAYOUT(layout),                                               \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
-          &args_def_fn,                                                      \
-          PHI_KERNEL(kernel_fn),                                             \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                   \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
+#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                           \
+    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)            \
+  template decltype(kernel_fn) kernel_fn;                                      \
+  static const ::phi::KernelRegistrar                                          \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
+          reg_type,                                                            \
+          #kernel_name,                                                        \
+          #backend,                                                            \
+          DATA_LAYOUT(layout),                                                 \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
+          &args_def_fn,                                                        \
+          PHI_KERNEL(kernel_fn),                                               \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
   }
 #else
-#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                         \
-    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)          \
-  static const ::phi::KernelRegistrar                                        \
-      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                 \
-          reg_type,                                                          \
-          #kernel_name,                                                      \
-          #backend,                                                          \
-          DATA_LAYOUT(layout),                                               \
-          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,        \
-          &args_def_fn,                                                      \
-          PHI_KERNEL(kernel_fn),                                             \
-          PHI_VARIADIC_KERNEL(kernel_fn));                                   \
-  TEST_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
-    return 0;                                                                \
+#define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                           \
+    reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)            \
+  static const ::phi::KernelRegistrar                                          \
+      __reg_phi_kernel_##kernel_name##_##backend##_##layout(                   \
+          reg_type,                                                            \
+          #kernel_name,                                                        \
+          #backend,                                                            \
+          DATA_LAYOUT(layout),                                                 \
+          ::phi::KernelArgsParseFunctor<decltype(&kernel_fn)>::Parse,          \
+          &args_def_fn,                                                        \
+          PHI_KERNEL(kernel_fn),                                               \
+          PHI_VARIADIC_KERNEL(kernel_fn));                                     \
+  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+    return 0;                                                                  \
   }
 #endif
 #define _PD_FOR_ALL_BACKEND_DTYPE_1(                                     \
@@ -1497,7 +1497,7 @@ struct KernelRegistrar {
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
       PD_DECLARE_tp_kernel_ns_check_##kernel_name##_##backend##_##layout, \
       "PD_DECLARE_KERNEL must be called in global namespace.");           \
-  TEST_API extern int                                                     \
+  PADDLE_API extern int                                                   \
       TouchKernelSymbolFor_##kernel_name##_##backend##_##layout();        \
   UNUSED static int                                                       \
       __declare_kernel_symbol_for_##kernel_name##_##backend##_##layout =  \

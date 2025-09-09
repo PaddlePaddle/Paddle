@@ -630,7 +630,7 @@ class TensorRTEngine {
 #define TRT_ENGINE_ADD_LAYER(engine__, layer__, ...) \
   engine__->network()->add##layer__(__VA_ARGS__)
 
-class TRTEngineManager {
+class PADDLE_API TRTEngineManager {
   using PredictorID = int;
   using AllocationPtr = phi::Allocator::AllocationPtr;
 

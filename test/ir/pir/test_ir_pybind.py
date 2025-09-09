@@ -30,7 +30,7 @@ def get_ir_program():
     with paddle.static.program_guard(main_program, start_program):
         x_s = paddle.static.data('x', [4, 4], x.dtype)
         x_s.stop_gradient = False
-        y_s = paddle.matmul(x_s, x_s)
+        y_s = x_s @ x_s
         z_s = paddle.add(y_s, y_s)
         k_s = paddle.tanh(z_s)
         q_s = paddle.unsqueeze(k_s, [2])

@@ -346,4 +346,4 @@ PD_REGISTER_KERNEL(c_softmax_with_cross_entropy,
                    ALL_LAYOUT,
                    phi::CSoftmaxWithCrossEntropyKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

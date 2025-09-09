@@ -348,6 +348,13 @@ class DygraphShardingOptimizer:
         with framework.no_grad():
             for param in parameter_list:
                 g_var = self._get_param_grad(param)
+                if g_var is None:
+                    if hasattr(param, "main_grad"):
+                        g_var = paddle.zeros_like(param, dtype=paddle.float32)
+                        param.main_grad = g_var
+                    else:
+                        g_var = paddle.zeros_like(param, dtype=param.dtype)
+                        param.grad = g_var
                 if g_var is not None:
                     reduce_op = ReduceOp.AVG
                     if not self.use_reduce_avg:

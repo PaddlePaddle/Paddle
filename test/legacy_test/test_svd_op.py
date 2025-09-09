@@ -469,5 +469,168 @@ class TestSvdAPI(unittest.TestCase):
                     run_svd_static(tensor_shape, dtype)
 
 
+class SvdOutTest(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_svd_api(self):
+        def run_svd(test_type):
+            x = paddle.to_tensor(
+                [[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]], dtype='float64'
+            )
+            a = paddle.ones([3, 2], dtype="float64")
+            b = paddle.ones([2], dtype="float64")
+            c = paddle.ones([2, 2], dtype="float64")
+            x.stop_gradient = False
+            a.stop_gradient = False
+            b.stop_gradient = False
+            c.stop_gradient = False
+
+            input = x + x
+            u = a + a
+            s = b + b
+            vh = c + c
+            out = (u, s, vh)
+
+            if test_type == "return":
+                out = paddle.linalg.svd(input, False)
+            elif test_type == "input_out":
+                paddle.linalg.svd(input, False, out=out)
+            elif test_type == "both_return":
+                out = paddle.linalg.svd(input, False, out=out)
+            elif test_type == "both_input_out":
+                tmp = paddle.linalg.svd(input, False, out=out)
+
+            ref_out = paddle._C_ops.svd(input, False)
+            np.testing.assert_allclose(
+                ref_out[0].numpy(),
+                out[0].numpy(),
+                1e-20,
+                1e-20,
+            )
+            np.testing.assert_allclose(
+                ref_out[1].numpy(),
+                out[1].numpy(),
+                1e-20,
+                1e-20,
+            )
+            np.testing.assert_allclose(
+                ref_out[2].numpy(),
+                out[2].numpy(),
+                1e-20,
+                1e-20,
+            )
+
+            out_0 = out[0] + out[0]
+            out_1 = out[1] + out[1]
+            out_2 = out[2] + out[2]
+            (
+                paddle.sum(paddle.abs(out_0))
+                + paddle.sum(paddle.abs(out_1))
+                + paddle.sum(paddle.abs(out_2))
+            ).backward()
+
+            return out[0], out[1], out[2], x.grad, a.grad, b.grad, c.grad
+
+        paddle.disable_static()
+        u1, s1, vh1, gx1, ga1, gb1, gc1 = run_svd("return")
+        u2, s2, vh2, gx2, ga2, gb2, gc2 = run_svd("input_out")
+        u3, s3, vh3, gx3, ga3, gb3, gc3 = run_svd("both_return")
+        u4, s4, vh4, gx4, ga4, gb4, gc4 = run_svd("both_input_out")
+
+        np.testing.assert_allclose(
+            u1.numpy(),
+            u2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            u1.numpy(),
+            u3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            u1.numpy(),
+            u4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            s1.numpy(),
+            s2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            s1.numpy(),
+            s3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            s1.numpy(),
+            s4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            vh1.numpy(),
+            vh2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            vh1.numpy(),
+            vh3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            vh1.numpy(),
+            vh4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_equal(ga1, None)
+        np.testing.assert_equal(ga2, None)
+        np.testing.assert_equal(ga3, None)
+        np.testing.assert_equal(ga4, None)
+        np.testing.assert_equal(gb1, None)
+        np.testing.assert_equal(gb2, None)
+        np.testing.assert_equal(gb3, None)
+        np.testing.assert_equal(gb4, None)
+        np.testing.assert_equal(gc1, None)
+        np.testing.assert_equal(gc2, None)
+        np.testing.assert_equal(gc3, None)
+        np.testing.assert_equal(gc4, None)
+
+
 if __name__ == "__main__":
     unittest.main()

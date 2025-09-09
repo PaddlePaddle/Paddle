@@ -16,8 +16,11 @@
 from __future__ import annotations
 
 import ctypes
+import importlib
 import os
 import re
+import sys
+import types
 from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
@@ -612,6 +615,10 @@ def get_device_properties(
             "Please input appropriate device again!"
             "Example: 'metax_gpu:0'"
         )
+
+    if device_name == 'gpu':
+        return paddle.device.cuda.get_device_properties(device_id)
+
     if not core.is_compiled_with_custom_device(device_name):
         raise ValueError(
             f"PaddlePaddle is not compiled with support for '{device_name}' device. "
@@ -1379,6 +1386,65 @@ class Stream:
         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
+def _device_to_paddle(
+    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None,
+):
+    if isinstance(dev, (paddle.CUDAPlace, paddle.CustomPlace)):
+        return dev
+    elif dev is None:
+        return dev
+    elif isinstance(dev, int):
+        if dev < 0:
+            raise ValueError(f"Device index must be non-negative, got {dev}")
+        return f"gpu:{dev}"
+    elif isinstance(dev, str):
+        cleaned_device = dev.strip()
+        return (
+            cleaned_device.replace("cuda:", "gpu:")
+            if "cuda:" in cleaned_device
+            else cleaned_device
+        )
+    else:
+        raise TypeError(
+            f"Unsupported device type: {type(dev).__name__}. "
+            f"Expected one of [CUDAPlace, CustomPlace, int, str, None]."
+        )
+
+
+class PaddleStream(Stream):
+    """Wrapper class for Paddle CUDA/XPU Stream, supporting standard device/priority handling.
+
+    This class inherits from the base `Stream` (renamed to `StreamBase` to avoid naming conflict)
+    and adds:
+    1. Unified device string conversion via `_device_to_paddle`
+    2. Priority mapping for user-friendly priority values
+    3. Clear parameter validation and error handling
+
+    Attributes:
+        _priority_map (dict[int, int]): Mapping from user-facing priority values to Paddle internal priority codes.
+            - User input: -1 (high priority), 0/2 (low priority), 1 (high priority)
+            - Internal code: 1 (high), 2 (low)
+    """
+
+    _priority_map: dict[int, int] = {-1: 1, 0: 2, 1: 1, 2: 2}
+
+    def __init__(
+        self,
+        device: paddle.CUDAPlace | paddle.CustomPlace | int | str | None = None,
+        priority: int = 0,
+        *args,
+        **kwargs,
+    ):
+        paddle_device = _device_to_paddle(device)
+        paddle_priority = self._priority_map.get(priority, 2)
+        super().__init__(
+            device=paddle_device,
+            priority=paddle_priority,
+            *args,
+            **kwargs,
+        )
+
+
 def current_stream(device: PlaceLike | None = None) -> Stream:
     '''
 
@@ -1661,3 +1727,172 @@ def synchronize(device: PlaceLike | None = None) -> None:
                 ",".join(paddle.device.get_all_custom_device_type())
             )
         )
+
+
+def get_stream_from_external(
+    data_ptr: int, device: PlaceLike | None = None
+) -> Stream:
+    r'''
+    Return a :class:`Stream` from an externally allocated CUDA stream.
+
+    This function is used to wrap streams allocated in other libraries in order
+    to facilitate data exchange and multi-library interactions.
+
+    .. note::
+        This function doesn't manage the stream life-cycle, it is the user
+        responsibility to keep the referenced stream alive while this returned
+        stream is being used.
+
+    Args:
+        data_ptr(int): Integer representation of the CUDA stream handle (``cudaStream_t``)
+            that is allocated externally.
+        device(str|paddle.CUDAPlace(n), optional):
+            The CUDA device where the stream was originally allocated.
+            If device is None, the current CUDA device is used.
+            It can be ``gpu``, ``gpu:x``, or ``paddle.CUDAPlace(n)``.
+
+    Returns:
+        Stream: The wrapped CUDA stream corresponding to the given external pointer.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # Suppose external_stream_ptr is from another CUDA library
+            >>> s = paddle.device.get_stream_from_external(external_stream_ptr, "gpu:0")
+    '''
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    elif isinstance(device, str):
+        place = paddle.device._convert_to_place(device)
+    else:
+        place = device
+
+    return Stream(
+        stream_base=core._get_stream_from_external(
+            data_ptr, place.get_device_id()
+        )
+    )
+
+
+class Device:
+    """
+    Device class for Paddle.
+
+    This class provides a unified way to describe and manage devices
+    in Paddle, such as CPU, GPU (CUDA), and XPU. It supports both
+    string-based and index-based initialization, e.g.:
+
+        paddle.device("cpu")  >>>  "cpu"
+        paddle.device("cuda", 0)   >>>   "gpu:0"
+        paddle.device("gpu:1")   >>>   "gpu:1"
+        paddle.device(2)   # equivalent to "gpu:2"
+
+    The class ensures consistent parsing and validation of device
+    specifications across Paddle.
+    """
+
+    def __init__(self, type: Device | str | int, index: int | None = None):
+        if isinstance(type, Device):
+            # support Device(gpu1)
+            self.type = type.type
+            self.index = type.index
+            return
+        if isinstance(type, str) and index is not None:
+            # Case: Device("cuda", 0), Device("xpu", 1), Device("cpu", 0)
+            t = type.lower()
+            if t in ["cuda", "gpu"]:
+                self.type = "gpu"
+                self.index = index
+            elif t == "xpu":
+                self.type = "xpu"
+                self.index = index
+            elif t == "cpu":
+                if index not in (None, 0):
+                    raise ValueError(
+                        "CPU device does not support index > 0 in Paddle"
+                    )
+                self.type = "cpu"
+                self.index = None
+            else:
+                raise ValueError(f"Unsupported device type: {t}")
+
+        elif isinstance(type, str) and index is None:
+            # Case: Device("cuda:0"), Device("xpu:1"), Device("cpu")
+            if ":" in type:
+                t, i = type.split(":")
+                t = t.lower()
+                i = int(i)
+                if t in ["cuda", "gpu"]:
+                    self.type = "gpu"
+                    self.index = i
+                elif t == "xpu":
+                    self.type = "xpu"
+                    self.index = i
+                else:
+                    raise ValueError(f"Unsupported device type: {t}")
+            else:
+                t = type.lower()
+                if t == "cpu":
+                    self.type = "cpu"
+                    self.index = None
+                elif t in ["cuda", "gpu"]:
+                    self.type = "gpu"
+                    self.index = 0
+                elif t == "xpu":
+                    self.type = "xpu"
+                    self.index = 0
+                else:
+                    raise ValueError(f"Unsupported device type: {t}")
+
+        elif isinstance(type, int):
+            # Case: Device(1) → gpu:1
+            self.type = "gpu"
+            self.index = type
+
+        else:
+            raise TypeError(f"Unsupported device spec: {type}, {index}")
+
+    def __call__(self) -> str:
+        if self.type == "cpu":
+            return "cpu"
+        return f"{self.type}:{self.index}"
+
+    def __str__(self):
+        if self.type == "cpu":
+            return "cpu"
+        return f"{self.type}:{self.index}"
+
+    def __eq__(self, other):
+        """
+        Device("cuda",1) == "gpu:1" → True
+        """
+        if isinstance(other, str):
+            return str(self()) == other
+        if isinstance(other, Device):
+            return self.type == other.type and self.index == other.index
+        return False
+
+
+class _DeviceModule(types.ModuleType):
+    """A callable package module: paddle.device(...) -> Device(...)"""
+
+    def __call__(self, *args, **kwargs) -> Device:
+        return Device(*args, **kwargs)
+
+    def __getattr__(self, name: str):
+        # support lazy import submodeule：paddle.device.cuda / paddle.device.xpu / ...
+        if name in self.__dict__:
+            return self.__dict__[name]
+        try:
+            mod = importlib.import_module(f"{self.__name__}.{name}")
+            setattr(self, name, mod)
+            return mod
+        except ModuleNotFoundError as e:
+            raise AttributeError(name) from e
+
+
+_self = sys.modules[__name__]
+_proxy = _DeviceModule(__name__, _self.__doc__)
+_proxy.__dict__.update(_self.__dict__)
+sys.modules[__name__] = _proxy

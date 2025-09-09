@@ -206,8 +206,8 @@ void CheckInferSymWithInferMeta(
             print_stream << "Warning : Check InferSymbolicShape for "
                          << op->name() << " [id:" << op->id() << "] "
                          << " carefully! "
-                         << "infer_sym_shape is [" << infer_meta_shape[i]
-                         << "], but infer_meta_shape is ["
+                         << "infer_meta_shape is [" << infer_meta_shape[i]
+                         << "], but infer_sym_shape is ["
                          << infer_sym_shape[i].dyn_cast<int64_t>() << "].";
             LOG(ERROR) << print_stream.str();
           }

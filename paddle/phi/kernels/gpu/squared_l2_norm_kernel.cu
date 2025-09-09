@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/squared_l2_norm_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -41,5 +40,5 @@ PD_REGISTER_KERNEL(squared_l2_norm,
                    phi::SquaredL2NormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

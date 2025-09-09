@@ -61,6 +61,7 @@ PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   gpu_context->SetCUDAStream(stream, /*clear=*/false);
   return original_stream;
 }
+
 #endif
 }  // namespace platform
 namespace pybind {
@@ -81,6 +82,34 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       },
       py::return_value_policy::reference);
+
+  m.def("_get_stream_from_external",
+        [](uintptr_t data_ptr,
+           int device_id) -> std::unique_ptr<phi::CUDAStream> {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          if (device_id == -1) {
+            device_id = phi::backends::gpu::GetCurrentDeviceId();
+          }
+          PADDLE_ENFORCE_NE(
+              data_ptr,
+              static_cast<uintptr_t>(0),
+              common::errors::InvalidArgument("data_ptr must not be 0."));
+
+#ifdef PADDLE_WITH_HIP
+          using gpuStream_t = hipStream_t;
+#else
+        using gpuStream_t = cudaStream_t;
+#endif
+          gpuStream_t raw = reinterpret_cast<gpuStream_t>(data_ptr);
+
+          return std::make_unique<phi::CUDAStream>(phi::GPUPlace(device_id),
+                                                   raw);
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CUDA/HIP, "
+            "so `_get_stream_from_external` cannot be used."));
+#endif
+        });
 
   m.def(
       "_set_current_stream",

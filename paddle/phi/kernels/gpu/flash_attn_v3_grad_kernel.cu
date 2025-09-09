@@ -15,7 +15,6 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -1556,19 +1555,19 @@ PD_REGISTER_KERNEL(flash_attn_v3_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3GradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flash_attn_v3_varlen_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnV3VarlenGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(flashmask_attention_v2_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashMaskV2GradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

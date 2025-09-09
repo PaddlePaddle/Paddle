@@ -117,10 +117,10 @@ PD_REGISTER_KERNEL(maximum_grad,
                    ALL_LAYOUT,
                    phi::MaximumGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(minimum_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MinimumGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

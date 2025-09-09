@@ -110,7 +110,7 @@ class AutoTuneCache {
   ConvAlgorithmsCacheMap& GetConv(const AlgorithmType& algo_type) {
     return conv_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
-  DEFINE_GET_GATHER_GEMM_SCATTER(phi::dtype::float16,
+  DEFINE_GET_GATHER_GEMM_SCATTER(phi::float16,
                                  false,
                                  false,
                                  AlgorithmType::kGatherGemmScatterFP16NN);
@@ -149,7 +149,7 @@ class AutoTuneCache {
 #endif
   }
 
-  void UpdateStatus();
+  PADDLE_API void UpdateStatus();
 
   // The number of total config cached
   int64_t Size() const { return total_size_; }

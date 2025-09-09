@@ -17,7 +17,6 @@
 
 #include "fft/cuComplex.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
@@ -40,7 +39,7 @@ void ConjKernel(const Context& dev_ctx,
     return;
   }
   dev_ctx.template Alloc<T>(out);
-  if (std::is_same_v<T, phi::dtype::complex<float>>) {
+  if (std::is_same_v<T, phi::complex64>) {
     int r = xfft_internal::xpu::Conj(
         x.numel(),
         reinterpret_cast<cuFloatComplex*>(const_cast<T*>(x.data<T>())),
@@ -157,17 +156,15 @@ PD_REGISTER_KERNEL(conj,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64) {}
 
-PD_REGISTER_KERNEL(
-    real, XPU, ALL_LAYOUT, phi::RealKernel, phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(real, XPU, ALL_LAYOUT, phi::RealKernel, phi::complex64) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
-PD_REGISTER_KERNEL(
-    imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::dtype::complex<float>) {
+PD_REGISTER_KERNEL(imag, XPU, ALL_LAYOUT, phi::ImagKernel, phi::complex64) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 

@@ -151,8 +151,8 @@ PD_REGISTER_KERNEL(embedding_grad,
                    ALL_LAYOUT,
                    phi::EmbeddingGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    XPU,
                    ALL_LAYOUT,

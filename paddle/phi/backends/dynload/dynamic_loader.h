@@ -26,7 +26,7 @@ namespace dynload {
 
 void* GetCublasDsoHandle();
 void* GetCublasLtDsoHandle();
-TEST_API void* GetCUDNNDsoHandle();
+void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetNvjpegDsoHandle();

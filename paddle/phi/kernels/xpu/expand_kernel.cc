@@ -125,8 +125,8 @@ PD_REGISTER_KERNEL(expand,
                    phi::ExpandKernel,
                    double,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

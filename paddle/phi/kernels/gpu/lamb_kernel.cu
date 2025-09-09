@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/lamb_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/lamb_kernel_impl.h"
 
@@ -22,8 +21,8 @@ PD_REGISTER_KERNEL(lamb,
                    GPU,
                    ALL_LAYOUT,
                    phi::LambKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);

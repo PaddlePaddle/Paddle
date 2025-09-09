@@ -134,10 +134,5 @@ void RpropKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rprop,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RpropKernel,
-                   phi::dtype::bfloat16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    rprop, CPU, ALL_LAYOUT, phi::RpropKernel, phi::bfloat16, float, double) {}

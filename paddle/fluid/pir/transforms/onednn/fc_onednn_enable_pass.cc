@@ -68,6 +68,7 @@ class FcOneDNNEnablePattern : public paddle::drr::DrrPatternBase {
         {"padding_weights", pat.Attr("padding_weights")},
         {"use_quantizer", res.BoolAttr(false)},
         {"mkldnn_data_type", res.StrAttr("float32")},
+        {"onednn_data_type", res.StrAttr("")},
         {"scale_in", res.Float32Attr(1.0f)},
         {"scale_weights", res.VectorFloatAttr({1.0f})},
         {"scale_out", res.Float32Attr(1.0f)},
