@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
-import paddle
+from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
@@ -35,7 +35,7 @@ def is_available() -> bool:
     """
     Returns True if CUDA is available and Paddle was built with CUDA support.
     """
-    return paddle.device.cuda.device_count() >= 1
+    return paddle_device.cuda.device_count() >= 1
 
 
 def synchronize(device: DeviceLike = None) -> None:
@@ -47,15 +47,15 @@ def synchronize(device: DeviceLike = None) -> None:
             - str: device string (e.g., 'cuda:0' or 'gpu:0')
     """
     dev = _device_to_paddle(device)
-    paddle.device.synchronize(dev)
+    paddle_device.synchronize(dev)
 
 
-def current_stream(device: DeviceLike = None) -> paddle.core.CUDAStream:
+def current_stream(device: DeviceLike = None) -> core.CUDAStream:
     """
     Returns the current stream for the specified device.
     """
     dev = _device_to_paddle(device)
-    return paddle.device.current_stream(dev)
+    return paddle_device.current_stream(dev)
 
 
 def get_device_properties(device: DeviceLike = None):
@@ -63,7 +63,7 @@ def get_device_properties(device: DeviceLike = None):
     Returns the properties of a given device.
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_properties(dev)
+    return paddle_device.cuda.get_device_properties(dev)
 
 
 def get_device_name(device: DeviceLike = None) -> str:
@@ -71,7 +71,7 @@ def get_device_name(device: DeviceLike = None) -> str:
     Returns the name of a given CUDA device.
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_name(dev)
+    return paddle_device.cuda.get_device_name(dev)
 
 
 def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
@@ -79,11 +79,11 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     Returns the major and minor compute capability of a given device.
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_capability(dev)
+    return paddle_device.cuda.get_device_capability(dev)
 
 
 def is_initialized() -> bool:
-    return paddle.device.is_compiled_with_cuda()
+    return paddle_device.is_compiled_with_cuda()
 
 
 class StreamContext(_PaddleStreamGuard):
@@ -91,11 +91,11 @@ class StreamContext(_PaddleStreamGuard):
     Stream context manager, inherited from Paddle's stream_guard.
     """
 
-    def __init__(self, stream: paddle.device.Stream):
+    def __init__(self, stream: paddle_device.Stream):
         super().__init__(stream)
 
 
-def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
+def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
     """
     A context manager that sets a given stream as the current stream.
     """
@@ -151,19 +151,19 @@ def cudart():
     The `-o` option specifies the output file name, and the `-f` option forces the
     overwrite of the output file if it already exists.
     """
-    return paddle.base.libpaddle._cudart
+    return base.libpaddle._cudart
 
 
 class CudaError(RuntimeError):
     def __init__(self, code: int) -> None:
-        msg = paddle.base.libpaddle._cudart.cudaGetErrorString(
-            paddle.base.libpaddle._cudart.cudaError(code)
+        msg = base.libpaddle._cudart.cudaGetErrorString(
+            base.libpaddle._cudart.cudaError(code)
         )
         super().__init__(f"{msg} ({code})")
 
 
 def check_error(res: int) -> None:
-    if res != paddle.base.libpaddle._cudart.cudaError.success:
+    if res != base.libpaddle._cudart.cudaError.success:
         raise CudaError(res)
 
 
@@ -179,22 +179,22 @@ def mem_get_info(device: DeviceLike | int = None) -> tuple[int, int]:
         return
     """
     if device is None:
-        device: str = paddle.device.get_device()
+        device: str = paddle_device.get_device()
 
     if isinstance(device, str):
-        device: paddle.core.Place = paddle.device._convert_to_place(device)
+        device: core.Place = paddle_device._convert_to_place(device)
 
-    if not isinstance(device, paddle.core.CUDAPlace) or (
-        isinstance(device, paddle.core.Place) and not device.is_gpu_place()
+    if not isinstance(device, core.CUDAPlace) or (
+        isinstance(device, core.Place) and not device.is_gpu_place()
     ):
         raise ValueError(f"Expected a cuda device, but got: {device}")
 
     device_id = (
-        device.get_device_id()
-        if isinstance(device, paddle.core.CUDAPlace)
-        else device.gpu_device_id()
+        paddle_device.get_device_id()
+        if isinstance(device, core.CUDAPlace)
+        else paddle_device.gpu_device_id()
     )
-    return paddle.cuda.cudart().cudaMemGetInfo(device_id)
+    return cudart().cudaMemGetInfo(device_id)
 
 
 def get_stream_from_external(
@@ -221,7 +221,7 @@ def get_stream_from_external(
     """
 
     device = _device_to_paddle(device)
-    stream_ex = paddle.device.get_stream_from_external(data_ptr, device)
+    stream_ex = paddle_device.get_stream_from_external(data_ptr, device)
 
     return stream_ex
 
