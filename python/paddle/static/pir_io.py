@@ -60,7 +60,9 @@ _logger = get_logger(
 
 # Environment variable to control auto-fallback behavior
 # Set PADDLE_DISABLE_PDMODEL_FALLBACK=1 to disable automatic fallback
-_DISABLE_PDMODEL_FALLBACK = os.getenv('PADDLE_DISABLE_PDMODEL_FALLBACK', '0') == '1'
+_DISABLE_PDMODEL_FALLBACK = (
+    os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', '0') == '1'
+)
 
 
 def get_pir_parameters(program):
@@ -900,7 +902,7 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
         if not kwargs:
             model_path = path_prefix + ".json"
             params_path = path_prefix + ".pdiparams"
-            
+
             # Auto-fallback: if .json doesn't exist but .pdmodel does, use legacy mode
             if not os.path.exists(model_path):
                 pdmodel_path = path_prefix + ".pdmodel"
@@ -920,10 +922,16 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
                         )
                         # Use OldIrGuard to temporarily switch to legacy mode
                         from paddle.pir_utils import OldIrGuard
+
                         with OldIrGuard():
                             # Import here to avoid circular import
-                            from .io import load_inference_model as legacy_load_inference_model
-                            return legacy_load_inference_model(path_prefix, executor, **kwargs)
+                            from .io import (
+                                load_inference_model as legacy_load_inference_model,
+                            )
+
+                            return legacy_load_inference_model(
+                                path_prefix, executor, **kwargs
+                            )
                 else:
                     # Neither .json nor .pdmodel exists, let the original error handling take place
                     pass
@@ -956,9 +964,13 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
 
         # deserialize bytes to program
         program = paddle.static.Program()
-        
+
         # Check if we need to fallback to legacy mode for .pdmodel files
-        if model_path.endswith('.pdmodel') or (not model_path.endswith('.json') and os.path.exists(model_path) and not model_path.endswith('__model__')):
+        if model_path.endswith('.pdmodel') or (
+            not model_path.endswith('.json')
+            and os.path.exists(model_path)
+            and not model_path.endswith('__model__')
+        ):
             # This is likely a .pdmodel file, use legacy mode
             if _DISABLE_PDMODEL_FALLBACK:
                 _logger.warning(
@@ -973,10 +985,16 @@ def load_inference_model_pir(path_prefix, executor, **kwargs):
                     "Set PADDLE_DISABLE_PDMODEL_FALLBACK=1 to disable this behavior."
                 )
                 from paddle.pir_utils import OldIrGuard
+
                 with OldIrGuard():
-                    from .io import load_inference_model as legacy_load_inference_model
-                    return legacy_load_inference_model(path_prefix, executor, **kwargs)
-        
+                    from .io import (
+                        load_inference_model as legacy_load_inference_model,
+                    )
+
+                    return legacy_load_inference_model(
+                        path_prefix, executor, **kwargs
+                    )
+
         paddle.base.core.deserialize_pir_program(model_path, program)
         # load parameters
         params, opts = get_pir_parameters(program)
