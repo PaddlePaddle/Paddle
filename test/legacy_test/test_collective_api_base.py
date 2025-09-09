@@ -136,7 +136,9 @@ class TestCollectiveAPIRunnerBase:
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = get_device_place()  # if args.use_gpu else base.CPUPlace()
+            place = get_device_place(
+                device_id
+            )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = base.XPUPlace(device_id)

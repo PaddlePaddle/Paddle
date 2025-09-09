@@ -34,9 +34,9 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
         np_arr = np.random.random([11, 13]).astype('float32')
         if paddle.device.cuda.device_count() > 1:
             # should use non zero gpu if there are more than 1 gpu
-            self.run_main(np_arr, get_device_place())
+            self.run_main(np_arr, get_device_place(1))
         else:
-            self.run_main(np_arr, get_device_place())
+            self.run_main(np_arr, get_device_place(0))
 
 
 if __name__ == '__main__':

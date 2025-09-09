@@ -71,7 +71,7 @@ class TestRawProgramOptimizer(unittest.TestCase):
                 optimizer.minimize(cost)
 
             trainer_id = fleet.worker_index()
-            exe = paddle.static.Executor(get_device_place())
+            exe = paddle.static.Executor(get_device_place(trainer_id))
             rank = fleet.worker_index()
             exe.run(sharding_startup_program)
             exe.run(program=sharding_program, feed=self.gen_data())

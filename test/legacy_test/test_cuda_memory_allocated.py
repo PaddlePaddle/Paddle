@@ -33,7 +33,7 @@ class TestMemoryAllocated(unittest.TestCase):
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.test_memory_allocated(get_device_place())
+                self.test_memory_allocated(get_device_place(i))
                 self.test_memory_allocated(i)
                 self.test_memory_allocated("gpu:" + str(i))
 

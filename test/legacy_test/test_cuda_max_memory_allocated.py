@@ -53,7 +53,7 @@ class TestMaxMemoryAllocated(unittest.TestCase):
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.func_test_max_memory_allocated(get_device_place())
+                self.func_test_max_memory_allocated(get_device_place(i))
                 self.func_test_max_memory_allocated(i)
                 self.func_test_max_memory_allocated("gpu:" + str(i))
 
