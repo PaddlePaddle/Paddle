@@ -15,8 +15,7 @@ import argparse
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME, BaseAPI
-from codegen_utils import IsUsePredefinedOut
+from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc

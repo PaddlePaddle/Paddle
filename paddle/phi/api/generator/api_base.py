@@ -17,8 +17,6 @@ from __future__ import annotations
 import collections
 import re
 
-from codegen_utils import IsUsePredefinedOut
-
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 ORIGIN_PREFIX_TENSOR_NAME = 'origin_input_'
@@ -33,6 +31,20 @@ def parse_plain_list(s: str, sep=",") -> list[str]:
         return items
     else:
         return [item.strip() for item in s.strip().split(sep)]
+
+
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos[0] == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
 
 
 class BaseAPI:

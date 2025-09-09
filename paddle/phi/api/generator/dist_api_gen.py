@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -27,7 +27,6 @@ from api_gen import (
     header_include,
     source_include,
 )
-from codegen_utils import IsUsePredefinedOut
 
 ######################
 # Code Gen Templates #
