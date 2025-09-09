@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"

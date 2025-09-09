@@ -304,6 +304,7 @@ try:
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
+        _get_stream_from_external,
         _get_use_default_grad_op_desc_maker_ops,
         _has_grad,
         _is_compiled_with_heterps,
