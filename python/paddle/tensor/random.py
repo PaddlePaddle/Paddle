@@ -1818,6 +1818,89 @@ def randint(
         return out
 
 
+@dygraph_only
+def random_(
+    x: Tensor,
+    from_: int = 0,
+    to: int | None = None,
+    *,
+    generator=None,
+) -> Tensor:
+    """
+    Fills self tensor with numbers sampled from the discrete uniform distribution over [from, to - 1].
+    If not specified, the values are usually only bounded by self tensor’s data type. However,
+    for floating point types, if unspecified, range will be [0, min(2^mantissa, 2^31 - 1)] to ensure that every value is representable.
+
+    Args:
+        from (int, optional): The lower bound on the range of random values to generate. Default is 0.
+        to (int|None, optional): The upper bound on the range of random values to generate. Default is None.
+        generator (None): Placeholder for random number generator (currently not implemented, reserved for future use).
+
+    Returns:
+        Tensor, A Tensor filled with random integers from a discrete uniform
+        distribution in the range [``from``, ``to``).
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros([3], dtype=paddle.int32)
+            >>> x.random_(0, 10)
+    """
+    INT32_MAX = paddle.iinfo(paddle.int32).max
+
+    def _check_range(v: int, name: str):
+        if not (-INT32_MAX <= v <= INT32_MAX):
+            raise RuntimeError(
+                f"random_'s parameter `{name}` must be within the int32 range [-2^31, 2^31-1), but the got {v}."
+            )
+
+    _check_range(from_, "from")
+    if to is not None:
+        _check_range(to, "to")
+
+    if from_ != 0 and to is None:
+        to = from_
+        from_ = 0
+
+    if x.dtype in [paddle.float32, paddle.float64]:
+        high = (
+            min(2 ** (24 if x.dtype == paddle.float32 else 53), INT32_MAX)
+            if to is None
+            else to
+        )
+        if from_ >= high:
+            raise RuntimeError(
+                f"random_ expects 'from' to be less than 'to', but got from={from_} >= to={to}"
+            )
+
+        int_tensor = paddle.randint(
+            low=from_, high=high, shape=x.shape, dtype=paddle.int64
+        )
+        random_tensor = int_tensor.astype(x.dtype)
+
+    elif x.dtype in [paddle.int32, paddle.int64]:
+        high = INT32_MAX if to is None else to
+
+        if from_ >= high:
+            raise RuntimeError(
+                f"random_ expects 'from' to be less than 'to', but got from={from_} >= to={to}"
+            )
+
+        random_tensor = paddle.randint(
+            low=from_, high=high, shape=x.shape, dtype=x.dtype
+        )
+    else:
+        raise TypeError(
+            f"random_ only supports float32/float64/int32/int64 tensors, but got {x.dtype}"
+        )
+
+    paddle.assign(random_tensor, x)
+    return x
+
+
 def randint_like(
     x: Tensor,
     low: int = 0,
