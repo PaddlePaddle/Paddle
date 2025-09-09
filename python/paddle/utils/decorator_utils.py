@@ -175,7 +175,9 @@ def softmax_param_alias(
     return cast("Callable[_InputT, _RetT]", wrapper)
 
 
-def param_one_alias(alias_list):
+def param_one_alias(
+    alias_list,
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -191,7 +193,9 @@ def param_one_alias(alias_list):
     return decorator
 
 
-def param_two_alias(alias_list1, alias_list2):
+def param_two_alias(
+    alias_list1: list[str], alias_list2: list[str]
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -246,7 +250,9 @@ def tensor_split_decorator(
     return wrapper
 
 
-def param_two_alias_one_default(alias_list1, alias_list2, default_param):
+def param_two_alias_one_default(
+    alias_list1: list[str], alias_list2: list[str], default_param: list[str]
+) -> Callable[[Callable[_InputT, _RetT]], Callable[_InputT, _RetT]]:
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
@@ -303,7 +309,9 @@ class SizeArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-def size_args_decorator(func: Callable) -> Callable:
+def size_args_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
     """
     A decorator that normalizes the 'size' argument to 'shape'.
 
@@ -332,7 +340,9 @@ def size_args_decorator(func: Callable) -> Callable:
     return wrapped_func
 
 
-def size_args_decorator_patch(method: Callable) -> Callable:
+def size_args_decorator_patch(
+    method: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
     """
     A decorator that allow *size for patching method to Tensor.
     e.g. Tensor.method(*size, *, ...).
@@ -377,7 +387,9 @@ class VariableArgsDecorator(DecoratorBase):
         return args, kwargs
 
 
-def view_decorator():
+def view_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     """
     Usage Example:
     paddle.view(x=tensor_x, shape_or_dtype=[-1, 1, 3], name=None)
@@ -510,7 +522,9 @@ class ForbidKeywordsIgnoreOneParamDecorator(ForbidKeywordsDecorator):
         return args, kwargs
 
 
-def reshape_decorator():
+def reshape_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     """
     Usage Example:
     paddle.reshape(x=tensor_x, shape=[-1, 1, 3], name=None)
@@ -537,7 +551,9 @@ def reshape_decorator():
     return decorator
 
 
-def transpose_decorator():
+def transpose_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     """
     Usage Example:
     PyTorch:
@@ -576,7 +592,9 @@ def transpose_decorator():
     return decorator
 
 
-def expand_decorator():
+def expand_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     """
     Usage Example:
     paddle.expand(x=tensor_x, shape=[3, 4], name=None)
@@ -605,7 +623,9 @@ def expand_decorator():
     return decorator
 
 
-def index_select_decorator():
+def index_select_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     """
     Usage Example:
     PyTorch: index_select(input, dim, index)
@@ -647,7 +667,9 @@ def index_select_decorator():
     return decorator
 
 
-def sum_decorator():
+def sum_decorator() -> Callable[
+    [Callable[_InputT, _RetT]], Callable[_InputT, _RetT]
+]:
     def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
         @functools.wraps(func)
         def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
