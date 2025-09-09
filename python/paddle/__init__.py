@@ -646,6 +646,7 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     subtract,
+    subtract_,
     sum,
     take,
     tan,
@@ -938,6 +939,8 @@ eq = equal
 gt = greater_than
 swapdims = transpose
 swapaxes = transpose
+sub = subtract
+sub_ = subtract_
 
 __all__ = [
     'block_diag',
@@ -972,6 +975,7 @@ __all__ = [
     't_',
     'add',
     'subtract',
+    'subtract_',
     'diag',
     'diagflat',
     'diag_embed',
@@ -1208,6 +1212,8 @@ __all__ = [
     'divide_',
     'div',
     'div_',
+    'sub',
+    'sub_',
     'true_divide',
     'gammaln',
     'gammaln_',

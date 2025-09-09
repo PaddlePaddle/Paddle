@@ -505,6 +505,8 @@ take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
 clamp = clip
+sub = subtract
+sub_ = subtract_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -626,6 +628,8 @@ tensor_method_func = [
     'divide_',
     'div',
     'div_',
+    'sub',
+    'sub_',
     'true_divide',
     'floor_divide',
     'floor_divide_',
