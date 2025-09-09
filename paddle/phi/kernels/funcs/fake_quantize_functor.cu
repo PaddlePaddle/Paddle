@@ -23,7 +23,7 @@ struct QuantizeDataType {
 };
 
 template <>
-struct QuantizeDataType<phi::dtype::float16> {
+struct QuantizeDataType<phi::float16> {
   using type = float;
 };
 

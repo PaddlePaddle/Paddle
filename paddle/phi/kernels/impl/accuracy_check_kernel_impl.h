@@ -20,7 +20,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -167,9 +166,9 @@ __global__ void AccuracyCheckCUDAKernel(const T* in_data,
   }
 }
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<float>>(
-    const phi::dtype::complex<float>* in_data,
-    const phi::dtype::complex<float>* other_data,
+__global__ void AccuracyCheckCUDAKernel<phi::complex64>(
+    const phi::complex64* in_data,
+    const phi::complex64* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
@@ -178,8 +177,8 @@ __global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<float>>(
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::dtype::complex<float> a = in_data[i];
-    const phi::dtype::complex<float> b = other_data[i];
+    const phi::complex64 a = in_data[i];
+    const phi::complex64 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {
@@ -197,9 +196,9 @@ __global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<float>>(
 }
 
 template <>
-__global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<double>>(
-    const phi::dtype::complex<double>* in_data,
-    const phi::dtype::complex<double>* other_data,
+__global__ void AccuracyCheckCUDAKernel<phi::complex128>(
+    const phi::complex128* in_data,
+    const phi::complex128* other_data,
     const double rtol,
     const double atol,
     bool equal_nan,
@@ -208,8 +207,8 @@ __global__ void AccuracyCheckCUDAKernel<phi::dtype::complex<double>>(
   unsigned int idx = threadIdx.x + blockIdx.x * blockDim.x;
   bool val;
   for (int i = idx; i < num; i += blockDim.x * gridDim.x) {
-    const phi::dtype::complex<double> a = in_data[i];
-    const phi::dtype::complex<double> b = other_data[i];
+    const phi::complex128 a = in_data[i];
+    const phi::complex128 b = other_data[i];
     if (isnan(a) || isnan(b)) {
       val = equal_nan && isnan(a) == isnan(b);
     } else {

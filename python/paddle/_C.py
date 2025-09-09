@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 import typing
 
 from paddle.base import core, libpaddle
+from paddle.base.libpaddle import (
+    _get_current_raw_stream as _cuda_getCurrentRawStream,  # noqa: F401
+)
 
 # Define _GLIBCXX_USE_CXX11_ABI based on compilation flags
 _GLIBCXX_USE_CXX11_ABI = getattr(libpaddle, '_GLIBCXX_USE_CXX11_ABI', True)

@@ -15,12 +15,9 @@
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {

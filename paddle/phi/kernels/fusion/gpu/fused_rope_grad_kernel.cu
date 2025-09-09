@@ -196,5 +196,5 @@ PD_REGISTER_KERNEL(fused_rotary_position_embedding_grad,
                    phi::fusion::FusedRopeGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16){};
+                   phi::float16,
+                   phi::bfloat16){};

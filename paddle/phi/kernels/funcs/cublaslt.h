@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace dyl = phi::dynload;
@@ -234,12 +233,12 @@ inline cudaDataType_t GetCublasLtDataType() {
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::float16>() {
   return CUDA_R_16F;
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
   return CUDA_R_16BF;
 }
 

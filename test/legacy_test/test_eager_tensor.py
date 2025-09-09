@@ -688,6 +688,41 @@ class TestEagerTensor(unittest.TestCase):
             x = paddle.to_tensor(1, dtype="complex128")
             self.assertEqual(x.element_size(), 16)
 
+    def test_itemsize(self):
+        with base.dygraph.guard():
+            x = paddle.to_tensor(1, dtype="bool")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="float16")
+            self.assertEqual(x.itemsize, 2)
+
+            x = paddle.to_tensor(1, dtype="float32")
+            self.assertEqual(x.itemsize, 4)
+
+            x = paddle.to_tensor(1, dtype="float64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="int8")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="int16")
+            self.assertEqual(x.itemsize, 2)
+
+            x = paddle.to_tensor(1, dtype="int32")
+            self.assertEqual(x.itemsize, 4)
+
+            x = paddle.to_tensor(1, dtype="int64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="uint8")
+            self.assertEqual(x.itemsize, 1)
+
+            x = paddle.to_tensor(1, dtype="complex64")
+            self.assertEqual(x.itemsize, 8)
+
+            x = paddle.to_tensor(1, dtype="complex128")
+            self.assertEqual(x.itemsize, 16)
+
     def test_backward(self):
         var = paddle.to_tensor(self.array)
         var.stop_gradient = False
@@ -1276,6 +1311,32 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_str_fp8_e4m3fn(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=paddle.float8_e4m3fn)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=float8_e4m3fn, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])"""
+
+        self.assertEqual(a_str, expected)
+
+    def test_tensor_str_fp8_e5m2(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=paddle.float8_e5m2)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=float8_e5m2, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])"""
+
+        self.assertEqual(a_str, expected)
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])
@@ -1722,6 +1783,40 @@ class TestEagerTensorInplaceVersion(unittest.TestCase):
         self.assertEqual(var.inplace_version, 2)
 
 
+class TestEagerTensorIsCuda(unittest.TestCase):
+    def test_dynamic_is_cuda(self):
+        paddle.disable_static()
+        cpu_tensor = paddle.to_tensor(
+            [2, 3], dtype="float32", place=paddle.CPUPlace()
+        )
+        self.assertFalse(cpu_tensor.is_cuda)
+
+        if paddle.is_compiled_with_cuda():
+            gpu_tensor = paddle.to_tensor(
+                [2, 3], dtype="float32", place=paddle.CUDAPlace(0)
+            )
+            self.assertTrue(gpu_tensor.is_cuda)
+
+    def test_static_is_cuda(self):
+        paddle.enable_static()
+
+        if paddle.is_compiled_with_cuda():
+            with paddle.static.program_guard(paddle.static.Program()):
+                data = paddle.static.data(
+                    name='data', shape=[2], dtype='float32'
+                )
+                out = data + 1.0
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_result = gpu_exe.run(
+                    feed={'data': np.array([1.0, 2.0], dtype='float32')},
+                    fetch_list=[out],
+                )
+                self.assertTrue(data.is_cuda)
+
+        paddle.disable_static()
+
+
 class TestEagerTensorSlice(unittest.TestCase):
     def test_slice(self):
         paddle.disable_static()
@@ -1904,6 +1999,103 @@ class TestEagerTensorNumel(unittest.TestCase):
         x_without_holder = core.eager.Tensor()
         x_actual_numel = x_without_holder._numel()
         self.assertEqual(x_actual_numel, 0)
+
+
+class TestEagerTensorStride(unittest.TestCase):
+    def test_stride_no_dim(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        stride_result = x.stride()
+        get_strides_result = x.get_strides()
+
+        self.assertEqual(get_strides_result, stride_result)
+
+        y = paddle.to_tensor(
+            [[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype='float32'
+        )
+        stride_result_3d = y.stride()
+        get_strides_result_3d = y.get_strides()
+
+        self.assertEqual(get_strides_result_3d, stride_result_3d)
+
+    def test_stride_with_dim(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        strides = x.get_strides()
+
+        self.assertEqual(x.stride(0), strides[0])
+        self.assertEqual(x.stride(1), strides[1])
+
+        y = paddle.to_tensor(
+            [[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype='float32'
+        )
+        strides_3d = y.get_strides()
+
+        self.assertEqual(y.stride(0), strides_3d[0])
+        self.assertEqual(y.stride(1), strides_3d[1])
+        self.assertEqual(y.stride(2), strides_3d[2])
+
+    def test_stride_negative_dim(self):
+        paddle.disable_static()
+
+        x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
+        strides = x.get_strides()
+
+        self.assertEqual(x.stride(-1), strides[-1])
+        self.assertEqual(x.stride(-2), strides[-2])
+
+        self.assertEqual(x.stride(-1), x.stride(1))
+        self.assertEqual(x.stride(-2), x.stride(0))
+
+    def test_stride_various_shapes(self):
+        paddle.disable_static()
+
+        x1d = paddle.to_tensor([1, 2, 3, 4], dtype='float32')
+        self.assertEqual(x1d.stride(0), x1d.get_strides()[0])
+
+        x4d = paddle.to_tensor([[[[1, 2]], [[3, 4]]]], dtype='float32')
+        strides_4d = x4d.get_strides()
+        for i in range(4):
+            self.assertEqual(x4d.stride(i), strides_4d[i])
+
+    def test_stride_different_dtypes(self):
+        paddle.disable_static()
+
+        shapes_and_dtypes = [
+            ([[1, 2], [3, 4]], 'int32'),
+            ([[1.0, 2.0], [3.0, 4.0]], 'float64'),
+        ]
+
+        for data, dtype in shapes_and_dtypes:
+            with self.subTest(dtype=dtype):
+                x = paddle.to_tensor(data, dtype=dtype)
+                stride_result = x.stride()
+                get_strides_result = x.get_strides()
+
+                self.assertEqual(get_strides_result, stride_result)
+
+    def test_stride_dim_none_equiv(self):
+        paddle.disable_static()
+        x = paddle.randn([2, 3, 4])
+        self.assertEqual(x.stride(None), x.stride())
+
+    def test_stride_invalid_type(self):
+        paddle.disable_static()
+        x = paddle.randn([2, 3])
+        with self.assertRaises(ValueError):
+            x.stride(0.5)
+        with self.assertRaises(ValueError):
+            x.stride("0")
+
+    def test_stride_out_of_bounds(self):
+        paddle.disable_static()
+        x = paddle.randn([2, 3])
+        with self.assertRaises(ValueError):
+            x.stride(2)
+        with self.assertRaises(ValueError):
+            x.stride(-3)
 
 
 class TestEagerTensorCopyGradientFrom(unittest.TestCase):

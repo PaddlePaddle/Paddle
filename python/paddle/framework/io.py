@@ -1231,12 +1231,20 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                     load_result = load_file(path)
                     load_result = _pack_loaded_dict(load_result)
                 else:
+                    import safetensors
                     from safetensors.paddle import load_file
 
                     if isinstance(_current_expected_place(), core.CUDAPlace):
-                        load_result = load_file(
-                            path, device=_current_expected_place()
-                        )
+                        if (
+                            safetensors.__version__ > "0.6.2"
+                            and paddle.__version__ >= "3.2.0"
+                        ):
+                            load_result = load_file(path, device='cuda')
+                        else:
+                            load_result = load_file(
+                                path, device=_current_expected_place()
+                            )
+
                     else:
                         load_result = load_file(path, device='cpu')
 

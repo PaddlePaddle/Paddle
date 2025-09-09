@@ -132,7 +132,7 @@ PD_REGISTER_KERNEL(variable_length_memory_efficient_attention,
                    ALL_LAYOUT,
                    phi::fusion::MultiHeadAttentionVariableForwardKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::INT32);
 }

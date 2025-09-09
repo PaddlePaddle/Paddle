@@ -1576,6 +1576,38 @@ void BindValue(py::module *m) {
       .def("hash", [](Value self) { return std::hash<pir::Value>{}(self); })
       .def("element_size",
            [](Value self) { return phi::SizeOf(pir::GetValueDtype(self)); })
+      .def(
+          "stride",
+          [](Value self, py::object dim_obj = py::none()) {
+            const auto &dims = paddle::pybind::GetValueDims(self);
+            std::vector<int64_t> strides;
+
+            int64_t step = 1;
+            for (int i = static_cast<int>(dims.size()) - 1; i >= 0; --i) {
+              strides.insert(strides.begin(), step);
+              step *= dims[i];
+            }
+
+            if (dim_obj.is_none()) {
+              return py::cast(strides);
+            }
+
+            int dim = py::cast<int>(dim_obj);
+            dim = dim < 0 ? dim + static_cast<int>(dims.size()) : dim;
+
+            PADDLE_ENFORCE_EQ(dim >= 0 && dim < static_cast<int>(dims.size()),
+                              true,
+                              common::errors::InvalidArgument(
+                                  "Dimension out of range (expected to be in "
+                                  "range of [%d, %d], "
+                                  "but got %d)",
+                                  -static_cast<int>(dims.size()),
+                                  static_cast<int>(dims.size()) - 1,
+                                  dim));
+
+            return py::cast(strides[dim]);
+          },
+          py::arg("dim") = py::none())
       .def("_rename", &name_analysis::RenameValue)
       .def("_has_only_one_name",
            [](Value self) -> bool {

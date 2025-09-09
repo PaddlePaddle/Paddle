@@ -36,4 +36,14 @@ DenseTensor Multiply(const Context& dev_ctx,
   return dense_out;
 }
 
+template <typename T, typename Context>
+void Multiply(const Context& dev_ctx,
+              const DenseTensor& x,
+              const DenseTensor& y,
+              DenseTensor* out) {
+  MetaTensor meta_out(out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  MultiplyKernel<T, Context>(dev_ctx, x, y, out);
+}
+
 }  // namespace phi

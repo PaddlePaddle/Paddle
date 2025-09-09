@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"

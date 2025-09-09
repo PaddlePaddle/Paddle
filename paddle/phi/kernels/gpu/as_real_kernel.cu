@@ -15,14 +15,14 @@
 #include "paddle/phi/kernels/as_real_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/as_real_impl.h"
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
-PD_REGISTER_KERNEL(
-    as_real, GPU, ALL_LAYOUT, phi::AsRealKernel, complex64, complex128) {
+PD_REGISTER_KERNEL(as_real,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AsRealKernel,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

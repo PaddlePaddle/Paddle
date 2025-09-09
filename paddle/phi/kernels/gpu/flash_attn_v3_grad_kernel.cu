@@ -15,7 +15,6 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/platform/device_context.h"

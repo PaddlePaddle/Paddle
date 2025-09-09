@@ -22,7 +22,6 @@
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -132,4 +131,4 @@ PD_REGISTER_KERNEL(lookup_table_sr,
                    double,
                    int8_t,
                    int16_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

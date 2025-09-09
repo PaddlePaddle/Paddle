@@ -205,7 +205,6 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_CINN
-#include "paddle/cinn/pybind/bind.h"
 #include "paddle/fluid/pybind/test.h"
 #endif
 
