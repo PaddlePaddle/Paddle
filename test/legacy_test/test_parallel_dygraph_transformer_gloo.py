@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import unittest
 
-from op_test import is_custom_device
 from test_dist_base import TestDistBase
 
 from paddle import base
@@ -46,7 +46,7 @@ class TestParallelDygraphTransformerAccGrad_GLOO(TestDistBase):
         self._find_unused_parameters = False
 
     def test_transformer(self):
-        if base.core.is_compiled_with_cuda() or is_custom_device():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_transformer.py",
                 delta=1e-5,

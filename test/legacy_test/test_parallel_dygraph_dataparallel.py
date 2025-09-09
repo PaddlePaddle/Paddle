@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import copy
 import os
 import subprocess
 import time
 import unittest
-
-from op_test import get_device, is_custom_device
 
 from paddle import base
 from paddle.distributed.utils.launch_utils import (
@@ -106,7 +105,7 @@ def start_local_trainers(
     allocator_strategy="auto_growth",
     log_dir=None,
     need_envs={},
-    accelerator_type=get_device(),
+    accelerator_type="gpu",
 ):
     current_env = copy.copy(os.environ.copy())
     # paddle broadcast ncclUniqueId use socket, and
@@ -165,13 +164,11 @@ class TestMultipleAccelerators(unittest.TestCase):
         target_file_name,
         allocator_strategy="auto_growth",
         need_envs={},
-        accelerator_type="xpu"
-        if base.core.is_compiled_with_xpu()
-        else get_device(),
+        accelerator_type="xpu" if base.core.is_compiled_with_xpu() else "gpu",
     ):
         if accelerator_type == "gpu":
             if (
-                not (base.core.is_compiled_with_cuda() or is_custom_device())
+                not base.core.is_compiled_with_cuda()
                 or base.core.get_cuda_device_count() == 0
             ):
                 return

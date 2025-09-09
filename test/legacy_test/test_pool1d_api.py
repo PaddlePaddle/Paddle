@@ -16,7 +16,6 @@ import unittest
 
 import numpy as np
 from op_test import (
-    get_device_class,
     get_device_place,
     get_places,
     is_custom_device,
@@ -483,7 +482,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_dygraph_float16_results(self, place):
-        if isinstance(place, get_device_class()):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32]).astype("float16")
                 input = paddle.to_tensor(input_np)
@@ -508,7 +507,7 @@ class TestPool1D_API(unittest.TestCase):
                 )
 
     def check_lp_dygraph_float64_results(self, place):
-        if isinstance(place, get_device_class()):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32]).astype("float64")
                 input = paddle.to_tensor(input_np)

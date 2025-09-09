@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import unittest
 
-from op_test import is_custom_device
 from test_dist_base import TestDistBase
 
 import paddle
@@ -35,7 +35,7 @@ class TestDistMnistNCCL2HAllreduce(TestDistBase):
     def test_dist_train(self):
         from paddle import base
 
-        if base.core.is_compiled_with_cuda() or is_custom_device():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
                 delta=1e-5,
