@@ -157,5 +157,126 @@ void ArgMaxMinMapper(PyObject* args,
   return;
 }
 
+bool CheckBool(PyObject* obj) {
+  if (obj == Py_False || obj == Py_True) {
+    return true;
+  }
+  return false;
+}
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  Tensor** x_ptr_ptr,
+                  paddle::experimental::IntArray* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim) {
+  // Get Total Params count and check validity if needed
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get EagerTensors from args
+  auto& x = GetTensorFromArgsOrKWArgs("sum",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"input", "x"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  // Parse Attributes if needed
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"dim", "axis"}, nargs, &remaining_kwargs);
+  *axis = CastPyArg2IntArray(axis_obj, "sum", 1, {});
+
+  PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
+  PyObject* py_obj_2 = nullptr;
+  if (py_obj_1 == nullptr) {
+    *dtype = phi::DataType::UNDEFINED;
+    *keepdim = false;
+  } else {
+    bool is_keepdim1 = CheckBool(py_obj_1);
+    if (is_keepdim1) {
+      *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
+      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
+    } else {
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
+      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
+    }
+  }
+
+  // Check Reminding Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  pir::Value* x,
+                  pir::Value* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim) {
+  // Get Total Params count and check validity if needed
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 4;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get Value from args
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"input", "x"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "sum", 0, false);
+
+  // Parse Attributes
+  PyObject* axis_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"axis", "dim"}, nargs, &remaining_kwargs);
+
+  // Check for mutable attrs
+  if (PyObject_CheckIRValue(axis_obj)) {
+    *axis = CastPyArg2Value(axis_obj, "sum", 1);
+  } else if (PyObject_CheckIRVectorOfValue(axis_obj)) {
+    std::vector<pir::Value> axis_tmp =
+        CastPyArg2VectorOfValue(axis_obj, "sum", 1);
+    *axis = paddle::dialect::stack(axis_tmp, /*axis*/ 0);
+  } else if (PyObject_CheckIRVectorOfValueOrLong(axis_obj)) {
+    std::vector<pir::Value> axis_tmp =
+        CastPyArg2VectorOfValueOrLong(axis_obj, "sum", 1);
+    *axis = paddle::dialect::stack(axis_tmp, /*axis*/ 0);
+  } else {
+    std::vector<int64_t> axis_tmp = CastPyArg2Longs(axis_obj, "sum", 1, {});
+    *axis = paddle::dialect::full_int_array(
+        axis_tmp, phi::DataType::INT64, phi::CPUPlace());
+  }
+
+  PyObject* py_obj_1 = GetItemFromArgsOrKWArgs(
+      args, 2, kwargs, {"dtype", "keepdim"}, nargs, &remaining_kwargs);
+  PyObject* py_obj_2 = nullptr;
+  if (py_obj_1 == nullptr) {
+    *dtype = phi::DataType::UNDEFINED;
+    *keepdim = false;
+  } else {
+    bool is_keepdim1 = CheckBool(py_obj_1);
+    if (is_keepdim1) {
+      *keepdim = CastPyArg2Boolean(py_obj_1, "sum", 2, false);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"dtype"}, nargs, &remaining_kwargs);
+      *dtype = CastPyArg2DataType(py_obj_2, "sum", 3, phi::DataType::UNDEFINED);
+    } else {
+      *dtype = CastPyArg2DataType(py_obj_1, "sum", 2, phi::DataType::UNDEFINED);
+      py_obj_2 = GetItemFromArgsOrKWArgs(
+          args, 3, kwargs, {"keepdim"}, nargs, &remaining_kwargs);
+      *keepdim = CastPyArg2Boolean(py_obj_2, "sum", 3, false);
+    }
+  }
+
+  // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
 }  // namespace pybind
 }  // namespace paddle

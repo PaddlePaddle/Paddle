@@ -177,3 +177,12 @@
   name : [paddle.triu, paddle.Tensor.triu]
   args_alias:
     x : [input]
+
+- op : sum
+  name : [paddle.sum, paddle.Tensor.sum]
+  args_alias:
+    use_default_mapping : True
+  pre_process:
+    func : SumPreProcess(x, axis)
+  args_mapper :
+    func : ArgSumMapper
