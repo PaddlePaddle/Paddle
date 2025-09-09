@@ -173,6 +173,13 @@ class TestCudaCompat(unittest.TestCase):
         for f in func_list:
             self.assertTrue(hasattr(cuda_rt_module, f))
 
+    @unittest.skipIf(
+        (
+            not paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ),
+        reason="Skip if not in CUDA env",
+    )
     def test_cudart_function(self):
         cuda_rt_module = paddle.cuda.cudart()
 
