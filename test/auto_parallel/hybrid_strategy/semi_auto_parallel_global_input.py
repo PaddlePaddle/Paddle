@@ -193,6 +193,7 @@ class TestSemiAutoParallelGlobalInput:
         cur_rank = paddle.distributed.get_rank()
         if self._run_static:
             dist_model = dist.to_static(model, dist_dataloader, loss_fn, opt)
+            dist_model.train()
 
             for step, (input, label) in enumerate(dist_dataloader()):
                 loss = dist_model(input, label)

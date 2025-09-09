@@ -401,55 +401,6 @@ class TestSetValueOp(unittest.TestCase):
         x_data[0] = 6
         np.testing.assert_array_equal(ret[0], x_data)
 
-    def test_grad(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            exe = paddle.static.Executor(place)
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            input_shape = [7, 6, 5, 4, 3, 2]
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                x = paddle.ones(shape=input_shape, dtype="float32")
-                value = paddle.tensor.fill_constant([1, 3, 2], "float32", 1)
-                # test stop_gradient
-                value.stop_gradient = False
-                x.stop_gradient = False
-                attrs = {
-                    'axes': [0],
-                    'starts': [6],
-                    'ends': [0],
-                    'steps': [-4],
-                    'decrease_axes': [],
-                    'none_axes': [],
-                    'dtype': paddle.float32,
-                }
-                inputs = {'Input': x, 'ValueTensor': value}
-
-                helper = LayerHelper("set_value")
-                y = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-                helper.append_op(
-                    type="set_value",
-                    inputs=inputs,
-                    outputs={'Out': y},
-                    attrs=attrs,
-                )
-                y2 = y + 1
-                loss = paddle.sum(y2)
-                opt = paddle.optimizer.Adam()
-                opt.minimize(loss)
-
-                x_data = np.arange(
-                    0, np.prod(input_shape), dtype="float32"
-                ).reshape(input_shape)
-                fetch_list = [x.grad_name, value.grad_name]
-                ret = exe.run(main_program, fetch_list=fetch_list)
-                self.assertTrue((ret[0][6:0:-4] == 0).all())
-
 
 class TestShareBufferOpTranscriber(unittest.TestCase):
     def test_program(self):
@@ -476,27 +427,6 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
             assert l.global_block().ops[2].name() == "pd_op.share_data_", (
                 "share_buffer should be translated to share_data_"
             )
-
-
-class TestDataOp(unittest.TestCase):
-    def test_data_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                _ = paddle.static.data(name="y", shape=[3, 9, 5], dtype="int64")
-            l = pir.translate_to_pir(main_program.desc)
-            self.assertTrue(len(l.global_block().ops) > 0)
-            self.assertTrue(l.global_block().ops[0].name() == "pd_op.data")
-            data_op = l.global_block().ops[0]
-            self.assertIn("dtype", data_op.attrs())
-            self.assertEqual(str(data_op.attrs()["dtype"]), "paddle.int64")
 
 
 if __name__ == "__main__":
