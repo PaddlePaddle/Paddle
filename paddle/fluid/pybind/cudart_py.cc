@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/fluid/pybind/cudart.h"
+#include "paddle/fluid/pybind/cudart_py.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
