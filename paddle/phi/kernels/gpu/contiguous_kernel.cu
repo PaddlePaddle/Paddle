@@ -576,5 +576,5 @@ PD_REGISTER_KERNEL(contiguous,
                    ::phi::bfloat16,
                    ::phi::complex64,
                    ::phi::complex128,
-                   ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   ::phi::float8_e4m3fn,
+                   ::phi::float8_e5m2) {}

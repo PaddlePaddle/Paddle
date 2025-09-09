@@ -106,7 +106,7 @@ scale_fp32x4_to_fp8x4(const float4 &vec, const float scale) {
 template <bool using_pow2_scaling, bool with_prob, int thread_per_block>
 __global__ void FusedSPAQKernelVec4(const phi::bfloat16 *__restrict__ Xin,
                                     const float *__restrict__ prob,
-                                    phi::dtype::float8_e4m3fn *__restrict__ out,
+                                    phi::float8_e4m3fn *__restrict__ out,
                                     float *__restrict__ scales,
                                     const int64_t rows,
                                     const int64_t cols,
@@ -196,7 +196,7 @@ __global__ void FusedSPAQKernelVec4(const phi::bfloat16 *__restrict__ Xin,
 template <bool using_pow2_scaling, bool with_prob>
 __global__ void FusedSPAQKernel(const phi::bfloat16 *__restrict__ Xin,
                                 const float *__restrict__ prob,
-                                phi::dtype::float8_e4m3fn *__restrict__ out,
+                                phi::float8_e4m3fn *__restrict__ out,
                                 float *__restrict__ scales,
                                 const int rows,
                                 const int cols) {
@@ -286,7 +286,7 @@ __global__ void FusedSPAQKernel(const phi::bfloat16 *__restrict__ Xin,
   // Write output and scales
   if (g_output_y_offset < rows && g_output_x_offset < cols / 2) {
     out[g_output_y_offset * (cols / 2) + g_output_x_offset] =
-        static_cast<phi::dtype::float8_e4m3fn>(output_scaled_fp32);
+        static_cast<phi::float8_e4m3fn>(output_scaled_fp32);
     if (x_offset % 128 == 0) {
       // Only one thread per quant block writes the scale
       scales[g_output_y_offset * scale_stride + in_x_idx / 128] = inv_scale;
@@ -296,7 +296,7 @@ __global__ void FusedSPAQKernel(const phi::bfloat16 *__restrict__ Xin,
 
 void dispatch_fused_spaq(const phi::bfloat16 *x_data,
                          const float *prob_data,
-                         phi::dtype::float8_e4m3fn *out_data,
+                         phi::float8_e4m3fn *out_data,
                          float *scale_data,
                          cudaStream_t stream,
                          const int rows,
@@ -386,13 +386,13 @@ void FusedWeightedSwigluActQuantKernel(
   out->Resize({rows, cols / 2});
   scale->Resize({rows, (cols / 2 + 127) / 128});
 
-  dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+  dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   dev_ctx.template Alloc<float>(scale);
 
   // Get data pointers
   const auto *x_data = x.data<phi::bfloat16>();
   const float *prob_data = prob ? prob.get().data<float>() : nullptr;
-  auto *out_data = out->data<phi::dtype::float8_e4m3fn>();
+  auto *out_data = out->data<phi::float8_e4m3fn>();
   auto *scale_data = scale->data<float>();
 
   // Launch kernel

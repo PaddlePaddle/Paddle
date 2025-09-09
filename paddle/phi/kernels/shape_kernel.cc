@@ -161,7 +161,7 @@ PD_REGISTER_KERNEL(shape64,
                    phi::complex128,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::float8_e4m3fn) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

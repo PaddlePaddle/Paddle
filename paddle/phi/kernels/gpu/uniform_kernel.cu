@@ -91,4 +91,4 @@ PD_REGISTER_KERNEL(uniform,
                    double,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn) {}
+                   phi::float8_e4m3fn) {}
