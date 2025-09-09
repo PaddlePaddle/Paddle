@@ -1227,9 +1227,35 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if self.api != "empty_like":
+                    names_len = len(self.outputs['names'])
+                    types = self.outputs['types']
+                    if (
+                        all(t == "Tensor" for t in types)
+                        and 1 <= names_len <= 7
+                    ):
+                        if names_len == 1:
+                            output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                        else:
+                            tuple_types = ", ".join(["Tensor"] * names_len)
+                            get_calls = ", ".join(
+                                f"*std::get<{i}>(*predefined_out)"
+                                for i in range(names_len)
+                            )
+                            output_creation_code += (
+                                f"std::tuple<{tuple_types}> out_tmp;"
+                                f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                                f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                                f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                            )
+                    else:
+                        output_creation_code += (
+                            API_OUT_CREATION_TEMPLATE.format(return_type, "")
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
