@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -120,12 +119,12 @@ PD_REGISTER_KERNEL(less_than_raw,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -140,12 +139,12 @@ PD_REGISTER_KERNEL(less_than_raw,
                      int16_t,                              \
                      int,                                  \
                      int64_t,                              \
-                     phi::dtype::complex<float>,           \
-                     phi::dtype::complex<double>,          \
+                     phi::complex64,                       \
+                     phi::complex128,                      \
                      float,                                \
                      double,                               \
-                     phi::dtype::float16,                  \
-                     phi::dtype::bfloat16) {               \
+                     phi::float16,                         \
+                     phi::bfloat16) {                      \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);  \
   }
 

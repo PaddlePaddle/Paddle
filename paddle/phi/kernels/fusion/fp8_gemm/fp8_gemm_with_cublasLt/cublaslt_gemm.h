@@ -20,17 +20,14 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
-#include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_gemm_search.h"
 
 namespace dyl = phi::dynload;

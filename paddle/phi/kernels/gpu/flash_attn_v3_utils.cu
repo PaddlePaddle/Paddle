@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/flash_attn_v3_utils.h"
-#include "paddle/phi/common/bfloat16.h"
 namespace phi {
 #ifdef PADDLE_WITH_FLASHATTN_V3
 

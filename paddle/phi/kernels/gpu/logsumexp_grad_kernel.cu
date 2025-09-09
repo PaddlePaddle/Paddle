@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/logsumexp_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logsumexp_grad_kernel_impl.h"
 

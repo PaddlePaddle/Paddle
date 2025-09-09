@@ -60,7 +60,7 @@ PD_REGISTER_KERNEL(npu_identity,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(npu_identity,
@@ -75,5 +75,5 @@ PD_REGISTER_KERNEL(npu_identity,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

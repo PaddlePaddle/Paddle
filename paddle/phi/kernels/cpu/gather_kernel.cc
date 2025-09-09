@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/gather_kernel.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 

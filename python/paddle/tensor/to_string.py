@@ -293,12 +293,11 @@ def mask_xpu_bf16_tensor(np_tensor):
 
 def _format_dense_tensor(tensor, indent):
     dtype = tensor.dtype
-    if (
-        dtype == paddle.bfloat16
-        or dtype == core.VarDesc.VarType.BF16
-        or dtype == core.VarDesc.VarType.FP8_E4M3FN
-        or dtype == core.VarDesc.VarType.FP8_E5M2
-    ):
+    if dtype in {
+        paddle.bfloat16,
+        paddle.float8_e4m3fn,
+        paddle.float8_e5m2,
+    }:
         if not tensor.place.is_cpu_place():
             paddle.device.synchronize()
         tensor = tensor.astype('float32')

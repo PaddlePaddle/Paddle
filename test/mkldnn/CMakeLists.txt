@@ -7,8 +7,8 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 list(REMOVE_ITEM TEST_OPS "test_onnx_format_quantization_mobilenetv1")
 list(REMOVE_ITEM TEST_OPS "test_flags_onednn_ops_on_off")
 
-list(REMOVE_ITEM TEST_OPS "test_conv2d_mkldnn_op")
-list(REMOVE_ITEM TEST_OPS "test_conv3d_mkldnn_op")
+list(REMOVE_ITEM TEST_OPS "test_conv2d_onednn_op")
+list(REMOVE_ITEM TEST_OPS "test_conv3d_onednn_op")
 list(REMOVE_ITEM TEST_OPS "test_batch_norm_onednn_op")
 
 if(WITH_ONEDNN AND NOT WIN32)

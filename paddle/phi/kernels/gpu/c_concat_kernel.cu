@@ -22,6 +22,9 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
+#if defined(PADDLE_WITH_FLAGCX)
+#include "paddle/phi/core/distributed/flagcx_comm_context.h"
+#endif
 
 namespace phi {
 
@@ -64,16 +67,26 @@ void CConcatKernel(const Context& dev_ctx,
 
   gpuStream_t stream = nullptr;
 
+#if defined(PADDLE_WITH_FLAGCX) && defined(PADDLE_KERNEL_WITH_FLAGCX)
+  phi::distributed::FlagcxCommContext* comm_ctx = nullptr;
+  comm_ctx = static_cast<phi::distributed::FlagcxCommContext*>(
+      dev_ctx.GetCommContext());
+#else
   phi::distributed::NCCLCommContext* comm_ctx = nullptr;
   comm_ctx =
       static_cast<phi::distributed::NCCLCommContext*>(dev_ctx.GetCommContext());
+#endif
   PADDLE_ENFORCE_NE(comm_ctx,
                     nullptr,
                     common::errors::Unavailable(
                         "NCCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
   stream = dev_ctx.stream();
+#if defined(PADDLE_WITH_FLAGCX) && defined(PADDLE_KERNEL_WITH_FLAGCX)
+  comm_ctx->AllGather(&temp_out, *x, reinterpret_cast<flagcxStream_t>(&stream));
+#else
   comm_ctx->AllGather(&temp_out, *x, stream);
+#endif
 
   std::vector<phi::DenseTensor> inputs;
   int axis = x->dims().size() - 1;

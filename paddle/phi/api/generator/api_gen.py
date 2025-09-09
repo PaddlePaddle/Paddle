@@ -216,6 +216,7 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
+
             if (
                 len(self.outputs['names']) == 1
                 and self.outputs['types'][0] == "Tensor"
@@ -231,6 +232,7 @@ class ForwardAPI(BaseAPI):
             else:
                 output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
+
             set_out_func = (
                 'SetKernelOutput'
                 if out_tensor_type_list is None
@@ -292,7 +294,38 @@ class ForwardAPI(BaseAPI):
                 )
 
         elif len(out_dtype_list) > 1:
-            output_create = f"""
+            if (
+                not (
+                    inplace_flag
+                    and any(
+                        name.split('@')[0] in self.inplace_map
+                        for name in self.outputs['names']
+                    )
+                )
+                and self.api != "empty_like"
+            ):
+                types = self.outputs['types']
+                names_len = len(self.outputs['names'])
+                if all(t == "Tensor" for t in types) and 1 <= names_len <= 7:
+                    if names_len == 1:
+                        output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * names_len)
+                        get_indices = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(names_len)
+                        )
+                        output_create = f"""
+{code_indent}  std::tuple<{tuple_types}> out_tmp;
+{code_indent}  paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;
+{code_indent}  if(predefined_out) {{ predefined_out_value = std::make_tuple({get_indices}); }}
+{code_indent}  std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"""
+                else:
+                    output_create = f"""
+{code_indent}  {return_type} api_output;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output;"""
 
             if inplace_flag:

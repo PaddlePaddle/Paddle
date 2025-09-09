@@ -16,7 +16,6 @@
 #include "paddle/phi/kernels/as_real_kernel.h"
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
