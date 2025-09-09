@@ -474,6 +474,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
             warnings.warn(
                 self.warn_msg,
                 category=UserWarning,
+                stacklevel=3,
             )
             self.warn_msg = None
         return args, kwargs

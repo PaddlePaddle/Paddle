@@ -115,32 +115,34 @@ def cudart():
     Returns:
         module: The CUDA runtime API module (_cudart).
 
-    Example of CUDA operations with profiling:
-        >>> import paddle
-        >>> from paddle.cuda import cudart, check_error
-        >>> import os
-        >>>
-        >>> os.environ['CUDA_PROFILE'] = '1'
-        >>>
-        >>> def perform_cuda_operations_with_streams():
-        >>>     stream = paddle.cuda.Stream()
-        >>>     with paddle.cuda.stream(stream):
-        >>>         x = paddle.randn(100, 100, device='cuda')
-        >>>         y = paddle.randn(100, 100, device='cuda')
-        >>>         z = paddle.mul(x, y)
-        >>>     return z
-        >>>
-        >>> paddle.cuda.synchronize()
-        >>> print("====== Start nsys profiling ======")
-        >>> check_error(cudart().cudaProfilerStart())
-        >>> with paddle.autograd.profiler.emit_nvtx():
-        >>>     result = perform_cuda_operations_with_streams()
-        >>>     print("CUDA operations completed.")
-        >>> check_error(paddle.cuda.cudart().cudaProfilerStop())
-        >>> print("====== End nsys profiling ======")
+    Examples:
+        .. code-block:: python
 
-    To run this example and save the profiling information, execute:
-        >>> $ nvprof --profile-from-start off --csv --print-summary -o trace_name.prof -f -- python cudart_test.py
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.cuda import cudart, check_error
+            >>> import os
+            >>>
+            >>> os.environ['CUDA_PROFILE'] = '1'
+            >>>
+            >>> def perform_cuda_operations_with_streams():
+            >>>     stream = paddle.cuda.Stream()
+            >>>     with paddle.cuda.stream(stream):
+            >>>         x = paddle.randn(100, 100, device='cuda')
+            >>>         y = paddle.randn(100, 100, device='cuda')
+            >>>         z = paddle.mul(x, y)
+            >>>     return z
+            >>>
+            >>> paddle.cuda.synchronize()
+            >>> # print("====== Start nsys profiling ======")
+            >>> check_error(cudart().cudaProfilerStart())
+            >>> paddle.core.nvprof_start()
+            >>> paddle.core.nvprof_nvtx_push("Test")
+            >>> result = perform_cuda_operations_with_streams()
+            >>> paddle.core.nvprof_nvtx_pop()
+            >>> # print("CUDA operations completed.")
+            >>> check_error(paddle.cuda.cudart().cudaProfilerStop())
+            >>> # print("====== End nsys profiling ======")
 
     This command profiles the CUDA operations in the provided script and saves
     the profiling information to a file named `trace_name.prof`.
