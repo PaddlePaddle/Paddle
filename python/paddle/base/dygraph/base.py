@@ -681,6 +681,7 @@ def grad(
     only_inputs: bool = True,
     allow_unused: bool = False,
     no_grad_vars: Tensor | Sequence[Tensor] | set[Tensor] | None = None,
+    compute_graph_path: str | None = None,
 ) -> list[Tensor]:
     '''
     .. note::
@@ -902,4 +903,5 @@ def grad(
         only_inputs,
         allow_unused,
         no_grad_vars,
+        compute_graph_path,
     )

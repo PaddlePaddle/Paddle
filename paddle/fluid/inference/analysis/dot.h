@@ -82,7 +82,7 @@ class Dot {
           true,
           common::errors::InvalidArgument("Sorry,but name is empty"));
       if (comments != "") {
-        ss << "\n#" << std::regex_replace(comments, std::regex("\n"), "\n\t#")
+        ss << "#" << std::regex_replace(comments, std::regex("\n"), "\n\t#")
            << "\n\t";
       }
       ss << id_;

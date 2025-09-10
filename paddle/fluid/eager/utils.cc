@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include <ostream>
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -28,7 +29,6 @@
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/variable.h"
-
 namespace egr {
 
 void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
@@ -1150,5 +1150,20 @@ std::string ConcatNodeName(GradNodeBase* node) {
   std::ostringstream oss;
   oss << node->name() << "\\nPtr: " << std::hex << node;
   return oss.str();
+}
+void SaveGraphToFile(const std::string& compute_graph_path,
+                     const std::string& serialized_graph) {
+  std::ofstream outFile(compute_graph_path);
+
+  if (!outFile) {
+    PADDLE_THROW(common::errors::Fatal(
+        "Cannot open file %s for writing, when save compute graph.",
+        compute_graph_path));
+    return;
+  }
+
+  outFile << serialized_graph;
+  outFile.close();
+  return;
 }
 }  // namespace egr

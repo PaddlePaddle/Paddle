@@ -364,4 +364,6 @@ void inline CUDAErrorCheck(const std::string& check_tag) {
 #endif
 }
 std::string ConcatNodeName(GradNodeBase* node);
+void SaveGraphToFile(const std::string& compute_graph_path,
+                     const std::string& serialized_graph);
 }  // namespace egr

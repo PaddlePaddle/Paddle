@@ -282,6 +282,7 @@ def monkey_patch_tensor():
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        compute_graph_path: str | None = None,
     ) -> None:
         """
         Run backward of current Graph which starts from current Tensor.
@@ -367,7 +368,9 @@ def monkey_patch_tensor():
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
 
-            core.eager.run_backward([self], grad_tensor, retain_graph)
+            core.eager.run_backward(
+                [self], grad_tensor, retain_graph, compute_graph_path
+            )
 
             if in_profiler_mode():
                 record_event.end()

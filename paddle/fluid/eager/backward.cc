@@ -24,7 +24,6 @@ namespace egr {
 using paddle::inference::analysis::Dot;
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     const std::deque<GradNodeBase*>& init_queue) {
-  Dot dot;
   // Calculate in_degree for each node
   // We can completely remove this pass, if in_degree were set during forward
   // pass
@@ -37,14 +36,11 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop_front();
-    std::string node_id = ConcatNodeName(node);
+    std::string dot_node_label = ConcatNodeName(node);
     if (visited.count(node)) {
       continue;
     }
     visited.insert(node);
-    if (!dot.ContainsNode(node_id)) {
-      dot.AddNode(node_id, {}, node_id, false, node->GetForwardTrace());
-    }
 
     PADDLE_ENFORCE_NOT_NULL(
         node,
@@ -61,16 +57,9 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
-        if (!next_node) continue;
-        std::string next_node_id = ConcatNodeName(next_node);
-        if (!dot.ContainsNode(next_node_id)) {
-          dot.AddNode(next_node_id,
-                      {},
-                      next_node_id,
-                      false,
-                      next_node->GetForwardTrace());
+        if (!next_node) {
+          continue;
         }
-        dot.AddEdge(next_node_id, node_id, {});
         // Update in_degree
         if (!node_in_degree_map.count(next_node))
           node_in_degree_map[next_node] = 0;
@@ -79,9 +68,100 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
-  std::cout << dot.Build() << std::endl;
-
   return node_in_degree_map;
+}
+void SaveComputeGraph(const std::deque<GradNodeBase*>& init_queue,
+                      const std::string& compute_graph_path) {
+  const std::vector<Dot::Attr> op_attrs({
+      Dot::Attr("style", "rounded,filled,bold"),  //
+      Dot::Attr("shape", "box"),                  //
+      Dot::Attr("color", "#999999"),              //
+      Dot::Attr("fontcolor", "#ffffff"),          //
+      Dot::Attr("width", "1.3"),                  //
+      Dot::Attr("height", "0.84"),                //
+      Dot::Attr("fontname", "Arial"),             //
+  });
+  const std::vector<Dot::Attr> param_attrs({
+      Dot::Attr("shape", "box"),                  //
+      Dot::Attr("style", "rounded,filled,bold"),  //
+      Dot::Attr("fontname", "Arial"),             //
+      Dot::Attr("color", "#148b97"),              //
+      Dot::Attr("fontcolor", "#ffffff"),          //
+  });
+
+  Dot dot;
+
+  // Copy nodes
+  std::deque<GradNodeBase*> queue = init_queue;
+  std::unordered_set<GradNodeBase*> visited;
+  // Visit each node exactly once in any order
+  while (!queue.empty()) {
+    GradNodeBase* node = queue.front();
+    queue.pop_front();
+    std::string dot_node_label = ConcatNodeName(node);
+    if (visited.count(node)) {
+      continue;
+    }
+    visited.insert(node);
+    if (!dot.ContainsNode(dot_node_label)) {
+      dot.AddNode(dot_node_label,
+                  op_attrs,
+                  dot_node_label,
+                  false,
+                  node->GetForwardTrace());
+    }
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        common::errors::Fatal(
+            "We got null node when we traverse the backward graph, and this "
+            "should not happened please check your code and contact us."));
+    // Find and append next nodes
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        metas = node->OutputMeta();
+    for (const auto& meta_list : metas) {
+      for (const GradSlotMeta& meta : meta_list) {
+        const auto& edge = meta.GetEdge();
+        GradNodeBase* next_node = edge.GetMutableGradNode().get();
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) {
+          continue;
+        }
+        std::string dot_next_node_label = ConcatNodeName(next_node);
+        auto tm = meta.GetTensorMetaPtr();
+        std::string tensor_id = std::to_string(
+            static_cast<int64_t>(reinterpret_cast<uintptr_t>(tm)));
+        std::ostringstream oss;
+        oss << "Tensor\\n"
+            << tm->dtype << " " << tm->layout << "\\n(" << tm->dims << ")";
+        std::string tensor_label = oss.str();
+        dot.AddNode(tensor_id, {}, tensor_label);
+        // if(next_node->name() == "GradNodeAccumulation")std::cout<<"id
+        // "<<tensor_id<<" label "<<tensor_label << " ptr: "<<tm<<std::endl;
+        if (!dot.ContainsNode(dot_next_node_label)) {
+          if (next_node->name() == "GradNodeAccumulation") {
+            dot.AddNode(dot_next_node_label,
+                        param_attrs,
+                        dot_next_node_label,
+                        false,
+                        next_node->GetForwardTrace());
+          } else {
+            dot.AddNode(dot_next_node_label,
+                        op_attrs,
+                        dot_next_node_label,
+                        false,
+                        next_node->GetForwardTrace());
+          }
+        }
+        dot.AddEdge(dot_next_node_label, tensor_id, {});
+        dot.AddEdge(tensor_id, dot_node_label, {});
+        queue.push_back(next_node);
+      }
+    }
+  }
+  SaveGraphToFile(compute_graph_path, dot.Build());
+  return;
 }
 
 // Enforce GradNode has TensorWrappers as Input
@@ -123,7 +203,8 @@ std::vector<paddle::Tensor> RunBackward(
     bool create_graph = false,
     const std::vector<paddle::Tensor>& inputs = {},
     bool allow_unused = false,
-    const std::vector<paddle::Tensor>& no_grad_vars = {}) {
+    const std::vector<paddle::Tensor>& no_grad_vars = {},
+    std::string compute_graph_path = "") {
   VLOG(3) << "Start Backward";
 
   egr::EagerBackwardStateGuard guard;
@@ -258,7 +339,7 @@ std::vector<paddle::Tensor> RunBackward(
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
-
+  if (compute_graph_path != "") SaveComputeGraph(queue, compute_graph_path);
   std::deque<GradNodeBase*> ready_queue;
   for (GradNodeBase* item : queue) {
     if (!node_in_degree_map.count(item)) {
@@ -510,11 +591,19 @@ std::vector<paddle::Tensor> RunBackward(
 
 void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
-              bool retain_graph) {
+              bool retain_graph,
+              std::string compute_graph_path) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
       "backward", phi::TracerEventType::UserDefined, 1);
-  RunBackward(tensors, grad_tensors, retain_graph);
+  RunBackward(tensors,
+              grad_tensors,
+              retain_graph,
+              false,
+              {},
+              false,
+              {},
+              compute_graph_path);
   egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
@@ -527,7 +616,8 @@ std::vector<paddle::Tensor> Grad(
     bool create_graph,
     bool only_inputs,
     bool allow_unused,
-    const std::vector<paddle::Tensor>& no_grad_vars) {
+    const std::vector<paddle::Tensor>& no_grad_vars,
+    const std::string compute_graph_path) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
@@ -539,6 +629,7 @@ std::vector<paddle::Tensor> Grad(
                      create_graph,
                      inputs,
                      allow_unused,
-                     no_grad_vars);
+                     no_grad_vars,
+                     compute_graph_path);
 }
 }  // namespace egr
