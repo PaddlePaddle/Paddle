@@ -615,8 +615,8 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
@@ -631,7 +631,30 @@ def cuda() -> str:
             '10.2'
 
     """
-    return cuda_version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
+
+    def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
+
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.

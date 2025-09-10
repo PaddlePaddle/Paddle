@@ -22,8 +22,6 @@
 #include <limits>
 #include <vector>
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #define INT_MAX_VALUE 2147483647

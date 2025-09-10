@@ -26,12 +26,12 @@ void SetOp(ProgramDesc* prog,
            const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs,
-           const std::string& mkldnn_data_type = "float32") {
+           const std::string& onednn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
 
   op->SetType(type);
   op->SetAttr("use_onednn", true);
-  op->SetAttr("mkldnn_data_type", mkldnn_data_type);
+  op->SetAttr("onednn_data_type", onednn_data_type);
 
   if (type == "conv2d") {
     op->SetAttr("name", name);
@@ -51,7 +51,7 @@ void SetOp(ProgramDesc* prog,
   op->SetOutput("Out", {outputs[0]});
 }
 
-// operator                      mkldnn_data_type
+// operator                      onednn_data_type
 // ---------------------------------------
 // (a,b)->concat->c              none
 // (c,weights,bias)->conv->f     false

@@ -66,7 +66,6 @@ class TestSoftmaxCoShard:
             [[[0, 1], [2, 3]], [[4, 5], [6, 7]]], dim_names=['x', 'y', 'z']
         )
         self.test_cases_forward = [
-            # test flatten
             SoftmaxTestCase(
                 [32, 48, 128],
                 [
@@ -106,7 +105,6 @@ class TestSoftmaxCoShard:
             ),
         ]
         self.test_cases_backward = [
-            # test flatten
             SoftmaxGradTestCase(
                 [32, 48, 128],
                 0,
@@ -234,6 +232,7 @@ class TestSoftmaxCoShard:
         ]
 
     def run_test_case_forward(self, test_case: SoftmaxTestCase):
+        paddle.seed(2025)
         a = paddle.rand(test_case.input_shape, "float32")
         input_placements = test_case.input_placements
         input = dist.shard_tensor(a, self.mesh, input_placements)
@@ -268,9 +267,7 @@ class TestSoftmaxCoShard:
     def run_test_case_backward(self, test_case: SoftmaxGradTestCase):
         a = paddle.rand(test_case.input_shape, "float32")
         a.stop_gradient = False
-        input_placements = [
-            dist.Replicate() for _ in range(len(test_case.input_shape))
-        ]
+        input_placements = [dist.Replicate() for _ in range(self.mesh.ndim)]
         input = dist.shard_tensor(a, self.mesh, input_placements)
         out = paddle.nn.functional.softmax(input, test_case.axis)
         out = dist.reshard(out, self.mesh, test_case.output_placements)

@@ -142,7 +142,7 @@ struct ConvProgramStrategy : public ProgramStrategy {
     op->SetType("fused_conv2d");
     op->SetAttr("use_onednn", true);
     op->SetAttr("name", conv_name);
-    op->SetAttr("mkldnn_data_type", std::string{"int8"});
+    op->SetAttr("onednn_data_type", std::string{"int8"});
     op->SetAttr("data_format", std::string{"NCHW"});
     op->SetAttr("dilations", std::vector<int>({1, 1}));
     op->SetAttr("paddings", std::vector<int>({1, 1}));
@@ -239,7 +239,7 @@ struct ConvProgramStrategy : public ProgramStrategy {
   const bool share_weight;
 };
 
-struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
+struct ParamsQuantizationOnednnPassTestFixture : public ::testing::Test {
   void RunPassTest(std::unique_ptr<ProgramStrategy> program) {
     auto graph = program->CreateGraph();
 
@@ -253,7 +253,7 @@ struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
 Data GenericInput() { return Data({1, 4, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}); }
 Data GenericOutput() { return GenericInput(); }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_o1i1h1w1) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_without_bias_o1i1h1w1) {
   auto program =
       std::make_unique<ConvProgramStrategy>(GenericInput(),
                                             Data({1, 1, 1, 1}, {1.5f}),
@@ -262,7 +262,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_o1i1h1w1) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o1i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_without_bias_2o1i1h1w) {
   auto program =
       std::make_unique<ConvProgramStrategy>(GenericInput(),
                                             Data({2, 1, 1, 1}, {1.5f, 1.5f}),
@@ -271,7 +271,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o2i2h2w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_without_bias_2o2i2h2w) {
   auto program =
       std::make_unique<ConvProgramStrategy>(GenericInput(),
                                             Data({2, 2, 2, 2},
@@ -296,7 +296,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o2i2h2w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
@@ -306,7 +306,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
@@ -316,7 +316,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_1o1i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_with_bias_1o1i1h1w) {
   auto program =
       std::make_unique<ConvProgramStrategy>(GenericInput(),
                                             Data({1, 1, 1, 1}, {1.5f}),
@@ -328,7 +328,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_1o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2o1i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_with_bias_2o1i1h1w) {
   auto program =
       std::make_unique<ConvProgramStrategy>(GenericInput(),
                                             Data({2, 1, 1, 1}, {1.5f, 1.5f}),
@@ -340,7 +340,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
@@ -352,7 +352,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
@@ -364,7 +364,7 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   RunPassTest(std::move(program));
 }
 
-TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
+TEST_F(ParamsQuantizationOnednnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),

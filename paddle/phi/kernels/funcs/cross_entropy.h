@@ -16,8 +16,6 @@ limitations under the License. */
 #include <limits>
 
 #include "paddle/common/hostdevice.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 

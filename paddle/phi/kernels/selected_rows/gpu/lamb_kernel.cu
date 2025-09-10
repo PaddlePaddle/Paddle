@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/selected_rows/lamb_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/selected_rows/impl/lamb_kernel_impl.h"
 
