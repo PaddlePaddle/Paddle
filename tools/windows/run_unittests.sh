@@ -154,9 +154,9 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_mkldnn_matmul_elementwise_add_fuse_pass$|\
 ^test_mkldnn_matmul_v2_elementwise_add_fuse_pass$|\
 ^test_mkldnn_matmul_v2_transpose_reshape_fuse_pass$|\
-^test_mkldnn_mish_op$|\
-^test_mkldnn_pad3d_op$|\
-^test_mkldnn_prelu_op$|\
+^test_onednn_mish_op$|\
+^test_onednn_pad3d_op$|\
+^test_onednn_prelu_op$|\
 ^test_mkldnn_shuffle_channel_detect_pass$|\
 ^test_onednn_batch_norm_act_fuse_pass$|\
 ^test_onednn_conv_bias_fuse_pass$|\
