@@ -15,12 +15,9 @@
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
@@ -59,8 +56,8 @@ void DotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(dot,
                    GPU,
@@ -72,5 +69,5 @@ PD_REGISTER_KERNEL(dot,
                    int64_t,
                    complex64,
                    complex128,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

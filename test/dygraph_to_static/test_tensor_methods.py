@@ -124,5 +124,37 @@ class TestTrueDiv(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
 
+def tensor_stride_no_dim(x):
+    x = paddle.to_tensor(x)
+    return x.stride()
+
+
+def tensor_stride_with_dim(x):
+    x = paddle.to_tensor(x)
+    return x.stride(0)
+
+
+def tensor_stride_negative_dim(x):
+    x = paddle.to_tensor(x)
+    return x.stride(-1)
+
+
+class TestTensorStride(Dy2StTestBase):
+    def _assert_dy2st_equal(self, fn):
+        x = paddle.ones([2, 3, 4])
+        dygraph_res = fn(x)
+        static_res = paddle.jit.to_static(fn)(x)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
+
+    def test_tensor_stride_no_dim(self):
+        self._assert_dy2st_equal(tensor_stride_no_dim)
+
+    def test_tensor_stride_with_dim(self):
+        self._assert_dy2st_equal(tensor_stride_with_dim)
+
+    def test_tensor_stride_negative_dim(self):
+        self._assert_dy2st_equal(tensor_stride_negative_dim)
+
+
 if __name__ == '__main__':
     unittest.main()

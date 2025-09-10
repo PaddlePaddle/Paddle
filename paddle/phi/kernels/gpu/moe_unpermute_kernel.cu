@@ -263,8 +263,5 @@ void MoeUnpermuteKernel(const Context &dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(moe_unpermute,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::MoeUnpermuteKernel,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    moe_unpermute, GPU, ALL_LAYOUT, phi::MoeUnpermuteKernel, phi::bfloat16) {}

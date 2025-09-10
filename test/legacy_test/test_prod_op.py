@@ -348,11 +348,24 @@ class TestProdAliasOp(unittest.TestCase):
         )
         np.testing.assert_allclose(out.numpy(), expected_result, rtol=1e-05)
 
+        paddle_out2 = paddle.empty(expected_result.shape, dtype='int64')
+        paddle_out1 = paddle.prod(
+            input=input, dim=1, keepdim=True, dtype='int64', out=paddle_out2
+        )
+        np.testing.assert_allclose(
+            paddle_out1.numpy(), expected_result, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            paddle_out2.numpy(), expected_result, rtol=1e-05
+        )
+
     def run_static(self, use_gpu=False):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
             )
+            expected_result = np.prod(self.input)
+
             result0 = paddle.prod(input=input)
             result1 = paddle.prod(input, dim=1)
             result2 = paddle.prod(input=input, dim=-1)
@@ -360,6 +373,14 @@ class TestProdAliasOp(unittest.TestCase):
             result4 = paddle.prod(input, dim=1, keepdim=True)
             result5 = paddle.prod(input=input, dim=1, dtype='int64')
             result6 = paddle.prod(input, dim=1, keepdim=True, dtype='int64')
+
+            result7 = paddle.zeros(shape=expected_result.shape, dtype="int64")
+            paddle.prod(input, dim=1, keepdim=True, dtype='int64', out=result7)
+
+            result8 = paddle.zeros(shape=expected_result.shape, dtype="int64")
+            result9 = paddle.prod(
+                input, dim=1, keepdim=True, dtype='int64', out=result8
+            )
 
             place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -374,10 +395,12 @@ class TestProdAliasOp(unittest.TestCase):
                     result4,
                     result5,
                     result6,
+                    result7,
+                    result8,
+                    result9,
                 ],
             )
 
-        expected_result = np.prod(self.input)
         np.testing.assert_allclose(
             static_result[0], expected_result, rtol=1e-05
         )
@@ -406,6 +429,15 @@ class TestProdAliasOp(unittest.TestCase):
         )
         np.testing.assert_allclose(
             static_result[6], expected_result, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            static_result[7], expected_result, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            static_result[8], expected_result, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            static_result[9], expected_result, rtol=1e-05
         )
 
     def test_cpu(self):

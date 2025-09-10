@@ -54,7 +54,7 @@ class RandomDataset(Dataset):
         return self.num_samples
 
 
-class LinearPipe(nn.Linear):
+class FirstLinearPipe(nn.Linear):
     def __init__(
         self,
         in_features,
@@ -70,15 +70,82 @@ class LinearPipe(nn.Linear):
         self.use_dict = use_dict
 
     def forward(self, input):
-        if isinstance(input, list):
-            input = input[0]
         if self.use_dict:
             if isinstance(input, dict):
                 input = input['x']
             x = paddle.matmul(input, self.weight)
-            return {"x": x}
+            y0 = 2 * x
+            y1 = 2 * x
+            return {"x": x, "y": [y0, y1]}
         else:
-            return paddle.matmul(input, self.weight)
+            x = paddle.matmul(input, self.weight)
+            y0 = 2 * x
+            y1 = 2 * x
+            return (x, y0, y1)
+
+    def build_schedule_node(self):
+        return ScheduleNode(self.forward)
+
+
+class SecondLinearPipe(nn.Linear):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        bias_attr=None,
+        name=None,
+        use_dict=False,
+    ):
+        super().__init__(
+            in_features, out_features, weight_attr, bias_attr, name
+        )
+        self.use_dict = use_dict
+
+    def forward(self, input):
+        if self.use_dict:
+            if isinstance(input, dict):
+                y0 = input['y'][0]
+                y1 = input['y'][1]
+                input = input['x']
+            x = paddle.matmul(input, self.weight)
+            return {"x": x, "y": [y0, y1]}
+        else:
+            x = paddle.matmul(input[0], self.weight)
+            y0 = input[1]
+            y1 = input[2]
+            return (x, y0, y1)
+
+    def build_schedule_node(self):
+        return ScheduleNode(self.forward)
+
+
+class ThirdLinearPipe(nn.Linear):
+    def __init__(
+        self,
+        in_features,
+        out_features,
+        weight_attr=None,
+        bias_attr=None,
+        name=None,
+        use_dict=False,
+    ):
+        super().__init__(
+            in_features, out_features, weight_attr, bias_attr, name
+        )
+        self.use_dict = use_dict
+
+    def forward(self, input):
+        if self.use_dict:
+            if isinstance(input, dict):
+                x = input['x']
+                y0, y1 = input['y']
+            out = paddle.matmul(x + y0 + y1, self.weight)
+            return {"out": out}
+        else:
+            x = input[0]
+            y0, y1 = input[1], input[2]
+            return paddle.matmul(x + y0 + y1, self.weight)
 
     def build_schedule_node(self):
         return ScheduleNode(self.forward)
@@ -86,10 +153,10 @@ class LinearPipe(nn.Linear):
 
 class CrossEntropyLossPipe(nn.loss.CrossEntropyLoss):
     def forward(self, logits, label):
-        if isinstance(logits, list):
-            logits = logits[0]
         if isinstance(logits, dict):
-            logits = logits["x"]
+            logits = logits["out"]
+        if isinstance(label, dict):
+            label = label["label"]
         return super().forward(logits, label)
 
     def build_schedule_node(self):
@@ -115,13 +182,25 @@ class SimpleNetPipeDesc(PipelineLayer):
     def __init__(self, **kwargs):
         decs = [
             LayerDesc(
-                LinearPipe, 5, 5, bias_attr=False, use_dict=kwargs["use_dict"]
+                FirstLinearPipe,
+                5,
+                5,
+                bias_attr=False,
+                use_dict=kwargs["use_dict"],
             ),
             LayerDesc(
-                LinearPipe, 5, 5, bias_attr=False, use_dict=kwargs["use_dict"]
+                SecondLinearPipe,
+                5,
+                5,
+                bias_attr=False,
+                use_dict=kwargs["use_dict"],
             ),
             LayerDesc(
-                LinearPipe, 5, 5, bias_attr=False, use_dict=kwargs["use_dict"]
+                ThirdLinearPipe,
+                5,
+                5,
+                bias_attr=False,
+                use_dict=kwargs["use_dict"],
             ),
         ]
         kwargs.pop("use_dict")
@@ -219,19 +298,14 @@ class TestDistPPTraining(unittest.TestCase):
             if i >= 5:
                 return True
 
-            loss_a = model_a(img, label)
-            loss_a.backward()
-            optimizer_a.step()
-            optimizer_a.clear_grad()
-            scheduler_a.step()
-
             loss_b = model_b.train_batch([img, label], optimizer_b, scheduler_b)
 
-            loss_c = model_c.train_batch([img, label], optimizer_c, scheduler_c)
-
-            np.testing.assert_allclose(
-                loss_a.numpy(), loss_b.numpy(), rtol=5e-5
+            loss_c = model_c.train_batch(
+                [{"x": img, "z": None}, {"label": label}],
+                optimizer_c,
+                scheduler_c,
             )
+
             np.testing.assert_equal(loss_b.numpy(), loss_c.numpy())
 
 

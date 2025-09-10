@@ -73,7 +73,7 @@ class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_onednn': True},
         )
 
         if activation_type == "relu6":

@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/common/macros.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {

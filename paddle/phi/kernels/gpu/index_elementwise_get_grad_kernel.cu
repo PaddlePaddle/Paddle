@@ -16,7 +16,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
@@ -445,7 +444,7 @@ PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

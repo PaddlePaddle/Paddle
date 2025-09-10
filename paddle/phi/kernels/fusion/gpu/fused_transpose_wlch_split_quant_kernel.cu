@@ -254,7 +254,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   dim3 block(32, 16);
 
   const __nv_bfloat16* x_ptr =
-      reinterpret_cast<const __nv_bfloat16*>(x.data<phi::dtype::bfloat16>());
+      reinterpret_cast<const __nv_bfloat16*>(x.data<phi::bfloat16>());
   int64_t* meta_gpu_ptr = meta_gpu.data<int64_t>();
   FastDivMod W_divmod(W), C_divmod(C);
 
@@ -284,7 +284,7 @@ PD_REGISTER_KERNEL(fused_transpose_wlch_split_quant,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedTransposeWLCHSplitQuantKernel,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

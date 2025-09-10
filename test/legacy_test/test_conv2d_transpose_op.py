@@ -1575,5 +1575,29 @@ class TestFunctionalConv2DTranspose_ZeroSize2(
         self.np_out = np.zeros([4, 0, 6, 6])
 
 
+class TestWithSAMEPad_NHWC(TestConv2DTransposeOp):
+    def init_test_case(self):
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 1
+        self.input_size = [1, 3, 3, 1]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 2, 3, 3]
+        self.data_format = 'NHWC'
+        self.padding_algorithm = 'SAME'
+
+
+class TestWithSAMEPadGroups_NHWC(TestConv2DTransposeOp):
+    def init_test_case(self):
+        self.stride = [1, 1]
+        self.dilations = [1, 1]
+        self.groups = 2
+        self.input_size = [1, 3, 3, 2]  # NHWC
+        f_c = self.input_size[-1]
+        self.filter_size = [f_c, 1, 3, 3]
+        self.data_format = 'NHWC'
+        self.padding_algorithm = 'SAME'
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -61,46 +61,47 @@ class InterpreterCore {
       bool enable_op_profiling = false,
       bool switch_stream = false);
 
-  void RunProfile(const std::vector<std::string>& feed_names);
+  PADDLE_API void RunProfile(const std::vector<std::string>& feed_names);
 
-  std::shared_ptr<ProgramDesc> GetMutableCopyProgram();
+  PADDLE_API std::shared_ptr<ProgramDesc> GetMutableCopyProgram();
 
-  void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
+  PADDLE_API void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
 
-  void ShareBuildResultsFrom(std::shared_ptr<InterpreterCore> src);
+  PADDLE_API void ShareBuildResultsFrom(std::shared_ptr<InterpreterCore> src);
 
-  void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+  PADDLE_API void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
 
   TEST_API void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
 
-  const std::set<std::string>& JitInputVars() const;
+  PADDLE_API const std::set<std::string>& JitInputVars() const;
 
-  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+  PADDLE_API void SetJitInputVars(const std::set<std::string>& jit_input_vars);
 
-  const VariableScope* GetVariableScope() const;
+  PADDLE_API const VariableScope* GetVariableScope() const;
 
-  void reset_scope(Scope* new_scope);
+  PADDLE_API void reset_scope(Scope* new_scope);
 
-  const Scope* local_scope() const;
+  PADDLE_API const Scope* local_scope() const;
 
-  const phi::Place& GetPlace() const;
+  PADDLE_API const phi::Place& GetPlace() const;
 
-  void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
+  PADDLE_API void SetOutputHooks(const std::vector<HookFunc>& hookfuncs);
 
-  void SetInputHooks(const std::vector<HookFunc>& hookfuncs);
+  PADDLE_API void SetInputHooks(const std::vector<HookFunc>& hookfuncs);
 
-  void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
+  PADDLE_API void SetOutputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
-  void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
+  PADDLE_API void SetInputHooks(const std::vector<PirHookFunc>& hookfuncs);
 
-  void Build(const std::vector<std::string>& feed_names,
-             std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+  PADDLE_API void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
 
-  bool IsStaticBuild() const;
+  PADDLE_API bool IsStaticBuild() const;
 
-  void SetCUDAGraphState(uint8_t cuda_graph_state);
+  PADDLE_API void SetCUDAGraphState(uint8_t cuda_graph_state);
 
-  std::tuple<double, double> InterpreterRunTime();
+  PADDLE_API std::tuple<double, double> InterpreterRunTime();
 
   // Only for debug
   TEST_API Variable* DebugVar(const std::string& name) const;

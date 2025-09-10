@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Compatibility Note: The design of certain PaddlePaddle public APIs
+# incorporates principles from PyTorch and NumPy, maintaining compatibility
+# with PyTorch's API conventions in terms of function signatures and
+# parameter semantics. It is important to clarify that these APIs are
+# implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
 import typing
@@ -95,8 +101,66 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
+    import builtins
+
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
+    original_init = Tensor.__init__
+
+    def new_init(self, *args, **kwargs):
+        """
+        New Usage Example:
+        1. paddle.Tensor()
+        2. paddle.Tensor(device="cpu")
+        3. paddle.Tensor(1,2,3)
+        4. paddle.Tensor(1,2,3, device="cpu")
+        5. paddle.Tensor([1,2,3])
+        6. paddle.Tensor([1,2,3], device="cpu")
+        7. paddle.Tensor(data=[1,2,3])
+        8. paddle.Tensor(data=[1,2,3], device="cpu")
+        Original Usage Example:
+        9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
+        """
+        if 'device' in kwargs:
+            device = kwargs.pop('device')
+        else:
+            device = "cpu"
+        device = framework._get_paddle_place(device)
+        if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
+            original_init(
+                self,
+                paddle.empty(shape=[0], dtype='float32', device=device),
+                place=device,
+            )
+            return
+        if 'data' in kwargs:  # case 7,8
+            data = kwargs.pop('data')
+            original_init(
+                self,
+                paddle.tensor(data, dtype='float32', device=device),
+                place=device,
+            )
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            # case 5, 6
+            original_init(
+                self,
+                paddle.tensor(args[0], dtype='float32', device=device),
+                place=device,
+            )
+        elif (
+            builtins.all(isinstance(arg, builtins.int) for arg in args)
+            and len(kwargs) == 0
+        ):
+            # case 3, 4
+            original_init(
+                self,
+                paddle.empty(shape=list(args), dtype='float32', device=device),
+                place=device,
+            )
+        else:
+            original_init(self, *args, **kwargs)
+
+    Tensor.__init__ = new_init
 
 import paddle.distributed.fleet
 import paddle.text
@@ -130,17 +194,22 @@ from paddle import (
 
 # high-level api
 from . import (
+    _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
     compat as compat,
     fft as fft,
     hub as hub,
+    library as library,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
     utils as utils,
 )
+from ._classes import classes as classes
+from ._ops import ops as ops
 from .amp import (
     get_autocast_cpu_dtype,
     get_autocast_dtype,
@@ -155,6 +224,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
     get_device,
@@ -209,6 +279,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -243,8 +314,8 @@ from .tensor.creation import (
     ones_like,
     polar,
     range,
+    tensor as as_tensor,
     to_tensor,
-    to_tensor as as_tensor,
     tril,
     tril_,
     tril_indices,
@@ -358,6 +429,7 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
     ravel,
     repeat_interleave,
@@ -369,6 +441,7 @@ from .tensor.manipulation import (
     scatter,
     scatter_,
     scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
@@ -529,6 +602,7 @@ from .tensor.math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -598,6 +672,7 @@ from .tensor.random import (
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,
@@ -626,9 +701,7 @@ from .tensor.search import (
     where,
     where_,
 )
-from .tensor.softmax import (
-    softmax,
-)
+from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -847,7 +920,6 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
-
 # Constants
 newaxis: None = None
 inf = math.inf
@@ -856,11 +928,22 @@ pi = math.pi
 e = math.e
 
 # API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
 div = divide
 div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
 
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -915,6 +998,7 @@ __all__ = [
     'logit',
     'logit_',
     'LazyGuard',
+    'Size',
     'sign',
     'is_empty',
     'equal',
@@ -937,6 +1021,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -972,6 +1057,7 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
     'FloatTensor',
     'DoubleTensor',
@@ -1116,6 +1202,7 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
@@ -1170,12 +1257,15 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
     'permute',
     'cauchy_',
     'geometric_',
     'randn',
     'randn_like',
+    'rand_like',
     'strided_slice',
     'unique',
     'unique_consecutive',
@@ -1187,6 +1277,7 @@ __all__ = [
     'flatten_',
     'ravel',
     'asin',
+    'mul',
     'multiply',
     'multiply_',
     'disable_static',
@@ -1233,6 +1324,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1264,6 +1357,7 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
     'scatter_reduce',
     'put_along_axis',
     'scatter_add',
@@ -1272,6 +1366,7 @@ __all__ = [
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',

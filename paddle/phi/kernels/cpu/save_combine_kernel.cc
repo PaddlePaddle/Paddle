@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_REGISTER_KERNEL(save_combine_tensor,
@@ -28,7 +27,7 @@ PD_REGISTER_KERNEL(save_combine_tensor,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(save_combine_vocab,
                    CPU,
@@ -38,4 +37,4 @@ PD_REGISTER_KERNEL(save_combine_vocab,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

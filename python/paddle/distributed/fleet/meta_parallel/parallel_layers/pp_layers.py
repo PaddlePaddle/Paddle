@@ -424,7 +424,6 @@ class PipelineLayer(nn.Layer):
         from paddle.distributed import fleet
 
         self.device_id = dist.ParallelEnv().device_id
-        self.layers = layers
         self._loss_fn = loss_fn if isinstance(loss_fn, list) else [loss_fn]
         self._topo = topology
         self._recompute_interval = recompute_interval
@@ -478,7 +477,7 @@ class PipelineLayer(nn.Layer):
         )
 
         # initialize segment
-        self._layers_desc = list(self.layers)
+        self._layers_desc = list(layers)
         self._num_layers = len(self._layers_desc)
         self.shared_layers = paddle.nn.LayerDict()
         self.local_shared_layers = paddle.nn.LayerDict()
@@ -510,7 +509,6 @@ class PipelineLayer(nn.Layer):
             self._build_layer()
 
         self.comm_key_to_layer_name = {}
-
         self.shared_comm = self._construct_shared_comm()
         self._synchronize_shared_weights()
 
@@ -542,7 +540,7 @@ class PipelineLayer(nn.Layer):
     def _construct_shared_comm(self):
         shared_comm = {}
         if self._topo.get_dim("pipe") == 1:
-            return
+            return shared_comm
 
         # The first loop gets the pivot stage and all different shared_weight_attrs for one layer name.
         # Maps stage idx to all shared attrs of each different layer names on that stage.

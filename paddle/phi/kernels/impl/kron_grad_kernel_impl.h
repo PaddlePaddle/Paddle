@@ -248,8 +248,8 @@ struct KronGradOpFunctor {
     if (dx) {
       auto eigen_dout_x = EigenMatrix<T>::Reshape(dout_x, 1);
       auto eigen_vec_dx = EigenVector<T>::Flatten(*dx);
-      if constexpr (std::is_same_v<T, phi::dtype::float16> ||
-                    std::is_same_v<T, phi::dtype::bfloat16>) {
+      if constexpr (std::is_same_v<T, phi::float16> ||
+                    std::is_same_v<T, phi::bfloat16>) {
         eigen_vec_dx.device(*place) = eigen_dout_x.template cast<float>()
                                           .sum(reduce_dim)
                                           .template cast<T>();
@@ -260,8 +260,8 @@ struct KronGradOpFunctor {
     if (dy) {
       auto eigen_dout_y = EigenMatrix<T>::Reshape(dout_y, 1);
       auto eigen_vec_dy = EigenVector<T>::Flatten(*dy);
-      if constexpr (std::is_same_v<T, phi::dtype::float16> ||
-                    std::is_same_v<T, phi::dtype::bfloat16>) {
+      if constexpr (std::is_same_v<T, phi::float16> ||
+                    std::is_same_v<T, phi::bfloat16>) {
         eigen_vec_dy.device(*place) = eigen_dout_y.template cast<float>()
                                           .sum(reduce_dim)
                                           .template cast<T>();

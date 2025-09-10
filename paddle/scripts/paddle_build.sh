@@ -1347,13 +1347,10 @@ function check_cinn_file_diff() {
         CMakeLists.txt
         cmake
         paddle/cinn
-        python/cinn
         python/CMakeLists.txt
-        python/setup_cinn.py.in
         test/CMakeLists.txt
         test/cinn
         test/cpp/cinn
-        tools/cinn
     )
 
     run_cinn_ut="OFF"
@@ -3295,7 +3292,7 @@ function is_run_distribute_in_op_test() {
         if [ ! -f "$TARGET_FILE" ]; then
             continue
         fi
-        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH "$TARGET_FILE" | grep "+" | grep "check_auto_parallel=" || true`
+        ALL_OPTEST_BAN_AUTO_PARALLEL_TEST=`git diff -U0 upstream/$BRANCH -- "$TARGET_FILE" | grep "+" | grep "check_auto_parallel=" || true`
         if [ "${ALL_OPTEST_BAN_AUTO_PARALLEL_TEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
             export FLAGS_COVERAGE_RUN_AUTO_PARALLEL_IN_OP_TEST=1
         fi
@@ -3847,21 +3844,12 @@ function exec_type_checking() {
     cd ${PADDLE_ROOT}/tools
 
     # check all sample code
-    TITLE_CHECK_ALL=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[typing\]" || true`
     DEBUG_MODE=`curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "\[debug\]" || true`
 
-    if [[ ${TITLE_CHECK_ALL} ]]; then
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug --full-test; type_checking_error=$?
-        else
-            python type_checking.py --full-test; type_checking_error=$?
-        fi
+    if [[ ${DEBUG_MODE} ]]; then
+        python type_checking.py --debug --full-test; type_checking_error=$?
     else
-        if [[ ${DEBUG_MODE} ]]; then
-            python type_checking.py --debug; type_checking_error=$?
-        else
-            python type_checking.py; type_checking_error=$?
-        fi
+        python type_checking.py --full-test; type_checking_error=$?
     fi
 
     if [ "$type_checking_error" != "0" ];then

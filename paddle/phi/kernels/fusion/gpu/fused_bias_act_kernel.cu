@@ -560,9 +560,9 @@ void FusedBiasActKernel(const Context &dev_ctx,
     if (quant_scale > 0) {
       dev_ctx.template Alloc<int8_t>(out);
     } else if (compute_dtype == "fp16") {
-      dev_ctx.template Alloc<phi::dtype::float16>(out);
+      dev_ctx.template Alloc<phi::float16>(out);
     } else if (compute_dtype == "bf16") {
-      dev_ctx.template Alloc<phi::dtype::bfloat16>(out);
+      dev_ctx.template Alloc<phi::bfloat16>(out);
     } else if (compute_dtype == "fp32") {
       dev_ctx.template Alloc<float>(out);
     } else {
@@ -574,7 +574,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
   int64_t rows = x.numel() / cols;
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
-      DispatchWithDtype<phi::dtype::bfloat16, Context>(
+      DispatchWithDtype<phi::bfloat16, Context>(
           dev_ctx,
           x,
           bias,
@@ -589,9 +589,9 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_max_bound,
           quant_min_bound,
           out,
-          typename DispatchDtypeTrait<phi::dtype::bfloat16>::FuncVersion{});
+          typename DispatchDtypeTrait<phi::bfloat16>::FuncVersion{});
     } else if (compute_dtype == "fp16") {
-      DispatchWithDtype<phi::dtype::float16, Context>(
+      DispatchWithDtype<phi::float16, Context>(
           dev_ctx,
           x,
           bias,
@@ -606,7 +606,7 @@ void FusedBiasActKernel(const Context &dev_ctx,
           quant_max_bound,
           quant_min_bound,
           out,
-          typename DispatchDtypeTrait<phi::dtype::float16>::FuncVersion{});
+          typename DispatchDtypeTrait<phi::float16>::FuncVersion{});
     } else if (compute_dtype == "fp32") {
       DispatchWithDtype<float, Context>(
           dev_ctx,
@@ -659,6 +659,6 @@ PD_REGISTER_KERNEL(fused_bias_act,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasActKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t) {}

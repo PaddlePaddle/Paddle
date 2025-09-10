@@ -321,7 +321,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
       "REGISTER_OPERATOR must be called in global namespace");           \
   static ::paddle::framework::OperatorRegistrar<op_class, ##__VA_ARGS__> \
       __op_registrar_##op_type##__(#op_type);                            \
-  int TouchOpRegistrar_##op_type() {                                     \
+  PADDLE_API int TouchOpRegistrar_##op_type() {                          \
     __op_registrar_##op_type##__.Touch();                                \
     return 0;                                                            \
   }

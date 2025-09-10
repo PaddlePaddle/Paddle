@@ -639,6 +639,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         argdefs=callable_func.__defaults__,
         closure=get_new_closure(dyfunc, callable_func),
     )
+    new_fn.__kwdefaults__ = callable_func.__kwdefaults__
 
     return new_fn, f.name
 

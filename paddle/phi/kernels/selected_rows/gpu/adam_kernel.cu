@@ -18,7 +18,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/adam_functors.h"
@@ -322,7 +321,7 @@ PD_REGISTER_KERNEL(adam_dense_param_sparse_grad,
                    phi::sr::AdamDenseParamSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);

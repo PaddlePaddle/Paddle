@@ -601,7 +601,7 @@ def cast(
             or crows/cols of SparseCsrTensor. Can be uint8, int8, int16, int32, int64.
         value_dtype (np.dtype|str, optional): Data type of the value of SparseCooTensor,
             SparseCsrTensor. Can be bool, float16, float32, float64, int8, int32, int64, uint8.
-        name (str|None, optional): Name for the operation (optional, default is None).
+        name (str|core.VarDesc.VarType|core.DataType|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -623,9 +623,13 @@ def cast(
     assert in_dynamic_or_pir_mode(), (
         "Currently, Sparse API only support dynamic mode or pir mode."
     )
-    if index_dtype and not isinstance(index_dtype, core.VarDesc.VarType):
+    if index_dtype and not isinstance(
+        index_dtype, (core.VarDesc.VarType, core.DataType)
+    ):
         index_dtype = convert_np_dtype_to_dtype_(index_dtype)
-    if value_dtype and not isinstance(value_dtype, core.VarDesc.VarType):
+    if value_dtype and not isinstance(
+        value_dtype, (core.VarDesc.VarType, core.DataType)
+    ):
         value_dtype = convert_np_dtype_to_dtype_(value_dtype)
     return _C_ops.sparse_cast(x, index_dtype, value_dtype)
 

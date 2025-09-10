@@ -17,7 +17,6 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
@@ -61,9 +60,6 @@ void DotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 PD_REGISTER_KERNEL(dot,
                    CPU,
                    ALL_LAYOUT,
@@ -72,5 +68,5 @@ PD_REGISTER_KERNEL(dot,
                    double,
                    int,
                    int64_t,
-                   complex64,
-                   complex128) {}
+                   phi::complex64,
+                   phi::complex128) {}

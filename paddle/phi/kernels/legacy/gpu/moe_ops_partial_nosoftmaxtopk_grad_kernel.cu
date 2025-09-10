@@ -62,7 +62,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
   // topk_grad_with_mask_launcher<float>(combine_weights_grad,
   //                                     expert_id,
   //                                     combine_weights,
-  //                                     gate_logtis_grad,
+  //                                     gate_logits_grad,
   //                                     num_rows, k, num_experts, stream);
 }
 
@@ -143,5 +143,5 @@ PD_REGISTER_KERNEL(moe_gate_dispatch_partial_nosoftmaxtopk_grad,
                    phi::MoeGateDispatchPartialNoSoftMaxTopkGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -16,12 +16,10 @@
 #include "paddle/phi/kernels/as_real_kernel.h"
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
-using complex64 = ::phi::dtype::complex<float>;
 namespace phi {
 
 template <typename T, typename Context>
@@ -39,7 +37,8 @@ void AsRealKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(as_real, XPU, ALL_LAYOUT, phi::AsRealKernel, complex64) {
+PD_REGISTER_KERNEL(
+    as_real, XPU, ALL_LAYOUT, phi::AsRealKernel, phi::complex64) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif  // PADDLE_WITH_XPU_FFT

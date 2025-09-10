@@ -209,6 +209,20 @@ def IsVectorTensorType(string):
     return False
 
 
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos[0] == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
+
+
 def GetSavedName(string):
     return string + "_"
 
@@ -381,6 +395,32 @@ def ParseYamlReturns(string):
     return returns_list
 
 
+def ParsePythonAPIInfoFromYAML(path) -> dict:
+    """
+    Parse Python API information from a YAML file.
+
+    Args:
+        path (str): The path to the YAML file.
+
+    Returns:
+        dict: A dictionary containing Python API information, where the keys are operation names and the values are related api information.
+
+    Raises:
+        RuntimeError: This exception is raised if an error occurs while parsing the YAML file.
+    """
+    res_dict = {}
+    with open(path, "r", encoding="utf-8") as f:
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise RuntimeError(f"read_python_api_info load error: {e}")
+    # Trans list to dict, the key is op in yaml item
+    for item in data:
+        if "op" in item.keys():
+            res_dict.update({item["op"]: item})
+    return res_dict
+
+
 def ParseYamlForwardFromBackward(string):
     # Example: matmul (const Tensor& x, const Tensor& y, bool transpose_x, bool transpose_y) -> Tensor(out)
 
@@ -499,10 +539,8 @@ class FunctionGeneratorBase:
         self.dygraph_pre_process = (
             ""  # The pre_process function calling code for dygraph
         )
-        self.static_pre_process = (
-            ""  # The pre_process function calling code for static graph
-        )
-        self.args_parser_func_name = ""  # The custom args parser function
+
+        self.args_mapper_func_name = None  # The custom args parser function
         self.python_api_names = ""
 
     def ParseForwardInplaceInfo(self):
@@ -535,20 +573,19 @@ class FunctionGeneratorBase:
             self.args_alias_map = args_alias
         if 'pre_process' in python_api_info.keys():
             pre_process = python_api_info['pre_process']
-            if 'func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['func']
-                self.static_pre_process = pre_process['func']
-                # TODO check len(pre_process) > 1
+            if pre_process is not None:
+                if 'dygraph_func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['dygraph_func']
+                elif 'func' in pre_process.keys():
+                    self.dygraph_pre_process = pre_process['func']
 
-            if 'dygraph_func' in pre_process.keys():
-                self.dygraph_pre_process = pre_process['dygraph_func']
-            if 'static_func' in pre_process.keys():
-                self.static_pre_process = pre_process['static_func']
-        if (
-            'args_parser' in python_api_info.keys()
-            and 'func' in python_api_info['args_parser']
-        ):
-            self.args_parser_func_name = python_api_info['args_parser']['func']
+        if 'args_mapper' in python_api_info.keys():
+            args_mapper = python_api_info['args_mapper']
+            if args_mapper is not None:
+                if 'dygraph_func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['dygraph_func']
+                elif 'func' in args_mapper.keys():
+                    self.args_mapper_func_name = args_mapper['func']
 
     def ParseNoNeedBuffer(self):
         grad_api_contents = self.grad_api_contents

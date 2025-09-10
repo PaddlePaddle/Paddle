@@ -24,7 +24,7 @@ COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
 
 paddle::Tensor add_n_ad_func(const std::vector<paddle::Tensor>& x,
-                             paddle::optional<paddle::Tensor*> input_out) {
+                             paddle::optional<paddle::Tensor*> predefined_out) {
   VLOG(3) << "Running AD API: "
           << "add_n";
   if (FLAGS_check_cuda_error) [[unlikely]] {

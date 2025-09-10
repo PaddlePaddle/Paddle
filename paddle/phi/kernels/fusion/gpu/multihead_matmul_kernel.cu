@@ -16,7 +16,6 @@
 #include <type_traits>
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -192,9 +191,9 @@ void TransQKVWithBias(const int batch,
                       const int seq_len,
                       const int head_size,
                       const int head_num,
-                      const phi::dtype::float16 *input,
-                      const phi::dtype::float16 *bias,
-                      phi::dtype::float16 *output,
+                      const phi::float16 *input,
+                      const phi::float16 *bias,
+                      phi::float16 *output,
                       gpuStream_t stream) {
   // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
   int scratch_size = batch * head_num * seq_len * seq_len;
@@ -381,7 +380,7 @@ void MultiheadMatmulKernel(const Context &dev_ctx,
                    bias_d,
                    tptr,
                    stream);
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     phi::funcs::MultiheadGPUComputeFunctor<half> multihead_compute_func;
     multihead_compute_func(dev_ctx,
                            batch,
@@ -424,7 +423,7 @@ PD_REGISTER_KERNEL(multihead_matmul,
                    ALL_LAYOUT,
                    phi::fusion::MultiheadMatmulKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(multihead_matmul,
                    GPU,

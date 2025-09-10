@@ -31,6 +31,7 @@ from .attribute import (  # noqa: F401
     real,
     shape,
 )
+from .compat_softmax import softmax as softmax
 from .creation import (  # noqa: F401
     MmapStorage,
     arange,
@@ -102,6 +103,7 @@ from .linalg import (  # noqa: F401
     permute,
     pinv,
     qr,
+    slogdet,
     solve,
     svd,
     svd_lowrank,
@@ -193,6 +195,7 @@ from .manipulation import (  # noqa: F401
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
     put_along_axis_,
     ravel,
@@ -206,6 +209,7 @@ from .manipulation import (  # noqa: F401
     scatter,
     scatter_,
     scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
     scatter_reduce,
@@ -374,6 +378,7 @@ from .math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -450,6 +455,7 @@ from .random import (  # noqa: F401
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,
@@ -479,7 +485,6 @@ from .search import (  # noqa: F401
     where,
     where_,
 )
-from .softmax import softmax as softmax
 from .stat import (  # noqa: F401
     mean,
     median,
@@ -495,6 +500,11 @@ from .to_string import set_printoptions  # noqa: F401
 # API alias
 div = divide
 div_ = divide_
+mul_ = multiply_
+take_along_dim = take_along_axis
+swapdims = transpose
+swapaxes = transpose
+clamp = clip
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -687,6 +697,7 @@ tensor_method_func = [
     'logical_or_',
     'logical_xor',
     'logical_xor_',
+    'narrow',
     'not_equal',
     'not_equal_',
     'allclose',
@@ -725,6 +736,8 @@ tensor_method_func = [
     'stack',
     'strided_slice',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
     'permute',
     'cauchy_',
@@ -794,6 +807,7 @@ tensor_method_func = [
     'multi_dot',
     'solve',
     'cholesky_solve',
+    'slogdet',
     'triangular_solve',
     'asinh',
     'atanh',
@@ -822,6 +836,7 @@ tensor_method_func = [
     'moveaxis',
     'repeat_interleave',
     'take_along_axis',
+    'take_along_dim',
     'scatter_reduce',
     'put_along_axis',
     'scatter_add',
@@ -830,6 +845,7 @@ tensor_method_func = [
     'bernoulli_',
     'exponential_',
     'heaviside',
+    'scatter_add_',
     'index_add',
     "index_add_",
     'index_put',
@@ -910,10 +926,9 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'clamp',
 ]
 
-mul = multiply
-mul_ = multiply_
 
 # this list used in math_op_patch.py for magic_method bind
 magic_method_func = [
