@@ -45,7 +45,12 @@ class SupportDLPack(Protocol[_T_contra]):
         https://github.com/numpy/numpy/blob/7e6e48ca7aacae9994d18a3dadbabd2b91c32151/numpy/__init__.pyi#L4730-L4731
     """
 
-    def __dlpack__(self, *, stream: None | _T_contra = ...) -> CapsuleType: ...
+    def __dlpack__(
+        self,
+        *,
+        stream: None | _T_contra = ...,
+        max_version: tuple[int, int] | None = ...,
+    ) -> CapsuleType: ...
 
     def __dlpack_device__(self) -> tuple[int, Literal[0]]: ...
 
@@ -59,8 +64,13 @@ class DLDeviceType(enum.IntEnum):
     kDLMetal = (8,)
     kDLVPI = (9,)
     kDLROCM = (10,)
+    kDLROCMHost = (11,)
     kDLExtDev = (12,)
+    kDLCUDAManaged = (13,)
     kDLOneAPI = (14,)
+    kDLWebGPU = (15,)
+    kDLHexagon = (16,)
+    kDLMAIA = (17,)
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:

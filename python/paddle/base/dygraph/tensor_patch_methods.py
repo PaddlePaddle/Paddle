@@ -1443,15 +1443,21 @@ def monkey_patch_tensor():
             "version": 2,
         }
 
-    def __dlpack__(self, stream=None):
+    def __dlpack__(
+        self,
+        *,
+        stream: int | None = None,
+        max_version: tuple[int, int] | None = None,
+    ):
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
-            stream (int | None): An optional Python integer representing a pointer
-                                to a CUDA stream. Synchronizes the tensor with this
-                                stream before exporting.
-                                If None or -1, no synchronization is performed.
-                                If 0, the default stream is used.
+            stream (int | None, optional): An optional Python integer representing a pointer
+                to a CUDA stream. Synchronizes the tensor with this stream before exporting.
+                If None or -1, no synchronization is performed. If 0, the default stream is used.
+            max_version (tuple[int, int] | None): An optional Python tuple with
+                2 integers, representing the maximum version the caller supports. If
+                None (default), we will fallback to DLPack 0.8.
         """
 
         if self.is_sparse():

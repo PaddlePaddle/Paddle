@@ -737,10 +737,18 @@ void* GetDstPtrByDLDataType(DLDataType type,
 
   switch (type.bits) {
     case 8:
+      if (type.code == kDLBool)
+        return static_cast<void*>(dst->mutable_data<bool>(dst_place));
       if (type.code == kDLInt)
         return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
       if (type.code == kDLUInt)
         return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
+      if (type.code == kDLFloat8_e4m3fn)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::float8_e4m3fn>(dst_place));
+      if (type.code == kDLFloat8_e5m2)
+        return static_cast<void*>(
+            dst->mutable_data<phi::dtype::float8_e5m2>(dst_place));
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
@@ -806,6 +814,8 @@ phi::DataType GetDstPtrByDLDataType(DLDataType type) {
       if (type.code == kDLBool) return phi::DataType::BOOL;
       if (type.code == kDLInt) return phi::DataType::INT8;
       if (type.code == kDLUInt) return phi::DataType::UINT8;
+      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
+      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
       PADDLE_THROW(common::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code,
