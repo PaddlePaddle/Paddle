@@ -815,7 +815,9 @@ class DygraphShardingOptimizerV2:
             g_color = color[0]
             g_group = color[1]
             logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
-            var_groups, param_sizes = assign_group_by_size(params, group_size)
+            var_groups, opt_states_sizes = assign_group_by_size(
+                params, group_size
+            )
             for _, parameters in var_groups.items():
                 buffer = FusedCommBuffer(
                     group_idx,
@@ -835,7 +837,7 @@ class DygraphShardingOptimizerV2:
                         self._slice_params[param.name].is_offload_opt = True
                     # here group_size is parameter size (GB)
                     # optimizer states(float32) size is 6 times as much as parameter(bfloat16) size
-                    offload_buffer_size -= sum(param_sizes) * 6
+                    offload_buffer_size -= sum(opt_states_sizes)
 
                 self._comm_buffer_list.append(buffer)
 
