@@ -102,7 +102,10 @@ def replay_run_impl_guard():
         yield
 
 
-@unittest.skipIf(not paddle.is_compiled_with_cuda(), "Skip test in CI")
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(),
+    "Skipped on non-GPU devices as this test requires NVIDIA CUDA Graph.",
+)
 class TestCUDAGraph(Dy2StTestBase):
     def initialize(self):
         global GLOBAL_GRAPH_WITH_BUFFER
