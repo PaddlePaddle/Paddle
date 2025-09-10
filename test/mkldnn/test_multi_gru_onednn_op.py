@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, OpTestTool
 from test_fusion_gru_op import ACTIVATION, fusion_gru
 
 
@@ -61,7 +61,8 @@ def multi_gru(
     return input
 
 
-class TestMultiGruMkldnnOp(OpTest):
+@OpTestTool.skip_if_not_cpu()
+class TestMultiGruOnednnOp(OpTest):
     def set_confs(self):
         pass
 
@@ -208,83 +209,83 @@ class TestMultiGruMkldnnOp(OpTest):
         )
 
 
-class TestMultiGruMkldnnOpNoBias(TestMultiGruMkldnnOp):
+class TestMultiGruOnednnOpNoBias(TestMultiGruOnednnOp):
     def set_confs(self):
         self.with_bias = False
 
 
-class TestMultiGruMkldnnOpLayers2(TestMultiGruMkldnnOp):
+class TestMultiGruOnednnOpLayers2(TestMultiGruOnednnOp):
     def set_confs(self):
         self.layers = 2
         self.ICs = [2, 6]
         self.OCs = [3, 8]
 
 
-class TestMultiGruMkldnnOpLayers3(TestMultiGruMkldnnOp):
+class TestMultiGruOnednnOpLayers3(TestMultiGruOnednnOp):
     def set_confs(self):
         self.layers = 3
         self.ICs = [2, 6, 12]
         self.OCs = [3, 6, 14]
 
 
-class TestMultiGruMkldnnOpOriginMode(TestMultiGruMkldnnOp):
+class TestMultiGruOnednnOpOriginMode(TestMultiGruOnednnOp):
     def set_confs(self):
         self.origin_mode = True
 
 
-class TestMultiGruMkldnnInt8Op(TestMultiGruMkldnnOp):
+class TestMultiGruOnednnInt8Op(TestMultiGruOnednnOp):
     def set_dtype(self):
         self.dtype = 'int8'
 
 
-class TestMultiGruMkldnnInt8OpForceFP32Output(TestMultiGruMkldnnInt8Op):
+class TestMultiGruOnednnInt8OpForceFP32Output(TestMultiGruOnednnInt8Op):
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
-class TestMultiGruMkldnnInt8OpNoBias(TestMultiGruMkldnnOpNoBias):
+class TestMultiGruOnednnInt8OpNoBias(TestMultiGruOnednnOpNoBias):
     def set_dtype(self):
         self.dtype = 'int8'
 
 
-class TestMultiGruMkldnnInt8OpNoBiasForceFP32Output(
-    TestMultiGruMkldnnInt8OpNoBias
+class TestMultiGruOnednnInt8OpNoBiasForceFP32Output(
+    TestMultiGruOnednnInt8OpNoBias
 ):
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
-class TestMultiGruMkldnnInt8OpLayers2(TestMultiGruMkldnnOpLayers2):
+class TestMultiGruOnednnInt8OpLayers2(TestMultiGruOnednnOpLayers2):
     def set_dtype(self):
         self.dtype = 'int8'
 
 
-class TestMultiGruMkldnnInt8OpLayers2ForceFP32Output(
-    TestMultiGruMkldnnInt8OpLayers2
+class TestMultiGruOnednnInt8OpLayers2ForceFP32Output(
+    TestMultiGruOnednnInt8OpLayers2
 ):
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
-class TestMultiGruMkldnnInt8OpLayers3(TestMultiGruMkldnnOpLayers3):
+class TestMultiGruOnednnInt8OpLayers3(TestMultiGruOnednnOpLayers3):
     def set_dtype(self):
         self.dtype = 'int8'
 
 
-class TestMultiGruMkldnnInt8OpLayers3ForceFP32Output(
-    TestMultiGruMkldnnInt8OpLayers3
+class TestMultiGruOnednnInt8OpLayers3ForceFP32Output(
+    TestMultiGruOnednnInt8OpLayers3
 ):
     def set_force_fp32_output(self):
         self.force_fp32_output = True
 
 
-class TestMultiGruMkldnnInt8OpOriginMode(TestMultiGruMkldnnOpOriginMode):
+class TestMultiGruOnednnInt8OpOriginMode(TestMultiGruOnednnOpOriginMode):
     def set_dtype(self):
         self.dtype = 'int8'
 
 
-class TestMultiGruMkldnnInt8OpOriginModeForceFP32Output(
-    TestMultiGruMkldnnInt8OpOriginMode
+class TestMultiGruOnednnInt8OpOriginModeForceFP32Output(
+    TestMultiGruOnednnInt8OpOriginMode
 ):
     def set_force_fp32_output(self):
         self.force_fp32_output = True
