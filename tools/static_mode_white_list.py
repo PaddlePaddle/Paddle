@@ -523,7 +523,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_fc_onednn_op',
     'test_fc_bf16_onednn_op',
     'test_nearest_interp_mkldnn_op',
-    'test_nearest_interp_v2_mkldnn_op',
+    'test_nearest_interp_v2_onednn_op',
     'test_bilinear_interp_mkldnn_op',
     'test_bilinear_interp_v2_onednn_op',
     'test_fusion_gru_int8_onednn_op',
