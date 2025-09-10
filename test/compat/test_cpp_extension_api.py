@@ -24,6 +24,7 @@ from paddle.utils.cpp_extension import (
 )
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(), 'should compile with cuda.')
 class TestGetCudaArchFlags(unittest.TestCase):
     def setUp(self):
         self._old_env = dict(os.environ)
