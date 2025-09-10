@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import paddle
 from paddle.utils.decorator_utils import ParamAliasDecorator
 
@@ -22,7 +26,9 @@ from ..base.core import (
     finfo as core_finfo,
     iinfo as core_iinfo,
 )
-from ..base.data_feeder import _NUMPY_DTYPE_2_PADDLE_DTYPE
+
+if TYPE_CHECKING:
+    from paddle._typing import DTypeLike
 
 
 def bind_vartype():
@@ -221,7 +227,7 @@ else:
     bind_vartype()
 
 
-def iinfo(dtype):
+def iinfo(dtype: DTypeLike) -> core_iinfo:
     """
 
     paddle.iinfo is a function that returns an object that represents the numerical properties of
@@ -257,15 +263,17 @@ def iinfo(dtype):
             uint8
 
     """
-    if isinstance(dtype, paddle.pir.core.DataType):
-        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
-    elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
-        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
+    import paddle
+
+    if isinstance(dtype, paddle.core.VarDesc.VarType):
+        dtype = paddle.pir.core.vartype_to_datatype[dtype]
+    elif not isinstance(dtype, paddle.pir.core.DataType):
+        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
     return core_iinfo(dtype)
 
 
 @ParamAliasDecorator({"dtype": ["type"]})
-def finfo(dtype):
+def finfo(dtype: DTypeLike) -> core_finfo:
     """
 
     ``paddle.finfo`` is a function that returns an object that represents the numerical properties of a floating point
@@ -278,7 +286,7 @@ def finfo(dtype):
 
     Args:
         dtype(paddle.dtype|string):  One of ``paddle.float16``, ``paddle.float32``, ``paddle.float64``, ``paddle.bfloat16``,
-            ``paddle.complex64``, and ``paddle.complex128``.
+            ``paddle.float8_e4m3fn``, ``paddle.float8_e5m2``, ``paddle.complex64`` and ``paddle.complex128``.
         type: An alias for ``dtype`` , with identical behavior.
 
     Returns:
@@ -319,8 +327,8 @@ def finfo(dtype):
     """
     import paddle
 
-    if isinstance(dtype, paddle.pir.core.DataType):
-        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
-    elif dtype in _NUMPY_DTYPE_2_PADDLE_DTYPE:
-        dtype = _NUMPY_DTYPE_2_PADDLE_DTYPE[dtype]
+    if isinstance(dtype, paddle.core.VarDesc.VarType):
+        dtype = paddle.pir.core.vartype_to_datatype[dtype]
+    elif not isinstance(dtype, paddle.pir.core.DataType):
+        dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
     return core_finfo(dtype)
