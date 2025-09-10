@@ -265,6 +265,11 @@ from .hapi import (
     flops,
     summary,
 )
+from .nn.functional import (
+    conv1d,
+    conv2d,
+    conv3d,
+)
 from .nn.functional.distance import (
     pdist,
 )
@@ -278,7 +283,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
-from .tensor.compat_softmax import softmax
+from .tensor.compat_softmax import softmax  # noqa: F401
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -292,6 +297,7 @@ from .tensor.creation import (
     MmapStorage,
     ShortTensor,
     arange,
+    asarray,
     assign,
     cauchy_,
     clone,
@@ -368,6 +374,7 @@ from .tensor.logic import (
     greater_equal_,
     greater_than,
     greater_than_,
+    gt,
     is_empty,
     is_tensor,
     isclose,
@@ -935,9 +942,15 @@ ger = outer
 div = divide
 div_ = divide_
 eq = equal
-gt = greater_than
+ne = not_equal
+lt = less_than
+le = less_equal
+greater = gt
+ge = greater_equal
+from_numpy = to_tensor
 swapdims = transpose
 swapaxes = transpose
+manual_seed = seed
 
 __all__ = [
     'block_diag',
@@ -1003,6 +1016,7 @@ __all__ = [
     'equal',
     'equal_',
     'equal_all',
+    "from_numpy",
     'is_tensor',
     'is_complex',
     'is_integer',
@@ -1249,6 +1263,7 @@ __all__ = [
     'chunk',
     'tolist',
     'tensordot',
+    "greater",
     'greater_than',
     'greater_than_',
     'shard_index',
@@ -1426,7 +1441,15 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
-    'softmax',
+    'ne',
+    'lt',
+    'le',
+    'ge',
+    'asarray',
+    'conv1d',
+    'conv2d',
+    'conv3d',
+    'manual_seedsoftmax',
 ]
 import os
 

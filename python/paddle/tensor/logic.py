@@ -490,7 +490,93 @@ def equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.equal_(x, y)
 
 
-def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def gt(x: Tensor, y: Tensor, name: str | None = None, *, out=None) -> Tensor:
+    """
+    Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
+
+    Note:
+        The output has no gradient.
+
+    Args:
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
+        name (str|None, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If provided, the result will be stored in this tensor.
+    Returns:
+        Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.gt(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, True ])
+    """
+    if in_dynamic_or_pir_mode():
+        return _C_ops.greater_than(x, y, out=out)
+    else:
+        check_variable_and_dtype(
+            x,
+            "x",
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "uint8",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "uint16",
+                "complex64",
+                "complex128",
+            ],
+            "greater_than",
+        )
+        check_variable_and_dtype(
+            y,
+            "y",
+            [
+                "bool",
+                "float16",
+                "float32",
+                "float64",
+                "uint8",
+                "int8",
+                "int16",
+                "int32",
+                "int64",
+                "uint16",
+                "complex64",
+                "complex128",
+            ],
+            "greater_than",
+        )
+        helper = LayerHelper("greater_than", **locals())
+        out = helper.create_variable_for_type_inference(dtype='bool')
+        out.stop_gradient = True
+        helper.append_op(
+            type='greater_than',
+            inputs={'X': [x], 'Y': [y]},
+            outputs={'Out': [out]},
+        )
+        return out
+
+
+@param_two_alias(["x", "input"], ["y", "other"])
+def greater_equal(
+    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+) -> Tensor:
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
@@ -499,9 +585,12 @@ def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
 
@@ -518,7 +607,7 @@ def greater_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [True , False, True ])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.greater_equal(x, y)
+        return _C_ops.greater_equal(x, y, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -599,7 +688,10 @@ def greater_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.greater_than_(x, y)
 
 
-def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def less_equal(
+    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+) -> Tensor:
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
@@ -608,9 +700,12 @@ def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -628,7 +723,7 @@ def less_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [True , True , False])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.less_equal(x, y)
+        return _C_ops.less_equal(x, y, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -694,7 +789,10 @@ def less_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.less_equal_(x, y)
 
 
-def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def less_than(
+    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+) -> Tensor:
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
@@ -703,9 +801,12 @@ def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -723,7 +824,7 @@ def less_than(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [False, True , False])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.less_than(x, y)
+        return _C_ops.less_than(x, y, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -790,7 +891,8 @@ def less_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.less_than_(x, y)
 
 
-def less(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def less(x: Tensor, y: Tensor, name: str | None = None, *, out=None) -> Tensor:
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
 
@@ -799,9 +901,12 @@ def less(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+            Alias: ``input``.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64.
+            Alias: ``other``.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -819,7 +924,7 @@ def less(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
 
     # Directly call less_than API
-    return less_than(x, y, name)
+    return less_than(x, y, name, out=out)
 
 
 @inplace_apis_in_dygraph_only
@@ -833,7 +938,10 @@ def less_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return less_than_(x, y, name)
 
 
-def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def not_equal(
+    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+) -> Tensor:
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
@@ -842,9 +950,12 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``input``.
         y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, bfloat16, float16, float32, float64, uint8, int8, int16, int32, int64, complex64, complex128.
+            Alias: ``other``.
         name (str|None, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -862,7 +973,7 @@ def not_equal(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [False, True , True ])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.not_equal(x, y)
+        return _C_ops.not_equal(x, y, out=out)
     else:
         check_variable_and_dtype(
             x,
