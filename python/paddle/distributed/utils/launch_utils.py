@@ -19,6 +19,7 @@ import socket
 import subprocess
 import sys
 import time
+import warnings
 from contextlib import closing
 
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
@@ -456,8 +457,18 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
+    if current_env.get('http_proxy', None) is not None:
+        warnings.warn(
+            "'http_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
+    if current_env.get('https_proxy', None) is not None:
+        warnings.warn(
+            "'https_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
 
     procs = []
     for idx, t in enumerate(pod.trainers):

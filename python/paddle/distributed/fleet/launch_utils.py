@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import warnings
 from contextlib import closing
 
 import paddle.utils.cpp_extension.extension_utils as utils
@@ -489,8 +490,18 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
+    if current_env.get('http_proxy', None) is not None:
+        warnings.warn(
+            "'http_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
+    if current_env.get('https_proxy', None) is not None:
+        warnings.warn(
+            "'https_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
 
     ids = cluster.world_device_ids()
     res = [':'.join(ele) for ele in ids]
@@ -1591,8 +1602,18 @@ class ParameterServerLauncher:
     def start_pod_server(self, args, pod):
         default_env = os.environ.copy()
         current_env = copy.copy(default_env)
-        current_env.pop("http_proxy", None)
-        current_env.pop("https_proxy", None)
+        if current_env.get('http_proxy', None) is not None:
+            warnings.warn(
+                "'http_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
+        if current_env.get('https_proxy', None) is not None:
+            warnings.warn(
+                "'https_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
         for idx, cur_server in enumerate(pod.servers):
             if self.distribute_mode == DistributeMode.PS_HETER:
                 proc_env = {
@@ -1667,8 +1688,18 @@ class ParameterServerLauncher:
     def start_pod_worker(self, args, pod):
         default_env = os.environ.copy()
         current_env = copy.copy(default_env)
-        current_env.pop("http_proxy", None)
-        current_env.pop("https_proxy", None)
+        if current_env.get('http_proxy', None) is not None:
+            warnings.warn(
+                "'http_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
+        if current_env.get('https_proxy', None) is not None:
+            warnings.warn(
+                "'https_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
 
         heter_device_num = 0
         device_list = []
@@ -1777,8 +1808,18 @@ class ParameterServerLauncher:
         print(">>> entering start_pod_coordinator")
         default_env = os.environ.copy()
         current_env = copy.copy(default_env)
-        current_env.pop("http_proxy", None)
-        current_env.pop("https_proxy", None)
+        if current_env.get('http_proxy', None) is not None:
+            warnings.warn(
+                "'http_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
+        if current_env.get('https_proxy', None) is not None:
+            warnings.warn(
+                "'https_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
 
         for idx, cur_coordinator in enumerate(pod.coordinators):
             device_id = "0"
@@ -1845,9 +1886,18 @@ class ParameterServerLauncher:
     def start_pod_heter_worker(self, args, pod):
         default_env = os.environ.copy()
         current_env = copy.copy(default_env)
-        current_env.pop("http_proxy", None)
-        current_env.pop("https_proxy", None)
-
+        if current_env.get('http_proxy', None) is not None:
+            warnings.warn(
+                "'http_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
+        if current_env.get('https_proxy', None) is not None:
+            warnings.warn(
+                "'https_proxy' is set in the environment. "
+                "This may cause NCCL connection failures during distributed training. ",
+                category=UserWarning,
+            )
         heter_device_num = 0
         device_list = []
         if framework.core.is_compiled_with_cuda():

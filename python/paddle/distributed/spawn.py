@@ -343,8 +343,18 @@ def _get_subprocess_env_list(nprocs, options):
 def _remove_risky_env():
     # remove useless env vars
     # no copy, each process will hold env vars itself
-    os.environ.pop("http_proxy", None)
-    os.environ.pop("https_proxy", None)
+    if os.environ.get('http_proxy', None) is not None:
+        warnings.warn(
+            "'http_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
+    if os.environ.get('https_proxy', None) is not None:
+        warnings.warn(
+            "'https_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
+            category=UserWarning,
+        )
 
 
 def _set_trainer_env(env_dict, backend):

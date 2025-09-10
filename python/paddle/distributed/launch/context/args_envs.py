@@ -48,14 +48,16 @@ env_args_mapping = {
 
 
 def fetch_envs():
-    if os.environ.pop('http_proxy', None) is not None:
+    if os.environ.get('http_proxy', None) is not None:
         warnings.warn(
-            "Removed 'http_proxy' from the environment to prevent NCCL connection failures in distributed training.",
+            "'http_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
             category=UserWarning,
         )
-    if os.environ.pop('https_proxy', None) is not None:
+    if os.environ.get('https_proxy', None) is not None:
         warnings.warn(
-            "Removed 'https_proxy' from the environment to prevent NCCL connection failures in distributed training.",
+            "'https_proxy' is set in the environment. "
+            "This may cause NCCL connection failures during distributed training. ",
             category=UserWarning,
         )
 
