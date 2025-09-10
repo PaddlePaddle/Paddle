@@ -187,7 +187,7 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
 
     Args:
         device (DeviceLike, optional): The target device. If ``None`` (default),
-            the current device, as returned by :func:`~paddle.device.cuda.current_device`,
+            the current device, as returned by ``paddle.device.get_device``
             will be used.
 
     Returns:
