@@ -1138,6 +1138,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             "If this is not desired, please set os.environ['PADDLE_CUDA_ARCH_LIST']."
         )
         arch_list = []
+        dev_types = core.get_all_custom_device_type()
         if core.is_compiled_with_cuda():
             for dev_id in range(paddle.device.cuda.device_count()):
                 capability = paddle.device.cuda.get_device_capability(
@@ -1149,7 +1150,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             arch_list = sorted(arch_list)
             if arch_list:
                 arch_list[-1] += '+PTX'
-        elif core.is_compiled_with_custom_device():
+        elif core.is_compiled_with_custom_device(dev_types[0]):
             for dev_id in range(paddle.device.device_count()):
                 dev_type = paddle.device.get_all_custom_device_type()
                 capability = paddle.device.get_device_capability(
