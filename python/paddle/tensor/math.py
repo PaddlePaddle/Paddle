@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 import warnings
 from typing import TYPE_CHECKING, Literal
 
@@ -44,6 +45,7 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
     sum_decorator,
@@ -1120,7 +1122,14 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@floor_divide_decorator()
+def floor_divide(
+    x: Tensor,
+    y: Number | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward negative infinite. The equation is:
 
@@ -1138,8 +1147,11 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
-        y (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+            alias: ``input``.
+        y (Tensor｜Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+            alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
@@ -1165,7 +1177,9 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.floor_divide(x, y)
+        if isinstance(y, numbers.Number):
+            return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
+        return _C_ops.floor_divide(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 

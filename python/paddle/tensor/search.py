@@ -977,7 +977,14 @@ def index_sample(x: Tensor, index: Tensor) -> Tensor:
         return out
 
 
-def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def masked_select(
+    x: Tensor,
+    mask: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
@@ -989,8 +996,10 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
+            alias: ``input``.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A 1-D Tensor which is the same data type  as ``x``.
@@ -1022,7 +1031,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             check_variable_and_dtype(
                 mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
             )
-        return _C_ops.masked_select(x, mask)
+        return _C_ops.masked_select(x, mask, out=out)
     else:
         check_variable_and_dtype(
             x,
