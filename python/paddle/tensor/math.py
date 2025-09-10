@@ -1237,7 +1237,7 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     """
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
-            y = paddle.to_tensor(y, dtype=x.dtype)
+            y = paddle.full([], y, dtype=x.dtype)
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
