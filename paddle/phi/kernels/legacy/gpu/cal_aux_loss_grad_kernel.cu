@@ -111,5 +111,5 @@ PD_REGISTER_KERNEL(cal_aux_loss_grad,
                    phi::CalAuxLossGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

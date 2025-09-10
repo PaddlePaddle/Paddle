@@ -137,7 +137,7 @@ void MatmulKernel(const Context &dev_ctx,
     funcs::ExecuteMatmul<T, float>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else if (is_bfloat16) {
-    funcs::ExecuteMatmul<T, phi::dtype::bfloat16>(
+    funcs::ExecuteMatmul<T, phi::bfloat16>(
         dev_ctx, x, y, x_bd_dims, y_bd_dims, transpose_x, transpose_y, out);
   } else {
     funcs::ExecuteMatmul<T, int8_t>(
@@ -579,7 +579,7 @@ PD_REGISTER_KERNEL(matmul,
                    ONEDNN,
                    phi::MatmulKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::MatmulGetkernelTypeForVar;
@@ -590,7 +590,7 @@ PD_REGISTER_KERNEL(matmul_with_flatten,
                    ONEDNN,
                    phi::MatmulWithFlattenKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t) {}
 
@@ -599,6 +599,6 @@ PD_REGISTER_KERNEL(legacy_matmul,
                    ONEDNN,
                    phi::LegacyMatmulKernel,
                    float,
-                   phi::dtype::bfloat16) {
+                   phi::bfloat16) {
   kernel->get_kerneltype_forvar_fn_ = phi::MatmulGetkernelTypeForVar;
 }

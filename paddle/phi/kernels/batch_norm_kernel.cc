@@ -74,8 +74,8 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    phi::BatchNormInferKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -89,7 +89,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    phi::BatchNormInferKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
@@ -103,7 +103,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    ALL_LAYOUT,
                    phi::BatchNormInferKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(batch_norm_infer,
@@ -111,5 +111,5 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    ALL_LAYOUT,
                    phi::BatchNormInferKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

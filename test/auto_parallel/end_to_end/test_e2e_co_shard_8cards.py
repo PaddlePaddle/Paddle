@@ -19,7 +19,7 @@ import collective.test_communication_api_base as test_base
 
 class TestReshardE2E(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120)
+        super().setUp(num_of_devices=8, timeout=120, nnode=1)
 
     def test_softmax_shard(self):
         self.run_test_case("softmax_co_shard.py")

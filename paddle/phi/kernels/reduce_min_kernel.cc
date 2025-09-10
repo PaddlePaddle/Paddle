@@ -48,8 +48,8 @@ PD_REGISTER_KERNEL(min,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_HIP)
@@ -62,8 +62,7 @@ PD_REGISTER_KERNEL(min, KPS, ALL_LAYOUT, phi::MinKernel, float) {}
 #endif
 
 #if defined(PADDLE_WITH_DNNL)
-PD_REGISTER_KERNEL(
-    min, OneDNN, ONEDNN, phi::MinKernel, float, phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(min, OneDNN, ONEDNN, phi::MinKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceCheckIfOneDNNSupport;
 }
 #endif
@@ -74,8 +73,8 @@ PD_REGISTER_KERNEL(min,
                    ALL_LAYOUT,
                    phi::MinKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {}
 #endif
