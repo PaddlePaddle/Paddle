@@ -869,7 +869,7 @@ FOURTH_HIGH_PARALLEL_JOB_NEW = [
     'test_model',
     'test_py_reader_combination',
     'test_prior_box_op',
-    'test_matmul_v2_mkldnn_op',
+    'test_matmul_v2_onednn_op',
     'test_sum_op',
     'test_paddle_imperative_double_grad',
     'test_norm_op',
