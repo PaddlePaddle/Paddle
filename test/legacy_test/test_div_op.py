@@ -215,106 +215,6 @@ class TestPaddleDivide(unittest.TestCase):
 
         paddle.disable_static()
 
-    def test_paddle_trunc_divide(self):
-        """Test trunc_divide"""
-
-        def run_test(place):
-            # Test float32
-            x_f32 = paddle.to_tensor(
-                [5, -5, 3.5, -3.5], dtype='float32', place=place
-            )
-            y_f32 = paddle.to_tensor([2, 2, 2, 2], dtype='float32', place=place)
-            out_f32 = paddle.divide(x_f32, y_f32, rounding_mode='trunc')
-            self.assertEqual(out_f32.dtype, paddle.float32)
-            np.testing.assert_array_equal(
-                out_f32.numpy(), [2.0, -2.0, 1.0, -1.0]
-            )
-
-            x_vec = paddle.to_tensor([5, 10], dtype='float32', place=place)
-            y_mat = paddle.to_tensor(
-                [[2, 2], [3, 3]], dtype='float32', place=place
-            )
-            inv_f32 = paddle.divide(x_vec, y_mat, rounding_mode='trunc')
-
-            self.assertEqual(inv_f32.dtype, paddle.float32)
-            np.testing.assert_array_equal(
-                inv_f32.numpy(), [[2.0, 5.0], [1.0, 3.0]]
-            )
-
-            # Test float16
-            x_f16 = paddle.to_tensor(
-                [5, -5, 3.5, -3.5], dtype='float16', place=place
-            )
-            y_f16 = paddle.to_tensor([2, 2, 2, 2], dtype='float16', place=place)
-            out_f16 = paddle.divide(x_f16, y_f16, rounding_mode='trunc')
-            self.assertEqual(out_f16.dtype, paddle.float16)
-
-            x_f16_vec = paddle.to_tensor([5, 10], dtype='float16', place=place)
-            y_f16_mat = paddle.to_tensor(
-                [[2, 2], [3, 3]], dtype='float16', place=place
-            )
-            inv_f16 = paddle.divide(x_f16_vec, y_f16_mat, rounding_mode='trunc')
-            self.assertEqual(inv_f16.dtype, paddle.float16)
-
-            # Test bfloat16
-            x_bf16 = paddle.to_tensor(
-                [5, -5, 3.5, -3.5], dtype='bfloat16', place=place
-            )
-            y_bf16 = paddle.to_tensor(
-                [2, 2, 2, 2], dtype='bfloat16', place=place
-            )
-            out_bf16 = paddle.divide(x_bf16, y_bf16, rounding_mode='trunc')
-            self.assertEqual(out_bf16.dtype, paddle.bfloat16)
-
-            x_bf16_vec = paddle.to_tensor(
-                [5, 10], dtype='bfloat16', place=place
-            )
-            y_bf16_mat = paddle.to_tensor(
-                [[2, 2], [3, 3]], dtype='bfloat16', place=place
-            )
-            inv_bf16 = paddle.divide(
-                x_bf16_vec, y_bf16_mat, rounding_mode='trunc'
-            )
-            self.assertEqual(inv_bf16.dtype, paddle.bfloat16)
-
-            # Test int32
-            x_int32 = paddle.to_tensor(
-                [5, -5, 3, -3], dtype='int32', place=place
-            )
-            y_int32 = paddle.to_tensor([2, 2, 2, 2], dtype='int32', place=place)
-            out_int32 = paddle.divide(x_int32, y_int32, rounding_mode='trunc')
-            self.assertEqual(out_int32.dtype, paddle.int32)
-            np.testing.assert_array_equal(out_int32.numpy(), [2, -2, 1, -1])
-
-            x_int32_vec = paddle.to_tensor([5, 10], dtype='int32', place=place)
-            y_int32_mat = paddle.to_tensor(
-                [[2, 2], [3, 3]], dtype='int32', place=place
-            )
-            inv_i32 = paddle.divide(
-                x_int32_vec, y_int32_mat, rounding_mode='trunc'
-            )
-
-            self.assertEqual(inv_i32.dtype, paddle.int32)
-            np.testing.assert_array_equal(inv_i32.numpy(), [[2, 5], [1, 3]])
-
-            # Test division by zero
-            zero_f32 = paddle.to_tensor([0.0], dtype='float32', place=place)
-            zero_int32 = paddle.to_tensor([0.0], dtype='int32', place=place)
-
-            out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
-            inv_out_f32 = paddle.divide(y_mat, zero_f32, rounding_mode='trunc')
-
-            try:
-                paddle.divide(y_int32, zero_int32, rounding_mode='trunc')
-                paddle.divide(y_int32_mat, zero_int32, rounding_mode='trunc')
-            except:
-                pass
-
-        run_test(paddle.CPUPlace())
-
-        if paddle.is_compiled_with_cuda():
-            run_test(paddle.CUDAPlace(0))
-
 
 class TestPaddleDiv(unittest.TestCase):
     def setUp(self):
@@ -778,6 +678,70 @@ class TestPaddleDivideWithOut(unittest.TestCase):
         np.testing.assert_equal(o2, None)
         np.testing.assert_equal(o3, None)
         np.testing.assert_equal(o4, None)
+
+
+class TestPaddleDivideTrunc(unittest.TestCase):
+    def setUp(self):
+        self.data = [5, -5, 3, -3]
+        self.divisor = [2, 2, 2, 2]
+        self.data_vec = [5, 10]
+        self.data_mat = [[2, 2], [3, 3]]
+
+        self.expected_f32 = [2.0, -2.0, 1.0, -1.0]
+        self.expected_int = [2, -2, 1, -1]
+        self.expected_b_f32 = [[2.0, 5.0], [1.0, 3.0]]
+        self.expected_b_int = [[2, 5], [1, 3]]
+
+    def _test_dtype_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.divisor, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_broadcast_division(self, dtype, place, expected=None):
+        x = paddle.to_tensor(self.data_vec, dtype=dtype, place=place)
+        y = paddle.to_tensor(self.data_mat, dtype=dtype, place=place)
+        out = paddle.divide(x, y, rounding_mode='trunc')
+        if expected is not None:
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+    def _test_divide_by_zero(self, place):
+        y_f32 = paddle.to_tensor(self.divisor, dtype='float32', place=place)
+        y_b_f32 = paddle.to_tensor(self.data_mat, dtype='float32', place=place)
+        zero_f32 = paddle.to_tensor([0.0], dtype='float32', place=place)
+        out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
+        out_b_f32 = paddle.divide(y_b_f32, zero_f32, rounding_mode='trunc')
+
+        y_int32 = paddle.to_tensor(self.divisor, dtype='int32', place=place)
+        y_b_int32 = paddle.to_tensor(self.data_mat, dtype='int32', place=place)
+        zero_int32 = paddle.to_tensor([0], dtype='int32', place=place)
+        try:
+            paddle.divide(y_int32, zero_int32, rounding_mode='trunc')
+            paddle.divide(y_b_int32, zero_int32, rounding_mode='trunc')
+        except:
+            pass
+
+    def _run_all_tests(self, place):
+        self._test_dtype_division('float32', place, self.expected_f32)
+        self._test_broadcast_division('float32', place, self.expected_b_f32)
+        self._test_dtype_division('float16', place, self.expected_f32)
+        self._test_broadcast_division('float16', place, self.expected_b_f32)
+        self._test_dtype_division('bfloat16', place, None)
+        self._test_broadcast_division('bfloat16', place, None)
+        self._test_dtype_division('int32', place, self.expected_int)
+        self._test_broadcast_division('int32', place, self.expected_b_int)
+        self._test_divide_by_zero(place)
+
+    def test_cpu(self):
+        self._run_all_tests(paddle.CPUPlace())
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "skip gpu test in TestPaddleDivideTrunc",
+    )
+    def test_gpu(self):
+        self._run_all_tests(paddle.CUDAPlace(0))
 
 
 if __name__ == "__main__":
