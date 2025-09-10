@@ -26,11 +26,9 @@ from paddle.utils.cpp_extension import (
 
 class TestGetCudaArchFlags(unittest.TestCase):
     def setUp(self):
-        # 备份环境变量
         self._old_env = dict(os.environ)
 
     def tearDown(self):
-        # 恢复环境变量
         os.environ.clear()
         os.environ.update(self._old_env)
 
