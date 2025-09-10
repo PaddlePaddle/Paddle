@@ -1488,18 +1488,19 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle
-                >>> # CPU tensor
                 >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
                 >>> x.get_device()
                 -1
 
-                >>> # GPU tensor
-                >>> if paddle.device.is_compiled_with_cuda():
-                ...     y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
-                ...     y.get_device()
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+                >>> y.get_device()
                 0
         """
-        return self.place.gpu_device_id()
+        if self.place.is_cpu_place():
+            return -1
+        else:
+            return self.place.gpu_device_id()
 
     if not hasattr(core, "eager"):
         return
