@@ -1419,7 +1419,6 @@ def merge_sharded_state_dict(
         )
 
         positions = divide_positions(len(state_dict_metadata), file_num)
-        # positions = [0, 22, 90]
         rank = paddle.distributed.get_rank()
 
         partial_state_dict_metadata = slice_dict(
@@ -1510,6 +1509,7 @@ def merge_sharded_state_dict(
             local_state_dict_to_save[new_key] = local_state_dict_to_save.pop(
                 key
             )  # Add new key and remove the old one
+
     for key, value in local_state_dict_to_save.items():
         if isinstance(value, ShardedWeight):
             local_state_dict_to_save[key] = value.local_tensor
