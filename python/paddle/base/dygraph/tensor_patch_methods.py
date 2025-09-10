@@ -1538,6 +1538,7 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 
