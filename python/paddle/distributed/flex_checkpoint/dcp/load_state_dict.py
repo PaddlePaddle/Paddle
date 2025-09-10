@@ -1142,10 +1142,16 @@ def _load_state_dict(
                 )
                 or idx + 1 == len(read_items)
             ):
-                paddle.assign(
-                    copied_target_state_dict[key].cpu(),
-                    target_state_dict[key].local_tensor,
-                )
+                if isinstance(value, ShardedWeight):
+                    paddle.assign(
+                        copied_target_state_dict[key].cpu(),
+                        target_state_dict[key].local_tensor,
+                    )
+                else:
+                    paddle.assign(
+                        copied_target_state_dict[key].cpu(),
+                        target_state_dict[key],
+                    )
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
                 del t
@@ -1505,7 +1511,8 @@ def merge_sharded_state_dict(
                 key
             )  # Add new key and remove the old one
     for key, value in local_state_dict_to_save.items():
-        local_state_dict_to_save[key] = value.local_tensor
+        if isinstance(value, ShardedWeight):
+            local_state_dict_to_save[key] = value.local_tensor
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
