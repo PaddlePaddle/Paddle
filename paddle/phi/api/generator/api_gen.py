@@ -15,7 +15,7 @@ import argparse
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME, BaseAPI
+from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
@@ -294,27 +294,23 @@ class ForwardAPI(BaseAPI):
                 )
 
         elif len(out_dtype_list) > 1:
-            if (
-                not (
-                    inplace_flag
-                    and any(
-                        name.split('@')[0] in self.inplace_map
-                        for name in self.outputs['names']
-                    )
+            if not (
+                inplace_flag
+                and any(
+                    name.split('@')[0] in self.inplace_map
+                    for name in self.outputs['names']
                 )
-                and self.api != "empty_like"
             ):
-                types = self.outputs['types']
-                names_len = len(self.outputs['names'])
-                if all(t == "Tensor" for t in types) and 1 <= names_len <= 7:
-                    if names_len == 1:
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
                         output_create = f"""
 {code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
                     else:
-                        tuple_types = ", ".join(["Tensor"] * names_len)
+                        tuple_types = ", ".join(["Tensor"] * length)
                         get_indices = ", ".join(
                             f"*std::get<{i}>(*predefined_out)"
-                            for i in range(names_len)
+                            for i in range(length)
                         )
                         output_create = f"""
 {code_indent}  std::tuple<{tuple_types}> out_tmp;
