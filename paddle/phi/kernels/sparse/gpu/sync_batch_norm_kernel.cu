@@ -75,7 +75,7 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    ALL_LAYOUT,
                    phi::sparse::SyncBatchNormCooKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    GPU,
@@ -83,5 +83,5 @@ PD_REGISTER_KERNEL(sync_batch_norm_coo,
                    phi::sparse::SyncBatchNormCooKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

@@ -18,15 +18,16 @@ set -e
 export log_path=${work_dir}/../case_logs
 export auto_case_path=${work_dir}/test/auto_parallel/hybrid_strategy
 export dygraph_case_path=${work_dir}/test/collective/hybrid_strategy
+export co_shard_e2e_path=${work_dir}/test/auto_parallel/end_to_end
 
 function case_list_unit() {
     if [ ! -f "testslist.csv" ]; then
-        echo "文件 testslist.csv 不存在"
+        echo "Error: testslist.csv not found in current directory: $(pwd)"
         exit -1
     fi
     if [ ! -f "${log_path}/blacklist.csv" ]; then
         wget -P ${log_path}/ https://paddle-qa.bj.bcebos.com/Auto-Parallel/blacklist.csv --no-proxy || exit 101
-        echo "\033 ---- wget blacklist.csv \033"
+        echo -e "\033[31m ---- wget blacklist.csv \033[0m"
     fi
     blacklist_file=${log_path}/blacklist.csv
     mapfile -t blacklist < "$blacklist_file"
@@ -62,6 +63,8 @@ main() {
     echo -e "\033[31m ---- Start executing $exec_case case \033[0m"
 
     if [[ $exec_case == "auto_unit_test" ]];then
+        cd ${co_shard_e2e_path}
+        case_list_unit
         cd ${auto_case_path}
         case_list_unit
     elif [[ $exec_case == "dygraph_unit_test" ]];then

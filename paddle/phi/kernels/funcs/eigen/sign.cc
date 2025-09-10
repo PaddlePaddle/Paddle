@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi::funcs {
@@ -61,7 +61,7 @@ template struct EigenSign<Eigen::DefaultDevice, int32_t>;
 template struct EigenSign<Eigen::DefaultDevice, int64_t>;
 template struct EigenSign<Eigen::DefaultDevice, float>;
 template struct EigenSign<Eigen::DefaultDevice, double>;
-template struct EigenSign<Eigen::DefaultDevice, phi::dtype::complex<float>>;
-template struct EigenSign<Eigen::DefaultDevice, phi::dtype::complex<double>>;
+template struct EigenSign<Eigen::DefaultDevice, phi::complex64>;
+template struct EigenSign<Eigen::DefaultDevice, phi::complex128>;
 
 }  // namespace phi::funcs

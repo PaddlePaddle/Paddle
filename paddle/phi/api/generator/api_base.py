@@ -254,13 +254,21 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            declare_args.append(
-                "paddle::optional<Tensor*> predefined_out = paddle::none"
-            )
+            types = self.outputs['types']
+            length = len(self.outputs['names'])
+
+            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                declare_args.append(
+                    f"paddle::optional<{type_str}> predefined_out = paddle::none"
+                )
 
         return ", ".join(declare_args)
 
@@ -275,11 +283,21 @@ class BaseAPI:
             not grad_flag
             and not inplace_flag
             and append_predefined_out
-            and len(self.outputs['names']) == 1
-            and self.outputs['types'][0] == "Tensor"
             and self.api != "empty_like"
         ):
-            define_args.append("paddle::optional<Tensor*> predefined_out")
+            types = self.outputs['types']
+            length = len(self.outputs['names'])
+
+            if all(t == "Tensor" for t in types) and 1 <= length <= 7:
+                if length == 1:
+                    type_str = "paddle::Tensor*"
+                else:
+                    type_str = (
+                        f"std::tuple<{', '.join(['paddle::Tensor*'] * length)}>"
+                    )
+                define_args.append(
+                    f"paddle::optional<{type_str}> predefined_out"
+                )
 
         return ", ".join(define_args)
 
