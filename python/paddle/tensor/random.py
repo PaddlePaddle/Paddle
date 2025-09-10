@@ -1173,10 +1173,9 @@ def randn_like(
         dtype = x.dtype
     if device is None:
         device = x.place
-    shape = paddle.shape(x)
 
     return randn(
-        shape=shape,
+        shape=x.shape,
         dtype=dtype,
         name=name,
         device=device,

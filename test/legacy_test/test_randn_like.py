@@ -448,6 +448,24 @@ class TestRandnLikeAPI(unittest.TestCase):
                         ((out.numpy() >= -25) & (out.numpy() <= 25)).all(), True
                     )
 
+    def test_dy2st(self):
+        linear = paddle.nn.Linear(3, 2)
+
+        def func(x):
+            y = linear(x * x)
+            y = paddle.tanh(y)
+            return paddle.grad(
+                y,
+                x,
+                create_graph=True,
+                grad_outputs=paddle.randn_like(y, requires_grad=True),
+            )[0]
+
+        st_func = paddle.jit.to_static(func, full_graph=True, backend=None)
+        x = paddle.randn(4, 3, requires_grad=True)
+        g = st_func(x)
+        self.assertEqual(g.shape, x.shape)
+
 
 class TestRandnLikeOpForDygraph(unittest.TestCase):
     """
