@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/activation_grad_impl.h"

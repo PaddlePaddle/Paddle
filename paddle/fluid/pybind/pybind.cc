@@ -480,37 +480,30 @@ struct iinfo {
   int bits;
   std::string dtype;
 
-  explicit iinfo(const framework::proto::VarType::Type &type) {
+#define CASE_IINFO_BODY(type, ctype)         \
+  do {                                       \
+    min = std::numeric_limits<ctype>::min(); \
+    max = std::numeric_limits<ctype>::max(); \
+    bits = sizeof(ctype) * 8;                \
+    dtype = #type;                           \
+  } while (0)
+
+  explicit iinfo(const phi::DataType &type) {
     switch (type) {
-      case framework::proto::VarType::INT16:
-        min = std::numeric_limits<int16_t>::min();
-        max = std::numeric_limits<int16_t>::max();
-        bits = 16;
-        dtype = "int16";
+      case phi::DataType::UINT8:
+        CASE_IINFO_BODY(uint8, uint8_t);
         break;
-      case framework::proto::VarType::INT32:
-        min = std::numeric_limits<int32_t>::min();
-        max = std::numeric_limits<int32_t>::max();
-        bits = 32;
-        dtype = "int32";
+      case phi::DataType::INT8:
+        CASE_IINFO_BODY(int8, int8_t);
         break;
-      case framework::proto::VarType::INT64:
-        min = std::numeric_limits<int64_t>::min();
-        max = std::numeric_limits<int64_t>::max();
-        bits = 64;
-        dtype = "int64";
+      case phi::DataType::INT16:
+        CASE_IINFO_BODY(int16, int16_t);
         break;
-      case framework::proto::VarType::INT8:
-        min = std::numeric_limits<int8_t>::min();  // NOLINT
-        max = std::numeric_limits<int8_t>::max();
-        bits = 8;
-        dtype = "int8";
+      case phi::DataType::INT32:
+        CASE_IINFO_BODY(int32, int32_t);
         break;
-      case framework::proto::VarType::UINT8:
-        min = std::numeric_limits<uint8_t>::min();
-        max = std::numeric_limits<uint8_t>::max();
-        bits = 8;
-        dtype = "uint8";
+      case phi::DataType::INT64:
+        CASE_IINFO_BODY(int64, int64_t);
         break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
@@ -519,6 +512,7 @@ struct iinfo {
         break;
     }
   }
+#undef CASE_IINFO_BODY
 };
 
 struct finfo {
@@ -531,60 +525,50 @@ struct finfo {
   double resolution;
   std::string dtype;
 
-  explicit finfo(const framework::proto::VarType::Type &type) {
+#define CASE_FINFO_BODY(type, ctype)                                  \
+  do {                                                                \
+    eps = std::numeric_limits<ctype>::epsilon();                      \
+    min = std::numeric_limits<ctype>::lowest();                       \
+    max = std::numeric_limits<ctype>::max();                          \
+    smallest_normal = std::numeric_limits<ctype>::min();              \
+    tiny = smallest_normal;                                           \
+    resolution = std::pow(10, -std::numeric_limits<ctype>::digits10); \
+    bits = sizeof(ctype) * 8;                                         \
+    dtype = #type;                                                    \
+  } while (0)
+
+  explicit finfo(const phi::DataType &type) {
     switch (type) {
-      case framework::proto::VarType::FP16:
-        eps = std::numeric_limits<phi::dtype::float16>::epsilon();
-        min = std::numeric_limits<phi::dtype::float16>::lowest();
-        max = std::numeric_limits<phi::dtype::float16>::max();
-        smallest_normal = std::numeric_limits<phi::dtype::float16>::min();
-        tiny = smallest_normal;
-        resolution =
-            std::pow(10, -std::numeric_limits<phi::dtype::float16>::digits10);
-        bits = 16;
-        dtype = "float16";
+      case phi::DataType::FLOAT8_E4M3FN:
+        CASE_FINFO_BODY(float8_e4m3fn, phi::dtype::float8_e4m3fn);
         break;
-      case framework::proto::VarType::FP32:
-      case framework::proto::VarType::COMPLEX64:
-        eps = std::numeric_limits<float>::epsilon();
-        min = std::numeric_limits<float>::lowest();
-        max = std::numeric_limits<float>::max();
-        smallest_normal = std::numeric_limits<float>::min();
-        tiny = smallest_normal;
-        resolution = std::pow(10, -std::numeric_limits<float>::digits10);
-        bits = 32;
-        dtype = "float32";
+      case phi::DataType::FLOAT8_E5M2:
+        CASE_FINFO_BODY(float8_e5m2, phi::dtype::float8_e5m2);
         break;
-      case framework::proto::VarType::FP64:
-      case framework::proto::VarType::COMPLEX128:
-        eps = std::numeric_limits<double>::epsilon();
-        min = std::numeric_limits<double>::lowest();
-        max = std::numeric_limits<double>::max();
-        smallest_normal = std::numeric_limits<double>::min();
-        tiny = smallest_normal;
-        resolution = std::pow(10, -std::numeric_limits<double>::digits10);
-        bits = 64;
-        dtype = "float64";
+      case phi::DataType::FLOAT16:
+        CASE_FINFO_BODY(float16, phi::dtype::float16);
         break;
-      case framework::proto::VarType::BF16:
-        eps = std::numeric_limits<phi::dtype::bfloat16>::epsilon();
-        min = std::numeric_limits<phi::dtype::bfloat16>::lowest();
-        max = std::numeric_limits<phi::dtype::bfloat16>::max();
-        smallest_normal = std::numeric_limits<phi::dtype::bfloat16>::min();
-        tiny = smallest_normal;
-        resolution =
-            std::pow(10, -std::numeric_limits<phi::dtype::bfloat16>::digits10);
-        bits = 16;
-        dtype = "bfloat16";
+      case phi::DataType::BFLOAT16:
+        CASE_FINFO_BODY(bfloat16, phi::dtype::bfloat16);
+        break;
+      case phi::DataType::FLOAT32:
+      case phi::DataType::COMPLEX64:
+        CASE_FINFO_BODY(float32, float);
+        break;
+      case phi::DataType::FLOAT64:
+      case phi::DataType::COMPLEX128:
+        CASE_FINFO_BODY(float64, double);
         break;
       default:
         PADDLE_THROW(common::errors::InvalidArgument(
-            "the argument of paddle.finfo can only be paddle.float32, "
-            "paddle.float64, paddle.float16, paddle.bfloat16"
-            "paddle.complex64, or paddle.complex128"));
+            "The argument of paddle.finfo can only be paddle.float32, "
+            "paddle.float64, paddle.float16, paddle.bfloat16, "
+            "paddle.float8_e4m3fn, paddle.float8_e5m2, "
+            "paddle.complex64 or paddle.complex128"));
         break;
     }
   }
+#undef CASE_FINFO_BODY
 };
 
 static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
@@ -1487,7 +1471,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindException(&m);
 
   py::class_<iinfo>(m, "iinfo")
-      .def(py::init<const framework::proto::VarType::Type &>())
+      .def(py::init<const phi::DataType &>())
       .def_readonly("min", &iinfo::min)
       .def_readonly("max", &iinfo::max)
       .def_readonly("bits", &iinfo::bits)
@@ -1502,7 +1486,7 @@ PYBIND11_MODULE(libpaddle, m) {
       });
 
   py::class_<finfo>(m, "finfo")
-      .def(py::init<const framework::proto::VarType::Type &>())
+      .def(py::init<const phi::DataType &>())
       .def_readonly("min", &finfo::min)
       .def_readonly("max", &finfo::max)
       .def_readonly("bits", &finfo::bits)

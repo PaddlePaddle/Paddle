@@ -1129,12 +1129,9 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        values, indices = _C_ops.topk(x, k, axis, largest, sorted)
+        values, indices = _C_ops.topk(x, k, axis, largest, sorted, out=out)
         if out is not None:
-            out_values, out_indices = out
-            out_values = paddle.assign(values, output=out_values)
-            out_indices = paddle.assign(indices, output=out_indices)
-            return TopKRetType(values=out_values, indices=out_indices)
+            return TopKRetType(values=out[0], indices=out[1])
         return TopKRetType(values=values, indices=indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())

@@ -135,6 +135,26 @@ class TestIInfoAndFInfoAPI(unittest.TestCase):
         self.assertAlmostEqual(xinfo.resolution, 0.01)
         self.assertAlmostEqual(xinfo.smallest_normal, 1.1754943508222875e-38)
 
+        xinfo = paddle.finfo(paddle.float8_e4m3fn)
+        self.assertEqual(xinfo.dtype, "float8_e4m3fn")
+        self.assertEqual(xinfo.bits, 8)
+        self.assertAlmostEqual(xinfo.max, 448.0)
+        self.assertAlmostEqual(xinfo.min, -448.0)
+        self.assertAlmostEqual(xinfo.eps, 0.125)
+        self.assertAlmostEqual(xinfo.tiny, 0.015625)
+        self.assertAlmostEqual(xinfo.resolution, 1)
+        self.assertAlmostEqual(xinfo.smallest_normal, 0.015625)
+
+        xinfo = paddle.finfo(paddle.float8_e5m2)
+        self.assertEqual(xinfo.dtype, "float8_e5m2")
+        self.assertEqual(xinfo.bits, 8)
+        self.assertAlmostEqual(xinfo.max, 57344.0)
+        self.assertAlmostEqual(xinfo.min, -57344.0)
+        self.assertAlmostEqual(xinfo.eps, 0.25)
+        self.assertAlmostEqual(xinfo.tiny, 6.10352e-05)
+        self.assertAlmostEqual(xinfo.resolution, 1)
+        self.assertAlmostEqual(xinfo.smallest_normal, 6.10352e-05)
+
     def test_finfo_alias(self):
         # dtype and type alias
         for alias_param in ["dtype", "type"]:

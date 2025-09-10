@@ -145,6 +145,22 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
   });
 
+  m.def("_get_current_raw_stream", [](int device_index) -> uintptr_t {
+    if (device_index == -1) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The device index must be a non-negative integer."));
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    auto *current_stream = platform::get_current_stream(device_index);
+    return reinterpret_cast<std::uintptr_t>(current_stream->raw_stream());
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _get_current_raw_stream "
+            "Cannot visit device synchronize."));
+#endif
+  });
+
   py::class_<phi::CUDAStream>(m, "CUDAStream", R"DOC(
       The handle of the CUDA stream.
 
