@@ -51,10 +51,17 @@ class TestPdmodelCompatibility(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.place = core.CPUPlace()
         self.exe = executor.Executor(self.place)
+        
+        # Store original PIR setting and ensure PIR is enabled for testing fallback
+        self.original_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
+        paddle.base.set_flags({'FLAGS_enable_pir_api': True})
 
     def tearDown(self):
         """Clean up test environment."""
         self.temp_dir.cleanup()
+        
+        # Restore original PIR setting
+        paddle.base.set_flags({'FLAGS_enable_pir_api': self.original_pir_flag})
 
     def _create_simple_model(self, save_format='pdmodel'):
         """Create a simple linear model for testing.
@@ -93,8 +100,8 @@ class TestPdmodelCompatibility(unittest.TestCase):
                         default_initializer=paddle.nn.initializer.Constant(0.0)
                     )
 
-                    # Compute output
-                    y = paddle.matmul(x, w) + b
+                    # Compute output using @ operator for compatibility
+                    y = x @ w + b
 
                 # Initialize parameters
                 self.exe.run(startup_program)
@@ -107,42 +114,50 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     executor=self.exe
                 )
         else:  # json format (PIR mode)
-            # Create simple linear regression model in PIR mode
-            main_program = paddle.static.Program()
-            startup_program = paddle.static.Program()
+            # Ensure PIR is enabled for this model creation
+            old_pir_flag = paddle.base.framework.get_flags("FLAGS_enable_pir_api")["FLAGS_enable_pir_api"]
+            try:
+                paddle.base.set_flags({'FLAGS_enable_pir_api': True})
+                
+                # Create simple linear regression model in PIR mode
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
 
-            with paddle.static.program_guard(main_program, startup_program):
-                # Define input
-                x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
+                with paddle.static.program_guard(main_program, startup_program):
+                    # Define input
+                    x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                # Define parameters
-                w = paddle.create_parameter(
-                    shape=[10, 1],
-                    dtype='float32',
-                    name='weight',
-                    default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
+                    # Define parameters
+                    w = paddle.create_parameter(
+                        shape=[10, 1],
+                        dtype='float32',
+                        name='weight',
+                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
+                    )
+                    b = paddle.create_parameter(
+                        shape=[1],
+                        dtype='float32',
+                        name='bias',
+                        default_initializer=paddle.nn.initializer.Constant(0.0)
+                    )
+
+                    # Compute output using @ operator for PIR compatibility
+                    y = x @ w + b
+
+                # Initialize parameters
+                self.exe.run(startup_program)
+
+                # Save in PIR format
+                paddle.static.save_inference_model(
+                    path_prefix=model_path,
+                    feed_vars=[x],
+                    fetch_vars=[y],
+                    executor=self.exe,
+                    program=main_program
                 )
-                b = paddle.create_parameter(
-                    shape=[1],
-                    dtype='float32',
-                    name='bias',
-                    default_initializer=paddle.nn.initializer.Constant(0.0)
-                )
-
-                # Compute output
-                y = paddle.matmul(x, w) + b
-
-            # Initialize parameters
-            self.exe.run(startup_program)
-
-            # Save in PIR format
-            paddle.static.save_inference_model(
-                path_prefix=model_path,
-                feed_vars=[x],
-                fetch_vars=[y],
-                executor=self.exe,
-                program=main_program
-            )
+            finally:
+                # Restore original PIR flag
+                paddle.base.set_flags({'FLAGS_enable_pir_api': old_pir_flag})
 
         return model_path
 
