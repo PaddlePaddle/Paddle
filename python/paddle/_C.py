@@ -29,4 +29,6 @@ _PYBIND11_BUILD_ABI = getattr(libpaddle, '_PYBIND11_BUILD_ABI', "")
 def _get_custom_class_python_wrapper(
     namespace_name: str, class_name: str
 ) -> typing.Any:
-    return core._get_custom_class_python_wrapper(namespace_name, class_name)
+    return core.torch_compat._get_custom_class_python_wrapper(
+        namespace_name, class_name
+    )
