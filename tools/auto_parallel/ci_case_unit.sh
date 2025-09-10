@@ -21,12 +21,12 @@ export dygraph_case_path=/workspace/Paddle/test/collective/hybrid_strategy
 
 function case_list_unit() {
     if [ ! -f "testslist.csv" ]; then
-        echo "文件 testslist.csv 不存在"
+        echo "Error: testslist.csv not found in current directory: $(pwd)"
         exit -1
     fi
     if [ ! -f "${log_path}/blacklist.csv" ]; then
         wget -P ${log_path}/ https://paddle-qa.bj.bcebos.com/Auto-Parallel/blacklist.csv --no-proxy || exit 101
-        echo "\033 ---- wget blacklist.csv \033"
+        echo -e "\033[31m ---- wget blacklist.csv \033[0m"
     fi
     blacklist_file=${log_path}/blacklist.csv
     mapfile -t blacklist < "$blacklist_file"

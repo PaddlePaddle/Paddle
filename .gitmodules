@@ -117,3 +117,6 @@
 	path = third_party/flagcx
 	url = https://github.com/FlagOpen/FlagCX.git
 	ignore = dirty
+[submodule "third_party/libuv"]
+	path = third_party/libuv
+	url = https://github.com/libuv/libuv.git

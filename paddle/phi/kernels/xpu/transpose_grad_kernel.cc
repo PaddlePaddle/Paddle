@@ -62,12 +62,12 @@ void TransposeGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void TransposeGradKernel<phi::dtype::complex<float>, XPUContext>(
+void TransposeGradKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
     const DenseTensor& out_grad,
     const std::vector<int>& axis,
     DenseTensor* x_grad) {
-  using T = phi::dtype::complex<float>;
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(x_grad);
   if (x_grad->numel() == 0) {
     return;
@@ -128,7 +128,7 @@ PD_REGISTER_KERNEL(transpose_grad,
                    phi::float16,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    int64_t,
                    int,

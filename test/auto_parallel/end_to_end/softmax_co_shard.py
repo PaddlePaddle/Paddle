@@ -236,6 +236,7 @@ class TestSoftmaxCoShard:
         ]
 
     def run_test_case_forward(self, test_case: SoftmaxTestCase):
+        paddle.seed(2025)
         a = paddle.rand(test_case.input_shape, "float32")
         input_placements = test_case.input_placements
         input = dist.shard_tensor(a, self.mesh, input_placements)

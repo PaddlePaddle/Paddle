@@ -21,7 +21,7 @@ from typing_extensions import TypeAlias, overload
 
 import paddle
 from paddle import _C_ops
-from paddle._C_ops import bmm, matmul  # noqa: F401
+from paddle._C_ops import bmm, dot, matmul  # noqa: F401
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.tensor.math import broadcast_shape
@@ -1727,97 +1727,6 @@ def cond(
         )
 
 
-def dot(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
-    """
-    This operator calculates inner product for vectors.
-
-    Note:
-       Support 1-d and 2-d Tensor. When it is 2d, the first dimension of this matrix
-       is the batch dimension, which means that the vectors of multiple batches are dotted.
-
-    Parameters:
-        x(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
-        y(Tensor): 1-D or 2-D ``Tensor``. Its dtype should be ``float32``, ``float64``, ``int32``, ``int64``, ``complex64``, ``complex128``
-        name(str|None, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
-
-    Returns:
-        Tensor: the calculated result Tensor.
-
-    Examples:
-
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> # 1-D Tensor * 1-D Tensor
-            >>> x = paddle.to_tensor([1, 2, 3])
-            >>> y = paddle.to_tensor([4, 5, 6])
-            >>> z = paddle.dot(x, y)
-            >>> print(z)
-            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
-            32)
-
-            >>> # 2-D Tensor * 2-D Tensor
-            >>> x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
-            >>> y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-            >>> z = paddle.dot(x, y)
-            >>> print(z)
-            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
-            [32, 64])
-
-    """
-    if in_dynamic_or_pir_mode():
-        return _C_ops.dot(x, y)
-    else:
-        op_type = 'dot'
-
-        assert x is not None, f'x cannot be None in {op_type}'
-        assert y is not None, f'y cannot be None in {op_type}'
-
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            op_type,
-        )
-        check_variable_and_dtype(
-            y,
-            'y',
-            [
-                'float16',
-                'uint16',
-                'float32',
-                'float64',
-                'int32',
-                'int64',
-                'complex64',
-                'complex128',
-            ],
-            op_type,
-        )
-
-        helper = LayerHelper(op_type, **locals())
-        if name is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False
-            )
-        helper.append_op(
-            type="dot", inputs={'X': x, 'Y': y}, attrs={}, outputs={"Out": out}
-        )
-        return out
-
-
 def vecdot(
     x: Tensor,
     y: Tensor,
@@ -2815,7 +2724,11 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
 
 
 def svd(
-    x: Tensor, full_matrices: bool = False, name: str | None = None
+    x: Tensor,
+    full_matrices: bool = False,
+    name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
@@ -2875,7 +2788,7 @@ def svd(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.svd(x, full_matrices)
+        return _C_ops.svd(x, full_matrices, out=out)
     else:
         check_variable_and_dtype(
             x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'

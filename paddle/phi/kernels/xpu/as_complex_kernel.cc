@@ -15,7 +15,6 @@
 #ifdef PADDLE_WITH_XPU_FFT
 #include "paddle/phi/kernels/as_complex_kernel.h"
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
