@@ -44,7 +44,7 @@ class TestPlace(unittest.TestCase):
 class TestGetDevice(unittest.TestCase):
     def test_cpu_tensor(self):
         x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
-        self.assertEqual(x.get_device(), x.place.gpu_device_id())
+        self.assertEqual(x.get_device(), -1)
 
     def test_gpu_tensor(self):
         if not paddle.is_compiled_with_cuda():
