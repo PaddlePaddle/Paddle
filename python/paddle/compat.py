@@ -26,12 +26,14 @@ from .tensor.compat import (
     median,
     min,
     nanmedian,
+    slogdet,
     sort,
     split,
 )
 from .tensor.compat_softmax import softmax
 
 __all__ = [
+    'slogdet',
     'softmax',
     'split',
     'sort',

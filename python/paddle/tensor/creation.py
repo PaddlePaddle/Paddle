@@ -930,6 +930,7 @@ def tensor(
     Examples:
         .. code-block:: python
 
+            >>> # type: ignore
             >>> import paddle
 
             >>> type(paddle.tensor(1))

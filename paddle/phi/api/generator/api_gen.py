@@ -15,7 +15,7 @@ import argparse
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME, BaseAPI
+from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
@@ -216,6 +216,7 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
+
             if (
                 len(self.outputs['names']) == 1
                 and self.outputs['types'][0] == "Tensor"
@@ -231,6 +232,7 @@ class ForwardAPI(BaseAPI):
             else:
                 output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
+
             set_out_func = (
                 'SetKernelOutput'
                 if out_tensor_type_list is None
@@ -292,7 +294,34 @@ class ForwardAPI(BaseAPI):
                 )
 
         elif len(out_dtype_list) > 1:
-            output_create = f"""
+            if not (
+                inplace_flag
+                and any(
+                    name.split('@')[0] in self.inplace_map
+                    for name in self.outputs['names']
+                )
+            ):
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_indices = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_create = f"""
+{code_indent}  std::tuple<{tuple_types}> out_tmp;
+{code_indent}  paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;
+{code_indent}  if(predefined_out) {{ predefined_out_value = std::make_tuple({get_indices}); }}
+{code_indent}  std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"""
+                else:
+                    output_create = f"""
+{code_indent}  {return_type} api_output;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output;"""
 
             if inplace_flag:
