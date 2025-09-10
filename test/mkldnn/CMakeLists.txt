@@ -25,7 +25,7 @@ if(WITH_ONEDNN AND NOT WIN32)
     test_dequantize_onednn_op_static_build MODULES test_dequantize_onednn_op
     ENVS FLAGS_new_executor_static_build=true)
   py_test_modules(
-    test_quantize_mkldnn_op_static_build MODULES test_quantize_mkldnn_op ENVS
+    test_quantize_onednn_op_static_build MODULES test_quantize_onednn_op ENVS
     FLAGS_new_executor_static_build=true)
 endif()
 

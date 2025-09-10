@@ -953,11 +953,9 @@ def median(
     else:
         _check_out_status(out, True)
         values, indices = paddle.median(
-            input, axis=dim, keepdim=keepdim, mode='min'
+            input, axis=dim, keepdim=keepdim, mode='min', out=out
         )
         if out is not None:
-            paddle.assign(values, out[0])
-            paddle.assign(indices, out[1])
             return MedianRetType(values=out[0], indices=out[1])
         return MedianRetType(values=values, indices=indices)
 

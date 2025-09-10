@@ -2724,7 +2724,11 @@ def slogdet(x: Tensor, name: str | None = None) -> Tensor:
 
 
 def svd(
-    x: Tensor, full_matrices: bool = False, name: str | None = None
+    x: Tensor,
+    full_matrices: bool = False,
+    name: str | None = None,
+    *,
+    out: tuple[Tensor, Tensor, Tensor] | None = None,
 ) -> tuple[Tensor, Tensor, Tensor]:
     r"""
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
@@ -2784,7 +2788,7 @@ def svd(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.svd(x, full_matrices)
+        return _C_ops.svd(x, full_matrices, out=out)
     else:
         check_variable_and_dtype(
             x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'svd'

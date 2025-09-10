@@ -1311,6 +1311,32 @@ class TestEagerTensor(unittest.TestCase):
 
         self.assertEqual(a_str, expected)
 
+    def test_tensor_str_fp8_e4m3fn(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=paddle.float8_e4m3fn)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=float8_e4m3fn, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])"""
+
+        self.assertEqual(a_str, expected)
+
+    def test_tensor_str_fp8_e5m2(self):
+        paddle.disable_static(paddle.CPUPlace())
+        a = paddle.to_tensor([[1.5, 1.0], [0, 0]])
+        a = paddle.cast(a, dtype=paddle.float8_e5m2)
+        paddle.set_printoptions(precision=4)
+        a_str = str(a)
+
+        expected = """Tensor(shape=[2, 2], dtype=float8_e5m2, place=Place(cpu), stop_gradient=True,
+       [[1.5000, 1.    ],
+        [0.    , 0.    ]])"""
+
+        self.assertEqual(a_str, expected)
+
     def test_print_tensor_dtype(self):
         paddle.disable_static(paddle.CPUPlace())
         a = paddle.rand([1])
