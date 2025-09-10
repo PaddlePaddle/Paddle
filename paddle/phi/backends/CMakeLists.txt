@@ -15,7 +15,7 @@ if(WITH_GPU OR WITH_ROCM)
       nv_library(
         cuda_graph_lib static
         SRCS gpu/cuda/cuda_graph.cc
-        DEPS dynload_cuda)
+        DEPS dynload_cuda onednn)
       list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc)
     else()
       list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
