@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from paddle.base import core
+import paddle
 
 __all__ = ["initial_seed"]
 
@@ -30,4 +30,4 @@ def initial_seed() -> int:
         >>> import paddle
         >>> s = paddle.random.initial_seed()
     """
-    return core.default_cpu_generator().get_state()
+    return paddle.get_rng_state('cpu')[0].current_seed()
