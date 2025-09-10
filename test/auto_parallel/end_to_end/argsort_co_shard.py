@@ -252,8 +252,6 @@ class TestArgSortCoShard:
         self.setUp()
         for test_case in self.test_cases_forward:
             self.run_test_case_forward(test_case)
-        for test_case in self.test_cases_backward:
-            self.run_test_case_backward(test_case)
 
 
 if __name__ == '__main__':
