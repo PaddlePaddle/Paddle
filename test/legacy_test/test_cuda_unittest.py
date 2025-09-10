@@ -219,6 +219,13 @@ class TestCudaCompat(unittest.TestCase):
         err = cuda_rt_module.cudaProfilerStop()
         self.assertEqual(err, cuda_rt_module.cudaError.success)
 
+    @unittest.skipIf(
+        (
+            not paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ),
+        reason="Skip if not in CUDA env",
+    )
     def test_mem_get_info(self):
         a, b = mem_get_info(paddle.device.get_device())
         self.assertGreaterEqual(a, 0)
@@ -235,6 +242,13 @@ class TestCudaCompat(unittest.TestCase):
         with self.assertRaises(ValueError):
             a, b = mem_get_info(0)
 
+    @unittest.skipIf(
+        (
+            not paddle.device.is_compiled_with_cuda()
+            or paddle.device.is_compiled_with_rocm()
+        ),
+        reason="Skip if not in CUDA env",
+    )
     def test_check_error(self):
         check_error(0)
 
