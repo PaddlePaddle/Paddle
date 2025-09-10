@@ -4119,13 +4119,94 @@ def unsqueeze_(
     return _C_ops.unsqueeze_(input, axes)
 
 
-def gather(
+def _take_along_axis_wrapper(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    out: Tensor | None = None,
+):
+    """Wrapper for take_along_axis"""
+    res = paddle.take_along_axis(input, index, dim, broadcast=False)
+    if out is not None:
+        paddle.assign(res, out)
+    return res
+
+
+def _gather_wrapper(
     x: Tensor,
     index: Tensor,
     axis: Tensor | int | None = None,
     name: str | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
+    """Wrapper for original gather"""
+    if axis is None:
+        axis = 0
+
+    if in_dynamic_or_pir_mode():
+        res = _C_ops.gather(x, index, axis)
+    else:
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'bool',
+                'float16',
+                'float32',
+                'float64',
+                'int16',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+                'complex64',
+                'complex128',
+            ],
+            'gather',
+        )
+        check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
+
+        if isinstance(axis, Variable):
+            check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+
+        helper = LayerHelper('gather', **locals())
+        dtype = helper.input_dtype('x')
+        output = helper.create_variable_for_type_inference(dtype)
+        if not isinstance(axis, Variable):
+            helper.append_op(
+                type="gather",
+                inputs={"X": x, "Index": index},
+                attrs={'axis': axis, 'overwrite': False},
+                outputs={"Out": output},
+            )
+        else:
+            helper.append_op(
+                type="gather",
+                inputs={"X": x, "Index": index, "Axis": axis},
+                attrs={"overwrite": False},
+                outputs={"Out": output},
+            )
+
+        res = output
+    if out is not None:
+        paddle.assign(res, out)
+    return res
+
+
+def gather(*args: Any, **kwargs: Any) -> Tensor:
     """
+    This function has two functionalities, depending on the parameters passed:
+
+    1. ``gather(Tensor input, int dim, Tensor index, Tensor out = None)``:
+        PyTorch compatible gather, calls a non-broadcast `paddle.take_along_axis`.
+        Check out :ref:`api_paddle_take_along_axis` and also `[torch has more parameters] torch.scatter <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/guides/model_convert/convert_from_pytorch/api_difference/torch/torch.gather.html>`_
+        Note that ``sparse_grad`` param of PyTorch is currently not supported by Paddle, therefore do not pass this param (behavior is equivalent to ``sparse_grad = False``).
+        Also, dim allows for Tensor input, the same as PyTorch. However, when the first 3 params are all of Tensor types, there will be ambiguity between these two functionalities.
+        Currently, original gather pass is more actively selected. Try avoiding using Tensor dim as input therefore.
+
+    2. ``gather(Tensor x, Tensor index, int axis, str name = None, Tensor out = None)``:
+        The original paddle.gather, see the following docs.
+
     Output is obtained by gathering entries of ``axis``
     of ``x`` indexed by ``index`` and concatenate them together.
 
@@ -4172,54 +4253,28 @@ def gather(
             [[1, 2],
              [3, 4]])
     """
-    if axis is None:
-        axis = 0
-
-    if in_dynamic_or_pir_mode():
-        return _C_ops.gather(x, index, axis)
-    else:
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'bool',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-                'uint16',
-                'complex64',
-                'complex128',
-            ],
-            'gather',
+    len_args = len(args)
+    if len_args + len(kwargs) < 2:
+        raise TypeError(
+            f"Too few arguments in the function call: {len_args}, {len(kwargs)}. Expect one of: \n"
+            " - (Tensor input, int dim, Tensor index, *, Tensor out = None)\n"
+            " - (Tensor x, Tensor index, int axis, str name = None, Tensor out = None)"
         )
-        check_variable_and_dtype(index, 'index', ['int32', 'int64'], 'gather')
 
-        if isinstance(axis, Variable):
-            check_variable_and_dtype(axis, 'axis', ['int32', 'int64'], 'gather')
+    is_take_along_axis = False
+    if len_args >= 2:
+        # gather index cannot be int, yet take_along_axis dim can be
+        is_take_along_axis |= isinstance(args[1], int)
+    else:
+        is_take_along_axis |= 'dim' in kwargs
 
-        helper = LayerHelper('gather', **locals())
-        dtype = helper.input_dtype('x')
-        out = helper.create_variable_for_type_inference(dtype)
-        if not isinstance(axis, Variable):
-            helper.append_op(
-                type="gather",
-                inputs={"X": x, "Index": index},
-                attrs={'axis': axis, 'overwrite': False},
-                outputs={"Out": out},
-            )
-        else:
-            helper.append_op(
-                type="gather",
-                inputs={"X": x, "Index": index, "Axis": axis},
-                attrs={"overwrite": False},
-                outputs={"Out": out},
-            )
+    if is_take_along_axis:
+        return _take_along_axis_wrapper(*args, **kwargs)
+    else:
+        return _gather_wrapper(*args, **kwargs)
 
-        return out
+
+gather.__signature__ = inspect.signature(_gather_wrapper)
 
 
 @param_one_alias(['axis', 'dim'])
