@@ -99,6 +99,21 @@ _supported_dtype_conversions = {
 }
 
 
+class TensorSize(int):
+    as_shape: list[int]
+
+    def __new__(cls, shape):
+        instance = super().__new__(cls, int(np.prod(shape)))
+        instance.as_shape = shape
+        return instance
+
+    def __call__(self, dim=None):
+        shape = paddle.Size(self.as_shape)
+        if dim is None:
+            return shape
+        return shape[dim]
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
@@ -270,7 +285,7 @@ def monkey_patch_math_tensor():
 
     @property
     def _size_(var: Tensor) -> int:
-        return int(np.prod(var.shape))
+        return TensorSize(var.shape)
 
     @property
     def _T_(var: Tensor) -> Tensor:

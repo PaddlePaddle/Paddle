@@ -19,16 +19,15 @@ import paddle
 
 
 class TestPaddleSize(unittest.TestCase):
-    # TODO: enable when paddle.Tensor.size() is implemented
-    # def test_tensor_size(self):
-    #     x = paddle.empty(3, 4, 5)
-    #     size = x.size()
-    #     self.assertEqual(size, (3, 4, 5))
-    #     self.assertIsInstance(size, paddle.Size)
+    def test_tensor_size(self):
+        x = paddle.empty(3, 4, 5)
+        size = x.size()
+        self.assertEqual(size, (3, 4, 5))
+        self.assertIsInstance(size, paddle.Size)
 
-    #     int_size = x.size(dim=1)
-    #     self.assertEqual(int_size, 3)
-    #     self.assertIsInstance(int_size, int)
+        int_size = x.size(dim=1)
+        self.assertEqual(int_size, 4)
+        self.assertIsInstance(int_size, int)
 
     def test_creation_size(self):
         size = paddle.Size()
