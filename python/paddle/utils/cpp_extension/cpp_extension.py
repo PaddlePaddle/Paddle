@@ -1150,7 +1150,7 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
             arch_list = sorted(arch_list)
             if arch_list:
                 arch_list[-1] += '+PTX'
-        elif core.is_compiled_with_custom_device(dev_types[0]):
+        elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
             for dev_id in range(paddle.device.device_count()):
                 dev_type = paddle.device.get_all_custom_device_type()
                 capability = paddle.device.get_device_capability(
