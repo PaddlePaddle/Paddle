@@ -25,7 +25,7 @@ namespace paddle {
 namespace pybind {
 void ArgMaxMinMapper(PyObject* args,
                      PyObject* kwargs,
-                     Tensor* x,
+                     Tensor** x_ptr_ptr,
                      paddle::experimental::Scalar* axis,
                      bool* keepdims,
                      bool* flatten,

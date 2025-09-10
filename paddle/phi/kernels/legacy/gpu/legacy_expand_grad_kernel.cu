@@ -23,4 +23,4 @@ PD_REGISTER_KERNEL(legacy_expand_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

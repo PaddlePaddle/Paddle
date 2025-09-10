@@ -409,7 +409,7 @@ PD_REGISTER_KERNEL(fused_attention,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedAttentionKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    double,
                    float) {
   kernel->OutputAt(9).SetDataType(phi::DataType::UINT8);

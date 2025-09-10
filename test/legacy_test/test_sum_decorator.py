@@ -96,6 +96,23 @@ class TestSumOp_Compatibility(unittest.TestCase):
                 paddle_result10 = paddle.sum(x_paddle, self.axis, dtype_input)
                 np.testing.assert_allclose(paddle_result10, numpy_result)
 
+                paddle_result11 = paddle.empty(
+                    numpy_result.shape, dtype=dtype_input
+                )
+                paddle.sum(
+                    x_paddle, self.axis, dtype_input, False, out=paddle_result11
+                )
+                np.testing.assert_allclose(paddle_result11, numpy_result)
+
+                paddle_result12 = paddle.empty(
+                    numpy_result.shape, dtype=dtype_input
+                )
+                paddle_result13 = paddle.sum(
+                    x_paddle, self.axis, dtype_input, out=paddle_result12
+                )
+                np.testing.assert_allclose(paddle_result12, numpy_result)
+                np.testing.assert_allclose(paddle_result13, numpy_result)
+
     def test_static(self):
         self.test_dtypes = [
             paddle.int32,
@@ -175,6 +192,27 @@ class TestSumOp_Compatibility(unittest.TestCase):
                         x_paddle, self.axis, dtype_input
                     )
                     self.assertEqual(paddle_result10.dtype, dtype_input)
+
+                    paddle_result11 = paddle.empty(
+                        self.shape, dtype=dtype_input
+                    )
+                    paddle.sum(
+                        x_paddle,
+                        self.axis,
+                        dtype_input,
+                        False,
+                        out=paddle_result11,
+                    )
+                    self.assertEqual(paddle_result11.dtype, dtype_input)
+
+                    paddle_result12 = paddle.empty(
+                        self.shape, dtype=dtype_input
+                    )
+                    paddle_result13 = paddle.sum(
+                        x_paddle, self.axis, dtype_input, out=paddle_result12
+                    )
+                    self.assertEqual(paddle_result12.dtype, dtype_input)
+                    self.assertEqual(paddle_result13.dtype, dtype_input)
 
 
 if __name__ == "__main__":

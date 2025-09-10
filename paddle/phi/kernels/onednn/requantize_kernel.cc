@@ -131,4 +131,4 @@ PD_REGISTER_KERNEL(requantize,
                    phi::ReQuantOpKernel,
                    int8_t,
                    uint8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

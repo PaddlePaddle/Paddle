@@ -1,5 +1,0 @@
-# Use SHA to specify the docker image to prevent the use of old cache images
-FROM registry.baidubce.com/paddlepaddle/paddle:latest-dev-cuda11.8-cudnn8.6-trt8.5-gcc82
-
-COPY tools/dockerfile/build_scripts /build_scripts
-RUN bash /build_scripts/install_cudnn.sh cudnn860
