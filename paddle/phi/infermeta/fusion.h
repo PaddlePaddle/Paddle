@@ -1114,6 +1114,13 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
                               MetaTensor* slimmed_x,
                               MetaTensor* cls_inds);
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales);
+
 void FusedElemwiseActivationInferMeta(
     const MetaTensor& x,
     const MetaTensor& y,

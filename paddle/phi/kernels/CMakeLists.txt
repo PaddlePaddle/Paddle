@@ -53,6 +53,13 @@ if(NOT WITH_DGC)
   list(REMOVE_ITEM kernel_gpu "gpu/dgc_kernel.cu")
 endif()
 
+if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+   OR APPLE
+   OR WIN32
+   OR WITH_ROCM)
+  list(REMOVE_ITEM kernel_cu "fusion/gpu/fused_transpose_split_quant_kernel.cu")
+endif()
+
 if(WITH_CUTLASS)
   add_custom_target(
     gemm_epilogue_compile_script ALL

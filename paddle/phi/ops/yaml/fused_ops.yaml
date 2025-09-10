@@ -864,3 +864,13 @@
     data_type: embeddings
   optional: h0, c0
   intermediate: xx, batched_input, batched_hidden, batched_cell, reordered_h0, reordered_c0
+
+- op: fused_transpose_split_quant
+  args: (Tensor x, Tensor input_scales, IntArray tokens_per_expert, bool pow_2_scales=false)
+  output: Tensor[](out){tokens_per_expert.size()}, Tensor[](scales){tokens_per_expert.size()}
+  infer_meta:
+      func: FusedTransposeSplitQuantInferMeta
+  kernel:
+      func: fused_transpose_split_quant
+  optional: input_scales
+  support_dygraph_mode : true

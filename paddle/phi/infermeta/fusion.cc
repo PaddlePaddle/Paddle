@@ -2933,6 +2933,94 @@ void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
   out->set_layout(x1.layout());
 }
 
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::BFLOAT16 || x.dtype() == DataType::FLOAT8_E4M3FN,
+      true,
+      common::errors::InvalidArgument("The dtype of Input(x) must be BFLOAT16 "
+                                      "or FLOAT8_E4M3FN, but received %s",
+                                      x.dtype()));
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of "
+                        "Input(x) is [%d]",
+                        x_dims.size()));
+
+  const int64_t M = x_dims[0];
+  const int64_t N = x_dims[1];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  PADDLE_ENFORCE_GT(
+      num_experts,
+      0,
+      common::errors::InvalidArgument("tokens_per_expert cannot be empty"));
+
+  PADDLE_ENFORCE_EQ(
+      outs.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+          outs.size(),
+          num_experts));
+
+  PADDLE_ENFORCE_EQ(
+      scales.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+          scales.size(),
+          num_experts));
+
+  int64_t sum_tokens = 0;
+  for (size_t i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_list[i];
+
+    PADDLE_ENFORCE_EQ(
+        tokens % 128,
+        0,
+        common::errors::InvalidArgument(
+            "tokens_per_expert[%d] (%d) must be divisible by 128", i, tokens));
+
+    sum_tokens += tokens;
+
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({N, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens / 128, N}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sum_tokens,
+      M,
+      common::errors::InvalidArgument(
+          "Sum of tokens_per_expert (%d) must equal x.shape[0] (%d)",
+          sum_tokens,
+          M));
+  PADDLE_ENFORCE_LE(N,
+                    65535LL * 128,
+                    common::errors::InvalidArgument(
+                        "x.shape[1] (%d) must be <= 65535 * 128", N));
+}
+
 void FusedDconvDreluDbnInferMeta(const MetaTensor& grad_output,
                                  const MetaTensor& weight,
                                  const MetaTensor& grad_output_add,

@@ -75,6 +75,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_rms_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_layernorm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_comm_buffer)
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
@@ -168,6 +169,8 @@ list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fs_interface)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_static)
+  list(REMOVE_ITEM TEST_OPS
+       test_fused_transpose_spilt_quant_optest_fused_transpose_split_quant_op)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
@@ -495,6 +498,16 @@ set(TEST_OPS_WITH_GC
     test_gather_nd_op
     test_mean_op
     test_lod_reset_op)
+
+if(NOT WITH_GPU
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM
+   OR (${CUDA_ARCH_NAME} STREQUAL "Volta") # Affects the accuracy of op tests
+   OR ((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
+)# Restrict the use of older versions of CUB
+  list(REMOVE_ITEM TEST_OPS test_fused_transpose_spilt_quant_op)
+endif()
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
