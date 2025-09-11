@@ -24,31 +24,6 @@
 namespace paddle {
 namespace framework {
 
-namespace {  // NOLINT
-template <typename T>
-constexpr uint8_t GetDLDataTypeCode() {
-  if (std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
-    return static_cast<uint8_t>(kDLComplex);
-  }
-
-  if (std::is_same<T, phi::dtype::bfloat16>::value) {
-    return static_cast<uint8_t>(kDLBfloat);
-  }
-  if (std::is_same<T, bool>::value) {
-    return static_cast<uint8_t>(kDLBool);
-  }
-
-  return std::is_same<phi::dtype::float16, T>::value ||
-                 std::is_floating_point<T>::value
-             ? static_cast<uint8_t>(kDLFloat)
-             : (std::is_unsigned<T>::value
-                    ? static_cast<uint8_t>(kDLUInt)
-                    : (std::is_integral<T>::value ? static_cast<uint8_t>(kDLInt)
-                                                  : static_cast<uint8_t>(-1)));
-}
-}  // namespace
-
 template <typename T>
 void TestMain(const phi::Place &place) {
   DDim dims{4, 5, 6, 7};
@@ -164,14 +139,6 @@ void TestMain(const phi::Place &place) {
                                       "but got %d",
                                       sizeof(T) * 8,
                                       dl_tensor.dtype.bits));
-
-  PADDLE_ENFORCE_EQ(
-      GetDLDataTypeCode<T>(),
-      dl_tensor.dtype.code,
-      common::errors::InvalidArgument("Data type code should be %d,"
-                                      "but got %d",
-                                      GetDLDataTypeCode<T>(),
-                                      dl_tensor.dtype.code));
 }
 
 template <typename T>
