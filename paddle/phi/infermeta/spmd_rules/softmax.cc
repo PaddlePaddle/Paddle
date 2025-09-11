@@ -206,10 +206,10 @@ SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
   }
   const auto& out_grad_shape = common::vectorize(out_grad.dims());
   const auto& out_shape = common::vectorize(out.dims());
-  const auto& axes_size =
-      GetAxesSizes({{out_axes, out_shape}, {out_grad_axes, out_grad_shape}});
+  const auto& axes_size = GetAxesSizes(
+      {{out_axes, out_shape}, {out_grad_axes, out_grad_shape}}, true);
   const auto& mesh_shape = out_grad.dist_attr().process_mesh().shape();
-  auto axis_to_dim_map = ShardingMergeForTensors(
+  auto axis_to_dim_map = ShardingMergeForTensorsElementWise(
       {{out_axes, out_dims_mapping}, {out_grad_axes, out_grad_dims_mapping}},
       axes_size,
       mesh_shape);

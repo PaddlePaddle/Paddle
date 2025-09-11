@@ -496,17 +496,17 @@ void DispatchWithDtype(const Context &dev_ctx,
                            out);
   } else {
     if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      DispatchComputeImpl<T, phi::dtype::float8_e4m3fn>(dev_ctx,
-                                                        x,
-                                                        bias_p,
-                                                        act_method,
-                                                        rows,
-                                                        cols,
-                                                        quant_scale,
-                                                        quant_round_type,
-                                                        quant_max_bound,
-                                                        quant_min_bound,
-                                                        out);
+      DispatchComputeImpl<T, phi::float8_e4m3fn>(dev_ctx,
+                                                 x,
+                                                 bias_p,
+                                                 act_method,
+                                                 rows,
+                                                 cols,
+                                                 quant_scale,
+                                                 quant_round_type,
+                                                 quant_max_bound,
+                                                 quant_min_bound,
+                                                 out);
     } else {
       DispatchComputeImpl<T>(dev_ctx,
                              x,
