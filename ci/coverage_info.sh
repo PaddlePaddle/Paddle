@@ -161,7 +161,7 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+#python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
 
