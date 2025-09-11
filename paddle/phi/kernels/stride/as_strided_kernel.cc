@@ -19,47 +19,25 @@
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
-void CheckInBoundsForMemory(const std::vector<int64_t>& dims,
-                            const std::vector<int64_t>& strides,
-                            const DDim& output_dims,
-                            const DDim& output_strides,
-                            int64_t offset,
-                            const DenseTensor& input) {
+void ValidateZeroSizeTensorShape(const std::vector<int64_t>& dims,
+                                 const std::vector<int64_t>& strides,
+                                 const DenseTensor& input) {
+  if (input.numel() != 0) {
+    return;
+  }
   PADDLE_ENFORCE_EQ(dims.size(),
                     strides.size(),
                     common::errors::InvalidArgument(
                         "The size of dims and strides should be equal."));
-  size_t size = 1;
-  phi::DataType dtype = input.dtype();
   for (size_t i = 0; i < dims.size(); i++) {
     if (dims[i] == 0) {
       return;
     }
-    size += strides[i] * (dims[i] - 1);
-  }
-  size_t size_bytes = size * phi::SizeOf(dtype) + offset;
-
-  size_t memory_size = 0;
-  if (input.numel() != 0) {
-    size = 1;
-    for (int i = 0; i < input.dims().size(); i++) {
-      size += input.strides()[i] * (input.dims()[i] - 1);
-    }
-    memory_size = size * phi::SizeOf(dtype) + input.offset();
   }
 
-  PADDLE_ENFORCE_LE(
-      size_bytes,
-      memory_size,
-      common::errors::InvalidArgument(
-          "Output tensor requires %d bytes memory (dims: [%s], strides: [%s], "
-          "offset: %d, dtype: %s), but input only has %d bytes available.",
-          size_bytes,
-          output_dims,
-          output_strides,
-          offset,
-          dtype,
-          memory_size));
+  PADDLE_THROW(common::errors::InvalidArgument(
+      "When input is zero-size tensor, the shape attribute must also be "
+      "zero-size."));
 }
 
 template <typename Context>
@@ -78,13 +56,7 @@ void AsStridedKernel(const Context& dev_ctx,
   meta.dims = DDim(dims.data(), static_cast<int>(dims.size()));
   meta.strides = DDim(stride.data(), static_cast<int>(stride.size()));
   meta.offset = offset;
-  // Note(ooooo): Now it's to check 0-size tensor.
-  // Because i see in test_inplace.py to use as_strided as a noinplace op
-  // implementation for paddle.set_.
-  if (input.numel() == 0) {
-    CheckInBoundsForMemory(
-        dims, stride, meta.dims, meta.strides, offset, input);
-  }
+  ValidateZeroSizeTensorShape(dims, stride, input);
   PADDLE_ENFORCE_GE(
       offset,
       0,
