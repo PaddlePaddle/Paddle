@@ -16,36 +16,39 @@
 
 #include <dlpack/dlpack.h>
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {
 
-class DLPackTensor {
- public:
-  using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t
-  using ShapeType =
-      std::remove_reference<decltype(::DLTensor::shape[0])>::type;  // int64_t
-
-  // lanes is only used in CPU to enable vectorization
-  TEST_API explicit DLPackTensor(const phi::DenseTensor& tensor,
-                                 LaneType lanes = 1);
-
-  inline operator const ::DLTensor&() const { return t_; }
-
-  inline operator ::DLTensor&() { return t_; }
-
-  PADDLE_API ::DLManagedTensor* ToDLManagedTensor();
-
- private:
-  ::DLTensor t_;
-
-  // The shape in DLTensor is defined as int64_t*
-  // Add this member to make TVMTensor init without heap allocation
-  ShapeType shape_[phi::DDim::kMaxRank];
-};
+/*
+dlpack related code ref:
+https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+and paddle/phi/api/lib/tensor_utils.cc
+*/
+using Deleter = std::function<void(void*)>;
 
 DLManagedTensor* toDLPack(const phi::DenseTensor& src);
+DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src);
+phi::DenseTensor fromDLPack(DLManagedTensor* src, Deleter deleter);
+phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned* src,
+                                     Deleter deleter);
+
+// A traits to support both DLManagedTensor and DLManagedTensorVersioned
+template <typename T>
+struct DLPackTraits {};
+
+template <>
+struct DLPackTraits<DLManagedTensor> {
+  inline static const char* capsule = "dltensor";
+  inline static const char* used = "used_dltensor";
+};
+
+template <>
+struct DLPackTraits<DLManagedTensorVersioned> {
+  inline static const char* capsule = "dltensor_versioned";
+  inline static const char* used = "used_dltensor_versioned";
+};
 
 }  // namespace framework
 }  // namespace paddle

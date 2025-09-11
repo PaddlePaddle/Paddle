@@ -1480,7 +1480,10 @@ def monkey_patch_tensor():
                     event.record(current_stream)
                     current_stream.synchronize()
 
-        return paddle.to_dlpack(self)
+        if max_version is None or max_version[0] < 1:
+            return paddle.to_dlpack(self)
+
+        return self.get_tensor()._to_dlpack_versioned()
 
     if not hasattr(core, "eager"):
         return

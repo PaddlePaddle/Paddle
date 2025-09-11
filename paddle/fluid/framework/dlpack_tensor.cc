@@ -21,9 +21,22 @@
 namespace paddle {
 namespace framework {
 
+std::unordered_map<void *, std::function<void(phi::Allocation *)>>
+    ptr_to_deleter;
+std::mutex ptr_to_deleter_mutex;  // use mutex to keep thread safe
+
+void DeleterBridge(phi::Allocation *alloc) {
+  std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+  auto it = ptr_to_deleter.find(static_cast<void *>(alloc->ptr()));
+  if (it != ptr_to_deleter.end()) {
+    it->second(alloc);         // call the deleter
+    ptr_to_deleter.erase(it);  // remove the entry from the map safely
+  }
+}
+
 namespace internal {
 template <typename T>
-static ::DLDataType GetDLDataTypeCode() {
+::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
   if (std::is_same<T, phi::dtype::complex<float>>::value ||
       std::is_same<T, phi::dtype::complex<double>>::value) {
@@ -54,6 +67,177 @@ static ::DLDataType GetDLDataTypeCode() {
   dtype.bits = 8 * sizeof(T);
   dtype.lanes = 1;
   return dtype;
+}
+
+// get tensor data point by DLDataType
+void *GetDstPtrByDLDataType(DLDataType type,
+                            phi::DenseTensor *dst,
+                            const phi::Place &dst_place) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLBool)
+        return static_cast<void *>(dst->mutable_data<bool>(dst_place));
+      if (type.code == kDLInt)
+        return static_cast<void *>(dst->mutable_data<int8_t>(dst_place));
+      if (type.code == kDLUInt)
+        return static_cast<void *>(dst->mutable_data<uint8_t>(dst_place));
+      if (type.code == kDLFloat8_e4m3fn)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::float8_e4m3fn>(dst_place));
+      if (type.code == kDLFloat8_e5m2)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::float8_e5m2>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt)
+        return static_cast<void *>(dst->mutable_data<int16_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::float16>(dst_place));
+      if (type.code == kDLBfloat)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::bfloat16>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt)
+        return static_cast<void *>(dst->mutable_data<int32_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void *>(dst->mutable_data<float>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt)
+        return static_cast<void *>(dst->mutable_data<int64_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void *>(dst->mutable_data<double>(dst_place));
+      if (type.code == kDLComplex)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::complex<float>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex)
+        return static_cast<void *>(
+            dst->mutable_data<phi::dtype::complex<double>>(dst_place));
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
+// get Tensor data dtype from given DLDataType
+phi::DataType GetDstPtrByDLDataType(DLDataType type) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLBool) return phi::DataType::BOOL;
+      if (type.code == kDLInt) return phi::DataType::INT8;
+      if (type.code == kDLUInt) return phi::DataType::UINT8;
+      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
+      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
+      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
+template <typename T>
+phi::DenseTensor from_blob(void *data,
+                           T *src,
+                           const phi::DDim &shape,
+                           const phi::DDim &strides,
+                           phi::DataType dtype,
+                           const phi::Place &place,
+                           const Deleter &deleter) {
+  auto meta = phi::DenseTensorMeta(dtype, shape, strides);
+
+  phi::Allocation::DeleterFnPtr f = nullptr;
+  if (deleter) {
+    auto g = [deleter, src](phi::Allocation *p) {
+      if (src->manager_ctx) {
+        deleter(src);
+      }
+    };
+
+    {
+      std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
+      ptr_to_deleter[data] = g;
+    }
+
+    f = DeleterBridge;
+  }
+
+  // Calculate the number of elements of underlying storage
+  size_t size = 1;
+  for (auto i = 0; i < shape.size(); ++i) {
+    if (shape[i] == 0) {
+      size = 0;
+      break;
+    }
+    size += strides[i] * (shape[i] - 1);
+  }
+
+  auto alloc =
+      std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
+  return phi::DenseTensor(alloc, meta);
 }
 
 static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
@@ -142,26 +326,39 @@ struct DLDeviceVisitor {
 };
 }  // namespace internal
 
+template <typename T>
 struct PaddleDLMTensor {
   phi::DenseTensor handle;
-  DLManagedTensor tensor;
+  T tensor;
 };
 
-static void deleter(DLManagedTensor *self) {
+template <typename T>
+static void deleter(T *self) {
   if (self && self->manager_ctx) {
     delete[] self->dl_tensor
         .shape;  // delete shape allocated in toDLPack manually
     delete[] self->dl_tensor
         .strides;  // delete strides allocated in toDLPack manually
-    delete static_cast<PaddleDLMTensor *>(self->manager_ctx);
+    delete static_cast<PaddleDLMTensor<T> *>(self->manager_ctx);
   }
 }
 
-DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
-  PaddleDLMTensor *pdDLMTensor(new PaddleDLMTensor);
+template <class T>
+void fillVersion(T *tensor) {}
+
+template <>
+void fillVersion<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor) {
+  tensor->flags = 0;
+  tensor->version.major = DLPACK_MAJOR_VERSION;
+  tensor->version.minor = DLPACK_MINOR_VERSION;
+}
+
+template <typename T>
+T *toDLPackImpl(const phi::DenseTensor &src) {
+  PaddleDLMTensor<T> *pdDLMTensor(new PaddleDLMTensor<T>);
   pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
-  pdDLMTensor->tensor.deleter = &deleter;
+  pdDLMTensor->tensor.deleter = &deleter<T>;
 
   // init ndim
   using DimType = decltype(pdDLMTensor->tensor.dl_tensor.ndim);  // int32_t
@@ -194,72 +391,69 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
+  fillVersion(&(pdDLMTensor->tensor));
   return &(pdDLMTensor->tensor);
 }
 
-DLPackTensor::DLPackTensor(const phi::DenseTensor &tensor, LaneType lanes)
-    : t_{}, shape_{} {
-  // init data, data buffer
-  t_.data = const_cast<void *>(tensor.data());
-
-  // init device, DLDevice type with device_type and device_id
-  auto place = tensor.place();
-  t_.device = phi::VisitPlace(place, internal::DLDeviceVisitor());
-
-  // init dtype
-  t_.dtype = internal::GetDLDataTypeFromTypeIndex(
-      framework::TransToProtoVarType(tensor.dtype()));
-  t_.dtype.lanes = lanes;
-
-  // init ndim, tensor rank
-  auto &dims = tensor.dims();
-  using DimType = decltype(t_.ndim);  // int
-  t_.ndim = static_cast<DimType>(dims.size());
-
-  // init shape, tensor dims
-  t_.shape = shape_;
-  for (DimType i = 0; i < t_.ndim; ++i) {
-    t_.shape[i] = dims[i];
-  }
-
-  // init strides, nullptr means the tensor is compact
-  t_.strides = nullptr;
-
-  // init byte_offset
-  t_.byte_offset = 0;
+DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
+  return toDLPackImpl<DLManagedTensor>(src);
 }
 
-::DLManagedTensor *DLPackTensor::ToDLManagedTensor() {
-  // init shape
-  auto shape = new int64_t[t_.ndim];
-  using DimType = decltype(t_.ndim);  // int
-  for (DimType i = 0; i < t_.ndim; ++i) {
-    shape[i] = t_.shape[i];
+DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src) {
+  return toDLPackImpl<DLManagedTensorVersioned>(src);
+}
+
+template <typename T>
+phi::DenseTensor fromDLPackImpl(T *src, Deleter deleter) {
+  std::vector<int64_t> shape_vec;
+  std::copy(src->dl_tensor.shape,
+            src->dl_tensor.shape + src->dl_tensor.ndim,
+            std::back_inserter(shape_vec));
+
+  phi::Place place;
+  if (src->dl_tensor.device.device_type == kDLCPU) {
+    place = phi::CPUPlace();
+  } else if (src->dl_tensor.device.device_type == kDLCUDA) {
+    place = phi::GPUPlace(src->dl_tensor.device.device_id);
+  } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
   }
-  t_.shape = shape;
 
-  // init strides
-  auto strides = new int64_t[t_.ndim];
-  for (DimType i = 0; i < t_.ndim; ++i) {
-    strides[i] = 1;
+  ::DLDataType type = src->dl_tensor.dtype;
+  auto dtype = internal::GetDstPtrByDLDataType(type);
+  if (!src->dl_tensor.strides) {
+    return internal::from_blob(
+        src->dl_tensor.data,
+        src,
+        common::make_ddim(shape_vec),
+        phi::DenseTensorMeta::calc_strides(common::make_ddim(shape_vec)),
+        dtype,
+        place,
+        std::move(deleter));
+  } else {
+    std::vector<int64_t> strides_vec;
+    std::copy(src->dl_tensor.strides,
+              src->dl_tensor.strides + src->dl_tensor.ndim,
+              std::back_inserter(strides_vec));
+    return internal::from_blob(src->dl_tensor.data,
+                               src,
+                               common::make_ddim(shape_vec),
+                               common::make_ddim(strides_vec),
+                               dtype,
+                               place,
+                               deleter);
   }
-  for (DimType i = t_.ndim - 2; i >= 0; --i) {
-    strides[i] = t_.shape[i + 1] * strides[i + 1];
-  }
-  t_.strides = strides;
+}
 
-  auto tensor = new DLManagedTensor;
-  tensor->dl_tensor = t_;
+phi::DenseTensor fromDLPack(DLManagedTensor *src, Deleter deleter) {
+  return fromDLPackImpl<DLManagedTensor>(src, std::move(deleter));
+}
 
-  tensor->deleter = [](DLManagedTensor *arg) {
-    delete[] arg->dl_tensor.shape;
-    delete[] arg->dl_tensor.strides;
-    delete arg;
-  };
-
-  tensor->manager_ctx = nullptr;
-
-  return tensor;
+phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned *src,
+                                     Deleter deleter) {
+  return fromDLPackImpl<DLManagedTensorVersioned>(src, std::move(deleter));
 }
 
 }  // namespace framework

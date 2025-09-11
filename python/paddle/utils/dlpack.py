@@ -119,7 +119,6 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             torch.Size([2, 4])
             >>> # doctest: -SKIP
     """
-
     if in_dygraph_mode():
         if not isinstance(x, paddle.Tensor):
             raise TypeError(
@@ -199,6 +198,8 @@ def from_dlpack(
     """
 
     if hasattr(dlpack, "__dlpack__"):
+        kwargs = {}
+        kwargs["max_version"] = (1, 1)
         device = dlpack.__dlpack_device__()
         # device is CUDA, we need to pass the current
         # stream
@@ -216,9 +217,13 @@ def from_dlpack(
             stream_ptr = (
                 1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
             )
-            dlpack_ = dlpack.__dlpack__(stream=stream_ptr)
-        else:
-            dlpack_ = dlpack.__dlpack__()
+            kwargs["stream"] = stream_ptr
+        try:
+            dlpack_ = dlpack.__dlpack__(**kwargs)
+        except TypeError:
+            # Remove the `max_version` argument if it is not supported
+            kwargs.pop("max_version")
+            dlpack_ = dlpack.__dlpack__(**kwargs)
     else:
         # Old versions just call the converter
         dlpack_ = dlpack

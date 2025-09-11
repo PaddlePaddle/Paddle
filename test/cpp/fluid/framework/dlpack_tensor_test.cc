@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 
@@ -49,14 +50,14 @@ constexpr uint8_t GetDLDataTypeCode() {
 }  // namespace
 
 template <typename T>
-void TestMain(const phi::Place &place, uint16_t lanes) {
+void TestMain(const phi::Place &place) {
   DDim dims{4, 5, 6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);
   void *p = tensor.mutable_data<T>(place);
 
-  DLPackTensor dlpack_tensor(tensor, lanes);
-  ::DLTensor &dl_tensor = dlpack_tensor;
+  ::DLManagedTensor *dl_managed_tensor = paddle::framework::toDLPack(tensor);
+  ::DLTensor &dl_tensor = dl_managed_tensor->dl_tensor;
 
   PADDLE_ENFORCE_EQ(
       p,
@@ -130,11 +131,21 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
                                         dl_tensor.shape[i]));
   }
 
-  PADDLE_ENFORCE_EQ(
-      dl_tensor.strides == nullptr,
-      true,
-      common::errors::InvalidArgument("Strides should be nullptr, "
-                                      "but got non-nullptr value"));
+  std::vector<int64_t> expect_strides(dims.size());
+  expect_strides[dims.size() - 1] = 1;
+  for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i) {
+    expect_strides[i] = expect_strides[i + 1] * dims[i + 1];
+  }
+  for (auto i = 0; i < dims.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        expect_strides[i],
+        dl_tensor.strides[i],
+        common::errors::InvalidArgument("Stride at index %d should be %d, "
+                                        "but got %d",
+                                        i,
+                                        expect_strides[i],
+                                        dl_tensor.strides[i]));
+  }
   PADDLE_ENFORCE_EQ(static_cast<uint64_t>(0),
                     dl_tensor.byte_offset,
                     common::errors::InvalidArgument("Byte offset should be 0, "
@@ -142,10 +153,10 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
                                                     dl_tensor.byte_offset));
 
   PADDLE_ENFORCE_EQ(
-      lanes,
       dl_tensor.dtype.lanes,
+      1,
       common::errors::InvalidArgument(
-          "Lanes should be %d, but got %d", lanes, dl_tensor.dtype.lanes));
+          "Lanes should be %d, but got %d", 1, dl_tensor.dtype.lanes));
   PADDLE_ENFORCE_EQ(
       sizeof(T) * 8,
       dl_tensor.dtype.bits,
@@ -164,21 +175,17 @@ void TestMain(const phi::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
-void TestToDLManagedTensor(const phi::Place &place, uint16_t lanes) {
+void TestToDLManagedTensor(const phi::Place &place) {
   DDim dims{6, 7};
   phi::DenseTensor tensor;
   tensor.Resize(dims);
   tensor.mutable_data<T>(place);
 
-  DLPackTensor dlpack_tensor(tensor, lanes);
+  ::DLManagedTensor *dl_managed_tensor = paddle::framework::toDLPack(tensor);
 
-  ::DLManagedTensor *dl_managed_tensor = dlpack_tensor.ToDLManagedTensor();
-
-  PADDLE_ENFORCE_EQ(
-      dl_managed_tensor->manager_ctx == nullptr,
-      true,
-      common::errors::InvalidArgument("Manager context should be nullptr, "
-                                      "but got non-nullptr value"));
+  PADDLE_ENFORCE_NOT_NULL(
+      dl_managed_tensor->manager_ctx,
+      common::errors::InvalidArgument("Manager context should not be nullptr"));
 
   for (auto i = 0; i < dims.size(); ++i) {
     PADDLE_ENFORCE_EQ(
@@ -216,12 +223,9 @@ void TestMainLoop() {
 #else
   std::vector<phi::Place> places{phi::CPUPlace()};
 #endif
-  std::vector<uint16_t> lanes{1, 2};
   for (auto &p : places) {
-    for (auto &l : lanes) {
-      TestMain<T>(p, l);
-      TestToDLManagedTensor<T>(p, l);
-    }
+    TestMain<T>(p);
+    TestToDLManagedTensor<T>(p);
   }
 }
 TEST(dlpack, test_all) {

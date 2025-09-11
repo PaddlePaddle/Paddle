@@ -435,22 +435,45 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
-      .def(
-          "_to_dlpack",
-          [](phi::DenseTensor &self) {
-            DLManagedTensor *dlMTensor = framework::toDLPack(self);
-            auto capsule = pybind11::capsule(
-                static_cast<void *>(dlMTensor), "dltensor", [](PyObject *data) {
-                  if (!PyCapsule_IsValid(data, "dltensor")) {
-                    return;
-                  }
-                  DLManagedTensor *dlMTensor =
-                      reinterpret_cast<DLManagedTensor *>(
-                          PyCapsule_GetPointer(data, "dltensor"));
-                  dlMTensor->deleter(dlMTensor);
-                });
-            return capsule;
-          })
+      .def("_to_dlpack",
+           [](phi::DenseTensor &self) {
+             DLManagedTensor *dlMTensor = framework::toDLPack(self);
+             auto capsule = pybind11::capsule(
+                 static_cast<void *>(dlMTensor),
+                 DLPackTraits<DLManagedTensor>::capsule,
+                 [](PyObject *data) {
+                   if (!PyCapsule_IsValid(
+                           data, DLPackTraits<DLManagedTensor>::capsule)) {
+                     return;
+                   }
+                   DLManagedTensor *dlMTensor =
+                       reinterpret_cast<DLManagedTensor *>(PyCapsule_GetPointer(
+                           data, DLPackTraits<DLManagedTensor>::capsule));
+                   dlMTensor->deleter(dlMTensor);
+                 });
+             return capsule;
+           })
+      .def("_to_dlpack_versioned",
+           [](phi::DenseTensor &self) {
+             DLManagedTensorVersioned *dlMTensor =
+                 framework::toDLPackVersioned(self);
+             auto capsule = pybind11::capsule(
+                 static_cast<void *>(dlMTensor),
+                 DLPackTraits<DLManagedTensorVersioned>::capsule,
+                 [](PyObject *data) {
+                   if (!PyCapsule_IsValid(
+                           data,
+                           DLPackTraits<DLManagedTensorVersioned>::capsule)) {
+                     return;
+                   }
+                   DLManagedTensorVersioned *dlMTensor =
+                       reinterpret_cast<DLManagedTensorVersioned *>(
+                           PyCapsule_GetPointer(
+                               data, DLPackTraits<DLManagedTensor>::capsule));
+                   dlMTensor->deleter(dlMTensor);
+                 });
+             return capsule;
+           })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
