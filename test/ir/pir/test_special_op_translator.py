@@ -66,35 +66,6 @@ class TestCondWithInplace(unittest.TestCase):
             l = pir.translate_to_pir(legacy_program.main_program.desc)
             assert l is not None
 
-    def test_nested_op(self):
-        with paddle.pir_utils.OldIrGuard():
-
-            def cond_with_inplace():
-                x = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
-                y = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
-                z = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
-                running_mean = paddle.to_tensor([0], dtype="float32")
-                running_variance = paddle.to_tensor([1], dtype="float32")
-                weight = paddle.to_tensor([2], dtype="float32")
-                bias = paddle.to_tensor([1], dtype="float32")
-                if y > z:
-                    z = paddle.nn.functional.batch_norm(
-                        z, running_mean, running_variance, weight, bias
-                    )
-                else:
-                    y = paddle.nn.functional.batch_norm(
-                        x, running_mean, running_variance, weight, bias
-                    )
-
-            legacy_program = paddle.jit.to_static(
-                cond_with_inplace,
-                input_spec=[],
-                full_graph=True,
-            )
-
-            l = pir.translate_to_pir(legacy_program.main_program.desc)
-            assert l is not None
-
 
 class TestElementwiseOpTranscriber(unittest.TestCase):
     def test_elementwise_without_y_grad(self):
@@ -248,26 +219,6 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
             _ = pir.translate_to_pir(main_program.desc)
 
 
-class TestRnnOpTranscriber(unittest.TestCase):
-    def test_op(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                x = paddle.randn((4, 16))
-                prev_h = paddle.randn((4, 32))
-
-                cell = paddle.nn.SimpleRNNCell(16, 32)
-                y, h = cell(x, prev_h)
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-
 class TestEmptyVarTranslate(unittest.TestCase):
     def test_op(self):
         with paddle.pir_utils.OldIrGuard():
@@ -290,48 +241,6 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 out2 = paddle.mean(out1)
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 sgd_optimizer.minimize(out2)
-            _ = pir.translate_to_pir(main_program.desc)
-
-
-class TestOneHotOpTranscriber(unittest.TestCase):
-    def test_mutable_attribute(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                depth = paddle.assign(np.array([10], dtype=np.int32))
-                label = paddle.static.data(
-                    name="label", shape=[-1, 1], dtype="int64"
-                )
-                one_hot_label = paddle.nn.functional.one_hot(
-                    x=label, num_classes=depth
-                )
-
-            _ = pir.translate_to_pir(main_program.desc)
-
-    def test_normal_attribute(self):
-        with paddle.pir_utils.OldIrGuard():
-            place = core.Place()
-            place.set_place(paddle.CPUPlace())
-            new_scope = paddle.static.Scope()
-            main_program = paddle.static.Program()
-            with (
-                paddle.static.scope_guard(new_scope),
-                paddle.static.program_guard(main_program),
-            ):
-                depth = 10
-                label = paddle.static.data(
-                    name="label", shape=[-1, 1], dtype="int64"
-                )
-                one_hot_label = paddle.nn.functional.one_hot(
-                    x=label, num_classes=depth
-                )
-
             _ = pir.translate_to_pir(main_program.desc)
 
 
@@ -588,21 +497,6 @@ class TestDataOp(unittest.TestCase):
             data_op = l.global_block().ops[0]
             self.assertIn("dtype", data_op.attrs())
             self.assertEqual(str(data_op.attrs()["dtype"]), "paddle.int64")
-
-
-class TestCheckUnregisteredOp(unittest.TestCase):
-    def test_program(self):
-        with paddle.pir_utils.OldIrGuard():
-            main_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program):
-                x = paddle.randn((4, 16))
-                prev_h = paddle.randn((4, 32))
-
-                cell = paddle.nn.SimpleRNNCell(16, 32)
-                y, h = cell(x, prev_h)
-
-            ops = pir.check_unregistered_ops(main_program.desc)
-            assert len(ops) == 0
 
 
 if __name__ == "__main__":

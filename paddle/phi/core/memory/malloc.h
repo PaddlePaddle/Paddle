@@ -34,30 +34,30 @@ using allocation::AllocationPtr;
 using allocation::Allocator;
 using phi::Allocation;
 
-extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
-                                               size_t size);
+PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
+    const phi::Place& place, size_t size);
 
-TEST_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
+PADDLE_API extern AllocationPtr Alloc(const phi::Place& place, size_t size);
 
-extern uint64_t Release(const phi::Place& place);
+PADDLE_API extern uint64_t Release(const phi::Place& place);
 
-extern std::shared_ptr<Allocation> AllocShared(const phi::Place& place,
-                                               size_t size,
-                                               const phi::Stream& stream);
+PADDLE_API extern std::shared_ptr<Allocation> AllocShared(
+    const phi::Place& place, size_t size, const phi::Stream& stream);
 
-extern AllocationPtr Alloc(const phi::Place& place,
-                           size_t size,
-                           const phi::Stream& stream);
+PADDLE_API extern AllocationPtr Alloc(const phi::Place& place,
+                                      size_t size,
+                                      const phi::Stream& stream);
 
-extern bool InSameStream(const std::shared_ptr<Allocation>& allocation,
-                         const phi::Stream& stream);
+PADDLE_API extern bool InSameStream(
+    const std::shared_ptr<Allocation>& allocation, const phi::Stream& stream);
 
 extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
 
-bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
+PADDLE_API bool RecordStream(std::shared_ptr<Allocation> allocation,
+                             gpuStream_t stream);
 
 void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 

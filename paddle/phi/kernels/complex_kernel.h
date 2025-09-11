@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -47,12 +46,11 @@ void ImagStridedKernel(const Context& dev_ctx,
                        DenseTensor* out);
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
@@ -62,23 +60,21 @@ DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Conj(const Context& dev_ctx UNUSED, const DenseTensor& x) {
   return x;
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
@@ -88,23 +84,21 @@ DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Real(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
@@ -114,12 +108,11 @@ DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
 }
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 DenseTensor Imag(const Context& dev_ctx, const DenseTensor& x) {
   return x;
 }

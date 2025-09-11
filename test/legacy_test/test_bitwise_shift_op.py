@@ -18,6 +18,7 @@ import numpy as np
 from op_test import get_device_place
 
 import paddle
+from paddle.base import core
 
 _SIGNED_TO_UNSIGNED_TABLE = {
     "int8": "uint8",
@@ -564,6 +565,250 @@ class TestTensorShiftAPI_FLOAT(unittest.TestCase):
         y = paddle.to_tensor(np.random.randint(-255, 256, [200, 300]))
         with self.assertRaises(TypeError):
             y.__rrshift__(x)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestBitwiseRightShiftOp_Stride(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = core.CUDAPlace(0)
+
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_dygraph_api_arithmetic(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y_trans = paddle.to_tensor(self.y_trans)
+        if self.strided_input_type == "transpose":
+            y_non_conti = paddle.transpose(y_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            y_non_conti = paddle.as_strided(
+                y_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        out = paddle.bitwise_right_shift(
+            x,
+            y_non_conti,
+        )
+        out_ = x >> y_non_conti
+        out_ref = ref_right_shift_arithmetic(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_api_logical(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y_trans = paddle.to_tensor(self.y_trans)
+        if self.strided_input_type == "transpose":
+            y_non_conti = paddle.transpose(y_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            y_non_conti = paddle.as_strided(
+                y_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        out = paddle.bitwise_right_shift(x, y_non_conti, False)
+        out_ = x.__rshift__(y_non_conti, False)
+        out_ref = ref_right_shift_logical(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+
+class TestBitwiseRightShiftOp_Stride1(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseRightShiftOp_Stride2(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseRightShiftOp_Stride3(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 1]).astype('uint8')
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseRightShiftOp_Stride4(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [1, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 1]).astype('uint8')
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseRightShiftOp_Stride5(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.randint(0, 256, [23, 10, 1, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [23, 2, 13, 20]).astype('uint8')
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestBitwiseRightShiftOp_Stride_ZeroDim1(TestBitwiseRightShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, []).astype('uint8')
+        self.y = np.random.randint(0, 256, [13, 17]).astype('uint8')
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseRightShiftOp_Stride_ZeroSize1(TestBitwiseRightShiftOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('uint8')
+        self.y = np.random.rand(3, 0, 1).astype('uint8')
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestBitwiseLeftShiftOp_Stride(unittest.TestCase):
+    def setUp(self):
+        self.init_input()
+        self.place = core.CUDAPlace(0)
+
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.y = np.random.randint(0, 256, [200, 300]).astype('uint8')
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_dygraph_api_arithmetic(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y_trans = paddle.to_tensor(self.y_trans)
+        if self.strided_input_type == "transpose":
+            y_non_conti = paddle.transpose(y_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            y_non_conti = paddle.as_strided(
+                y_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        out = paddle.bitwise_left_shift(
+            x,
+            y_non_conti,
+        )
+        out_ = x << y_non_conti
+        out_ref = ref_left_shift_arithmetic(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+    def test_dygraph_api_logical(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x)
+        y_trans = paddle.to_tensor(self.y_trans)
+        if self.strided_input_type == "transpose":
+            y_non_conti = paddle.transpose(y_trans, self.perm)
+        elif self.strided_input_type == "as_stride":
+            y_non_conti = paddle.as_strided(
+                y_trans, self.shape_param, self.stride_param
+            )
+        else:
+            raise TypeError(f"Unsupported test type {self.strided_input_type}.")
+        out = paddle.bitwise_left_shift(x, y_non_conti, False)
+        out_ = x.__lshift__(y_non_conti, False)
+        out_ref = ref_left_shift_logical(self.x, self.y)
+        np.testing.assert_allclose(out_ref, out.numpy())
+        np.testing.assert_allclose(out_ref, out_.numpy())
+        paddle.enable_static()
+
+
+class TestBitwiseLeftShiftOp_Stride1(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseLeftShiftOp_Stride2(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseLeftShiftOp_Stride3(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [20, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 1]).astype('uint8')
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseLeftShiftOp_Stride4(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, [1, 2, 13, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [20, 2, 13, 1]).astype('uint8')
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseLeftShiftOp_Stride5(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.randint(0, 256, [23, 10, 1, 17]).astype('uint8')
+        self.y = np.random.randint(0, 256, [23, 2, 13, 20]).astype('uint8')
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+
+class TestBitwiseLeftShiftOp_Stride_ZeroDim1(TestBitwiseLeftShiftOp_Stride):
+    def init_input(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 256, []).astype('uint8')
+        self.y = np.random.randint(0, 256, [13, 17]).astype('uint8')
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestBitwiseLeftShiftOp_Stride_ZeroSize1(TestBitwiseLeftShiftOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('uint8')
+        self.y = np.random.rand(3, 0, 1).astype('uint8')
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == '__main__':

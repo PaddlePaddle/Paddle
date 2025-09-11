@@ -336,7 +336,7 @@ class TestNanmedianModeMin(unittest.TestCase):
         y = paddle.nanmedian(x, mode='min')
         y.backward()
         self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, np.array(0.0))
+        np.testing.assert_allclose(x.grad, np.array(1.0))
 
     def test_dygraph_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
@@ -554,10 +554,51 @@ class TestNanmedianModeMean(unittest.TestCase):
             for j in range(shape[1]):
                 if x_np[i, j] in targets:
                     np_grad[i, j] = 1 if is_odd else 0.5
+            np_grad[0, :] = 0.2
 
         x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
         y = paddle.nanmedian(x_tensor, axis=1)
         dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_check_grad_axis_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        shape = (4, 5)
+        x_np = np.random.uniform(-1, 1, shape).astype(np.float64)
+        x_np[0, :] = np.nan
+        x_np[1, :3] = np.nan
+        x_np[2, 3:] = np.nan
+        x_np_sorted = np.sort(x_np)
+        nan_counts = np.count_nonzero(np.isnan(x_np).astype(np.int32), axis=1)
+        np_grad = np.zeros(shape)
+        for i in range(shape[0]):
+            valid_cnts = shape[1] - nan_counts[i]
+            if valid_cnts == 0:
+                continue
+
+            mid = int(valid_cnts / 2)
+            targets = [x_np_sorted[i, mid]]
+            is_odd = valid_cnts % 2
+            if not is_odd and mid > 0:
+                targets.append(x_np_sorted[i, mid - 1])
+            for j in range(shape[1]):
+                if x_np[i, j] in targets:
+                    np_grad[i, j] = 1 if is_odd else 0.5
+            np_grad[0, :] = 0.2
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.nanmedian(x_tensor, axis=1)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_all_nan_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([np.nan, np.nan, np.nan, np.nan])
+        np_grad = np.array([1, 0, 0, 0])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.nanmedian(x_tensor, axis=0, mode="min")
+        dx = paddle.grad(y[0], x_tensor)[0].numpy()
         np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
 
     def test_check_grad_0d(self):
@@ -573,7 +614,7 @@ class TestNanmedianModeMean(unittest.TestCase):
         y = paddle.nanmedian(x)
         y.backward()
         self.assertEqual(x.grad.shape, [])
-        np.testing.assert_allclose(x.grad, np.array(0.0))
+        np.testing.assert_allclose(x.grad, np.array(1.0))
 
     def test_dygraph_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())

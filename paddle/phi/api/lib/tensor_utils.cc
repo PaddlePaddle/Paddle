@@ -33,7 +33,7 @@ namespace paddle {
 
 PD_REGISTER_API(from_blob)
 
-phi::Place GetPlaceFromPtr(void* data) {
+PADDLE_API phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10000
@@ -58,12 +58,12 @@ phi::Place GetPlaceFromPtr(void* data) {
   return phi::CPUPlace();
 }
 
-struct DeleterManeger {
-  static DeleterManeger* Instance() {
-    static DeleterManeger instance;
+struct DeleterManager {
+  static DeleterManager* Instance() {
+    static DeleterManager instance;
     return &instance;
   }
-  DeleterManeger() = default;
+  DeleterManager() = default;
 
   void DeletePtr(void* ptr) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -126,9 +126,9 @@ Tensor FromBlobImpl(void* data,
 
   AllocationDeleter alloc_deleter = nullptr;
   if (deleter) {
-    DeleterManeger::Instance()->RegisterPtr(data, deleter);
+    DeleterManager::Instance()->RegisterPtr(data, deleter);
     alloc_deleter = [](phi::Allocation* p) {
-      DeleterManeger::Instance()->DeletePtr(p->ptr());
+      DeleterManager::Instance()->DeletePtr(p->ptr());
     };
   }
 

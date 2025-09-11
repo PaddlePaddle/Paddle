@@ -170,6 +170,47 @@ void BatchNormKernel(const Context& dev_ctx,
         running_mean_arr * momentum + saved_mean_e * (1. - momentum);
     running_var_arr =
         running_var_arr * momentum + saved_variance_e * (1. - momentum);
+  } else {
+    const auto* est_mean = &mean;
+    const auto* est_var = &variance;
+    PADDLE_ENFORCE_EQ(
+        est_mean->dims().size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of mean's dimensions must equal to 1."
+            "But received: the size of mean's dimensions mean is [%d],"
+            "the dimensions of mean is [%s].",
+            est_mean->dims().size(),
+            est_mean->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_var->dims().size(),
+        1UL,
+        common::errors::InvalidArgument(
+            "The size of variance's dimensions must equal to 1."
+            "But received: the size of variance's dimensions is [%d],"
+            "the dimensions of variance is [%s].",
+            est_var->dims().size(),
+            est_var->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_mean->dims()[0],
+        C,
+        common::errors::InvalidArgument(
+            "The first dimension of mean must equal to the number of "
+            "Channels, which is [%d]. But received: the first dimension"
+            "of mean is [%d], the dimensions of mean is [%s].",
+            C,
+            est_mean->dims()[0],
+            est_mean->dims()));
+    PADDLE_ENFORCE_EQ(
+        est_var->dims()[0],
+        C,
+        common::errors::InvalidArgument(
+            "The first dimension of variance must equal to the number"
+            "of Channels, which is [%d]. But received: the first dimension of"
+            "variance is [%d], the dimensions of variance is [%s].",
+            C,
+            est_var->dims()[0],
+            est_var->dims()));
   }
 
   // use SavedMean and SavedVariance to do normalize

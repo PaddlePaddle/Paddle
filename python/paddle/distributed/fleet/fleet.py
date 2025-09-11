@@ -701,6 +701,7 @@ class Fleet:
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
         self.sep_degree = self.hybrid_configs["sep_degree"]
+        self.cp_degree = self.hybrid_configs["cp_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
         self.ep_degree = self.hybrid_configs["ep_degree"]
         self.moe_sharding_degree = self.hybrid_configs["moe_sharding_degree"]
@@ -710,6 +711,7 @@ class Fleet:
         assert self.sep_degree >= 0, (
             "sep_degree should be greater or equal to 0"
         )
+        assert self.cp_degree >= 0, "cp_degree should be greater or equal to 0"
         assert self.sharding_degree >= 0, (
             "sharding_degree should be greater or equal to 0"
         )
@@ -717,6 +719,7 @@ class Fleet:
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
         self.sep_degree = max(self.sep_degree, 1)
+        self.cp_degree = max(self.cp_degree, 1)
         self.ep_degree = max(self.ep_degree, 1)
         self.moe_sharding_degree = max(self.moe_sharding_degree, 1)
 
@@ -732,6 +735,7 @@ class Fleet:
             "sharding": ['sharding', self.sharding_degree],
             "mp": ['model', self.mp_degree],
             "sep": ["sep", self.sep_degree],
+            "cp": ["context", self.cp_degree],
             "ep": ["expert", self.ep_degree],
             "moe_sharding": ["moe_sharding", self.moe_sharding_degree],
         }

@@ -758,6 +758,94 @@ def check_linalg_vector_dygraph(
         np.testing.assert_equal(result.shape, expected_result.shape)
 
 
+class NormTestForNUCAndDtype(unittest.TestCase):
+    def test_nuc_and_dtype(self):
+        x = np.random.randn(10, 20).astype("float32")
+        res_numpy = np.linalg.norm(x, ord='nuc')
+        res_paddle = paddle.tensor(x).norm(p="nuc")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        res_numpy = np.linalg.norm(x.astype("float64"), ord="nuc")
+        res_paddle = paddle.tensor(x).norm(p="nuc", dtype="float64")
+        np.testing.assert_allclose(
+            res_numpy, res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res_paddle.dtype, paddle.float64)
+
+    def test_with_out(self):
+        # matrix
+        x = np.random.randn(10, 20).astype("float32")
+
+        res_numpy = np.linalg.norm(x, ord='nuc')
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p='nuc', out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        res_numpy = np.linalg.norm(x, ord=2, axis=(0, 1))
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p=2, axis=[0, 1], out=res_out)
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-5, atol=1e-6
+        )
+
+        # vector
+        x = np.random.randn(10).astype("float32")
+        res_numpy = np.linalg.norm(x, ord=2, axis=0)
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p='fro', axis=0, out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+        res_numpy = np.linalg.norm(x, ord=2, axis=0)
+        res_out = paddle.zeros(res_numpy.shape, dtype="float32")
+        res_paddle = paddle.tensor(x).norm(p=2, axis=0, out=res_out)
+        np.testing.assert_allclose(
+            res_numpy, res_out.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            res_out.numpy(), res_paddle.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+
+class TestVectorNormDtypeAndOut(unittest.TestCase):
+    def test_alias_dtype_and_out(self):
+        x = np.random.randn(10).astype("float16")
+        dtype = "float32"
+        except_numpy = np_linalg_vector_norm(x.astype(dtype), porder=2, axis=0)
+        out_res = paddle.zeros(except_numpy.shape, dtype="float32")
+        res = paddle.linalg.vector_norm(
+            paddle.tensor(x), p=2, axis=0, dtype=dtype, out=out_res
+        )
+        res_alias = paddle.linalg.vector_norm(
+            paddle.tensor(x), ord=2, dim=0, dtype=dtype, out=out_res
+        )
+        np.testing.assert_allclose(
+            except_numpy, res.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            except_numpy, out_res.numpy(), rtol=1e-6, atol=1e-6
+        )
+        np.testing.assert_allclose(
+            except_numpy, res_alias.numpy(), rtol=1e-6, atol=1e-6
+        )
+        self.assertEqual(res.dtype, res_alias.dtype)
+        self.assertEqual(res.dtype, out_res.dtype)
+        self.assertEqual(res.dtype, paddle.float32)
+
+
 class API_NormTest(unittest.TestCase):
     def test_basic(self):
         with static_guard():

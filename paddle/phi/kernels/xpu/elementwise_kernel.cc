@@ -90,12 +90,11 @@ void ElementwisePowKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void RemainderKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const DenseTensor& y,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void RemainderKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                 const DenseTensor& x,
+                                                 const DenseTensor& y,
+                                                 DenseTensor* out) {
+  using T = phi::complex64;
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     return;
@@ -162,8 +161,8 @@ PD_REGISTER_KERNEL(floor_divide,
                    ALL_LAYOUT,
                    phi::FloorDivideKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(maximum,
@@ -171,8 +170,8 @@ PD_REGISTER_KERNEL(maximum,
                    ALL_LAYOUT,
                    phi::MaximumKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(minimum,
@@ -180,8 +179,8 @@ PD_REGISTER_KERNEL(minimum,
                    ALL_LAYOUT,
                    phi::MinimumKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    int32_t,
                    int64_t) {}
 PD_REGISTER_KERNEL(remainder,
@@ -189,9 +188,9 @@ PD_REGISTER_KERNEL(remainder,
                    ALL_LAYOUT,
                    phi::RemainderKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    int32_t,
                    int64_t) {
@@ -201,5 +200,5 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    ALL_LAYOUT,
                    phi::ElementwisePowKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

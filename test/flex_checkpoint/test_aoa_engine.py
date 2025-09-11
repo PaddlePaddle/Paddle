@@ -15,13 +15,13 @@
 import unittest
 
 from paddle.distributed.flex_checkpoint.aoa.aoa_engine import (
-    AoAEngine,
+    AOAEngine,
     ShardedWeightDesc,
     ShardMappingEntry,
 )
 
 
-class TestAoAEngine(unittest.TestCase):
+class TestAOAEngine(unittest.TestCase):
     def test_aoa_spilt_merge(self):
         # ------------------------------------------------------
         # 1. Define source tensor shards (s0 and s1).
@@ -79,7 +79,7 @@ class TestAoAEngine(unittest.TestCase):
         }
 
         # ------------------------------------------------------
-        # 4. AoA statements define axis mapping for concatenation and splitting:
+        # 4. AOA statements define axis mapping for concatenation and splitting:
         #    - "s" is formed by concatenating s0 and s1 along axis 1 (columns).
         #    - d0 and d1 are obtained by splitting "s" along axis 0 (rows).
         aoa_statements = [
@@ -88,8 +88,8 @@ class TestAoAEngine(unittest.TestCase):
         ]
 
         # ------------------------------------------------------
-        # 5. Create the AoAEngine with this configuration
-        aoa_engine = AoAEngine(
+        # 5. Create the AOAEngine with this configuration
+        aoa_engine = AOAEngine(
             aoa_config={"aoa_statements": aoa_statements},
             source_state_shard_info=source_state_shard_info,
             destination_state_shard_info=destination_state_shard_info,
@@ -124,7 +124,7 @@ class TestAoAEngine(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry]
         queries.append(query)
@@ -156,7 +156,7 @@ class TestAoAEngine(unittest.TestCase):
         shard_mapping_entry = ShardMappingEntry(
             target_slice=query,
             source_slice=src_sharded_weight_desc,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry]
         queries.append(query)
@@ -234,12 +234,12 @@ class TestAoAEngine(unittest.TestCase):
         shard_mapping_entry0 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc0,
             source_slice=src_sharded_weight_desc0,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         shard_mapping_entry1 = ShardMappingEntry(
             target_slice=dst_sharded_weight_desc1,
             source_slice=src_sharded_weight_desc1,
-            postprocess_list=[],
+            postprocess_list=None,
         )
         answer = [shard_mapping_entry0, shard_mapping_entry1]
         queries.append(query)

@@ -60,6 +60,7 @@ from paddle import base
 from paddle.autograd.ir_backward import grad as ir_grad
 from paddle.base import Scope, core, unique_name
 from paddle.base.backward import append_backward
+from paddle.base.core import DataType, VarDesc
 from paddle.base.executor import Executor, scope_guard
 from paddle.base.framework import (
     OpProtoHolder,
@@ -164,19 +165,25 @@ def get_numeric_gradient(
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
     tensor_to_check_dtype = tensor_to_check._dtype()
-    if tensor_to_check_dtype == paddle.float32:
+    if tensor_to_check_dtype in [VarDesc.VarType.FP32, DataType.FLOAT32]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.float64:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP64, DataType.FLOAT64]:
         tensor_to_check_dtype = np.float64
-    elif tensor_to_check_dtype == paddle.float16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.FP16, DataType.FLOAT16]:
         tensor_to_check_dtype = np.float16
         # set delta as np.float16, will automatic convert to float32, float64
         delta = np.array(delta).astype(np.float16)
-    elif tensor_to_check_dtype == paddle.bfloat16:
+    elif tensor_to_check_dtype in [VarDesc.VarType.BF16, DataType.BFLOAT16]:
         tensor_to_check_dtype = np.float32
-    elif tensor_to_check_dtype == paddle.complex64:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX64,
+        DataType.COMPLEX64,
+    ]:
         tensor_to_check_dtype = np.complex64
-    elif tensor_to_check_dtype == paddle.complex128:
+    elif tensor_to_check_dtype in [
+        VarDesc.VarType.COMPLEX128,
+        DataType.COMPLEX128,
+    ]:
         tensor_to_check_dtype = np.complex128
     else:
         raise ValueError(
@@ -395,7 +402,7 @@ def get_places():
         os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
         in ['1', 'true', 'on']
         or not core.is_compiled_with_cuda()
-    ):
+    ) and not is_custom_device():
         places.append(base.CPUPlace())
     if core.is_compiled_with_cuda():
         places.append(base.CUDAPlace(0))
@@ -509,7 +516,10 @@ class OpTest(unittest.TestCase):
                 if is_onednn_op_test():
                     grad_op_kernels = all_op_kernels[grad_op]
                     for grad_op_kernel in grad_op_kernels:
-                        if 'MKLDNN' in grad_op_kernel:
+                        if (
+                            'MKLDNN' in grad_op_kernel
+                            or 'ONEDNN' in grad_op_kernel
+                        ):
                             return False
                 else:
                     return False
@@ -604,8 +614,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "bfloat16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'bfloat16'
             )
         )
 
@@ -625,8 +636,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'float16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "float16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'float16'
             )
         )
 
@@ -3335,6 +3347,22 @@ class OpTest(unittest.TestCase):
         check_auto_parallel=False,
         check_pir_onednn=False,
     ):
+        if os.getenv("FLAG_SKIP_FLOAT64", "0") in ["1", "ON", "TRUE"]:
+            for name, value in self.inputs.items():
+                if isinstance(value, list):
+                    for item in value:
+                        if (
+                            hasattr(item[1], 'dtype')
+                            and item[1].dtype == np.float64
+                        ):
+                            self.skipTest(
+                                "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                            )
+                elif hasattr(value, 'dtype') and value.dtype == np.float64:
+                    self.skipTest(
+                        "Skipping test due to float64 inputs and FLAG_SKIP_FLOAT64 is set"
+                    )
+
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
 

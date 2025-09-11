@@ -353,7 +353,7 @@ class TestKeyError(unittest.TestCase):
 @paddle.jit.to_static(full_graph=True)
 def NpApiErr():
     a = paddle.to_tensor([1, 2])
-    b = np.sum(a.numpy())
+    b = np.count_nonzero(a.numpy())
     print(b)
 
 

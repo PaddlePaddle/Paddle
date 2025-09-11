@@ -312,16 +312,16 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              double>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::complex<float>>;
+                             phi::complex64>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::complex<double>>;
+                             phi::complex128>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::float16>;
+                             phi::float16>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::bfloat16>;
+                             phi::bfloat16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              float>;
@@ -330,16 +330,16 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              double>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::complex<float>>;
+                             phi::complex64>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::complex<double>>;
+                             phi::complex128>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::float16>;
+                             phi::float16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
-                             phi::dtype::bfloat16>;
+                             phi::bfloat16>;
 
 template <class T>
 __global__ void im2colOCF(const T* im_data,
@@ -587,16 +587,16 @@ template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              double>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::complex<float>>;
+                             phi::complex64>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::complex<double>>;
+                             phi::complex128>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::float16>;
+                             phi::float16>;
 template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::bfloat16>;
+                             phi::bfloat16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
@@ -605,16 +605,16 @@ template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              double>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::complex<float>>;
+                             phi::complex64>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::complex<double>>;
+                             phi::complex128>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::float16>;
+                             phi::float16>;
 template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
-                             phi::dtype::bfloat16>;
+                             phi::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

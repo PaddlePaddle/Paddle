@@ -36,7 +36,7 @@ class LinkCapabilityProto;
 class LinkProto;
 class DeviceMeshProto;
 
-struct DeviceCapability {
+struct PADDLE_API DeviceCapability {
   double single_precision_flops = 0.0;
   double double_precision_flops = 0.0;
   double memory_size_in_bytes = 0.0;
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceCapability& obj) {
   return os;
 }
 
-class Device {
+class PADDLE_API Device {
  public:
   Device() = default;
   Device(int64_t global_id,
@@ -95,13 +95,13 @@ inline std::ostream& operator<<(std::ostream& os, const Device& obj) {
   return os;
 }
 
-bool operator==(const Device& lhs, const Device& rhs);
+PADDLE_API bool operator==(const Device& lhs, const Device& rhs);
 
 inline bool operator!=(const Device& lhs, const Device& rhs) {
   return !operator==(lhs, rhs);
 }
 
-struct LinkCapability {
+struct PADDLE_API LinkCapability {
   int64_t bandwidth = 0.0;  // Bytes/s
   int64_t latency = 0.0;
 
@@ -117,7 +117,7 @@ inline std::ostream& operator<<(std::ostream& os, const LinkCapability& obj) {
   return os;
 }
 
-class Link {
+class PADDLE_API Link {
  public:
   Link() = default;
 
@@ -151,13 +151,13 @@ inline std::ostream& operator<<(std::ostream& os, const Link& obj) {
   return os;
 }
 
-bool operator==(const Link& lhs, const Link& rhs);
+PADDLE_API bool operator==(const Link& lhs, const Link& rhs);
 
 inline bool operator!=(const Link& lhs, const Link& rhs) {
   return !operator==(lhs, rhs);
 }
 
-class Machine {
+class PADDLE_API Machine {
  public:
   Machine() = default;
 
@@ -199,7 +199,7 @@ class Machine {
   std::unordered_map<int64_t, std::unordered_map<int64_t, const Link*>> links_;
 };
 
-class DeviceMesh {
+class PADDLE_API DeviceMesh {
  public:
   DeviceMesh() = default;
 
@@ -296,7 +296,7 @@ inline std::ostream& operator<<(std::ostream& os, const DeviceMesh& obj) {
   return os;
 }
 
-bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
+PADDLE_API bool operator==(const DeviceMesh& lhs, const DeviceMesh& rhs);
 
 inline bool operator!=(const DeviceMesh& lhs, const DeviceMesh& rhs) {
   return !operator==(lhs, rhs);

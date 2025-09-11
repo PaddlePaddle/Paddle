@@ -1076,6 +1076,10 @@ struct CastOpTranscriber : public OpTranscriber {
       attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
           ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
     }
+    if (op_desc.HasAttr("onednn_data_type")) {  // NOLINT
+      attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+          ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+    }
 #endif
     return attribute_map;
   }
@@ -1661,12 +1665,16 @@ struct SplitOpTranscriber : public OpTranscriber {
       return attribute_map;
     }
 #ifdef PADDLE_WITH_DNNL
-    else if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
-      pir::AttributeMap attribute_map = {
-          {"mkldnn_data_type",
-           pir::StrAttribute::get(
-               ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"))},
-      };
+    else {  // NOLINT
+      pir::AttributeMap attribute_map = {};
+      if (op_desc.HasAttr("mkldnn_data_type")) {
+        attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
+      }
+      if (op_desc.HasAttr("onednn_data_type")) {
+        attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+      }
       return attribute_map;
     }
 #endif

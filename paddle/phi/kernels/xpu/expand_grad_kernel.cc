@@ -57,5 +57,5 @@ PD_REGISTER_KERNEL(expand_grad,
                    ALL_LAYOUT,
                    phi::ExpandGradKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

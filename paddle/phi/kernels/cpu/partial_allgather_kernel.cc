@@ -36,4 +36,4 @@ PD_REGISTER_KERNEL(partial_allgather,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

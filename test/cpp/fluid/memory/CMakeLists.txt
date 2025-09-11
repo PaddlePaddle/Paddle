@@ -40,10 +40,17 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS phi common)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS phi common)
+  if(WIN32)
+    cc_test(
+      best_fit_allocator_test
+      SRCS best_fit_allocator_test.cc
+      DEPS type_info common)
+  else()
+    cc_test(
+      best_fit_allocator_test
+      SRCS best_fit_allocator_test.cc
+      DEPS phi common)
+  endif()
 endif()
 
 cc_test(
@@ -51,10 +58,17 @@ cc_test(
   SRCS test_aligned_allocator.cc
   DEPS phi common)
 
-cc_test(
-  retry_allocator_test
-  SRCS retry_allocator_test.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    retry_allocator_test
+    SRCS retry_allocator_test.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    retry_allocator_test
+    SRCS retry_allocator_test.cc
+    DEPS phi common)
+endif()
 if(TEST retry_allocator_test)
   set_tests_properties(retry_allocator_test PROPERTIES LABELS
                                                        "RUN_TYPE=EXCLUSIVE")
@@ -132,10 +146,17 @@ if(WITH_GPU AND WITH_TESTING)
                                     FLAGS_use_stream_safe_cuda_allocator=true;")
 endif()
 
-cc_test(
-  auto_growth_best_fit_allocator_facade_test
-  SRCS auto_growth_best_fit_allocator_facade_test.cc
-  DEPS phi common)
+if(WIN32)
+  cc_test(
+    auto_growth_best_fit_allocator_facade_test
+    SRCS auto_growth_best_fit_allocator_facade_test.cc
+    DEPS type_info common)
+else()
+  cc_test(
+    auto_growth_best_fit_allocator_facade_test
+    SRCS auto_growth_best_fit_allocator_facade_test.cc
+    DEPS phi common)
+endif()
 cc_test(
   auto_growth_best_fit_allocator_test
   SRCS auto_growth_best_fit_allocator_test.cc

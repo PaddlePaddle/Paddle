@@ -20,7 +20,7 @@ from auto_scan_test import IgnoreReasons, PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class DepthwiseConvMKLDNNPass(PassAutoScanTest):
+class DepthwiseConvONEDNNPass(PassAutoScanTest):
     r'''
     conv_input   conv_weight_var(persistable)
       \       /

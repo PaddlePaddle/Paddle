@@ -59,10 +59,13 @@ class _LbfgsStateDict(TypedDict):
 
 def check_tf32_override():
     """Check and warn about TF32 acceleration status"""
-    if os.getenv("NVIDIA_TF32_OVERRIDE") != "0":  # None or "1"
+    if (
+        paddle.device.is_compiled_with_cuda()
+        and os.getenv("NVIDIA_TF32_OVERRIDE") != "0"
+    ):  # None or "1"
         warnings.warn(
             "Warning! TF32 Tensor Cores are enabled by default on some NVIDIA GPUs for faster computation, "
-            "but may compromise numerical precision in specific cases, particularly with the L-BFGS optimizer. "
+            "but may compromise numerical precision in specific cases, particularly with the L-BFGS optimizer."
             "To disable it, set: NVIDIA_TF32_OVERRIDE=0"
         )
 

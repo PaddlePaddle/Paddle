@@ -13,29 +13,25 @@
 # limitations under the License.
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
+import numpy as np
+
+from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-
-@dataclass(frozen=True)
-class ShardedWeightDesc:
-    key: str
-    local_shape: tuple[int, ...]
-    global_shape: tuple[int, ...]
-    global_offset: tuple[int, ...]
-
-
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
-SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...]]
+# SliceRef := (key, src_slice, dst_slice, postprocess_list)
+SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], Optional[list[str]]]
 
 
 class TensorDesc:
@@ -45,8 +41,10 @@ class TensorDesc:
 
     def __repr__(self):
         s = []
-        for key, sl_src, sl_dst in self.slices:
-            s.append(f"{key}{sl_src} -> self{sl_dst}")
+        for key, sl_src, sl_dst, pp_list in self.slices:
+            s.append(
+                f"{key}{sl_src} -> self{sl_dst}, postprocess_list={pp_list}"
+            )
         return f"Tensor(shape={self.shape}, slices={s})"
 
 
@@ -60,7 +58,7 @@ class ShardMappingEntry:
 ShardMapping = list[ShardMappingEntry]
 
 
-class AoAShardInfoContext:
+class AOAShardInfoContext:
     def __init__(
         self,
         source_state_shard_info: _ShardInfo,
@@ -68,6 +66,13 @@ class AoAShardInfoContext:
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
+        self.optim_state_name = [
+            ".w_0",
+            ".moment1_0",
+            ".moment2_0",
+            ".beta1_pow_acc_0",
+            ".beta2_pow_acc_0",
+        ]
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
         return self.destination_state_shard_info.keys()
@@ -97,17 +102,35 @@ class AoAShardInfoContext:
             raise KeyError(
                 f"src_state_key '{src_state_key}' not in  source_state_shard_info"
             )
-        return len(self.source_state_shard_info[src_state_key])
+        new_state_key = src_state_key
+        for state_name in self.optim_state_name:
+            if state_name in src_state_key:
+                new_state_key = src_state_key.replace(state_name, "")
+                break
+
+        return len(self.source_state_shard_info[new_state_key])
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
         if dst_state_key not in self.destination_state_shard_info:
             raise KeyError(
                 f"dst_state_key '{dst_state_key}' not in destination_state_shard_info"
             )
-        return len(self.destination_state_shard_info[dst_state_key])
+
+        new_state_key = dst_state_key
+        for state_name in self.optim_state_name:
+            if state_name in dst_state_key:
+                new_state_key = dst_state_key.replace(state_name, "")
+                break
+
+        shard_infos = self.destination_state_shard_info[new_state_key]
+        global_offset_set = set()
+        for shard_info in shard_infos:
+            global_offset_set.add(shard_info.global_offset)
+
+        return len(global_offset_set)
 
 
-class AoAEngine:
+class AOAEngine:
     def __init__(
         self,
         aoa_config: dict[str, list[str]],
@@ -117,7 +140,7 @@ class AoAEngine:
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
-        self.context = AoAShardInfoContext(
+        self.context = AOAShardInfoContext(
             source_state_shard_info, destination_state_shard_info
         )
         self.lexer = Lexer(self.context)
@@ -128,15 +151,13 @@ class AoAEngine:
         self.input_vars = self.build_input_vars()
         self.output_vars = {}
         self.need_remove_input_vars = set()
-        self.need_remove_output_vars = set()
-        self.need_transpose_output_vars = set()
-        self.need_transpose_input_vars = {}
+        self.need_add_output_vars = set()
 
         self.shape_propagation()
 
     def make_input_tensor(self, key: str, shape: tuple[int]) -> TensorDesc:
         base_slice = tuple([slice(0, s) for s in shape])
-        return TensorDesc([(key, base_slice, base_slice)], shape)
+        return TensorDesc([(key, base_slice, base_slice, None)], shape)
 
     def build_input_vars(self):
         input_vars = {}
@@ -154,7 +175,10 @@ class AoAEngine:
             sub_dst_slice = [slice(None)] * len(tensor.shape)
             sub_dst_slice[axis] = slice(0, sz)
             sub_slices = []
-            for aidx, src_sl, dst_sl in tensor.slices:
+            for aidx, src_sl, dst_sl, pp_list in tensor.slices:
+                if pp_list is not None:
+                    src_sl = postprocess_transpose(list(src_sl), pp_list)
+
                 dst_start = (
                     dst_sl[axis].start if dst_sl[axis].start is not None else 0
                 )
@@ -182,9 +206,22 @@ class AoAEngine:
                     sub_dst_sl[axis] = slice(
                         inter_begin - start, inter_begin - start + length
                     )
-                    sub_slices.append(
-                        (aidx, tuple(sub_src_sl), tuple(sub_dst_sl))
-                    )
+                    if pp_list is not None:
+                        sub_src_sl = postprocess_transpose(
+                            list(sub_src_sl), pp_list, reverse=True
+                        )
+                        sub_slices.append(
+                            (
+                                aidx,
+                                tuple(sub_src_sl),
+                                tuple(sub_dst_sl),
+                                pp_list.copy(),
+                            )
+                        )
+                    else:
+                        sub_slices.append(
+                            (aidx, tuple(sub_src_sl), tuple(sub_dst_sl), None)
+                        )
             new_shape = list(tensor.shape)
             new_shape[axis] = sz
             results.append(TensorDesc(sub_slices, tuple(new_shape)))
@@ -197,7 +234,7 @@ class AoAEngine:
         shape[axis] = sum(t.shape[axis] for t in tensors)
         curr = 0
         for t in tensors:
-            for aidx, src_sl, dst_sl in t.slices:
+            for aidx, src_sl, dst_sl, pp_list in t.slices:
                 new_dst_sl = list(dst_sl)
                 dst_start = (
                     dst_sl[axis].start if dst_sl[axis].start is not None else 0
@@ -211,15 +248,40 @@ class AoAEngine:
                 new_dst_sl[axis] = slice(
                     dst_start + curr, dst_start + curr + length
                 )
-                slices.append((aidx, src_sl, tuple(new_dst_sl)))
+                if pp_list is not None:
+                    slices.append(
+                        (aidx, src_sl, tuple(new_dst_sl), pp_list.copy())
+                    )
+                else:
+                    slices.append((aidx, src_sl, tuple(new_dst_sl), None))
             curr += t.shape[axis]
         return TensorDesc(slices, tuple(shape))
 
-    def transpose(self, tensor: TensorDesc) -> TensorDesc:
-        raise NotImplementedError
+    def transpose(self, tensor: TensorDesc, permutation: str) -> TensorDesc:
+        slices = []
+        tensor_shape = transpose_list(
+            tensor.shape, ast.literal_eval(permutation)
+        )
+        for aidx, src_sl, dst_sl, pp_list in tensor.slices:
+            trans_dst_sl = transpose_list(dst_sl, ast.literal_eval(permutation))
+            if pp_list is not None:
+                new_pp_list = pp_list.copy()
+                new_pp_list.append(permutation)
+                slices.append((aidx, src_sl, trans_dst_sl, new_pp_list))
+            else:
+                slices.append((aidx, src_sl, trans_dst_sl, [permutation]))
+        return TensorDesc(slices, tensor_shape)
 
-    def cast(self, tensor: TensorDesc) -> TensorDesc:
-        raise NotImplementedError
+    def cast(self, tensor: TensorDesc, dtype: str) -> TensorDesc:
+        slices = []
+        for aidx, src_sl, dst_sl, pp_list in tensor.slices:
+            if pp_list is not None:
+                new_pp_list = pp_list.copy()
+                new_pp_list.append(dtype)
+                slices.append((aidx, src_sl, dst_sl, new_pp_list))
+            else:
+                slices.append((aidx, src_sl, dst_sl, [dtype]))
+        return TensorDesc(slices, tensor.shape)
 
     def shape_propagation(self):
         intermediate_vars = {}
@@ -236,7 +298,6 @@ class AoAEngine:
             left_vars = stmt.left_vars
             right_vars = stmt.right_vars
             attrs = stmt.attrs
-
             if len(left_vars) > 1 or len(right_vars) > 1:
                 if not (len(attrs) == 1 and attrs[0].key == "axis"):
                     raise ValueError(
@@ -279,27 +340,49 @@ class AoAEngine:
                 if rvar.name == "_":
                     self.need_remove_input_vars.add(lvar.name)
                 elif lvar.name == "_":
-                    self.need_remove_output_vars.add(rvar.name)
+                    self.need_add_output_vars.add(rvar.name)
                 else:
-                    for attr in attrs:
-                        if attr.key == "transpose":
-                            raise NotImplementedError
-                        elif attr.key == "dtype":
-                            raise NotImplementedError
-                        else:
-                            raise ValueError(f"Unsupported attribute: {attr}")
-                    intermediate_vars[lvar.name] = _get_var_ref(rvar)
-                    if lvar.name in self.destination_vars:
-                        self.output_vars[lvar.name] = intermediate_vars[
-                            lvar.name
-                        ]
+                    if len(attrs) > 0:
+                        for attr in attrs:
+                            in_ref = _get_var_ref(lvar)
+                            if attr.key == "permute":
+                                if attr.value == "[]":
+                                    ndim = len(in_ref.shape)
+                                    perm = str(list(range(ndim - 1, -1, -1)))
+                                else:
+                                    perm = attr.value
+                                result = self.transpose(in_ref, perm)
+                            elif attr.key == "dtype":
+                                result = self.cast(in_ref, attr.value)
+                            elif attr.key == "axis":
+                                pass
+                            else:
+                                raise ValueError(
+                                    f"Unsupported attribute: {attr}"
+                                )
+
+                            intermediate_vars[rvar.name] = result
+                            if (
+                                rvar.name
+                                in self.context.get_all_dst_state_keys()
+                            ):
+                                self.output_vars[rvar.name] = result
+                    else:
+                        in_ref = _get_var_ref(lvar)
+                        intermediate_vars[rvar.name] = in_ref
+                        if rvar.name in self.context.get_all_dst_state_keys():
+                            self.output_vars[rvar.name] = in_ref
+
             else:
                 raise SyntaxError(f'Unexpected statement: {stmt}')
 
         for name in self.destination_state_shard_info.keys():
             if name not in self.output_vars:
-                assert name in self.input_vars
-                self.output_vars[name] = self.input_vars[name]
+                if name in self.need_add_output_vars:
+                    self.output_vars[name] = None
+                else:
+                    assert name in self.input_vars
+                    self.output_vars[name] = self.input_vars[name]
 
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
@@ -310,37 +393,33 @@ class AoAEngine:
         assert len(local_slice) == len(tensor.shape)
         ndim = len(tensor.shape)
 
-        def slice_intersect(a: slice, b: slice, dim_len: int):
-            a_start, a_stop, a_step = a.indices(dim_len)
-            b_start, b_stop, b_step = b.indices(dim_len)
-            if a_step != 1 or b_step != 1:
-                raise NotImplementedError("Only support step size of 1")
-            start = max(a_start, b_start)
-            stop = min(a_stop, b_stop)
+        def slice_intersect(a: slice, b: slice):
+            start = max(a.start, b.start)
+            stop = min(a.stop, b.stop)
             if start >= stop:
                 return None
             return slice(start, stop, 1)
 
-        for src_key, sl_src, sl_dst in tensor.slices:
+        for src_key, sl_src, sl_dst, pp_list in tensor.slices:
             intersection = []
             for i in range(ndim):
-                inter = slice_intersect(
-                    local_slice[i], sl_dst[i], tensor.shape[i]
-                )
+                inter = slice_intersect(local_slice[i], sl_dst[i])
                 if inter is None:
                     break
                 intersection.append(inter)
             else:
                 # Compute corresponding src_slice for the intersection
+                if pp_list is not None:
+                    sl_src = postprocess_transpose(list(sl_src), pp_list)
                 src_slice = []
                 for i in range(ndim):
                     dst = sl_dst[i]
                     src = sl_src[i]
-                    dim_len = tensor.shape[i]
-                    dst_start, _, _ = dst.indices(dim_len)
-                    src_start, _, _ = src.indices(dim_len)
-                    inter_start, inter_stop, _ = intersection[i].indices(
-                        dim_len
+                    dst_start = dst.start
+                    src_start = src.start
+                    inter_start, inter_stop = (
+                        intersection[i].start,
+                        intersection[i].stop,
                     )
                     offset = inter_start - dst_start
                     src_inter_start = src_start + offset
@@ -348,7 +427,22 @@ class AoAEngine:
                         inter_stop - inter_start
                     )
                     src_slice.append(slice(src_inter_start, src_inter_stop, 1))
-                results.append((src_key, tuple(src_slice), tuple(intersection)))
+                if pp_list is not None:
+                    src_slice = postprocess_transpose(
+                        list(src_slice), pp_list, reverse=True
+                    )
+                    results.append(
+                        (
+                            src_key,
+                            tuple(src_slice),
+                            tuple(intersection),
+                            pp_list.copy(),
+                        ),
+                    )
+                else:
+                    results.append(
+                        (src_key, tuple(src_slice), tuple(intersection), None)
+                    )
         return results
 
     def find_shard_sources(
@@ -369,7 +463,7 @@ class AoAEngine:
 
         shard_mappings = []
 
-        for src_key, src_slices, local_slices in results:
+        for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
             src_global_shape = src_var.shape
 
@@ -382,22 +476,62 @@ class AoAEngine:
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
             source_sharded_weight = ShardedWeightDesc(
-                src_key, src_local_shape, src_global_shape, src_global_offset
+                src_key,
+                src_local_shape,
+                tuple(src_global_shape),
+                src_global_offset,
             )
             target_sharded_weight = ShardedWeightDesc(
                 target_key,
                 tgt_local_shape,
-                target_global_shape,
+                tuple(target_global_shape),
                 tgt_global_offset,
             )
 
-            postprocess_list = []
+            if source_sharded_weight.key in self.need_remove_input_vars:
+                mapping_entry = ShardMappingEntry(
+                    target_sharded_weight,
+                    source_sharded_weight,
+                    [],
+                )
+                continue
 
             shard_mappings.append(
                 ShardMappingEntry(
                     target_sharded_weight,
                     source_sharded_weight,
-                    postprocess_list,
+                    pp_list,
                 )
             )
         return shard_mappings
+
+
+def postprocess_transpose(
+    li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
+    postprocess_list: list[str],
+    reverse: bool = False,
+) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
+    result = li
+    if reverse:
+        for pp in list(reversed(postprocess_list)):
+            if pp.startswith("["):
+                reversed_transpose = np.argsort(ast.literal_eval(pp)).tolist()
+                result = transpose_list(result, reversed_transpose)
+    else:
+        for pp in postprocess_list:
+            if pp.startswith("["):
+                result = transpose_list(result, ast.literal_eval(pp))
+    return result
+
+
+def transpose_list(
+    li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
+    permutation: list[int],
+) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
+    trans_list = []
+    for idx in permutation:
+        trans_list.append(li[idx])
+    if isinstance(li, tuple):
+        return tuple(trans_list)
+    else:
+        return trans_list

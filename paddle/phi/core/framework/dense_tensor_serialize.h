@@ -34,20 +34,22 @@ namespace phi {
  * You can pass ofstream or ostringstream to serialize to file
  * or to a in memory string. GPU tensor will be copied to CPU.
  */
-void SerializeToStream(std::ostream& os,
-                       const phi::DenseTensor& tensor,
-                       const phi::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is,
-                           phi::DenseTensor* tensor,
-                           const phi::DeviceContext& dev_ctx);
-void DeserializeFromStream(std::istream& is,
-                           phi::DenseTensor* tensor,
-                           const phi::DeviceContext& dev_ctx,
-                           const size_t& seek,
-                           const std::vector<int64_t>& shape);
+PADDLE_API void SerializeToStream(std::ostream& os,
+                                  const phi::DenseTensor& tensor,
+                                  const phi::DeviceContext& dev_ctx);
+PADDLE_API void DeserializeFromStream(std::istream& is,
+                                      phi::DenseTensor* tensor,
+                                      const phi::DeviceContext& dev_ctx);
+PADDLE_API void DeserializeFromStream(std::istream& is,
+                                      phi::DenseTensor* tensor,
+                                      const phi::DeviceContext& dev_ctx,
+                                      const size_t& seek,
+                                      const std::vector<int64_t>& shape);
 
-void SerializeToStream(std::ostream& os, const phi::DenseTensor& tensor);
+PADDLE_API void SerializeToStream(std::ostream& os,
+                                  const phi::DenseTensor& tensor);
 
-void DeserializeFromStream(std::istream& os, phi::DenseTensor* tensor);
+PADDLE_API void DeserializeFromStream(std::istream& os,
+                                      phi::DenseTensor* tensor);
 
 }  // namespace phi

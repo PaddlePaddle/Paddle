@@ -131,6 +131,15 @@ class TestPlaceGuard(unittest.TestCase):
             self.assertEqual(x.place, place_obj1)
             self.assertNotEqual(x.place, place_obj2)
 
+    def test_place_str_cuda(self):
+        if (
+            paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ):
+            with paddle.device.device_guard("gpu"):
+                tensor_cuda = paddle.randn([3, 3], device="cuda:0")
+                self.assertEqual(tensor_cuda.place, paddle.CUDAPlace(0))
+
 
 if __name__ == "__main__":
     unittest.main()

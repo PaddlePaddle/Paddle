@@ -296,8 +296,8 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
@@ -312,7 +312,30 @@ def cuda() -> str:
             '10.2'
 
     """
-    return cuda_version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
+
+    def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
+
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.
@@ -1081,11 +1104,12 @@ if('${WITH_FLAGCX}' == 'ON'):
 if('${WITH_SHARED_PHI}' == 'ON'):
     package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
-    package_data['paddle.libs'] += [('libphi_core' if os.name != 'nt' else 'phi_core') + ext_name]
-    shutil.copy('${PHI_CORE_LIB}', libs_path)
-    if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
-        package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
-        shutil.copy('${PHI_GPU_LIB}', libs_path)
+    if os.name != 'nt':
+        package_data['paddle.libs'] += [('libphi_core' if os.name != 'nt' else 'phi_core') + ext_name]
+        shutil.copy('${PHI_CORE_LIB}', libs_path)
+        if('${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON'):
+            package_data['paddle.libs'] += [('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_name]
+            shutil.copy('${PHI_GPU_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
     package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
@@ -1126,6 +1150,9 @@ if '${WITH_GPU}' == 'ON' or '${WITH_ROCM}' == 'ON':
     if len('${FLASHATTN_V3_LIBRARIES}') > 1:
         package_data['paddle.libs']+=[os.path.basename('${FLASHATTN_V3_LIBRARIES}')]
         shutil.copy('${FLASHATTN_V3_LIBRARIES}', libs_path)
+    if len('${FLASHMASK_V2_LIBRARIES}') > 1:
+        package_data['paddle.libs']+=[os.path.basename('${FLASHMASK_V2_LIBRARIES}')]
+        shutil.copy('${FLASHMASK_V2_LIBRARIES}', libs_path)
 
 if '${WITH_DISTRIBUTE}' == 'ON' and '${WITH_NVSHMEM}' == 'ON':
     package_data['paddle.libs']+=[
@@ -1168,6 +1195,8 @@ if '${WITH_CINN}' == 'ON':
     package_data['paddle.libs']+=['cinn_sycl_runtime_source.h']
 
     cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16.h'
+    if '${WITH_ROCM}' == 'ON':
+        cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/hip/float16.h'
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
@@ -1342,6 +1371,8 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/ext')) +  # custom op api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include')) +  # phi api
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/common')) +  # phi common headers
+    # torch compatible apis
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/api/include/compat', recursive=True)) +
     # phi level api headers (low level api, for training only)
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi')) +  # phi extension header
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/phi/include', recursive=True)) +  # phi include headers
@@ -1625,7 +1656,6 @@ if '${WITH_CPP_DIST}' == 'ON':
 def get_typing_libs_packages(paddle_binary_dir):
     """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
     e.g.
-        'paddle._typing.libs.libpaddle.cinn'
         'paddle._typing.libs.libpaddle.pir'
         'paddle._typing.libs.libpaddle.eager'
         'paddle._typing.libs.libpaddle.eager.ops'
@@ -1705,6 +1735,8 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
             paddle_source_dir
             + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
         ],
+        python_api_info_yaml_path=paddle_source_dir
+        + "/paddle/phi/ops/yaml/python_api_info.yaml",
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'

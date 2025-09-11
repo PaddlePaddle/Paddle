@@ -340,6 +340,144 @@ class TestMultinomialApi(unittest.TestCase):
         )
 
 
+class TestMultinomialOutParameter(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        paddle.seed(100)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def test_out_parameter_basic(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([1000], dtype='int64')
+        paddle.multinomial(x, num_samples=1000, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [1000])
+        self.assertEqual(out.dtype, paddle.int64)
+
+        self.assertTrue(paddle.all(out >= 0))
+        self.assertTrue(paddle.all(out < 4))
+
+    def test_out_parameter_2d(self):
+        x_numpy = np.random.rand(3, 4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([3, 100], dtype='int64')
+
+        paddle.multinomial(x, num_samples=100, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [3, 100])
+        self.assertEqual(out.dtype, paddle.int64)
+
+        self.assertTrue(paddle.all(out >= 0))
+        self.assertTrue(paddle.all(out < 4))
+
+    def test_out_parameter_with_alias(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        out = paddle.empty([1000], dtype='int64')
+        paddle.multinomial(input=x, num_samples=1000, replacement=True, out=out)
+
+        self.assertEqual(out.shape, [1000])
+        self.assertEqual(out.dtype, paddle.int64)
+
+    def test_out_parameter_different_scenarios(self):
+        x_numpy = np.random.rand(100)
+        x = paddle.to_tensor(x_numpy)
+        out = paddle.empty([50], dtype='int64')
+
+        paddle.multinomial(x, num_samples=50, replacement=False, out=out)
+
+        unique_values = paddle.unique(out)
+        self.assertEqual(len(unique_values), 50)
+
+        out_small = paddle.empty([5], dtype='int64')
+        paddle.multinomial(x, num_samples=5, replacement=True, out=out_small)
+        self.assertEqual(out_small.shape, [5])
+
+    def test_out_parameter_none_default(self):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy)
+
+        result1 = paddle.multinomial(
+            x, num_samples=100, replacement=True, out=None
+        )
+        result2 = paddle.multinomial(x, num_samples=100, replacement=True)
+
+        self.assertEqual(result1.shape, result2.shape)
+        self.assertEqual(result1.dtype, result2.dtype)
+
+
+class TestMultinomialOutAndAliasDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def do_test(self, test_type):
+        x_numpy = np.random.rand(4)
+        x = paddle.to_tensor(x_numpy, stop_gradient=False)
+
+        if test_type == "raw":
+            result = paddle.multinomial(x, num_samples=1000, replacement=True)
+            loss = paddle.cast(result, 'float32').mean()
+            loss.backward()
+            return result, x.grad
+
+        elif test_type == "alias":
+            result = paddle.multinomial(
+                input=x, num_samples=1000, replacement=True
+            )
+            loss = paddle.cast(result, 'float32').mean()
+            loss.backward()
+            return result, x.grad
+
+        elif test_type == "out":
+            out = paddle.empty([1000], dtype='int64')
+            out.stop_gradient = False
+            paddle.multinomial(x, num_samples=1000, replacement=True, out=out)
+            loss = paddle.cast(out, 'float32').mean()
+            loss.backward()
+            return out, x.grad
+
+        elif test_type == "out_alias":
+            out = paddle.empty([1000], dtype='int64')
+            out.stop_gradient = False
+            paddle.multinomial(
+                input=x, num_samples=1000, replacement=True, out=out
+            )
+            loss = paddle.cast(out, 'float32').mean()
+            loss.backward()
+            return out, x.grad
+
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_multinomial_out_and_alias_combination(self):
+        test_types = ["raw", "alias", "out", "out_alias"]
+
+        results = {}
+        grads = {}
+
+        for test_type in test_types:
+            paddle.seed(42)
+            result, grad = self.do_test(test_type)
+            results[test_type] = result
+            grads[test_type] = grad
+
+        base_shape = results["raw"].shape
+        base_dtype = results["raw"].dtype
+
+        for test_type in test_types:
+            self.assertEqual(results[test_type].shape, base_shape)
+            self.assertEqual(results[test_type].dtype, base_dtype)
+
+
 class TestMultinomialAlias(unittest.TestCase):
     def test_alias(self):
         paddle.disable_static()

@@ -45,7 +45,7 @@ class TestTranspose2Reshape2OneDNNFusePass(PassAutoScanTest):
             },
             attrs={
                 "axis": axis,
-                "use_mkldnn": True,
+                "use_onednn": True,
             },
         )
 

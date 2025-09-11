@@ -54,7 +54,7 @@ class TestElementwiseAddActivationOneDNNFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs={'X': ['eltwise_X'], 'Y': ['eltwise_Y']},
             outputs={'Out': ['eltwise_output']},
-            attrs={"use_mkldnn": True},
+            attrs={"use_onednn": True},
         )
 
         if activation_type == 'relu6':

@@ -35,14 +35,15 @@ __device__ void BlockLoad(const InT* input,
                           __nv_bfloat16 x[8][4],
                           size_t K,
                           size_t k_scaled) {
-  constexpr bool need_dequant = std::is_same_v<InT, phi::dtype::float8_e4m3fn>;
+  constexpr bool need_dequant = std::is_same_v<InT, phi::float8_e4m3fn>;
 
 #pragma unroll
   for (uint32_t i = 0; i < 8; i++) {
     const uint32_t local_off_M = threadIdx.y + i * 16;
     const uint32_t off_m = blockIdx.x * 128 + local_off_M;
     const uint32_t off_k = blockIdx.y * 128 + threadIdx.x * VecSize;
-    const size_t offset = off_m * K + off_k;
+    const size_t offset =
+        static_cast<size_t>(off_m) * static_cast<size_t>(K) + off_k;
 
     float scale;
     if constexpr (need_dequant) {
@@ -53,15 +54,17 @@ __device__ void BlockLoad(const InT* input,
 
 #pragma unroll
     for (uint32_t j = 0; j < 4; j += VecSize) {
-      const size_t idx = offset + j * 32;
-      using LoadT = VecType<InT, VecSize>;
-      LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
+      if (off_k + j * 32 < K) {
+        const size_t idx = offset + j * 32;
+        using LoadT = VecType<InT, VecSize>;
+        LoadT data = *reinterpret_cast<const LoadT*>(input + idx);
 #pragma unroll
-      for (uint32_t k = 0; k < VecSize; k++) {
-        if constexpr (need_dequant) {
-          x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
-        } else {
-          x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
+        for (uint32_t k = 0; k < VecSize; k++) {
+          if constexpr (need_dequant) {
+            x[i][j + k] = __float2bfloat16(static_cast<float>(data[k]) * scale);
+          } else {
+            x[i][j + k] = (*reinterpret_cast<__nv_bfloat16*>(&data[k]));
+          }
         }
       }
     }
@@ -248,7 +251,7 @@ void FusedTransposeSplitQuantKernel(
 
   for (size_t i = 0; i < num_experts; i++) {
     if (outs[i] != nullptr) {
-      dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(outs[i]);
+      dev_ctx.template Alloc<phi::float8_e4m3fn>(outs[i]);
     }
     if (output_scales[i] != nullptr) {
       dev_ctx.template Alloc<float>(output_scales[i]);
@@ -267,9 +270,9 @@ void FusedTransposeSplitQuantKernel(
 
   for (size_t i = 0; i < num_experts; i++) {
     meta_ptr[num_experts + i] =
-        outs[i] != nullptr ? reinterpret_cast<int64_t>(
-                                 outs[i]->data<phi::dtype::float8_e4m3fn>())
-                           : 0;
+        outs[i] != nullptr
+            ? reinterpret_cast<int64_t>(outs[i]->data<phi::float8_e4m3fn>())
+            : 0;
   }
 
   for (size_t i = 0; i < num_experts; i++) {
@@ -292,7 +295,7 @@ void FusedTransposeSplitQuantKernel(
 #define DTYPE_CASE(dtype, type) dtype == phi::DataType::type
 #define LAUNCH_KERNEL(T, POW_2_SCALES, VEC_SIZE)                        \
   FusedTransposeSplitQuantKernel<T,                                     \
-                                 phi::dtype::float8_e4m3fn,             \
+                                 phi::float8_e4m3fn,                    \
                                  POW_2_SCALES,                          \
                                  VEC_SIZE><<<grid, block, 0, stream>>>( \
       x.data<T>(),                                                      \
@@ -337,8 +340,8 @@ PD_REGISTER_KERNEL(fused_transpose_split_quant,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn) {
+                   phi::bfloat16,
+                   phi::float8_e4m3fn) {
   kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT8_E4M3FN);
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
 }

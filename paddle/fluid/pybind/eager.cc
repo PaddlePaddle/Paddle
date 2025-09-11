@@ -830,7 +830,7 @@ int TensorInit(PyObject* self, PyObject* args, PyObject* kwargs) {
   SetPythonStack();
   // set a flag to record use kwargs or not
   bool flag_kwargs = false;
-  if (kwargs) flag_kwargs = true;
+  if (kwargs && PyList_Size(PyDict_Keys(kwargs))) flag_kwargs = true;
 
   // all kwargs
   PyObject* kw_zero_copy = nullptr;

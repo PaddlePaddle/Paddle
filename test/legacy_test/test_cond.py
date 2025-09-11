@@ -30,7 +30,6 @@ np.random.seed(123)
 
 
 class TestCondInputOutput(unittest.TestCase):
-    @compare_legacy_with_pt
     def test_return_single_var(self):
         """
         pseudocode:
@@ -81,7 +80,6 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret), np.full((3, 2), -1, np.int32), rtol=1e-05
         )
 
-    @compare_legacy_with_pt
     def test_return_0d_tensor(self):
         """
         pseudocode:
@@ -122,7 +120,6 @@ class TestCondInputOutput(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(ret), np.array(2), rtol=1e-05)
         self.assertEqual(ret.shape, ())
 
-    @compare_legacy_with_pt
     def test_0d_tensor_as_cond(self):
         """
         pseudocode:
@@ -233,7 +230,6 @@ class TestCondInputOutput(unittest.TestCase):
         )
         self.assertEqual(a.grad.shape, [])
 
-    @compare_legacy_with_pt
     def test_return_var_tuple(self):
         """
         pseudocode:
@@ -283,7 +279,6 @@ class TestCondInputOutput(unittest.TestCase):
             np.asarray(ret[1]), np.full((2, 3), True, bool), rtol=1e-05
         )
 
-    @compare_legacy_with_pt
     def test_pass_and_modify_var(self):
         """
         pseudocode:
@@ -374,7 +369,6 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertIsNone(out2)
             self.assertIsNone(out3)
 
-    @compare_legacy_with_pt
     def test_wrong_structure_exception(self):
         """
         test returning different number of tensors cannot merge into output
@@ -821,7 +815,6 @@ class TestCondBackward(unittest.TestCase):
                     fetch_list=[loss],
                 )
 
-    @compare_legacy_with_pt
     def test_cond_backward(self):
         paddle.enable_static()
 
@@ -929,7 +922,6 @@ class TestCondWithError(unittest.TestCase):
 
 
 class TestCondWithDict(unittest.TestCase):
-    @compare_legacy_with_pt
     def test_input_with_dict(self):
         paddle.enable_static()
         main_program = framework.Program()

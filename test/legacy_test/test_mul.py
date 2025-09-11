@@ -69,7 +69,6 @@ class TestMulApi(unittest.TestCase):
         # other1 = 3.0
         other2 = paddle.to_tensor(other2_np, place=self.place)
         other3 = paddle.to_tensor(other3_np, place=self.place)
-
         # out1 = x.mul(other1)
         out2 = x.mul(other2)
         out3 = x.mul(other3)
@@ -132,6 +131,38 @@ class TestMulInplaceError(unittest.TestCase):
 
         self.assertRaises(ValueError, multiply_shape_error)
         paddle.enable_static()
+
+
+class TestMulInplaceParamDecoratorApi(unittest.TestCase):
+    def setUp(self) -> None:
+        self.shape = [2, 3]
+        self.dtype = 'float32'
+
+    def test_dyn_api(self):
+        paddle.disable_static()
+        others = [
+            # 3.0,
+            paddle.to_tensor(np.random.rand(*self.shape).astype('float32')),
+            paddle.to_tensor(np.random.rand(*self.shape).astype('float32'))[
+                :, -1
+            ].unsqueeze(-1),
+        ]
+        for other in others:
+            x_np = np.random.rand(*self.shape).astype('float32')
+            x = paddle.to_tensor(x_np)
+            x.mul_(other=other)
+            np.testing.assert_allclose(
+                x.numpy(),
+                np.multiply(
+                    x_np,
+                    (
+                        other.numpy()
+                        if isinstance(other, paddle.Tensor)
+                        else other
+                    ),
+                ),
+                rtol=1e-05,
+            )
 
 
 if __name__ == '__main__':

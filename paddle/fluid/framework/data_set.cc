@@ -36,7 +36,11 @@
 #define _LINUX
 #endif
 
+#ifdef _WIN32
+DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem);
+#else
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+#endif
 USE_INT_STAT(STAT_epoch_finish);
 COMMON_DECLARE_bool(graph_get_neighbor_id);
 COMMON_DECLARE_int32(gpugraph_storage_mode);

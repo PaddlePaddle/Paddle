@@ -99,4 +99,4 @@ void FullKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    full, OneDNN, ONEDNN, phi::FullKernel, float, phi::dtype::bfloat16) {}
+    full, OneDNN, ONEDNN, phi::FullKernel, float, phi::bfloat16) {}

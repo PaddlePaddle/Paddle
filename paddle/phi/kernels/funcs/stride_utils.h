@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/indexing.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 #include "paddle/phi/kernels/slice_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
@@ -46,7 +47,7 @@ namespace phi {
 namespace funcs {
 
 static inline std::vector<int64_t> infer_size_dimvector(
-    std::vector<int64_t> a, std::vector<int64_t> b) {
+    const std::vector<int64_t>& a, const std::vector<int64_t>& b) {
   // Use ptrdiff_t to ensure signed comparison.
   auto dimsA = a.size();
   auto dimsB = b.size();
@@ -67,10 +68,10 @@ static inline std::vector<int64_t> infer_size_dimvector(
 }
 
 static inline std::vector<int64_t> compute_strides(
-    const std::vector<int64_t> input_dims,  // value_tensor
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
-    const int64_t ndim,
+    const std::vector<int64_t>& input_dims,  // value_tensor
+    const std::vector<int64_t>& input_strides,
+    const int64_t& input_elesize,
+    const int64_t& ndim,
     const std::vector<int64_t>* shape_,
     std::vector<int64_t>* stride_size) {
   std::vector<int64_t> stride_bytes(ndim, 0);
@@ -78,7 +79,6 @@ static inline std::vector<int64_t> compute_strides(
   const auto& original_stride = input_strides;
   int64_t element_size_in_bytes = input_elesize;
   int offset = ndim - original_shape.size();
-
   if (offset > 0)
     stride_bytes.resize(ndim, 0);
   else
@@ -95,7 +95,7 @@ static inline std::vector<int64_t> compute_strides(
 }
 
 static inline std::vector<int64_t> compute_shapes(
-    std::vector<std::vector<int64_t>> input_dims) {
+    const std::vector<std::vector<int64_t>>& input_dims) {
   std::vector<int64_t> shape_;
   for (size_t i = 0; i < input_dims.size(); i++) {
     auto shape = input_dims[i];
@@ -109,8 +109,8 @@ static inline std::vector<int64_t> compute_shapes(
 }
 
 template <int N>
-static inline void permute_dimensions(const std::vector<int64_t> stride_size,
-                                      const std::vector<int64_t> perm,
+static inline void permute_dimensions(const std::vector<int64_t>& stride_size,
+                                      const std::vector<int64_t>& perm,
                                       std::array<int64_t*, N>* strides_array,
                                       std::vector<int64_t>* shape_) {
   auto reorder = [perm](std::vector<int64_t> data) {
@@ -123,7 +123,7 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
 
   // Update shape and strides
   *shape_ = reorder(*shape_);
-  static std::array<std::vector<int64_t>, N> temp_strides;
+  std::array<std::vector<int64_t>, N> temp_strides;
   for (int64_t i = 0; i < N; i++) {
     if ((*strides_array)[i] != nullptr) {
       std::vector<int64_t> original_data((*strides_array)[i],
@@ -137,7 +137,7 @@ static inline void permute_dimensions(const std::vector<int64_t> stride_size,
 }
 
 template <int N>
-static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
+static inline void reorder_dimensions(const std::vector<int64_t>& stride_size,
                                       std::vector<int64_t>* shape_,
                                       std::array<int64_t*, N>* strides_array) {
   // Sort the dimensions based on strides in ascending order with reduced dims
@@ -211,8 +211,8 @@ static inline void reorder_dimensions(const std::vector<int64_t> stride_size,
 
 static inline std::vector<int64_t> compatible_stride(
     const std::vector<int64_t>* shape_,
-    const int64_t ndim,
-    const int64_t element_size) {
+    const int64_t& ndim,
+    const int64_t& element_size) {
   std::vector<int64_t> stride;
   int64_t next_stride = element_size;
 
@@ -238,7 +238,7 @@ static inline void allocate_or_resize_outputs(
 }
 
 template <int N>
-static inline void coalesce_dimensions(const int64_t ndim,
+static inline void coalesce_dimensions(const int64_t& ndim,
                                        std::array<int64_t*, N>* strides_array,
                                        std::vector<int64_t>* stride_size,
                                        std::vector<int64_t>* shape_) {
@@ -294,12 +294,12 @@ static inline void coalesce_dimensions(const int64_t ndim,
 
 template <int N>
 static inline void CopyStride(
-    const std::vector<int64_t> output_dims,  // value_tensor
-    const std::vector<int64_t> output_strides,
-    const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,  // input_tensor
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
+    const std::vector<int64_t>& output_dims,  // value_tensor
+    const std::vector<int64_t>& output_strides,
+    const int64_t& output_elesize,
+    const std::vector<int64_t>& input_dims,  // input_tensor
+    const std::vector<int64_t>& input_strides,
+    const int64_t& input_elesize,
     std::vector<int64_t>* desired_shape,
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
@@ -339,15 +339,15 @@ static inline void CopyStride(
 
 template <int N>
 static inline void IndexPutStride(
-    const std::vector<int64_t> output_dims,  // value_tensor
-    const std::vector<int64_t> output_strides,
-    const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,  // input_tensor
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
-    const std::vector<int64_t> index_dims,  // index_tensor
-    const std::vector<int64_t> index_strides,
-    const int64_t index_elesize,
+    const std::vector<int64_t>& output_dims,  // input_tensor
+    const std::vector<int64_t>& output_strides,
+    const int64_t& output_elesize,
+    const std::vector<int64_t>& input_dims,  // value_tensor
+    const std::vector<int64_t>& input_strides,
+    const int64_t& input_elesize,
+    const std::vector<int64_t>& index_dims,  // index_tensor
+    const std::vector<int64_t>& index_strides,
+    const int64_t& index_elesize,
     std::vector<int64_t>* desired_shape,
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
@@ -394,15 +394,15 @@ static inline void IndexPutStride(
 
 template <int N>
 static inline void IndexGetStride(
-    const std::vector<int64_t> output_dims,
-    const std::vector<int64_t> output_strides,
-    const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
-    const std::vector<int64_t> index_dims,
-    const std::vector<int64_t> index_strides,
-    const int64_t index_elesize,
+    const std::vector<int64_t>& output_dims,
+    const std::vector<int64_t>& output_strides,
+    const int64_t& output_elesize,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const int64_t& input_elesize,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& index_elesize,
     std::vector<int64_t>* desired_shape,
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
@@ -451,7 +451,7 @@ static inline void IndexGetStride(
   *numel = num;
 }
 
-static inline void cal_shape_stride(const std::vector<int64_t> index_dims,
+static inline void cal_shape_stride(const std::vector<int64_t>& index_dims,
                                     int64_t* num_indices,
                                     std::vector<int64_t>* shape_tmp,
                                     std::vector<int64_t>* stride_tmp) {
@@ -491,15 +491,15 @@ static inline void cal_shape_stride(const std::vector<int64_t> index_dims,
 
 template <int N>
 static inline void ScatterAddStride(
-    const std::vector<int64_t> output_dims,
-    const std::vector<int64_t> output_strides,
-    const int64_t output_elesize,
-    const std::vector<int64_t> input_dims,
-    const std::vector<int64_t> input_strides,
-    const int64_t input_elesize,
-    const std::vector<int64_t> index_dims,
-    const std::vector<int64_t> index_strides,
-    const int64_t index_elesize,
+    const std::vector<int64_t>& output_dims,
+    const std::vector<int64_t>& output_strides,
+    const int64_t& output_elesize,
+    const std::vector<int64_t>& input_dims,
+    const std::vector<int64_t>& input_strides,
+    const int64_t& input_elesize,
+    const std::vector<int64_t>& index_dims,
+    const std::vector<int64_t>& index_strides,
+    const int64_t& index_elesize,
     std::vector<int64_t>* desired_shape,
     std::array<int64_t*, N>* strides_array,
     int64_t* numel,
@@ -544,36 +544,6 @@ static inline void ScatterAddStride(
     num *= (*desired_shape)[i];
   }
   *numel = num;
-}
-
-static inline common::DDim infer_size_symdimvector(common::DDim a,
-                                                   common::DDim b) {
-  auto dimsA = a.size();
-  auto dimsB = b.size();
-  auto ndim = dimsA > dimsB ? dimsA : dimsB;
-  common::DDim expandedSizes = common::make_ddim(std::vector<int64_t>(ndim, 0));
-
-  for (int64_t i = ndim - 1; i >= 0; --i) {
-    int64_t offset = ndim - 1 - i;
-    int64_t dimA = dimsA - 1 - offset;
-    int64_t dimB = dimsB - 1 - offset;
-    auto sizeA = (dimA >= 0) ? a[dimA] : 1;
-    auto sizeB = (dimB >= 0) ? b[dimB] : 1;
-
-    PADDLE_ENFORCE_EQ(
-        sizeA == sizeB || sizeA == 1 || sizeB == 1,
-        true,
-        common::errors::Fatal("The size of tensor a (",
-                              sizeA,
-                              ") must match the size of tensor b (",
-                              sizeB,
-                              ") at non-singleton dimension ",
-                              i));
-
-    expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
-  }
-
-  return expandedSizes;
 }
 
 static inline bool hasContiguousSubspace(
@@ -621,7 +591,8 @@ static inline std::vector<phi::DenseTensor> expandTensors(
 }
 
 static inline std::vector<phi::DenseTensor> expand_outplace(
-    const phi::GPUContext& dev_ctx, std::vector<phi::DenseTensor> to_expand) {
+    const phi::GPUContext& dev_ctx,
+    const std::vector<phi::DenseTensor>& to_expand) {
   bool first = true;
   phi::DDim target_shape;
   for (size_t i = 0; i < to_expand.size(); ++i) {
@@ -630,7 +601,7 @@ static inline std::vector<phi::DenseTensor> expand_outplace(
       target_shape = to_expand[i].dims();
       first = false;
     } else {
-      target_shape = infer_size_symdimvector(target_shape, to_expand[i].dims());
+      target_shape = InferSizeSymdimvector(target_shape, to_expand[i].dims());
     }
   }
 
@@ -704,8 +675,8 @@ static inline std::vector<int64_t> computeLinearStride(
 
 static inline phi::DenseTensor wrapIndexOnce(const phi::GPUContext& dev_ctx,
                                              const phi::DenseTensor& index,
-                                             int64_t dim,
-                                             int64_t dim_size,
+                                             const int64_t& dim,
+                                             const int64_t& dim_size,
                                              bool check_range) {
   phi::DenseTensor dim_size_tensor;
   dim_size_tensor.Resize(index.dims());

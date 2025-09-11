@@ -32,111 +32,113 @@ namespace phi {
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void ArangeInferMeta(const Scalar& start,
-                     const Scalar& end,
-                     const Scalar& step,
-                     DataType dtype,
-                     MetaTensor* out);
+PADDLE_API void ArangeInferMeta(const Scalar& start,
+                                const Scalar& end,
+                                const Scalar& step,
+                                DataType dtype,
+                                MetaTensor* out);
 
-void RangeInferMeta(const Scalar& start,
-                    const Scalar& end,
-                    const Scalar& step,
-                    DataType dtype,
-                    MetaTensor* out);
+PADDLE_API void RangeInferMeta(const Scalar& start,
+                               const Scalar& end,
+                               const Scalar& step,
+                               DataType dtype,
+                               MetaTensor* out);
 
-void AssignValueInferMeta(const std::vector<int>& shape,
-                          DataType dtype,
-                          MetaTensor* out);
+PADDLE_API void AssignValueInferMeta(const std::vector<int>& shape,
+                                     DataType dtype,
+                                     MetaTensor* out);
 
-void CommInitAllInferMeta(const std::vector<int>& devices, int ring_id);
+PADDLE_API void CommInitAllInferMeta(const std::vector<int>& devices,
+                                     int ring_id);
 
-void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
+PADDLE_API void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
+                                        DataType dtype,
+                                        MetaTensor* out);
+
+PADDLE_API void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
+
+PADDLE_API void CreateInferMeta(const IntArray& shape,
+                                DataType dtype,
+                                MetaTensor* out,
+                                MetaConfig config = MetaConfig());
+
+PADDLE_API void CreateInferMetaBase(const std::vector<int64_t>& shape,
+                                    DataType dtype,
+                                    DataLayout layout,
+                                    MetaTensor* out);
+
+PADDLE_API void DataInferMeta(const std::string& name,
+                              const phi::IntArray& shape,
+                              phi::DataType data_type,
+                              MetaTensor* out);
+
+PADDLE_API void EyeInferMeta(const Scalar& num_rows,
+                             const Scalar& num_columns,
                              DataType dtype,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
-void CreateArrayInferMeta(DataType dtype, MetaTensor* out);
+PADDLE_API void GaussianInferMeta(const IntArray& shape,
+                                  float mean,
+                                  float std,
+                                  int seed,
+                                  DataType dtype,
+                                  MetaTensor* out);
 
-TEST_API void CreateInferMeta(const IntArray& shape,
-                              DataType dtype,
-                              MetaTensor* out,
+PADDLE_API void LoadInferMeta(MetaTensor* out,
                               MetaConfig config = MetaConfig());
 
-void CreateInferMetaBase(const std::vector<int64_t>& shape,
-                         DataType dtype,
-                         DataLayout layout,
-                         MetaTensor* out);
+PADDLE_API void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
 
-void DataInferMeta(const std::string& name,
-                   const phi::IntArray& shape,
-                   phi::DataType data_type,
-                   MetaTensor* out);
-
-void EyeInferMeta(const Scalar& num_rows,
-                  const Scalar& num_columns,
-                  DataType dtype,
-                  MetaTensor* out,
-                  MetaConfig config = MetaConfig());
-
-void GaussianInferMeta(const IntArray& shape,
-                       float mean,
-                       float std,
-                       int seed,
-                       DataType dtype,
-                       MetaTensor* out);
-
-void LoadInferMeta(MetaTensor* out, MetaConfig config = MetaConfig());
-
-void RandpermInferMeta(int n, DataType dtype, MetaTensor* out);
-
-void RandintInferMeta(
+PADDLE_API void RandintInferMeta(
     int low, int high, const IntArray& shape, DataType dtype, MetaTensor* out);
 
-void PartialRecvInferMeta(int peer,
-                          DataType dtype,
-                          const std::vector<int>& out_shape,
-                          int num,
-                          int id,
-                          MetaTensor* out);
+PADDLE_API void PartialRecvInferMeta(int peer,
+                                     DataType dtype,
+                                     const std::vector<int>& out_shape,
+                                     int num,
+                                     int id,
+                                     MetaTensor* out);
 
-void PRecvInferMeta(const int peer,
-                    DataType dtype,
-                    const std::vector<int>& out_shape,
-                    const bool dynamic_shape,
-                    MetaTensor* out);
+PADDLE_API void PRecvInferMeta(const int peer,
+                               DataType dtype,
+                               const std::vector<int>& out_shape,
+                               const bool dynamic_shape,
+                               MetaTensor* out);
 
-void PRecvArrayInferMeta(int peer,
-                         DataType dtype,
-                         const std::vector<int>& out_shape,
-                         MetaTensor* out);
+PADDLE_API void PRecvArrayInferMeta(int peer,
+                                    DataType dtype,
+                                    const std::vector<int>& out_shape,
+                                    MetaTensor* out);
 
-void RecvV2InferMeta(const int ring_id,
-                     const bool dynamic_shape,
-                     const int peer,
-                     const std::vector<int>& out_shape,
-                     DataType dtype,
-                     MetaTensor* out);
+PADDLE_API void RecvV2InferMeta(const int ring_id,
+                                const bool dynamic_shape,
+                                const int peer,
+                                const std::vector<int>& out_shape,
+                                DataType dtype,
+                                MetaTensor* out);
 
-void SeedInferMeta(int seed, MetaTensor* out);
+PADDLE_API void SeedInferMeta(int seed, MetaTensor* out);
 
-void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
-                                      float mean,
-                                      float std,
-                                      int seed,
-                                      float a,
-                                      float b,
-                                      DataType dtype,
-                                      MetaTensor* out);
+PADDLE_API void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
+                                                 float mean,
+                                                 float std,
+                                                 int seed,
+                                                 float a,
+                                                 float b,
+                                                 DataType dtype,
+                                                 MetaTensor* out);
 
-void UniformRandomInferMeta(const IntArray& shape,
-                            DataType dtype,
-                            MetaTensor* out);
+PADDLE_API void UniformRandomInferMeta(const IntArray& shape,
+                                       DataType dtype,
+                                       MetaTensor* out);
 
-void TrilIndicesInferMeta(
+PADDLE_API void TrilIndicesInferMeta(
     int rows, int cols, int offset, DataType dtype, MetaTensor* out);
 
-void TriuIndicesInferMeta(
+PADDLE_API void TriuIndicesInferMeta(
     int row, int col, int offset, DataType dtype, MetaTensor* out);
 
-void ReadFileInferMeta(const std::string& filename, MetaTensor* out);
+PADDLE_API void ReadFileInferMeta(const std::string& filename, MetaTensor* out);
 
 }  // namespace phi

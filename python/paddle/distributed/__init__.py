@@ -119,7 +119,10 @@ from .entry_attr import (
     ShowClickEntry,
 )
 from .fleet import BoxPSDataset  # noqa: F401
-from .flex_checkpoint.dcp.load_state_dict import load_state_dict
+from .flex_checkpoint.dcp.load_state_dict import (
+    load_merged_state_dict,
+    load_state_dict,
+)
 from .flex_checkpoint.dcp.save_state_dict import save_state_dict
 from .flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
@@ -207,6 +210,7 @@ __all__ = [
     "Partial",
     "save_state_dict",
     "load_state_dict",
+    "load_merged_state_dict",
     "shard_optimizer",
     "shard_scaler",
     "ShardingStage1",

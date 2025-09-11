@@ -56,7 +56,7 @@ class TestFCActivationOneDNNFusePass(PassAutoScanTest):
             },
             outputs={"Out": ["fc_output"]},
             attrs={
-                "use_mkldnn": True,
+                "use_onednn": True,
                 "padding_weights": False,
                 "in_num_col_dims": 1,
             },

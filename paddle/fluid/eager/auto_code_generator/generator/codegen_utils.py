@@ -209,6 +209,20 @@ def IsVectorTensorType(string):
     return False
 
 
+def IsUsePredefinedOut(position_list: list) -> bool:
+    """
+    Determine whether all forwards are Tensors, including outputs and positions, And the length is between [1,7].
+    The number 7 represents that the multi out mechanism currently supports a maximum of 7 output tensors.
+    """
+    if not position_list:
+        return False
+
+    is_all_tensor = all(pos[0] == "Tensor" for pos in position_list)
+    length = len(position_list)
+
+    return is_all_tensor and 1 <= length <= 7
+
+
 def GetSavedName(string):
     return string + "_"
 
@@ -379,6 +393,32 @@ def ParseYamlReturns(string):
         returns_list.append([ret_name, ret_type, i])
 
     return returns_list
+
+
+def ParsePythonAPIInfoFromYAML(path) -> dict:
+    """
+    Parse Python API information from a YAML file.
+
+    Args:
+        path (str): The path to the YAML file.
+
+    Returns:
+        dict: A dictionary containing Python API information, where the keys are operation names and the values are related api information.
+
+    Raises:
+        RuntimeError: This exception is raised if an error occurs while parsing the YAML file.
+    """
+    res_dict = {}
+    with open(path, "r", encoding="utf-8") as f:
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            raise RuntimeError(f"read_python_api_info load error: {e}")
+    # Trans list to dict, the key is op in yaml item
+    for item in data:
+        if "op" in item.keys():
+            res_dict.update({item["op"]: item})
+    return res_dict
 
 
 def ParseYamlForwardFromBackward(string):

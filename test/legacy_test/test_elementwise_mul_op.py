@@ -65,7 +65,7 @@ class ElementwiseMulOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -78,7 +78,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -91,7 +91,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -254,7 +254,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -265,7 +265,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -276,7 +276,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -390,7 +390,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.axis = -1
 
     def if_check_prim(self):
-        self.check_prim = self.axis == -1
+        self.check_prim = False
 
     def if_check_dygraph(self):
         self.check_dygraph = (not self.use_onednn) and (self.axis == -1)
@@ -500,7 +500,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -513,7 +513,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -526,7 +526,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,

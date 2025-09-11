@@ -483,10 +483,10 @@ void LayerNormDirectCUDAFunctor<T, U>::operator()(
   }
 }
 
-template class LayerNormDirectCUDAFunctor<float, float>;
-template class LayerNormDirectCUDAFunctor<double, double>;
+template class PADDLE_API LayerNormDirectCUDAFunctor<float, float>;
+template class PADDLE_API LayerNormDirectCUDAFunctor<double, double>;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-template class LayerNormDirectCUDAFunctor<half, float>;
+template class PADDLE_API LayerNormDirectCUDAFunctor<half, float>;
 #endif
 
 template <typename T, typename Context>
@@ -667,17 +667,24 @@ void LayerNormKernel(const Context &dev_ctx,
 #undef PADDLE_LAUNCH_LAYERNORM_FWD
 #undef PADDLE_LAUNCH_FAST_LAYERNORM_FWD
 }
-
+#ifdef _WIN32
+template PADDLE_API void LayerNormKernel<float, GPUContext>(
+    const GPUContext &dev_ctx,
+    const DenseTensor &x,
+    const paddle::optional<DenseTensor> &scale_opt,
+    const paddle::optional<DenseTensor> &bias_opt,
+    float epsilon,
+    int begin_norm_axis,
+    DenseTensor *y,
+    DenseTensor *mean,
+    DenseTensor *var);
+#endif
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(layer_norm,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::LayerNormKernel,
-                   float,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    layer_norm, GPU, ALL_LAYOUT, phi::LayerNormKernel, float, phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
@@ -688,8 +695,8 @@ PD_REGISTER_KERNEL(layer_norm,
                    phi::LayerNormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
@@ -700,7 +707,7 @@ PD_REGISTER_KERNEL(layer_norm,
                    phi::LayerNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }

@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
@@ -214,14 +213,13 @@ void CrossAttentionXPUKernel(
       input_kv.dtype() == DataType::FLOAT16 && qkv_dtype == DataType::FLOAT16) {
     // float16 kernel
     CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        phi::dtype::float16, int16_t, phi::dtype::float16, int16_t);
+        phi::float16, int16_t, phi::float16, int16_t);
     return;
   }
   if (input_q.dtype() == DataType::FLOAT32 &&
       input_kv.dtype() == DataType::FLOAT32 && qkv_dtype == DataType::FLOAT32) {
     // float32 kernel
-    CROSS_ATTENTION_XPU_KERNEL_IMPL(
-        float, int16_t, phi::dtype::float16, int16_t);
+    CROSS_ATTENTION_XPU_KERNEL_IMPL(float, int16_t, phi::float16, int16_t);
     return;
   }
   PADDLE_THROW(common::errors::Unimplemented(
@@ -240,4 +238,4 @@ PD_REGISTER_KERNEL(cross_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::CrossAttentionXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

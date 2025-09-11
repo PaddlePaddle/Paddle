@@ -30,6 +30,11 @@ void ExpandGradKernel(const Context& dev_ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   dev_ctx.template Alloc<T>(x_grad);
+  auto expand_shape = shape.GetData();
+  if (expand_shape.empty()) {
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
   if ((x_grad && x_grad->numel() == 0) || out_grad.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
@@ -59,7 +64,7 @@ PD_REGISTER_KERNEL(expand_grad,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

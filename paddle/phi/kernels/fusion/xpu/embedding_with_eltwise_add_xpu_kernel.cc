@@ -207,7 +207,7 @@ PD_REGISTER_KERNEL(embedding_with_eltwise_add_xpu,
                    ALL_LAYOUT,
                    phi::fusion::EmbeddingWithEltwiseAddXpuKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(0).SetBackend(phi::Backend::CPU);
   kernel->InputAt(2).SetBackend(phi::Backend::CPU);
   kernel->OutputAt(1).SetBackend(phi::Backend::CPU);

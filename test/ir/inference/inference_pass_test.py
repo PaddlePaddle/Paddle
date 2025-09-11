@@ -188,7 +188,7 @@ class InferencePassTest(unittest.TestCase):
     def check_output(self, atol=1e-5):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
-        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        or disable TensorRT, enable ONEDNN or disable ONEDNN
         are all the same.
         '''
         self.assertFalse(
@@ -203,7 +203,7 @@ class InferencePassTest(unittest.TestCase):
     ):
         '''
         Check whether calculating on CPU and GPU, enable TensorRT
-        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        or disable TensorRT, enable ONEDNN or disable ONEDNN
         are all the same.
         '''
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
@@ -295,7 +295,7 @@ class InferencePassTest(unittest.TestCase):
 
             self.assertTrue(
                 len(paddle_outs) == len(onednn_outputs),
-                "The number of outputs is different between CPU and MKLDNN. ",
+                "The number of outputs is different between CPU and ONEDNN. ",
             )
 
             if self.enable_onednn_bfloat16:
@@ -306,7 +306,7 @@ class InferencePassTest(unittest.TestCase):
                     onednn_output,
                     rtol=1e-05,
                     atol=atol,
-                    err_msg='Output has diff between CPU and MKLDNN. ',
+                    err_msg='Output has diff between CPU and ONEDNN. ',
                 )
 
     class TensorRTParam:

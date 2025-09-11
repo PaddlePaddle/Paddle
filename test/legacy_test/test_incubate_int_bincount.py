@@ -30,6 +30,12 @@ class TestIntBincount(unittest.TestCase):
         expected = np.array([2, 2, 2, 0])
         np.testing.assert_array_equal(out.numpy(), expected)
 
+    def test_basic_2(self):
+        x = paddle.to_tensor([1, 2, 3, 1, 2, 3], dtype=paddle.int32)
+        out = int_bincount(x, low=1, high=4, dtype="int32")
+        expected = np.array([2, 2, 2, 0])
+        np.testing.assert_array_equal(out.numpy(), expected)
+
     def test_empty_input(self):
         x = paddle.to_tensor([], dtype=paddle.int32)
         out = int_bincount(x, low=0, high=10, dtype=paddle.int32)

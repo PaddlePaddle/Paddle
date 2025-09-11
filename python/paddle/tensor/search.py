@@ -14,30 +14,35 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 import numpy as np
 from typing_extensions import overload
 
 import paddle
 from paddle import _C_ops
+from paddle._C_ops import argmax, argmin  # noqa: F401
 from paddle.common_ops_import import VarDesc, Variable
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_one_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    index_select_decorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..base.data_feeder import check_dtype, check_variable_and_dtype
+from ..base.data_feeder import check_variable_and_dtype
 from ..framework import (
     LayerHelper,
-    convert_np_dtype_to_dtype_,
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from .creation import assign
 
 if TYPE_CHECKING:
     from paddle import Tensor
-    from paddle._typing import DTypeLike
 
 from paddle.utils.decorator_utils import ForbidKeywordsDecorator
 
@@ -182,210 +187,14 @@ def argsort(
         return ids
 
 
-def argmax(
-    x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the indices of the max elements of the input tensor's
-    element along the provided axis.
-
-    Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
-            int32, int64, uint8.
-        axis (int|None, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
-        dtype (str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is ``int64`` , and it will
-                    return the int64 indices.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, return the tensor of int32 if set :attr:`dtype` is int32, otherwise return the tensor of int64.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x = paddle.to_tensor([[5,8,9,5],
-            ...                       [0,0,1,7],
-            ...                       [6,9,2,4]])
-            >>> out1 = paddle.argmax(x)
-            >>> print(out1.numpy())
-            2
-            >>> out2 = paddle.argmax(x, axis=0)
-            >>> print(out2.numpy())
-            [2 2 0 1]
-            >>> out3 = paddle.argmax(x, axis=-1)
-            >>> print(out3.numpy())
-            [2 3 1]
-            >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
-            >>> print(out4.numpy())
-            [[2 2 0 1]]
-    """
-    if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.Value)
-    ):
-        raise TypeError(
-            f"The type of 'axis'  must be int or Tensor or None in argmax, but received {type(axis)}."
-        )
-
-    if dtype is None:
-        raise ValueError(
-            "the value of 'dtype' in argmax could not be None, but received None"
-        )
-
-    var_dtype = convert_np_dtype_to_dtype_(dtype)
-    flatten = False
-    if axis is None:
-        flatten = True
-        axis = 0
-
-    if in_dynamic_mode():
-        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
-    elif in_pir_mode():
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
-        return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
-    else:
-        helper = LayerHelper("argmax", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
-            'paddle.argmax',
-        )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmax')
-        attrs = {}
-        out = helper.create_variable_for_type_inference(var_dtype)
-        attrs['keepdims'] = keepdim
-        attrs['axis'] = axis
-        attrs['flatten'] = flatten
-        attrs['dtype'] = var_dtype
-        helper.append_op(
-            type='arg_max', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
-        )
-        out.stop_gradient = True
-        return out
-
-
-def argmin(
-    x: Tensor,
-    axis: int | None = None,
-    keepdim: bool = False,
-    dtype: DTypeLike = "int64",
-    name: str | None = None,
-) -> Tensor:
-    """
-    Computes the indices of the min elements of the input tensor's
-    element along the provided axis.
-
-    Args:
-        x (Tensor): An input N-D Tensor with type float16, float32, float64, int16,
-            int32, int64, uint8.
-        axis (int|None, optional): Axis to compute indices along. The effective range
-            is [-R, R), where R is x.ndim. when axis < 0, it works the same way
-            as axis + R. Default is None, the input `x` will be into the flatten tensor, and selecting the min value index.
-        keepdim (bool, optional): Whether to keep the given axis in output. If it is True, the dimensions will be same as input x and with size one in the axis. Otherwise the output dimensions is one fewer than x since the axis is squeezed. Default is False.
-        dtype (str|np.dtype, optional): Data type of the output tensor which can
-                    be int32, int64. The default value is 'int64', and it will
-                    return the int64 indices.
-        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-
-    Returns:
-        Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-
-            >>> x =  paddle.to_tensor([[5,8,9,5],
-            ...                        [0,0,1,7],
-            ...                        [6,9,2,4]])
-            >>> out1 = paddle.argmin(x)
-            >>> print(out1.numpy())
-            4
-            >>> out2 = paddle.argmin(x, axis=0)
-            >>> print(out2.numpy())
-            [1 1 1 2]
-            >>> out3 = paddle.argmin(x, axis=-1)
-            >>> print(out3.numpy())
-            [0 0 2]
-            >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
-            >>> print(out4.numpy())
-            [[1 1 1 2]]
-    """
-    if axis is not None and not isinstance(
-        axis, (int, Variable, paddle.pir.Value)
-    ):
-        raise TypeError(
-            f"The type of 'axis'  must be int or Tensor or None in argmin, but received {type(axis)}."
-        )
-
-    if dtype is None:
-        raise ValueError(
-            "the value of 'dtype' in argmin could not be None, but received None"
-        )
-
-    var_dtype = convert_np_dtype_to_dtype_(dtype)
-    flatten = False
-    if axis is None:
-        flatten = True
-        axis = 0
-
-    if in_dynamic_mode():
-        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
-    elif in_pir_mode():
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
-        return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
-    else:
-        helper = LayerHelper("argmin", **locals())
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'uint16',
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'uint8',
-            ],
-            'paddle.argmin',
-        )
-        check_dtype(var_dtype, 'dtype', ['int32', 'int64'], 'argmin')
-        out = helper.create_variable_for_type_inference(var_dtype)
-        attrs = {}
-        attrs['keepdims'] = keepdim
-        attrs['axis'] = axis
-        attrs['flatten'] = flatten
-        attrs['dtype'] = var_dtype
-        helper.append_op(
-            type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
-        )
-        out.stop_gradient = True
-        return out
-
-
+@index_select_decorator()
 def index_select(
-    x: Tensor, index: Tensor, axis: int = 0, name: str | None = None
+    x: Tensor,
+    index: Tensor,
+    axis: int = 0,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
 
@@ -394,11 +203,23 @@ def index_select(
     of dimensions as the original ``x`` tensor. The dim-th dimension has the same
     size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
+    .. note::
+        Alias and Order Support:
+        1. The parameter name ``input`` can be used as an alias for ``x``.
+        2. The parameter name ``dim`` can be used as an alias for ``axis``.
+        3. This API also supports the PyTorch argument order ``(input, dim, index)`` for positional arguments, which will be converted to the Paddle order ``(x, index, axis)``.
+        For example, ``paddle.index_select(input=x, dim=1, index=idx)`` is equivalent to ``paddle.index_select(x=x, axis=1, index=idx)``, and ``paddle.index_select(x, 1, idx)`` is equivalent to ``paddle.index_select(x, idx, axis=1)``.
+
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float16, float32, float64, int32, int64, complex64 and complex128.
+            alias: ``input``.
         index (Tensor): The 1-D Tensor containing the indices to index. The data type of ``index`` must be int32 or int64.
         axis (int, optional): The dimension in which we index. Default: if None, the ``axis`` is 0.
+            alias: ``dim``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A Tensor with same data type as ``x``.
@@ -425,7 +246,7 @@ def index_select(
     """
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.index_select(x, index, axis)
+        return _C_ops.index_select(x, index, axis, out=out)
     else:
         helper = LayerHelper("index_select", **locals())
         check_variable_and_dtype(
@@ -732,7 +553,7 @@ def sort(
         return out
 
 
-def msort(input: Tensor) -> Tensor:
+def msort(input: Tensor, *, out: Tensor | None = None) -> Tensor:
     """
 
     Sorts the input along the given axis = 0, and returns the sorted output tensor. The sort algorithm is ascending.
@@ -740,6 +561,7 @@ def msort(input: Tensor) -> Tensor:
     Args:
         input (Tensor): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
+        out(Tensor, optional): The output tensor.
 
     Returns:
         Tensor, sorted tensor(with the same shape and data type as ``input``).
@@ -765,9 +587,22 @@ def msort(input: Tensor) -> Tensor:
              [[5. 8. 9. 5.]
               [4. 7. 7. 9.]
               [6. 9. 2. 6.]]]
+
+            >>> out2 = paddle.empty_like(x)
+            >>> paddle.msort(input=x, out=out2)
+            >>> print(out2.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
     """
 
-    return sort(input, axis=0)
+    if out is None:
+        return sort(input, axis=0)
+    else:
+        return assign(sort(input, axis=0), out)
 
 
 def mode(
@@ -831,6 +666,8 @@ def where(
     x: Tensor | float | None = None,
     y: Tensor | float | None = None,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
@@ -857,6 +694,7 @@ def where(
         y (Tensor|scalar|None, optional): A Tensor or scalar to choose when the condition is False with data type of bfloat16, float16, float32, float64, int32 or int64. Either both or neither of x and y should be given.
             alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored to this tensor. Default is None.
 
     Returns:
        Tensor, A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`. If :attr:`x` and :attr:`y` have different data types, type promotion rules will be applied (see `Auto Type Promotion <https://www.paddlepaddle.org.cn/documentation/docs/en/develop/guides/advanced/auto_type_promotion_en.html#introduction-to-data-type-promotion>`_).
@@ -887,7 +725,7 @@ def where(
         y = paddle.to_tensor(y)
 
     if x is None and y is None:
-        return nonzero(condition, as_tuple=True)
+        return nonzero(condition, as_tuple=True, out=out)
 
     if x is None or y is None:
         raise ValueError("either both or neither of x and y should be given")
@@ -924,7 +762,9 @@ def where(
         if y_shape != broadcast_shape:
             broadcast_y = paddle.broadcast_to(broadcast_y, broadcast_shape)
 
-        return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+        return _C_ops.where(
+            broadcast_condition, broadcast_x, broadcast_y, out=out
+        )
 
     else:
         # for PIR and old IR
@@ -947,7 +787,9 @@ def where(
             broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
         if in_pir_mode():
-            return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
+            return _C_ops.where(
+                broadcast_condition, broadcast_x, broadcast_y, out=out
+            )
         else:
             check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
             check_variable_and_dtype(
@@ -1135,7 +977,14 @@ def index_sample(x: Tensor, index: Tensor) -> Tensor:
         return out
 
 
-def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(["x", "input"])
+def masked_select(
+    x: Tensor,
+    mask: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Returns a new 1-D tensor which indexes the input tensor according to the ``mask``
     which is a tensor with data type of bool.
@@ -1147,8 +996,10 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): The input Tensor, the data type can be int32, int64, uint16, float16, float32, float64.
+            alias: ``input``.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, A 1-D Tensor which is the same data type  as ``x``.
@@ -1180,7 +1031,7 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
             check_variable_and_dtype(
                 mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
             )
-        return _C_ops.masked_select(x, mask)
+        return _C_ops.masked_select(x, mask, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -1201,6 +1052,12 @@ def masked_select(x: Tensor, mask: Tensor, name: str | None = None) -> Tensor:
         return out
 
 
+class TopKRetType(NamedTuple):
+    values: Tensor
+    indices: Tensor
+
+
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def topk(
     x: Tensor,
     k: int | Tensor,
@@ -1208,7 +1065,9 @@ def topk(
     largest: bool = True,
     sorted: bool = True,
     name: str | None = None,
-) -> tuple[Tensor, Tensor]:
+    *,
+    out: tuple[Tensor, Tensor] | None = None,
+) -> TopKRetType:
     """
     Return values and indices of the k largest or smallest at the optional axis.
     If the input is a 1-D Tensor, finds the k largest or smallest values and indices.
@@ -1279,8 +1138,10 @@ def topk(
     if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
-        out, indices = _C_ops.topk(x, k, axis, largest, sorted)
-        return out, indices
+        values, indices = _C_ops.topk(x, k, axis, largest, sorted, out=out)
+        if out is not None:
+            return TopKRetType(values=out[0], indices=out[1])
+        return TopKRetType(values=values, indices=indices)
     else:
         helper = LayerHelper("top_k_v2", **locals())
         inputs = {"X": [x]}

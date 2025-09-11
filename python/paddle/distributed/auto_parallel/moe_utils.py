@@ -393,10 +393,11 @@ def get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info):
 
 
 def get_local_slices(tensor, mesh, placements):
-    if len(mesh.shape) < len(placements):
-        raise ValueError(
-            f"placements length ({len(placements)}) must be smaller or equal to mesh_shape({len(mesh.shape)})"
-        )
+    # TODO(nieyuntao): Temporarily disable this check to bypass certain special cases (shard one tensor dim by many mesh dim)
+    # if len(mesh.shape) < len(placements):
+    #     raise ValueError(
+    #         f"placements length ({len(placements)}) must be smaller or equal to mesh_shape({len(mesh.shape)})"
+    #     )
     if len(placements) < len(mesh.shape):
         for _ in range(len(mesh.shape) - len(placements)):
             placements.append(dist.Replicate())

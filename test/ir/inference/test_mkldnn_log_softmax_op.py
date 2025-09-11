@@ -22,7 +22,7 @@ from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMKLDNNLogSoftmaxOp(OnednnAutoScanTest):
+class TestONEDNNLogSoftmaxOp(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 

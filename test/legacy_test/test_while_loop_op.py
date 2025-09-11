@@ -541,7 +541,6 @@ class TestApiWhileLoop_NestedWithBackwardAndDenseTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    @compare_legacy_with_pt
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)

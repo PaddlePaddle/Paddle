@@ -422,7 +422,7 @@ class TEST_API OperatorBase {
   virtual void RunImpl(const Scope& scope, const phi::Place& place) const = 0;
 };
 
-class ExecutionContext : public phi::KernelContext {
+class PADDLE_API ExecutionContext : public phi::KernelContext {
  public:
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
@@ -716,12 +716,12 @@ class ExecutionArgumentMappingContext : public phi::ArgumentMappingContext {
 };
 
 template <>
-const std::vector<const phi::DenseTensor*>
+PADDLE_API const std::vector<const phi::DenseTensor*>
 ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const;
 
 template <>
-std::vector<phi::DenseTensor*> ExecutionContext::MultiOutput<phi::DenseTensor>(
-    const std::string& name) const;
+PADDLE_API std::vector<phi::DenseTensor*>
+ExecutionContext::MultiOutput<phi::DenseTensor>(const std::string& name) const;
 
 class OpKernelBase {
  public:
@@ -749,12 +749,12 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
-  OperatorWithKernel(const std::string& type,
-                     const VariableNameMap& inputs,
-                     const VariableNameMap& outputs,
-                     const AttributeMap& attrs);
+  PADDLE_API OperatorWithKernel(const std::string& type,
+                                const VariableNameMap& inputs,
+                                const VariableNameMap& outputs,
+                                const AttributeMap& attrs);
 
-  virtual ~OperatorWithKernel();
+  PADDLE_API virtual ~OperatorWithKernel();
 
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
@@ -762,32 +762,32 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
-  bool SupportGPU() const override;
+  PADDLE_API bool SupportGPU() const override;
 
-  bool SupportXPU() const override;
+  PADDLE_API bool SupportXPU() const override;
 
-  bool SupportCustomDevice() const override;
+  PADDLE_API bool SupportCustomDevice() const override;
 
-  bool SupportsONEDNN(phi::DataType data_type) const;
+  PADDLE_API bool SupportsONEDNN(phi::DataType data_type) const;
 
-  bool SupportsCUDNN(phi::DataType data_type) const;
+  PADDLE_API bool SupportsCUDNN(phi::DataType data_type) const;
 
-  bool SupportsKernelType(const OpKernelType& kernel_type,
-                          const ExecutionContext& exe_ctx) const;
+  PADDLE_API bool SupportsKernelType(const OpKernelType& kernel_type,
+                                     const ExecutionContext& exe_ctx) const;
 
-  bool SupportsCPUBF16() const;
+  PADDLE_API bool SupportsCPUBF16() const;
 
-  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
-                       phi::DataType data_type) const;
+  PADDLE_API bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
+                                  phi::DataType data_type) const;
 
-  bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
-                       proto::VarType::Type data_type) const;
+  PADDLE_API bool CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
+                                  proto::VarType::Type data_type) const;
 
-  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
-                      phi::DataType data_type) const;
+  PADDLE_API bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                 phi::DataType data_type) const;
 
-  bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
-                      proto::VarType::Type data_type) const;
+  PADDLE_API bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
+                                 proto::VarType::Type data_type) const;
 
   virtual void InferShape(InferShapeContext* ctx) const;
 
@@ -795,24 +795,24 @@ class OperatorWithKernel : public OperatorBase {
     all_kernels_must_compute_runtime_shape_ = x;
   }
 
-  void RuntimeInferShape(const Scope& scope,
-                         const phi::Place& place,
-                         const RuntimeContext& ctx) const override;
+  PADDLE_API void RuntimeInferShape(const Scope& scope,
+                                    const phi::Place& place,
+                                    const RuntimeContext& ctx) const override;
 
-  proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
-                                           const std::string& name) const;
+  PADDLE_API proto::VarType::Type IndicateVarDataType(
+      const ExecutionContext& ctx, const std::string& name) const;
 
-  proto::VarType::Type IndicateOrPromoteVarDataTypes(
+  PADDLE_API proto::VarType::Type IndicateOrPromoteVarDataTypes(
       const ExecutionContext& ctx,
       const std::string& name1,
       const std::string& name2) const;
 
-  virtual phi::KernelKey GetExpectedKernelType(
+  PADDLE_API virtual phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const;
 
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
-  virtual phi::KernelKey GetKernelTypeForVar(
+  PADDLE_API virtual phi::KernelKey GetKernelTypeForVar(
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const phi::KernelKey& expected_kernel_type) const;
@@ -831,17 +831,18 @@ class OperatorWithKernel : public OperatorBase {
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
    */
-  phi::KernelSignature GetExpectedPhiKernelArgs(
+  PADDLE_API phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to phi lib */
-  phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
+  PADDLE_API phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
-  void ChooseKernel(const ExecutionContext& ctx) const;
+  PADDLE_API void ChooseKernel(const ExecutionContext& ctx) const;
 
-  void BuildPhiKernelContext(const RuntimeContext& ctx,
-                             phi::DeviceContext* dev_ctx,
-                             phi::KernelContext* phi_kernel_context) const;
+  PADDLE_API void BuildPhiKernelContext(
+      const RuntimeContext& ctx,
+      phi::DeviceContext* dev_ctx,
+      phi::KernelContext* phi_kernel_context) const;
 
   phi::KernelSignature* PhiKernelSignature() const {
     return kernel_signature_.get();
@@ -865,10 +866,11 @@ class OperatorWithKernel : public OperatorBase {
   void SetDnnFallback(bool dnn_fallback) const { dnn_fallback_ = dnn_fallback; }
 
  private:
-  void RunImpl(const Scope& scope, const phi::Place& place) const final;
-  void RunImpl(const Scope& scope,
-               const phi::Place& place,
-               RuntimeContext* runtime_ctx) const;
+  PADDLE_API void RunImpl(const Scope& scope,
+                          const phi::Place& place) const final;
+  PADDLE_API void RunImpl(const Scope& scope,
+                          const phi::Place& place,
+                          RuntimeContext* runtime_ctx) const;
 
   /**
    * Transfer data from scope to a transferred scope. If there is no data need

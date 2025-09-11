@@ -93,9 +93,5 @@ void UnfoldGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(unfold_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::UnfoldGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    unfold_grad, XPU, ALL_LAYOUT, phi::UnfoldGradKernel, float, phi::float16) {}

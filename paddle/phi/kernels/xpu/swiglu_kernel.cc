@@ -60,5 +60,5 @@ PD_REGISTER_KERNEL(swiglu,
                    ALL_LAYOUT,
                    phi::SwiGluKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16){};
+                   phi::float16,
+                   phi::bfloat16){};

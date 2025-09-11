@@ -45,6 +45,13 @@ function hybrid_paddlex() {
     -o Global.mode=predict \
     -o Predict.model_dir="./resnet50_output/best_model/inference" \
     -o Global.device="dcu:${DEVICE[0]}"
+
+    # inference Reset50 with cinn
+    python main.py -c paddlex/configs/modules/image_classification/ResNet50.yaml \
+    -o Global.mode=predict \
+    -o Predict.model_dir="./resnet50_output/best_model/inference" \
+    -o Global.device="dcu:${DEVICE[0]}" \
+    -o Predict.kernel_option.enable_cinn=True
     echo "End Reset50"
 
     echo "Start DeepLabv3+"
@@ -68,6 +75,7 @@ function hybrid_paddlex() {
 function main(){
     cd ${PADDLE_ROOT}/build
     pip install hypothesis
+    /opt/py310/bin/pip install safetensors
     if ls ${PADDLE_ROOT}/build/python/dist/*whl >/dev/null 2>&1; then
         pip install ${PADDLE_ROOT}/build/python/dist/*whl
     fi

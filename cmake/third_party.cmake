@@ -452,9 +452,17 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+include(external/libuv)
+if(TARGET extern_libuv)
+  list(APPEND third_party_deps extern_libuv)
+endif()
+
 if(WITH_FLAGCX)
   include(external/flagcx)
   list(APPEND third_party_deps flagcx)
+  if(WITH_XPU)
+    add_dependencies(flagcx_ep extern_xpu)
+  endif()
 endif()
 
 if(WITH_ONNXRUNTIME)

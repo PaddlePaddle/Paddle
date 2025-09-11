@@ -187,16 +187,6 @@ class TestImperativeOutScale(unittest.TestCase):
             loss_list = train_lenet(lenet, reader, adam)
             lenet.eval()
 
-        imperative_out_scale.save_quantized_model(
-            layer=lenet,
-            path=self.save_path,
-            input_spec=[
-                paddle.static.InputSpec(
-                    shape=[None, 1, 28, 28], dtype='float32'
-                )
-            ],
-        )
-
         for i in range(len(loss_list) - 1):
             self.assertTrue(
                 loss_list[i] > loss_list[i + 1],

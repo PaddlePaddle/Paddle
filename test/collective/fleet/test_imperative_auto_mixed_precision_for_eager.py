@@ -61,12 +61,15 @@ class TestAutoCast(unittest.TestCase):
             data = paddle.to_tensor(data)
             with paddle.amp.amp_guard(True):
                 out_fp16 = conv2d(data)
+            with paddle.amp.amp_guard(True, dtype=paddle.float16):
+                out_fp16_ = conv2d(data)
 
             with paddle.amp.amp_guard(False):
                 out_fp32 = conv2d(data)
 
         self.assertTrue(data.dtype == paddle.float32)
         self.assertTrue(out_fp16.dtype == paddle.float16)
+        self.assertTrue(out_fp16_.dtype == paddle.float16)
         self.assertTrue(out_fp32.dtype == paddle.float32)
 
     def test_amp_guard_white_op(self):

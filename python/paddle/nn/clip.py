@@ -746,6 +746,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 flag_auto_hybrid_pp = False
                 pp_mesh = get_complete_pp_mesh(g.process_mesh)
                 if set(g.process_mesh.process_ids) < set(pp_mesh.process_ids):
+                    flag_auto_hybrid_pp = True
                     sum_square = dist.reshard(
                         sum_square, pp_mesh, sum_square.placements
                     )

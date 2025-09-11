@@ -85,31 +85,38 @@ class TestPaddleDivide(unittest.TestCase):
         expected_floor = np.array([2.0, -3.0, 1.0, -2.0])
         np.testing.assert_allclose(out.numpy(), expected_floor, rtol=1e-20)
 
-    # def test_paddle_divide_mixed_dtypes(self):
-    #     """Test paddle.divide with mixed dtypes (int/float combinations)"""
-    #     test_cases = [
-    #         # (x_dtype, y_dtype, expected_dtype)
-    #         ('int8', 'float16', 'float16'),
-    #         ('int16', 'float32', 'float32'),
-    #         ('uint8', 'float64', 'float64'),
-    #         ('int32', 'bfloat16', 'bfloat16'),
-    #         ('float16', 'int64', 'float16'),
-    #         ('bfloat16', 'uint8', 'bfloat16'),
-    #         ('float64', 'int8', 'float64'),
-    #     ]
+    def test_paddle_divide_mixed_dtypes(self):
+        """Test paddle.divide with mixed dtypes (int/float combinations)"""
+        test_cases = [
+            # (x_dtype, y_dtype, expected_dtype, rounding_mode)
+            # ('int8', 'float16', 'float16', None),
+            # ('int16', 'float32', 'float32', None),
+            # ('uint8', 'float64', 'float64', None),
+            # ('int32', 'bfloat16', 'bfloat16', None),
+            # ('float16', 'int64', 'float16', None),
+            # ('bfloat16', 'uint8', 'bfloat16', None),
+            # ('float64', 'int8', 'float64', None),
+            # ('int8', 'int32', 'int32', 'trunc'),
+            # ('int32', 'int64', 'int64', 'trunc'),
+            ('int32', 'int32', 'int32', 'trunc'),
+            ('int64', 'int64', 'int64', 'trunc'),
+            ('int16', 'int16', 'int16', 'trunc'),
+            ('int8', 'int8', 'int8', 'trunc'),
+            ('uint8', 'uint8', 'uint8', 'trunc'),
+        ]
 
-    #     for x_dtype, y_dtype, expected_dtype in test_cases:
-    #         with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
-    #             x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
-    #             y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
+        for x_dtype, y_dtype, expected_dtype, rounding_mode in test_cases:
+            with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
+                x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
+                y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
 
-    #             out = paddle.divide(x, y)
+                out = paddle.divide(x, y, rounding_mode=rounding_mode)
 
-    #             self.assertEqual(
-    #                 out.dtype,
-    #                 getattr(paddle, expected_dtype),
-    #                 f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
-    #             )
+                self.assertEqual(
+                    out.dtype,
+                    getattr(paddle, expected_dtype),
+                    f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
+                )
 
     def test_paddle_divide_static_graph(self):
         """Test paddle.divide in static graph"""
@@ -367,6 +374,39 @@ class TestPaddleDivideInplace(unittest.TestCase):
         x_clone.divide_(y, rounding_mode='floor')
         expected2 = np.array([2.0, -3.0, 1.0, -2.0])
         np.testing.assert_allclose(x_clone.numpy(), expected2, rtol=1e-6)
+
+    def test_paddle_divide__mixed_dtypes(self):
+        """Test paddle.divide_ with mixed dtypes (int/float combinations)"""
+        test_cases = [
+            # (x_dtype, y_dtype, expected_dtype, rounding_mode)
+            # ('int8', 'float16', 'float16', None),
+            # ('int16', 'float32', 'float32', None),
+            # ('uint8', 'float64', 'float64', None),
+            # ('int32', 'bfloat16', 'bfloat16', None),
+            # ('float16', 'int64', 'float16', None),
+            # ('bfloat16', 'uint8', 'bfloat16', None),
+            # ('float64', 'int8', 'float64', None),
+            # ('int8', 'int32', 'int32', 'trunc'),
+            # ('int32', 'int64', 'int64', 'trunc'),
+            ('int32', 'int32', 'int32', 'trunc'),
+            ('int64', 'int64', 'int64', 'trunc'),
+            ('int16', 'int16', 'int16', 'trunc'),
+            ('int8', 'int8', 'int8', 'trunc'),
+            ('uint8', 'uint8', 'uint8', 'trunc'),
+        ]
+
+        for x_dtype, y_dtype, expected_dtype, rounding_mode in test_cases:
+            with self.subTest(x_dtype=x_dtype, y_dtype=y_dtype):
+                x = paddle.to_tensor([1, 2, 3], dtype=x_dtype)
+                y = paddle.to_tensor([2, 1, 3], dtype=y_dtype)
+
+                x.divide_(y, rounding_mode=rounding_mode)
+
+                self.assertEqual(
+                    x.dtype,
+                    getattr(paddle, expected_dtype),
+                    f'Dtype mismatch: {x_dtype}/{y_dtype} should be {expected_dtype}',
+                )
 
 
 class TestPaddleDivInplace(unittest.TestCase):
