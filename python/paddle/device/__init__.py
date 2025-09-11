@@ -54,7 +54,6 @@ if TYPE_CHECKING:
     ]
 
     from paddle import CUDAPlace, CustomPlace
-    from paddle.base.libpaddle import _customDeviceProperties
 
     _CustomPlaceLike: TypeAlias = Union[
         CUDAPlace,
@@ -62,6 +61,20 @@ if TYPE_CHECKING:
         str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
         int,  # some int like 0, 1, etc.
     ]
+
+# Dynamically import device_count based on available devices
+if core.is_compiled_with_cuda():
+    from .cuda import device_count, get_device_properties
+elif core.is_compiled_with_xpu():
+    from .xpu import device_count
+else:
+    dev_types = core.get_all_custom_dev_type()
+    if not dev_types or not core.is_compiled_with_custom_device(dev_types[0]):
+        raise ValueError(
+            "No custom device available, please install paddle with custom device support"
+        )
+    else:
+        from .customdevice import device_count, get_device_properties
 
 __all__ = [
     'get_cudnn_version',
@@ -379,70 +392,6 @@ def get_device() -> str:
     return device
 
 
-def device_count(dev_type: str | None = None) -> int:
-    '''
-    Return the number of devices available.
-    Args:
-        dev_type (str, optional): Device type string, e.g., 'gpu', 'npu', etc.
-        If None, will return the number of CUDA devices if available,
-        otherwise the first available custom device count.
-    Returns:
-        int: the number of devices available.
-    Examples:
-        .. code-block:: python
-            >>> import paddle
-            >>> paddle.device.device_count()
-            >>> paddle.device.device_count('gpu')
-            >>> paddle.device.device_count('npu')
-    '''
-    if dev_type is None:
-        if paddle.is_compiled_with_cuda():
-            num = (
-                core.get_cuda_device_count()
-                if hasattr(core, 'get_cuda_device_count')
-                else 0
-            )
-        elif hasattr(core, 'get_all_custom_device_type'):
-            custom_types = core.get_all_custom_device_type()
-            if custom_types:
-                num = (
-                    core.get_custom_device_count(custom_types[0])
-                    if hasattr(core, 'get_custom_device_count')
-                    else 0
-                )
-            else:
-                num = 0
-        else:
-            raise ValueError(
-                "Paddle is not compiled with GPU or Custom Device."
-            )
-        return num
-
-    if dev_type == 'gpu':
-        if paddle.is_compiled_with_cuda():
-            num = (
-                core.get_cuda_device_count()
-                if hasattr(core, 'get_cuda_device_count')
-                else 0
-            )
-        else:
-            raise ValueError("Paddle is not compiled with GPU.")
-    else:
-        if hasattr(
-            core, 'is_compiled_with_custom_device'
-        ) and core.is_compiled_with_custom_device(dev_type):
-            num = (
-                core.get_custom_device_count(dev_type)
-                if hasattr(core, 'get_custom_device_count')
-                else 0
-            )
-        else:
-            raise ValueError(
-                f"Unsupported or unavailable device type: {dev_type}"
-            )
-    return num
-
-
 def get_all_device_type() -> list[str]:
     """
 
@@ -551,82 +500,82 @@ def get_available_custom_device() -> list[str] | None:
     return core.get_available_custom_device()
 
 
-def get_device_properties(
-    device: _CustomPlaceLike | None = None,
-) -> _customDeviceProperties:
-    """
+# def get_device_properties(
+#     device: _CustomPlaceLike | None = None,
+# ) -> _customDeviceProperties:
+#     """
 
-    Return the properties of given device.
+#     Return the properties of given device.
 
-    Args:
-        device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like npu:x' which to get the properties of the
-            device from. If device is None, the device is the current device.
-            Default: None.
+#     Args:
+#         device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
+#             the string name of device like npu:x' which to get the properties of the
+#             device from. If device is None, the device is the current device.
+#             Default: None.
 
-    Returns:
-       _customDeviceProperties: The properties of the device which include ASCII string
-        identifying device, major compute capability, minor compute capability, global
-        memory available and the number of multiprocessors on the device.
+#     Returns:
+#        _customDeviceProperties: The properties of the device which include ASCII string
+#         identifying device, major compute capability, minor compute capability, global
+#         memory available and the number of multiprocessors on the device.
 
-    Examples:
-        .. code-block:: python
+#     Examples:
+#         .. code-block:: python
 
-            >>> # import paddle
-            >>> # paddle.device.set_device('npu')
-            >>> # paddle.device.get_device_properties('npu:0')
-            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
+#             >>> # import paddle
+#             >>> # paddle.device.set_device('npu')
+#             >>> # paddle.device.get_device_properties('npu:0')
+#             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
 
-            >>> # paddle.device.get_device_properties('npu')
-            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
-    """
-    device_name = None
+#             >>> # paddle.device.get_device_properties('npu')
+#             >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
+#     """
+#     device_name = None
 
-    if device is not None:
-        if isinstance(device, str):
-            colon_idx = device.rfind(':')
-            if colon_idx == -1:
-                device_name = device
-                device_id = 0
-            else:
-                device_name = device[:colon_idx]
-                device_id_str = device[colon_idx + 1 :]
+#     if device is not None:
+#         if isinstance(device, str):
+#             colon_idx = device.rfind(':')
+#             if colon_idx == -1:
+#                 device_name = device
+#                 device_id = 0
+#             else:
+#                 device_name = device[:colon_idx]
+#                 device_id_str = device[colon_idx + 1 :]
 
-                if not device_id_str.isdigit():
-                    raise ValueError(
-                        f"Invalid device ID '{device_id_str}'. "
-                        f"After colon must be digits only. "
-                        "Example: 'metax_gpu:0'"
-                    )
+#                 if not device_id_str.isdigit():
+#                     raise ValueError(
+#                         f"Invalid device ID '{device_id_str}'. "
+#                         f"After colon must be digits only. "
+#                         "Example: 'metax_gpu:0'"
+#                     )
 
-                device_id = int(device_id_str)
+#                 device_id = int(device_id_str)
 
-        else:
-            raise ValueError(
-                f"The input: {device} is not expected. Because paddle.device."
-                "get_device_properties only support str. "
-                "Please input appropriate device again!"
-                "Example: 'metax_gpu:0'"
-            )
-    else:
-        raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device."
-            "get_device_properties only support str. "
-            "Please input appropriate device again!"
-            "Example: 'metax_gpu:0'"
-        )
+#         else:
+#             raise ValueError(
+#                 f"The input: {device} is not expected. Because paddle.device."
+#                 "get_device_properties only support str. "
+#                 "Please input appropriate device again!"
+#                 "Example: 'metax_gpu:0'"
+#             )
+#     else:
+#         raise ValueError(
+#             f"The input: {device} is not expected. Because paddle.device."
+#             "get_device_properties only support str. "
+#             "Please input appropriate device again!"
+#             "Example: 'metax_gpu:0'"
+#         )
 
-    if device_name == 'gpu':
-        return paddle.device.cuda.get_device_properties(device_id)
+#     if device_name == 'gpu':
+#         return paddle.device.cuda.get_device_properties(device_id)
 
-    if not core.is_compiled_with_custom_device(device_name):
-        raise ValueError(
-            f"PaddlePaddle is not compiled with support for '{device_name}' device. "
-            "Please reinstall PaddlePaddle with Custom Device support "
-            "to call this API."
-        )
+#     if not core.is_compiled_with_custom_device(device_name):
+#         raise ValueError(
+#             f"PaddlePaddle is not compiled with support for '{device_name}' device. "
+#             "Please reinstall PaddlePaddle with Custom Device support "
+#             "to call this API."
+#         )
 
-    return core.get_device_properties(device_name, device_id)
+#     return core.get_device_properties(device_name, device_id)
 
 
 def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
