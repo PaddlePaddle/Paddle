@@ -549,7 +549,7 @@ cc_library(
 cc_library(
   dlpack_tensor
   SRCS dlpack_tensor.cc
-  DEPS dlpack)
+  DEPS dlpack phi)
 
 cc_library(
   op_compatible_info
