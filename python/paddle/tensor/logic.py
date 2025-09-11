@@ -490,7 +490,8 @@ def equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.equal_(x, y)
 
 
-# Current op mechanism does not support `Tensor.op1(other)` if op1 is an alias for op2 and op2 has been sunk to C++ layer. Since greater_than has been sunk, `gt` is added here to avoid the alias issue.
+# Current op mechanism does not support `Tensor.op1(other)` if op1 is an alias for op2 and op2 has been sunk to C++ layer.
+# Since greater_than has been sunk, `gt` is added here to avoid the alias issue.
 # TODO(LittleHeroZZZX): Please remove this and use alias instead once the issue described above is fixed. @DanielSun11
 @param_two_alias(["x", "input"], ["y", "other"])
 def gt(x: Tensor, y: Tensor, name: str | None = None, *, out=None) -> Tensor:
