@@ -29,7 +29,7 @@ defaults:
 jobs:
   whl:
     name: Whl
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: GZ_BD-CPU
     env:
@@ -101,7 +101,7 @@ jobs:
 
   infer:
     name: Infer
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: BD_BJ-V100
     env:
@@ -200,7 +200,7 @@ jobs:
 
   test:
     name: Test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: BD_BJ-V100
     env:

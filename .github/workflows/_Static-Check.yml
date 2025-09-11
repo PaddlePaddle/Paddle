@@ -28,7 +28,7 @@ defaults:
 jobs:
   build:
     name: Test
-    if: ${{ inputs.can-skip != 'true' }}
+    if: false
     runs-on:
       group: BD_BJ-V100
 

@@ -1,0 +1,29 @@
+name: Warning
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  BRANCH: ${{ github.base_ref }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  token: ${{ vars.ACTION_GITHUB_TOKEN }}
+
+jobs:
+  warning:
+    name: Warning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 200
+
+      - name: Update paddle
+        run: |
+          echo "Do not code in the incubate/fleety_20250421 branch, please go to incubate/fleety_12 branch!"
+          echo "不要在incubate/fleety_20250421分支提交代码，请到incubate/fleety_12分支"
+          exit 1
