@@ -38,4 +38,4 @@ PD_REGISTER_KERNEL(partial_recv,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

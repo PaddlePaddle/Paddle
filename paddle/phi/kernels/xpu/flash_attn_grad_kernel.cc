@@ -53,7 +53,7 @@ void FlashAttnGradKernelBase(
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
   const XPUType* q_data = reinterpret_cast<const XPUType*>(q.data<T>());
   const XPUType* k_data = reinterpret_cast<const XPUType*>(k.data<T>());
   const XPUType* v_data = reinterpret_cast<const XPUType*>(v.data<T>());
@@ -476,8 +476,8 @@ PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(phi::Backend::CPU);          // cu_seqlens_q
   kernel->InputAt(4).SetBackend(phi::Backend::CPU);          // cu_seqlens_k
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
@@ -487,9 +487,9 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashAttnGradKernel,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
 
@@ -497,8 +497,8 @@ PD_REGISTER_KERNEL(flashmask_attention_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashMaskGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(6).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

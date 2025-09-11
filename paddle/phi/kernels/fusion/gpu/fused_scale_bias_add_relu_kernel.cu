@@ -243,4 +243,4 @@ PD_REGISTER_KERNEL(fused_scale_bias_add_relu,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedScaleBiasAddReluKernel,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

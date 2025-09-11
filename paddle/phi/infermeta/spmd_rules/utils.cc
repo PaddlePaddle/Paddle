@@ -572,7 +572,8 @@ std::unordered_map<std::string, std::vector<int64_t>> ShardingMergeForTensors(
     if (competing_axes.size() > 1) {
       if (!merge_conflicts) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "Multiple Tensor Axes [%s] is sharded by same mesh dimension [%d].",
+            "Multiple Tensor Axes [%s] is sharded by same mesh dimension "
+            "[%d].",
             competing_axes,
             mesh_dim));
       }

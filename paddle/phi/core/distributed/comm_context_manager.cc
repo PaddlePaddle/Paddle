@@ -349,7 +349,7 @@ void CommContextManager::CreateFlagcxCommContext(
     phi::dynload::flagcxGetUniqueId(&flagcx_handler->uniqueId);
   }
 
-  std::string unique_key = "FlagcxCommContext/" + unique_comm_key + hash_key;
+  std::string unique_key = "XCCLCommContext/" + unique_comm_key + hash_key;
   if (rank == 0) {
     std::vector<uint8_t> flagcx_id_wrapper(
         reinterpret_cast<uint8_t*>(flagcx_handler->uniqueId),

@@ -70,6 +70,6 @@ PD_REGISTER_KERNEL(sequence_unpad_xpu,
                    ALL_LAYOUT,
                    phi::fusion::SequenceUnpadXPUKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(1).SetBackend(phi::Backend::CPU);
 }

@@ -61,6 +61,18 @@ CUDAStream::CUDAStream(const Place& place,
   owned_ = true;
 }
 
+CUDAStream::CUDAStream(const Place& place, gpuStream_t external_raw_stream) {
+  place_ = place;
+  backends::gpu::GPUDeviceGuard guard(place_.device);
+
+  stream_ = Stream(reinterpret_cast<StreamId>(external_raw_stream));
+
+  owned_ = false;
+
+  VLOG(10) << "Create CUDAStream from external stream " << external_raw_stream
+           << " on device " << place_.device;
+}
+
 bool CUDAStream::Query() const {
 #ifdef PADDLE_WITH_HIP
   hipError_t err = hipStreamQuery(raw_stream());

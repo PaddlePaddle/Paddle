@@ -15,7 +15,7 @@ import argparse
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME, BaseAPI
+from api_base import PREFIX_TENSOR_NAME, BaseAPI, IsUsePredefinedOut
 
 backward_api_black_list = [
     "scale_grad",  # tensor = scale is not implemented in api_custom_impl.cc
@@ -216,6 +216,7 @@ class ForwardAPI(BaseAPI):
                 if inplace_flag and self.outputs['names'][0] in self.inplace_map
                 else ""
             )
+
             if (
                 len(self.outputs['names']) == 1
                 and self.outputs['types'][0] == "Tensor"
@@ -227,10 +228,11 @@ class ForwardAPI(BaseAPI):
                 and self.api != "empty_like"
             ):
                 output_create = f"""
-{code_indent}  Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
             else:
                 output_create = f"""
 {code_indent}  {return_type} api_output{inplace_assign};"""
+
             set_out_func = (
                 'SetKernelOutput'
                 if out_tensor_type_list is None
@@ -292,7 +294,34 @@ class ForwardAPI(BaseAPI):
                 )
 
         elif len(out_dtype_list) > 1:
-            output_create = f"""
+            if not (
+                inplace_flag
+                and any(
+                    name.split('@')[0] in self.inplace_map
+                    for name in self.outputs['names']
+                )
+            ):
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_create = f"""
+{code_indent}  Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"""
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_indices = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_create = f"""
+{code_indent}  std::tuple<{tuple_types}> out_tmp;
+{code_indent}  paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;
+{code_indent}  if(predefined_out) {{ predefined_out_value = std::make_tuple({get_indices}); }}
+{code_indent}  std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"""
+                else:
+                    output_create = f"""
+{code_indent}  {return_type} api_output;"""
+            else:
+                output_create = f"""
 {code_indent}  {return_type} api_output;"""
 
             if inplace_flag:
@@ -428,7 +457,7 @@ class ForwardAPI(BaseAPI):
 
 class BackwardAPI(ForwardAPI):
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         api_func_name = self.get_api_func_name()
         if inplace_flag and api_func_name[-1] != '_':
@@ -436,7 +465,7 @@ class BackwardAPI(ForwardAPI):
         else:
             inplace_name = api_func_name
         api_code = f"""
-PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_input_out=append_input_out)}) {{
+PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_args(inplace_flag, grad_flag=grad_flag, append_predefined_out=append_predefined_out)}) {{
 {self.get_grad_outputs_define(inplace_flag)}
 {self.get_optional_inputs_change(inplace_flag)}
     {api_func_name}({self.get_grad_api_call_args(inplace_flag)});
@@ -445,7 +474,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
 """
         return api_code
 
-    def gene_api_code(self, grad_flag=False, append_input_out=False):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
         if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
@@ -457,7 +486,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
             return ""
 
         api_code = self.gene_base_api_code(
-            grad_flag=grad_flag, append_input_out=append_input_out
+            grad_flag=grad_flag, append_predefined_out=append_predefined_out
         )
         if self.is_base_api and len(self.inplace_map) > 0:
             if self.api[-1] == '_':
@@ -466,7 +495,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
 
         return api_code
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
@@ -481,7 +510,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {inplace_name}({self.get_define_
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             api_declaration = f"""
-PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_predefined_out=append_predefined_out)});
 """
 
         if self.is_base_api and len(self.inplace_map) > 0:
@@ -490,7 +519,7 @@ PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(appen
             api_declaration = (
                 api_declaration
                 + f"""
-PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=append_input_out)});
+PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_predefined_out=append_predefined_out)});
 """
             )
 
@@ -651,7 +680,7 @@ def generate_api(
             forward_api.is_dygraph_api = False
             header_file.write(
                 forward_api.gene_api_declaration(
-                    grad_flag=grad_flag, append_input_out=not grad_flag
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
                 )
             )
             source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))
@@ -659,7 +688,7 @@ def generate_api(
 
         header_file.write(
             forward_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=not grad_flag
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
             )
         )
         source_file.write(forward_api.gene_api_code(grad_flag=grad_flag))

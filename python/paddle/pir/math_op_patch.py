@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import inspect
 import textwrap
 import warnings
@@ -208,6 +209,26 @@ def monkey_patch_value():
 
         # 1 means cuda place, see paddle/phi/kernels/memcpy_kernel.cc
         return _C_ops.memcpy(self, 1)
+
+    @property
+    def is_cuda(self):
+        """
+        Value don't have 'is_cuda' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
+        )
+        from paddle import framework
+
+        if hasattr(self, 'place') and isinstance(
+            self.place, framework.core.CUDAPlace
+        ):
+            return True
+        else:
+            expected_place = framework._current_expected_place_()
+            return isinstance(expected_place, framework.core.CUDAPlace)
 
     @property
     def place(self):
@@ -1063,6 +1084,7 @@ def monkey_patch_value():
         device=None,
         dtype=None,
         blocking=None,
+        copy_tensor=None,
     ):
         if device is None and dtype is None and blocking is None:
             return self
@@ -1095,7 +1117,7 @@ def monkey_patch_value():
                 "blocking value error, must be the True, False or None"
             )
 
-        def transform(t, device, dtype, blocking):
+        def transform(t, device, dtype, blocking, copy_tensor):
             if dtype is None:
                 dtype = t.dtype
             t_used = t
@@ -1106,26 +1128,36 @@ def monkey_patch_value():
                     place=t_used.place
                 ):
                     t_casted = t_used.cast(dtype=dtype)
+                    copy_tensor = False
             else:
                 t_casted = t_used
 
             # 2. Copy casted Tensor(in CPU or GPU) to device
             if isinstance(device, paddle.CUDAPlace):
                 new_t = t_casted.cuda(blocking=blocking)
+                copy_tensor = False
             elif isinstance(device, paddle.CUDAPinnedPlace):
                 if blocking is not True:
                     warnings.warn(
                         "blocking is not supported, and it will be ignored."
                     )
                 new_t = _C_ops.memcpy(self, 2)
+                copy_tensor = False
             elif isinstance(device, paddle.CPUPlace):
                 new_t = t_casted.cpu()
+                copy_tensor = False
             else:
                 new_t = t_casted
-
+            if copy_tensor:
+                return copy.deepcopy(new_t)
             return new_t
 
-        return transform(self, device, dtype, blocking)
+        return transform(self, device, dtype, blocking, copy_tensor)
+
+    def __deepcopy__(self, memo):
+        new_tensor = self.clone().detach()
+        memo[id(self)] = new_tensor
+        return new_tensor
 
     def to(self, *args, **kwargs):
         """
@@ -1170,6 +1202,16 @@ def monkey_patch_value():
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
+
+        if "non_blocking" in kwargs:
+            non_blocking = kwargs.pop("non_blocking")
+        else:
+            non_blocking = False
+
+        if "copy" in kwargs:
+            copy_tensor = kwargs.pop("copy")
+        else:
+            copy_tensor = False
 
         size_args = len(args)
         size_kwargs = len(kwargs)
@@ -1295,8 +1337,12 @@ def monkey_patch_value():
             args["dtype"] = other.dtype
             # in dy2static, we need show warning for this case
             other.place  # noqa: B018
-
-        return self._to(**args)
+        args["blocking"] = (
+            False if not args.get("blocking", False) or non_blocking else True
+        )
+        args["copy_tensor"] = copy_tensor
+        res = self._to(**args)
+        return res
 
     @fake_interface_only
     def numpy(self):
@@ -1393,13 +1439,39 @@ def monkey_patch_value():
             )
         self.stop_gradient = not value
 
+    @property
+    def itemsize(self) -> int:
+        """
+        Returns the number of bytes allocated on the machine for a single element of the Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x.itemsize
+                8
+        """
+        return self.element_size()
+
     import paddle
+
+    def get_device(self) -> None:
+        """
+        Value don't have 'get_device' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'get_device' interface for pir graph mode, try not to use it. None will be returned."
+        )
 
     value_methods = [
         ('cpu', cpu),
         ('cuda', cuda),
         ('place', place),
         ('contiguous', contiguous),
+        ('is_cuda', is_cuda),
         ('is_contiguous', is_contiguous),
         ('item', _item),
         ('dim', dim),
@@ -1431,6 +1503,8 @@ def monkey_patch_value():
         ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
+        ("get_device", get_device),
+        ("__deepcopy__", __deepcopy__),
         # For basic operators
         (
             '__add__',
@@ -1557,6 +1631,7 @@ def monkey_patch_value():
         ('__int__', _int_),
         ('__bool__', _bool_),
         ('__complex__', _complex_),
+        ('itemsize', itemsize),
     ]
     dtype_conversion_methods = _create_dtype_conversion_methods()
     value_methods.extend(dtype_conversion_methods)

@@ -29,14 +29,14 @@ using string::PrettyLogDetail;
 
 void CPUBfloat16PlacementPass::ApplyImpl(ir::Graph* graph) const {
   int bfloat16_operators = 0;
-  bfloat16_operators += SetMkldnnDataType(graph);
+  bfloat16_operators += SetOnednnDataType(graph);
   bfloat16_operators -= RemoveOrphanedOperators(graph);
   bfloat16_operators -= RemoveUnsupportedOperators(graph);
   PrettyLogDetail("---    marked %d operators to bfloat16 ",
                   bfloat16_operators);
 }
 
-int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
+int CPUBfloat16PlacementPass::SetOnednnDataType(ir::Graph* graph) const {
   const auto& op_types_list =
       Get<std::unordered_set<std::string>>("bfloat16_enabled_op_types");
   // set mkldnn_data_type to bfloat16 to all operators that are in
@@ -60,6 +60,7 @@ int CPUBfloat16PlacementPass::SetMkldnnDataType(ir::Graph* graph) const {
       VLOG(4) << "---    marked " << op->Op()->Type()
               << " operator to bfloat16 ";
       op->Op()->SetAttr("mkldnn_data_type", std::string("bfloat16"));
+      op->Op()->SetAttr("onednn_data_type", std::string(""));
       detected_operators++;
     }
   };
@@ -80,6 +81,7 @@ int CPUBfloat16PlacementPass::RemoveOrphanedOperators(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(op, op, orphaned_bfloat16_pattern);
 
     op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
+    op->Op()->SetAttr("onednn_data_type", std::string(""));
     VLOG(4) << "---  demarked " << op->Op()->Type() << " operator to bfloat16 ";
     detected_operators++;
   };
@@ -102,6 +104,7 @@ int CPUBfloat16PlacementPass::RemoveUnsupportedOperators(
     GET_IR_NODE_FROM_SUBGRAPH(op, op, unsupported_bfloat16_pattern);
     if ((prev_out->Var()->GetDataType() != proto::VarType::FP32)) {
       op->Op()->SetAttr("mkldnn_data_type", std::string("float32"));
+      op->Op()->SetAttr("onednn_data_type", std::string(""));
       VLOG(4) << "---  demarked " << op->Op()->Type()
               << " operator to bfloat16 ";
       detected_operators++;

@@ -20,10 +20,6 @@ import paddle
 from paddle import core
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CPU scatter/gather kernel is not yet modified, coming soon and this skipping will be removed.",
-)
 class TestNonBroadcastableMismatchedShapeCase(unittest.TestCase):
     """Unittest from PyTorch comparison and handcrafted backward result
     Note that this unit test might fail, if you modify the implementation
@@ -428,10 +424,6 @@ class TestNonBroadcastableMismatchedShapeCase(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "CPU scatter/gather kernel is not yet modified, coming soon and this skipping will be removed.",
-)
 class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
     """Test case from issue 72803"""
 
@@ -572,6 +564,89 @@ class TestPutAlongAxisNonIncludeSelf2ndGrad(unittest.TestCase):
         np.testing.assert_allclose(dx.numpy(), self.gt_dx, 1e-6, 1e-6)
         np.testing.assert_allclose(dv.numpy(), self.gt_dv, 1e-6, 1e-6)
         np.testing.assert_allclose(ddout.numpy(), self.gt_ddout, 1e-6, 1e-6)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "CPU FP16 is not supported",
+)
+class TestPutAlongAxisFP16MulDuplicatedIndices(unittest.TestCase):
+    def setUp(self):
+        self.input = paddle.ones(16, dtype=paddle.float16)
+        self.src = paddle.arange(
+            0.9, 0.9 + 0.02 * 16, 0.02, dtype=paddle.float16
+        )
+        self.index = paddle.zeros(16, dtype=paddle.int64)
+
+    def test_fp16_mul_reduce(self):
+        res = paddle.put_along_axis(
+            self.input, self.index, self.src, axis=0, reduce='mul'
+        )
+        gt = np.ones(16, dtype=np.float64)
+        gt[0] = np.arange(0.9, 0.9 + 16 * 0.02, 0.02).prod()
+        np.testing.assert_allclose(
+            res.numpy().astype(np.float64), gt, rtol=1e-2, atol=1e-2
+        )
+
+
+class TestPutAlongAxisIntegerMean(unittest.TestCase):
+    def setUp(self):
+        self.gt_include_self = np.array(
+            [
+                [[-8, -7, -7, -7], [-12, -11, -10, -9]],
+                [[-5, -5, -4, -4], [-4, -3, -2, -1]],
+                [[-2, -2, -2, -1], [4, 5, 6, 7]],
+                [[0, 1, 1, 1], [12, 13, 14, 15]],
+            ],
+            dtype='int32',
+        )
+        self.gt_exclude_self = np.array(
+            [
+                [[-3, -3, -3, -3], [-12, -11, -10, -9]],
+                [[-3, -3, -3, -3], [-4, -3, -2, -1]],
+                [[-3, -3, -3, -3], [4, 5, 6, 7]],
+                [[-3, -3, -3, -3], [12, 13, 14, 15]],
+            ],
+            dtype='int32',
+        )
+
+    def _make_static_mean_int(self, gt, include_self, place):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input_ = paddle.arange(-16, 16, 1, dtype=paddle.int32).reshape(
+                [4, 2, 4]
+            )
+            src = paddle.full([4, 2, 4], -3, dtype=paddle.int32)
+            index = paddle.zeros([4, 2, 4], dtype=paddle.int64)
+            result = paddle.put_along_axis(
+                input_,
+                indices=index,
+                values=src,
+                axis=1,
+                reduce='mean',
+                include_self=include_self,
+            )
+
+            exe = paddle.static.Executor(place)
+            result_np = exe.run(fetch_list=[result])
+            np.testing.assert_array_equal(result_np[0], gt)
+        paddle.disable_static()
+
+    def test_mean_int(self):
+        # try testing with both CPU and GPU places
+        if paddle.is_compiled_with_cuda():
+            self._make_static_mean_int(
+                self.gt_include_self, True, paddle.CUDAPlace(0)
+            )
+            self._make_static_mean_int(
+                self.gt_exclude_self, False, paddle.CUDAPlace(0)
+            )
+        self._make_static_mean_int(
+            self.gt_include_self, True, paddle.CPUPlace()
+        )
+        self._make_static_mean_int(
+            self.gt_exclude_self, False, paddle.CPUPlace()
+        )
 
 
 if __name__ == '__main__':

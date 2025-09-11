@@ -111,5 +111,5 @@ PD_REGISTER_KERNEL(cumprod,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

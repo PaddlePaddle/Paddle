@@ -17,7 +17,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/check_numerics_utils.h"
@@ -110,11 +109,10 @@ __device__ void BlockReduceNumNanInfAndWrite(const int64_t num_nan,
   }
 }
 
-template <
-    typename T,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
                                           const T mean_value,
@@ -125,11 +123,10 @@ __device__ void BlockReduceMaxMinAndWrite(const T max_value,
   // TODO(Xreki): support complex
 }
 
-template <
-    typename T,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
+template <typename T,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
 __device__ void BlockReduceMaxMinAndWrite(const T max_value,
                                           const T min_value,
                                           const T mean_value,
@@ -503,12 +500,12 @@ void CheckNumericsKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_CHECKNUMBERICS_KERNEL(float, GPUContext)
 INSTANTIATE_CHECKNUMBERICS_KERNEL(double, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float16, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::bfloat16, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::complex<float>, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::complex<double>, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e4m3fn, GPUContext)
-INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::dtype::float8_e5m2, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::bfloat16, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex64, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::complex128, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e4m3fn, GPUContext)
+INSTANTIATE_CHECKNUMBERICS_KERNEL(phi::float8_e5m2, GPUContext)
 #endif
 }  // namespace phi
 
@@ -518,9 +515,9 @@ PD_REGISTER_KERNEL(check_numerics,
                    phi::CheckNumericsKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

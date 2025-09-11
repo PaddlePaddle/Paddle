@@ -107,5 +107,5 @@ PD_REGISTER_KERNEL(scatter_grad,
                    ALL_LAYOUT,
                    phi::ScatterGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

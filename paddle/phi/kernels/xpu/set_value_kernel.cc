@@ -396,7 +396,7 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  // avoid using vector<T> if T is bool or phi::dtype::float16
+  // avoid using vector<T> if T is bool or phi::float16
   size_t value_size = sizeof(T);
   size_t values_size = values.size();
   size_t values_length = values_size * value_size;
@@ -438,8 +438,8 @@ PD_REGISTER_KERNEL(set_value,
                    ALL_LAYOUT,
                    phi::SetValueKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t,
                    bool) {}
@@ -449,8 +449,8 @@ PD_REGISTER_KERNEL(set_value_with_tensor,
                    ALL_LAYOUT,
                    phi::SetTensorValueKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t,
                    bool) {}

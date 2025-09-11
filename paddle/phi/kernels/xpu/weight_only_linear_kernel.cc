@@ -45,8 +45,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<float>(&bias_fp32);
     int r = baidu::xpu::api::cast<XPUType, float>(
         dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(
-            bias.get().data<phi::dtype::float16>()),
+        reinterpret_cast<const XPUType*>(bias.get().data<phi::float16>()),
         bias_fp32.data<float>(),
         n);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -156,5 +155,5 @@ PD_REGISTER_KERNEL(weight_only_linear,
                    XPU,
                    ALL_LAYOUT,
                    phi::WeightOnlyLinearKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

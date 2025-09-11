@@ -235,10 +235,9 @@ void Conv2dXPUKernel(const Context& dev_ctx,
     // float16 kernel
     if (filter.dtype() == DataType::INT16) {
       if (out_dtype == DataType::FLOAT32) {
-        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int16_t, float, int16_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int16_t, float, int16_t);
       } else if (out_dtype == DataType::FLOAT16) {
-        CONV2D_XPU_KERNEL_IMPL(
-            phi::dtype::float16, int16_t, dtype::float16, int16_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int16_t, dtype::float16, int16_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
@@ -249,10 +248,9 @@ void Conv2dXPUKernel(const Context& dev_ctx,
       }
     } else if (filter.dtype() == DataType::INT8) {
       if (out_dtype == DataType::FLOAT16) {
-        CONV2D_XPU_KERNEL_IMPL(
-            phi::dtype::float16, int8_t, dtype::float16, int8_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int8_t, dtype::float16, int8_t);
       } else if (out_dtype == DataType::INT8) {
-        CONV2D_XPU_KERNEL_IMPL(phi::dtype::float16, int8_t, int8_t, int8_t);
+        CONV2D_XPU_KERNEL_IMPL(phi::float16, int8_t, int8_t, int8_t);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Not support x_dtype is %s, filter_dtype is %s and out_dtype is "
@@ -312,5 +310,5 @@ PD_REGISTER_KERNEL(conv2d_xpu,
                    ALL_LAYOUT,
                    phi::fusion::Conv2dXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t) {}

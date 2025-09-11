@@ -149,8 +149,8 @@ void Pad3dKernel(const Context& dev_ctx,
   pads_xpu[5] = pads[1];  // pr
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-  using XPUTypeBF16 = typename XPUTypeTrait<phi::dtype::bfloat16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+  using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
   // Because the xpu api do not support pad3d with bf16 type, we use fp16
   // temporarily. This would not cause problem because it is a memcpy-only
   // operator.
@@ -210,5 +210,5 @@ PD_REGISTER_KERNEL(pad3d,
                    ALL_LAYOUT,
                    phi::Pad3dKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

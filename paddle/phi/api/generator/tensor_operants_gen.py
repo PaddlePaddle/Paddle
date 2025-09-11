@@ -479,11 +479,11 @@ class OperantsAPI(ForwardAPI):
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             return f"""
-{indent}virtual {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=False)}) = 0;
+{indent}virtual {self.get_return_type()} {api_func_name}({self.get_declare_args(append_predefined_out=False)}) = 0;
 """
         else:
             return f"""
-{indent}virtual {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=False)}) = 0;
+{indent}virtual {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_predefined_out=False)}) = 0;
 """
 
     def get_declare_args_without_first_tensor(self, inplace_flag=False):
@@ -553,11 +553,11 @@ class OperantsAPI(ForwardAPI):
         api_func_name = self.get_api_func_name()
         if api_func_name[-1] != '_':
             return f"""
-{indent}PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_input_out=False)});
+{indent}PADDLE_API {self.get_return_type()} {api_func_name}({self.get_declare_args(append_predefined_out=False)});
 """
         else:
             return f"""
-{indent}PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_input_out=False)});
+{indent}PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_declare_args(inplace_flag=True, append_predefined_out=False)});
 """
 
     def gene_operants_implementation(self):
@@ -567,13 +567,13 @@ class OperantsAPI(ForwardAPI):
         # func declaration
         if func_name[-1] != '_':
             return f"""
-{self.get_return_type()} PhiTensorOperants::{func_name}({self.get_define_args(append_input_out=False)}) {{
+{self.get_return_type()} PhiTensorOperants::{func_name}({self.get_define_args(append_predefined_out=False)}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
 """
         else:
             return f"""
-{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
+{self.get_return_type(inplace_flag=True)} PhiTensorOperants::{func_name}({self.get_define_args(inplace_flag=True, append_predefined_out=False)}) {{
 {indent}return paddle::experimental::{func_name}({func_args_code});
 }}
 
@@ -640,14 +640,14 @@ class OperantsAPI(ForwardAPI):
             return (
                 final_code
                 + f"""
-{self.get_return_type()} OperantsManager::{func_name}({self.get_define_args(append_input_out=False)}) {{{self.gene_operants_manager_code()}}}
+{self.get_return_type()} OperantsManager::{func_name}({self.get_define_args(append_predefined_out=False)}) {{{self.gene_operants_manager_code()}}}
 """
             )
         else:
             return (
                 final_code
                 + f"""
-{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True, append_input_out=False)}) {{
+{self.get_return_type(inplace_flag=True)} OperantsManager::{func_name}({self.get_define_args(inplace_flag=True, append_predefined_out=False)}) {{
 {self.gene_operants_manager_code()}
 }}
 """

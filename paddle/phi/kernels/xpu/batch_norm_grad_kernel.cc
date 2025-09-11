@@ -288,4 +288,4 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    ALL_LAYOUT,
                    phi::BatchNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

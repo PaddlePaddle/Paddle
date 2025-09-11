@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -68,16 +66,13 @@ void GradAddKernel(const Context& dev_ctx,
 #ifdef _WIN32
 INSTANTIATE_ADD_KERNEL(float, CPUContext)
 INSTANTIATE_ADD_KERNEL(double, CPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<float>, CPUContext)
-INSTANTIATE_ADD_KERNEL(phi::dtype::complex<double>, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex64, CPUContext)
+INSTANTIATE_ADD_KERNEL(phi::complex128, CPUContext)
 #endif
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
-// using bfloat16 = ::phi::dtype::bfloat16;
+// using bfloat16 = ::phi::bfloat16;
 
 PD_REGISTER_KERNEL(add,
                    CPU,
@@ -91,8 +86,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   complex64,
-                   complex128) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(grad_add,
                    CPU,
@@ -106,5 +101,5 @@ PD_REGISTER_KERNEL(grad_add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   complex64,
-                   complex128) {}
+                   phi::complex64,
+                   phi::complex128) {}
