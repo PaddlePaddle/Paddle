@@ -41,15 +41,15 @@ template <typename T>
   if (std::is_same<T, phi::dtype::complex<float>>::value ||
       std::is_same<T, phi::dtype::complex<double>>::value) {
     dtype.code = kDLComplex;
+  } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value) {
+    dtype.code = kDLFloat8_e4m3fn;
+  } else if (std::is_same<T, phi::dtype::float8_e5m2>::value) {
+    dtype.code = kDLFloat8_e5m2;
   } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
     dtype.code = kDLBfloat;
   } else if (std::is_same<T, phi::dtype::float16>::value ||
              std::is_floating_point<T>::value) {
     dtype.code = kDLFloat;
-  } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value) {
-    dtype.code = kDLFloat8_e4m3fn;
-  } else if (std::is_same<T, phi::dtype::float8_e5m2>::value) {
-    dtype.code = kDLFloat8_e5m2;
   } else if (std::is_same<T, bool>::value) {
     // Since std::is_unsigned<bool>::value is True,
     // it is necessary to evaluate bool before std::is_unsigned.

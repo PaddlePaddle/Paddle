@@ -410,5 +410,60 @@ class TestRaiseError(unittest.TestCase):
         self.assertRaises(TypeError, paddle.to_dlpack, np.zeros(5))
 
 
+class TestVersioned(unittest.TestCase):
+    CAPSULE = "dltensor"
+    CAPSULE_VERSIONED = "dltensor_versioned"
+
+    def test_to_dlpack_versioned(self):
+        a = paddle.to_tensor([1, 2, 3])
+        # version independent DLPack when max_version=None
+        capsule = a.__dlpack__(max_version=None)
+        self.assertIn(f'"{TestVersioned.CAPSULE}"', str(capsule))
+        # version independent DLPack when max_version=(0, 8)
+        capsule = a.__dlpack__(max_version=(0, 8))
+        self.assertIn(f'"{TestVersioned.CAPSULE}"', str(capsule))
+        # versioned DLPack when max_version=(1, 0)
+        capsule = a.__dlpack__(max_version=(1, 0))
+        self.assertIn(f'"{TestVersioned.CAPSULE_VERSIONED}"', str(capsule))
+        # 1version DLPack when max_version=(1, 1)
+        capsule = a.__dlpack__(max_version=(1, 1))
+        self.assertIn(f'"{TestVersioned.CAPSULE_VERSIONED}"', str(capsule))
+
+    def test_from_dlpack_versioned(self):
+        a = paddle.to_tensor([1, 2, 3])
+        versioned_capsule = a.__dlpack__(max_version=(1, 0))
+        # from versioned DLPack capsule
+        b = paddle.utils.dlpack.from_dlpack(versioned_capsule)
+        np.testing.assert_array_equal(a.numpy(), b.numpy())
+        self.assertEqual(a.data_ptr(), b.data_ptr())
+
+
+class TestDtypesLowPrecision(unittest.TestCase):
+    @dygraph_guard()
+    def test_dlpack_low_precision(self):
+        dtypes = [
+            paddle.float8_e4m3fn,
+            paddle.float8_e5m2,
+        ]
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+            places.append(paddle.CUDAPinnedPlace())
+        for dtype in dtypes:
+            for place in places:
+                data = np.random.randn(2, 3, 4)
+                x = paddle.to_tensor(data, place=place).cast(dtype)
+                dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                o_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                dlpack_v2 = paddle.to_dlpack(x)
+                o_v2 = paddle.from_dlpack(dlpack_v2)
+                self.assertEqual(x.dtype, o_v1.dtype)
+                self.assertEqual(x.dtype, o_v2.dtype)
+                np.testing.assert_allclose(x.numpy(), o_v1.numpy(), rtol=1e-05)
+                np.testing.assert_allclose(x.numpy(), o_v2.numpy(), rtol=1e-05)
+                self.assertEqual(str(x.place), str(o_v1.place))
+                self.assertEqual(str(x.place), str(o_v2.place))
+
+
 if __name__ == "__main__":
     unittest.main()
