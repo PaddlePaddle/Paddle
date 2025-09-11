@@ -46,6 +46,7 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
     return Out
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
     def config(self):
         self.x_shape = (100,)
