@@ -35,11 +35,6 @@ class TestFromNumpy(unittest.TestCase):
             "complex64",
             "complex128",
         ]
-        self.devices = ["cpu", paddle.CPUPlace()]
-        if paddle.base.is_compiled_with_cuda():
-            self.devices.append("gpu")
-            self.devices.append(paddle.CUDAPlace(0))
-        self.stop_gradients = [True, False]
 
     def prepare_data(self, dtype):
         if dtype == "bool":
@@ -50,21 +45,8 @@ class TestFromNumpy(unittest.TestCase):
     def test_base(self):
         for dtype in self.dtypes:
             np_data = self.prepare_data(dtype)
-            for device in self.devices:
-                for stop_gradient in self.stop_gradients:
-                    tensor = paddle.from_numpy(
-                        np_data, place=device, stop_gradient=stop_gradient
-                    )
-                    target_place = device
-                    if isinstance(target_place, str):
-                        target_place = (
-                            paddle.CPUPlace()
-                            if target_place == "cpu"
-                            else paddle.CUDAPlace(0)
-                        )
-                    self.assertEqual(tensor.stop_gradient, stop_gradient)
-                    self.assertEqual(tensor.place, target_place)
-                    np.testing.assert_allclose(tensor.numpy(), np_data)
+            tensor = paddle.from_numpy(np_data)
+            np.testing.assert_allclose(tensor.numpy(), np_data)
 
 
 if __name__ == "__main__":

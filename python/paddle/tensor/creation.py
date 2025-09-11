@@ -1009,7 +1009,6 @@ def tensor(
             return tensor
 
 
-@param_one_alias(["data", "ndarray"])
 def to_tensor(
     data: TensorLike | NestedNumericSequence,
     dtype: DTypeLike | None = None,
@@ -1203,7 +1202,7 @@ def asarray(
              [(3+2j), (4+0j)]])
     """
     return tensor(
-        data=obj, dtype=dtype, place=device, stop_gradient=not requires_grad
+        data=obj, dtype=dtype, device=device, requires_grad=requires_grad
     )
 
 
