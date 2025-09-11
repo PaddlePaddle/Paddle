@@ -1476,6 +1476,21 @@ def monkey_patch_tensor():
 
         return paddle.to_dlpack(self)
 
+    def __tvm_ffi_env_stream__(self) -> int:
+        """
+        Returns the raw stream pointer of the current tensor's device context.
+        This is used for TVM FFI environment integration.
+        """
+        if self.place.is_gpu_place():
+            return paddle.base.libpaddle._get_current_raw_stream(
+                self.place.gpu_device_id()
+            )
+        else:
+            # TODO: Add XPU and custom device support.
+            raise RuntimeError(
+                "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
+            )
+
     if not hasattr(core, "eager"):
         return
 
@@ -1523,6 +1538,7 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

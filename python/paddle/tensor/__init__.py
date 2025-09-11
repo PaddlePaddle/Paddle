@@ -512,6 +512,8 @@ lt = less_than
 le = less_equal
 ge = greater_equal
 greater = gt
+sub = subtract
+sub_ = subtract_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -633,6 +635,8 @@ tensor_method_func = [
     'divide_',
     'div',
     'div_',
+    'sub',
+    'sub_',
     'true_divide',
     'floor_divide',
     'floor_divide_',
