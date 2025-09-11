@@ -107,7 +107,7 @@ class TestMatmulCoShard:
                 True,
                 False,
                 [512, 48, 64, 48],
-                [Shard(0), Partial(), Shard(1)],
+                [Shard(0), Partial(), Shard(3)],
             ),
             MatmulTestCase(
                 [512, 48, 64, 32],
@@ -123,11 +123,11 @@ class TestMatmulCoShard:
                 [512, 48, 32, 64],
                 [Shard(2, shard_order=0), Shard(2, shard_order=1), Shard(3)],
                 [1, 48, 32],
-                [Shard(1), Replicate(), Replicate()],
+                [Shard(1, shard_order=0), Shard(1, shard_order=1), Shard(2)],
                 True,
                 True,
                 [512, 48, 64, 48],
-                [Shard(2), Shard(3, shard_order=0), Shard(3, shard_order=1)],
+                [Shard(3, shard_order=0), Shard(3, shard_order=1), Shard(2)],
             ),
         ]
 
