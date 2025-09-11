@@ -188,7 +188,9 @@ GradNodePyLayer::operator()(
   }
 
   size_t outputs_size = PyTuple_GET_SIZE(outputs_tuple);
-
+  VLOG(6) << "Pylayer backward output size " << outputs_size;
+  VLOG(6) << "Pylayer forward duplicable input size"
+          << ctx->forward_input_tensor_is_duplicable.size();
   if (outputs_size > ctx->forward_input_tensor_is_duplicable.size()) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "The number of outputs of `PyLayer.backward` should be %d, but "
