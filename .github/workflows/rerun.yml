@@ -209,7 +209,7 @@ jobs:
           JOB_NAME: 'Distribute-stable / Test'
 
       - name: Rerun build
-        if: ${{ contains(github.event.comment.body, 'build') }}
+        if: ${{ contains(github.event.comment.body, 'linux') && contains(github.event.comment.body, 'build') }}
         uses: ./.github/actions/rerun-workflow
         with:
           PR_ID: ${{ github.event.issue.number }}
