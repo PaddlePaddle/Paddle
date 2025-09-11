@@ -59,6 +59,8 @@ from ..framework import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from numpy.typing import NDArray
+
     from paddle._typing import (
         DTypeLike,
         NestedNumericSequence,
@@ -1093,6 +1095,34 @@ def to_tensor(
     )
 
 
+def from_numpy(ndarray: NDArray) -> paddle.Tensor:
+    """
+    Creates a ``paddle.Tensor`` from a ``numpy.ndarray``.
+
+    The returned Tensor and the input ``ndarray`` share the same underlying memory.
+    Changes to the Tensor will be reflected in the ``ndarray`` and vice versa.
+
+    Args:
+        ndarray(numpy.ndarray): The numpy ndarray to be converted to a Tensor.
+
+    Returns:
+        Tensor: A Tensor that shares the same memory with the input ``ndarray``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> np_data = np.array([1, 2, 3]).astype('int64')
+            >>> tensor = paddle.from_numpy(np_data)
+            >>> print(tensor)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [1, 2, 3])
+    """
+    return tensor(ndarray)
+
+
 def asarray(
     obj: TensorLike | NestedNumericSequence,
     *,
@@ -1172,7 +1202,7 @@ def asarray(
             [[(1+1j), (2+0j)],
              [(3+2j), (4+0j)]])
     """
-    return to_tensor(
+    return tensor(
         data=obj, dtype=dtype, place=device, stop_gradient=not requires_grad
     )
 

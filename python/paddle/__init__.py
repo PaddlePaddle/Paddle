@@ -283,7 +283,7 @@ from .tensor.attribute import (
     real,
     shape,
 )
-from .tensor.compat_softmax import softmax  # noqa: F401
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
     BFloat16Tensor,
     BoolTensor,
@@ -309,6 +309,7 @@ from .tensor.creation import (
     empty,
     empty_like,
     eye,
+    from_numpy,
     full,
     full_like,
     geometric_,
@@ -947,7 +948,6 @@ lt = less_than
 le = less_equal
 greater = gt
 ge = greater_equal
-from_numpy = to_tensor
 swapdims = transpose
 swapaxes = transpose
 manual_seed = seed
@@ -1449,7 +1449,8 @@ __all__ = [
     'conv1d',
     'conv2d',
     'conv3d',
-    'manual_seedsoftmax',
+    'manual_seed',
+    'softmax',
 ]
 import os
 
