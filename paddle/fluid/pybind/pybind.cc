@@ -4134,7 +4134,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindDeepEPApi(&m);
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   BindCudaRt(&m);
 #endif
 }
