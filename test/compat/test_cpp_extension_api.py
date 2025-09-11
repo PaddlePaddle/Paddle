@@ -44,6 +44,13 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
 
+    def test_with_env_hopper_and_flags(self):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "Hopper"
+        flags = _get_cuda_arch_flags("Hopper")
+        # Hopper -> 9.0+PTX -> sm_90 + compute_90
+        self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
+        self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
     def test_with_env_multiple(self):
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6;9.0+PTX"
         flags = _get_cuda_arch_flags()
@@ -56,6 +63,16 @@ class TestGetCudaArchFlags(unittest.TestCase):
             del os.environ["PADDLE_CUDA_ARCH_LIST"]
         flags = _get_cuda_arch_flags()
         self.assertTrue(len(flags) > 0)
+
+    def test_get_cuda_arch_flags_with_invalid_arch(self):
+        # Test that invalid CUDA arch raises ValueError
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "invalid_arch"
+        with self.assertRaises(ValueError) as context:
+            _get_cuda_arch_flags()
+        self.assertIn(
+            "Unknown CUDA arch (invalid_arch) or GPU not supported",
+            str(context.exception),
+        )
 
 
 class TestCppExtensionUtils(unittest.TestCase):
@@ -70,12 +87,21 @@ class TestCppExtensionUtils(unittest.TestCase):
         for f in flags:
             self.assertIsInstance(f, str)
 
-    def test_get_num_workers(self):
-        import os
-
+    def test_get_num_workers_with_env_verbose_false(self):
         os.environ["MAX_JOBS"] = "8"
         num = _get_num_workers(verbose=False)
         self.assertEqual(num, 8)
+
+    def test_get_num_workers_with_env_verbose_true(self):
+        os.environ["MAX_JOBS"] = "8"
+        num = _get_num_workers(verbose=False)
+        self.assertEqual(num, 8)
+
+    def test_get_num_workers_without_env_verbose_true(self):
+        if "MAX_JOBS" in os.environ:
+            del os.environ["MAX_JOBS"]
+        num = _get_num_workers(verbose=False)
+        self.assertEqual(num, None)
 
 
 if __name__ == "__main__":

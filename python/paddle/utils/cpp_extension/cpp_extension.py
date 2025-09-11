@@ -1152,10 +1152,9 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
                 arch_list[-1] += '+PTX'
         elif dev_types and core.is_compiled_with_custom_device(dev_types[0]):
             for dev_id in range(paddle.device.device_count()):
-                dev_type = paddle.device.get_all_custom_device_type()
                 capability = paddle.device.get_device_capability(
-                    dev_type[0], dev_id
-                )  # (major, minor)
+                    dev_types[0], dev_id
+                )
                 arch = f"{capability[0]}.{capability[1]}"
                 if arch not in arch_list:
                     arch_list.append(arch)
