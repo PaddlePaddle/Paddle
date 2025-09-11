@@ -44,6 +44,7 @@ from ...utils.tensor_fusion_helper import (
     FusedCommBuffer,
     assign_group_by_size,
     fused_parameters,
+    get_group_size,
 )
 
 g_sharding_v2_check_zero_padding = int(
@@ -815,9 +816,8 @@ class DygraphShardingOptimizerV2:
             g_color = color[0]
             g_group = color[1]
             logger.info(f"Tensor Fusion Color {g_color} and Group {g_group}: ")
-            var_groups, opt_states_sizes = assign_group_by_size(
-                params, group_size
-            )
+            var_groups = assign_group_by_size(params, group_size)
+            opt_states_sizes = get_group_size(params, group_size)
             for _, parameters in var_groups.items():
                 buffer = FusedCommBuffer(
                     group_idx,
