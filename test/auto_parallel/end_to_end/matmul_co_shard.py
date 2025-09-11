@@ -134,11 +134,11 @@ class TestMatmulCoShard:
     def run_test_case_forward(self, test_case: MatmulTestCase):
         x = paddle.rand(test_case.x_shape, "float32")
         x_placements = test_case.x_placements
-        input = dist.shard_tensor(x, self.mesh, x_placements)
+        x = dist.shard_tensor(x, self.mesh, x_placements)
 
         y = paddle.rand(test_case.y_shape, "float32")
         y_placements = test_case.y_placements
-        input = dist.shard_tensor(y, self.mesh, y_placements)
+        y = dist.shard_tensor(y, self.mesh, y_placements)
 
         out = paddle.matmul(x, y, test_case.trans_x, test_case.trans_y)
         case_info = f"x_shape: {test_case.x_shape}, x_placements: {x_placements}, y_shape: {test_case.y_shape}, y_placements: {test_case.y_placements}, trans_x: {test_case.trans_x}, trans_y: {test_case.trans_y}"
