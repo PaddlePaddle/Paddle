@@ -42,12 +42,14 @@ template <>
 struct DLPackTraits<DLManagedTensor> {
   inline static const char* capsule = "dltensor";
   inline static const char* used = "used_dltensor";
+  inline static auto toDLPack = framework::toDLPack;
 };
 
 template <>
 struct DLPackTraits<DLManagedTensorVersioned> {
   inline static const char* capsule = "dltensor_versioned";
   inline static const char* used = "used_dltensor_versioned";
+  inline static auto toDLPack = framework::toDLPackVersioned;
 };
 
 }  // namespace framework
