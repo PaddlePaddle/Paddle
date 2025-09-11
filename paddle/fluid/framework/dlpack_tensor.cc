@@ -348,7 +348,7 @@ void fillVersion(T *tensor) {}
 
 template <>
 void fillVersion<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor) {
-  tensor->flags = 0;
+  tensor->flags = 0;  // All flags are disabled for initial value.
   tensor->version.major = DLPACK_MAJOR_VERSION;
   tensor->version.minor = DLPACK_MINOR_VERSION;
 }

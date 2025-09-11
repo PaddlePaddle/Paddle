@@ -26,8 +26,8 @@ class TestDLPack(unittest.TestCase):
     def test_dlpack_dygraph(self):
         with dygraph_guard():
             tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype("int"))
-            dlpack_v1 = paddle.utils.dlpack.to_dlpack(tensor)
-            out_from_dlpack_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+            dlpack_v1 = paddle.to_dlpack(tensor)
+            out_from_dlpack_v1 = paddle.from_dlpack(dlpack_v1)
             dlpack_v2 = paddle.to_dlpack(tensor)
             out_from_dlpack_v2 = paddle.from_dlpack(dlpack_v2)
             self.assertTrue(
@@ -49,9 +49,9 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             numpy_data = np.random.randn(4, 5, 6)
             t = paddle.to_tensor(numpy_data)
-            dlpack_v1 = paddle.utils.dlpack.to_dlpack(t)
+            dlpack_v1 = paddle.to_dlpack(t)
             dlpack_v2 = paddle.to_dlpack(t)
-            out_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+            out_v1 = paddle.from_dlpack(dlpack_v1)
             out_v2 = paddle.from_dlpack(dlpack_v2)
             self.assertEqual(str(t.place), str(out_v1.place))
             self.assertEqual(str(t.place), str(out_v2.place))
@@ -65,8 +65,8 @@ class TestDLPack(unittest.TestCase):
                 [[1, 3]],
                 base.CPUPlace(),
             )
-            dlpack_v1 = paddle.utils.dlpack.to_dlpack(tensor)
-            out_from_dlpack_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+            dlpack_v1 = paddle.to_dlpack(tensor)
+            out_from_dlpack_v1 = paddle.from_dlpack(dlpack_v1)
             dlpack_v2 = paddle.to_dlpack(tensor)
             out_from_dlpack_v2 = paddle.from_dlpack(dlpack_v2)
             self.assertTrue(
@@ -91,11 +91,9 @@ class TestDLPack(unittest.TestCase):
                     [[1, 3]],
                     base.CUDAPlace(0),
                 )
-                gdlpack_v1 = paddle.utils.dlpack.to_dlpack(gtensor)
+                gdlpack_v1 = paddle.to_dlpack(gtensor)
                 gdlpack_v2 = paddle.to_dlpack(gtensor)
-                gout_from_dlpack_v1 = paddle.utils.dlpack.from_dlpack(
-                    gdlpack_v1
-                )
+                gout_from_dlpack_v1 = paddle.from_dlpack(gdlpack_v1)
                 gout_from_dlpack_v2 = paddle.from_dlpack(gdlpack_v2)
                 self.assertTrue(
                     isinstance(gout_from_dlpack_v1, base.core.DenseTensor)
@@ -135,8 +133,8 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for dtype in dtypes:
                     x = paddle.to_tensor(data, dtype=dtype, place=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
-                    o_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    dlpack_v1 = paddle.to_dlpack(x)
+                    o_v1 = paddle.from_dlpack(dlpack_v1)
                     dlpack_v2 = paddle.to_dlpack(x)
                     o_v2 = paddle.from_dlpack(dlpack_v2)
                     self.assertEqual(x.dtype, o_v1.dtype)
@@ -158,8 +156,8 @@ class TestDLPack(unittest.TestCase):
                         dtype=dtype,
                         place=place,
                     )
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
-                    o_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    dlpack_v1 = paddle.to_dlpack(x)
+                    o_v1 = paddle.from_dlpack(dlpack_v1)
                     dlpack_v2 = paddle.to_dlpack(x)
                     o_v2 = paddle.from_dlpack(dlpack_v2)
                     self.assertEqual(x.dtype, o_v1.dtype)
@@ -184,9 +182,9 @@ class TestDLPack(unittest.TestCase):
                     a = paddle.rand(shape=[3, 5], dtype="float32").to(
                         device=place
                     )
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(a)
+                    dlpack_v1 = paddle.to_dlpack(a)
                     dlpack_v2 = paddle.to_dlpack(a)
-                    b1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    b1 = paddle.from_dlpack(dlpack_v1)
                     b2 = paddle.from_dlpack(dlpack_v2)
                     self.assertEqual(str(a.place), str(b1.place))
                     self.assertEqual(str(a.place), str(b2.place))
@@ -200,7 +198,7 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                    dlpack_v1 = paddle.to_dlpack(x)
                     dlpack_v2 = paddle.to_dlpack(x)
 
     def test_to_dlpack_modification(self):
@@ -212,9 +210,9 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                    dlpack_v1 = paddle.to_dlpack(x)
                     dlpack_v2 = paddle.to_dlpack(x)
-                    y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    y1 = paddle.from_dlpack(dlpack_v1)
                     y2 = paddle.from_dlpack(dlpack_v2)
                     y1[1:2, 2:5] = 2.0
                     y2[1:2, 2:5] = 2.0
@@ -232,9 +230,9 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                    dlpack_v1 = paddle.to_dlpack(x)
                     dlpack_v2 = paddle.to_dlpack(x)
-                    y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    y1 = paddle.from_dlpack(dlpack_v1)
                     y2 = paddle.from_dlpack(dlpack_v2)
 
                     self.assertEqual(x.data_ptr(), y1.data_ptr())
@@ -251,9 +249,9 @@ class TestDLPack(unittest.TestCase):
                 for _ in range(4):
                     x = paddle.rand([10, 10]).to(device=place)
                     x_strided = x[::2, ::2]
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x_strided)
+                    dlpack_v1 = paddle.to_dlpack(x_strided)
                     dlpack_v2 = paddle.to_dlpack(x_strided)
-                    y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    y1 = paddle.from_dlpack(dlpack_v1)
                     y2 = paddle.from_dlpack(dlpack_v2)
 
                     self.assertEqual(x_strided.strides, y1.strides)
@@ -267,7 +265,7 @@ class TestDLPack(unittest.TestCase):
         with dygraph_guard():
             for _ in range(4):
                 x = np.random.randn(3, 5)
-                y1 = paddle.utils.dlpack.from_dlpack(x)
+                y1 = paddle.from_dlpack(x)
                 y2 = paddle.from_dlpack(x)
 
                 self.assertEqual(
@@ -287,9 +285,9 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.to_tensor(1.0, place=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                    dlpack_v1 = paddle.to_dlpack(x)
                     dlpack_v2 = paddle.to_dlpack(x)
-                    y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    y1 = paddle.from_dlpack(dlpack_v1)
                     y2 = paddle.from_dlpack(dlpack_v2)
                     self.assertEqual(x.data_ptr(), y1.data_ptr())
                     self.assertEqual(x.data_ptr(), y2.data_ptr())
@@ -310,9 +308,9 @@ class TestDLPack(unittest.TestCase):
             for place in places:
                 for _ in range(4):
                     x = paddle.zeros([0, 10]).to(device=place)
-                    dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
+                    dlpack_v1 = paddle.to_dlpack(x)
                     dlpack_v2 = paddle.to_dlpack(x)
-                    y1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                    y1 = paddle.from_dlpack(dlpack_v1)
                     y2 = paddle.from_dlpack(dlpack_v2)
                     self.assertEqual(x.data_ptr(), y1.data_ptr())
                     self.assertEqual(x.data_ptr(), y2.data_ptr())
@@ -406,7 +404,7 @@ class TestDLPackDevice(unittest.TestCase):
 
 class TestRaiseError(unittest.TestCase):
     def test_to_dlpack_raise_type_error(self):
-        self.assertRaises(TypeError, paddle.utils.dlpack.to_dlpack, np.zeros(5))
+        self.assertRaises(TypeError, paddle.to_dlpack, np.zeros(5))
         self.assertRaises(TypeError, paddle.to_dlpack, np.zeros(5))
 
 
@@ -433,7 +431,7 @@ class TestVersioned(unittest.TestCase):
         a = paddle.to_tensor([1, 2, 3])
         versioned_capsule = a.__dlpack__(max_version=(1, 0))
         # from versioned DLPack capsule
-        b = paddle.utils.dlpack.from_dlpack(versioned_capsule)
+        b = paddle.from_dlpack(versioned_capsule)
         np.testing.assert_array_equal(a.numpy(), b.numpy())
         self.assertEqual(a.data_ptr(), b.data_ptr())
 
@@ -453,8 +451,8 @@ class TestDtypesLowPrecision(unittest.TestCase):
             for place in places:
                 data = np.random.randn(2, 3, 4)
                 x = paddle.to_tensor(data, place=place).cast(dtype)
-                dlpack_v1 = paddle.utils.dlpack.to_dlpack(x)
-                o_v1 = paddle.utils.dlpack.from_dlpack(dlpack_v1)
+                dlpack_v1 = paddle.to_dlpack(x)
+                o_v1 = paddle.from_dlpack(dlpack_v1)
                 dlpack_v2 = paddle.to_dlpack(x)
                 o_v2 = paddle.from_dlpack(dlpack_v2)
                 self.assertEqual(x.dtype, o_v1.dtype)
@@ -463,6 +461,9 @@ class TestDtypesLowPrecision(unittest.TestCase):
                 np.testing.assert_allclose(x.numpy(), o_v2.numpy(), rtol=1e-05)
                 self.assertEqual(str(x.place), str(o_v1.place))
                 self.assertEqual(str(x.place), str(o_v2.place))
+
+                self.assertEqual(x.data_ptr(), o_v1.data_ptr())
+                self.assertEqual(x.data_ptr(), o_v2.data_ptr())
 
 
 if __name__ == "__main__":
