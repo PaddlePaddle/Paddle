@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"
