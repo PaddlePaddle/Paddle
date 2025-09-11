@@ -147,16 +147,6 @@ class GradSlotMeta {
     }
     return *meta_.get();
   }
-  const phi::DenseTensorMeta* GetTensorMetaPtr() const {
-    if (!HasTensorMeta()) {
-      PADDLE_THROW(common::errors::Fatal(
-          "meta_ of GradSlotMeta has not been initialized yet."
-          "You're expected to check Edge availability with HasTensorMeta()"
-          "before calling GetTensorMeta() interface."));
-    }
-    return meta_.get();
-  }
-
   void SetPlace(const phi::Place& place) { place_ = place; }
   const phi::Place& GetPlace() const { return place_; }
 

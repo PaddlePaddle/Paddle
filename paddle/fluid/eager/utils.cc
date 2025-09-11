@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 #include <ostream>
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
@@ -1146,24 +1149,63 @@ void ConvertToDistTensor(paddle::Tensor* x,
         dense_t, *mesh, placements));
   }
 }
-std::string ConcatNodeName(GradNodeBase* node) {
+std::string CreateNodeLabelInDot(GradNodeBase* node) {
   std::ostringstream oss;
   oss << node->name() << "\\nPtr: " << std::hex << node;
   return oss.str();
 }
-void SaveGraphToFile(const std::string& compute_graph_path,
-                     const std::string& serialized_graph) {
-  std::ofstream outFile(compute_graph_path);
+std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
+  std::ostringstream oss;
+  oss << "Place: " << tensor.place() << "\\nDtype: " << tensor.dtype()
+      << "\\nLayout: " << tensor.layout() << "\\n Shape: (" << tensor.dims()
+      << ")";
+  return oss.str();
+}
+std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
+  std::ostringstream oss;
+  oss << "\\nDtype: " << tensor.dtype << "\\nLayout: " << tensor.layout
+      << "\\n Shape: (" << tensor.dims << ")";
+  return oss.str();
+}
+void SaveStringToFile(const std::string& file_path,
+                      const std::string& serialized_graph) {
+  std::ofstream outFile(file_path);
 
   if (!outFile) {
-    PADDLE_THROW(common::errors::Fatal(
-        "Cannot open file %s for writing, when save compute graph.",
-        compute_graph_path));
+    PADDLE_THROW(
+        common::errors::Fatal("Cannot open file %s for writing.", file_path));
     return;
   }
 
   outFile << serialized_graph;
   outFile.close();
   return;
+}
+void SaveDebugInfo(const std::string& dir_path,
+                   const std::string& serialized_forward_graph,
+                   const std::string& call_stack,
+                   const std::string& serialized_backward_graph) {
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+  auto now_tm = *std::localtime(&now_time_t);
+
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
+                          now.time_since_epoch())
+                          .count() %
+                      1000000;
+  std::ostringstream oss;
+  oss << std::put_time(&now_tm, "%Y-%m-%d_%H:%M:%S");
+  oss << "." << std::setfill('0') << std::setw(6) << microseconds;
+  std::string timestamp = oss.str();
+  std::string file_path_prefix =
+      (dir_path.back() == '/' ? dir_path : dir_path + "/") + timestamp;
+  std::string forward_graph_file_path =
+      file_path_prefix + "_ref_forward_graph" + ".dot";
+  SaveStringToFile(forward_graph_file_path, serialized_forward_graph);
+  std::string call_stack_file = file_path_prefix + "_call_stack" + ".log";
+  SaveStringToFile(call_stack_file, call_stack);
+  std::string backward_graph_file_path =
+      file_path_prefix + "_backward_graph" + ".dot";
+  SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
 }
 }  // namespace egr

@@ -36,7 +36,6 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop_front();
-    std::string dot_node_label = ConcatNodeName(node);
     if (visited.count(node)) {
       continue;
     }
@@ -70,46 +69,32 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   }
   return node_in_degree_map;
 }
-void SaveComputeGraph(const std::deque<GradNodeBase*>& init_queue,
-                      const std::string& compute_graph_path) {
-  const std::vector<Dot::Attr> op_attrs({
-      Dot::Attr("style", "rounded,filled,bold"),  //
-      Dot::Attr("shape", "box"),                  //
-      Dot::Attr("color", "#999999"),              //
-      Dot::Attr("fontcolor", "#ffffff"),          //
-      Dot::Attr("width", "1.3"),                  //
-      Dot::Attr("height", "0.84"),                //
-      Dot::Attr("fontname", "Arial"),             //
-  });
-  const std::vector<Dot::Attr> param_attrs({
-      Dot::Attr("shape", "box"),                  //
-      Dot::Attr("style", "rounded,filled,bold"),  //
-      Dot::Attr("fontname", "Arial"),             //
-      Dot::Attr("color", "#148b97"),              //
-      Dot::Attr("fontcolor", "#ffffff"),          //
-  });
 
-  Dot dot;
-
-  // Copy nodes
+// Construct a forward graph and call stack related to the nodes in the backward
+// graph
+void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
+                                   Dot* dot,
+                                   std::string* call_stack) {
   std::deque<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
+  std::unordered_map<GradNodeBase*, std::string> call_stack_map;
   // Visit each node exactly once in any order
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop_front();
-    std::string dot_node_label = ConcatNodeName(node);
+    std::string dot_node_label = CreateNodeLabelInDot(node);
     if (visited.count(node)) {
       continue;
     }
     visited.insert(node);
-    if (!dot.ContainsNode(dot_node_label)) {
-      dot.AddNode(dot_node_label,
-                  op_attrs,
-                  dot_node_label,
-                  false,
-                  node->GetForwardTrace());
+
+    if (!dot->ContainsNode(dot_node_label)) {
+      dot->AddNode(dot_node_label,
+                   paddle::inference::analysis::grey_box_attrs,
+                   dot_node_label,
+                   false);
     }
+    call_stack_map[node] = node->GetForwardTrace();
     PADDLE_ENFORCE_NOT_NULL(
         node,
         common::errors::Fatal(
@@ -128,39 +113,41 @@ void SaveComputeGraph(const std::deque<GradNodeBase*>& init_queue,
         if (!next_node) {
           continue;
         }
-        std::string dot_next_node_label = ConcatNodeName(next_node);
-        auto tm = meta.GetTensorMetaPtr();
-        std::string tensor_id = std::to_string(
-            static_cast<int64_t>(reinterpret_cast<uintptr_t>(tm)));
-        std::ostringstream oss;
-        oss << "Tensor\\n"
-            << tm->dtype << " " << tm->layout << "\\n(" << tm->dims << ")";
-        std::string tensor_label = oss.str();
-        dot.AddNode(tensor_id, {}, tensor_label);
-        // if(next_node->name() == "GradNodeAccumulation")std::cout<<"id
-        // "<<tensor_id<<" label "<<tensor_label << " ptr: "<<tm<<std::endl;
-        if (!dot.ContainsNode(dot_next_node_label)) {
+        std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+        auto& tm = meta.GetTensorMeta();
+        std::string tensor_label = CreateEdgeLabelInDot(tm);
+        if (!dot->ContainsNode(dot_next_node_label)) {
           if (next_node->name() == "GradNodeAccumulation") {
-            dot.AddNode(dot_next_node_label,
-                        param_attrs,
-                        dot_next_node_label,
-                        false,
-                        next_node->GetForwardTrace());
+            dot->AddNode(dot_next_node_label,
+                         paddle::inference::analysis::teal_box_attrs,
+                         dot_next_node_label,
+                         false);
           } else {
-            dot.AddNode(dot_next_node_label,
-                        op_attrs,
-                        dot_next_node_label,
-                        false,
-                        next_node->GetForwardTrace());
+            dot->AddNode(dot_next_node_label,
+                         paddle::inference::analysis::grey_box_attrs,
+                         dot_next_node_label,
+                         false);
           }
         }
-        dot.AddEdge(dot_next_node_label, tensor_id, {});
-        dot.AddEdge(tensor_id, dot_node_label, {});
+        call_stack_map[next_node] = next_node->GetForwardTrace();
+        dot->AddEdge(dot_next_node_label, dot_node_label, {}, tensor_label);
         queue.push_back(next_node);
       }
     }
   }
-  SaveGraphToFile(compute_graph_path, dot.Build());
+  // Collect call stacks
+  std::string call_stack_tmp = "";
+  call_stack_tmp +=
+      "Note : If you want to see the call stack information of each Node, "
+      "please make sure FLAGS_call_stack_level=3 is set at runtime.\n";
+  for (auto& kv : call_stack_map) {
+    std::stringstream ss;
+    ss << "GradNodeBase " << kv.first->name() << " ptr : " << kv.first
+       << " call stack: \n"
+       << kv.second << std::endl;
+    call_stack_tmp += ss.str();
+  }
+  *call_stack = call_stack_tmp;
   return;
 }
 
@@ -204,9 +191,10 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& inputs = {},
     bool allow_unused = false,
     const std::vector<paddle::Tensor>& no_grad_vars = {},
-    std::string compute_graph_path = "") {
+    std::string debug_info_path = "") {
   VLOG(3) << "Start Backward";
 
+  bool need_debug_backward_graph = !debug_info_path.empty();
   egr::EagerBackwardStateGuard guard;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -339,7 +327,11 @@ std::vector<paddle::Tensor> RunBackward(
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
-  if (compute_graph_path != "") SaveComputeGraph(queue, compute_graph_path);
+  Dot forward_debug_dot_graph;
+  std::string debug_call_stack = "";
+  if (need_debug_backward_graph)
+    ConstructForwardDebugDotGraph(
+        queue, &forward_debug_dot_graph, &debug_call_stack);
   std::deque<GradNodeBase*> ready_queue;
   for (GradNodeBase* item : queue) {
     if (!node_in_degree_map.count(item)) {
@@ -375,11 +367,26 @@ std::vector<paddle::Tensor> RunBackward(
   //    |- node(grads)
   //    |- Prepare for next node
   // 3. Update queue
+
+  // Using Dot to construct backward graph for debug
+  Dot dot;
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
     try {
       queue.pop_front();
+
+      // Construct backward graph for debug
+      std::string dot_node_label = "";
+      if (need_debug_backward_graph) {
+        dot_node_label = CreateNodeLabelInDot(node);
+        if (!dot.ContainsNode(dot_node_label)) {
+          dot.AddNode(dot_node_label,
+                      paddle::inference::analysis::grey_box_attrs,
+                      dot_node_label,
+                      false);
+        }
+      }
 
       // Run node: This is where Hook happens
       auto node_input_buffer_iter = node_input_buffers_dict.find(node);
@@ -488,6 +495,28 @@ std::vector<paddle::Tensor> RunBackward(
                   << " 's name is: " << grad_output_tensor.name();
 
           auto* next_node = next_node_shared.get();
+
+          // Construct backward graph for debug
+          if (need_debug_backward_graph) {
+            std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+            if (!dot.ContainsNode(dot_next_node_label)) {
+              if (next_node->name() == "GradNodeAccumulation") {
+                dot.AddNode(dot_next_node_label,
+                            paddle::inference::analysis::teal_box_attrs,
+                            dot_next_node_label,
+                            false);
+              } else {
+                dot.AddNode(dot_next_node_label,
+                            paddle::inference::analysis::grey_box_attrs,
+                            dot_next_node_label,
+                            false);
+              }
+            }
+
+            std::string tensor_label = CreateEdgeLabelInDot(grad_output_tensor);
+            dot.AddEdge(dot_node_label, dot_next_node_label, {}, tensor_label);
+          }
+
           if (!node_input_buffers_dict.count(next_node)) {
             const auto& input_meta = next_node->InputMeta();
             auto grad_tensor_holder =
@@ -577,7 +606,12 @@ std::vector<paddle::Tensor> RunBackward(
       std::rethrow_exception(std::current_exception());
     }
   }
-
+  if (need_debug_backward_graph) {
+    SaveDebugInfo(debug_info_path,
+                  forward_debug_dot_graph.Build(),
+                  debug_call_stack,
+                  dot.Build());
+  }
   VLOG(6) << "Run Backward Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();
   for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
@@ -592,7 +626,7 @@ std::vector<paddle::Tensor> RunBackward(
 void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph,
-              std::string compute_graph_path) {
+              std::string debug_info_path) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
       "backward", phi::TracerEventType::UserDefined, 1);
@@ -603,7 +637,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               {},
               false,
               {},
-              compute_graph_path);
+              debug_info_path);
   egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
@@ -617,7 +651,7 @@ std::vector<paddle::Tensor> Grad(
     bool only_inputs,
     bool allow_unused,
     const std::vector<paddle::Tensor>& no_grad_vars,
-    const std::string compute_graph_path) {
+    const std::string debug_info_path) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
@@ -630,6 +664,6 @@ std::vector<paddle::Tensor> Grad(
                      inputs,
                      allow_unused,
                      no_grad_vars,
-                     compute_graph_path);
+                     debug_info_path);
 }
 }  // namespace egr

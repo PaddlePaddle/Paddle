@@ -108,11 +108,13 @@ class Dot {
     std::string source;
     std::string target;
     std::vector<Attr> attrs;
+    std::string label;
 
     Edge(const std::string& source,
          const std::string& target,
-         const std::vector<Attr>& attrs)
-        : source(source), target(target), attrs(attrs) {}
+         const std::vector<Attr>& attrs,
+         const std::string label = "")
+        : source(source), target(target), attrs(attrs), label(label) {}
 
     std::string repr() const {
       std::stringstream ss;
@@ -125,9 +127,13 @@ class Dot {
           true,
           common::errors::InvalidArgument("Sorry,but target is empty"));
       ss << source << "->" << target;
+      if (attrs.empty() && label != "") {
+        ss << "[label=" << '"' << label << '"' << "]";
+        return ss.str();
+      }
       for (size_t i = 0; i < attrs.size(); i++) {
         if (i == 0) {
-          ss << "[";
+          ss << "[label=" << '"' << label << '"' << " ";
         }
         ss << attrs[i].repr();
         ss << ((i < attrs.size() - 1) ? " " : "]");
@@ -160,7 +166,8 @@ class Dot {
 
   void AddEdge(const std::string& source,
                const std::string& target,
-               const std::vector<Attr>& attrs) {
+               const std::vector<Attr>& attrs,
+               const std::string& label = "") {
     PADDLE_ENFORCE_EQ(
         !source.empty(),
         true,
@@ -171,7 +178,7 @@ class Dot {
         common::errors::InvalidArgument("Sorry,but target is empty"));
     auto sid = nodes_.at(source).id();
     auto tid = nodes_.at(target).id();
-    edges_.emplace_back(sid, tid, attrs);
+    edges_.emplace_back(sid, tid, attrs, label);
   }
 
   // Compile to DOT language codes.
@@ -203,6 +210,23 @@ class Dot {
 
   size_t local_node_counter_{0};
 };
+// Some attributes settings for reference
+const std::vector<Dot::Attr> grey_box_attrs({
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("color", "#999999"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+    Dot::Attr("width", "1.3"),                  //
+    Dot::Attr("height", "0.84"),                //
+    Dot::Attr("fontname", "Arial"),             //
+});
+const std::vector<Dot::Attr> teal_box_attrs({
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("fontname", "Arial"),             //
+    Dot::Attr("color", "#148b97"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+});
 
 }  // namespace analysis
 }  // namespace inference

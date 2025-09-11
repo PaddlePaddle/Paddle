@@ -150,7 +150,7 @@ static PyObject* eager_api_run_backward(PyObject* self,
   auto tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 0), 0);
   auto grad_tensors = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 1), 1);
   bool retain_graph = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 2), 2);
-  std::string compute_graph_path =
+  std::string debug_info_path =
       CastPyArg2AttrString(PyTuple_GET_ITEM(args, 3), 3);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(&mesh, tensors, grad_tensors)) {
@@ -160,7 +160,7 @@ static PyObject* eager_api_run_backward(PyObject* self,
   {
     eager_gil_scoped_release guard;
     EagerSetDeviceId();
-    egr::Backward(tensors, grad_tensors, retain_graph, compute_graph_path);
+    egr::Backward(tensors, grad_tensors, retain_graph, debug_info_path);
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -178,7 +178,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
   auto only_inputs = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 5), 5);
   auto allow_unused = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 6), 6);
   auto no_grad_vars = CastPyArg2VectorOfTensor(PyTuple_GET_ITEM(args, 7), 7);
-  auto compute_graph_path = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 8), 8);
+  auto debug_info_path = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 8), 8);
   const phi::distributed::ProcessMesh* mesh = nullptr;
   if (InputsContainDistTensor(
           &mesh, tensors, inputs, grad_tensors, no_grad_vars)) {
@@ -200,7 +200,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars,
-                       compute_graph_path);
+                       debug_info_path);
     VLOG(4) << " in eager_api_run_partial_grad, after running egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
