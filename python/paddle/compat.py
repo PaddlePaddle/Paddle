@@ -26,6 +26,7 @@ from .tensor.compat import (
     median,
     min,
     nanmedian,
+    pad,
     slogdet,
     sort,
     split,
@@ -42,6 +43,7 @@ __all__ = [
     'max',
     'median',
     'nanmedian',
+    'pad',
 ]
 
 

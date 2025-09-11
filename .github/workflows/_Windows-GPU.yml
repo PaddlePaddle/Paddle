@@ -75,6 +75,7 @@ jobs:
 
       - name: Config env
         run: |
+          call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\config_env.bat
 
       - name: Build paddle

@@ -184,6 +184,7 @@ from paddle import (
     onnx as onnx,
     optimizer as optimizer,
     quantization as quantization,
+    random as random,
     reader as reader,
     regularizer as regularizer,
     sparse as sparse,
@@ -194,6 +195,7 @@ from paddle import (
 
 # high-level api
 from . import (
+    _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,

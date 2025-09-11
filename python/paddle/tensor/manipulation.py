@@ -4124,7 +4124,7 @@ def _take_along_axis_wrapper(
     dim: int,
     index: Tensor,
     out: Tensor | None = None,
-):
+) -> Tensor:
     """Wrapper for take_along_axis"""
     res = paddle.take_along_axis(input, index, dim, broadcast=False)
     if out is not None:
@@ -4191,6 +4191,25 @@ def _gather_wrapper(
     if out is not None:
         paddle.assign(res, out)
     return res
+
+
+@overload
+def gather(
+    x: Tensor,
+    index: Tensor,
+    axis: Tensor | int | None = None,
+    name: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def gather(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    out: Tensor | None = None,
+) -> Tensor: ...
 
 
 def gather(*args: Any, **kwargs: Any) -> Tensor:
@@ -4442,6 +4461,27 @@ def _scatter_inplace_wrapper(
     return _C_ops.scatter_(x, index, updates, overwrite)
 
 
+@overload
+def scatter_(
+    x: Tensor,
+    index: Tensor,
+    updates: Tensor,
+    overwrite: bool = True,
+    name: str | None = None,
+) -> Tensor: ...
+
+
+@overload
+def scatter_(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor | None = None,
+    reduce: str | None = None,
+    value: Tensor | None = None,
+) -> Tensor: ...
+
+
 @inplace_apis_in_dygraph_only
 def scatter_(*args: Any, **kwargs: Any) -> Tensor:
     """
@@ -4513,7 +4553,7 @@ def _put_along_axis_wrapper(
     reduce: str | None = None,
     out: Tensor | None = None,
     value: Tensor | None = None,
-):
+) -> Tensor:
     """A PyTorch Compatible wrapper for put_along_axis
     This API is not directly available for users. One can only call this API via torch.Tensor.scatter or torch.scatter
     """
@@ -4536,6 +4576,29 @@ def _put_along_axis_wrapper(
     if out is not None:
         paddle.assign(res, out)
     return res
+
+
+@overload
+def scatter(
+    x: Tensor,
+    index: Tensor,
+    updates: Tensor,
+    overwrite: bool = True,
+    name: str | None = None,
+    out: Tensor | None = None,
+) -> Tensor: ...
+
+
+@overload
+def scatter(
+    input: Tensor,
+    dim: int,
+    index: Tensor,
+    src: Tensor | None = None,
+    reduce: str | None = None,
+    out: Tensor | None = None,
+    value: Tensor | None = None,
+) -> Tensor: ...
 
 
 def scatter(*args: Any, **kwargs: Any) -> Tensor:

@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-import collective.test_communication_api_base as test_base
-
-
-class TestReshardE2E(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
-
-    def test_softmax_shard(self):
-        self.run_test_case("softmax_co_shard.py")
-
-
-if __name__ == "__main__":
-    unittest.main()
+from paddle.base.libpaddle import (
+    _get_current_raw_stream as _cuda_getCurrentRawStream,  # noqa: F401
+)
