@@ -52,7 +52,6 @@ def capture_run_impl(original_run_impl, inputs, parameters, attrs):
         "cuda_graph_state": CUDAGraphState.CAPTURE,
         "cuda_graph_dispatch_key": inputs[0].shape[0],
     }
-    print("ptr in capture: ", inputs[0].data_ptr())
     outputs = original_run_impl(
         inputs, parameters, (prog_attrs, cuda_graph_attrs)
     )
@@ -74,9 +73,6 @@ def replay_run_impl(original_run_impl, inputs, parameters, attrs):
     assert GLOBAL_GRAPH_WITH_BUFFER is not None
     GLOBAL_GRAPH_WITH_BUFFER.set_inputs_buffer(inputs)
 
-    print(
-        "ptr in replay: ", GLOBAL_GRAPH_WITH_BUFFER.get_inputs()[0].data_ptr()
-    )
     _ = original_run_impl(
         GLOBAL_GRAPH_WITH_BUFFER.get_inputs(),
         parameters,
