@@ -58,6 +58,7 @@ from ..framework import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
 
     from numpy.typing import NDArray
 
@@ -1094,7 +1095,7 @@ def to_tensor(
     )
 
 
-def from_numpy(ndarray: NDArray) -> paddle.Tensor:
+def from_numpy(ndarray: NDArray[Any]) -> paddle.Tensor:
     """
     Creates a ``paddle.Tensor`` from a ``numpy.ndarray``.
 
@@ -1119,6 +1120,11 @@ def from_numpy(ndarray: NDArray) -> paddle.Tensor:
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
                    [1, 2, 3])
     """
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError(
+            f"The input type of from_numpy() must be numpy.ndarray, but received {type(ndarray)}. "
+            "To convert other types to tensor, please use paddle.tensor() instead."
+        )
     return tensor(ndarray)
 
 

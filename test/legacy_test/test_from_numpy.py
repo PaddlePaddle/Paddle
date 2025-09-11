@@ -48,6 +48,9 @@ class TestFromNumpy(unittest.TestCase):
             tensor = paddle.from_numpy(np_data)
             np.testing.assert_allclose(tensor.numpy(), np_data)
 
+    def test_exception(self):
+        self.assertRaises(TypeError, paddle.from_numpy, [1, 2, 3])
+
 
 if __name__ == "__main__":
     unittest.main()

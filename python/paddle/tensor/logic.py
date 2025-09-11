@@ -494,7 +494,9 @@ def equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 # Since greater_than has been sunk, `gt` is added here to avoid the alias issue.
 # TODO(LittleHeroZZZX): Please remove this and use alias instead once the issue described above is fixed. @DanielSun11
 @param_two_alias(["x", "input"], ["y", "other"])
-def gt(x: Tensor, y: Tensor, name: str | None = None, *, out=None) -> Tensor:
+def gt(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
@@ -578,7 +580,7 @@ def gt(x: Tensor, y: Tensor, name: str | None = None, *, out=None) -> Tensor:
 
 @param_two_alias(["x", "input"], ["y", "other"])
 def greater_equal(
-    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
@@ -693,7 +695,7 @@ def greater_than_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @param_two_alias(["x", "input"], ["y", "other"])
 def less_equal(
-    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
@@ -794,7 +796,7 @@ def less_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @param_two_alias(["x", "input"], ["y", "other"])
 def less_than(
-    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
@@ -907,7 +909,7 @@ def less_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 @param_two_alias(["x", "input"], ["y", "other"])
 def not_equal(
-    x: Tensor, y: Tensor, name: str | None = None, *, out=None
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
 ) -> Tensor:
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
