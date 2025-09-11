@@ -381,7 +381,6 @@ from .tensor.logic import (
     is_empty,
     is_tensor,
     isclose,
-    less,
     less_,
     less_equal,
     less_equal_,
@@ -948,6 +947,7 @@ div_ = divide_
 eq = equal
 ne = not_equal
 lt = less_than
+less = less_than
 le = less_equal
 greater = gt
 ge = greater_equal

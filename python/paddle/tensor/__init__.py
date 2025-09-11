@@ -140,7 +140,6 @@ from .logic import (  # noqa: F401
     is_empty,
     is_tensor,
     isclose,
-    less,
     less_,
     less_equal,
     less_equal_,
@@ -509,6 +508,7 @@ clamp = clip
 eq = equal
 ne = not_equal
 lt = less_than
+less = less_than
 le = less_equal
 ge = greater_equal
 greater = gt
