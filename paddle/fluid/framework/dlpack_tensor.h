@@ -28,7 +28,7 @@ and paddle/phi/api/lib/tensor_utils.cc
 */
 using Deleter = std::function<void(void*)>;
 
-DLManagedTensor* toDLPack(const phi::DenseTensor& src);
+TEST_API DLManagedTensor* toDLPack(const phi::DenseTensor& src);
 DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src);
 phi::DenseTensor fromDLPack(DLManagedTensor* src, Deleter deleter);
 phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned* src,
