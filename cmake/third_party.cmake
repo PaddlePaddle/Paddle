@@ -457,14 +457,6 @@ if(TARGET extern_libuv)
   list(APPEND third_party_deps extern_libuv)
 endif()
 
-if(WITH_FLAGCX)
-  include(external/flagcx)
-  list(APPEND third_party_deps flagcx)
-  if(WITH_XPU)
-    add_dependencies(flagcx_ep extern_xpu)
-  endif()
-endif()
-
 if(WITH_ONNXRUNTIME)
   include(external/onnxruntime
   )# download, build, install onnxruntime、paddle2onnx
@@ -510,6 +502,14 @@ endif()
 if(WITH_XPU)
   include(external/xpu) # download, build, install xpu
   list(APPEND third_party_deps extern_xpu)
+endif()
+
+if(WITH_FLAGCX)
+  include(external/flagcx)
+  list(APPEND third_party_deps flagcx)
+  if(WITH_XPU)
+    add_dependencies(flagcx_ep extern_xpu)
+  endif()
 endif()
 
 if(NOT WIN32 AND NOT APPLE)

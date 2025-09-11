@@ -72,6 +72,13 @@ class BKCLCommContext final : public CommContext {
                      BKCLOp reduce_type,
                      XPUStream stream);
 
+#if defined(PADDLE_WITH_FLAGCX)
+  void Scatter(phi::DenseTensor* out_tensor,
+               const phi::DenseTensor& in_tensor,
+               int root,
+               XPUStream stream);
+#endif
+
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  XPUStream stream);

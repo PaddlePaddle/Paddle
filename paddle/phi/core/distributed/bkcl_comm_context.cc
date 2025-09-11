@@ -154,6 +154,29 @@ void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
 #endif
 }
 
+#if defined(PADDLE_WITH_FLAGCX)
+void BKCLCommContext::Scatter(phi::DenseTensor* out_tensor,
+                              const phi::DenseTensor& in_tensor,
+                              int root,
+                              XPUStream stream) {
+  phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
+                                                      in_tensor,
+                                                      /*dst_rank*/ rank_,
+                                                      /*cur_rank*/ rank_,
+                                                      size_,
+                                                      phi::AllocationType::XPU);
+
+  FLAGCX_CHECK(
+      phi::dynload::flagcxScatter(in_tensor.data(),
+                                  out_tensor->data(),
+                                  out_tensor->numel(),
+                                  ToFlagcxDataType(in_tensor.type()),
+                                  root,
+                                  flagcx_handler_->comm,
+                                  reinterpret_cast<flagcxStream_t>(&stream)));
+}
+#endif
+
 void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int64_t& count,
                            const int& peer,

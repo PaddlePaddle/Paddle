@@ -40,5 +40,5 @@ else
 fi
 
 cd "${FLAGCX_SOURCE_PATH}"
-make clean
-make USE_KUNLUNXIN=1
+make -j1 clean
+make -j1 USE_KUNLUNXIN=1
