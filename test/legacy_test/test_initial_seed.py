@@ -14,19 +14,14 @@
 
 import unittest
 
-import collective.test_communication_api_base as test_base
+import paddle
 
 
-class TestReshardE2E(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
-
-    def test_softmax_shard(self):
-        self.run_test_case("softmax_co_shard.py")
-
-    def test_argsort_shard(self):
-        self.run_test_case("argsort_co_shard.py")
+class TestInitialSeed(unittest.TestCase):
+    def test_initial_seed(self):
+        s = paddle.random.initial_seed()
+        self.assertEqual(s, paddle.get_rng_state('cpu')[0].current_seed())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

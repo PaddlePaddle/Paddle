@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import annotations
 
-import collective.test_communication_api_base as test_base
+from paddle.base import core
 
-
-class TestReshardE2E(test_base.CommunicationTestDistBase):
-    def setUp(self):
-        super().setUp(num_of_devices=8, timeout=120, nnode=1)
-
-    def test_softmax_shard(self):
-        self.run_test_case("softmax_co_shard.py")
-
-    def test_argsort_shard(self):
-        self.run_test_case("argsort_co_shard.py")
+__all__ = ["initial_seed"]
 
 
-if __name__ == "__main__":
-    unittest.main()
+def initial_seed() -> int:
+    """
+    Returns the initial seed for generating random numbers as a Python `long`.
+
+    Returns:
+        int: The 64-bit initial seed of the default generator on CPU place only.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> s = paddle.random.initial_seed()
+    """
+    return core.default_cpu_generator().initial_seed()
