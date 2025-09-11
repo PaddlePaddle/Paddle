@@ -32,18 +32,16 @@ PADDLE_API ScalarBase<Tensor>::ScalarBase(const Tensor& tensor_in)
                         tensor_in.numel()));
   auto tensor_in_place = tensor_in.place().GetType();
   if (tensor_in_place == phi::AllocationType::XPU ||
-      tensor_in_place == phi::AllocationType::GPU) {
+      tensor_in_place == phi::AllocationType::GPU
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      || tensor_in_place == phi::AllocationType::CUSTOM
+#endif
+  ) {
     Tensor dst_tensor;
     copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
     GetDataFromTensor(dst_tensor);
   } else if (tensor_in_place == phi::AllocationType::CPU) {
     GetDataFromTensor(tensor_in);
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  } else if (tensor_in_place == phi::AllocationType::CUSTOM) {
-    Tensor dst_tensor;
-    copy(tensor_in, phi::CPUPlace(), true, &dst_tensor);
-    GetDataFromTensor(dst_tensor);
-#endif
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Now, it is not supported to construct Scalar using tensor that its "
