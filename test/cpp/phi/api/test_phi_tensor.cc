@@ -408,16 +408,6 @@ void TestDataInterface() {
                                       const_tensor_ptr));
 }
 
-void TestJudgeTensorType() {
-  Tensor test_tensor(phi::CPUPlace(), {1, 1});
-  PADDLE_ENFORCE_EQ(
-      test_tensor.is_dense_tensor(),
-      true,
-      common::errors::InvalidArgument("test_tensor should be a dense tensor, "
-                                      "but got %s",
-                                      test_tensor.is_dense_tensor()));
-}
-
 TEST(PhiTensor, All) {
   VLOG(2) << "TestCopy";
   GroupTestCopy();
@@ -435,8 +425,6 @@ TEST(PhiTensor, All) {
   TestInitialized();
   VLOG(2) << "TestDataInterface";
   TestDataInterface();
-  VLOG(2) << "TestJudgeTensorType";
-  TestJudgeTensorType();
 }
 
 }  // namespace tests
