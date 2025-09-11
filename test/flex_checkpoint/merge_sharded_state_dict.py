@@ -43,7 +43,7 @@ class SimpleMLP(Layer):
 class TestDistCheckpoint:
     def __init__(self):
         np.random.seed(42)
-        self.temp_dir = os.getenv("ckpt_path")
+        self.temp_dir = "./state_dict_merge"
         self.test_type = os.getenv("test_type")
         self.layer_type = os.getenv("layer_type")
         self.tp_degree = int(os.getenv("tp"))
