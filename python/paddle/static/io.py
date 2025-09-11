@@ -931,7 +931,27 @@ def load_inference_model(
             # Note: The API works with both .json (PIR format) and .pdmodel (legacy format)
             # files, automatically detecting and using the appropriate loading method.
     """
-    if in_pir_mode():
+    # Simple format detection for .pdmodel compatibility in PIR mode
+    if in_pir_mode() and path_prefix is not None:
+        json_path = path_prefix + ".json"
+        pdmodel_path = path_prefix + ".pdmodel"
+
+        # If .json exists, use PIR mode directly
+        if os.path.exists(json_path):
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
+
+        # If only .pdmodel exists, fallback to legacy mode
+        elif os.path.exists(pdmodel_path):
+            from paddle.pir_utils import OldIrGuard
+            with OldIrGuard():
+                # Recursively call with legacy mode - OldIrGuard changes in_pir_mode() to False
+                return load_inference_model(path_prefix, executor, **kwargs)
+        else:
+            # Neither exists, try PIR mode (will show appropriate error)
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
+
+    # Memory loading case or other PIR scenarios
+    elif in_pir_mode():
         return load_inference_model_pir(path_prefix, executor, **kwargs)
     # check kwargs
     supported_args = ('model_filename', 'params_filename')

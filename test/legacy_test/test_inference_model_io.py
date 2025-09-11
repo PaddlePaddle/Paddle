@@ -86,24 +86,25 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     # Define input
                     x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Define parameters
-                    w = paddle.create_parameter(
+                    # Use multiply + add operations to ensure ops are added to program
+                    w_param = paddle.static.create_parameter(
                         shape=[10, 1],
                         dtype='float32',
                         name='weight',
                         default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
                     )
-                    b = paddle.create_parameter(
+                    b_param = paddle.static.create_parameter(
                         shape=[1],
                         dtype='float32',
                         name='bias',
                         default_initializer=paddle.nn.initializer.Constant(0.0)
                     )
 
-                    # Compute output using @ operator for compatibility
-                    y = x @ w + b
+                    # Explicit operations to ensure they're added to the program
+                    mul_result = paddle.fluid.layers.matmul(x, w_param)
+                    y = paddle.fluid.layers.elementwise_add(mul_result, b_param)
 
-                # Initialize parameters
+                # Initialize parameters  
                 self.exe.run(startup_program)
 
                 # Save in legacy format
