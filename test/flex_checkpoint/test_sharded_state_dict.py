@@ -148,7 +148,7 @@ class TestMergeShardedAOA(test_base.CommunicationTestDistBase):
         config = TEST_CONFIGS["2_card_tests"][0]
         envs = {k: str(v) for k, v in config.items()}
         self.run_test_case(
-            "semi_merge_sharded.py",
+            "merge_sharded_state_dict.py",
             user_defined_envs=envs,
         )
 
