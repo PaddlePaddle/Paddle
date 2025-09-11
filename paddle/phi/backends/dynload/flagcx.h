@@ -37,28 +37,29 @@ extern void* flagcx_dso_handle;
   };                                                                 \
   extern struct DynLoad__##__name __name
 
-#define FLAGCX_RAND_ROUTINE_EACH(__macro)                  \
-  __macro(flagcxGetUniqueId);                              \
-  __macro(flagcxCommInitRank);                             \
-  __macro(flagcxGetVersion);                               \
-  __macro(flagcxCommAbort);                                \
-  __macro(flagcxCommDestroy);                              \
-  __macro(flagcxCommCount);                                \
-  __macro(flagcxCommUserRank);                             \
-  __macro(flagcxAllReduce);                                \
-  __macro(flagcxBroadcast);                                \
-  __macro(flagcxAllGather);                                \
-  __macro(flagcxAlltoAll);                                 \
-  __macro(flagcxAlltoAllv);                                \
-  __macro(flagcxGroupStart);                               \
-  __macro(flagcxGroupEnd);                                 \
-  __macro(flagcxReduce);                                   \
-  __macro(flagcxReduceScatter);                            \
-  __macro(flagcxScatter) __macro(flagcxCommGetAsyncError); \
-  __macro(flagcxSend);                                     \
-  __macro(flagcxRecv);                                     \
-  __macro(flagcxHandleInit);                               \
-  __macro(flagcxHandleFree);                               \
+#define FLAGCX_RAND_ROUTINE_EACH(__macro) \
+  __macro(flagcxGetUniqueId);             \
+  __macro(flagcxCommInitRank);            \
+  __macro(flagcxGetVersion);              \
+  __macro(flagcxCommAbort);               \
+  __macro(flagcxCommDestroy);             \
+  __macro(flagcxCommCount);               \
+  __macro(flagcxCommUserRank);            \
+  __macro(flagcxAllReduce);               \
+  __macro(flagcxBroadcast);               \
+  __macro(flagcxAllGather);               \
+  __macro(flagcxAlltoAll);                \
+  __macro(flagcxAlltoAllv);               \
+  __macro(flagcxGroupStart);              \
+  __macro(flagcxGroupEnd);                \
+  __macro(flagcxReduce);                  \
+  __macro(flagcxReduceScatter);           \
+  __macro(flagcxScatter);                 \
+  __macro(flagcxCommGetAsyncError);       \
+  __macro(flagcxSend);                    \
+  __macro(flagcxRecv);                    \
+  __macro(flagcxHandleInit);              \
+  __macro(flagcxHandleFree);              \
   __macro(flagcxGetErrorString);
 
 FLAGCX_RAND_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_FLAGCX_WRAP)
