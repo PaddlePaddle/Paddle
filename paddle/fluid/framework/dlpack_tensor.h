@@ -17,6 +17,7 @@
 #include <dlpack/dlpack.h>
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
