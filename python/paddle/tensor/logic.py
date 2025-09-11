@@ -529,53 +529,9 @@ def gt(
     if in_dynamic_or_pir_mode():
         return _C_ops.greater_than(x, y, out=out)
     else:
-        check_variable_and_dtype(
-            x,
-            "x",
-            [
-                "bool",
-                "float16",
-                "float32",
-                "float64",
-                "uint8",
-                "int8",
-                "int16",
-                "int32",
-                "int64",
-                "uint16",
-                "complex64",
-                "complex128",
-            ],
-            "greater_than",
+        raise NotImplementedError(
+            "paddle.gt does not support legacy static mode."
         )
-        check_variable_and_dtype(
-            y,
-            "y",
-            [
-                "bool",
-                "float16",
-                "float32",
-                "float64",
-                "uint8",
-                "int8",
-                "int16",
-                "int32",
-                "int64",
-                "uint16",
-                "complex64",
-                "complex128",
-            ],
-            "greater_than",
-        )
-        helper = LayerHelper("greater_than", **locals())
-        out = helper.create_variable_for_type_inference(dtype='bool')
-        out.stop_gradient = True
-        helper.append_op(
-            type='greater_than',
-            inputs={'X': [x], 'Y': [y]},
-            outputs={'Out': [out]},
-        )
-        return out
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
