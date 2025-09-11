@@ -841,36 +841,6 @@ class API_TestSplitZeroSize(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
-class TestFunctionalSplit(unittest.TestCase):
-    def test_functional_split(self):
-        with base.dygraph.guard():
-            x = paddle.rand([3, 9, 5])
-            out_expect = paddle.split(x, num_or_sections=[2, 3, 4], axis=1)
-            out_res = paddle.functional.split(
-                x, num_or_sections=[2, 3, 4], axis=1
-            )
-            for expect, res in zip(out_expect, out_res):
-                np.testing.assert_allclose(
-                    expect.numpy(), res.numpy(), atol=1e-8, rtol=1e-8
-                )
-
-            out_expect = paddle.split(x, num_or_sections=[2, 3, -1], axis=1)
-            out_res = paddle.functional.split(
-                x, num_or_sections=[2, 3, -1], axis=1
-            )
-            for expect, res in zip(out_expect, out_res):
-                np.testing.assert_allclose(
-                    expect.numpy(), res.numpy(), atol=1e-8, rtol=1e-8
-                )
-
-            out_expect = paddle.split(x, num_or_sections=3, axis=-2)
-            out_res = paddle.functional.split(x, num_or_sections=3, axis=-2)
-            for expect, res in zip(out_expect, out_res):
-                np.testing.assert_allclose(
-                    expect.numpy(), res.numpy(), atol=1e-8, rtol=1e-8
-                )
-
-
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

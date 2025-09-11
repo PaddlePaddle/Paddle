@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .tensor.manipulation import split, unique_consecutive
+from .compat import split
+from .tensor.manipulation import unique_consecutive
 
 __all__ = [
     'split',

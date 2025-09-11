@@ -418,6 +418,7 @@ class TestLayerTo(unittest.TestCase):
         self.assertRaises(ValueError, self.linear.to, device=1)
 
         self.assertRaises(AssertionError, self.linear.to, blocking=1)
+        self.assertRaises(AssertionError, self.linear.to, non_blocking=0)
 
     def func_test_to_api_paddle_dtype(self):
         if paddle.framework.use_pir_api():
