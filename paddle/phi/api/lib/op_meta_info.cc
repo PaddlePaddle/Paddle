@@ -380,7 +380,7 @@ void CustomOpKernelContext::ValidateAndAssignOutputs(
 
     const int num_outputs = this->outputs_names_.size();
 
-    for (size_t i = 0; i < num_outputs; ++i) {
+    for (int i = 0; i < num_outputs; ++i) {
       if (GetInplaceReverseIndexMap().count(i)) {
         outputs_names_with_inplace.push_back(this->outputs_names_.at(i) +
                                              "(inplaced)");
