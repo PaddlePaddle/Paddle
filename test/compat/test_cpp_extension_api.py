@@ -65,7 +65,6 @@ class TestGetCudaArchFlags(unittest.TestCase):
         self.assertTrue(len(flags) > 0)
 
     def test_get_cuda_arch_flags_with_invalid_arch(self):
-        # Test that invalid CUDA arch raises ValueError
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "invalid_arch"
         with self.assertRaises(ValueError) as context:
             _get_cuda_arch_flags()
@@ -73,6 +72,10 @@ class TestGetCudaArchFlags(unittest.TestCase):
             "Unknown CUDA arch (invalid_arch) or GPU not supported",
             str(context.exception),
         )
+
+    def test_skip_paddle_extension_name_flag(self):
+        flags = _get_cuda_arch_flags(cflags=["-DPADDLE_EXTENSION_NAME=my_ext"])
+        self.assertEqual(flags, [])
 
 
 class TestCppExtensionUtils(unittest.TestCase):
@@ -94,13 +97,13 @@ class TestCppExtensionUtils(unittest.TestCase):
 
     def test_get_num_workers_with_env_verbose_true(self):
         os.environ["MAX_JOBS"] = "8"
-        num = _get_num_workers(verbose=False)
+        num = _get_num_workers(verbose=True)
         self.assertEqual(num, 8)
 
     def test_get_num_workers_without_env_verbose_true(self):
         if "MAX_JOBS" in os.environ:
             del os.environ["MAX_JOBS"]
-        num = _get_num_workers(verbose=False)
+        num = _get_num_workers(verbose=True)
         self.assertEqual(num, None)
 
 
