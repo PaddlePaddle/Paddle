@@ -62,18 +62,53 @@ if TYPE_CHECKING:
         int,  # some int like 0, 1, etc.
     ]
 
-# Dynamically import device_count based on available devices
+# Dynamically import device functions based on available devices
 if core.is_compiled_with_cuda():
-    from .cuda import device_count, get_device_properties
+    from .cuda import (
+        current_stream,
+        device_count,
+        empty_cache,
+        get_device_properties,
+        max_memory_allocated,
+        max_memory_reserved,
+        memory_allocated,
+        memory_reserved,
+        reset_max_memory_allocated,
+        reset_max_memory_reserved,
+        synchronize,
+    )
 elif core.is_compiled_with_xpu():
-    from .xpu import device_count
+    from .xpu import (
+        current_stream,
+        device_count,
+        empty_cache,
+        max_memory_allocated,
+        max_memory_reserved,
+        memory_allocated,
+        memory_reserved,
+        reset_max_memory_allocated,
+        reset_max_memory_reserved,
+        synchronize,
+    )
 else:
     if hasattr(core, 'get_all_custom_device_type'):
         dev_types = core.get_all_custom_device_type()
     else:
         dev_types = []
     if dev_types and core.is_compiled_with_custom_device(dev_types[0]):
-        from .customdevice import device_count, get_device_properties
+        from .customdevice import (
+            current_stream,
+            device_count,
+            empty_cache,
+            get_device_properties,
+            max_memory_allocated,
+            max_memory_reserved,
+            memory_allocated,
+            memory_reserved,
+            reset_max_memory_allocated,
+            reset_max_memory_reserved,
+            synchronize,
+        )
 
 __all__ = [
     'get_cudnn_version',
@@ -101,6 +136,13 @@ __all__ = [
     'device_guard',
     'synchronize',
     'device_count',
+    'empty_cache',
+    'max_memory_allocated',
+    'max_memory_reserved',
+    'reset_max_memory_allocated',
+    'reset_max_memory_reserved',
+    'memory_allocated',
+    'memory_reserved',
 ]
 
 _cudnn_version = None
@@ -578,273 +620,6 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
     return device_id
 
 
-def empty_cache() -> None:
-    '''
-    Releases idle cached memory held by the allocator so that those can be used in other GPU
-    application and visible in `nvidia-smi`. In most cases you don't need to use this function,
-    Paddle does not release the memory back to the OS when you remove Tensors on the GPU,
-    Because it keeps gpu memory in a pool so that next allocations can be done much faster.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')
-
-            >>> tensor = paddle.randn([512, 512, 512], "float64")
-            >>> del tensor
-            >>> paddle.device.empty_cache()
-    '''
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if core.is_compiled_with_cuda():
-        core.cuda_empty_cache()
-    elif core.is_compiled_with_custom_device(custom_devices[0]):
-        core.device_empty_cache()
-    else:
-        raise ValueError(
-            "The API paddle.device.empty_cache is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-
-
-def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
-    '''
-    Return the peak size of memory that is allocated to tensor of the given device. This
-
-    Note:
-        The size of memory allocated to tensor is 256-byte aligned in Paddle, which may larger than the memory size that tensor actually need.
-        For instance, a float32 0-D Tensor with shape [] will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
-
-    Args:
-        device(paddle.CUDAPlace|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Return:
-        int: The peak size of memory that is allocated to tensor of the given device, in bytes.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> max_memory_allocated_size = paddle.device.max_memory_allocated(paddle.CUDAPlace(0))
-            >>> max_memory_allocated_size = paddle.device.max_memory_allocated(0)
-            >>> max_memory_allocated_size = paddle.device.max_memory_allocated("gpu:0")
-    '''
-    name = "paddle.device.max_memory_allocated"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    return core.device_memory_stat_peak_value("Allocated", device_id)
-
-
-def max_memory_reserved(device: _CustomPlaceLike | None = None) -> int:
-    '''
-    Return the peak size of memory that is held by the allocator of the given device.
-
-    Args:
-        device(paddle.CUDAPlace|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Return:
-        int: The peak size of memory that is held by the allocator of the given device, in bytes.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> max_memory_reserved_size = paddle.device.max_memory_reserved(paddle.CUDAPlace(0))
-            >>> max_memory_reserved_size = paddle.device.max_memory_reserved(0)
-            >>> max_memory_reserved_size = paddle.device.max_memory_reserved("gpu:0")
-    '''
-    name = "paddle.device.max_memory_reserved"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    return core.device_memory_stat_peak_value("Reserved", device_id)
-
-
-def reset_max_memory_allocated(device: _CustomPlaceLike | None = None) -> None:
-    '''
-    Reset the peak size of memory that is allocated to tensor of the given device.
-
-    Args:
-        device(paddle.CUDAPlace|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
-            >>> paddle.device.reset_max_memory_allocated(0)
-            >>> paddle.device.reset_max_memory_allocated("gpu:0")
-    '''
-
-    name = "paddle.device.reset_max_memory_allocated"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    core.device_memory_stat_reset_peak_value("Allocated", device_id)
-
-
-def reset_max_memory_reserved(device: _CustomPlaceLike | None = None) -> None:
-    '''
-    Reset the peak size of memory that is held by the allocator of the given device.
-
-    Args:
-        device(paddle.CUDAPlace|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> paddle.device.reset_max_memory_reserved(paddle.CUDAPlace(0))
-            >>> paddle.device.reset_max_memory_reserved(0)
-            >>> paddle.device.reset_max_memory_reserved("gpu:0")
-    '''
-
-    name = "paddle.device.reset_max_memory_reserved"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    core.device_memory_stat_reset_peak_value("Reserved", device_id)
-
-
-def memory_allocated(device: _CustomPlaceLike | None = None) -> int:
-    '''
-    Return the current size of memory that is allocated to tensor of the given device.
-
-    Note:
-        The size of memory allocated to tensor is 256-byte aligned in Paddle, which may be larger than the memory size that tensor actually need.
-        For instance, a float32 0-D Tensor with shape [] will take up 256 bytes memory, even though storing a float32 data requires only 4 bytes.
-
-    Args:
-        device(paddle.CUDAPlace|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Return:
-        int: The current size of memory that is allocated to tensor of the given device, in bytes.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> memory_allocated_size = paddle.device.memory_allocated(paddle.CUDAPlace(0))
-            >>> memory_allocated_size = paddle.device.memory_allocated(0)
-            >>> memory_allocated_size = paddle.device.memory_allocated("gpu:0")
-    '''
-    name = "paddle.device.memory_allocated"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    return core.device_memory_stat_current_value("Allocated", device_id)
-
-
-def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
-    '''
-    Return the current size of memory that is held by the allocator of the given device.
-
-    Args:
-        device(paddle.CUDAPlace|int|str|None, optional): The device, the id of the device or
-            the string name of device like 'gpu:x'. If device is None, the device is the current device.
-            Default: None.
-
-    Return:
-        int: The current size of memory that is held by the allocator of the given device, in bytes.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:GPU)
-            >>> import paddle
-            >>> paddle.device.set_device('gpu')  # or '<custom_device>'
-
-            >>> memory_reserved_size = paddle.device.memory_reserved(paddle.CUDAPlace(0))
-            >>> memory_reserved_size = paddle.device.memory_reserved(0)
-            >>> memory_reserved_size = paddle.device.memory_reserved("gpu:0")
-    '''
-    name = "paddle.device.memory_reserved"
-    custom_devices = paddle.device.get_all_custom_device_type()
-    if not (
-        core.is_compiled_with_cuda()
-        or (
-            custom_devices
-            and core.is_compiled_with_custom_device(custom_devices[0])
-        )
-    ):
-        raise ValueError(
-            f"The API {name} is not supported in CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU or custom device support to call this API."
-        )
-    device_id = extract_device_id(device, op_name=name)
-    return core.device_memory_stat_current_value("Reserved", device_id)
-
-
 class Event:
     '''
 
@@ -1316,61 +1091,6 @@ class PaddleStream(Stream):
         )
 
 
-def current_stream(device: PlaceLike | None = None) -> Stream:
-    '''
-
-    Return the current stream by the device.
-
-    Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-            where ``x`` is the index of the GPUs, CustomDevices. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
-
-    Returns:
-        Stream: The stream to the device.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> s1 = paddle.device.current_stream()
-            >>> s2 = paddle.device.current_stream("custom_cpu:0")
-            >>> place = paddle.CustomPlace('custom_cpu', 0)
-            >>> s3 = paddle.device.current_stream(place)
-
-    '''
-    if device is None:
-        place = paddle.framework._current_expected_place_()
-    elif isinstance(device, str):
-        place = paddle.device._convert_to_place(device)
-    else:
-        place = device
-
-    if paddle.is_compiled_with_cuda() and isinstance(place, paddle.CUDAPlace):
-        return Stream(
-            stream_base=core._get_current_stream(place.get_device_id())
-        )
-    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
-        return Stream(
-            stream_base=core._xpu_get_current_stream(place.get_device_id())
-        )
-    elif isinstance(place, paddle.CustomPlace):
-        return Stream(
-            stream_base=core._get_current_custom_device_stream(
-                place.get_device_type(), place.get_device_id()
-            )
-        )
-    else:
-        raise TypeError(
-            "device should be gpu, xpu, {}".format(
-                ",".join(paddle.device.get_all_custom_device_type())
-            )
-        )
-
-
 def set_stream(stream: Stream) -> Stream:
     '''
 
@@ -1551,53 +1271,6 @@ class device_guard:
     ) -> None:
         if self._original_place != self._target_place:
             paddle.framework._set_expected_place(self._original_place)
-
-
-def synchronize(device: PlaceLike | None = None) -> None:
-    """
-
-    Wait for the compute on the given device to finish.
-
-    Args:
-        device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> paddle.device.synchronize()
-            >>> paddle.device.synchronize("custom_cpu:0")
-            >>> place = paddle.CustomPlace('custom_cpu', 0)
-            >>> paddle.device.synchronize(place)
-
-    """
-
-    if device is None:
-        place = paddle.framework._current_expected_place_()
-    elif isinstance(device, str):
-        place = paddle.device._convert_to_place(device)
-    else:
-        place = device
-
-    if paddle.is_compiled_with_cuda() and isinstance(place, paddle.CUDAPlace):
-        core._device_synchronize(place.get_device_id())
-    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
-        core._xpu_device_synchronize(place.get_device_id())
-    elif isinstance(place, paddle.CustomPlace):
-        core._synchronize_custom_device(
-            place.get_device_type(), place.get_device_id()
-        )
-    else:
-        raise TypeError(
-            "device should be gpu, xpu, {}".format(
-                ",".join(paddle.device.get_all_custom_device_type())
-            )
-        )
 
 
 def get_stream_from_external(

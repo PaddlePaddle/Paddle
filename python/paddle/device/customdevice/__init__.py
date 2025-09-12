@@ -13,11 +13,22 @@
 # limitations under the License.
 from __future__ import annotations
 
-# from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
+
+from typing_extensions import TypeAlias
+
 from paddle.base import core
 
-# if TYPE_CHECKING:
-#     from paddle import CustomPlace
+if TYPE_CHECKING:
+    from paddle import CustomPlace
+
+    _CustomPlaceLike: TypeAlias = Union[
+        CustomPlace,
+        str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
+        int,  # some int like 0, 1, etc.
+    ]
+
+# from .. import Stream
 
 dev_types = core.get_all_custom_device_type()
 if not dev_types:
@@ -38,6 +49,15 @@ if dev_type in ['metax_gpu', 'iluvatar_gpu']:
 __all__ = [
     'device_count',
     'get_device_properties',
+    'empty_cache',
+    'max_memory_allocated',
+    'max_memory_reserved',
+    'reset_max_memory_allocated',
+    'reset_max_memory_reserved',
+    'memory_allocated',
+    'memory_reserved',
+    # 'current_stream',
+    'synchronize',
 ]
 
 
@@ -66,3 +86,427 @@ def device_count(device_type: str | None = None) -> int:
         num = core.get_custom_device_count(dev_type)
 
     return num
+
+
+def empty_cache() -> None:
+    '''
+    Releases idle cached memory held by the allocator so that those can be used in other GPU
+    application and visible in device-specific tools.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.customdevice.empty_cache()
+    '''
+    core.device_empty_cache()
+
+
+def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
+    '''
+    Return the peak size of memory that is allocated to tensor of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Returns:
+        int: The peak size of memory that is allocated to tensor of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.max_memory_allocated('npu:0')
+            >>> paddle.device.max_memory_allocated('npu')
+            >>> paddle.device.max_memory_allocated(0)
+            >>> paddle.device.max_memory_allocated(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "max_memory_allocated only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    return core.device_memory_stat_peak_value("Allocated", device_id)
+
+
+def max_memory_reserved(device: _CustomPlaceLike | None = None) -> int:
+    '''
+    Return the peak size of memory that is held by the allocator of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Returns:
+        int: The peak size of memory that is held by the allocator of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.max_memory_reserved('npu:0')
+            >>> paddle.device.max_memory_reserved('npu')
+            >>> paddle.device.max_memory_reserved(0)
+            >>> paddle.device.max_memory_reserved(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "max_memory_reserved only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    return core.device_memory_stat_peak_value("Reserved", device_id)
+
+
+def reset_max_memory_allocated(device: _CustomPlaceLike | None = None) -> None:
+    '''
+    Reset the peak size of memory that is allocated to tensor of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.reset_max_memory_allocated('npu:0')
+            >>> paddle.device.reset_max_memory_allocated('npu')
+            >>> paddle.device.reset_max_memory_allocated(0)
+            >>> paddle.device.reset_max_memory_allocated(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "reset_max_memory_allocated only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    core.device_memory_stat_reset_peak_value("Allocated", device_id)
+
+
+def reset_max_memory_reserved(device: _CustomPlaceLike | None = None) -> None:
+    '''
+    Reset the peak size of memory that is held by the allocator of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.reset_max_memory_reserved('npu:0')
+            >>> paddle.device.reset_max_memory_reserved('npu')
+            >>> paddle.device.reset_max_memory_reserved(0)
+            >>> paddle.device.reset_max_memory_reserved(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "reset_max_memory_reserved only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    core.device_memory_stat_reset_peak_value("Reserved", device_id)
+
+
+def memory_allocated(device: _CustomPlaceLike | None = None) -> int:
+    '''
+    Return the current size of memory that is allocated to tensor of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Returns:
+        int: The current size of memory that is allocated to tensor of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.memory_allocated('npu:0')
+            >>> paddle.device.memory_allocated('npu')
+            >>> paddle.device.memory_allocated(0)
+            >>> paddle.device.memory_allocated(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "memory_allocated only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    return core.device_memory_stat_current_value("Allocated", device_id)
+
+
+def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
+    '''
+    Return the current size of memory that is held by the allocator of the given device.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Returns:
+        int: The current size of memory that is held by the allocator of the given device, in bytes.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.memory_reserved('npu:0')
+            >>> paddle.device.memory_reserved('npu')
+            >>> paddle.device.memory_reserved(0)
+            >>> paddle.device.memory_reserved(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "memory_reserved only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    return core.device_memory_stat_current_value("Reserved", device_id)
+
+
+# def current_stream(device: _CustomPlaceLike | None = None) -> Stream:
+#     '''
+#     Return the current stream by the device.
+
+#     Args:
+#         device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+#             If None, the device is the first available custom device with index 0.
+
+#     Returns:
+#         Stream: The stream to the device.
+
+#     Examples:
+#         .. code-block:: python
+
+#             >>> import paddle
+#             >>> paddle.device.current_stream('npu:0')
+#             >>> paddle.device.current_stream('npu')
+#             >>> paddle.device.current_stream(0)
+#             >>> paddle.device.current_stream(Paddle.CustomPlace('npu',0))
+#     '''
+#     device_id = 0
+
+#     if device is None:
+#         device_id = 0
+#     elif isinstance(device, str):
+#         colon_idx = device.rfind(':')
+#         if colon_idx == -1:
+#             device_id = 0
+#         else:
+#             device_id_str = device[colon_idx + 1:]
+#             if not device_id_str.isdigit():
+#                 raise ValueError(
+#                     f"Invalid device ID '{device_id_str}'. "
+#                     f"After colon must be digits only. "
+#                     "Example: 'npu:0'"
+#                 )
+#             device_id = int(device_id_str)
+#     elif isinstance(device, int):
+#         device_id = device
+#     elif isinstance(device, core.CustomPlace):
+#         device_id = device.get_device_id()
+#     else:
+#         raise ValueError(
+#             f"The input: {device} is not expected. Because paddle.device.customdevice."
+#             "current_stream only support str, int or CustomPlace. "
+#             "Please input appropriate device again! "
+#             "Example: 'npu:0'"
+#         )
+
+
+#     return Stream(
+#         stream_base=core._get_current_custom_device_stream(dev_type, device_id)
+#     )
+
+
+def synchronize(device: _CustomPlaceLike | None = None) -> None:
+    """
+    Wait for the compute on the given device to finish.
+
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.device.synchronize('npu:0')
+            >>> paddle.device.synchronize('npu')
+            >>> paddle.device.synchronize(0)
+            >>> paddle.device.synchronize(Paddle.CustomPlace('npu',0))
+    """
+    device_id = 0
+
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            "synchronize only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
+
+    core._synchronize_custom_device(dev_type, device_id)
