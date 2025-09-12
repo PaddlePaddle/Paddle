@@ -29,6 +29,8 @@ and paddle/phi/api/lib/tensor_utils.cc
 */
 using Deleter = std::function<void(void*)>;
 
+phi::Place DLDeviceToPlace(const DLDevice& device);
+
 TEST_API DLManagedTensor* toDLPack(const phi::DenseTensor& src);
 DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src);
 phi::DenseTensor fromDLPack(DLManagedTensor* src, Deleter deleter);

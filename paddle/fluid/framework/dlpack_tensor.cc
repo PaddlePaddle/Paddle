@@ -327,6 +327,20 @@ DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src) {
   return toDLPackImpl<DLManagedTensorVersioned>(src);
 }
 
+phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
+  phi::Place place;
+  if (dl_device.device_type == kDLCPU) {
+    place = phi::CPUPlace();
+  } else if (dl_device.device_type == kDLCUDA) {
+    place = phi::GPUPlace(dl_device.device_id);
+  } else if (dl_device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
+  }
+  return place;
+}
+
 template <typename T>
 phi::DenseTensor fromDLPackImpl(T *src, Deleter deleter) {
   std::vector<int64_t> shape_vec;
@@ -334,16 +348,7 @@ phi::DenseTensor fromDLPackImpl(T *src, Deleter deleter) {
             src->dl_tensor.shape + src->dl_tensor.ndim,
             std::back_inserter(shape_vec));
 
-  phi::Place place;
-  if (src->dl_tensor.device.device_type == kDLCPU) {
-    place = phi::CPUPlace();
-  } else if (src->dl_tensor.device.device_type == kDLCUDA) {
-    place = phi::GPUPlace(src->dl_tensor.device.device_id);
-  } else if (src->dl_tensor.device.device_type == kDLCUDAHost) {
-    place = phi::GPUPinnedPlace();
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
-  }
+  phi::Place place = DLDeviceToPlace(src->dl_tensor.device);
 
   ::DLDataType type = src->dl_tensor.dtype;
   auto dtype = internal::GetDstPtrByDLDataType(type);

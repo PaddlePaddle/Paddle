@@ -20,6 +20,7 @@ from utils import dygraph_guard, static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.utils.dlpack import DLDeviceType
 
 
 class TestDLPack(unittest.TestCase):
@@ -324,9 +325,6 @@ class TestDLPack(unittest.TestCase):
                     np.testing.assert_array_equal(x.numpy(), y2.numpy())
 
 
-from paddle.utils.dlpack import DLDeviceType
-
-
 class TestDLPackDevice(unittest.TestCase):
     def test_dlpack_device(self):
         with dygraph_guard():
@@ -464,6 +462,184 @@ class TestDtypesLowPrecision(unittest.TestCase):
 
                 self.assertEqual(x.data_ptr(), o_v1.data_ptr())
                 self.assertEqual(x.data_ptr(), o_v2.data_ptr())
+
+
+class TestCopySemantic(unittest.TestCase):
+    @dygraph_guard()
+    def test_dlpack_same_place_cpu(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack_with_cpu_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCPU, 0)
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cpu_place)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_dlpack_same_place_cuda(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        dlpack_with_cuda_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCUDA, 0)
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cuda_place)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_dlpack_same_place_cpu_force_copy(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack_with_cpu_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCPU, 0),
+            copy=True,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cpu_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_dlpack_same_place_cuda_force_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        dlpack_with_cuda_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCUDA, 0),
+            copy=True,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cuda_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_dlpack_same_place_cpu_disallow_copy(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack_with_cpu_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCPU, 0),
+            copy=False,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cpu_place)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_dlpack_same_place_cuda_disallow_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        dlpack_with_cuda_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCUDA, 0),
+            copy=False,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cuda_place)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_cross_device_cpu_to_cuda(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack_with_cuda_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCUDA, 0),
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cuda_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_cross_device_cuda_to_cpu(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        dlpack_with_cpu_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCPU, 0),
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cpu_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cpu_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_cross_device_cpu_to_cuda_force_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack_with_cuda_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCUDA, 0),
+            copy=True,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cuda_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_cross_device_cuda_to_cpu_force_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        dlpack_with_cpu_place = tensor.__dlpack__(
+            dl_device=(DLDeviceType.kDLCPU, 0),
+            copy=True,
+        )
+        tensor_from_dlpack = paddle.from_dlpack(dlpack_with_cpu_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cpu_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_cross_device_cpu_to_cuda_disallow_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        with self.assertRaises(BufferError):
+            tensor.__dlpack__(dl_device=(DLDeviceType.kDLCUDA, 0), copy=False)
+
+    @dygraph_guard()
+    def test_cross_device_cuda_to_cpu_disallow_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        with self.assertRaises(BufferError):
+            tensor.__dlpack__(dl_device=(DLDeviceType.kDLCPU, 0), copy=False)
 
 
 if __name__ == "__main__":

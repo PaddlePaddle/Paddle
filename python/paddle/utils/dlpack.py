@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import enum
 import warnings
+from enum import IntEnum
 from typing import TYPE_CHECKING, Literal, Protocol, TypeVar
 
 import paddle
@@ -50,6 +51,8 @@ class SupportDLPack(Protocol[_T_contra]):
         *,
         stream: None | _T_contra = ...,
         max_version: tuple[int, int] | None = ...,
+        dl_device: tuple[IntEnum, int] | None = None,
+        copy: bool | None = None,
     ) -> CapsuleType: ...
 
     def __dlpack_device__(self) -> tuple[int, Literal[0]]: ...
