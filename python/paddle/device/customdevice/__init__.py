@@ -32,10 +32,8 @@ if not core.is_compiled_with_custom_device(dev_type):
         "No custom device available, please install paddle with custom device support"
     )
 
-if dev_type == 'metax_gpu':
-    from .metax_gpu import get_device_properties
-elif dev_type == 'iluvatar_gpu':
-    from .iluvatar_gpu import get_device_properties
+if dev_type in ['metax_gpu', 'iluvatar_gpu']:
+    from gpgpu_backend import get_device_properties
 
 __all__ = [
     'device_count',
