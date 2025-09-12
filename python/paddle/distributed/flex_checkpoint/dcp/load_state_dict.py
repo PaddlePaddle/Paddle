@@ -1149,6 +1149,11 @@ def _load_state_dict(
                         target_value,
                     )
                     target_state_dict[key].local_tensor = target_value
+                else:
+                    paddle.assign(
+                        copied_target_state_dict[key].cpu(),
+                        target_state_dict[key],
+                    )
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
                 del t
