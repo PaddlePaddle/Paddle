@@ -105,7 +105,9 @@ def get_xpu_xhpc_version() -> str:
 def is_tagged() -> bool:
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
-        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
+        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, stderr=subprocess.PIPE, cwd="@PADDLE_SOURCE_DIR@").communicate()[0].strip()
+        if not git_tag:
+            return False
         git_tag = git_tag.decode()
     except:
         return False
@@ -985,6 +987,7 @@ packages=['paddle',
           'paddle.autograd',
           'paddle.device',
           'paddle.device.cuda',
+          'paddle.device.customdevice',
           'paddle.device.xpu',
           'paddle.version',
           'paddle.profiler',
