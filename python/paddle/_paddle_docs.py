@@ -1140,8 +1140,13 @@ add_doc_and_signature(
 
         gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\\sqrt{2}}))
 
+     .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``gelu(input=tensor_x)`` is equivalent to ``gelu(x=tensor_x)``.
+
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
+            alias: ``input``.
         approximate (str|bool, optional): Whether to enable approximation. Default is False.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
