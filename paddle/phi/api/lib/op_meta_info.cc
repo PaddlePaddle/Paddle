@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
-
+#include "paddle/utils/string/string_helper.h"
 namespace paddle {
 
 // remove leading and tailing spaces
@@ -241,6 +241,10 @@ void CustomOpKernelContext::ConstructInplaceIndex(
     VLOG(4) << "Custom operator ConstructInplaceIndex no need to recompute.";
     return;
   }
+
+  this->inputs_names_ = inputs;
+  this->outputs_names_ = outputs;
+
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
     auto& input = inputs[in_idx];
     if (inplace_map.find(input) == inplace_map.end()) {
@@ -322,6 +326,90 @@ std::unordered_map<size_t, size_t>
 CustomOpKernelContext::GetInplaceReverseIndexMap() const {
   return inplace_reverse_idx_map_;
 }
+
+void CustomOpKernelContext::ValidateAndAssignOutputs(
+    const std::vector<Tensor>& outs) {
+  auto* orig_outs = AllMutablePlainOutput();  // without inplaced outputs
+  auto* all_outs = AllMutableOutput();
+
+  // NOTE: This logic contains three branches:
+  // 1) If the number of returned tensors equals the number of non-inplace
+  // outputs, directly assign the returned tensors to AllMutablePlainOutput().
+  // 2) If the number of returned tensors equals the total number of outputs
+  // (including in-place outputs), validate that the addresses of in-place
+  // outputs match their corresponding inputs.
+  // 3) Otherwise, throw an error.
+  if (orig_outs->size() == outs.size()) {
+    // Case 1: Returned tensor count matches non-inplace output count; assign
+    // directly.
+    for (size_t i = 0; i < outs.size(); ++i) {
+      AssignTensorImpl(outs.at(i), orig_outs->at(i));
+    }
+  } else if (outs.size() == all_outs->size()) {
+    // Case 2: Returned tensor count matches total output count (including
+    // in-place outputs).
+    if (!GetInplaceIndexMap().empty()) {
+      LOG_FIRST_N(WARNING, 1)
+          << "[CustomOp] In-place outputs detected, "
+          << "but the number of returned outputs matches the declared "
+             "output count.";
+    }
+    // Ensure in-place output tensors share memory with their corresponding
+    // inputs
+    for (auto& [inputs_idx, outputs_idx] : GetInplaceIndexMap()) {
+      PADDLE_ENFORCE_EQ(InputAt(inputs_idx).impl().get(),
+                        outs.at(outputs_idx).impl().get(),
+                        common::errors::PreconditionNotMet(
+                            "In-place output tensor `%s` at index %d does not "
+                            "share the same address as "
+                            "the input tensor `%s` at index %d.",
+                            this->outputs_names_.at(outputs_idx),
+                            outputs_idx,
+                            this->inputs_names_.at(inputs_idx),
+                            inputs_idx));
+    }
+    // Copy non-in-place outputs as usual
+    for (size_t i = 0; i < outs.size(); ++i) {
+      if (GetInplaceReverseIndexMap().count(i)) continue;
+      AssignTensorImpl(outs.at(i), &(all_outs->at(i)));
+    }
+  } else {
+    // Case 3: Output count mismatch; throw an error.
+    std::vector<std::string> outputs_names_wo_inplace;
+    std::vector<std::string> outputs_names_with_inplace;
+
+    const int num_outputs = this->outputs_names_.size();
+
+    for (size_t i = 0; i < num_outputs; ++i) {
+      if (GetInplaceReverseIndexMap().count(i)) {
+        outputs_names_with_inplace.push_back(this->outputs_names_.at(i) +
+                                             "(inplaced)");
+      } else {
+        outputs_names_with_inplace.push_back(this->outputs_names_.at(i));
+        outputs_names_wo_inplace.push_back(this->outputs_names_.at(i));
+      }
+    }
+    const std::string output_str_wo_inplace =
+        paddle::string::join_strings<std::vector<std::string>>(
+            outputs_names_wo_inplace, ", ");
+    const std::string output_str_with_inplace =
+        paddle::string::join_strings<std::vector<std::string>>(
+            outputs_names_with_inplace, ", ");
+    const int num_inplace_outputs = GetInplaceIndexMap().size();
+
+    PADDLE_THROW(common::errors::PreconditionNotMet(
+        "Output tensor count mismatch. Expected outputs: [%s] (including %d "
+        "in-place), or [%s] (excluding in-place), but returned %d outputs. "
+        "Please ensure your outputs match the operator definition "
+        "(PD_BUILD_OP), or the count of non-inplace outputs, and that in-place "
+        "outputs share the same memory address as their corresponding inputs.",
+        output_str_with_inplace,
+        num_inplace_outputs,
+        output_str_wo_inplace,
+        outs.size()));
+  }
+}
+
 ////////////////////// Op Meta Info //////////////////////
 
 OpMetaInfo& OpMetaInfo::Inputs(std::vector<std::string>&& inputs) {

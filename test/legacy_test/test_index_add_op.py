@@ -513,5 +513,40 @@ class TestIndexAddOp_ZeroSize(OpTest):
         )
 
 
+class TestIndexAdd_ZeroSize2(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
+        self.init_dtype_type()
+        index_np = np.array([], dtype=self.index_type)
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = x_np.copy()
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.x_shape = (10,)
+        self.index_size = 0
+        self.axis = 0
+        self.add_value_shape = (0,)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2, check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'AddValue'], 'Out', check_pir=True, check_prim_pir=True
+        )
+
+
 if __name__ == '__main__':
     unittest.main()
