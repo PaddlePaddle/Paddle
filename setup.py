@@ -2448,6 +2448,7 @@ def get_setup_parameters():
         'paddle.autograd',
         'paddle.device',
         'paddle.device.cuda',
+        'paddle.device.customdevice',
         'paddle.device.xpu',
         'paddle.version',
         'paddle.profiler',
