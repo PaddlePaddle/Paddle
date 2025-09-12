@@ -24,9 +24,6 @@ string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 if(WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_unique)
 endif()
-list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert_deprecated)
-list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard_deprecated)
-list(APPEND DIST_TEST_OPS test_auto_parallel_save_load_deprecated)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 
@@ -44,7 +41,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_dist_tensor_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model_deprecated)
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
-list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -73,7 +69,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_mapper_deprecated)
 endif()
 
 if(WIN32)
@@ -144,10 +139,6 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_dist_tensor_deprecated)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_cost_model_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_auto_parallel_reshard_serial_deprecated)
 
 elseif(WITH_GPU)
   if(${CUDNN_VERSION} VERSION_LESS 7100)
@@ -491,9 +482,6 @@ if(WITH_DISTRIBUTE)
       py_test_modules(
         test_auto_parallel_cost_model_deprecated MODULES
         test_auto_parallel_cost_model_deprecated ENVS ${dist_ENVS})
-      py_test_modules(
-        test_auto_parallel_reshard_serial_deprecated MODULES
-        test_auto_parallel_reshard_serial_deprecated ENVS ${dist_ENVS})
 
     endif()
   endif()
@@ -588,16 +576,6 @@ set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
 
 set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
                                                                        120)
-if(WITH_DISTRIBUTE
-   AND WITH_GPU
-   AND WITH_NCCL)
-  set_tests_properties(test_auto_parallel_autoconvert_deprecated
-                       PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_data_unshard_deprecated
-                       PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_auto_parallel_save_load_deprecated
-                       PROPERTIES TIMEOUT 120)
-endif()
 
 set(TEST_CINN_OPS test_slice_op_deprecated test_layer_norm_op_deprecated
                   test_instance_norm_op_deprecated)
