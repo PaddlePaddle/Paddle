@@ -1185,7 +1185,7 @@ def asarray(
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
             1)
 
-            >>> x = paddle.asarray(1, stop_gradient=False)
+            >>> x = paddle.asarray(1, requires_grad=True)
             >>> print(x)
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=False,
             1)
@@ -1194,7 +1194,7 @@ def asarray(
             Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
             1)
 
-            >>> paddle.asarray([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
+            >>> paddle.asarray([[0.1, 0.2], [0.3, 0.4]], device=paddle.CPUPlace(), requires_grad=True)
             Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
             [[0.10000000, 0.20000000],
              [0.30000001, 0.40000001]])
