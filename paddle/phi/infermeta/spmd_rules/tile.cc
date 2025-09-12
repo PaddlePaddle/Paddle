@@ -215,9 +215,9 @@ SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> dims_to_unshard_for_x;
   std::vector<int64_t> dims_to_unshard_for_out;
   for (int64_t i = broadcast_dims;
-       i < static_cast<int64_t>(repeat_times.size());
+       i < static_cast<int64_t>(repeat_times_new.size());
        ++i) {
-    if (repeat_times[i] == 1) {
+    if (repeat_times_new[i] == 1) {
       continue;
     }
     dims_to_unshard_for_x.push_back(i - broadcast_dims);
@@ -240,7 +240,7 @@ SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
       GetAxesSizes({{x_axes, x_shape}, {out_grad_axes, out_grad_shape}}, false);
   const auto& mesh_shape = out_grad_dist_attr_src.process_mesh().shape();
   auto axis_to_dim_map =
-      ShardingMergeForTensors(axes_sharding_info, axis_size, mesh_shape, false);
+      ShardingMergeForTensors(axes_sharding_info, axis_size, mesh_shape);
 
   auto x_dim_mapping_dst = GetDimsMappingForAxes(x_axes, axis_to_dim_map, true);
   auto out_grad_dim_mapping_dst =
