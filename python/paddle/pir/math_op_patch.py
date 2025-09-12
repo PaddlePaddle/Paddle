@@ -153,7 +153,7 @@ def monkey_patch_value():
 
     def cpu(self):
         """
-        In dy2static, Value also needs cpu() and cuda() interface.
+        In dy2static, Tensor also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
 
         Returns:
@@ -176,11 +176,11 @@ def monkey_patch_value():
 
     def cuda(self, device_id=None, blocking=True):
         """
-        In dy2static, Value also needs cpu() and cuda() interface.
+        In dy2static, Tensor also needs cpu() and cuda() interface.
         But, the underneath operator has only forward op but not backward one.
 
         Args:
-            self(Value): The variable itself.
+            self(Tensor): The variable itself.
             device_id(int, optional): The destination GPU device id. Default: None, means current device.
                 We add this argument for dy2static translation, please do not use it.
             blocking(bool, optional): Whether blocking or not, Default: True.
@@ -213,12 +213,12 @@ def monkey_patch_value():
     @property
     def is_cuda(self):
         """
-        Value don't have 'is_cuda' interface in static graph mode
+        Tensor don't have 'is_cuda' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'is_cuda' interface for pir graph mode, try not to use it."
+            "Tensor do not have 'is_cuda' interface for pir graph mode, try not to use it."
         )
         from paddle import framework
 
@@ -233,40 +233,40 @@ def monkey_patch_value():
     @property
     def place(self):
         """
-        Value don't have 'place' interface in static graph mode
+        Tensor don't have 'place' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
+            "Tensor do not have 'place' interface for pir graph mode, try not to use it. None will be returned."
         )
 
     def contiguous(self):
         """
-        Value don't have 'contiguous' interface in static graph mode
+        Tensor don't have 'contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
+            "Tensor do not have 'contiguous' interface for static graph mode, try not to use it. self will be returned."
         )
         return self
 
     def is_contiguous(self):
         """
-        Value don't have 'is_contiguous' interface in static graph mode
+        Tensor don't have 'is_contiguous' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
+            "Tensor do not have 'is_contiguous' interface for static graph mode, try not to use it. True will be returned."
         )
         return True
 
     @property
     def _ndim(self):
         """
-        Returns the dimension of current Value
+        Returns the dimension of current Tensor
 
         Returns:
             the dimension
@@ -278,9 +278,9 @@ def monkey_patch_value():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static Value
+                >>> # create a static Tensor
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the Value
+                >>> # print the dimension of the Tensor
                 >>> print(x.ndim)
                 3
         """
@@ -288,7 +288,7 @@ def monkey_patch_value():
 
     def ndimension(self):
         """
-        Returns the dimension of current Value
+        Returns the dimension of current Tensor
 
         Returns:
             the dimension
@@ -300,9 +300,9 @@ def monkey_patch_value():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static Value
+                >>> # create a static Tensor
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the Value
+                >>> # print the dimension of the Tensor
                 >>> print(x.ndimension())
                 3
         """
@@ -310,7 +310,7 @@ def monkey_patch_value():
 
     def dim(self):
         """
-        Returns the dimension of current Value
+        Returns the dimension of current Tensor
 
         Returns:
             the dimension
@@ -322,9 +322,9 @@ def monkey_patch_value():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static Value
+                >>> # create a static Tensor
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # print the dimension of the Value
+                >>> # print the dimension of the Tensor
                 >>> print(x.dim())
                 3
         """
@@ -396,12 +396,12 @@ def monkey_patch_value():
 
         Args:
 
-            self(Value): The source Value
+            self(Tensor): The source Tensor
 
             dtype: The target data type
 
         Returns:
-            Value: Value with new dtype
+            Tensor: Tensor with new dtype
 
         Examples:
             In Static Graph Mode:
@@ -417,7 +417,7 @@ def monkey_patch_value():
                 ...     new_value = original_value.astype('int64')
                 ...     print(f"new value's dtype is: {new_value.dtype}")
                 ...
-                new Value's dtype is: paddle.int64
+                new Tensor's dtype is: paddle.int64
 
         """
 
@@ -456,10 +456,10 @@ def monkey_patch_value():
             method_impl = make_conversion_method(target_dtype)
             method_impl.__name__ = method_name
             method_impl.__doc__ = f"""
-            Cast a Value to {target_dtype} data type if it differs from the current dtype;
-            otherwise, return the original Value.
+            Cast a Tensor to {target_dtype} data type if it differs from the current dtype;
+            otherwise, return the original Tensor.
             Returns:
-                Value: a new Value with {target_dtype} dtype
+                Tensor: a new Tensor with {target_dtype} dtype
             """
             methods.append((method_name, method_impl))
         return methods
@@ -568,11 +568,11 @@ def monkey_patch_value():
 
         __impl__.__doc__ = """
             Args:
-                self(Value): left hand Value
-                other_var(Value|float|int): right hand Value
+                self(Tensor): left hand Tensor
+                other_var(Tensor|float|int): right hand Tensor
 
             Returns:
-                Value
+                Tensor
             """
         __impl__.__name__ = method_name
         return __impl__
@@ -580,10 +580,10 @@ def monkey_patch_value():
     @property
     def _size_(self):
         """
-        Returns the number of elements for current Value, which is a int64 Value with shape [] .
+        Returns the number of elements for current Tensor, which is a int64 Tensor with shape [] .
 
         Returns:
-            Value, the number of elements for current Value
+            Tensor, the number of elements for current Tensor
 
         Examples:
             .. code-block:: python
@@ -605,7 +605,7 @@ def monkey_patch_value():
     def _T_(self):
         """
 
-        Permute current Value with its dimensions reversed.
+        Permute current Tensor with its dimensions reversed.
 
         If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
 
@@ -957,13 +957,13 @@ def monkey_patch_value():
 
     def clone(self):
         """
-        Returns a new static Value, which is the clone of the original static
-        Value. It remains in the current graph, that is, the cloned Value
+        Returns a new static Tensor, which is the clone of the original static
+        Tensor. It remains in the current graph, that is, the cloned Tensor
         provides gradient propagation. Calling ``out = tensor.clone()`` is same
         as ``out = assign(tensor)`` .
 
         Returns:
-            Value, The cloned Value.
+            Tensor, The cloned Tensor.
 
         Examples:
             .. code-block:: python
@@ -972,9 +972,9 @@ def monkey_patch_value():
 
                 >>> paddle.enable_static()
 
-                >>> # create a static Value
+                >>> # create a static Tensor
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
-                >>> # create a cloned Value
+                >>> # create a cloned Tensor
                 >>> y = x.clone()
 
         """
@@ -986,9 +986,9 @@ def monkey_patch_value():
         **Notes**:
             **1. This API is ONLY available in Dygraph mode**
 
-            **2. Use it only Value has gradient, normally we use this for Parameters since other temporal Value will be deleted by Python's GC**
+            **2. Use it only Tensor has gradient, normally we use this for Parameters since other temporal Tensor will be deleted by Python's GC**
 
-        Clear  (set to ``0`` ) the Gradient of Current Value
+        Clear  (set to ``0`` ) the Gradient of Current Tensor
 
         Returns:  None
 
@@ -1019,12 +1019,12 @@ def monkey_patch_value():
     def append(self, var):
         """
         Notes:
-           The type of Value must be Tensor Array.
+           The type of Tensor must be Tensor Array.
 
         """
         if not self.is_dense_tensor_array_type():
             raise TypeError(
-                f"Only Value with DenseTensorArray support `append` method, but received {self}"
+                f"Only Tensor with DenseTensorArray support `append` method, but received {self}"
             )
         from paddle.tensor.array import array_length, array_write
 
@@ -1032,20 +1032,20 @@ def monkey_patch_value():
 
     def pop(self, *args):
         """
-        The type of Value must be Tensor Array.
+        The type of Tensor must be Tensor Array.
         When self is TensorArray, calling pop is similar to Python's pop on list.
         This interface is used to simplify dygraph to static graph operations.
 
         Args:
-            self(Value): The source variable, which must be DenseTensorArray
+            self(Tensor): The source variable, which must be DenseTensorArray
             *args: optional, a int means index.
         Returns:
-            Value: self[index]
+            Tensor: self[index]
         """
 
         if not self.is_dense_tensor_array_type():
             raise TypeError(
-                f"Only Value with DenseTensorArray support `pop` method, but received {self}"
+                f"Only Tensor with DenseTensorArray support `pop` method, but received {self}"
             )
         if len(args) == 0:
             idx = -1
@@ -1458,12 +1458,12 @@ def monkey_patch_value():
 
     def get_device(self) -> None:
         """
-        Value don't have 'get_device' interface in static graph mode
+        Tensor don't have 'get_device' interface in static graph mode
         But this interface can greatly facilitate dy2static.
         So we give a warning here and return None.
         """
         warnings.warn(
-            "Value do not have 'get_device' interface for pir graph mode, try not to use it. None will be returned."
+            "Tensor do not have 'get_device' interface for pir graph mode, try not to use it. None will be returned."
         )
 
     value_methods = [
