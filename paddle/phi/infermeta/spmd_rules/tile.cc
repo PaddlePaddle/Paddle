@@ -23,6 +23,20 @@ namespace phi {
 namespace distributed {
 using phi::distributed::auto_parallel::str_join;
 
+namespace {
+std::vector<int64_t> GetRepeatTimes(const std::vector<int64_t>& repeat_times,
+                                    int x_ndim) {
+  auto repeat_times_new = repeat_times;
+  if (x_ndim > static_cast<int>(repeat_times.size())) {
+    size_t diff = static_cast<size_t>(x_ndim) - repeat_times.size();
+    for (size_t i = 0; i < diff; ++i) {
+      repeat_times_new.insert(repeat_times_new.begin(), 1);
+    }
+  }
+  return repeat_times_new;
+}
+}  // anonymous namespace
+
 SpmdInfo TileInferSpmd(const DistMetaTensor& x,
                        const std::vector<int64_t>& repeat_times) {
   auto x_shape = common::vectorize(x.dims());
@@ -37,10 +51,7 @@ SpmdInfo TileInferSpmd(const DistMetaTensor& x,
                                       "dims_mapping size [%d] are not matched.",
                                       x_ndim,
                                       x_dims_mapping.size()));
-  auto repeat_times_new = repeat_times;
-  for (size_t i = 0; i < x_ndim - repeat_times.size(); i++) {
-    repeat_times_new.insert(repeat_times_new.begin(), 1);
-  }
+  auto repeat_times_new = GetRepeatTimes(repeat_times, x_ndim);
 
   int64_t broadcast_dims = repeat_times_new.size() - x_ndim;
 
@@ -99,10 +110,7 @@ SpmdInfo TileInferSpmdReverse(const DistMetaTensor& x,
                                       "dims_mapping size [%d] are not matched.",
                                       x_ndim,
                                       x_dims_mapping.size()));
-  auto repeat_times_new = repeat_times;
-  for (size_t i = 0; i < x_ndim - repeat_times.size(); i++) {
-    repeat_times_new.insert(repeat_times_new.begin(), 1);
-  }
+  auto repeat_times_new = GetRepeatTimes(repeat_times, x_ndim);
 
   auto out_shape = common::vectorize(out.dims());
   int out_ndim = out_shape.size();
@@ -178,10 +186,8 @@ SpmdInfo TileGradInferSpmd(const DistMetaTensor& x,
                                       "dims_mapping size [%d] are not matched.",
                                       x_ndim,
                                       x_dims_mapping.size()));
-  auto repeat_times_new = repeat_times;
-  for (size_t i = 0; i < x_ndim - repeat_times.size(); i++) {
-    repeat_times_new.insert(repeat_times_new.begin(), 1);
-  }
+  auto repeat_times_new = GetRepeatTimes(repeat_times, x_ndim);
+
   auto out_grad_shape = common::vectorize(out_grad.dims());
   int out_grad_ndim = out_grad_shape.size();
   const auto& out_grad_dist_attr_src = out_grad.dist_attr();
