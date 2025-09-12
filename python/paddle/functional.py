@@ -11,11 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from .compat import split
-from .tensor.manipulation import unique_consecutive
+from .tensor.einsum import einsum
+from .tensor.linalg import norm
+from .tensor.manipulation import (
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    unique_consecutive,
+)
+from .tensor.math import broadcast_shapes
 
 __all__ = [
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
+    'broadcast_shapes',
+    "einsum",
+    "norm",
     'split',
     'unique_consecutive',
 ]
