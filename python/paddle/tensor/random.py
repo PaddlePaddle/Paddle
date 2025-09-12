@@ -1845,7 +1845,6 @@ def randint(
         return out
 
 
-@dygraph_only
 def random_(
     x: Tensor,
     from_: int = 0,
