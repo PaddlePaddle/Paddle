@@ -1448,3 +1448,5 @@ if FLAGS_trace_api is not None and FLAGS_trace_api != "":
     api_path = FLAGS_trace_api.split(",")[0]
     save_config_path = FLAGS_trace_api.split(",")[1]
     start_api_tracer(api_path, save_config_path)
+
+from paddle import cuda as cuda
