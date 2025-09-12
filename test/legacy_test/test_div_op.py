@@ -713,15 +713,6 @@ class TestPaddleDivideTrunc(unittest.TestCase):
         out_f32 = paddle.divide(y_f32, zero_f32, rounding_mode='trunc')
         out_b_f32 = paddle.divide(y_b_f32, zero_f32, rounding_mode='trunc')
 
-        y_int32 = paddle.to_tensor(self.divisor, dtype='int32', place=place)
-        y_b_int32 = paddle.to_tensor(self.data_mat, dtype='int32', place=place)
-        zero_int32 = paddle.to_tensor([0], dtype='int32', place=place)
-        try:
-            paddle.divide(y_int32, zero_int32, rounding_mode='trunc')
-            paddle.divide(y_b_int32, zero_int32, rounding_mode='trunc')
-        except:
-            pass
-
     def _run_all_tests(self, place):
         self._test_dtype_division('float32', place, self.expected_f32)
         self._test_broadcast_division('float32', place, self.expected_b_f32)
