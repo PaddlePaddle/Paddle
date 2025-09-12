@@ -26,7 +26,7 @@ namespace cub = hipcub;
 #include <cub/cub.cuh>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 11060
+#if defined(__CUDACC__)
 #define CUDA_BFLOAT16_AVAILABLE
 #include <cuda_bf16.h>
 #endif

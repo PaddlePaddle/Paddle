@@ -29,8 +29,7 @@ limitations under the License. */
 #include "cuda.h"              // NOLINT
 #endif
 
-#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060) || \
-    defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
@@ -41,7 +40,7 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/utils/optional.h"
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_helper.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
