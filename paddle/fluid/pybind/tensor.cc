@@ -197,7 +197,7 @@ static void TensorCopyFrom(phi::DenseTensor *dst,
   }
 }
 
-phi::DenseTensor HandleTensorCopy(
+std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
     const phi::DenseTensor &src,
     const std::optional<std::tuple<int, int>> dl_device,
     std::optional<bool> copy) {
@@ -229,10 +229,10 @@ phi::DenseTensor HandleTensorCopy(
         std::make_shared<phi::Allocation>(nullptr, 0, dst_place), src.meta());
     const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
     phi::Copy(*dev_ctx, src, dst_place, false, &dst);
-    return dst;
+    return std::make_tuple(dst, true);
   }
 
-  return src;
+  return std::make_tuple(src, false);
 }
 
 template <typename T>
@@ -240,8 +240,12 @@ pybind11::capsule TensorToDLPack(
     const phi::DenseTensor &tensor,
     const std::optional<std::tuple<int, int>> dl_device = std::nullopt,
     std::optional<bool> copy = std::nullopt) {
-  T *dlMTensor = framework::DLPackTraits<T>::toDLPack(
-      HandleTensorCopy(tensor, dl_device, copy));
+  const auto [maybe_copied_tensor, is_copied] =
+      HandleTensorCopy(tensor, dl_device, copy);
+  uint64_t flags =
+      static_cast<uint64_t>(is_copied) * DLPACK_FLAG_BITMASK_IS_COPIED;
+  T *dlMTensor =
+      framework::DLPackTraits<T>::toDLPack(maybe_copied_tensor, flags);
   auto capsule = pybind11::capsule(
       static_cast<void *>(dlMTensor),
       framework::DLPackTraits<T>::capsule,

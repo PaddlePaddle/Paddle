@@ -32,8 +32,10 @@ using Deleter = std::function<void(void*)>;
 phi::Place DLDeviceToPlace(const DLDevice& device);
 DLDevice PlaceToDLDevice(const phi::Place& place);
 
-TEST_API DLManagedTensor* toDLPack(const phi::DenseTensor& src);
-DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src);
+TEST_API DLManagedTensor* toDLPack(const phi::DenseTensor& src,
+                                   uint64_t flags = 0);
+DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src,
+                                            uint64_t flags = 0);
 phi::DenseTensor fromDLPack(DLManagedTensor* src, Deleter deleter);
 phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned* src,
                                      Deleter deleter);

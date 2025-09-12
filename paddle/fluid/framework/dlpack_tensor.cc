@@ -286,17 +286,18 @@ static void deleter(T *self) {
 }
 
 template <class T>
-void fillVersion(T *tensor) {}
+void FillVersionInfo(T *tensor, uint64_t flags) {}
 
 template <>
-void fillVersion<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor) {
-  tensor->flags = 0;  // All flags are disabled for initial value.
+void FillVersionInfo<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor,
+                                               uint64_t flags) {
+  tensor->flags = flags;
   tensor->version.major = DLPACK_MAJOR_VERSION;
   tensor->version.minor = DLPACK_MINOR_VERSION;
 }
 
 template <typename T>
-T *toDLPackImpl(const phi::DenseTensor &src) {
+T *toDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
   PaddleDLMTensor<T> *pdDLMTensor(new PaddleDLMTensor<T>);
   pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
@@ -332,16 +333,17 @@ T *toDLPackImpl(const phi::DenseTensor &src) {
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
-  fillVersion(&(pdDLMTensor->tensor));
+  FillVersionInfo(&(pdDLMTensor->tensor), flags);
   return &(pdDLMTensor->tensor);
 }
 
-DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
-  return toDLPackImpl<DLManagedTensor>(src);
+DLManagedTensor *toDLPack(const phi::DenseTensor &src, uint64_t flags) {
+  return toDLPackImpl<DLManagedTensor>(src, flags);
 }
 
-DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src) {
-  return toDLPackImpl<DLManagedTensorVersioned>(src);
+DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src,
+                                            uint64_t flags) {
+  return toDLPackImpl<DLManagedTensorVersioned>(src, flags);
 }
 
 template <typename T>
