@@ -193,6 +193,18 @@ class OpLoweringGroup {
     return this->temp_space_sizes_;
   }
 
+  using DimExprMap = std::unordered_map<symbol::DimExpr, symbol::DimExpr>;
+  const DimExprMap& substitute_dimexpr_map() const {
+    return this->substitute_dimexpr_map_;
+  }
+  DimExprMap& mut_substitute_dimexpr_map() {
+    return this->substitute_dimexpr_map_;
+  }
+
+  void set_substitute_dimexpr_map(const DimExprMap& dimexpr_map) {
+    this->substitute_dimexpr_map_ = dimexpr_map;
+  }
+
  private:
   using alignment_schedule_info_t = std::unordered_map<
       ::pir::Operation*,
@@ -249,6 +261,7 @@ class OpLoweringGroup {
   std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   std::unordered_map<::pir::Value, symbol::ShapeOrDataDimExprs>
       value_to_shape_or_data_exprs_;
+  DimExprMap substitute_dimexpr_map_;
 
  public:
   cinn::fusion::FusionTrackerPtr fusion_tracker_ptr;

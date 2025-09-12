@@ -161,12 +161,12 @@ GradNodeAccumulation::operator()(
   VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  common::errors::Fatal(
-                     "GradNodeAccumulation should take exactly 1 grad tensor"
+                     "GradNodeAccumulation should take exactly 1 grad tensor. "
                      "However received: %d slot.",
                      grads.size()));
   PADDLE_ENFORCE(grads[0].size() == 1,
                  common::errors::Fatal(
-                     "GradNodeAccumulation should take exactly 1 grad tensor"
+                     "GradNodeAccumulation should take exactly 1 grad tensor. "
                      "However received: %d in slot %d .",
                      grads[0].size(),
                      0));

@@ -16,13 +16,14 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.base import topology as tp
 
 
 class TestNewGroupAPI:
     def __init__(self):
         paddle.distributed.init_parallel_env()
         topo = fleet.CommunicateTopology(
-            ["data", "model", "sharding", "pipe"], [2, 1, 1, 1]
+            ["data", "sep", "model", "sharding", "pipe"], [2, 1, 1, 1, 1]
         )
         self.hcg = fleet.HybridCommunicateGroup(topo)
 
@@ -101,6 +102,47 @@ class TestNewGroupAPI:
         print("test barrier api ok")
 
 
+class TestHybridEPGroup:
+    def __init__(self):
+        paddle.distributed.init_parallel_env()
+        group_names = [
+            "moe_sharding",
+            "sharding",
+            "pipe",
+            "sep",
+            "data",
+            "expert",
+            "model",
+        ]
+        dims = [1, 1, 1, 1, 1, 2, 2]
+
+        self.hcg = tp.EPHybridCommunicateGroup(group_names, dims)
+
+    def test_all(self):
+        global_rank = paddle.distributed.get_rank()
+
+        dp_rank = self.hcg.get_data_parallel_rank()
+        assert dp_rank == 0
+        assert self.hcg.get_expert_parallel_world_size() == 2
+        assert self.hcg.get_moe_sharding_parallel_world_size() == 1
+        assert self.hcg.get_model_parallel_world_size() == 2
+        assert self.hcg.get_expert_parallel_rank() == global_rank
+        assert self.hcg.get_moe_sharding_parallel_rank() == 0
+        assert self.hcg.get_expert_parallel_group_src_rank() == 0
+        assert (
+            self.hcg.get_moe_sharding_parallel_group_src_rank() == global_rank
+        )
+
+        moe_sharding_group = self.hcg.get_moe_sharding_parallel_group()
+        ep_group = self.hcg.get_expert_parallel_group()
+        mp_group = self.hcg.get_model_parallel_group()
+        assert moe_sharding_group.ranks == [global_rank]
+        assert ep_group.ranks == [0, 1]
+        assert mp_group.ranks == [0, 1]
+
+
 if __name__ == "__main__":
     gpt = TestNewGroupAPI()
     gpt.test_all()
+    ep_test = TestHybridEPGroup()
+    ep_test.test_all()

@@ -72,6 +72,7 @@ from .loss import (  # noqa: F401
     L1Loss,
     MarginRankingLoss,
     MSELoss,
+    MultiLabelMarginLoss,
     MultiLabelSoftMarginLoss,
     MultiMarginLoss,
     NLLLoss,

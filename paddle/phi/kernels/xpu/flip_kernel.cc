@@ -48,7 +48,7 @@ void FlipKernel(const Context& dev_ctx,
     return;
   }
   int r = xpu::flip<XPUInTDType>(
-      /* Context* ctx */ dev_ctx.x_context(),
+      /* Context* xpu_ctx */ dev_ctx.x_context(),
       /* const T* x */ x_data,
       /* T* y */ out_data,
       /* const std::vector<int64_t>& xshape */ x_shape,

@@ -17,7 +17,6 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -29,6 +28,9 @@ void GeluKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
   int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
                              reinterpret_cast<XPUType*>(out->data<T>()),
@@ -38,5 +40,10 @@ void GeluKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    gelu, XPU, ALL_LAYOUT, phi::GeluKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(gelu,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::GeluKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}

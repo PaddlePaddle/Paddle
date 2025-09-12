@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import inspect
 import warnings
@@ -128,6 +129,8 @@ def monkey_patch_tensor():
             'strides',
             'offset',
             '__cuda_array_interface__',
+            'itemsize',
+            'is_cuda',
         ]
         param_keys = ['stop_gradient', 'trainable']
         if isinstance(self, EagerParamBase):
@@ -206,26 +209,26 @@ def monkey_patch_tensor():
         """
         if id(self) == id(value):
             return
-        assert isinstance(
-            value, (np.ndarray, paddle.Tensor, dict, str)
-        ), "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        assert isinstance(value, (np.ndarray, paddle.Tensor, dict, str)), (
+            "Variable set_value function, arguments type only support Variable, numpy, Tensor, dict, string."
+        )
         if self.is_dist():
-            assert isinstance(
-                value, (np.ndarray, paddle.Tensor)
-            ), "For set_value function of dist tensor, arguments type only support numpy or Tensor."
+            assert isinstance(value, (np.ndarray, paddle.Tensor)), (
+                "For set_value function of dist tensor, arguments type only support numpy or Tensor."
+            )
 
         if isinstance(value, (dict, str)):
-            assert len(self) == len(
-                value
-            ), f"Variable length not match, Variable [ {self.name} ] need tensor with length {len(self)} but load set tensor with length {len(value)}"
+            assert len(self) == len(value), (
+                f"Variable length not match, Variable [ {self.name} ] need tensor with length {len(self)} but load set tensor with length {len(value)}"
+            )
             if isinstance(value, dict):
                 self.value().set_vocab(value)
             else:
                 self.value().set_string_list(value)
         else:
-            assert self.shape == list(
-                value.shape
-            ), f"Variable Shape not match, Variable [ {self.name} ] need tensor with shape {self.shape} but load set tensor with shape {value.shape}"
+            assert self.shape == list(value.shape), (
+                f"Variable Shape not match, Variable [ {self.name} ] need tensor with shape {self.shape} but load set tensor with shape {value.shape}"
+            )
 
             if isinstance(value, paddle.Tensor):
                 dtype = value.dtype
@@ -234,9 +237,9 @@ def monkey_patch_tensor():
             else:
                 dtype = convert_np_dtype_to_dtype_(value.dtype)
 
-            assert (
-                self.dtype == dtype
-            ), f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
+            assert self.dtype == dtype, (
+                f"Variable dtype not match, Variable [ {self.name} ] need tensor with dtype {self.dtype}  but load tensor with dtype {dtype}"
+            )
 
             # NOTE(wuweilong): self could be Tensor, the subsequent behavior are defined in different files
             # if self is Tensor, method value() return self that defined in this file, get_tensor() defined in eager_method.cc
@@ -248,9 +251,14 @@ def monkey_patch_tensor():
                     )
 
                     # TODO: support reshard later
-                    assert value.process_mesh == self.value().process_mesh or check_placements_equal(
-                        value.placements, self.value().placements
-                    ), f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                    assert (
+                        value.process_mesh == self.value().process_mesh
+                        or check_placements_equal(
+                            value.placements, self.value().placements
+                        )
+                    ), (
+                        f"process_mesh:{value.process_mesh} != {self.value().process_mesh} or placements:{value.placements} != {self.value().placements} not match"
+                    )
                 else:
                     # calling set method bound for DistTensor
                     value = paddle.distributed.shard_tensor(
@@ -258,11 +266,17 @@ def monkey_patch_tensor():
                         self.value().process_mesh,
                         self.value().placements,
                     )
-                self.value().get_tensor().set(value.get_tensor())
+                if isinstance(value, paddle.Tensor):
+                    self.value().set_tensor(value)
+                else:
+                    self.value().get_tensor().set(value.get_tensor())
                 return
-            self.value().get_tensor().set(
-                value, framework._current_expected_place()
-            )
+            if isinstance(value, paddle.Tensor):
+                self.value().set_tensor(value)
+            else:
+                self.value().get_tensor().set(
+                    value, framework._current_expected_place()
+                )
 
     @framework.dygraph_only
     def backward(
@@ -338,13 +352,13 @@ def monkey_patch_tensor():
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                assert isinstance(
-                    grad_tensor, core.eager.Tensor
-                ), "The type of grad_tensor must be paddle.Tensor"
+                assert isinstance(grad_tensor, core.eager.Tensor), (
+                    "The type of grad_tensor must be paddle.Tensor"
+                )
 
-                assert (
-                    grad_tensor.shape == self.shape
-                ), f"Tensor shape not match, Tensor of grad_tensor [ {grad_tensor.name} ] with shape {grad_tensor.shape} mismatch Tensor [ {self.name} ] with shape {self.shape}"
+                assert grad_tensor.shape == self.shape, (
+                    f"Tensor shape not match, Tensor of grad_tensor [ {grad_tensor.name} ] with shape {grad_tensor.shape} mismatch Tensor [ {self.name} ] with shape {self.shape}"
+                )
 
             if grad_tensor is None:
                 grad_tensor = []
@@ -579,6 +593,7 @@ def monkey_patch_tensor():
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        copy_tensor: bool | None = None,
     ) -> Tensor:
         if device is None and dtype is None and blocking is None:
             return self
@@ -637,11 +652,11 @@ def monkey_patch_tensor():
         if blocking is None:
             blocking = True
         else:
-            assert isinstance(
-                blocking, bool
-            ), "blocking value error, must be the True, False or None"
+            assert isinstance(blocking, bool), (
+                "blocking value error, must be the True, False or None"
+            )
 
-        def transform(t, device, dtype, blocking):
+        def transform(t, device, dtype, blocking, copy_tensor):
             if device is None:
                 device = t.place
             if dtype is None:
@@ -668,6 +683,7 @@ def monkey_patch_tensor():
                     t_used = t._copy_to(paddle.CPUPlace(), blocking)
                     # Release memory of t
                     t._clear()
+                    copy_tensor = False
                 else:
                     # Tensor still in GPU
                     t_used = t
@@ -680,20 +696,25 @@ def monkey_patch_tensor():
                     place=t_used.place
                 ):
                     t_casted = t_used.cast(dtype=dtype)
+                    copy_tensor = False
             else:
                 t_casted = t_used
 
             # 3. Copy casted Tensor(in CPU or GPU) to device if needed
             if device is not None and not t_casted.place._equals(device):
                 new_t = t_casted._copy_to(device, blocking)
+                copy_tensor = False
             else:
                 new_t = t_casted
-
-            return new_t
+            new_t.stop_gradient = t.stop_gradient
+            if copy_tensor:
+                return copy.deepcopy(new_t)
+            else:
+                return new_t
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            return transform(self, device, dtype, blocking)
+            return transform(self, device, dtype, blocking, copy_tensor)
 
     @overload
     def to(
@@ -736,35 +757,46 @@ def monkey_patch_tensor():
             .. code-block:: python
 
                 >>> import paddle
-                >>> tensorx = paddle.to_tensor([1,2,3])
-                >>> print(tensorx)
+                >>> x = paddle.to_tensor([1,2,3])
+                >>> print(x)
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
 
-                >>> tensorx = tensorx.to("cpu")
-                >>> print(tensorx.place)
+                >>> x = x.to("cpu")
+                >>> print(x.place)
                 Place(cpu)
 
-                >>> tensorx = tensorx.to("float32")
-                >>> print(tensorx.dtype)
+                >>> x = x.to("float32")
+                >>> print(x.dtype)
                 paddle.float32
 
-                >>> tensorx = tensorx.to("gpu", "int16")
-                >>> print(tensorx)
+                >>> x = x.to("gpu", "int16")
+                >>> print(x)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [1, 2, 3])
-                >>> tensor2 = paddle.to_tensor([4,5,6])
-                >>> tensor2
+                >>> y = paddle.to_tensor([4,5,6])
+                >>> y
                 Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
-                >>> tensor2 = tensor2.to(tensorx)
-                >>> print(tensor2)
+                >>> y = y.to(x)
+                >>> print(y)
                 Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
                     [4, 5, 6])
         """
         device = None
         dtype = None
         blocking = None
+
+        if "non_blocking" in kwargs:
+            non_blocking = kwargs.pop("non_blocking")
+        else:
+            non_blocking = False
+
+        if "copy" in kwargs:
+            copy_tensor = kwargs.pop("copy")
+        else:
+            copy_tensor = False
+
         size_args = len(args)
         size_kwargs = len(kwargs)
 
@@ -839,7 +871,8 @@ def monkey_patch_tensor():
                 device, dtype = get_device_dtype_from_tensor(
                     kwargs.get("other", None)
                 )
-        return self._to(device, dtype, blocking)
+        blocking = False if not blocking or non_blocking else True
+        return self._to(device, dtype, blocking, copy_tensor)
 
     def clear_grad(self: Tensor) -> None:
         """
@@ -990,9 +1023,9 @@ def monkey_patch_tensor():
     def __nonzero__(self: Tensor) -> bool:
         # np.prod([]) -> np.float64, so use int
         numel = int(np.prod(self.shape))
-        assert (
-            numel == 1
-        ), "When Variable is used as the condition of if/while , Variable can only contain one element."
+        assert numel == 1, (
+            "When Variable is used as the condition of if/while , Variable can only contain one element."
+        )
         # resolve the error issue in scenario of pipeline parallel
         # where some devices do not have this data, return True or False does not affect
         # the execution result in those devices, so currently we return False
@@ -1041,10 +1074,10 @@ def monkey_patch_tensor():
         # we call this function in python level.
         item = list(item) if isinstance(item, tuple) else [item]
         for i, slice_item in enumerate(item):
-            if isinstance(slice_item, (list, np.ndarray, tuple)):
-                item[i] = paddle.to_tensor(slice_item)
+            if isinstance(slice_item, (list, tuple)):
+                item[i] = np.array(slice_item)
             elif isinstance(slice_item, range):
-                item[i] = paddle.to_tensor(list(slice_item))
+                item[i] = np.array(list(slice_item))
 
         return tuple(item)
 
@@ -1144,12 +1177,22 @@ def monkey_patch_tensor():
             res.persistable = self.persistable
             return res
 
+    @property
+    def is_cuda(self: Tensor) -> bool:
+        return self.place.is_gpu_place()
+
     @framework.dygraph_only
     def pin_memory(self: Tensor, blocking: bool = True) -> Tensor:
-        if self.place.is_cuda_pinned_place():
+        if (
+            self.place.is_cuda_pinned_place()
+            or self.place.is_xpu_pinned_place()
+        ):
             return self
         else:
-            res = self._copy_to(core.CUDAPinnedPlace(), blocking)
+            if paddle.device.is_compiled_with_xpu():
+                res = self._copy_to(core.XPUPinnedPlace(), blocking)
+            else:
+                res = self._copy_to(core.CUDAPinnedPlace(), blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -1433,6 +1476,47 @@ def monkey_patch_tensor():
 
         return paddle.to_dlpack(self)
 
+    def get_device(self: Tensor) -> int:
+        """
+        Return the device id where the Tensor is located.
+
+        Returns:
+            int: The device id of the Tensor. Returns -1 for CPU tensors; for GPU tensors,
+                 returns the CUDA device id (e.g., 0 for `gpu:0`).
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+                >>> x.get_device()
+                -1
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+                >>> y.get_device()
+                0
+        """
+        if self.place.is_cpu_place():
+            return -1
+        else:
+            return self.place.gpu_device_id()
+
+    def __tvm_ffi_env_stream__(self) -> int:
+        """
+        Returns the raw stream pointer of the current tensor's device context.
+        This is used for TVM FFI environment integration.
+        """
+        if self.place.is_gpu_place():
+            return paddle.base.libpaddle._get_current_raw_stream(
+                self.place.gpu_device_id()
+            )
+        else:
+            # TODO: Add XPU and custom device support.
+            raise RuntimeError(
+                "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
+            )
+
     if not hasattr(core, "eager"):
         return
 
@@ -1445,6 +1529,7 @@ def monkey_patch_tensor():
         ("backward", backward),
         ("clear_grad", clear_grad),
         ("inplace_version", inplace_version),
+        ("is_cuda", is_cuda),
         ("gradient", gradient),
         ("apply_", apply_),
         ("apply", apply),
@@ -1479,6 +1564,8 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("get_device", get_device),
+        ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

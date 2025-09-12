@@ -45,11 +45,6 @@ struct DimExprToIrExprVisitor {
     return ir::Sub::Make(ir::Expr(std::int64_t(0)), ConvertToIrExpr(operand));
   }
 
-  ir::Expr operator()(const Reciprocal<DimExpr>& dim_expr) {
-    const auto& [operand] = *dim_expr;
-    return ir::Div::Make(ir::Expr(std::int64_t(1)), ConvertToIrExpr(operand));
-  }
-
   ir::Expr operator()(const Add<DimExpr>& dim_expr) {
     const auto& [operands] = dim_expr;
     if (operands->empty()) {
@@ -69,19 +64,15 @@ struct DimExprToIrExprVisitor {
     }
     ir::Expr product = ConvertToIrExpr(operands->at(0));
     for (std::size_t i = 1; i < operands->size(); ++i) {
-      // Convert Reciprocal<DimExpr>(S0) to (1 / S0) will result in precision
-      // error. For example, (S0 * S1 / S2) != (S0 * S1 * (1 / S2)). So we
-      // should use Div instead of Reciprocal here.
-      if (operands->at(i).isa<Reciprocal<DimExpr>>()) {
-        product = ir::Div::Make(
-            product,
-            ConvertToIrExpr(
-                operands->at(i).dyn_cast<Reciprocal<DimExpr>>()->data));
-      } else {
-        product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
-      }
+      product = ir::Mul::Make(product, ConvertToIrExpr(operands->at(i)));
     }
     return product;
+  }
+
+  ir::Expr operator()(const Div<DimExpr>& dim_expr) {
+    const auto& lhs = ConvertToIrExpr(dim_expr->lhs);
+    const auto& rhs = ConvertToIrExpr(dim_expr->rhs);
+    return ir::Div::Make(lhs, rhs);
   }
 
   ir::Expr operator()(const Max<DimExpr>& dim_expr) {
@@ -152,9 +143,43 @@ struct DimExprConverterWithSymbolBindings::
     if (std::holds_alternative<ShapeSymbolBinding>(symbol_binding)) {
       return inputs_[input_idx]->sym_shape[input_dim_idx]->GetDimExpr();
     }
+
+    auto LinearToMultiDim = [](int64_t index,
+                               const std::vector<int64_t>& dimensions) {
+      std::vector<int64_t> result(dimensions.size(), 0);
+      std::vector<int64_t> strides(dimensions.size(), 1);
+      for (int64_t i = dimensions.size() - 2; i >= 0; --i) {
+        strides[i] = strides[i + 1] * dimensions[i + 1];
+      }
+      int64_t cur_index = index;
+      for (int64_t i = 0; i < dimensions.size(); ++i) {
+        result[i] = cur_index / strides[i];
+        cur_index %= strides[i];
+      }
+      return result;
+    };
     // for data binding [S0, a, b], inputs[a] is Tensor A, return A(b)
-    return ir::Cast::Make(cinn::common::I64(),
-                          inputs_[input_idx](cinn::ir::Expr(input_dim_idx)));
+    PADDLE_ENFORCE_LE(inputs_[input_idx].ndims(),
+                      9,
+                      ::common::errors::InvalidArgument(
+                          "The rank of the input tensor must be less than or "
+                          "equal to 9, but got %d",
+                          inputs_[input_idx].ndims()));
+    const std::vector<ir::Expr> indices = [&]() -> std::vector<ir::Expr> {
+      const auto& dimensions = inputs_[input_idx]->shape;
+      std::vector<ir::Expr> result(dimensions.size(), 0);
+      std::vector<int64_t> strides(dimensions.size(), 1);
+      for (int64_t i = dimensions.size() - 2; i >= 0; --i) {
+        strides[i] = strides[i + 1] * dimensions[i + 1].as_int64();
+      }
+      int64_t cur_index = input_dim_idx;
+      for (int64_t i = 0; i < dimensions.size(); ++i) {
+        result[i] = ir::Expr(cur_index / strides[i]);
+        cur_index %= strides[i];
+      }
+      return result;
+    }();
+    return ir::Cast::Make(cinn::common::I64(), inputs_[input_idx](indices));
   }
 
   DimExprToIrExprVisitorWithSymbolBinding(

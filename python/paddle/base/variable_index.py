@@ -147,9 +147,9 @@ def _setitem_for_tensor_array(var, item, value):
 
     from .framework import Variable
 
-    assert (
-        not paddle.in_dynamic_mode()
-    ), "setitem for tensor_array must be called in static graph mode."
+    assert not paddle.in_dynamic_mode(), (
+        "setitem for tensor_array must be called in static graph mode."
+    )
     if isinstance(item, (Variable, paddle.pir.Value, int)):
         from paddle.jit.dy2static.convert_operators import to_static_variable
         from paddle.tensor import array_write
@@ -764,7 +764,16 @@ def get_tensor_with_basic_indexing(
                 stride = attrs['strides']
             if use_strided_slice:
                 # TODO(zoooo0820): support strided_slice_array until PIR API is ready
-
+                if in_pir_mode():
+                    if isinstance(st, (list, tuple)):
+                        if paddle.utils._contain_var(st):
+                            st = paddle.utils.get_int_tensor_list(st)
+                    if isinstance(end, (list, tuple)):
+                        if paddle.utils._contain_var(end):
+                            end = paddle.utils.get_int_tensor_list(end)
+                    if isinstance(stride, (list, tuple)):
+                        if paddle.utils._contain_var(stride):
+                            stride = paddle.utils.get_int_tensor_list(stride)
                 out = paddle._C_ops.strided_slice(x, axes, st, end, stride)
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
@@ -796,7 +805,6 @@ def get_tensor_with_basic_indexing(
                     attrs['decrease_axis'],
                 )
         else:
-
             target_block = paddle.static.default_main_program().current_block()
 
             slice_out_var = target_block.create_var(

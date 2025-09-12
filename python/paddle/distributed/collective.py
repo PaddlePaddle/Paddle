@@ -46,7 +46,10 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
 )
 
 if TYPE_CHECKING:
-    _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl"]
+    _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl", "flagcx"]
+
+    from paddle.base.libpaddle import NCCLConfig
+
 __all__ = []
 
 _global_env = None
@@ -75,7 +78,7 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'heter', 'xccl', 'bkcl']
+_valid_backend_list = ['nccl', 'gloo', 'heter', 'xccl', 'bkcl', 'flagcx']
 _default_store = None  # the default tcp store
 _default_backend = None
 _default_timeout = datetime.timedelta(seconds=1800)
@@ -157,6 +160,7 @@ def _new_process_group_impl(
     pg_options,
     group_id=0,
     nccl_comm_init_option=0,
+    nccl_config=None,
 ):
     pg = None
     genv = _get_global_env()
@@ -171,6 +175,7 @@ def _new_process_group_impl(
             group_id,
             genv.pg_timeout,
             nccl_comm_init_option,
+            nccl_config,
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
@@ -178,6 +183,15 @@ def _new_process_group_impl(
         )
     elif backend == "bkcl":
         pg = core.ProcessGroupBKCL.create(store, rank, world_size, group_id)
+    elif backend == "flagcx":
+        pg = core.ProcessGroupFlagcx.create(
+            store,
+            rank,
+            world_size,
+            group_id,
+            genv.pg_timeout,
+            nccl_comm_init_option,
+        )
     return pg
 
 
@@ -197,6 +211,7 @@ def new_group(
     backend: Literal['nccl'] | None = None,
     timeout: datetime.timedelta = _default_timeout,
     nccl_comm_init_option: int = 0,
+    nccl_config: NCCLConfig | None = None,
 ) -> Group:
     """
 
@@ -252,6 +267,7 @@ def new_group(
                 pg_options=None,
                 group_id=gid,
                 nccl_comm_init_option=nccl_comm_init_option,
+                nccl_config=nccl_config,
             )
         else:
             rank = -1
@@ -379,3 +395,61 @@ def _init_parallel_env(backend: _BackendList) -> None:
         core.CommContextManager.create_bkcl_comm_context(
             store, "0", rank, world_size, endpoints_str_hash
         )
+
+
+_shutdown_group_map_by_name = {}
+
+
+def _get_shutdown_group_map_by_name():
+    global _shutdown_group_map_by_name
+    return _shutdown_group_map_by_name
+
+
+def _update_shutdown_group_map_by_name(pg_name, group):
+    global _shutdown_group_map_by_name
+    _shutdown_group_map_by_name[pg_name] = group
+
+
+def _delete_shutdown_group_map_by_name(pg_name):
+    global _shutdown_group_map_by_name
+    del _shutdown_group_map_by_name[pg_name]
+
+
+def _clear_shutdown_group_map_by_name():
+    global _shutdown_group_map_by_name
+    _shutdown_group_map_by_name.clear()
+
+
+def shutdown_process_group(group: Group | None = None) -> None:
+    shutdown_groups = _get_shutdown_group_map_by_name()
+
+    if group is None:
+        global _default_group_name
+        for pg_name, pg in _get_group_map_by_name().items():
+            if (
+                pg.process_group is not None
+                and pg_name not in shutdown_groups
+                and pg_name != _default_group_name
+            ):
+                pg.process_group.shutdown()
+                _update_shutdown_group_map_by_name(pg_name, pg)
+    else:
+        if (
+            group.process_group is not None
+            and group.name not in shutdown_groups
+        ):
+            group.process_group.shutdown()
+            _update_shutdown_group_map_by_name(group.name, group)
+
+
+def restart_process_group(group: Group | None = None) -> None:
+    shutdown_groups = _get_shutdown_group_map_by_name()
+
+    if group is None:
+        for pg in shutdown_groups.values():
+            pg.process_group.restart()
+        _clear_shutdown_group_map_by_name()
+    else:
+        if group.process_group is not None and group.name in shutdown_groups:
+            group.process_group.restart()
+            _delete_shutdown_group_map_by_name(group.name)

@@ -21,7 +21,6 @@ import numpy as np
 import paddle
 
 from . import core, unique_name
-from .data_feeder import convert_dtype
 from .framework import (
     Variable,
     _current_expected_place,
@@ -341,6 +340,7 @@ class LayerHelperBase:
         default_initializer=None,
         stop_gradient=False,
         type=core.VarDesc.VarType.DENSE_TENSOR,
+        device=None,
     ):
         """Create parameters for this layers.
 
@@ -350,6 +350,7 @@ class LayerHelperBase:
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
                default_initializer: set the default initializer for this parameter
+               device: device where this parameter will be placed
 
         Returns created parameter Variable.
         """
@@ -368,7 +369,7 @@ class LayerHelperBase:
         if not dtype:
             dtype = self.__dtype
         if isinstance(dtype, core.DataType):
-            dtype = convert_dtype(dtype)
+            dtype = paddle.pir.core.datatype_to_vartype[dtype]
         if is_bias:
             suffix = 'b'
             default_initializer = (
@@ -440,20 +441,28 @@ class LayerHelperBase:
                     "Please check the parameter attr value passed to self.create_parameter or "
                     "constructor of dygraph Layers"
                 )
-            return self.main_program.global_block().create_parameter(
+            param = self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 type=type,
                 stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True),
             )
+            if device is not None:
+                param = param.to(device)
+            return param
         else:
             if in_pir_mode():
-                return paddle.pir.core.create_parameter(
+                if isinstance(dtype, core.VarDesc.VarType):
+                    dtype = paddle.pir.core.vartype_to_datatype[dtype]
+                param = paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,
                     **attr._to_kwargs(with_initializer=True),
                 )
+                if device is not None:
+                    param = param.to(device)
+                return param
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,

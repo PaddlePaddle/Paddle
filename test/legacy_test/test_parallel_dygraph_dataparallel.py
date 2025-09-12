@@ -75,9 +75,9 @@ def start_local_trainers_cpu(
 
         print(f"trainer proc env:{current_env}")
 
-        assert (
-            os.getenv('WITH_COVERAGE', 'OFF') == 'OFF'
-        ), "Gloo don't support WITH_COVERAGE."
+        assert os.getenv('WITH_COVERAGE', 'OFF') == 'OFF', (
+            "Gloo don't support WITH_COVERAGE."
+        )
         cmd = "python -u " + training_script
 
         print(f"start trainer proc:{cmd} env:{proc_env}")

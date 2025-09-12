@@ -144,6 +144,7 @@ std::shared_ptr<OpLoweringGroup> OpLoweringGroup::Clone(
   new_group->alignment_schedule_info_ = this->alignment_schedule_info_;
   new_group->reduce_axis_ = this->reduce_axis_;
   new_group->loop_ranges_ = this->loop_ranges_;
+  new_group->substitute_dimexpr_map_ = this->substitute_dimexpr_map_;
   return new_group;
 }
 

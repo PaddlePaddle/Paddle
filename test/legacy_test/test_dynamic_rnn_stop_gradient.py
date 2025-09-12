@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
@@ -83,28 +83,20 @@ class TestDynRNNStopGradient(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
-            with paddle.static.program_guard(main_program, startup_program):
-                with base.scope_guard(base.Scope()):
-                    value1 = build_and_run_program(
-                        place, self.batch_size, self.beam_size, False
-                    )
-                    value2 = build_and_run_program(
-                        place, self.batch_size, self.beam_size, True
-                    )
-                    np.testing.assert_array_equal(value1, value2)
+            with (
+                paddle.static.program_guard(main_program, startup_program),
+                base.scope_guard(base.Scope()),
+            ):
+                value1 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, False
+                )
+                value2 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, True
+                )
+                np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-
-        for p in places:
+        for p in get_places():
             self.run_main(p)
 
 

@@ -32,7 +32,8 @@
 #include "paddle/pir/include/dialect/shape/utils/shape_analysis.h"
 
 COMMON_DECLARE_bool(check_infer_symbolic);
-PD_DECLARE_bool(prim_all);
+PD_DECLARE_bool(prim_forward);
+PD_DECLARE_bool(prim_backward);
 
 namespace cinn {
 namespace dialect {
@@ -138,9 +139,6 @@ struct ShapeSignatureGenerator {
         [&](const symbol::Negative<symbol::DimExpr>& negative) {
           GetSymbolsForOneDimExpr(negative->data, symbols);
         },
-        [&](const symbol::Reciprocal<symbol::DimExpr>& reciprocal) {
-          GetSymbolsForOneDimExpr(reciprocal->data, symbols);
-        },
         [&](const symbol::Add<symbol::DimExpr>& add) {
           for (const auto& dim_expr : *add.operands) {
             GetSymbolsForOneDimExpr(dim_expr, symbols);
@@ -150,6 +148,10 @@ struct ShapeSignatureGenerator {
           for (const auto& dim_expr : *mul.operands) {
             GetSymbolsForOneDimExpr(dim_expr, symbols);
           }
+        },
+        [&](const symbol::Div<symbol::DimExpr>& div) {
+          GetSymbolsForOneDimExpr(div->lhs, symbols);
+          GetSymbolsForOneDimExpr(div->rhs, symbols);
         },
         [&](const symbol::Max<symbol::DimExpr>& max) {
           for (const auto& dim_expr : *max.operands) {
@@ -625,7 +627,9 @@ void CheckProgramDimExprConstraints(
 
 void CheckInferSymbolicIfNeed(pir::Program* program,
                               const PassManagerCreator& CreatePassManager) {
-  if (!FLAGS_prim_all || !FLAGS_check_infer_symbolic) return;
+  if (!(FLAGS_prim_forward && FLAGS_prim_backward) ||
+      !FLAGS_check_infer_symbolic)
+    return;
   const auto& GraphDimExprs4Value =
       MakeDimExprs4Value(program, CreatePassManager);
   // CheckProgramDimExprConstraints has some bug, so we comment it.

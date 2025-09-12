@@ -42,6 +42,10 @@ void CholeskySolveKernel(const Context& dev_ctx,
                          const DenseTensor& y,
                          bool upper,
                          DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   // get broadcast dim
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;

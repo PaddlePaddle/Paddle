@@ -22,7 +22,7 @@ import paddle
 paddle.enable_static()
 
 
-class TestReshapeTranspoeMatmulFusePatternCase1(PassTest):
+class TestReshapeTransposeMatmulFusePatternCase1(PassTest):
     r'''
         x
         |

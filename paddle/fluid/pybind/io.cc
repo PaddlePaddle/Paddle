@@ -147,6 +147,7 @@ void BindIO(pybind11::module *m) {
 
   m->def("load_func", &Load<phi::CPUPlace>);
   m->def("load_func", &Load<phi::CustomPlace>);
+  m->def("load_func", &Load<phi::XPUPinnedPlace>);
   m->def("load_func", &Load<phi::XPUPlace>);
   m->def("load_func", &Load<phi::GPUPinnedPlace>);
   m->def("load_func", &Load<phi::GPUPlace>);
@@ -154,6 +155,7 @@ void BindIO(pybind11::module *m) {
   m->def("load_func", &Load<phi::Place>);
   m->def("load_combine_func", &LoadCombine<phi::CPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::CustomPlace>);
+  m->def("load_combine_func", &LoadCombine<phi::XPUPinnedPlace>);
   m->def("load_combine_func", &LoadCombine<phi::XPUPlace>);
   m->def("load_combine_func", &LoadCombine<phi::GPUPinnedPlace>);
   m->def("load_combine_func", &LoadCombine<phi::GPUPlace>);
@@ -164,10 +166,10 @@ void BindIO(pybind11::module *m) {
          &pir::WriteModule,
          py::arg("program"),
          py::arg("file_path"),
-         py::arg("pir_version"),
          py::arg("overwrite") = true,
          py::arg("readable") = false,
-         py::arg("trainable") = true);
+         py::arg("trainable") = true,
+         py::arg("pir_version") = -1);
   m->def("deserialize_pir_program",
          &pir::ReadModule,
          py::arg("file_path"),

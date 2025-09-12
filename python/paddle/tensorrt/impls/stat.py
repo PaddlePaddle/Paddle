@@ -14,7 +14,7 @@
 
 # import tensorrt as trt
 
-# from paddle.tensorrt.converter_utils import get_axes_for_reduce_op
+# from paddle.tensorrt.converter_utils import get_axes_for_reduce_op, set_layer_name
 # from paddle.tensorrt.register import converter_registry
 
 
@@ -30,4 +30,5 @@
 #         axes=get_axes_for_reduce_op(dim, network.has_implicit_batch_dimension),
 #         keep_dims=keep_dim,
 #     )
+#     set_layer_name(mean_layer, paddle_op)
 #     return mean_layer.get_output(0)

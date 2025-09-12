@@ -17,12 +17,12 @@ from functools import partial
 
 import hypothesis.strategies as st
 import numpy as np
-from auto_scan_test import MkldnnAutoScanTest
+from auto_scan_test import OnednnAutoScanTest
 from hypothesis import given
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
+class TestMkldnnMatmulv2Op(OnednnAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         if len(program_config.inputs["input_data2"].shape) == 4:
             if (
@@ -113,7 +113,7 @@ class TestMkldnnMatmulv2Op(MkldnnAutoScanTest):
         yield program_config
 
     def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_mkldnn=True)
+        config = self.create_inference_config(use_onednn=True)
         yield config, (1e-5, 1e-5)
 
     @given(

@@ -22,7 +22,6 @@ import unittest
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -165,7 +164,6 @@ class TestForLoop(TestCaseBase):
         a = paddle.to_tensor(1)
         self.assert_results(for_list_1, a)
 
-    @test_with_faster_guard
     def test_list_with_fallback(self):
         a = paddle.to_tensor(1)
         self.assert_results(for_list_2, a)
@@ -195,7 +193,6 @@ class TestForLoop(TestCaseBase):
         paddle_output = for_break(a, gener())
         self.assert_nest_match(sym_output, paddle_output)
 
-    @test_with_faster_guard
     def test_for_continue(self):
         a = paddle.to_tensor(1)
         sym_output = symbolic_translate(for_continue)(a, gener())
@@ -207,7 +204,6 @@ class TestForLoop(TestCaseBase):
     #     a = [1, 2, 3]
     #     self.assert_results(for_enumerate_var_with_nested_range, a)
 
-    @test_with_faster_guard
     def test_create_var_in_loop(self):
         x = paddle.to_tensor(1, dtype="float32")
         a = [1, 2, 3]
@@ -220,7 +216,6 @@ class TestForLoop(TestCaseBase):
     def test_create_var_in_loop_with_same_name_as_global(self):
         self.assert_results(for_tmp_var_with_same_name_as_global_var)
 
-    @test_with_faster_guard
     def test_for_without_zero_iter(self):
         self_res_dict = {}
         output = paddle.to_tensor(2)
@@ -229,7 +224,6 @@ class TestForLoop(TestCaseBase):
     def test_reconstruct_range_iter(self):
         self.assert_results(for_reconstruct_range_iter)
 
-    @test_with_faster_guard
     def test_layer_list(self):
         layers = paddle.nn.LayerList()
         for i in range(5):
@@ -257,7 +251,6 @@ def for_enumerate_cache(func_list, x):
 
 
 class TestEnumerateCache(TestCaseBase):
-    @test_with_faster_guard
     def test_run(self):
         func_list = [
             paddle.nn.Linear(10, 10),
@@ -299,7 +292,6 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
     def test_undefined_var_case_0(self):
         self.assert_results(undefined_var_case_0)
 
-    @test_with_faster_guard
     def test_undefined_var_case_1(self):
         self.assert_results(undefined_var_case_1)
 

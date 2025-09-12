@@ -36,7 +36,7 @@ class TestCollectiveAllToAllSingleAPI(TestDistBase):
         for dtype in support_types:
             self.check_with_place(
                 "collective_alltoall_single_api_dygraph.py",
-                "alltoall",
+                "alltoall_single",
                 static_mode="0",
                 dtype=dtype,
             )

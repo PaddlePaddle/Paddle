@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -116,11 +117,7 @@ def ref_ormqr(input, tau, y, left=True, transpose=False):
 class TestOrmqrAPI(unittest.TestCase):
     def setUp(self):
         paddle.seed(2024)
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         self.init_input()
 
     def init_input(self):

@@ -37,7 +37,7 @@ limitations under the License.
 #include "paddle/phi/kernels/rms_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -56,6 +56,18 @@ void RmsNormKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* residual_out,
                    DenseTensor* inv_var) {
+  if (x.numel() == 0) {
+    if (out) dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (inv_var) {
+      phi::Full<float, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(inv_var->dims())),
+          0.f,
+          inv_var);
+    }
+    return;
+  }
   if (quant_scale > 0.0f) {
     PADDLE_THROW(common::errors::Unimplemented(
         "Quantization is not supported in XPU rms_norm yet"));
@@ -83,8 +95,8 @@ void RmsNormKernel(const Context& dev_ctx,
     inv_var_data = inv_var->data<float>();
   }
 
-  int32_t rows = 1;
-  int32_t cols = 1;
+  int64_t rows = 1;
+  int64_t cols = 1;
   for (int i = 0; i < begin_norm_axis; i++) {
     rows *= x.dims()[i];
   }
@@ -171,5 +183,5 @@ PD_REGISTER_KERNEL(rms_norm,
                    ALL_LAYOUT,
                    phi::RmsNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -86,7 +86,6 @@ class TestDoubleGrad(unittest.TestCase):
 
 
 class TestGradientWithPrune(unittest.TestCase):
-
     def test_prune(self):
         with paddle.base.scope_guard(paddle.static.Scope()):
             x = paddle.static.data(name='x', shape=[3], dtype='float32')

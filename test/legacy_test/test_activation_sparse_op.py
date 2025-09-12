@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
+from op_test import get_places
 
 import paddle
 from paddle.base import core
@@ -52,16 +52,7 @@ class TestSparseSquareOp(unittest.TestCase):
         np.testing.assert_array_equal(result_array, np.square(np_array))
 
     def test_sparse_acti(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 
@@ -94,16 +85,7 @@ class TestSparseSqrtOp(unittest.TestCase):
         np.testing.assert_allclose(result_array, np.sqrt(np_array), rtol=1e-05)
 
     def test_sparse_acti(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             self.check_with_place(place)
 
 

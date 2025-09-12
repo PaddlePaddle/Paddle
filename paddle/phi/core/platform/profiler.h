@@ -24,11 +24,9 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/type_defs.h"
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/platform/profiler/mem_tracing.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -131,7 +129,7 @@ struct MemEventRecorder {
   static MemEventRecorder& Instance() { return recorder; }
 
  private:
-  struct RecordMemEvent {
+  struct PADDLE_API RecordMemEvent {
     RecordMemEvent(const Place& place, size_t bytes);
     ~RecordMemEvent();
 
@@ -152,7 +150,7 @@ struct MemEventRecorder {
   DISABLE_COPY_AND_ASSIGN(MemEventRecorder);
 };
 
-struct RecordBlock {
+struct PADDLE_API RecordBlock {
   explicit RecordBlock(int block_id);
   ~RecordBlock();
 
@@ -182,44 +180,46 @@ using phi::PushEvent;
 
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
-std::vector<std::vector<Event>> GetAllEvents();
+PADDLE_API std::vector<std::vector<Event>> GetAllEvents();
 
 // Enable the profiling function.
-TEST_API void EnableProfiler(ProfilerState state);
+PADDLE_API void EnableProfiler(ProfilerState state);
 // Clear the phi::ProfilerHelper::g_all_event_lists, which is total event lists
 // of all threads.
-TEST_API void ResetProfiler();
-TEST_API void DisableProfiler(EventSortingKey sorted_key,
-                              const std::string& profile_path);
+PADDLE_API void ResetProfiler();
+PADDLE_API void DisableProfiler(EventSortingKey sorted_key,
+                                const std::string& profile_path);
 // Disable profiler but return events instead of print it.
-void CompleteProfilerEvents(phi::proto::Profile* tracer_profile,
-                            std::vector<std::vector<Event>>* time_events,
-                            std::vector<std::vector<MemEvent>>* mem_events);
+PADDLE_API void CompleteProfilerEvents(
+    phi::proto::Profile* tracer_profile,
+    std::vector<std::vector<Event>>* time_events,
+    std::vector<std::vector<MemEvent>>* mem_events);
 
 // Test if the profiler is currently enabled.
-bool IsProfileEnabled();
+PADDLE_API bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.
-bool ShouldSendProfileState();
-std::string OpName(const framework::VariableNameMap& name_map,
-                   const std::string& type_name);
-void SetTracerOption(TracerOption option);
-platform::TracerOption GetTracerOption();
+PADDLE_API bool ShouldSendProfileState();
+PADDLE_API std::string OpName(
+    const std::map<std::string, std::vector<std::string>>& name_map,
+    const std::string& type_name);
+PADDLE_API void SetTracerOption(TracerOption option);
+PADDLE_API platform::TracerOption GetTracerOption();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void DummyKernelAndEvent();
 #endif
 
 // Mark current process as PS by assigning a lister id.
-void SetProfileListener();
-int64_t ListenerId();
+PADDLE_API void SetProfileListener();
+PADDLE_API int64_t ListenerId();
 
-void NvprofEnableRecordEvent();
-void NvprofDisableRecordEvent();
+PADDLE_API void NvprofEnableRecordEvent();
+PADDLE_API void NvprofDisableRecordEvent();
 
-void EnableHostEventRecorder();
-void DisableHostEventRecorder();
+PADDLE_API void EnableHostEventRecorder();
+PADDLE_API void DisableHostEventRecorder();
 
-void EnableMemoryRecorder();
-void DisableMemoryRecorder();
+PADDLE_API void EnableMemoryRecorder();
+PADDLE_API void DisableMemoryRecorder();
 
 // Defined for UT
 std::string PrintHostEvents();

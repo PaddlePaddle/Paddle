@@ -21,14 +21,14 @@ namespace phi {
 template <typename T, typename Context>
 void VarianceKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const IntArray& dims,
+                    const std::vector<int64_t>& dims,
                     bool keep_dim,
                     DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Variance(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const IntArray& axis,
+                     const std::vector<int64_t>& axis,
                      bool keep_dim) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);

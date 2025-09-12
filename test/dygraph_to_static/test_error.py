@@ -20,6 +20,9 @@ import numpy as np
 
 import paddle
 from paddle.jit.dy2static import error
+from paddle.jit.dy2static.utils import ENV_ENABLE_CINN_IN_DY2ST
+
+ENV_ENABLE_CINN_IN_DY2ST.set(False)
 
 
 def inner_func():
@@ -350,7 +353,7 @@ class TestKeyError(unittest.TestCase):
 @paddle.jit.to_static(full_graph=True)
 def NpApiErr():
     a = paddle.to_tensor([1, 2])
-    b = np.sum(a.numpy())
+    b = np.count_nonzero(a.numpy())
     print(b)
 
 

@@ -17,11 +17,12 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 template <typename T, typename Context>
-void Conv2dTransposeGradKernel(const Context& ctx,
+void Conv2dTransposeGradKernel(const Context& dev_ctx,
                                const DenseTensor& x,
                                const DenseTensor& filter,
                                const DenseTensor& dout,
@@ -40,9 +41,31 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   // that avoids modifying the variable in the Scope.
   DenseTensor filter_ = filter;
   if (!dx && !dfilter) return;
-
-  std::vector<int> paddings_ = paddings;
-  std::vector<int> dilations_ = dilations;
+  // 0-size
+  if (x.numel() == 0) {
+    if (dx) dev_ctx.template Alloc<T>(dx);
+    if (dfilter) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(dfilter->dims())),
+                            0,
+                            dfilter);
+    }
+    return;
+  }
+  if (filter.numel() == 0) {
+    if (dfilter) dev_ctx.template Alloc<T>(dfilter);
+    if (dx) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    }
+    return;
+  }
+  std::vector<int64_t> strides_ =
+      std::vector<int64_t>(strides.begin(), strides.end());
+  std::vector<int64_t> paddings_ =
+      std::vector<int64_t>(paddings.begin(), paddings.end());
+  std::vector<int64_t> dilations_ =
+      std::vector<int64_t>(dilations.begin(), dilations.end());
 
   PADDLE_ENFORCE_EQ(
       data_format == "NHWC" || data_format == "NDHWC",
@@ -52,29 +75,33 @@ void Conv2dTransposeGradKernel(const Context& ctx,
 
   DDim in_data_dims = slice_ddim(x.dims(), 2, x.dims().size());
   DDim filter_data_dims = slice_ddim(filter_.dims(), 2, filter_.dims().size());
-  std::vector<int> ksize = common::vectorize<int>(filter_data_dims);
-  UpdatePaddingAndDilation(
-      &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
+  std::vector<int64_t> ksize = common::vectorize<int64_t>(filter_data_dims);
+  UpdatePaddingAndDilation(&paddings_,
+                           &dilations_,
+                           padding_algorithm,
+                           in_data_dims,
+                           strides_,
+                           ksize);
 
-  const int batch_size = static_cast<int>(x.dims()[0]);
-  const int img_yc = static_cast<int>(x.dims()[1]);
-  const int img_yh = static_cast<int>(x.dims()[2]);
-  const int img_yw = static_cast<int>(x.dims()[3]);
-  const int img_xc = static_cast<int>(dout.dims()[1]);
-  const int img_xh = static_cast<int>(dout.dims()[2]);
-  const int img_xw = static_cast<int>(dout.dims()[3]);
+  const int64_t batch_size = x.dims()[0];
+  const int64_t img_yc = x.dims()[1];
+  const int64_t img_yh = x.dims()[2];
+  const int64_t img_yw = x.dims()[3];
+  const int64_t img_xc = dout.dims()[1];
+  const int64_t img_xh = dout.dims()[2];
+  const int64_t img_xw = dout.dims()[3];
   if (dx) {
-    ctx.template Alloc<T>(dx);
+    dev_ctx.template Alloc<T>(dx);
   }
   if (dfilter) {
-    ctx.template Alloc<T>(dfilter);
+    dev_ctx.template Alloc<T>(dfilter);
   }
   int fc_calc_type = FCCalcType<T>();
   if (fc_calc_type == XPUFCCalcType::FC_INT32 ||
       fc_calc_type == XPUFCCalcType::FC_INT32_WITH_LL) {
     // xpu api do not support int31 quantization now.
     int r = xpu::conv2d_transpose_grad<float, float, float, int_with_ll_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<T>(),
         filter_.data<T>(),
         dout.data<T>(),
@@ -88,7 +115,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
         img_xh,
         img_xw,
         ksize,
-        strides,
+        strides_,
         paddings_,
         dilations_,
         groups,
@@ -101,7 +128,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
   } else {
     int r = xpu::conv2d_transpose_grad<float, float, float, int16_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         x.data<T>(),
         filter_.data<T>(),
         dout.data<T>(),
@@ -115,7 +142,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
         img_xh,
         img_xw,
         ksize,
-        strides,
+        strides_,
         paddings_,
         dilations_,
         groups,
@@ -130,7 +157,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
+void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const DenseTensor& x,
                                         const DenseTensor& filter,
                                         const DenseTensor& dout,
@@ -144,7 +171,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  Conv2dTransposeGradKernel<T, Context>(ctx,
+  Conv2dTransposeGradKernel<T, Context>(dev_ctx,
                                         x,
                                         filter,
                                         dout,

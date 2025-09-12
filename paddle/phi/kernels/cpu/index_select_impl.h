@@ -26,7 +26,7 @@ namespace phi {
 
 template <typename Context, typename T, class Enable = void>
 struct IndexSelectAdd {
-  void operator()(const Context& ctx UNUSED,
+  void operator()(const Context& dev_ctx UNUSED,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,
@@ -42,18 +42,18 @@ struct IndexSelectAdd<
     Context,
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const Context& ctx,
+  void operator()(const Context& dev_ctx,
                   int slice_size,
                   const T* src_pointer,
                   const T* p_pointer,
                   T* dist_pointer) {
-    auto blas = phi::funcs::GetBlas<Context, T>(ctx);
+    auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
     blas.VADD(slice_size, src_pointer, p_pointer, dist_pointer);
   }
 };
 
 template <typename Context, typename T, typename IndexT = int>
-void IndexSelectInner(const Context& ctx,
+void IndexSelectInner(const Context& dev_ctx,
                       DenseTensor* input,
                       const DenseTensor& index,
                       DenseTensor* output,
@@ -65,12 +65,12 @@ void IndexSelectInner(const Context& ctx,
 
   DenseTensor index_cpu_copy;
   if (index.place().GetType() != phi::AllocationType::CPU) {
-    phi::Copy(ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
+    phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &index_cpu_copy);
   }
   const IndexT* index_data = index.place().GetType() == phi::AllocationType::CPU
                                  ? index.data<IndexT>()
                                  : index_cpu_copy.data<IndexT>();
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -114,7 +114,7 @@ void IndexSelectInner(const Context& ctx,
   auto input_tensor = EigenTensor<T, 3>::From(*input);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
 
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
 
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
@@ -129,7 +129,7 @@ void IndexSelectInner(const Context& ctx,
 }
 
 template <typename Context, typename T, typename IndexT = int>
-void IndexSelectGradInner(const Context& ctx,
+void IndexSelectGradInner(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           const DenseTensor& index,
                           DenseTensor* x_grad,
@@ -137,15 +137,15 @@ void IndexSelectGradInner(const Context& ctx,
   const T* input_data = out_grad.data<T>();
   const IndexT* index_data = index.data<IndexT>();
 
-  const T* p_output = ctx.template Alloc<T>(x_grad);
-  T* out_data = ctx.template Alloc<T>(x_grad);
+  const T* p_output = dev_ctx.template Alloc<T>(x_grad);
+  T* out_data = dev_ctx.template Alloc<T>(x_grad);
 
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
 
   phi::funcs::SetConstant<Context, T> set_constant;
-  set_constant(ctx, x_grad, static_cast<T>(0.0));
+  set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
 
   auto slice_size = 1;
   for (auto i = dim + 1; i < input_dim_size; i++) {
@@ -179,7 +179,7 @@ void IndexSelectGradInner(const Context& ctx,
       auto p_out = p_output + output_start_offset + index_value * slice_size;
       auto dst = out_data + output_start_offset + index_value * slice_size;
       IndexSelectAdd<Context, T> index_select_add;
-      index_select_add(ctx, slice_size, src, p_out, dst);
+      index_select_add(dev_ctx, slice_size, src, p_out, dst);
     }
   }
   x_grad->Resize(output_dim);

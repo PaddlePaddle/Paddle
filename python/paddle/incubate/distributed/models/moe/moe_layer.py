@@ -85,11 +85,9 @@ def _all_gather(tensor, group=None, use_calc_stream=True):
             if group is None
             else group.nranks
         )
-        return paddle._legacy_C_ops.all_gather(
+        return paddle._C_ops.all_gather(
             tensor,
-            'ring_id',
             ring_id,
-            'nranks',
             nranks,
         )
 
@@ -343,9 +341,9 @@ class MoELayer(nn.Layer):
         if gate is None:
             gate = {}
 
-        assert isinstance(
-            gate, (dict, BaseGate)
-        ), "gate config' type must be dict or an instance of BaseGate"
+        assert isinstance(gate, (dict, BaseGate)), (
+            "gate config' type must be dict or an instance of BaseGate"
+        )
         # only support mp/dp
         self.group = moe_group
 

@@ -127,9 +127,9 @@ def save(
 
     # gather_to is not None and world size > 1
     state_type = configs.get("state_type", None)
-    assert isinstance(
-        state_type, str
-    ), "must pass an arg state_type='params' or state_type='opt' to specify whether to save model state_dict or optimizer state_dict"
+    assert isinstance(state_type, str), (
+        "must pass an arg state_type='params' or state_type='opt' to specify whether to save model state_dict or optimizer state_dict"
+    )
     assert state_type in [
         "params",
         "opt",
@@ -144,20 +144,22 @@ def save(
     assert (
         hcg.get_model_parallel_world_size() == 1
         and hcg.get_pipe_parallel_world_size() == 1
-    ), f"Only DP and Sharding is supported now. However, current MP={hcg.get_model_parallel_world_size()} , PP={hcg.get_pipe_parallel_world_size()}"
+    ), (
+        f"Only DP and Sharding is supported now. However, current MP={hcg.get_model_parallel_world_size()} , PP={hcg.get_pipe_parallel_world_size()}"
+    )
 
     sharding_group = hcg.get_sharding_parallel_group()
     dp_group = hcg.get_data_parallel_group()
 
     if state_type == "params":
         if dp_group.nranks > 1:
-            assert _same_keys(
-                state_dict, dp_group
-            ), "only sharding stage 1/2 and DP are supported now"
+            assert _same_keys(state_dict, dp_group), (
+                "only sharding stage 1/2 and DP are supported now"
+            )
         if sharding_group.nranks > 1:
-            assert _same_keys(
-                state_dict, sharding_group
-            ), "only sharding stage 1/2 and DP are supported now"
+            assert _same_keys(state_dict, sharding_group), (
+                "only sharding stage 1/2 and DP are supported now"
+            )
         configs = _remove_not_supported_conf(configs)
         return paddle.save(state_dict, path, **configs)
 
@@ -248,9 +250,9 @@ def _parse_mem_size_to_bits(max_size):
     """
     assert isinstance(max_size, (int, str))
     if isinstance(max_size, str):
-        assert re.search(
-            "^[0-9]*[GMK]$", max_size
-        ), f"Wrong max_size 's format, the format ust be like 10K, 9M, 200G , etc, or an integer. However this is {max_size}"
+        assert re.search("^[0-9]*[GMK]$", max_size), (
+            f"Wrong max_size 's format, the format ust be like 10K, 9M, 200G , etc, or an integer. However this is {max_size}"
+        )
         num = int(max_size[:-1])
         if max_size[-1] == "G":
             max_size = num * 1024**3
@@ -278,9 +280,9 @@ def _gather_state_dict(state_dict, dst, group, max_size="3G"):
     Returns:
         Gathered state dict
     """
-    assert isinstance(
-        dst, (list, tuple, int)
-    ), "dst' type must be one of int, list and tuple"
+    assert isinstance(dst, (list, tuple, int)), (
+        "dst' type must be one of int, list and tuple"
+    )
     if isinstance(dst, int):
         dst = [dst]
 

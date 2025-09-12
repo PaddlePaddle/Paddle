@@ -34,6 +34,9 @@ struct CommStaticCheck {
   static void CheckDataType(const phi::DenseTensor& out_tensor,
                             const phi::DenseTensor& in_tensor);
 
+  static void CheckDataType(const std::vector<phi::DenseTensor>& out_tensors,
+                            const std::vector<phi::DenseTensor>& in_tensors);
+
   static void CheckShape(const phi::DenseTensor& tensor);
 
   static void CheckShape(const phi::DenseTensor& out_tensor,

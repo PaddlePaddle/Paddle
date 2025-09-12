@@ -201,5 +201,44 @@ class TestClassHingeEmbeddingLoss(unittest.TestCase):
         self.assertRaises(ValueError, test_value_error)
 
 
+class TestFunctionalHingeEmbeddingLoss_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.margin = 1.0
+        self.shape = (0, 10, 5)  # zero size
+        self.input_np = np.random.random(size=self.shape).astype(np.float64)
+        self.label_np = 2 * np.random.randint(0, 2, size=self.shape) - 1.0
+
+    def run_dynamic_check(self, place=paddle.CPUPlace()):
+        paddle.disable_static(place=place)
+        input = paddle.to_tensor(self.input_np)
+        input.stop_gradient = False
+        label = paddle.to_tensor(self.label_np, dtype="float64")
+
+        dy_result = paddle.nn.functional.hinge_embedding_loss(input, label)
+        expected = calc_hinge_embedding_loss(self.input_np, self.label_np)
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+        self.assertEqual(dy_result.shape, [])
+
+        dy_result = paddle.nn.functional.hinge_embedding_loss(
+            input, label, reduction='none'
+        )
+        expected = calc_hinge_embedding_loss(
+            self.input_np, self.label_np, reduction='none'
+        )
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
+
+        loss = paddle.sum(dy_result)
+        loss.backward()
+        self.assertEqual(input.grad.shape, input.shape)
+
+    def test_cpu(self):
+        self.run_dynamic_check(place=paddle.CPUPlace())
+
+    def test_gpu(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        self.run_dynamic_check(place=paddle.CUDAPlace(0))
+
+
 if __name__ == "__main__":
     unittest.main()

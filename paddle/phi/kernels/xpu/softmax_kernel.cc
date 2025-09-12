@@ -41,12 +41,12 @@ void SoftmaxKernel(const Context& dev_ctx,
     return;
   }
 
-  std::vector<int> x_dims;
+  std::vector<int64_t> x_dims;
   for (int i = 0; i < rank; i++) {
     x_dims.push_back(x.dims()[i]);
   }
 
-  int r = XPU_SUCCESS;
+  int r = 0;
   auto version =
       phi::backends::xpu::get_xpu_version(dev_ctx.GetPlace().GetDeviceId());
   if (version == phi::backends::xpu::XPUVersion::XPU1) {
@@ -63,14 +63,14 @@ void SoftmaxKernel(const Context& dev_ctx,
                               clip_x_data_l3,
                               reinterpret_cast<XPUType*>(out->data<T>()),
                               x_dims,
-                              calc_axis);
+                              static_cast<int64_t>(calc_axis));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
   } else {
     r = xpu::softmax<XPUType>(dev_ctx.x_context(),
                               reinterpret_cast<const XPUType*>(x.data<T>()),
                               reinterpret_cast<XPUType*>(out->data<T>()),
                               x_dims,
-                              calc_axis);
+                              static_cast<int64_t>(calc_axis));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
   }
 }
@@ -82,5 +82,5 @@ PD_REGISTER_KERNEL(softmax,
                    ALL_LAYOUT,
                    phi::SoftmaxKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

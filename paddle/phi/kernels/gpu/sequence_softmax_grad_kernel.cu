@@ -71,7 +71,7 @@ __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
 
 template <typename T>
 struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext &context,
+  void operator()(const phi::GPUContext &dev_ctx,
                   const DenseTensor &dout,
                   const DenseTensor &out,
                   const phi::Vector<size_t> &ref_lod, /*referenced lod*/
@@ -80,7 +80,7 @@ struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
 
     const int kThreadsPerBlock = 32;
     int thread_x = kThreadsPerBlock;
-    int max_threads = context.GetMaxPhysicalThreadCount();
+    int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
     dim3 block_size(thread_x);
@@ -88,12 +88,12 @@ struct SequenceSoftmaxGradFunctor<phi::GPUContext, T> {
 
     phi::MixVector<size_t> mixv_ref_lod(&ref_lod);
     sequence_softmax_grad_kernel<T, kThreadsPerBlock>
-        <<<grid_size, block_size, 0, context.stream()>>>(
+        <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
             dout.data<T>(),
             out.data<T>(),
-            mixv_ref_lod.CUDAData(context.GetPlace()),
+            mixv_ref_lod.CUDAData(dev_ctx.GetPlace()),
             height,
-            context.Alloc<T>(dx));
+            dev_ctx.Alloc<T>(dx));
   }
 };
 

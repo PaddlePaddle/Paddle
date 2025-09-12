@@ -21,7 +21,6 @@
 #include <set>
 #include <unordered_set>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
@@ -154,6 +153,12 @@ std::vector<ir::stmt::StmtRef> CodeGenGpuDev::FilterDeallocTempBuffers(
 void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   // clear names valid within scope when enter a new function
   vectorized_tensor_names_.clear();
+  dynamic_shape_map_.clear();
+  for (const auto &arg : op->args) {
+    if (arg.is_var()) {
+      dynamic_shape_map_.emplace(arg.name(), arg.type());
+    }
+  }
   str_ += "__global__\n";
 
   PrintFunctionDeclaration(op);
@@ -183,7 +188,7 @@ void CodeGenGpuDev::Visit(const ir::_LoweredFunc_ *op) {
   ir::stmt::BlockRef func_body_block = ir::stmt::BlockRef(new_body_stmts);
 
   // Use ir_simplify when pass updated.
-  // optim::SimplifyBlocks(&func_body);
+  // optim::SimplifyUnitBlock(&func_body);
   // // Make sure that the function's body is wrapped by a block
   // if (!func_body.As<ir::Block>()) {
   //   func_body = ir::Block::Make({func_body});
@@ -214,37 +219,40 @@ void CodeGenGpuDev::VisitStmt(const ir::stmt::Alloc &stmt) {
 
 void CodeGenGpuDev::Visit(const ir::Min *op) {
   str_ += "min(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 
 void CodeGenGpuDev::Visit(const ir::Max *op) {
   str_ += "max(";
-  IrPrinter::Visit(op->a());
+  ir::Expr a = op->a(), b = op->b();
+  auto [unify_bit, both_dyn] =
+      common::UnifiedOperandTypeBits(&dynamic_shape_map_, op);
+  ProcessMinMaxOperand(&a, &b, unify_bit, both_dyn);
+  IrPrinter::Visit(a);
   str_ += ", ";
-  IrPrinter::Visit(op->b());
+  IrPrinter::Visit(b);
   str_ += ")";
 }
 
 void CodeGenGpuDev::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
   str_ += "void ";
   if (op->cuda_axis_info.valid()) {
-    bool has_symbol_in_thread_num = false;
-    int thread_num = 1;
-    for (int i = 0; i < 3; i++) {
-      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
-      if (block_dim.is_constant()) {
-        thread_num *= block_dim.get_constant();
-      } else {
-        has_symbol_in_thread_num = true;
-        break;
-      }
-    }
-    if (!has_symbol_in_thread_num) {
+    int max_threads_per_block = op->cuda_axis_info.max_threads_per_block();
+    if (max_threads_per_block > 0) {
       str_ += "__launch_bounds__(";
-      str_ += std::to_string(thread_num);
+      str_ += std::to_string(max_threads_per_block);
+      int min_blocks_per_sm = op->cuda_axis_info.min_blocks_per_sm();
+      if (min_blocks_per_sm > 0) {
+        str_ += ", ";
+        str_ += std::to_string(min_blocks_per_sm);
+      }
       str_ += ") ";
     }
   }
@@ -320,7 +328,7 @@ void CodeGenGpuDev::PrintTempBufferCreation(const ir::Buffer &buffer) {
   for (int i = 0; i < buffer->shape.size(); i++) {
     buffer_size = buffer_size * buffer->shape[i];
   }
-  optim::Simplify(&buffer_size);
+  buffer_size = optim::ArithSimplify(buffer_size);
   bool has_symbolic_constant = false;
   ir::ir_utils::CollectIRNodes(buffer_size, [&](const Expr *x) {
     if (x->as_var()) {
@@ -352,7 +360,7 @@ void CodeGenGpuDev::PrintTempBufferCreation(const ir::Buffer &buffer) {
     int type_bytes = buffer->dtype.bytes();
     dyn_shared_mem_offset_ =
         dyn_shared_mem_offset_ + buffer_size * Expr(type_bytes);
-    optim::Simplify(&dyn_shared_mem_offset_);
+    dyn_shared_mem_offset_ = optim::ArithSimplify(dyn_shared_mem_offset_);
     VLOG(6) << "dyn_shared_mem_offset_ = " << dyn_shared_mem_offset_;
   } else if (buffer->memory_type == ir::MemoryType::GPULocal) {
     // print func of static allocation

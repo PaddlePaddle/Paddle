@@ -1066,9 +1066,9 @@ class TransFormer(Layer):
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:
-            assert (
-                src_vocab_size == trg_vocab_size
-            ), "Vocabularies in source and target should be same for weight sharing."
+            assert src_vocab_size == trg_vocab_size, (
+                "Vocabularies in source and target should be same for weight sharing."
+            )
         self._wrap_encoder_layer = WrapEncoderLayer(
             src_vocab_size,
             max_length,
@@ -1105,9 +1105,7 @@ class TransFormer(Layer):
         )
 
         if weight_sharing:
-            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = (
-                self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
-            )
+            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)

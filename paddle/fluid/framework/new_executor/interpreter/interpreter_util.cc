@@ -39,9 +39,14 @@
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/memory/stats.h"
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 #include "paddle/fluid/distributed/collective/process_group.h"
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/fluid/distributed/collective/process_group_custom.h"
+#else
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#endif
 #endif
 
 #ifdef PADDLE_WITH_DNNL
@@ -49,10 +54,12 @@
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(static_runtime_data_save_path);
 COMMON_DECLARE_bool(save_static_runtime_data);
@@ -130,50 +137,15 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
 }
 
 bool IsCommunicationOp(const OperatorBase* op) {
-  const std::string& op_name = op->Type();
-  const std::set<std::string> special_comm_op_set = {
-      "send",
-      "recv",
-      "send_v2",
-      "recv_v2",
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
-  if (op->HasAttr("ring_id")) {
-    return true;
-  }
-  return false;
+  return op->HasAttr("ring_id");
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  if (!instr.OpBaseValid()) {
-    return false;
-  }
-  return IsCommunicationOp(instr.OpBase());
+  return instr.OpBaseValid() && IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCommunicationOp(const ::pir::Operation* op) {
-  std::string op_name = op->name();
-  if (op->attributes().count("op_name")) {
-    op_name =
-        op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-  }
-  const std::set<std::string> special_comm_op_set = {
-      paddle::dialect::SendV2Op::name(),
-      paddle::dialect::RecvV2Op::name(),
-  };
-  const std::string communication_op_prefix = "c_";
-  if (op_name.find(communication_op_prefix) != std::string::npos ||
-      special_comm_op_set.count(op_name)) {
-    return true;
-  }
-  if (op->attributes().count("ring_id") != 0) {
-    return true;
-  }
-  return false;
+  return op->attributes().count("ring_id") != 0;
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -373,10 +345,14 @@ void CreateAllOps(const framework::BlockDesc& block,
     op_base->SetRuntimeAttributeMap(op_runtime_attr_map);
 
 #ifdef PADDLE_WITH_DNNL
-    if (FLAGS_use_mkldnn) {
+    if (FLAGS_use_mkldnn || FLAGS_use_onednn) {
       if (op->HasAttr("use_mkldnn")) {
         VLOG(4) << "Set use_mkldnn=True for " << op_base->Type();
         op_base->SetAttr("use_mkldnn", true);
+      }
+      if (op->HasAttr("use_onednn")) {
+        VLOG(4) << "Set use_onednn=True for " << op_base->Type();
+        op_base->SetAttr("use_onednn", true);
       }
     }
 #endif
@@ -661,7 +637,7 @@ void BuildOpFuncList(const phi::Place& place,
         "conditional_block",
         "conditional_block_grad",
         "pylayer",
-        "pylayer_grad"
+        "pylayer_grad",
         "recurrent_grad",
         "while",
         "while_grad"};
@@ -869,13 +845,31 @@ void BuildOpFuncList(const phi::Place& place,
             op_func_node.phi_kernel_->GetKernelRegisteredType() ==
                 phi::KernelRegisteredType::FUNCTION) {
           VLOG(6) << op_type << " run function kernel";
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
           auto attrs = op->Attrs();
           if (attrs.find("ring_id") != attrs.end()) {
             auto ring_id_attr = attrs.at("ring_id");
             int ring_id = PADDLE_GET(int, ring_id_attr);
             auto map = distributed::ProcessGroupMapFromGid::getInstance();
             if (map->has(ring_id)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+              auto original_stream =
+                  static_cast<phi::CustomContext*>(dev_ctx)->GetStream();
+              distributed::ProcessGroup* pg = map->get(ring_id);
+              auto comm_context =
+                  static_cast<paddle::distributed::ProcessGroupCustom*>(pg)
+                      ->GetOrCreateCommContext(place);
+              dev_ctx =
+                  static_cast<phi::distributed::XCCLCommContext*>(comm_context)
+                      ->GetDevContext();
+              dev_ctx->SetCommContext(comm_context);
+              // set stream
+              static_cast<phi::CustomContext*>(dev_ctx)->SetStream(
+                  original_stream);
+              // todo  set allocator in custom device
+#else
+
               auto original_stream =
                   static_cast<phi::GPUContext*>(dev_ctx)->cuda_stream();
               distributed::ProcessGroup* pg = map->get(ring_id);
@@ -897,6 +891,7 @@ void BuildOpFuncList(const phi::Place& place,
                           place,
                           static_cast<phi::GPUContext*>(dev_ctx)->stream())
                       .get());
+#endif
             } else {
               VLOG(3) << "ring_id " << ring_id
                       << " not found in ProcessGroupMapFromGid ";
@@ -1523,6 +1518,7 @@ std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
           no_need_buffer_vars.insert(name);
         } else {
           no_need_buffer_vars.erase(name);
+          break;
         }
       }
     }
@@ -1535,6 +1531,7 @@ std::unordered_map<std::string, std::set<std::string>> GetNoNeedBufferValues(
             no_need_buffer_vars.insert(name);
           } else {
             no_need_buffer_vars.erase(name);
+            break;
           }
         }
       }

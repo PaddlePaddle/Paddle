@@ -24,7 +24,6 @@ from paddle.base import core
 
 
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -54,7 +53,6 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -86,7 +84,6 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -116,7 +113,6 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -185,7 +181,6 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -456,7 +451,6 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.
@@ -489,7 +483,6 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseAddTripleGradCheck(unittest.TestCase):
-
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not include -1.

@@ -22,6 +22,7 @@ import inspect
 import random
 import sys
 import types
+from contextlib import contextmanager
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -33,7 +34,6 @@ from ...utils import (
     FallbackError,
     InnerError,
     ResumeFnNameFactory,
-    is_clean_code,
     list_contain_by_id,
     list_find_index_by_id,
     no_eval_frame,
@@ -413,7 +413,10 @@ class PyCodeGen:
     """Helper to create new code object"""
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        real_code: types.CodeType,
+        real_globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
         """
         Initializes a PyCodeGen object.
@@ -422,11 +425,10 @@ class PyCodeGen:
             frame: The frame to be translated.
             disable_eval_frame (bool): Whether to disable the evaluation frame. Defaults to False.
         """
-        self._frame = frame
-        self._origin_code = frame.f_code
+        self._origin_code = real_code
         self._code_options = gen_code_options(self._origin_code)
         self.update_code_name("", is_resumed_fn=False)
-        self._f_globals = frame.f_globals
+        self._real_globals = real_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
         self.hooks = []
@@ -514,8 +516,6 @@ class PyCodeGen:
         """
         Generates instructions to disable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )
@@ -527,8 +527,6 @@ class PyCodeGen:
         """
         Generates instructions to enable the evaluation frame.
         """
-        if is_clean_code():
-            return
         self.gen_load_object(
             paddle.framework.core.set_eval_frame, "paddle_set_eval_frame_fn"
         )
@@ -548,26 +546,53 @@ class PyCodeGen:
         idx = list_find_index_by_id(self._code_options["co_consts"], value)
         return self.add_instr("LOAD_CONST", arg=idx, argval=value)
 
-    def gen_print_log(self, message):
-        """print a log"""
+    @contextmanager
+    def gen_disable_eval_frame_guard(self):
+        """
+        Generates instructions to disable the evaluation frame.
+        """
         import paddle
 
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_const(None)
         self.gen_call_function(1)
         self.gen_store_fast("old_eval_frame")
-        self.gen_load_global("print", push_null=True)
-        self.gen_load_const(message)
-        self.gen_call_function(1)
-        self.gen_pop_top()
+        yield
         self.gen_load_object(
-            paddle.framework.core.set_eval_frame, "dbg_set_eval_frame"
+            paddle.framework.core.set_eval_frame, "___set_eval_frame"
         )
         self.gen_load_fast("old_eval_frame")
         self.gen_call_function(1)
         self.gen_pop_top()
+
+    def gen_print_log(self, message):
+        """print a log"""
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_global("print", push_null=True)
+            self.gen_load_const(message)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+
+    @contextmanager
+    def gen_nvtx_event(self, event_name):
+        import paddle
+
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_push, "___nvprof_nvtx_push"
+            )
+            self.gen_load_const(event_name)
+            self.gen_call_function(1)
+            self.gen_pop_top()
+        yield
+        with self.gen_disable_eval_frame_guard():
+            self.gen_load_object(
+                paddle.base.core.nvprof_nvtx_pop, "___nvprof_nvtx_pop"
+            )
+            self.gen_call_function(0)
+            self.gen_pop_top()
 
     def gen_dbg_function(self, dbg_fun):
         """debug bytecode helper function.
@@ -666,8 +691,8 @@ class PyCodeGen:
             obj_name (str): The name of the object.
         """
 
-        if obj_name not in self._f_globals:
-            self._f_globals[obj_name] = obj
+        if obj_name not in self._real_globals:
+            self._real_globals[obj_name] = obj
         return self.gen_load_global(obj_name, push_null=push_null)
 
     def gen_load_null_variable(self):
@@ -949,29 +974,6 @@ class PyCodeGen:
     def gen_get_iter(self):
         return self.add_instr("GET_ITER")
 
-    def gen_operator_only(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_operator(self, op_name):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        return self.add_instr(op_name)
-
-    def gen_compare(self, cmp_op):
-        """
-        only generator operator instruction, do nothing for
-        operands.
-        """
-        if sys.version_info >= (3, 12):
-            cmp_op <<= 4
-        return self.add_instr("COMPARE_OP", cmp_op)
-
     def add_instr(self, *args, **kwargs):
         instr = gen_instr(*args, **kwargs)
         self._instructions.append(instr)
@@ -1007,18 +1009,21 @@ class ResumeFunctionCreator:
     CODE_CACHE = {}
 
     def __init__(
-        self, frame: types.FrameType, disable_eval_frame: bool = False
+        self,
+        code: types.CodeType,
+        globals: dict[str, object],
+        disable_eval_frame: bool = False,
     ):
-        self.codegen = PyCodeGen(frame, disable_eval_frame)
+        self.codegen = PyCodeGen(code, globals, disable_eval_frame)
         self.name = ResumeFnNameFactory().next()
 
     def set_inputs(
         self, inputs: list[str], stack_size: int, null_indices: list[int] = []
     ):
         stack_arg_str = self.name + '_stack_{}'
-        assert all(
-            idx < stack_size for idx in null_indices
-        ), "null index out of range"
+        assert all(idx < stack_size for idx in null_indices), (
+            "null index out of range"
+        )
 
         self.codegen._code_options['co_argcount'] = (
             len(inputs) + stack_size - len(null_indices)
@@ -1057,14 +1062,16 @@ class ResumeFunctionCreator:
     @staticmethod
     def validate_code(code):
         if len(code.co_freevars) + len(code.co_cellvars) > 0:
-            raise FallbackError("Break graph in closure is not support.")
+            raise FallbackError(
+                f"Break graph in closure is not support.\n`co_freevars`: {code.co_freevars}\n`co_cellvars`: {code.co_cellvars}"
+            )
 
     def lookup(self, cache_key):
         if cache_key in self.CODE_CACHE:
             cached_code = self.CODE_CACHE[cache_key]
             ResumeFunctionCreator.validate_code(cached_code)
             return types.FunctionType(
-                cached_code, self.codegen._f_globals, cached_code.co_name
+                cached_code, self.codegen._real_globals, cached_code.co_name
             )
         return None
 
@@ -1080,6 +1087,6 @@ class ResumeFunctionCreator:
             self.CODE_CACHE[cache_key] = new_code
         ResumeFunctionCreator.validate_code(new_code)
         fn = types.FunctionType(
-            new_code, self.codegen._f_globals, new_code.co_name
+            new_code, self.codegen._real_globals, new_code.co_name
         )
         return fn

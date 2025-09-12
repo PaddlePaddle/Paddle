@@ -146,7 +146,7 @@ class Quantizer final : public Quanter {
   // should be added before the input to the operator
   bool IsNotPermittedName(const std::string& input_name) const override {
     // Only the inputs listed in \"permitted_names\"
-    // requires quanitization before the bfloat16 operator.
+    // requires quantization before the bfloat16 operator.
     // Other inputs, such as Filter and Bias are reordered in the kernel.
     const std::vector<std::string> permitted_names = {
         "X", "Y", "Input", "ResidualData"};
@@ -249,11 +249,11 @@ void CPUBFloat16Pass::ApplyImpl(ir::Graph* graph) const {
   int dequantize_counter = 0;
 
   GraphPatternDetector gpd;
-  patterns::Bloat16Ops Bloat16Ops{gpd.mutable_pattern(), "Bloat16Ops"};
-  Bloat16Ops();
+  patterns::Bfloat16Ops Bfloat16Ops{gpd.mutable_pattern(), "Bfloat16Ops"};
+  Bfloat16Ops();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    GET_IR_NODE_FROM_SUBGRAPH(op, op, Bloat16Ops);
+    GET_IR_NODE_FROM_SUBGRAPH(op, op, Bfloat16Ops);
 
     Quantizer quantizer(graph, op);
     quantizer.AddQuantOps();

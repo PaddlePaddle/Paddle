@@ -43,7 +43,7 @@
 namespace phi {
 namespace funcs {
 
-static int ComputeBlockSize(int col) {
+static int64_t ComputeBlockSize(int64_t col) {
   if (col > 512)
     return 1024;
   else if (col > 256 && col <= 512)
@@ -57,7 +57,7 @@ static int ComputeBlockSize(int col) {
 }
 
 static inline void GetDims(
-    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
+    const phi::DDim& dim, int axis, int64_t* pre, int64_t* n, int64_t* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];

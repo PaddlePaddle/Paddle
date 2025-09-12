@@ -41,7 +41,7 @@ __global__ void CopyMatrixRowsKernel(const T* src,
 template <typename T>
 class CopyMatrixRowsFunctor<phi::GPUContext, T> {
  public:
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
@@ -78,12 +78,12 @@ class CopyMatrixRowsFunctor<phi::GPUContext, T> {
 
     dim3 threads(128, 8);
     dim3 grid(8, 1);
-    auto stream = context.stream();
+    auto stream = dev_ctx.stream();
     phi::MixVector<size_t> mix_index_lod(&index_lod);
     CopyMatrixRowsKernel<T, 128, 8, 8><<<grid, threads, 0, stream>>>(
         src_data,
         dst_data,
-        mix_index_lod.CUDAData(context.GetPlace()),
+        mix_index_lod.CUDAData(dev_ctx.GetPlace()),
         height,
         width,
         is_src_index);

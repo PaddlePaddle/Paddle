@@ -23,7 +23,7 @@
 
 #include "paddle/cinn/backends/extern_func_jit_register.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
-#include "paddle/cinn/common/cas.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/common/enforce.h"
 

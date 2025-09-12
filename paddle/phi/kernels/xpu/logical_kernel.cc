@@ -20,12 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LogicalNotKernel(const Context& ctx,
+void LogicalNotKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
-  ctx.template Alloc<bool>(out);
-  int r =
-      xpu::logical_not(ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
+  dev_ctx.template Alloc<bool>(out);
+  if (out && out->numel() == 0) return;
+  int r = xpu::logical_not(
+      dev_ctx.x_context(), x.data<T>(), out->data<T>(), x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "logical_not");
 }
 
@@ -40,7 +41,7 @@ void LogicalBinaryKernel(
     std::string funcname = "logical") {
   dev_ctx.template Alloc<bool>(out);
 
-  int r = xpu::SUCCESS;
+  int r = 0;
   const auto* x_data = x.data<T>();
   const auto* y_data = y.data<T>();
   auto* out_data = out->data<T>();

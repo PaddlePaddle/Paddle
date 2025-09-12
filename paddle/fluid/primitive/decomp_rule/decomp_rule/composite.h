@@ -148,7 +148,7 @@ Tensor p_norm_decomp(const Tensor& x,
     auto porder_tensor = full_scalar<T>(porder, x_tmp.dtype(), x_tmp.place());
     auto inv_porder_tensor =
         full_scalar<T>(1 / porder, x_tmp.dtype(), x_tmp.place());
-    res = elementwise_pow<T>(x_tmp, porder_tensor);
+    res = elementwise_pow<T>(abs<T>(x_tmp), porder_tensor);
     res = sum<T>(res, reduce_axis, x_tmp.dtype(), keepdim);
     res = elementwise_pow<T>(res, inv_porder_tensor);
   }
@@ -290,8 +290,7 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_decomp(
   Tensor inv_std;
   if (!use_run_stat) {
     batch_mean = mean_decomp<T>(x_cast, reduce_axes, true);
-    auto temp = mean_decomp<T>(x_cast * x_cast, reduce_axes, true);
-    auto batch_var = temp - batch_mean * batch_mean;
+    auto batch_var = variance<T>(x_cast, reduce_axes, true);
     inv_std = rsqrt<T>(batch_var + eps);
 
     x_hat = (x_cast - batch_mean) * inv_std;
@@ -602,6 +601,38 @@ Tensor full_like_decomp(const Tensor& x,
 }
 
 template <typename T>
+Tensor masked_fill_decomp(const Tensor& x,
+                          const Tensor& mask,
+                          const Tensor& v) {
+  if (has_dynamic_shape(x.shape()) || has_dynamic_shape(mask.shape())) {
+    // NOTE: use add operator to get broadcast shape implicitly,
+    // which is not efficient yet, should be improved in the future.
+    Tensor dummy_x =
+        backend::full_with_tensor<T>(shape64<T>(x), 0.0, x.dtype(), x.place());
+    Tensor dummy_y = backend::full_with_tensor<T>(
+        shape64<T>(mask), 0.0, x.dtype(), x.place());
+    Tensor dummy = dummy_x + dummy_y;
+    Tensor mask_expanded = backend::expand<T>(mask, shape64<T>(dummy));
+    Tensor v_expanded = backend::expand<T>(v, shape64<T>(dummy));
+    return where<T>(mask_expanded, v_expanded, x);
+
+  } else {
+    auto out_dims = phi::funcs::BroadcastTwoDims(x.dims(), mask.dims());
+    std::vector<int64_t> out_shape = common::vectorize(out_dims);
+    Tensor x_expanded = x;
+    if (x.dims() != out_dims) {
+      x_expanded = expand<T>(x_expanded, out_shape);
+    }
+    Tensor mask_expanded = mask;
+    if (mask.dims() != out_dims) {
+      mask_expanded = expand<T>(mask, out_shape);
+    }
+    Tensor v_expanded = expand<T>(v, out_shape);
+    return where<T>(mask_expanded, v_expanded, x_expanded);
+  }
+}
+
+template <typename T>
 std::tuple<Tensor, Tensor> dropout_decomp(
     const Tensor& x,
     const paddle::optional<Tensor>& seed_tensor,
@@ -680,8 +711,7 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto kAlpha =
         full_scalar<T>(PM_2_SQRTPI * PM_SQRT1_2, org_dtype, x.place());
     auto GELU_CONSTANT = full_scalar<T>(0.044715, org_dtype, x.place());
-    auto x_pow3 =
-        elementwise_pow<T>(x, full_scalar<T>(3, org_dtype, x.place()));
+    auto x_pow3 = x * x * x;
     auto tanh_out = tanh<T>(kAlpha * (x + x_pow3 * GELU_CONSTANT));
 
     auto res = x * half * (one + tanh_out);
@@ -910,7 +940,7 @@ Tensor flatten_decomp(const Tensor& x, int start_axis, int end_axis) {
       return reshape<T>(x, x_dim);
     }
 
-    int slice_numel = 1;
+    int64_t slice_numel = 1;
     for (int i = start_axis; i <= end_axis; ++i) {
       slice_numel *= x_dim[i];
     }
@@ -932,17 +962,17 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   auto min_reshape = min;
   auto max_reshape = max;
 
-  if (x.shape().size() == 0) {
-    min_reshape = reshape<T>(min_reshape, {});
-    max_reshape = reshape<T>(max_reshape, {});
-  }
-
   if (has_dynamic_shape(x.shape())) {
     min_reshape = backend::expand<T>(min_reshape, shape64<T>(x));
     max_reshape = backend::expand<T>(max_reshape, shape64<T>(x));
   } else {
-    min_reshape = expand<T>(min_reshape, x.shape());
-    max_reshape = expand<T>(max_reshape, x.shape());
+    if (x.shape().size() == 0) {
+      min_reshape = reshape<T>(min_reshape, {});
+      max_reshape = reshape<T>(max_reshape, {});
+    } else {
+      min_reshape = expand<T>(min_reshape, x.shape());
+      max_reshape = expand<T>(max_reshape, x.shape());
+    }
   }
   if (min_reshape.dtype() != x.dtype()) {
     min_reshape = cast<T>(min_reshape, x.dtype());
@@ -951,8 +981,9 @@ Tensor clip_decomp(const Tensor& x, const Tensor& min, const Tensor& max) {
   if (max_reshape.dtype() != x.dtype()) {
     max_reshape = cast<T>(max_reshape, x.dtype());
   }
-
-  auto ans = maximum<T>(minimum<T>(x, max_reshape), min_reshape);
+  auto ans = where<T>(x <= max_reshape,
+                      where<T>(x >= min_reshape, x, min_reshape),
+                      max_reshape);
   return ans;
 }
 
@@ -1448,6 +1479,73 @@ Tensor diag_decomp(const Tensor& x,
     res = take_along_axis<T>(x_flat, indices, 0);
   }
   return ConvertToOrig<T>(res, x.dtype());
+}
+
+template <typename T>
+std::tuple<Tensor, Tensor, Tensor> rms_norm_decomp(
+    const Tensor& x,
+    const paddle::optional<Tensor>& bias,
+    const paddle::optional<Tensor>& residual,
+    const Tensor& norm_weight,
+    const paddle::optional<Tensor>& norm_bias,
+    float epsilon,
+    int begin_norm_axis,
+    float quant_scale,
+    int quant_round_type,
+    float quant_max_bound,
+    float quant_min_bound) {
+  auto orig_dtype = x.dtype();
+  Tensor x_cast = ConvertToMT<T>(x);
+
+  if (residual) x_cast = x_cast + ConvertToMT<T>(residual.get());
+  if (bias) x_cast = x_cast + ConvertToMT<T>(bias.get());
+
+  std::vector<int64_t> reduce_axis;
+  for (int i = begin_norm_axis; i < x.dims().size(); i++) {
+    reduce_axis.push_back(static_cast<int64_t>(i));
+  }
+  auto pow = x_cast * x_cast;
+  auto var = mean_decomp<T>(pow, reduce_axis, true);
+  auto rsqrt_var =
+      rsqrt<T>(var + full_scalar<T>(epsilon, var.dtype(), var.place()));
+  auto out = x_cast * rsqrt_var;
+
+  LayerNormDecompHelper decomp_helper(
+      x, norm_weight, norm_bias, begin_norm_axis);
+  out = out * ConvertToMT<T>(decomp_helper.Process<T>(norm_weight, x));
+  if (norm_bias) {
+    out = out + ConvertToMT<T>(decomp_helper.Process<T>(norm_bias.get(), x));
+  }
+
+  if (quant_scale > 0) {
+    auto quant_scale_scalar =
+        full_scalar<T>(quant_scale, out.dtype(), out.place());
+    auto quant_min_bound_scalar =
+        full_scalar<T>(quant_min_bound, out.dtype(), out.place());
+    auto quant_max_bound_scalar =
+        full_scalar<T>(quant_max_bound, out.dtype(), out.place());
+    auto scale_out = out * quant_scale_scalar * quant_max_bound_scalar;
+    Tensor round_out;
+    if (quant_round_type == 0) {
+      round_out = backend::rint<T>(scale_out);
+    } else {
+      round_out = round<T>(scale_out);
+    }
+    auto clip_out = clip_decomp<T>(
+        round_out, quant_min_bound_scalar, quant_max_bound_scalar);
+    if (fabs(quant_max_bound - 127.0f) < 0.000001) {
+      out = cast<T>(clip_out, phi::DataType::INT8);
+    } else if (fabs(quant_max_bound - 448.0f) < 0.000001) {
+      out = cast<T>(clip_out, phi::DataType::FLOAT8_E4M3FN);
+    }
+  } else {
+    out = ConvertToOrig<T>(out, orig_dtype);
+  }
+
+  auto residual_out = ConvertToOrig<T>(x_cast, orig_dtype);
+  auto inv_var = squeeze<T>(rsqrt_var, reduce_axis);
+
+  return std::make_tuple(out, residual_out, inv_var);
 }
 
 }  // namespace details

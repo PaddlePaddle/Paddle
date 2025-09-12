@@ -25,7 +25,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeKernel(const Context& ctx,
+void DepthwiseConv2dTransposeKernel(const Context& dev_ctx,
                                     const DenseTensor& x,
                                     const DenseTensor& filter,
                                     const std::vector<int>& strides,
@@ -37,9 +37,14 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
                                     const std::vector<int>& dilations,
                                     const std::string& data_format,
                                     DenseTensor* out) {
+  if (x.numel() == 0 || filter.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
       groups,
@@ -76,15 +81,14 @@ void DepthwiseConv2dTransposeKernel(const Context& ctx,
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
   funcs::SetConstant<Context, T> set_zero;
-  set_zero(ctx, out, static_cast<T>(0));
+  set_zero(dev_ctx, out, static_cast<T>(0));
 
-  paddle::operators::math::DepthwiseConvInputGradFunctor<Context, T>
-      depthwiseConvInputGrad;
+  phi::math::DepthwiseConvInputGradFunctor<Context, T> depthwiseConvInputGrad;
   depthwiseConvInputGrad(
-      ctx,
+      dev_ctx,
       *out,
       filter,
       x,

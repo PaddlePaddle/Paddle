@@ -13,9 +13,36 @@
 # limitations under the License.
 
 import paddle
+import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.nn.functional.flash_attention import _math_attention
+
+
+class SDPALayer(paddle.nn.Layer):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def forward(self, query, key, value, **kwargs):
+        if (
+            self.config.context_parallel is True
+            or self.config.sep_parallel is True
+        ) and (
+            int(paddle.version.cuda().split(".")[0]) >= 11
+            and paddle.device.cuda.get_device_capability()[0] >= 8
+        ):
+            out = paddle.nn.functional.scaled_dot_product_attention(
+                query, key, value, **kwargs
+            )
+        else:
+            out, _ = _math_attention(
+                query,
+                key,
+                value,
+                causal=kwargs.get("is_causal", False),
+            )
+        return out
 
 
 class LlamaAttention(nn.Layer):
@@ -26,6 +53,7 @@ class LlamaAttention(nn.Layer):
         self.hidden_size = self.config.hidden_size
         self.num_heads = self.config.num_attention_heads
         self.head_dim = self.hidden_size // self.config.num_attention_heads
+        self.sdpa = SDPALayer(config)
 
         self.q_proj = nn.Linear(
             self.hidden_size,
@@ -63,19 +91,16 @@ class LlamaAttention(nn.Layer):
         )
 
         bsz, q_len, _, _ = query_states.shape
-
-        outputs, _ = _math_attention(
+        outputs = self.sdpa(
             query_states,
             key_states,
             value_states,
-            causal=True,
+            is_causal=True,
         )
-
         attn_output = outputs.reshape(
-            [bsz, q_len, self.head_dim * self.num_heads]
+            [-1, q_len, self.head_dim * self.num_heads]
         )
         attn_output = self.o_proj(attn_output)
-
         return attn_output
 
 
@@ -147,7 +172,7 @@ class LlamaDecoderLayer(nn.Layer):
         hidden_states, _ = self.mlp(hidden_states, "ONLY_FOR_TEST")
         hidden_states = residual + hidden_states
 
-        return hidden_states
+        return (hidden_states,)
 
 
 class GlobalOutputNet(nn.Layer):
@@ -205,7 +230,10 @@ class LlamaModel(nn.Layer):
         global_tensor = self.global_layer(None)
 
         for idx, (decoder_layer) in enumerate(self.layers):
-            hidden_states = decoder_layer(hidden_states, global_tensor)
+            tuple_hidden_states = decoder_layer(
+                hidden_states=hidden_states, global_tensor=global_tensor
+            )
+            hidden_states = tuple_hidden_states[0]
 
         hidden_states = self.norm(hidden_states)
 
@@ -253,6 +281,23 @@ class LlamaPretrainingCriterion(paddle.nn.Layer):
                 prediction_scores.astype("float32"),
                 masked_lm_labels.unsqueeze(2),
             )
+        if paddle.device.is_compiled_with_xpu():
+
+            def LocalLoss(x, mask):
+                masked_lm_loss = paddle.masked_select(x, mask).astype("float32")
+                loss = paddle.mean(masked_lm_loss).unsqueeze(0)
+                return loss.unsqueeze(0)
+
+            loss_func = dist.local_map(
+                LocalLoss,
+                [[dist.Shard(0), dist.Replicate()]],
+                [[dist.Shard(0), dist.Replicate()], None],
+                masked_lm_loss.process_mesh,
+                True,
+            )
+            loss = loss_func(masked_lm_loss, masked_lm_loss > 0)
+            loss = loss.mean()
+            return loss
 
         masked_lm_loss = paddle.masked_select(
             masked_lm_loss, masked_lm_loss > 0

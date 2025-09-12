@@ -15,19 +15,27 @@
 from __future__ import annotations
 
 import atexit
+import base64
+import json
 import sys
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from typing_extensions import Self
 
-from .envs import ENV_SOT_COLLECT_INFO
+from .envs import ENV_SOT_COLLECT_INFO, ENV_SOT_SERIALIZE_INFO
 from .utils import Singleton
 
 if TYPE_CHECKING:
     import types
+
+    from .exceptions import BreakGraphReasonBase
+
+PREFIX = "<sot>"
+SUFFIX = "</sot>"
+ENCODING = "utf-8"
 
 
 def try_import_graphviz():
@@ -100,7 +108,10 @@ class InfoCollector(metaclass=Singleton):
         for info_class_name, info_list in info_dict.items():
             cls = info_list[0].__class__
             report += f"{info_class_name} ({cls.SHORT_NAME}):\n"
-            report += cls.summary(info_list)
+            if ENV_SOT_SERIALIZE_INFO.get():
+                report += cls.json_report(info_list)
+            else:
+                report += cls.summary(info_list)
             report += "\n"
         return report
 
@@ -117,6 +128,21 @@ class InfoBase(ABC):
     @classmethod
     @abstractmethod
     def summary(cls, history: list[Self]) -> str: ...
+
+    @classmethod
+    def serialize(cls, obj: dict[str:Any]) -> str:
+        json_data = json.dumps(obj)
+        b64_bytes = base64.b64encode(json_data.encode(ENCODING))
+
+        return b64_bytes.decode(ENCODING)
+
+    @classmethod
+    def deserialize(cls, data: bytes | str) -> dict:
+        if isinstance(data, str):
+            data = data.encode(ENCODING)
+        json_str = base64.b64decode(data).decode(ENCODING)
+
+        return json.loads(json_str)
 
 
 class NewSymbolHitRateInfo(InfoBase):
@@ -151,6 +177,11 @@ class NewSymbolHitRateInfo(InfoBase):
         summary = f"All tensor count: {all_count}, hit count: {hit_count}\n"
         summary += f"Hit rate: {hit_count / all_count:.2f}"
         return summary
+
+    @classmethod
+    def json_report(cls, history: list[Self]) -> str:
+        # TODO: need to support serialize the output
+        return cls.summary(history)
 
 
 class SubGraphRelationInfo(InfoBase):
@@ -216,9 +247,9 @@ class SubGraphRelationInfo(InfoBase):
             dot.node(
                 subgraph_id,
                 f"Subgraph {i} ({info.subgraph_name}, size={info.graph_size})",
-                shape='oval',
-                fillcolor='cyan' if info.is_first_call else None,
-                style='filled' if info.is_first_call else None,
+                shape="oval",
+                fillcolor="cyan" if info.is_first_call else None,
+                style="filled" if info.is_first_call else None,
             )
             for shape_info in info.input_shape_infos:
                 dot.edge(
@@ -238,6 +269,11 @@ class SubGraphRelationInfo(InfoBase):
         filename = f"subgraph_relation_{cls.STEP_UNIQUE_ID}"
         dot.render(directory / filename, format="svg", cleanup=True)
         return f"Please check {directory / filename}.svg for subgraph relation"
+
+    @classmethod
+    def json_report(cls, history: list[Self]) -> str:
+        # TODO: need to support serialize the output
+        return cls.summary(history)
 
 
 class CompileCountInfo(InfoBase):
@@ -265,3 +301,168 @@ class CompileCountInfo(InfoBase):
             )
         summary = "\n".join(summary_lines)
         return summary
+
+    @classmethod
+    def json_report(cls, history: list[Self]) -> str:
+        # TODO: need to support serialize the output
+        return cls.summary(history)
+
+
+class BreakGraphReasonInfo(InfoBase):
+    SHORT_NAME = "breakgraph_reason"
+    TYPE = InfoType.E2E_INFO
+
+    def __init__(self, reason: BreakGraphReasonBase):
+        super().__init__()
+        self.reason = reason
+
+    @classmethod
+    def classify(cls, history: list[Self]) -> str:
+        reasons_dict = {}
+
+        for info in history:
+            name = info.reason.__class__.__name__
+            if name not in reasons_dict:
+                reasons_dict[name] = []
+            reasons_dict[name].append(str(info.reason))
+
+        sorted_reasons = list(reasons_dict.items())
+        sorted_reasons.sort(key=lambda x: len(x[1]), reverse=True)
+
+        return reasons_dict, sorted_reasons
+
+    @classmethod
+    def summary(cls, history: list[Self]) -> str:
+        reason_dict, reason_list = cls.classify(history)
+
+        return "\n".join(
+            [
+                f"{name} ({len(reasons)}):\n\t" + "\n\t".join(reasons)
+                for name, reasons in reason_list
+            ]
+        )
+
+    @classmethod
+    def json_report(cls, history: list[Self]) -> str:
+        reason_dict, sorted_reasons = cls.classify(history)
+        reason_dict["count"] = {k: len(v) for k, v in sorted_reasons}
+        serialized = cls.serialize({cls.SHORT_NAME: reason_dict})
+
+        return f"{PREFIX}{serialized}{SUFFIX}"
+
+    @classmethod
+    def restore_from_string(cls, serialized: str) -> list[Self]:
+        # This method is the inverse of json_report
+
+        from paddle.jit.sot.utils import exceptions
+
+        history = []
+        obj = cls.deserialize(serialized)[cls.SHORT_NAME]
+        obj.pop("count")
+
+        for classname in obj:
+            ReasonClass = getattr(exceptions, classname, None)
+            for reason in obj[classname]:
+                history.append(cls(ReasonClass(reason_str=reason)))
+
+        return history
+
+    @staticmethod
+    def collect_break_graph_reason(reason: BreakGraphReasonBase):
+        if not InfoCollector().need_collect(BreakGraphReasonInfo):
+            return
+
+        InfoCollector().attach(BreakGraphReasonInfo, reason)
+
+
+class SubGraphInfo(InfoBase):
+    SHORT_NAME = "subgraph_info"
+    TYPE = InfoType.STEP_INFO
+
+    def __init__(self, graph: str, op_num: int, sir_name: str):
+        # NOTE: All data should be serializable
+        super().__init__()
+        self.graph = graph
+        self.op_num = op_num
+        self.sir_name = sir_name
+
+    def __str__(self):
+        return (
+            f"[SIR Name] {self.sir_name}   [OpNum] {self.op_num}\n{self.graph}"
+        )
+
+    @classmethod
+    def summary(cls, history: list[Self]) -> str:
+        num_of_subgraph = len(history)
+        sum_of_op_num = sum(item.op_num for item in history)
+
+        need_details = "details" in ENV_SOT_COLLECT_INFO.get().get(
+            cls.SHORT_NAME, []
+        )
+
+        details = ""
+        if need_details:
+            details = "\n".join(
+                [
+                    f"[SubGraphIdx] {idx}   {info}"
+                    for idx, info in enumerate(map(str, history))
+                ]
+            )
+
+        summary = f"[Number of subgraph] {num_of_subgraph} [Sum of opnum] {sum_of_op_num}"
+
+        return f"{summary}\n{details}"
+
+    @classmethod
+    def json_report(cls, history: list[Self]) -> str:
+        need_details = "details" in ENV_SOT_COLLECT_INFO.get().get(
+            cls.SHORT_NAME, []
+        )
+
+        aggregated_info_list = []
+        for idx, record in enumerate(history):
+            entry_data = {}
+
+            entry_data["SIR_name"] = record.sir_name
+            entry_data["OpNum"] = record.op_num
+            entry_data["Graph"] = ""
+            if need_details:
+                entry_data["Graph"] = str(record.graph)
+            aggregated_info_list.append(entry_data)
+
+        serialized = cls.serialize({cls.SHORT_NAME: aggregated_info_list})
+
+        return f"{PREFIX}{serialized}{SUFFIX}"
+
+    @classmethod
+    def restore_from_string(cls, serialized: str) -> list[Self]:
+        # This method is the inverse of json_report
+
+        history = []
+        obj = cls.deserialize(serialized)[cls.SHORT_NAME]
+
+        for entry in obj:
+            history.append(
+                SubGraphInfo(
+                    graph=entry["Graph"],
+                    op_num=entry["OpNum"],
+                    sir_name=entry["SIR_name"],
+                )
+            )
+
+        return history
+
+    def __eq__(self, other):
+        need_graph_equal = "details" in ENV_SOT_COLLECT_INFO.get().get(
+            self.SHORT_NAME, []
+        )
+
+        graph_equal_or_not = True
+        if need_graph_equal:
+            graph_equal_or_not = self.graph == other.graph
+
+        return (
+            graph_equal_or_not
+            and self.op_num == other.op_num
+            and self.sir_name == other.sir_name
+        )

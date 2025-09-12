@@ -21,19 +21,29 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterKernel(const Context &ctx,
+void ScatterKernel(const Context &dev_ctx,
                    const DenseTensor &x,
                    const DenseTensor &index,
                    const DenseTensor &updates,
                    bool overwrite,
                    DenseTensor *out) {
+  if (index.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   using XPUTypeT = typename XPUTypeTrait<T>::Type;
   out->Resize(x.dims());
   auto *x_data = reinterpret_cast<const XPUTypeT *>(x.data<T>());
   auto *updates_data = reinterpret_cast<const XPUTypeT *>(updates.data<T>());
-  auto *out_data = reinterpret_cast<XPUTypeT *>(ctx.template Alloc<T>(out));
-  int ret = xpu::copy(ctx.x_context(), x_data, out_data, x.numel());
+  auto *out_data = reinterpret_cast<XPUTypeT *>(dev_ctx.template Alloc<T>(out));
+  int ret = xpu::copy(dev_ctx.x_context(), x_data, out_data, x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
+
   // Apply ScatterUpdate: Out[index] = Updates[:]
   const auto &index_type = index.dtype();
   bool index_type_match =
@@ -58,8 +68,7 @@ void ScatterKernel(const Context &ctx,
           "be 1), 0 but got index'dims shape is %d",
           index.dims().size()));
 
-  int index_size =
-      static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
+  int64_t index_size = index.dims().size() == 0 ? 1 : index.dims()[0];
   auto x_dims = x.dims();
   auto update_dims = updates.dims();
   if (index.dims().size() != 0) {
@@ -78,19 +87,18 @@ void ScatterKernel(const Context &ctx,
               update_dims[i]));
   }
 
-  int dim0 = static_cast<int>(x.dims()[0]);
-  int dim1 = static_cast<int>(
-      common::product(common::slice_ddim(x_dims, 1, x_dims.size())));
+  int64_t dim0 = x.dims()[0];
+  int64_t dim1 = common::product(common::slice_ddim(x_dims, 1, x_dims.size()));
 
   DenseTensor indices_cpu(index.type());
-  phi::Copy(ctx, index, phi::CPUPlace(), true, &indices_cpu);
+  phi::Copy(dev_ctx, index, phi::CPUPlace(), true, &indices_cpu);
 
   int r = 0;
   if (index_type == phi::DataType::INT32) {
     auto index_data = const_cast<int *>(index.data<int>());
     xpu::VectorParam<int> indices{
         indices_cpu.data<int>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
+    r = xpu::scatter(dev_ctx.x_context(),
                      updates_data,
                      out_data,
                      indices,
@@ -101,7 +109,7 @@ void ScatterKernel(const Context &ctx,
     auto index_data = const_cast<int64_t *>(index.data<int64_t>());
     xpu::VectorParam<int64_t> indices{
         indices_cpu.data<int64_t>(), index_size, index_data};
-    r = xpu::scatter(ctx.x_context(),
+    r = xpu::scatter(dev_ctx.x_context(),
                      updates_data,
                      out_data,
                      indices,
@@ -121,5 +129,5 @@ PD_REGISTER_KERNEL(scatter,
                    float,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

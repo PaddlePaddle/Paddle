@@ -127,9 +127,9 @@ def group_sharded_parallel(
         or device in paddle.device.get_all_custom_device_type()
     ), "group_sharded_parallel only support gpu, xpu and custom_device now"
     # check option type
-    assert isinstance(
-        model, paddle.nn.Layer
-    ), "The model must be the instance of paddle.nn.Layer."
+    assert isinstance(model, paddle.nn.Layer), (
+        "The model must be the instance of paddle.nn.Layer."
+    )
     assert isinstance(optimizer, (MixPrecisionOptimizer, Optimizer)), (
         "The optimizer must be the instance of paddle.optimizer.Optimizer "
         "or MixPrecisionOptimizer for main grad."
@@ -248,9 +248,9 @@ def save_group_sharded_model(
     logger_.info(
         "==========Begin to save group sharded model and optimizer=========="
     )
-    assert not os.path.isfile(
-        output
-    ), f"Saving directory ({output}) should be a directory, not a file"
+    assert not os.path.isfile(output), (
+        f"Saving directory ({output}) should be a directory, not a file"
+    )
     os.makedirs(output, exist_ok=True)
     output_model = os.path.join(output, "model.pdmodel")
     if isinstance(model, GroupShardedStage2):
@@ -265,9 +265,9 @@ def save_group_sharded_model(
         )
 
     if optimizer is not None:
-        assert hasattr(
-            optimizer, "_optim"
-        ), "Please use the optimizer which is wrapped with group_sharded_parallel."
+        assert hasattr(optimizer, "_optim"), (
+            "Please use the optimizer which is wrapped with group_sharded_parallel."
+        )
         output_opt = os.path.join(output, "model.pdopt")
         paddle.save(optimizer._optim.state_dict(), output_opt)
     logger_.info(

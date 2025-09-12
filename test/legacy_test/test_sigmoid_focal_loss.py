@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
-from paddle import base
 
 
 def call_sfl_functional(
@@ -120,7 +119,6 @@ def calc_sigmoid_focal_loss(
 
 
 class TestSigmoidFocalLoss(unittest.TestCase):
-
     def test_SigmoidFocalLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
             np.float64
@@ -132,15 +130,7 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
             None,
         ]
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        places = get_places()
         reductions = ['sum', 'mean', 'none']
         alphas = [0.25, 0.5]
         gammas = [3, 0.0]
@@ -198,6 +188,71 @@ class TestSigmoidFocalLoss(unittest.TestCase):
             reduction="unsupported reduction",
         )
         paddle.enable_static()
+
+
+class TestSigmoidFocalLoss_ZeroSize(unittest.TestCase):
+    def _test_dygraph(
+        self,
+        place,
+        logit_np,
+        label_np,
+        normalizer_np,
+        alpha=0.25,
+        gamma=2.0,
+        reduction='sum',
+    ):
+        paddle.disable_static()
+        logit = paddle.to_tensor(logit_np)
+        logit.stop_gradient = False
+        label = paddle.to_tensor(label_np)
+        normalizer = None
+        if normalizer_np is not None:
+            normalizer = paddle.to_tensor(normalizer_np)
+        dy_res = call_sfl_functional(
+            logit, label, normalizer, alpha, gamma, reduction
+        )
+        dy_res.sum().backward()
+        np.testing.assert_allclose(logit.grad.shape, logit.shape)
+        dy_result = dy_res.numpy()
+        paddle.enable_static()
+        return dy_result
+
+    def test_SigmoidFocalLoss(self):
+        logit_np = np.random.uniform(0.1, 0.8, size=(0, 3, 4, 10)).astype(
+            np.float64
+        )
+        label_np = np.random.randint(0, 2, size=(0, 3, 4, 10)).astype(
+            np.float64
+        )
+        normalizer_nps = [
+            np.asarray([np.sum(label_np > 0)], dtype=label_np.dtype),
+            None,
+        ]
+        places = get_places()
+        reductions = ['sum']
+        alpha = 0.25
+        gamma = 3
+        for place in places:
+            for reduction in reductions:
+                for normalizer_np in normalizer_nps:
+                    dy_result = self._test_dygraph(
+                        place,
+                        logit_np,
+                        label_np,
+                        normalizer_np,
+                        alpha,
+                        gamma,
+                        reduction,
+                    )
+                    expected = calc_sigmoid_focal_loss(
+                        logit_np,
+                        label_np,
+                        normalizer_np,
+                        alpha,
+                        gamma,
+                        reduction,
+                    )
+                    np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
 
 if __name__ == "__main__":

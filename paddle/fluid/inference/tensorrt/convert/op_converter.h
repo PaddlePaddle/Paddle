@@ -734,7 +734,7 @@ class OpConverter {
                                         bool scalar = false) {
     if (!(std::is_same<T, float>::value ||
           std::is_same<T, phi::dtype::float16>::value ||
-          std::is_same<T, int32_t>::value)) {
+          std::is_same<T, int32_t>::value || std::is_same<T, bool>::value)) {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported data type (%s) for TensorRT AddConstantLayer, only "
           "supports float, half or int32_t."));
@@ -750,7 +750,9 @@ class OpConverter {
     engine_->SetWeights(weight_name, std::move(tmp_tensor));
 
     nvinfer1::DataType trt_dtype = nvinfer1::DataType::kFLOAT;
-    if (std::is_integral<T>::value) {
+    if (std::is_same<T, bool>::value) {
+      trt_dtype = nvinfer1::DataType::kBOOL;
+    } else if (std::is_integral<T>::value) {
       trt_dtype = nvinfer1::DataType::kINT32;
     }
 

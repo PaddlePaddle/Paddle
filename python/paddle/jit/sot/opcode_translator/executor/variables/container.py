@@ -20,16 +20,14 @@ from functools import reduce
 from typing import TYPE_CHECKING, Any
 
 import paddle
-from paddle.jit.sot.opcode_translator.executor.variables.base import (
-    VariableBase,
-)
 
-from ....utils import ConstTypes
+from ....utils import ConstTypes, is_namedtuple_class
 from ....utils.exceptions import FallbackError, InnerError
 from ..dispatcher import Dispatcher
 from ..guard import (
     FasterStringifiedExpression,
     StringifiedExpression,
+    check_faster_guard,
     check_guard,
 )
 from ..mutable_data import MutableDictLikeData, MutableListLikeData
@@ -42,7 +40,10 @@ from ..tracker import (
     GetIterTracker,
     Tracker,
 )
-from .base import VariableFactory
+from .base import (
+    VariableBase,
+    VariableFactory,
+)
 from .basic import ConstantVariable
 from .callable import BuiltinVariable, UserDefinedFunctionVariable
 
@@ -127,6 +128,46 @@ class ContainerVariable(VariableBase):
             ],
         )
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        expr_node = self.tracker.guard_tree_expr_node()
+
+        if self.get_py_type() is dict:
+            # TODO(zrr1999): Use TypeMatchGuard
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(self.get_py_type()),
+                [expr_node],
+            )
+        else:
+            type_guard = paddle.framework.core.GuardNode(
+                paddle.framework.core.TypeMatchGuard(self.get_py_type()),
+                [expr_node],
+            )
+        len_guard = paddle.framework.core.GuardNode(
+            paddle.framework.core.LengthMatchGuard(len(self.init_value)),
+            [expr_node],
+        )
+
+        if isinstance(self, (ListVariable, TupleVariable)):
+            guard_variables = self.proxy.reproduce(0)
+        elif isinstance(self, DictVariable):
+            guard_variables = filter(
+                lambda var: not isinstance(var, MutableDictLikeData.Empty),
+                self.proxy.reproduce(0).values(),
+            )
+        else:
+            raise InnerError(f"Unsupported container type: {type(self)}")
+
+        return reduce(
+            operator.add,
+            [[type_guard, len_guard]]
+            + [
+                item.make_faster_guard()
+                for item in guard_variables
+                if item.tracker.need_guard()
+            ],
+        )
+
 
 class ListVariable(ContainerVariable):
     """
@@ -158,7 +199,7 @@ class ListVariable(ContainerVariable):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetItemTracker(self, key, changed=proxy.has_changed),
+            tracker=GetItemTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_value(self, allow_tensor=False):
@@ -208,7 +249,7 @@ class ListVariable(ContainerVariable):
                 items[key],
                 self.graph,
                 tracker=GetItemTracker(
-                    self, key, changed=self.proxy.has_changed
+                    self, key, changed=self.proxy.check_changed(key)
                 ),
             )
         else:
@@ -219,7 +260,7 @@ class ListVariable(ContainerVariable):
     def setitem(self, key, value):
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
         if isinstance(key, int):
             self.proxy.set(key, value)
@@ -256,7 +297,7 @@ class ListVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key to delete."
+                f"[{self.__class__.__name__}] received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)
@@ -348,7 +389,7 @@ class ListVariable(ContainerVariable):
         permutation = list(range(self.proxy.length))
         permutation.sort(
             key=lambda x: key.get_py_value()(
-                Dispatcher.call(operator.getitem, self, x).value
+                Dispatcher.call(operator.getitem, self, x).get_py_value()
             ),
             reverse=reverse.get_py_value(),
         )
@@ -377,9 +418,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -401,9 +442,9 @@ class ListVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])
@@ -411,38 +452,6 @@ class ListVariable(ContainerVariable):
             res += 1
 
         return ConstantVariable(-1, self.graph, DummyTracker([self, value]))
-
-    def max(self):
-        if len(self) == 0:
-            raise ValueError("max() arg is an empty sequence")
-        res = self[0]
-        getitem = BuiltinVariable(
-            operator.getitem, self.graph, DanglingTracker()
-        )
-        for index in range(len(self)):
-            index_value = getitem(self, index)
-            gt = BuiltinVariable(operator.gt, self.graph, DanglingTracker())(
-                index_value, res
-            )
-            if gt.get_py_value() is True:
-                res = index_value
-        return res
-
-    def min(self):
-        if len(self) == 0:
-            raise ValueError("min() arg is an empty sequence")
-        res = self[0]
-        getitem = BuiltinVariable(
-            operator.getitem, self.graph, DanglingTracker()
-        )
-        for index in range(len(self)):
-            index_value = getitem(self, index)
-            lt = BuiltinVariable(operator.lt, self.graph, DanglingTracker())(
-                index_value, res
-            )
-            if lt.get_py_value() is True:
-                res = index_value
-        return res
 
     def getattr(self, name: str, default=None):
         from .callable import BuiltinVariable
@@ -470,7 +479,7 @@ class ListVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for list is not implemented")
 
@@ -523,7 +532,7 @@ class TupleVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(
                 f"attribute {name} for tuple is not implemented"
@@ -592,17 +601,13 @@ class TupleVariable(ContainerVariable):
             )
 
     def setitem(self, key, value):
-        raise InnerError(
-            f"[{self.__class__.__name__}]: setitem is not allowed."
-        )
+        raise InnerError(f"[{self.__class__.__name__}] setitem is not allowed.")
 
     def __delitem__(self, key):
         return self.delitem(key)
 
     def delitem(self, key):
-        raise InnerError(
-            f"[{self.__class__.__name__}]: delitem is not allowed."
-        )
+        raise InnerError(f"[{self.__class__.__name__}] delitem is not allowed.")
 
     def concat(self, tuple_):
         assert isinstance(tuple_, TupleVariable)
@@ -636,9 +641,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 count += 1
                 continue
@@ -660,9 +665,9 @@ class TupleVariable(ContainerVariable):
                 index_value, value
             )
             eq_bool = BuiltinVariable(bool, self.graph, DanglingTracker())(eq)
-            assert isinstance(
-                eq_bool, ConstantVariable
-            ), "bool should return ConstantVariable"
+            assert isinstance(eq_bool, ConstantVariable), (
+                "bool should return ConstantVariable"
+            )
             if eq.get_py_value() is True:
                 return ConstantVariable(
                     res, self.graph, DummyTracker([self, value])
@@ -675,6 +680,49 @@ class TupleVariable(ContainerVariable):
     def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
         if type(value) is tuple:
             return TupleVariable(value, graph, tracker)
+        return None
+
+
+class NamedTupleVariable(TupleVariable):
+    def __init__(
+        self,
+        val_tuple: tuple[VariableBase, ...],
+        cls: type[Any],
+        graph: FunctionGraph,
+        tracker: Tracker,
+    ):
+        super().__init__(val_tuple, graph, tracker)
+        self.cls = cls
+        self.fields = cls._fields
+
+    def getattr(self, name: str, default=None):
+        from .callable import BuiltinVariable
+
+        if default is not None:
+            raise FallbackError(
+                "default argument for getattr is not implemented"
+            )
+
+        if name == "_fields":
+            return VariableFactory.from_value(
+                self.fields, self.graph, DummyTracker([self])
+            )
+
+        if name in self.fields:
+            idx = self.fields.index(name)
+            idx_var = ConstantVariable(idx, self.graph, DummyTracker([self]))
+            return BuiltinVariable(
+                operator.getitem, self.graph, DanglingTracker()
+            ).bind_dangling_fn(self, name)(idx_var)
+        return super().getattr(name, default)
+
+    def get_py_type(self):
+        return self.cls
+
+    @VariableFactory.register_from_value()
+    def from_value(value: Any, graph: FunctionGraph, tracker: Tracker):
+        if is_namedtuple_class(type(value)):
+            return NamedTupleVariable(value, type(value), graph, tracker)
         return None
 
 
@@ -756,12 +804,26 @@ class RangeVariable(ContainerVariable):
             return range_variable
         return None
 
+    @check_faster_guard
+    def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
+        frame_value_tracer = self.tracker.guard_tree_expr_node()
+        return [
+            paddle.framework.core.GuardNode(
+                paddle.framework.core.InstanceCheckGuard(range),
+                [frame_value_tracer],
+            ),
+            *self.start.make_faster_guard(),
+            *self.stop.make_faster_guard(),
+            *self.step.make_faster_guard(),
+        ]
+
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         frame_value_tracer = self.tracker.trace_value_from_frame()
         return [
-            StringifiedExpression(
+            FasterStringifiedExpression(
                 "isinstance({0}, range)",
+                paddle.framework.core.InstanceCheckGuard(range),
                 [frame_value_tracer],
                 frame_value_tracer.free_vars,
             ),
@@ -808,7 +870,7 @@ class DictVariable(ContainerVariable):
         return VariableFactory.from_value(
             proxy.original_data[key],
             self.graph,
-            tracker=GetItemTracker(self, key, changed=proxy.has_changed),
+            tracker=GetItemTracker(self, key, changed=proxy.check_changed(key)),
         )
 
     def get_py_value(self, allow_tensor=False):
@@ -827,7 +889,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: received {key} as key."
+                    f"[{self.__class__.__name__}] received {key} as key."
                 )
             key_var = ConstantVariable.wrap_literal(key, self.graph)
             value_var = self[key]
@@ -856,7 +918,7 @@ class DictVariable(ContainerVariable):
         for key in self.proxy.get_all().keys():
             if not isinstance(key, ConstTypes):
                 raise InnerError(
-                    f"[{self.__class__.__name__}]: received {key} as key."
+                    f"[{self.__class__.__name__}] received {key} as key."
                 )
             items[key] = self[key]
         return items
@@ -874,9 +936,18 @@ class DictVariable(ContainerVariable):
         return len(self.proxy.get_all())
 
     def get(self, key, default=None):
+        # `d.get(key, default)` equivalent to `d[key] if key in d else default`
+        # We need guard `key in d`, but now we simply guard `d` and `key` separately
+        # (`key` is guarded in __getitem__ and key is guarded in getitem)
+        # TODO: We should add some tracker to record the key and the dict
+        # in the future, to guard more fine-grained information.
+        # In the other way, we can also dispatch `d.get(key, default)` to
+        # `d[key] if key in d else default`, but we need implement the
+        # new mechanism to allow the dispatcher to dispatch to a polyfill function.
+        self.graph.add_global_guarded_variable(self)
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} to get value."
+                f"[{self.__class__.__name__}] received {key} to get value."
             )
 
         if default is None:
@@ -891,17 +962,20 @@ class DictVariable(ContainerVariable):
     def getitem(self, key):
         self.graph.add_global_guarded_variable(key)
         key = key.get_py_value()
-        return self.proxy.get(key)
+        res = self.proxy.get(key)
+        if self.proxy.is_empty(res):
+            raise KeyError(key)
+        return res
 
     def setitem(self, key, value):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key."
+                f"[{self.__class__.__name__}] received {key} as key."
             )
 
         if not isinstance(value, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {value} to set value."
+                f"[{self.__class__.__name__}] received {value} to set value."
             )
 
         self.proxy.set(key, value)
@@ -922,7 +996,7 @@ class DictVariable(ContainerVariable):
     def delitem(self, key):
         if isinstance(key, VariableBase):
             raise InnerError(
-                f"[{self.__class__.__name__}]: received {key} as key to delete."
+                f"[{self.__class__.__name__}] received {key} as key to delete."
             )
         self.proxy.delete(key)
         self.graph.side_effects.record_proxy_variable(self)
@@ -1035,7 +1109,7 @@ class DictVariable(ContainerVariable):
             builtin_fn = method_name_to_builtin_fn[name]
             return BuiltinVariable(
                 builtin_fn, self.graph, DanglingTracker()
-            ).bind(self, name)
+            ).bind_dangling_fn(self, name)
         else:
             raise FallbackError(f"attribute {name} for dict is not implemented")
 

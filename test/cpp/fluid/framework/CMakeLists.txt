@@ -1,3 +1,6 @@
+if(WIN32)
+  add_definitions(-DPADDLE_DLL_EXPORT)
+endif()
 add_subdirectory(details)
 
 paddle_test(data_type_test SRCS data_type_test.cc)
@@ -149,51 +152,10 @@ elseif(WITH_ROCM)
     DEPS op_registry)
 endif()
 
-if(WITH_PSCORE)
-  get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
-  if(WITH_HETERPS)
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS}
-           graph_gpu_wrapper)
-    cc_test(
-      heter_pipeline_trainer_test
-      SRCS heter_pipeline_trainer_test.cc
-      DEPS conditional_block_op
-           generated_op
-           heter_listen_and_serv_op
-           executor
-           heter_server
-           gloo_wrapper
-           phi
-           common
-           ${RPC_DEPS}
-           graph_gpu_wrapper)
-  else()
-    cc_test(
-      dist_multi_trainer_test
-      SRCS dist_multi_trainer_test.cc
-      DEPS conditional_block_op executor gloo_wrapper ${RPC_DEPS})
-    cc_test(
-      heter_pipeline_trainer_test
-      SRCS heter_pipeline_trainer_test.cc
-      DEPS conditional_block_op
-           generated_op
-           heter_listen_and_serv_op
-           executor
-           heter_server
-           gloo_wrapper
-           phi
-           common
-           ${RPC_DEPS})
-  endif()
-else()
-  cc_test(
-    dist_multi_trainer_test
-    SRCS dist_multi_trainer_test.cc
-    DEPS conditional_block_op executor gloo_wrapper)
-endif()
+cc_test(
+  dist_multi_trainer_test
+  SRCS dist_multi_trainer_test.cc
+  DEPS conditional_block_op executor gloo_wrapper)
 
 cc_test(
   prune_test
@@ -228,10 +190,14 @@ cc_test(
   SRCS op_compatible_info_test.cc
   DEPS op_compatible_info proto_desc string_helper glog)
 
-cc_test(
-  infershape_utils_test
-  SRCS infershape_utils_test.cc
-  DEPS operator phi)
+if(WIN32)
+  paddle_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS operator)
+else()
+  cc_test(
+    infershape_utils_test
+    SRCS infershape_utils_test.cc
+    DEPS operator phi)
+endif()
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)

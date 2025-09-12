@@ -32,8 +32,8 @@ static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
                                     (*var)[i]->numel() * sizeof(float));
     } else if (data_type[i] ==
                phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
-      dev_ctx.template Alloc<phi::dtype::float16>(
-          (*var)[i], (*var)[i]->numel() * sizeof(phi::dtype::float16));
+      dev_ctx.template Alloc<phi::float16>(
+          (*var)[i], (*var)[i]->numel() * sizeof(phi::float16));
     } else if (data_type[i] ==
                phi::TransToProtoVarType(phi::DataType::FLOAT64)) {
       dev_ctx.template Alloc<double>((*var)[i],
@@ -66,7 +66,7 @@ void FusionGroupKernel(const Context& dev_ctx,
     std::vector<const void*> ptrs(num_ins + num_outs);
     for (size_t i = 0; i < num_ins; ++i) {
       if (inputs_dtype[i] == phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
-        ptrs[i] = ins[i]->data<phi::dtype::float16>();
+        ptrs[i] = ins[i]->data<phi::float16>();
       } else if (inputs_dtype[i] ==
                  phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
         ptrs[i] = ins[i]->data<float>();
@@ -78,7 +78,7 @@ void FusionGroupKernel(const Context& dev_ctx,
     }
     for (size_t j = 0; j < num_outs; ++j) {
       if (outs_dtype[j] == phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
-        ptrs[num_ins + j] = outs[j]->data<phi::dtype::float16>();
+        ptrs[num_ins + j] = outs[j]->data<phi::float16>();
       } else if (outs_dtype[j] ==
                  phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
         ptrs[num_ins + j] = outs[j]->data<float>();
@@ -101,6 +101,6 @@ PD_REGISTER_KERNEL(fusion_group,
                    phi::fusion::FusionGroupKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

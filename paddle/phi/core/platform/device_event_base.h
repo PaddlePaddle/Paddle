@@ -14,9 +14,8 @@
 #pragma once
 #include <memory>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/platform/device_context.h"
 #include "paddle/phi/core/platform/device_event_defs.h"
 #include "paddle/utils/test_macros.h"
@@ -35,11 +34,12 @@ namespace platform {
 
 // =============== Register for Create ===============
 template <DeviceType device_type>
-struct EventCreateFunctionRegisterer : public framework::Registrar {
+struct EventCreateFunctionRegisterer {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_creator_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_CREATE_FUNCTION(device_type, func)                   \
@@ -48,18 +48,19 @@ struct EventCreateFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_CREATE_FUNCTION must be called in global namespace"); \
   static ::paddle::platform::EventCreateFunctionRegisterer<device_type>     \
       __reg_event_create_##device_type##__(func);                           \
-  TEST_API int TouchDeviceEventCreate##device_type() {                      \
+  PADDLE_API int TouchDeviceEventCreate##device_type() {                    \
     __reg_event_create_##device_type##__.Touch();                           \
     return 0;                                                               \
   }
 
 // =============== Register for Record ===============
 template <DeviceType device_type>
-struct EventRecordFunctionRegisterer : public framework::Registrar {
+struct EventRecordFunctionRegisterer {
   explicit EventRecordFunctionRegisterer(EventRecordFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_recorder_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_RECORD_FUNCTION(device_type, func)                   \
@@ -68,18 +69,19 @@ struct EventRecordFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_RECORD_FUNCTION must be called in global namespace"); \
   static ::paddle::platform::EventRecordFunctionRegisterer<device_type>     \
       __reg_event_record_##device_type##__(func);                           \
-  TEST_API int TouchDeviceEventRecord##device_type() {                      \
+  PADDLE_API int TouchDeviceEventRecord##device_type() {                    \
     __reg_event_record_##device_type##__.Touch();                           \
     return 0;                                                               \
   }
 
 // =============== Register for Query ===============
 template <DeviceType device_type>
-struct EventQueryFunctionRegisterer : public framework::Registrar {
+struct EventQueryFunctionRegisterer {
   explicit EventQueryFunctionRegisterer(EventQueryFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_querier_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_QUERY_FUNCTION(device_type, func)                   \
@@ -88,18 +90,19 @@ struct EventQueryFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_QUERY_FUNCTION must be called in global namespace"); \
   static ::paddle::platform::EventQueryFunctionRegisterer<device_type>     \
       __reg_event_query_##device_type##__(func);                           \
-  TEST_API int TouchDeviceEventQuery##device_type() {                      \
+  PADDLE_API int TouchDeviceEventQuery##device_type() {                    \
     __reg_event_query_##device_type##__.Touch();                           \
     return 0;                                                              \
   }
 
 // =============== Register for Finish ===============
 template <DeviceType device_type>
-struct EventFinishFunctionRegisterer : public framework::Registrar {
+struct EventFinishFunctionRegisterer {
   explicit EventFinishFunctionRegisterer(EventFinishFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_finisher_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_FINISH_FUNCTION(device_type, func)                   \
@@ -108,18 +111,19 @@ struct EventFinishFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_FINISH_FUNCTION must be called in global namespace"); \
   static ::paddle::platform::EventFinishFunctionRegisterer<device_type>     \
       __reg_event_finish_##device_type##__(func);                           \
-  TEST_API int TouchDeviceEventFinish##device_type() {                      \
+  PADDLE_API int TouchDeviceEventFinish##device_type() {                    \
     __reg_event_finish_##device_type##__.Touch();                           \
     return 0;                                                               \
   }
 
 // =============== Register for SetFinished ===============
 template <DeviceType device_type>
-struct EventSetFinishedFunctionRegisterer : public framework::Registrar {
+struct EventSetFinishedFunctionRegisterer {
   explicit EventSetFinishedFunctionRegisterer(EventSetFinishedFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_finished_setter_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_SET_FINISHED_FUNCTION(device_type, func)              \
@@ -128,19 +132,20 @@ struct EventSetFinishedFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_FINISH_FUNCTION must be called in global namespace");  \
   static ::paddle::platform::EventSetFinishedFunctionRegisterer<device_type> \
       __reg_event_finished_setter_##device_type##__(func);                   \
-  TEST_API int TouchDeviceEventSetFinished##device_type() {                  \
+  PADDLE_API int TouchDeviceEventSetFinished##device_type() {                \
     __reg_event_finished_setter_##device_type##__.Touch();                   \
     return 0;                                                                \
   }
 
 // =============== Register for Wait ===============
 template <DeviceType waiter_type, DeviceType event_type>
-struct EventWaitFunctionRegisterer : public framework::Registrar {
+struct EventWaitFunctionRegisterer {
   explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     auto event_idx = DeviceTypeToId(event_type);
     DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_WAIT_FUNCTION(waiter_type, event_type, func)       \
@@ -150,18 +155,19 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   static ::paddle::platform::EventWaitFunctionRegisterer<waiter_type,     \
                                                          event_type>      \
       __reg_event_wait_##waiter_type##event_type##__(func);               \
-  TEST_API int TouchDeviceEventWait##waiter_type##event_type() {          \
+  PADDLE_API int TouchDeviceEventWait##waiter_type##event_type() {        \
     __reg_event_wait_##waiter_type##event_type##__.Touch();               \
     return 0;                                                             \
   }
 
 // =============== Register for Reset ===============
 template <DeviceType device_type>
-struct EventResetFunctionRegisterer : public framework::Registrar {
+struct EventResetFunctionRegisterer {
   explicit EventResetFunctionRegisterer(EventResetFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
     DeviceEvent::event_resetter_[type_idx] = func;
   }
+  void Touch() {}
 };
 
 #define REGISTER_EVENT_RESET_FUNCTION(device_type, func)                   \
@@ -170,7 +176,7 @@ struct EventResetFunctionRegisterer : public framework::Registrar {
       "REGISTER_EVENT_RESET_FUNCTION must be called in global namespace"); \
   static ::paddle::platform::EventResetFunctionRegisterer<device_type>     \
       __reg_event_resetter_##device_type##__(func);                        \
-  TEST_API int TouchDeviceEventReset##device_type() {                      \
+  PADDLE_API int TouchDeviceEventReset##device_type() {                    \
     __reg_event_resetter_##device_type##__.Touch();                        \
     return 0;                                                              \
   }

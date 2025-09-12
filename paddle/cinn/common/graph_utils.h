@@ -15,7 +15,6 @@
 #pragma once
 //! \file This file contains the utilities of graph.
 
-#include <absl/container/flat_hash_map.h>
 #include <glog/logging.h>
 
 #include <algorithm>
@@ -32,6 +31,7 @@
 #include "paddle/cinn/common/shared.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace common {
 
@@ -300,9 +300,9 @@ class Graph {
   std::string Visualize() const;
 
   void ClearUnlinkedNodes(
-      absl::flat_hash_map<std::string, std::vector<int>>* shape_dict,
-      absl::flat_hash_map<std::string, cinn::common::Type>* type_dict,
-      absl::flat_hash_map<std::string, std::string>* layout_dict);
+      paddle::flat_hash_map<std::string, std::vector<int>>* shape_dict,
+      paddle::flat_hash_map<std::string, cinn::common::Type>* type_dict,
+      paddle::flat_hash_map<std::string, std::string>* layout_dict);
 
   size_t num_nodes() const { return nodes_.size(); }
 

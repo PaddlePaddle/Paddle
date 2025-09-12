@@ -18,6 +18,11 @@
 
 namespace phi {
 
+CustomKernelMap& CustomKernelMap::Instance() {
+  static CustomKernelMap g_custom_kernel_info_map;
+  return g_custom_kernel_info_map;
+}
+
 void CustomKernelMap::RegisterCustomKernel(const std::string& name,
                                            const KernelKey& key,
                                            const Kernel& kernel) {

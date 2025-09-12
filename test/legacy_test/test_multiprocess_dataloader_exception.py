@@ -167,9 +167,9 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     places=place,
                     use_shared_memory=use_shared_memory,
                 )
-                assert (
-                    loader.num_workers > 0
-                ), "go to AssertionError and pass in Mac and Windows"
+                assert loader.num_workers > 0, (
+                    "go to AssertionError and pass in Mac and Windows"
+                )
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
@@ -224,9 +224,9 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     places=place,
                     use_shared_memory=use_shared_memory,
                 )
-                assert (
-                    loader.num_workers > 0
-                ), "go to AssertionError and pass in Mac and Windows"
+                assert loader.num_workers > 0, (
+                    "go to AssertionError and pass in Mac and Windows"
+                )
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()

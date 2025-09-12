@@ -159,6 +159,11 @@ void CumprodGradKernel(const Context &dev_ctx,
   const auto *y = &out;
   const auto *dy = &dout;
 
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
+
   size_t outer_dim, mid_dim, inner_dim;
   GetCumprodDimInfo(x.dims(), dim, &outer_dim, &mid_dim, &inner_dim);
   if (x.dims().size() == 0) {
@@ -362,7 +367,7 @@ PD_REGISTER_KERNEL(cumprod_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -20,12 +20,12 @@ namespace phi {
 namespace sr {
 
 template <typename T, typename Context>
-void ShapeKernel(const Context& ctx,
+void ShapeKernel(const Context& dev_ctx,
                  const SelectedRows& input,
                  DenseTensor* out);
 
 template <typename T, typename Context>
-void Shape64Kernel(const Context& ctx,
+void Shape64Kernel(const Context& dev_ctx,
                    const SelectedRows& input,
                    DenseTensor* out);
 

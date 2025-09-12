@@ -54,6 +54,64 @@ std::vector<int32_t> GetInt32ArrayAttributeData(
   return data;
 }
 
+std::unordered_set<pir::Operation*> GetGroupOutputOps(
+    const std::vector<pir::Operation*>& ops) {
+  const auto is_global_inplace_op =
+      [](pir::Operation* op,
+         const std::unordered_set<pir::Operation*>& ops_set) -> bool {
+    if (op->num_results() != 1 ||
+        !op->HasInterface<paddle::dialect::OpYamlInfoInterface>()) {
+      return false;
+    }
+    auto op_info =
+        op->dyn_cast<paddle::dialect::OpYamlInfoInterface>().GetOpInfo();
+    auto input_info_list = std::get<0>(op_info);
+    auto output_info_list = std::get<2>(op_info);
+    auto inplace_info_map = std::get<3>(op_info).inplace;
+    // 1. Find which input is inplace with the output
+    std::string output_name = output_info_list.front().name;
+    std::string inplace_input_name;
+    for (const auto& [out, in] : inplace_info_map) {
+      if (out == output_name) inplace_input_name = in;
+    }
+    if (inplace_input_name.empty()) return false;
+    int inplace_input_idx = -1;
+    for (int i = 0; i < input_info_list.size(); ++i) {
+      if (input_info_list[i].name == inplace_input_name) {
+        inplace_input_idx = i;
+        break;
+      }
+    }
+    if (inplace_input_idx == -1) return false;
+    // 2. Check whether the inplace input is not the output of op in the ops_set
+    pir::Value inplace_input_value = op->operand_source(inplace_input_idx);
+    return ops_set.find(inplace_input_value.defining_op()) == ops_set.end();
+  };
+
+  auto ops_set = ToUnorderedSet(ops);
+  std::unordered_set<pir::Operation*> output_ops;
+  for (auto* op : ops) {
+    if (op->HasTrait<paddle::dialect::InplaceTrait>()) {
+      if (is_global_inplace_op(op, ops_set)) output_ops.insert(op);
+      continue;
+    }
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+      if (!result) continue;
+      for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+           ++use_iter) {
+        auto* use_op = use_iter->owner();
+        if (ops_set.find(use_op) == ops_set.end()) {
+          output_ops.insert(op);
+          break;
+        }
+      }
+      if (output_ops.count(op)) break;
+    }
+  }
+  return output_ops;
+}
+
 std::vector<int64_t> GetReduceAxisIdx(pir::Operation* reduce_op) {
   const size_t input_rank = GetCompatibleRank(reduce_op->operand_source(0));
   const auto& attr_val = reduce_op->attributes().at("axis");
@@ -177,6 +235,33 @@ std::vector<std::pair<size_t, size_t>> GetNonBroadCastDims(pir::Operation* op) {
   return res;
 }
 
+std::shared_ptr<pir::ShapeConstraintIRAnalysis> GetShapeAnalysisFromValue(
+    const pir::Value& value) {
+  pir::Operation* related_op = value.defining_op();
+  if (value.defining_op() == nullptr) {
+    // For inputs of the program, the defining_op is nullptr,
+    // we use it's user as the related op.
+    PADDLE_ENFORCE_EQ(value.use_empty(),
+                      false,
+                      ::common::errors::PreconditionNotMet(
+                          "Value is an input value, it should have a use."));
+    related_op = value.first_use().owner();
+  }
+  return pir::ShapeAnalysisManager::Instance()
+      .Get(related_op->GetParentProgram())
+      .shared_from_this();
+}
+
+std::vector<symbol::DimExpr> GetValueAllDims(const pir::Value& value) {
+  return GetValueDims(value, ArangeVector<int>(0, GetRank(value)));
+}
+
+std::vector<symbol::DimExpr> GetCompatibleValueAllDims(
+    const pir::Value& value) {
+  return GetRank(value) == 0 ? std::vector<symbol::DimExpr>{symbol::DimExpr(1)}
+                             : GetValueAllDims(value);
+}
+
 symbol::DimExpr GetShapeProduct(const std::vector<symbol::DimExpr>& shape,
                                 int start,
                                 int end) {
@@ -197,14 +282,18 @@ bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
          GetShapeProduct(out_shape, out_start, out_end);
 }
 
+bool ShapeProductEqual(const std::vector<symbol::DimExpr>& in_shape,
+                       const std::vector<symbol::DimExpr>& out_shape) {
+  return ShapeProductEqual(
+      in_shape, out_shape, 0, in_shape.size(), 0, out_shape.size());
+}
+
 std::vector<std::pair<int, int>> PartitionReshapeAxes(
     const std::vector<symbol::DimExpr>& in_shape,
     const std::vector<symbol::DimExpr>& out_shape) {
-  PADDLE_ENFORCE(
-      ShapeProductEqual(
-          in_shape, out_shape, 0, in_shape.size(), 0, out_shape.size()),
-      ::common::errors::InvalidArgument(
-          "Shape product should be equal for reshape operation."));
+  PADDLE_ENFORCE(ShapeProductEqual(in_shape, out_shape),
+                 ::common::errors::InvalidArgument(
+                     "Shape product should be equal for reshape operation."));
 
   int input_rank = in_shape.size();
   int output_rank = out_shape.size();

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <list>
+
 #include "paddle/fluid/distributed/collective/process_group_custom.h"
 
 #include "paddle/common/flags.h"
@@ -23,6 +25,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/utils/string/string_helper.h"
 
 constexpr int64_t kWaitBlockTImeout = 10;
 
@@ -148,7 +151,6 @@ phi::DeviceContext* ProcessGroupCustom::GetDeviceContext(
     return iter->second.get();
   }
 }
-
 phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) {
   const std::string& key = GetKeyFromPlace(place);
   phi::DeviceGuard guard(place);
@@ -162,6 +164,16 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) {
       common::errors::NotFound(
           "Cannot find the XCCL communicator in this process group."));
   return iter->second->xccl_comm();
+}
+
+phi::distributed::XCCLCommContext* ProcessGroupCustom::GetOrCreateCommContext(
+    const Place& place) {
+  const std::string& key = GetKeyFromPlace(place);
+  phi::DeviceGuard guard(place);
+  if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
+    CreateXCCLEnvCache(place, key);
+  }
+  return this->GetCommContext();
 }
 
 std::string ProcessGroupCustom::GetCommName(int rank) {
@@ -206,7 +218,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
+        comm_context->AllGather(
+            out_tensor, in_tensor_maybe_partial, stream.raw_stream());
       },
       in_tensor_maybe_partial,
       CommType::ALLGATHER,
@@ -230,7 +243,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             out_tensor,
             in_tensor,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::ALLREDUCE,
@@ -248,10 +261,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   CheckTensorContiguous(in_tensor);
   CheckTensorContiguous(*out_tensor);
 
+  std::vector<int64_t> out_split_sizes;
+  std::vector<int64_t> in_split_sizes;
+  if (out_size_each_rank.empty() && in_size_each_rank.empty()) {
+    out_split_sizes =
+        std::vector<int64_t>(size_, out_tensor->dims()[0] / size_);
+    in_split_sizes = std::vector<int64_t>(size_, in_tensor.dims()[0] / size_);
+  } else {
+    out_split_sizes = out_size_each_rank;
+    in_split_sizes = in_size_each_rank;
+  }
+
   const phi::DDim& out_dim = out_tensor->dims();
   const phi::DDim& in_dim = in_tensor.dims();
-  CheckSizeOnEachRank(out_dim, out_size_each_rank, size_);
-  CheckSizeOnEachRank(in_dim, in_size_each_rank, size_);
+  CheckSizeOnEachRank(out_dim, out_split_sizes, size_);
+  CheckSizeOnEachRank(in_dim, in_split_sizes, size_);
 
   // NOTE: Since `all_to_all` needs other processes' participation, it cannot
   // simply be covered by static checks. Factors are set to 0 here to skip the
@@ -261,18 +285,36 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
 
-        int64_t in_row_size = in_tensor.numel() / in_dim[0],
-                out_row_size = out_tensor->numel() / out_dim[0];
+        int64_t in_row_size =
+            in_dim[0] == 0 ? 0 : in_tensor.numel() / in_dim[0];
+        int64_t out_row_size =
+            out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
+
+        VLOG(3) << "[AllToAll] "
+                << "sendbuff: " << in_tensor.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor.numel()
+                << ", datatype: " << phi::DataTypeToString(in_tensor.dtype())
+                << ", xcclcomm: " << comm_context->GetXcclComm()
+                << ", stream address: " << &stream
+                << ", rank_in_group: " << rank_ << ", nranks: " << size_
+                << ", out_split_sizes: "
+                << string::join_strings(out_split_sizes, ',')
+                << ", in_split_sizes: "
+                << string::join_strings(in_split_sizes, ',')
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream << ", "
+                << GetGroupMessage();
 
         std::vector<void*> send_buf, recv_buf;
         std::vector<size_t> send_count, recv_count;
         std::vector<phi::DataType> send_dtype, recv_dtype;
         for (auto i = 0; i < size_; i++) {
-          in_numel = in_size_each_rank[i] * in_row_size;
+          in_numel = in_split_sizes[i] * in_row_size;
           input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-          out_numel = out_size_each_rank[i] * out_row_size;
+          out_numel = out_split_sizes[i] * out_row_size;
           output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
           in_offset += in_numel;
           out_offset += out_numel;
@@ -295,7 +337,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             rank_,
             size_,
             comm_context->GetXcclComm(),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -338,7 +380,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
         auto comm_context = this->GetCommContext();
-        comm_context->Broadcast(out_tensor, in_tensor, root, stream);
+        comm_context->Broadcast(
+            out_tensor, in_tensor, root, stream.raw_stream());
       },
       in_tensor,
       CommType::BROADCAST,
@@ -362,7 +405,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
                              in_tensor,
                              paddle::distributed::ToXCCLRedType(opts.reduce_op),
                              opts.root_rank,
-                             stream);
+                             stream.raw_stream());
       },
       in_tensor,
       CommType::REDUCE,
@@ -386,7 +429,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
             out_tensor,
             in_tensor,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       in_tensor,
       CommType::REDUCE_SCATTER,
@@ -421,7 +464,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
             if (i != rank_) {
-              comm_context->Send(partial_tensor, numel, i, stream);
+              comm_context->Send(partial_tensor, numel, i, stream.raw_stream());
             } else {
               phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
                   ->MemoryCopyD2D(out_tensor->data(),
@@ -432,7 +475,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
             offset += numel;
           }
         } else {
-          comm_context->Recv(out_tensor, numel, opts.root_rank, stream);
+          comm_context->Recv(
+              out_tensor, numel, opts.root_rank, stream.raw_stream());
         }
       },
       in_tensor,
@@ -486,7 +530,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       for (auto i = 0; i < size_; i++) {
         auto& gather_tensor = gather_tensors[i];
         if (i != rank_) {
-          comm_context->Recv(&gather_tensor, gather_tensor.numel(), i, stream);
+          comm_context->Recv(
+              &gather_tensor, gather_tensor.numel(), i, stream.raw_stream());
         } else {
           phi::DeviceManager::GetDeviceWithPlace(stream.GetPlace())
               ->MemoryCopyD2D(
@@ -498,7 +543,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       }
     } else {
       // send to root
-      comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
+      comm_context->Send(
+          in_tensor, in_tensor.numel(), opts.root_rank, stream.raw_stream());
     }
   };
   return RunFnInXCCLEnv(
@@ -522,7 +568,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
+        comm_context->Recv(
+            tensor, tensor->numel(), src_rank, stream.raw_stream());
       },
       *tensor,
       CommType::RECV,
@@ -549,7 +596,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
         comm_context->Send(tensor_maybe_partial,
                            tensor_maybe_partial.numel(),
                            dst_rank,
-                           stream);
+                           stream.raw_stream());
       },
       tensor_maybe_partial,
       CommType::SEND,
@@ -592,24 +639,24 @@ void ProcessGroupCustom::CreateXCCLEnvCache(const Place& place,
 
   auto* calc_ctx = static_cast<phi::CustomContext*>(
       phi::DeviceContextPool::Instance().Get(place));
-  auto comm_ctx = std::make_unique<phi::CustomContext>(place);
-  comm_ctx->SetAllocator(
+  auto custom_context = std::make_unique<phi::CustomContext>(place);
+  custom_context->SetAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetAllocator()));
-  comm_ctx->SetHostAllocator(
+  custom_context->SetHostAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetHostAllocator()));
-  comm_ctx->SetZeroAllocator(
+  custom_context->SetZeroAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetZeroAllocator()));
-  comm_ctx->SetHostZeroAllocator(
+  custom_context->SetHostZeroAllocator(
       &(phi::DeviceContextPool::Instance().Get(place)->GetHostZeroAllocator()));
 
   auto xccl_comm_ctx = this->GetCommContext();
-  comm_ctx->set_xccl_comm(xccl_comm_ctx->GetXcclComm());
+  custom_context->set_xccl_comm(xccl_comm_ctx->GetXcclComm());
 
   auto xccl_event = std::make_unique<phi::event::Event>();
   xccl_event->Init(place);
   place_to_calc_event_.emplace(place_key, std::move(xccl_event));
   place_to_calc_ctx_.emplace(place_key, calc_ctx);
-  place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
+  place_to_comm_ctx_.emplace(place_key, std::move(custom_context));
 
   // TODO(sunyilun): for compatibility, will be removed later
   std::vector<phi::CustomContext*> comm_ctx_wrapper{
@@ -621,18 +668,22 @@ void ProcessGroupCustom::SyncCalcStream(const Place& place) {
   const std::string& key = GetKeyFromPlace(place);
   auto& calc_event = place_to_calc_event_.at(key);
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
-  const auto* comm_ctx = place_to_comm_ctx_.at(key).get();
+  const auto* custom_context = place_to_comm_ctx_.at(key).get();
   calc_event->Record(calc_ctx->GetStream().get());
-  comm_ctx->GetStream()->WaitEvent(calc_event.get());
+  custom_context->GetStream()->WaitEvent(calc_event.get());
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
     std::function<void(const phi::stream::Stream&)> fn,
-    const phi::DenseTensor& tensor,
+    const std::vector<phi::DenseTensor>& tensors,
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  const auto& place = tensor.place();
+  PADDLE_ENFORCE_GT(
+      tensors.size(),
+      0,
+      common::errors::InvalidArgument("Num of tensors must be greater than 0"));
+  const auto& place = tensors[0].place();
   const auto& key = GetKeyFromPlace(place);
 
   phi::DeviceGuard guard(place);
@@ -648,19 +699,31 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
   auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
-  const auto& comm_ctx = place_to_comm_ctx_.at(key);
+  const auto& custom_context = place_to_comm_ctx_.at(key);
   auto& xccl_stream =
-      use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
+      use_calc_stream ? *calc_ctx->GetStream() : *custom_context->GetStream();
   fn(xccl_stream);
 
   if (!use_calc_stream) {
     if (FLAGS_use_stream_safe_cuda_allocator) {
-      memory::RecordStream(tensor.Holder(), xccl_stream.raw_stream());
+      for (size_t i = 0; i < tensors.size(); ++i) {
+        memory::RecordStream(tensors[i].Holder(), xccl_stream.raw_stream());
+      }
     }
-    task->UpdateWaitChain(*comm_ctx);
+    task->UpdateWaitChain(*custom_context);
   }
 
   return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
+    std::function<void(const phi::stream::Stream&)> fn,
+    const phi::DenseTensor& tensor,
+    CommType comm_type,
+    bool sync_op,
+    bool use_calc_stream) {
+  const std::vector<phi::DenseTensor> tensors = {tensor};
+  return RunFnInXCCLEnv(fn, tensors, comm_type, sync_op, use_calc_stream);
 }
 
 // TODO(sunyilun): methods below will be removed later
@@ -879,7 +942,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             &output,
             input,
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
-            stream);
+            stream.raw_stream());
       },
       CommType::ALLREDUCE);
 }
@@ -906,7 +969,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
         auto comm_context = this->GetCommContext();
-        comm_context->Broadcast(&output, input, root, stream);
+        comm_context->Broadcast(&output, input, root, stream.raw_stream());
       },
       CommType::BROADCAST);
 }
@@ -952,7 +1015,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
           const phi::stream::Stream& stream,
           int dst_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Send(input, input.numel(), dst_rank, stream);
+        comm_context->Send(input, input.numel(), dst_rank, stream.raw_stream());
       },
       dst_rank,
       CommType::SEND);
@@ -972,7 +1035,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
           const phi::stream::Stream& stream,
           int src_rank) {
         auto comm_context = this->GetCommContext();
-        comm_context->Recv(&output, output.numel(), src_rank, stream);
+        comm_context->Recv(
+            &output, output.numel(), src_rank, stream.raw_stream());
       },
       src_rank,
       CommType::RECV);
@@ -1001,7 +1065,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
           const phi::ccl::CCLComm& comm,
           const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
-        comm_context->AllGather(&output, input, stream);
+        comm_context->AllGather(&output, input, stream.raw_stream());
       },
       CommType::ALLGATHER);
 }
@@ -1053,9 +1117,89 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             rank_,
             size_,
             comm_context->GetXcclComm(),
-            stream);
+            stream.raw_stream());
       },
       CommType::ALLTOALL);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
+    std::vector<phi::DenseTensor>* out_tensors,
+    const std::vector<phi::DenseTensor>& in_tensors,
+    bool sync_op,
+    bool use_calc_stream) {
+  CheckTensorContiguous(in_tensors);
+  CheckTensorContiguous(*out_tensors);
+  CheckTensorSamePlace(in_tensors);
+  CheckTensorSamePlace(*out_tensors);
+  phi::distributed::CommStaticCheck::CheckDataType(*out_tensors, in_tensors);
+
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(in_tensors, device_type_),
+      true,
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
+  PADDLE_ENFORCE_EQ(
+      CheckTensorsInCustomPlace(*out_tensors, device_type_),
+      true,
+      common::errors::InvalidArgument("All inputs should be in CustomPlace."));
+
+  PADDLE_ENFORCE_EQ(
+      out_tensors->size(),
+      size_,
+      common::errors::InvalidArgument(
+          "Number of out tensors[%d] do not match the world size[%d].",
+          out_tensors->size(),
+          size_));
+  PADDLE_ENFORCE_EQ(
+      in_tensors.size(),
+      size_,
+      common::errors::InvalidArgument(
+          "Number of in tensors[%d] do not match the world size[%d].",
+          in_tensors.size(),
+          size_));
+
+  // NOTE: Since `all_to_all` needs other processes' participation, it cannot
+  // simply be covered by static checks. Factors are set to 0 here to skip the
+  // shape check. Its shape check will be done by dynamic checks with
+  // FLAGS_enable_xccl_dynamic_check.
+  return RunFnInXCCLEnv(
+      [&](const phi::stream::Stream& stream) {
+        auto comm_context = this->GetCommContext();
+
+        int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
+
+        std::vector<const void*> send_buf;
+        std::vector<void*> recv_buf;
+        std::vector<size_t> send_count, recv_count;
+        std::vector<phi::DataType> send_dtype, recv_dtype;
+        for (auto i = 0; i < size_; i++) {
+          in_numel = in_tensors[i].numel();
+          out_numel = (*out_tensors)[i].numel();
+          in_offset += in_numel;
+          out_offset += out_numel;
+          send_buf.push_back(in_tensors[i].data());
+          recv_buf.push_back((*out_tensors)[i].data());
+          send_count.push_back(in_numel);
+          recv_count.push_back(out_numel);
+          send_dtype.push_back(in_tensors[i].dtype());
+          recv_dtype.push_back((*out_tensors)[i].dtype());
+        }
+
+        phi::DeviceManager::CCLAllToAll(device_type_,
+                                        send_buf.data(),
+                                        send_count.data(),
+                                        send_dtype.data(),
+                                        recv_buf.data(),
+                                        recv_count.data(),
+                                        recv_dtype.data(),
+                                        rank_,
+                                        size_,
+                                        comm_context->GetXcclComm(),
+                                        stream.raw_stream());
+      },
+      in_tensors,
+      CommType::ALLTOALL,
+      sync_op,
+      use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
@@ -1081,7 +1225,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
                              input,
                              paddle::distributed::ToXCCLRedType(opts.reduce_op),
                              opts.root_rank,
-                             stream);
+                             stream.raw_stream());
       },
       CommType::REDUCE);
 }
@@ -1116,13 +1260,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
           for (auto i = 0; i < size_; i++) {
             auto input_data = reinterpret_cast<phi::DenseTensor*>(
                 GetPointerByOffset(input.data(), offset, input.dtype()));
-            comm_context->Send(*input_data, count, i, stream);
+            comm_context->Send(*input_data, count, i, stream.raw_stream());
             offset += count;
           }
-          comm_context->Recv(&output, count, opts.root_rank, stream);
+          comm_context->Recv(
+              &output, count, opts.root_rank, stream.raw_stream());
           comm_context->GroupEnd();
         } else {
-          comm_context->Recv(&output, count, opts.root_rank, stream);
+          comm_context->Recv(
+              &output, count, opts.root_rank, stream.raw_stream());
         }
       },
       CommType::SCATTER);

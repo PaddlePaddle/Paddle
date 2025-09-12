@@ -20,46 +20,56 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuKernel(const Context& ctx,
+void TrilTriuKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     int diagonal,
                     bool lower,
                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  auto xshape = common::vectorize<int>(x.dims());
+  dev_ctx.template Alloc<T>(out);
+  auto xshape = common::vectorize<int64_t>(x.dims());
   int r = 0;
   if (lower) {
-    r = xpu::tril(ctx.x_context(),
+    r = xpu::tril(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "tril_op");
   } else {
-    r = xpu::triu(ctx.x_context(),
+    r = xpu::triu(dev_ctx.x_context(),
                   reinterpret_cast<const XPUType*>(x.data<T>()),
                   reinterpret_cast<XPUType*>(out->data<T>()),
                   xshape,
-                  diagonal);
+                  static_cast<int64_t>(diagonal));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "triu_op");
   }
 }
 
 template <typename T, typename Context>
-void TrilKernel(const Context& ctx,
+void TrilKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, true, out);
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, true, out);
 }
 
 template <typename T, typename Context>
-void TriuKernel(const Context& ctx,
+void TriuKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out) {
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, false, out);
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, false, out);
 }
 
 }  // namespace phi
@@ -71,8 +81,8 @@ PD_REGISTER_KERNEL(tril_triu,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}
 PD_REGISTER_KERNEL(tril,
                    XPU,
@@ -81,8 +91,8 @@ PD_REGISTER_KERNEL(tril,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}
 PD_REGISTER_KERNEL(triu,
                    XPU,
@@ -91,6 +101,6 @@ PD_REGISTER_KERNEL(triu,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    bool) {}

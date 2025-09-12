@@ -14,6 +14,9 @@ limitations under the License. */
 #pragma once
 #ifndef _WIN32
 #include <cuda.h>
+#ifndef NVTX_SUPPRESS_V2_DEPRECATION_WARNING
+#define NVTX_SUPPRESS_V2_DEPRECATION_WARNING
+#endif
 #include <nvToolsExt.h>
 
 #include <mutex>  // NOLINT

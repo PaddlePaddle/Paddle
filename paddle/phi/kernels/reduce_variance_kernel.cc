@@ -24,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void VarianceKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const IntArray& dims,
+                    const std::vector<int64_t>& dims,
                     bool keep_dim,
                     DenseTensor* out) {
   DenseTensor temp_mean = Mean<T, Context>(dev_ctx, x, dims, true);

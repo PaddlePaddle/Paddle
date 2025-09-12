@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& ctx,
+void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
                     float std,
@@ -30,7 +30,7 @@ void GaussianKernel(const Context& ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-void GaussianInplaceKernel(const Context& ctx,
+void GaussianInplaceKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            float mean,
                            float std,

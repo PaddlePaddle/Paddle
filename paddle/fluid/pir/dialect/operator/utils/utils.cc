@@ -18,6 +18,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/pir/dialect/distributed/ir/dist_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
@@ -36,16 +37,9 @@ namespace paddle {
 namespace dialect {
 
 const std::unordered_set<std::string> LegacyOpList = {
-    DistributedPushSparseOp::name(),
     SendV2Op::name(),
     RecvV2Op::name(),
-    CAllreduceSumOp::name(),
-    CAllreduceSum_Op::name(),
-    PushDenseOp::name(),
-    PullBoxSparseOp::name(),
-    PushBoxSparseOp::name(),
-    PushSparseV2Op::name(),
-    SendAndRecvOp::name()};
+};
 
 enum class AttrType {
   UNDEFINED = 0,
@@ -57,43 +51,43 @@ enum class AttrType {
   DOUBLE,
 
   ARRAY,
+  STRING,
+  TENSOR_NAME,
+  DATA_TYPE,
   INT_ARRAY,
+  PLACE,
+  TensorDist,
 
   SCALAR,
-  DATA_TYPE,
   DATA_LAYOUT,
-  PLACE,
-
-  STRING,
-
-  TENSOR_NAME,
-
   NUM_ATTR_TYPES,
 };
 
 static inline AttrType GetAttributeType(const pir::Attribute& attr) {
   if (attr.isa<pir::BoolAttribute>()) {
     return AttrType::BOOL;
-  } else if (attr.isa<pir::FloatAttribute>()) {
-    return AttrType::FLOAT;
-  } else if (attr.isa<pir::DoubleAttribute>()) {
-    return AttrType::DOUBLE;
   } else if (attr.isa<pir::Int32Attribute>()) {
     return AttrType::INT32;
   } else if (attr.isa<pir::Int64Attribute>()) {
     return AttrType::INT64;
+  } else if (attr.isa<pir::FloatAttribute>()) {
+    return AttrType::FLOAT;
+  } else if (attr.isa<pir::DoubleAttribute>()) {
+    return AttrType::DOUBLE;
   } else if (attr.isa<pir::ArrayAttribute>()) {
     return AttrType::ARRAY;
   } else if (attr.isa<pir::StrAttribute>()) {
     return AttrType::STRING;
-  } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
-    return AttrType::INT_ARRAY;
-  } else if (attr.isa<paddle::dialect::DataTypeAttribute>()) {
-    return AttrType::DATA_TYPE;
-  } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
-    return AttrType::PLACE;
   } else if (attr.isa<pir::TensorNameAttribute>()) {
     return AttrType::TENSOR_NAME;
+  } else if (attr.isa<paddle::dialect::DataTypeAttribute>()) {
+    return AttrType::DATA_TYPE;
+  } else if (attr.isa<paddle::dialect::IntArrayAttribute>()) {
+    return AttrType::INT_ARRAY;
+  } else if (attr.isa<paddle::dialect::PlaceAttribute>()) {
+    return AttrType::PLACE;
+  } else if (attr.isa<paddle::dialect::TensorDistAttribute>()) {
+    return AttrType::TensorDist;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir Attribute type when casting it into "
@@ -110,14 +104,6 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
            [](const pir::Attribute& attr) {
              return T{attr.dyn_cast<pir::BoolAttribute>().data()};
            }},
-          {AttrType::FLOAT,
-           [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<pir::FloatAttribute>().data()};
-           }},
-          {AttrType::DOUBLE,
-           [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<pir::DoubleAttribute>().data()};
-           }},
           {AttrType::INT32,
            [](const pir::Attribute& attr) {
              return T{attr.dyn_cast<pir::Int32Attribute>().data()};
@@ -126,28 +112,13 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
            [](const pir::Attribute& attr) {
              return T{attr.dyn_cast<pir::Int64Attribute>().data()};
            }},
-          {AttrType::INT_ARRAY,
+          {AttrType::FLOAT,
            [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
-                          .data()
-                          .GetData()};
+             return T{attr.dyn_cast<pir::FloatAttribute>().data()};
            }},
-          {AttrType::STRING,
+          {AttrType::DOUBLE,
            [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<pir::StrAttribute>().AsString()};
-           }},
-          {AttrType::DATA_TYPE,
-           [](const pir::Attribute& attr) {
-             return T{
-                 attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data()};
-           }},
-          {AttrType::PLACE,
-           [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
-           }},
-          {AttrType::TENSOR_NAME,
-           [](const pir::Attribute& attr) {
-             return T{attr.dyn_cast<pir::TensorNameAttribute>().data()};
+             return T{attr.dyn_cast<pir::DoubleAttribute>().data()};
            }},
           {AttrType::ARRAY,
            [](const pir::Attribute& attr) {
@@ -211,7 +182,33 @@ static std::function<T(const pir::Attribute& attr)> GetAttrCast(
                    "vector."));
              }
            }},
-      };
+          {AttrType::STRING,
+           [](const pir::Attribute& attr) {
+             return T{attr.dyn_cast<pir::StrAttribute>().AsString()};
+           }},
+
+          {AttrType::TENSOR_NAME,
+           [](const pir::Attribute& attr) {
+             return T{attr.dyn_cast<pir::TensorNameAttribute>().data()};
+           }},
+          {AttrType::DATA_TYPE,
+           [](const pir::Attribute& attr) {
+             return T{
+                 attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data()};
+           }},
+          {AttrType::INT_ARRAY,
+           [](const pir::Attribute& attr) {
+             return T{attr.dyn_cast<paddle::dialect::IntArrayAttribute>()
+                          .data()
+                          .GetData()};
+           }},
+          {AttrType::PLACE,
+           [](const pir::Attribute& attr) {
+             return T{attr.dyn_cast<paddle::dialect::PlaceAttribute>().data()};
+           }},
+          {AttrType::TensorDist, [](const pir::Attribute& attr) {
+             return T{attr.dyn_cast<paddle::dialect::TensorDistAttribute>()};
+           }}};
   return kAttrCastMap[attr_type];
 }
 
@@ -422,7 +419,19 @@ std::vector<int64_t> ParseValueShape(const pir::Value& shape,
                           .dyn_cast<paddle::dialect::ScalarAttribute>()
                           .data()
                           .to<double>();
-    vec_shape = {static_cast<int64_t>(shape_item)};
+    auto shape_vec = shape.defining_op()
+                         ->dyn_cast<paddle::dialect::FullOp>()
+                         .attribute("shape")
+                         .dyn_cast<paddle::dialect::IntArrayAttribute>()
+                         .data()
+                         .GetData();
+    // TODO(ooooo): If can make sure shape_value's size is less than or equal
+    // to 1, can add a check here rather than product.
+    int64_t items = 1;
+    for (const auto& item : shape_vec) {
+      items *= item;
+    }
+    vec_shape = std::vector<int64_t>(items, shape_item);
   } else if (shape.isa<pir::OpResult>() &&
              shape.defining_op()->isa<paddle::dialect::StackOp>()) {
     std::vector<pir::Value> inputs =
@@ -517,6 +526,7 @@ const std::unordered_map<std::string, phi::Place>& StringToPlaceMap() {
       {"gpu", phi::GPUPlace{}},
       {"gpu_pinned", phi::GPUPinnedPlace{}},
       {"xpu", phi::XPUPlace{}},
+      {"xpu_pinned", phi::XPUPinnedPlace{}},
       {"ipu", phi::IPUPlace{}},
       {":", phi::CustomPlace{}},
       {"undefined", phi::Place{}}};

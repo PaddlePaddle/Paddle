@@ -26,9 +26,9 @@ using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_alg, typename T_out = T>
-class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
+class RNNONEDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
  public:
-  RNNMKLDNNHandler(const phi::OneDNNContext& dev_ctx,
+  RNNONEDNNHandler(const phi::OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine UNUSED,
                    phi::Place cpu_place,
                    const phi::DenseTensor* input UNUSED,

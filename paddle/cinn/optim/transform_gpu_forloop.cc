@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "paddle/cinn/backends/cuda_util.h"
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/integer_set.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
@@ -32,18 +31,14 @@
 #include "paddle/cinn/ir/utils/stmt_converter.h"
 #include "paddle/cinn/optim/eliminate_common_factor_of_local_index.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/longlong2int_pass.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/optim/resize_buffer.h"
 #include "paddle/cinn/optim/update_buffer_axis_pass.h"
 #include "paddle/cinn/pass/pass_manager.h"
-#include "paddle/cinn/poly/isl_utils.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
 
-PD_DECLARE_bool(cinn_longlong2int);
 namespace cinn {
 namespace optim {
 
@@ -760,16 +755,7 @@ void OptimizeExprGPU(ir::stmt::BlockRef block) {
   ir::Expr expr = ir::ConvertStmtBlockToExprBlock(block);
 
   ResizeBufferToMaxVarRange(&expr);
-
-  block = ir::ConvertExprBlockToStmtBlock(expr);
-
-  if (FLAGS_cinn_longlong2int) {
-    VLOG(10) << "Before CastLonglong2Int: \n" << block;
-    TryCastLonglong2Int(block);
-    VLOG(10) << "After CastLonglong2Int: \n" << block;
-  }
-
-  VLOG(4) << "After Optimize Expr: \n" << block;
+  VLOG(4) << "After Optimize Expr: \n" << expr;
 }
 
 }  // namespace optim

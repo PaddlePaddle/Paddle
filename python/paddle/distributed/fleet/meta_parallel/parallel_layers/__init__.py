@@ -18,7 +18,12 @@ from .mp_layers import (  # noqa: F401
     RowParallelLinear,
     VocabParallelEmbedding,
 )
-from .pp_layers import LayerDesc, PipelineLayer, SharedLayerDesc  # noqa: F401
+from .pp_layers import (  # noqa: F401
+    LayerDesc,
+    LocalSharedLayerDesc,
+    PipelineLayer,
+    SharedLayerDesc,
+)
 from .random import (  # noqa: F401
     RNGStatesTracker,
     get_rng_state_tracker,

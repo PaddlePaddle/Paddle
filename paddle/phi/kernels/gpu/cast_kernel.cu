@@ -25,6 +25,10 @@ void CastKernel(const Context& dev_ctx,
                 DataType out_dtype,
                 DenseTensor* out) {
   if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
     if (!out->IsSharedWith(x)) {
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
@@ -38,6 +42,17 @@ void CastKernel(const Context& dev_ctx,
     CastCUDAKernel<T>(dev_ctx, x, out_dtype, out);
   }
 }
+#ifdef _WIN32
+INSTANTIATE_CAST_KERNEL(float, GPUContext)
+INSTANTIATE_CAST_KERNEL(double, GPUContext)
+INSTANTIATE_CAST_KERNEL(int, GPUContext)
+INSTANTIATE_CAST_KERNEL(int64_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(uint8_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(bool, GPUContext)
+INSTANTIATE_CAST_KERNEL(int16_t, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::float16, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::bfloat16, GPUContext)
+#endif
 }  // namespace phi
 
 #define PTEN_REGISTER_CAST_CUDA_BASE_TYPE(op_name, ...)        \
@@ -53,14 +68,14 @@ void CastKernel(const Context& dev_ctx,
                      bool,                                     \
                      int8_t,                                   \
                      uint8_t,                                  \
-                     phi::dtype::float16,                      \
-                     phi::dtype::complex<float>,               \
-                     phi::dtype::complex<double>,              \
+                     phi::float16,                             \
+                     phi::complex64,                           \
+                     phi::complex128,                          \
                      ##__VA_ARGS__) {                          \
     kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED); \
   }
 
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
-                                  phi::dtype::bfloat16,
-                                  phi::dtype::float8_e4m3fn,
-                                  phi::dtype::float8_e5m2)
+                                  phi::bfloat16,
+                                  phi::float8_e4m3fn,
+                                  phi::float8_e5m2)

@@ -28,6 +28,7 @@
 - empty
 - empty_like
 - enable_check_model_nan_inf
+- expand_as
 - exponential_
 - eye
 # FIXME(dev): Remove flatten after deprecate flatten_contiguous_range in old IR system.
@@ -46,8 +47,10 @@
 - gaussian
 - hsigmoid_loss
 - increment
+- kthvalue
 - linspace
 - logspace
+- lp_pool2d
 - matrix_rank
 - matrix_rank_tol
 - max

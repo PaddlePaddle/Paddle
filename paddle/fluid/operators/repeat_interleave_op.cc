@@ -126,6 +126,8 @@ class RepeatInterleaveOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("Repeats", "the number of repetitions for each element.")
         .SetDefault(0);
     AddAttr<int>("dim", "the dimension in which we repeat.").SetDefault(0);
+    AddAttr<int64_t>("output_size", "the total output size for the given axis.")
+        .SetDefault(-1);
     AddComment(R"DOC(
 Returns a new tensor which repeats the input tensor
 along dimension dim using the entries in repeats which

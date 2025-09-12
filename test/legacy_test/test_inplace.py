@@ -16,6 +16,7 @@ import functools
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 
@@ -1528,6 +1529,22 @@ class TestDygraphInplacBitwiseOr(TestDygraphInplacBitwiseAnd):
         return paddle.bitwise_or(var, self.y)
 
 
+class TestDygraphInplacBitwiseOrAlias1(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(var, other=self.y)
+
+
+class TestDygraphInplacBitwiseOrAlias2(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(input=var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(input=var, other=self.y)
+
+
 class TestDygraphInplacBitwiseXor(TestDygraphInplacBitwiseAnd):
     def inplace_api_processing(self, var):
         return paddle.bitwise_xor_(var, self.y)
@@ -1696,6 +1713,48 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
 
             inplace_var = self.inplace_api_processing(inplace_var)
             self.assertEqual(var.inplace_version, 3)
+
+
+class TestDygraphInplaceCumprodWithFlatten(TestDygraphInplace):
+    def inplace_api_processing(self, var):
+        return paddle.cumprod_(var, None, dtype="float32")
+
+    def non_inplace_api_processing(self, var):
+        return paddle.cumprod(var, None, dtype="float32")
+
+    def test_backward_error(self):
+        # It raises an error because the inplace operator will result
+        # in incorrect gradient computation.
+        with paddle.base.dygraph.guard():
+            var_a = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            var_a.stop_gradient = False
+
+            var_b = var_a**2
+
+            # Here, the gradient computation will use the value of var_b
+            var_c = var_b**2
+            paddle.cumprod_(var_b, None, dtype="float64")
+
+            loss = paddle.nn.functional.relu(var_c)
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "received tensor_version:3 != wrapper_version_snapshot:0",
+            ):
+                loss.backward()
+
+    def test_forward_version(self):
+        with paddle.base.dygraph.guard():
+            var = paddle.to_tensor(self.input_var_numpy).astype(self.dtype)
+            self.assertEqual(var.inplace_version, 0)
+
+            inplace_var = self.inplace_api_processing(var)
+            self.assertEqual(var.inplace_version, 2)
+
+            inplace_var[0] = 2
+            self.assertEqual(var.inplace_version, 3)
+
+            inplace_var = self.inplace_api_processing(inplace_var)
+            self.assertEqual(var.inplace_version, 5)
 
 
 class TestDygrapInplaceRenorm(TestDygraphInplaceWithContinuous):
@@ -2047,9 +2106,7 @@ class TestDygraphInplaceBernoulliError(unittest.TestCase):
 class TestDygraphInplaceSet(unittest.TestCase):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.support_dtypes = [
             'float32',
             'float64',
@@ -2231,7 +2288,7 @@ class TestDygraphInplaceSet(unittest.TestCase):
 class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
@@ -2261,7 +2318,7 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
 class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [7, 20, 2])
@@ -2286,9 +2343,7 @@ class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
 class TestDygraphInplaceResize(unittest.TestCase):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.support_dtypes = [
             'float32',
             'float64',
@@ -2401,7 +2456,7 @@ class TestDygraphInplaceResize(unittest.TestCase):
 class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
@@ -2429,7 +2484,7 @@ class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
 class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):
     def setUp(self):
         self.init_data()
-        self.places = [paddle.CUDAPlace(0)]
+        self.places = get_places()
 
     def init_data(self):
         self.x_np = np.random.uniform(-5, 5, [3, 10, 2])
@@ -2447,6 +2502,17 @@ class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):
                 x = paddle.to_tensor(self.x_np).astype(self.dtype)
                 inplace_x2 = self.inplace_api_processing(x, self.new_shape2)
                 self.assertTrue(id(x) == id(inplace_x2))
+
+
+class TestSet_API_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.places = get_places()
+
+    def test_set_api(self):
+        for place in self.places:
+            with paddle.base.dygraph.guard(place):
+                out = paddle.randn([20]).set_(paddle.randn([0, 3]), [20], [2])
+                np.testing.assert_allclose(out.shape, [20])
 
 
 if __name__ == '__main__':

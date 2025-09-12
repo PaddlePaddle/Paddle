@@ -627,7 +627,7 @@ class SplitWithNumOpInferSymbolicShapeTest(TestBase):
         self.cases = [np.random.rand(4, 6, 5)]
         self.expected = [
             "shape[4, 2, 5], data[NULL], shape[4, 2, 5], data[NULL], shape[4, 2, 5], data[NULL]",
-            "shape[S0, Mul(S1, 1 / (3)), S2], data[NULL], shape[S0, Mul(S1, 1 / (3)), S2], data[NULL], shape[S0, Mul(S1, 1 / (3)), S2], data[NULL]",
+            "shape[S0, Div(S1, 3), S2], data[NULL], shape[S0, Div(S1, 3), S2], data[NULL], shape[S0, Div(S1, 3), S2], data[NULL]",
         ]
 
     def test_eval_symbolic(self):

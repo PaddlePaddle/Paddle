@@ -25,13 +25,15 @@
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT
   paddle::dialect::FullOp full_input_op1 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{1, 512, 64},
-                                             1.5);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{1, 512, 64}, 1.5, phi::DataType::FLOAT16);
   // linear 1
   paddle::dialect::FullOp full_weight_op1 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 64}, 1.5);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64, 64}, 1.5, phi::DataType::FLOAT16);
   paddle::dialect::FullOp full_bias_op1 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64}, 1.0);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64}, 1.0, phi::DataType::FLOAT16);
   paddle::dialect::MatmulOp matmul_op1 =
       builder.Build<paddle::dialect::MatmulOp>(full_input_op1.out(),
                                                full_weight_op1.out());
@@ -39,10 +41,11 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       matmul_op1.out(), full_bias_op1.out());
   // linear 2
   paddle::dialect::FullOp full_weight_op2 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 128},
-                                             1.5);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64, 128}, 1.5, phi::DataType::FLOAT16);
   paddle::dialect::FullOp full_bias_op2 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{128}, 1.0);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{128}, 1.0, phi::DataType::FLOAT16);
   paddle::dialect::MatmulOp matmul_op2 =
       builder.Build<paddle::dialect::MatmulOp>(add_op1.out(),
                                                full_weight_op2.out());
@@ -52,10 +55,11 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::ReluOp>(add_op2.out());
   // linear 3
   paddle::dialect::FullOp full_weight_op3 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{128, 64},
-                                             1.5);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{128, 64}, 1.5, phi::DataType::FLOAT16);
   paddle::dialect::FullOp full_bias_op3 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64}, 1.0);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64}, 1.0, phi::DataType::FLOAT16);
   paddle::dialect::MatmulOp matmul_op3 =
       builder.Build<paddle::dialect::MatmulOp>(relu_op.out(),
                                                full_weight_op3.out());
@@ -65,9 +69,11 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
       builder.Build<paddle::dialect::GeluOp>(add_op3.out());
   // linear 4
   paddle::dialect::FullOp full_weight_op4 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64, 64}, 1.5);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64, 64}, 1.5, phi::DataType::FLOAT16);
   paddle::dialect::FullOp full_bias_op4 =
-      builder.Build<paddle::dialect::FullOp>(std::vector<int64_t>{64}, 1.0);
+      builder.Build<paddle::dialect::FullOp>(
+          std::vector<int64_t>{64}, 1.0, phi::DataType::FLOAT16);
   paddle::dialect::MatmulOp matmul_op4 =
       builder.Build<paddle::dialect::MatmulOp>(gelu_op1.out(),
                                                full_weight_op4.out());
@@ -78,7 +84,7 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 
   // backward
   paddle::dialect::FullOp full_grad_op = builder.Build<paddle::dialect::FullOp>(
-      std::vector<int64_t>{1, 512, 64}, 1.0);
+      std::vector<int64_t>{1, 512, 64}, 1.0, phi::DataType::FLOAT16);
 
   paddle::dialect::GeluGradOp gelu_op2_grad =
       builder.Build<paddle::dialect::GeluGradOp>(

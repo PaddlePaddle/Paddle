@@ -18,6 +18,7 @@ Usage:
     python check_op_register_type.py > all_kernels.txt
     python check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid
 """
+
 import collections
 import difflib
 import re

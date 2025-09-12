@@ -26,7 +26,7 @@ namespace distributed {
 class DistTensor;
 class TensorDistAttr;
 
-class ReshardFunction {
+class PADDLE_API ReshardFunction {
  public:
   ReshardFunction() = default;
   virtual ~ReshardFunction() = default;
@@ -46,11 +46,11 @@ class ReshardFunction {
   virtual std::string Name() { return "ReshardBase"; }
 
  protected:
-  void SetValue(DistTensor* tensor, const DenseTensor& value);
-  void SetDistProps(DistTensor* tensor,
-                    const DDim& dims,
-                    const TensorDistAttr& dist_attr);
-  void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
+  static void SetValue(DistTensor* tensor, const DenseTensor& value);
+  static void SetDistProps(DistTensor* tensor,
+                           const DDim& dims,
+                           const TensorDistAttr& dist_attr);
+  static void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
   DenseTensor* GetMutableTensor(DistTensor* tensor);
 };
 

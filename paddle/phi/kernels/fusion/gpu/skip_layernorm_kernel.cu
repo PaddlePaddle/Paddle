@@ -44,7 +44,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   int hidden = x.dims()[2];
   phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     const half *X_new = reinterpret_cast<const half *>(X_d);
     const half *Y_new = reinterpret_cast<const half *>(Y_d);
     const half *scale_new = reinterpret_cast<const half *>(scale_d);
@@ -83,7 +83,7 @@ PD_REGISTER_KERNEL(skip_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::SkipLayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(
     skip_layernorm, GPU, ALL_LAYOUT, phi::fusion::SkipLayerNormKernel, float) {}

@@ -78,7 +78,7 @@ class SuperCallWithArgument(BaseLayer):
         super().__init__()
 
     def forward(self, x):
-        y = super(__class__, self).add_one(x)
+        y = super(__class__, self).add_one(x)  # noqa: UP008
         z = super(SuperCallWithArgument, self).add_one(y)  # noqa: UP008
         return z
 

@@ -31,7 +31,8 @@ void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           common::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
-  if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn"))) {
+  if (!(graph->Has("use_mkldnn") && graph->Get<bool>("use_mkldnn")) &&
+      !(graph->Has("use_onednn") && graph->Get<bool>("use_onednn"))) {
     VLOG(3) << "Do not handle interpolate_onednn_pass";
     return;
   }
@@ -53,7 +54,7 @@ void InterpolateOneDNNPass::ApplyImpl(ir::Graph* graph) const {
                                   interpolate_op_types.end(),
                                   node->Name()) != interpolate_op_types.end()) {
       auto* op_desc = node->Op();
-      op_desc->SetAttr("use_mkldnn", true);
+      op_desc->SetAttr("use_onednn", true);
       ++found_count;
     }
   }

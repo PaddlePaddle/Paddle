@@ -562,7 +562,6 @@ class TestGatherNdOpWithHighRankDiffBF16(TestGatherNdOpWithHighRankDiff):
 
 # Test Python API
 class TestGatherNdOpAPI(unittest.TestCase):
-
     def test_case1(self):
         with static_guard():
             x1 = paddle.static.data(
@@ -596,7 +595,6 @@ class TestGatherNdOpAPI(unittest.TestCase):
 
 # Test Raise Index Error
 class TestGatherNdOpRaise(unittest.TestCase):
-
     def test_check_raise(self):
         def check_raise_is_test():
             with static_guard():
@@ -617,51 +615,49 @@ class TestGatherNdOpRaise(unittest.TestCase):
 
 
 class TestGatherNdError(unittest.TestCase):
-
     def test_error1(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                shape = [8, 9, 6]
-                x = paddle.static.data(shape=shape, dtype='float32', name='x')
-                index = paddle.static.data(
-                    shape=shape, dtype='bool', name='index'
-                )
-                np_x = np.random.random(shape).astype('float32')
-                np_index = np.array(
-                    np.random.randint(2, size=shape, dtype=bool)
-                )
+            ),
+        ):
+            shape = [8, 9, 6]
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            index = paddle.static.data(shape=shape, dtype='bool', name='index')
+            np_x = np.random.random(shape).astype('float32')
+            np_index = np.array(np.random.randint(2, size=shape, dtype=bool))
 
-                def test_x_type():
-                    paddle.gather_nd(np_x, index)
+            def test_x_type():
+                paddle.gather_nd(np_x, index)
 
-                self.assertRaises(TypeError, test_x_type)
+            self.assertRaises(TypeError, test_x_type)
 
-                def test_index_type():
-                    paddle.gather_nd(x, np_index)
+            def test_index_type():
+                paddle.gather_nd(x, np_index)
 
-                self.assertRaises(TypeError, test_index_type)
+            self.assertRaises(TypeError, test_index_type)
 
     def test_error2(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                shape = [8, 9, 6]
-                x = paddle.static.data(shape=shape, dtype='float32', name='x')
-                index_float = paddle.static.data(
-                    shape=shape, dtype='float32', name='index_float'
-                )
+            ),
+        ):
+            shape = [8, 9, 6]
+            x = paddle.static.data(shape=shape, dtype='float32', name='x')
+            index_float = paddle.static.data(
+                shape=shape, dtype='float32', name='index_float'
+            )
 
-                def test_index_dtype():
-                    paddle.gather_nd(x, index_float)
+            def test_index_dtype():
+                paddle.gather_nd(x, index_float)
 
-                self.assertRaises(TypeError, test_index_dtype)
+            self.assertRaises(TypeError, test_index_dtype)
 
 
 class TestGatherNdAPI2(unittest.TestCase):
-
     def test_static(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
@@ -719,6 +715,58 @@ class TestGatherNdAPI2(unittest.TestCase):
         expected_output = np.array([[3, 4]])
         np.testing.assert_allclose(output_np, expected_output, rtol=1e-05)
         paddle.enable_static()
+
+
+class TestGatherNdOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([10, 20])
+        index = np.random.random([0]).astype("int32")
+        output = xnp[tuple(index.T)]
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_pir=True,
+        )
+
+    def test_check_output_cpu(self):
+        self.check_output_with_place(check_pir=True, place=paddle.CPUPlace())
+
+
+class TestGatherNdOp_ZeroSize2(TestGatherNdOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([10, 20])
+        index = np.random.random([2, 0]).astype("int32")
+        output = np.tile(xnp, [2, 1, 1])
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
+
+
+class TestGatherNdOp_ZeroSize3(TestGatherNdOp_ZeroSize):
+    def setUp(self):
+        self.op_type = "gather_nd"
+        self.python_api = paddle.gather_nd
+        self.public_python_api = paddle.gather_nd
+        xnp = np.random.random([1, 2, 3, 2])
+        index = np.random.random([1, 1, 1, 0]).astype("int32")
+        output = np.tile(xnp, [1, 1, 1, 1, 1, 1, 1])
+
+        self.inputs = {'X': xnp, 'Index': index}
+        self.outputs = {'Out': output}
 
 
 if __name__ == "__main__":

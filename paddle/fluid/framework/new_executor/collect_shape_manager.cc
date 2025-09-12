@@ -28,24 +28,42 @@ void CollectShapeManager::CollectShapeInfo(
     framework::ValueExecutionInfo *value_exe_info,
     framework::Scope *scope) {
   std::lock_guard<std::mutex> lock(info_mutex_);
+  VLOG(3) << "collect shape in instruction:" << instr->Name();
   is_shape_range_info_ready_ = false;
-  for (auto &output : instr->Outputs()) {
-    auto var_name = value_exe_info->GetVarName(output.first);
-    auto *var = scope->FindVar(var_name);
-    if (!var || !var->IsType<phi::DenseTensor>()) continue;
-
-    // inplace var in kernel program has same value between input and output,
-    // we should use ‘continue’ to prevent duplicate data entries.
-    bool is_inplace_var = false;
-    for (const auto &inplace_var_pair : instr->InplaceInfo()) {
-      if (inplace_var_pair.first == var) {
-        is_inplace_var = true;
-      }
+  for (auto &input : instr->Inputs()) {
+    VLOG(3) << "input id:" << input.first.impl();
+    if (!op_value2instr_id_.count(input.first)) {
+      // Because the input value maybe same between different ops.
+      // To prevent duplicate shape collection, we only select one op for
+      // getting shape of value
+      op_value2instr_id_[input.first] = instr->Id();
     }
-    if (is_inplace_var) continue;
+    if (op_value2instr_id_[input.first] != instr->Id()) {
+      VLOG(3) << "input shape has been collected in same instruction, jump it, "
+                 "and input id:"
+              << input.first.impl();
+      continue;
+    }
+    auto var_name = value_exe_info->GetVarName(input.first);
+    auto *var = scope->FindVar(var_name);
+    if (!var || !var->IsType<phi::DenseTensor>()) {
+      VLOG(3) << "input var is null : " << (var == nullptr);
+      VLOG(3) << "input var is dense_tensor : "
+              << (var->IsType<phi::DenseTensor>());
+      VLOG(3) << "input is null or not dense_tensor, jump it, and input id:"
+              << input.first.impl();
+      continue;
+    }
 
     auto tensor = var->Get<phi::DenseTensor>();
-    if (!tensor.initialized() && !instr->NoNeedBuffer().count(output.first)) {
+    if (!tensor.has_allocation() && !instr->NoNeedBuffer().count(input.first)) {
+      VLOG(3) << "input tensor is has_allocation: "
+              << (tensor.has_allocation());
+      VLOG(3) << "input tensor is no need buffer:"
+              << instr->NoNeedBuffer().count(input.first);
+      VLOG(3) << "input tensor is not initialized and not no need buffer, jump "
+                 "it, and input id:"
+              << input.first.impl();
       continue;
     }
     paddle::platform::DeviceContextPool &pool =
@@ -65,7 +83,7 @@ void CollectShapeManager::CollectShapeInfo(
     for (int i = 0; i < static_cast<int>(shape.size()); ++i)
       shape[i] = static_cast<int32_t>(dim[i]);
     if (!shape.empty()) {
-      shape_info_[output.first].emplace_back(shape);
+      shape_info_[input.first].emplace_back(shape);
     } else if (tensor.numel() > 0) {
       // This must be a zero dimension tensor.
       PADDLE_ENFORCE_EQ(tensor.numel(),
@@ -74,7 +92,7 @@ void CollectShapeManager::CollectShapeInfo(
                             "This tensor must have one element, but got %ld.",
                             tensor.numel()));
       std::vector<int32_t> zero_shape(1, 1);
-      shape_info_[output.first].emplace_back(zero_shape);
+      shape_info_[input.first].emplace_back(zero_shape);
     }
 
     // We need collect value range for shape tensor for Paddle-TRT's use.
@@ -120,7 +138,7 @@ void CollectShapeManager::CollectShapeInfo(
                              nullptr);
 #endif
       }
-      shape_tensor_info_[output.first].emplace_back(int32_host);
+      shape_tensor_info_[input.first].emplace_back(int32_host);
     }
   }
 }

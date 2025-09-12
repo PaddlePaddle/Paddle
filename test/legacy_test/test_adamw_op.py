@@ -18,10 +18,10 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_devices
 
 import paddle
-from paddle import base
+from paddle import base, nn
 from paddle.framework import core
 
 
@@ -306,43 +306,45 @@ class TestAdamWOp(unittest.TestCase):
         exe = base.Executor(place)
         train_prog = base.Program()
         startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                conv = paddle.nn.Conv2D(
-                    in_channels=3,
-                    out_channels=8,
-                    kernel_size=3,
-                )(data)
-                loss = paddle.mean(conv)
-                if paddle.framework.in_pir_mode():
-                    beta1 = paddle.pir.core.create_persistable_value(
-                        shape=[1],
-                        dtype='float32',
-                        initializer=paddle.nn.initializer.Constant(0.85),
-                    )
-                    beta2 = paddle.pir.core.create_persistable_value(
-                        shape=[1],
-                        dtype='float32',
-                        initializer=paddle.nn.initializer.Constant(0.95),
-                    )
-                else:
-                    beta1 = paddle.static.create_global_var(
-                        shape=[1], value=0.85, dtype='float32', persistable=True
-                    )
-                    beta2 = paddle.static.create_global_var(
-                        shape=[1], value=0.95, dtype='float32', persistable=True
-                    )
-                betas = [beta1, beta2]
-                opt = paddle.optimizer.AdamW(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                    amsgrad=self.amsgrad,
+        with (
+            base.program_guard(train_prog, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(name="data", shape=shape)
+            conv = paddle.nn.Conv2D(
+                in_channels=3,
+                out_channels=8,
+                kernel_size=3,
+            )(data)
+            loss = paddle.mean(conv)
+            if paddle.framework.in_pir_mode():
+                beta1 = paddle.pir.core.create_persistable_value(
+                    shape=[1],
+                    dtype='float32',
+                    initializer=paddle.nn.initializer.Constant(0.85),
                 )
-                opt.minimize(loss)
+                beta2 = paddle.pir.core.create_persistable_value(
+                    shape=[1],
+                    dtype='float32',
+                    initializer=paddle.nn.initializer.Constant(0.95),
+                )
+            else:
+                beta1 = paddle.static.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True
+                )
+                beta2 = paddle.static.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True
+                )
+            betas = [beta1, beta2]
+            opt = paddle.optimizer.AdamW(
+                learning_rate=1e-5,
+                beta1=beta1,
+                beta2=beta2,
+                weight_decay=0.01,
+                epsilon=1e-8,
+                amsgrad=self.amsgrad,
+            )
+            opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype('float32')
@@ -390,33 +392,35 @@ class TestAdamWOp(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    conv_layer = paddle.nn.Conv2D(3, 8, 3)
-                    conv = conv_layer(data)
-                    loss = paddle.mean(conv)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                conv_layer = paddle.nn.Conv2D(3, 8, 3)
+                conv = conv_layer(data)
+                loss = paddle.mean(conv)
 
-                    beta1 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.85),
-                    )
-                    beta2 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.95),
-                    )
-                    betas = [beta1, beta2]
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                        amsgrad=self.amsgrad,
-                    )
-                    opt.minimize(loss)
+                beta1 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.85),
+                )
+                beta2 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.95),
+                )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                    amsgrad=self.amsgrad,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype('float32')
@@ -753,15 +757,7 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
                 optimizer.clear_grad()
 
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+        places = get_devices()
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places
@@ -1061,8 +1057,8 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(
                 linear1.weight.numpy(),
                 fc1_w,
-                atol=2e-9 if core.is_compiled_with_xpu() else 0,
-                rtol=1e-6,
+                atol=1e-8 if core.is_compiled_with_xpu() else 0,
+                rtol=1e-5,
             )
             np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
@@ -1085,87 +1081,73 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    x = paddle.static.data(
-                        name='x', shape=[None, 10], dtype='float32'
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=[None, 1], dtype='float32'
-                    )
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
 
-                    weight_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.w_0"
-                    )
-                    bias_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    weight_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.w_0"
-                    )
-                    bias_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    linear1 = paddle.nn.Linear(
-                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                    )
-                    linear2 = paddle.nn.Linear(
-                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                    )
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
 
-                    out = linear1(x)
-                    out = linear2(out)
+                out = linear1(x)
+                out = linear2(out)
 
-                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype(
-                        "float32"
-                    )
+                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
+                    "float32"
+                )
+                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype("float32")
+                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
+                    "float32"
+                )
+                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype("float32")
 
-                    cost = paddle.nn.functional.square_error_cost(
-                        input=out, label=y
-                    )
-                    avg_cost = paddle.mean(cost)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
+                avg_cost = paddle.mean(cost)
 
-                    simple_lr_fun = partial(
-                        simple_lr_setting, decay_rate=0.8, n_layers=2
-                    )
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
 
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=learning_rate,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=weight_decay,
-                        epsilon=epsilon,
-                        lr_ratio=simple_lr_fun,
-                        amsgrad=self.amsgrad,
-                    )
-                    opt.minimize(avg_cost)
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
+                    lr_ratio=simple_lr_fun,
+                    amsgrad=self.amsgrad,
+                )
+                opt.minimize(avg_cost)
 
             def get_numpy_output(
                 param, grad, moment1, moment2, moment2_max, lr_ratio, t
@@ -1313,87 +1295,73 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
             train_prog = paddle.static.Program()
             train_startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, train_startup):
-                with base.unique_name.guard():
-                    x = paddle.static.data(
-                        name='x', shape=[None, 10], dtype='float32'
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=[None, 1], dtype='float32'
-                    )
+            with (
+                paddle.static.program_guard(train_prog, train_startup),
+                base.unique_name.guard(),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
 
-                    weight_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.w_0"
-                    )
-                    bias_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    weight_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.w_0"
-                    )
-                    bias_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    linear1 = paddle.nn.Linear(
-                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                    )
-                    linear2 = paddle.nn.Linear(
-                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                    )
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
 
-                    out = linear1(x)
-                    out = linear2(out)
+                out = linear1(x)
+                out = linear2(out)
 
-                    fc1_w_mon1 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2 = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
-                        "float32"
-                    )
-                    fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
-                    fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon1 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2 = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
-                        "float32"
-                    )
-                    fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
-                    fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype(
-                        "float32"
-                    )
+                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2_max = np.zeros(linear1.weight.shape).astype(
+                    "float32"
+                )
+                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2_max = np.zeros(linear1.bias.shape).astype("float32")
+                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2_max = np.zeros(linear2.weight.shape).astype(
+                    "float32"
+                )
+                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2_max = np.zeros(linear2.bias.shape).astype("float32")
 
-                    cost = paddle.nn.functional.square_error_cost(
-                        input=out, label=y
-                    )
-                    avg_cost = paddle.mean(cost)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
+                avg_cost = paddle.mean(cost)
 
-                    simple_lr_fun = partial(
-                        simple_lr_setting, decay_rate=0.8, n_layers=2
-                    )
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
 
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=learning_rate,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=weight_decay,
-                        epsilon=epsilon,
-                        lr_ratio=simple_lr_fun,
-                        amsgrad=self.amsgrad,
-                    )
-                    _, params_grads = opt.minimize(avg_cost)
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
+                    lr_ratio=simple_lr_fun,
+                    amsgrad=self.amsgrad,
+                )
+                _, params_grads = opt.minimize(avg_cost)
 
             def get_numpy_output(
                 param, grad, moment1, moment2, moment2_max, lr_ratio, t
@@ -1428,47 +1396,45 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
             test_prog = paddle.static.Program()
             test_startup = paddle.static.Program()
-            with paddle.static.program_guard(test_prog, test_startup):
-                with base.unique_name.guard():
-                    x = paddle.static.data(
-                        name='x', shape=[None, 10], dtype='float32'
-                    )
-                    y = paddle.static.data(
-                        name='y', shape=[None, 1], dtype='float32'
-                    )
+            with (
+                paddle.static.program_guard(test_prog, test_startup),
+                base.unique_name.guard(),
+            ):
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
 
-                    weight_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.w_0"
-                    )
-                    bias_attr1 = paddle.framework.ParamAttr(
-                        name="linear_0.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    weight_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.w_0"
-                    )
-                    bias_attr2 = paddle.framework.ParamAttr(
-                        name="linear_1.b_0",
-                        initializer=paddle.nn.initializer.Constant(value=1.0),
-                    )
-                    linear1_2 = paddle.nn.Linear(
-                        10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
-                    )
-                    linear2_2 = paddle.nn.Linear(
-                        32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
-                    )
+                weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
+                bias_attr1 = paddle.framework.ParamAttr(
+                    name="linear_0.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
+                bias_attr2 = paddle.framework.ParamAttr(
+                    name="linear_1.b_0",
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1_2 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2_2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
 
-                    out = linear1_2(x)
-                    out = linear2_2(out)
+                out = linear1_2(x)
+                out = linear2_2(out)
 
-                    cost = paddle.nn.functional.square_error_cost(
-                        input=out, label=y
-                    )
-                    avg_cost = paddle.mean(cost)
+                cost = paddle.nn.functional.square_error_cost(
+                    input=out, label=y
+                )
+                avg_cost = paddle.mean(cost)
 
-                    simple_lr_fun = partial(
-                        simple_lr_setting, decay_rate=0.8, n_layers=2
-                    )
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
 
             random.seed(2022)
             np.random.seed(2022)
@@ -1699,8 +1665,8 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(
                 linear1.weight.numpy(),
                 fc1_w,
-                atol=2e-9 if core.is_compiled_with_xpu() else 0,
-                rtol=1e-6,
+                atol=1e-8 if core.is_compiled_with_xpu() else 0,
+                rtol=1e-5,
             )
             np.testing.assert_allclose(linear1.bias.numpy(), fc1_b, rtol=1e-6)
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
@@ -1720,6 +1686,246 @@ class TestAdamWOpLayerwiseLRAMSGrad(TestAdamWOpLayerwiseLR):
         else:
             self.amsgrad = True
             self.no_check_set = None
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "core is not compiled with XPU",
+)
+class TestAdamwMomentBfloat16Amp(unittest.TestCase):
+    def setUp(self):
+        self.amsgrad = False
+        self.num_steps = 10  # 增加训练的 step 数
+
+    def test_adamw_moment_bfloat16_amp(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        a.stop_gradient = True
+
+        paddle.seed(111)
+        linear1 = nn.Linear(13, 5)
+        paddle.seed(111)
+        linear2 = nn.Linear(13, 5)
+
+        adam1 = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear1.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+            amsgrad=self.amsgrad,
+        )
+        adam2 = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear2.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+            amsgrad=self.amsgrad,
+        )
+
+        for _ in range(self.num_steps):
+            output1 = linear1(a)
+            loss1 = paddle.mean(output1)
+            loss1.backward()
+            adam1.step()
+            adam1.clear_grad()
+
+        model, optimizer = paddle.amp.decorate(
+            models=linear2, optimizers=adam2, level='O2', dtype="bfloat16"
+        )
+
+        for _ in range(self.num_steps):
+            with paddle.amp.auto_cast(
+                dtype="bfloat16",
+                enable=True,
+                custom_white_list=None,
+                custom_black_list=None,
+                level="O2",
+            ):
+                output2 = model(a)
+                loss2 = paddle.mean(output2)
+                loss2.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+
+        np.testing.assert_allclose(
+            loss1.astype(paddle.float32).numpy(),
+            loss2.astype(paddle.float32).numpy(),
+            rtol=1e-2,
+            atol=1e-2,
+        )
+
+        for param1, param2 in zip(linear1.parameters(), linear2.parameters()):
+            np.testing.assert_allclose(
+                param1.astype(paddle.float32).numpy(),
+                param2.astype(paddle.float32).numpy(),
+                rtol=1e-2,
+                atol=1e-2,
+            )
+
+    def _get_places(self):
+        places = []
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        if paddle.is_compiled_with_xpu():
+            places.append('xpu')
+        return places
+
+    def _test_adamw_op_dygraph_place_amp_with_maingrad_with_moment_bf16(
+        self, place, shape, use_main_grad
+    ):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+
+        found_inf = None
+
+        _weight_decay = 0.1
+        with_decay = True
+        _lazy_mode = False
+        find_master = True
+
+        _epsilon = 1e-8
+
+        _beta1 = 0.9
+        _beta2 = 0.99
+        lr_ratio_ = 1.0
+
+        lr_rate = 1e-8
+
+        param = paddle.randn(shape).astype(paddle.bfloat16)
+        master_weight = param.astype(paddle.float32)
+        grad = paddle.randn(shape).astype(paddle.bfloat16)
+        main_grad = grad.astype(paddle.float32)
+        moment1 = paddle.randn(shape).astype(paddle.bfloat16)
+        moment2 = paddle.randn(shape).astype(paddle.bfloat16).abs()
+        moment2_max = paddle.zeros(shape).astype(paddle.bfloat16)
+        lr = paddle.zeros([1]).astype(paddle.float32)
+        lr[0] = lr_rate
+        beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta1_pow_acc[0] = _beta1**10
+        beta2_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta2_pow_acc[0] = _beta2**10
+
+        ref_param = param.astype(paddle.float32).clone().detach()
+        ref_beta1_pow_acc = (
+            beta1_pow_acc.astype(paddle.float32).clone().detach()
+        )
+        ref_beta2_pow_acc = (
+            beta2_pow_acc.astype(paddle.float32).clone().detach()
+        )
+        ref_moment_1 = moment1.astype(paddle.bfloat16).clone().detach()
+        ref_moment_2 = moment2.astype(paddle.bfloat16).clone().detach()
+        ref_moment_2_max = moment2_max.astype(paddle.bfloat16).clone().detach()
+
+        # reference code
+        _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
+            ref_param,
+            main_grad,
+            lr,
+            ref_moment_1,
+            ref_moment_2,
+            ref_moment_2_max,
+            ref_beta1_pow_acc,
+            ref_beta2_pow_acc,
+            master_weight,
+            found_inf,
+            _beta1,
+            _beta2,
+            _epsilon,
+            lr_ratio_,
+            _weight_decay,
+            with_decay,
+            _lazy_mode,
+            1000,
+            False,
+            False,
+            self.amsgrad,
+        )
+
+        if use_main_grad:
+            _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
+                param,
+                main_grad,
+                lr,
+                moment1,
+                moment2,
+                moment2_max,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                _beta1,
+                _beta2,
+                _epsilon,
+                lr_ratio_,
+                _weight_decay,
+                with_decay,
+                _lazy_mode,
+                1000,
+                find_master,
+                False,
+                self.amsgrad,
+            )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+
+            if self.amsgrad:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-4
+                )
+            else:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+                )
+
+        else:
+            _, _, _, _, _, _, _ = paddle._C_ops.adamw_(
+                param,
+                grad,
+                lr,
+                moment1,
+                moment2,
+                moment2_max,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                _beta1,
+                _beta2,
+                _epsilon,
+                lr_ratio_,
+                _weight_decay,
+                with_decay,
+                _lazy_mode,
+                1000,
+                find_master,
+                False,
+                self.amsgrad,
+            )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+
+            if self.amsgrad:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-4
+                )
+            else:
+                np.testing.assert_allclose(
+                    master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+                )
+
+    def test_adamw_op_dygraph_place_amp_with_maingrad_with_moment_bf16(self):
+        for _ in range(10):
+            shape = paddle.randint(1, 1024, [2])
+            for place in self._get_places():
+                use_main_grad_list = [True, False]
+                for use_main_grad in use_main_grad_list:
+                    self._test_adamw_op_dygraph_place_amp_with_maingrad_with_moment_bf16(
+                        place, shape, use_main_grad
+                    )
 
 
 if __name__ == "__main__":

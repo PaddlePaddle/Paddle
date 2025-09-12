@@ -149,7 +149,7 @@ class MyLayer2(paddle.nn.Layer):
 
     def forward(self, indices):
         # mind the difference with MyLayer
-        # In this example, the forward method involes all params
+        # In this example, the forward method involves all params
         loss = paddle.mean(
             self.linear_0(self.embed0(indices))
             + self.linear_1(self.embed1(indices))

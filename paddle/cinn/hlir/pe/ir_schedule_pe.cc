@@ -14,7 +14,6 @@
 
 #include "paddle/cinn/hlir/pe/ir_schedule_pe.h"
 
-#include <absl/container/flat_hash_map.h>
 #include <isl/cpp.h>
 
 #include <algorithm>
@@ -24,7 +23,6 @@
 #include <numeric>
 #include <utility>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/pe/load_x86_params.h"
@@ -34,9 +32,9 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
-#include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/common/enforce.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {
 namespace hlir {
@@ -1300,9 +1298,9 @@ void IRCudaScheduleConv(ir::IRSchedule &ir_sch,  // NOLINT
 
   int n = output->shape[0].as_int32();
   int c = output->shape[1].as_int32();
-  optim::Simplify(&(output->shape[2]));
+  output->shape[2] = optim::ArithSimplify(output->shape[2]);
   int h = output->shape[2].as_int32();
-  optim::Simplify(&(output->shape[3]));
+  output->shape[3] = optim::ArithSimplify(output->shape[3]);
   int w = output->shape[3].as_int32();
   int rc = input_pad->shape[1].as_int32();
 
@@ -1480,8 +1478,8 @@ void IRCudaScheduleConv2(ir::IRSchedule &ir_sch,  // NOLINT
 
   // stages[input_pad]->ComputeInline();
 
-  optim::Simplify(&(output->shape[2]));
-  optim::Simplify(&(output->shape[3]));
+  output->shape[2] = optim::ArithSimplify(output->shape[2]);
+  output->shape[3] = optim::ArithSimplify(output->shape[3]);
 
   VLOG(3) << "Begin IRCudaScheduleConv2 with expr : "
           << ir_sch.GetModule().GetExprs().at(0);

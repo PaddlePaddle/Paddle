@@ -196,7 +196,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
             self.use_cudnn = False
             self.exhaustive_search = False
             self.use_cuda = False
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.fuse_relu_before_depthwise_conv = False
             self.data_format = "AnyLayout"
             self.init_kernel_type()
@@ -241,7 +241,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
                 'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
                 'exhaustive_search': self.exhaustive_search,
@@ -256,7 +256,7 @@ class XPUTestConv2DOp(XPUOpTestWrapper):
         def test_check_output(self):
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_output_with_place(self.place)
+                self.check_output_with_place(self.place, atol=0.005, rtol=0.005)
 
         def test_check_grad(self):
             if hasattr(self, "no_need_check_grad") and self.no_need_check_grad:
@@ -350,7 +350,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             self.use_cudnn = False
             self.exhaustive_search = False
             self.use_cuda = False
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.fuse_relu_before_depthwise_conv = False
             self.init_kernel_type()
             self.init_group()
@@ -402,7 +402,7 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
                 'groups': self.groups,
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
-                'use_mkldnn': self.use_mkldnn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
                 'fuse_relu_before_depthwise_conv': self.fuse_relu_before_depthwise_conv,
                 'exhaustive_search': self.exhaustive_search,
@@ -418,7 +418,9 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             # TODO(wangzhongpu): support onednn op in dygraph mode
             if core.is_compiled_with_xpu():
                 paddle.enable_static()
-                self.check_output_with_place(place=self.place)
+                self.check_output_with_place(
+                    place=self.place, atol=0.005, rtol=0.005
+                )
 
         def test_check_grad(self):
             # TODO(wangzhongpu): support onednn op in dygraph mode

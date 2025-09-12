@@ -58,7 +58,6 @@ class TestTrilIndicesOpCase2(TestTrilIndicesOp):
 
 
 class TestTrilIndicesAPICaseStatic(unittest.TestCase):
-
     def test_static(self):
         places = (
             [paddle.CPUPlace(), paddle.base.CUDAPlace(0)]
@@ -110,7 +109,6 @@ class TestTrilIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTrilIndicesAPICaseDefault(unittest.TestCase):
-
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(

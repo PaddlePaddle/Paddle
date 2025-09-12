@@ -55,8 +55,10 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/enforce.h"
 
+COMMON_DECLARE_bool(use_default_stream);
 namespace phi {
 
 namespace internal {
@@ -331,10 +333,12 @@ struct GPUContext::Impl {
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
-    PADDLE_ENFORCE_NOT_NULL(
-        s,
-        common::errors::InvalidArgument(
-            "The GPU stream is nullptr. It must not be null."));
+    if (!FLAGS_use_default_stream) {
+      PADDLE_ENFORCE_NOT_NULL(
+          s,
+          common::errors::InvalidArgument(
+              "The GPU stream is nullptr. It must not be null."));
+    }
     return s;
   }
 

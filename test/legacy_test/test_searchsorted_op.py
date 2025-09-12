@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle.base import core
@@ -45,8 +44,17 @@ class TestSearchSorted(OpTest):
     def test_check_output(self):
         self.check_output(check_pir=True)
 
+    def init_shape(self):
+        self.shape = None
+
     def init_test_case(self):
-        self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")
+        self.init_shape()
+        if self.shape is None:
+            self.sorted_sequence = np.array([1, 3, 5, 7, 9]).astype("float32")
+        else:
+            self.sorted_sequence = np.random.randn(*self.shape).astype(
+                "float32"
+            )
         self.values = np.array([[3, 6, 9], [3, 6, 9]]).astype("float32")
         self.side = "left"
 
@@ -90,6 +98,11 @@ class TestSearchSortedOp5(TestSearchSorted):
             [[np.inf, np.inf, np.inf], [np.nan, np.nan, np.nan]]
         ).astype("float64")
         self.side = "right"
+
+
+class TestSearchSorted_ZeroSize(TestSearchSorted):
+    def init_shape(self):
+        self.shape = (0,)
 
 
 @unittest.skipIf(
@@ -184,15 +197,7 @@ class TestSearchSortedAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_test_case()
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     def test_static_api(self):
         paddle.enable_static()
@@ -246,7 +251,6 @@ class TestSearchSortedAPI(unittest.TestCase):
 
 
 class TestSearchSortedError(unittest.TestCase):
-
     def test_error_api(self):
         paddle.enable_static()
 

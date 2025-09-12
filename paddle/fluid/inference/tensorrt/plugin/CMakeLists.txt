@@ -31,7 +31,7 @@ list(
   fused_token_prune_op_plugin.cu
   layernorm_shift_partition_op.cu
   reverse_roll_op_plugin.cu
-  prelnlayernorm_shift_partition_op.cu
+  preln_layernorm_shift_partition_op.cu
   trans_layernorm_op_plugin.cu
   merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
@@ -55,17 +55,37 @@ if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
 
-nv_library(
-  tensorrt_plugin
-  SRCS ${TRT_FILES}
-  DEPS phi tensorrt_engine tensor common
-       tensorrt_dynamic_shape_infermeta_factory
-       tensorrt_plugin_arg_mapping_context)
-
-nv_test(
-  test_split_plugin
-  SRCS test_split_plugin.cc
-  DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)
+if(WIN32)
+  nv_library(
+    tensorrt_plugin
+    SRCS ${TRT_FILES}
+    DEPS phi
+         tensorrt_engine
+         tensor
+         common
+         tensorrt_dynamic_shape_infermeta_factory
+         tensorrt_plugin_arg_mapping_context
+         dynload_tensorrt)
+else()
+  nv_library(
+    tensorrt_plugin
+    SRCS ${TRT_FILES}
+    DEPS phi tensorrt_engine tensor common
+         tensorrt_dynamic_shape_infermeta_factory
+         tensorrt_plugin_arg_mapping_context)
+endif()
+if(WIN32)
+  nv_test(
+    test_split_plugin
+    SRCS test_split_plugin.cc
+    DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin
+         dynload_tensorrt)
+else()
+  nv_test(
+    test_split_plugin
+    SRCS test_split_plugin.cc
+    DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)
+endif()
 
 if(NOT WIN32)
   nv_test(

@@ -16,14 +16,13 @@
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
-template <typename T>
+template <typename T, typename IndexT>
 __global__ void WhereGradCUDAKernel(
-    const int N, const T* dout, const bool* cond, T* dx, T* dy) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (; idx < N; idx += blockDim.x * gridDim.x) {
+    const IndexT N, const T* dout, const bool* cond, T* dx, T* dy) {
+  CUDA_KERNEL_LOOP_TYPE(idx, N, IndexT) {
     if (dx != nullptr) {
       dx[idx] = cond[idx] ? dout[idx] : static_cast<T>(0.);
     }
@@ -34,7 +33,7 @@ __global__ void WhereGradCUDAKernel(
 }
 
 template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
+void WhereGradKernel(const Context& dev_ctx,
                      const DenseTensor& condition,
                      const DenseTensor& x,
                      const DenseTensor& y,
@@ -44,15 +43,35 @@ void WhereGradKernel(const Context& ctx,
   const bool* cond_data = condition.data<bool>();
   auto numel = condition.numel();
   auto* dout = out_grad.data<T>();
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
+    }
+    return;
+  }
+  T* dx = (x_grad != nullptr) ? dev_ctx.template Alloc<T>(x_grad) : nullptr;
+  T* dy = (y_grad != nullptr) ? dev_ctx.template Alloc<T>(y_grad) : nullptr;
 
-  T* dx = (x_grad != nullptr) ? ctx.template Alloc<T>(x_grad) : nullptr;
-  T* dy = (y_grad != nullptr) ? ctx.template Alloc<T>(y_grad) : nullptr;
-
-  auto stream = ctx.stream();
-  auto config = backends::gpu::GetGpuLaunchConfig1D(ctx, numel);
-  WhereGradCUDAKernel<T>
-      <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-          numel, dout, cond_data, dx, dy);
+  auto stream = dev_ctx.stream();
+  auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  if (numel <= std::numeric_limits<int>::max()) {
+    WhereGradCUDAKernel<T, int>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  } else {
+    WhereGradCUDAKernel<T, int64_t>
+        <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
+            numel, dout, cond_data, dx, dy);
+  }
 }
 
 }  // namespace phi
@@ -61,9 +80,15 @@ PD_REGISTER_KERNEL(where_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::WhereGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   bool,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

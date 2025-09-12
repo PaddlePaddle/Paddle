@@ -753,13 +753,13 @@ void EagerReducer::PrepareForBackward(const std::vector<Tensor> &outputs) {
 }
 
 void EagerReducer::AddDistHook(size_t var_index) {
-  PADDLE_ENFORCE_LT(
-      var_index,
-      variable_locators_.size(),
-      common::errors::OutOfRange("Out of bounds variable index. it must be less"
-                                 "than %d, but it is %d",
-                                 variable_locators_.size(),
-                                 var_index));
+  PADDLE_ENFORCE_LT(var_index,
+                    variable_locators_.size(),
+                    common::errors::OutOfRange(
+                        "Out of bounds variable index. it must be less "
+                        "than %d, but it is %d",
+                        variable_locators_.size(),
+                        var_index));
 
   // gradient synchronization is not required when grad_need_hooks_ is false.
   if (!grad_need_hooks_) {

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <stddef.h>  // for size_t
 
 #include <string>
+#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace memory {
@@ -36,7 +37,7 @@ class SystemAllocator {
   virtual bool UseGpu() const = 0;
 };
 
-class CPUAllocator : public SystemAllocator {
+class PADDLE_API CPUAllocator : public SystemAllocator {
  public:
   virtual void* Alloc(size_t* index, size_t size);
   virtual void Free(void* p, size_t size, size_t index);
@@ -65,6 +66,18 @@ class CUDAPinnedAllocator : public SystemAllocator {
 
  private:
   size_t cuda_pinnd_alloc_size_ = 0;
+};
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+class XPUPinnedAllocator : public SystemAllocator {
+ public:
+  virtual void* Alloc(size_t* index, size_t size);
+  virtual void Free(void* p, size_t size, size_t index);
+  virtual bool UseGpu() const;
+
+ private:
+  size_t xpu_pinned_alloc_size_ = 0;
 };
 #endif
 

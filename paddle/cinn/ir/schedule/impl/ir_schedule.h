@@ -13,12 +13,12 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/schedule/schedule_base.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 // #include "paddle/cinn/ir/schedule/utils/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 
@@ -87,7 +87,6 @@ class DyScheduleImpl : public ScheduleBase {
   void ComputeInline(const Expr& schedule_block);
   void ReverseComputeInline(const Expr& schedule_block);
   void Bind(const Expr& loop, const std::string& thread_axis);
-  Expr Rfactor(const Expr& rf_loop, int rf_axis);
   Expr FactorizeReduction(const Expr& rf_loop,
                           int rf_axis,
                           bool with_write_back_block_init = true);

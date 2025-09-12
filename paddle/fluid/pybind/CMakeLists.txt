@@ -44,27 +44,23 @@ set(PYBIND_DEPS
     prim_utils
     detail_op_handle
     type_info
-    auto_parallel)
+    auto_parallel
+    executor_cache)
 
+if(WIN32)
+  list(APPEND PYBIND_DEPS dynload_common)
+endif()
 if(WITH_GPU)
   list(APPEND PYBIND_DEPS gpu_event_timer)
+  if(WIN32)
+    list(APPEND PYBIND_DEPS dynload_cuda cuda_graph_lib dynload_tensorrt)
+  endif()
 endif()
 
 if(WITH_CINN)
   set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms cinn_transforms
                   sub_graph_checker add_cinn_pass)
   list(REMOVE_ITEM PYBIND_DEPS imperative_flag)
-endif()
-
-if(WITH_PSCORE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
-  if(WITH_HETERPS)
-    set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
-  endif()
-endif()
-if(WITH_RPC)
-  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi
-                  common)
 endif()
 
 if(WITH_IPU)
@@ -136,6 +132,7 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+    cudart_py.cc
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
@@ -146,11 +143,23 @@ set(PYBIND_SRCS
     sot/eval_frame.c
     sot/guards.cc
     op_callstack_utils.cc
-    python_callable_registry.cc)
+    python_callable_registry.cc
+    arg_pre_process.cc
+    args_mapper.cc)
 
-#ifdef PADDLE_WITH_DISTRIBUTE
-set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
-#endif
+if(WITH_DISTRIBUTE)
+  set(PYBIND_SRCS ${PYBIND_SRCS} dist_api.cc)
+
+  string(FIND "${CUDA_ARCH_BIN}" "90" ARCH_BIN_CONTAINS_90)
+  if(WITH_GPU AND (ARCH_BIN_CONTAINS_90 GREATER -1))
+    set(PYBIND_DEPS ${PYBIND_DEPS} deep_ep)
+    set(PYBIND_SRCS ${PYBIND_SRCS} deep_ep_api.cc)
+    add_definitions(-DPADDLE_WITH_DEEP_EP)
+    if(WITH_NVSHMEM)
+      set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
+    endif()
+  endif()
+endif()
 
 if(NOT WITH_SHARED_IR)
   # Note: We want to compile pir source into paddle.so directly, because
@@ -161,23 +170,22 @@ else()
   set(PYBIND_DEPS ${PYBIND_DEPS} pir)
 endif()
 
-if(WITH_CUSTOM_DEVICE)
-  set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
-endif()
-
 if(WITH_PYTHON)
   set(PYBIND_DEPS ${PYBIND_DEPS} process_group eager_reducer)
   if(WITH_NCCL OR WITH_RCCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_nccl async_load)
   endif()
   if(WITH_XPU_BKCL)
-    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_bkcl xpu_async_load)
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_gloo)
   endif()
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_mpi)
+  endif()
+  if(WITH_FLAGCX AND NOT WITH_XPU)
+    set(PYBIND_DEPS ${PYBIND_DEPS} process_group_flagcx)
   endif()
   if(WITH_CUSTOM_DEVICE)
     set(PYBIND_DEPS ${PYBIND_DEPS} process_group_custom)
@@ -203,56 +211,8 @@ if(WITH_CRYPTO)
   set(PYBIND_SRCS ${PYBIND_SRCS} crypto.cc)
 endif()
 
-if(WITH_PSLIB)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=parentheses -Wno-error=unused-result"
-  )
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-  endif()
-  set_source_files_properties(
-    heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-endif()
-if(WITH_PSCORE)
-  if(WITH_ARM_BRPC)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-  else()
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-    endif()
-  endif()
-  set_source_files_properties(
-    fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-  list(APPEND PYBIND_DEPS fleet index_wrapper index_sampler)
-  list(APPEND PYBIND_SRCS)
-  set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
-endif()
-
 if(WITH_CINN)
   set(PYBIND_SRCS ${PYBIND_SRCS} test.cc)
-endif()
-
-if(WITH_RPC)
-  if(WITH_ARM_BRPC)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-  else()
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=parentheses -Wno-error=unused-result"
-    )
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-      set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
-    endif()
-  endif()
-  set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
-                                                ${DISTRIBUTE_COMPILE_FLAGS})
-  set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -286,11 +246,6 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERATOR_DEPS ${PYTHON_LIBRARIES})
   endif()
 
-  if(WITH_CUSTOM_DEVICE)
-    set(OP_FUNCTION_GENERATOR_DEPS ${OP_FUNCTION_GENERATOR_DEPS}
-                                   custom_device_common_op_registry)
-  endif()
-
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
   if(WIN32)
@@ -317,7 +272,6 @@ if(WITH_PYTHON)
       ${GLOB_OPERATOR_DEPS}
       pybind
       proto_desc
-      executor
       layer
       tracer
       engine
@@ -328,28 +282,25 @@ if(WITH_PYTHON)
     list(REMOVE_ITEM EAGER_GENERATOR_DEPS imperative_flag)
   endif()
 
-  if(WITH_CUSTOM_DEVICE)
-    set(EAGER_GENERATOR_DEPS ${EAGER_GENERATOR_DEPS}
-                             custom_device_common_op_registry)
+  if(WITH_GPU)
+    if(WIN32)
+      list(APPEND EAGER_GENERATOR_DEPS dynload_tensorrt)
+    endif()
   endif()
 
   add_executable(
     eager_generator generator.cc eager_legacy_op_function_generator.cc
                     eager_generator.cc)
   target_link_libraries(eager_generator ${EAGER_GENERATOR_DEPS})
-  target_link_libraries(eager_generator ${GENERATOR_DEPS})
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(eager_generator ${os_dependency_modules})
 
-  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen)
+  set(EAGER_OP_IMPL_DEPS eager_generator eager_python_c_codegen
+                         eager_monkey_patch_codegen)
 
   if(WITH_ROCM)
     target_link_libraries(eager_generator ${ROCM_HIPRTC_LIB})
-  endif()
-
-  if(WITH_CINN)
-    target_link_libraries(eager_generator ${PYTHON_LIBRARIES})
   endif()
 
   if(WIN32)
@@ -367,17 +318,6 @@ if(WITH_PYTHON)
         OUTPUT ${eager_generator_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${eager_generator_path}
         DEPENDS phi)
-      add_custom_command(
-        OUTPUT ${eager_generator_path}/phi_core.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${eager_generator_path}
-        DEPENDS phi)
-      if(WITH_GPU OR WITH_ROCM)
-        add_custom_command(
-          OUTPUT ${eager_generator_path}/phi_gpu.dll
-          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB}
-                  ${eager_generator_path}
-          DEPENDS phi)
-      endif()
       list(APPEND EAGER_CODEGEN_DEPS ${eager_generator_path}/phi.dll)
     endif()
 
@@ -491,16 +431,6 @@ if(WITH_PYTHON)
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
-      add_custom_command(
-        OUTPUT ${op_impl_path}/phi_core.dll
-        COMMAND ${CMAKE_COMMAND} -E copy ${PHI_CORE_LIB} ${op_impl_path}
-        DEPENDS phi)
-      if(WITH_GPU OR WITH_ROCM)
-        add_custom_command(
-          OUTPUT ${op_impl_path}/phi_gpu.dll
-          COMMAND ${CMAKE_COMMAND} -E copy ${PHI_GPU_LIB} ${op_impl_path}
-          DEPENDS phi)
-      endif()
       list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
     endif()
 
@@ -660,6 +590,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS dygraph_node)
     list(APPEND PYBIND_DEPS accumulation_node)
     list(APPEND PYBIND_DEPS py_layer_node)
+    list(APPEND PYBIND_DEPS eager_to_static)
     list(APPEND PYBIND_DEPS global_utils)
     list(APPEND PYBIND_DEPS utils)
     list(APPEND PYBIND_DEPS python)
@@ -682,10 +613,25 @@ if(WITH_PYTHON)
     set(SHARD_LIB_NAME libpaddle)
   endif()
   set_property(GLOBAL PROPERTY PADDLE_LIB_NAME ${SHARD_LIB_NAME})
-  cc_library(
-    ${SHARD_LIB_NAME} SHARED
-    SRCS ${PYBIND_SRCS}
-    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  if(WIN32)
+    if(WITH_GPU)
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS}
+             dynload_tensorrt)
+    else()
+      cc_library(
+        ${SHARD_LIB_NAME} SHARED
+        SRCS ${PYBIND_SRCS}
+        DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    endif()
+  else()
+    cc_library(
+      ${SHARD_LIB_NAME} SHARED
+      SRCS ${PYBIND_SRCS}
+      DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+  endif()
 
   if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
     target_compile_options(${SHARD_LIB_NAME} PRIVATE -Wno-maybe-uninitialized)
@@ -724,5 +670,24 @@ if(WITH_PYTHON)
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
+
+  function(install_py_pybind11_stubgen)
+    # check install
+    execute_process(
+      COMMAND
+        ${PYTHON_EXECUTABLE} "-c"
+        "import re, pybind11_stubgen; print(re.compile('/__init__.py.*').sub('',pybind11_stubgen.__file__))"
+      RESULT_VARIABLE _pybind11_stubgen_status
+      ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    if(_pybind11_stubgen_status EQUAL 0)
+      return()
+    endif()
+
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
+                            pybind11-stubgen)
+  endfunction()
+
+  install_py_pybind11_stubgen()
 
 endif()

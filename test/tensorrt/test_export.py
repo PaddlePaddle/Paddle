@@ -153,6 +153,7 @@ class TestConvert(unittest.TestCase):
 
             trt_save_path = os.path.join(self.temp_dir.name, 'trt')
             trt_config.save_model_dir = trt_save_path
+            trt_config.refit_params_path = self.save_path + '.pdiparams'
 
             model_dir = self.save_path
             # Obtain tensorrt_engine_op by passing the model path and trt_config.(converted_program)
@@ -171,8 +172,8 @@ class TestConvert(unittest.TestCase):
             predictor = paddle_infer.create_predictor(config)
 
         paddle.disable_static()
-        for i, input_instrance in enumerate(trt_config.inputs):
-            min_data, _, max_data = input_instrance.generate_input_data()
+        for i, input_instance in enumerate(trt_config.inputs):
+            min_data, _, max_data = input_instance.generate_input_data()
             model_inputs = paddle.to_tensor(min_data)
             output_converted = predictor.run([model_inputs])
 
@@ -186,8 +187,8 @@ class TestConvert_(unittest.TestCase):
                 max_input_shape=(10, 10, 11),
             )
             trt_config = TensorRTConfig(inputs=[input_config])
-            for i, input_instrance in enumerate(trt_config.inputs):
-                min_data, _, max_data = input_instrance.generate_input_data()
+            for i, input_instance in enumerate(trt_config.inputs):
+                min_data, _, max_data = input_instance.generate_input_data()
                 paddle.disable_static()
                 x = paddle.to_tensor(min_data)
                 net = CumsumModel(input_dim=min_data.shape[-1])
@@ -253,8 +254,8 @@ class TestConvertMultipleInputs(unittest.TestCase):
 
             min_data_list = []
             max_data_list = []
-            for i, input_instrance in enumerate(trt_config.inputs):
-                min_data, _, max_data = input_instrance.generate_input_data()
+            for i, input_instance in enumerate(trt_config.inputs):
+                min_data, _, max_data = input_instance.generate_input_data()
 
                 min_data_list.append(min_data)
                 max_data_list.append(max_data)
@@ -307,9 +308,7 @@ class TestConvertMultipleInputs(unittest.TestCase):
 class TestConvertPredictor(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.save_path = os.path.join(
-            self.temp_dir.name, 'tensor_axis_cumsum_predictor'
-        )
+        self.save_path = os.path.join(self.temp_dir.name, 'tensor_axis_cumsum')
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()

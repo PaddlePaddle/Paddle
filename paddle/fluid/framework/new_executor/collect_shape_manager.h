@@ -65,12 +65,14 @@ class CollectShapeManager {
     max_values_.clear();
     opt_values_.clear();
     op_value2kernel_value_.clear();
+    op_value2instr_id_.clear();
     is_shape_range_info_ready_ = false;
   }
 
  private:
   CollectShapeManager() {}
   std::unordered_map<pir::Value, pir::Value> op_value2kernel_value_;
+  std::unordered_map<pir::Value, size_t> op_value2instr_id_;
   std::map<pir::Value, std::vector<std::vector<int32_t>>> shape_info_;
   std::map<pir::Value, std::vector<std::vector<int32_t>>> shape_tensor_info_;
   std::map<pir::Value, std::vector<int32_t>> min_shapes_;

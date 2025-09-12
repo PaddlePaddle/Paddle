@@ -422,20 +422,22 @@ class TestUniqueAPI(unittest.TestCase):
         self.assertTrue((counts.numpy() == np_counts).all(), True)
 
     def test_static_graph(self):
-        with paddle_static_guard():
-            with paddle.static.program_guard(
+        with (
+            paddle_static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
-                unique, inverse, counts = paddle.unique(
-                    x, return_inverse=True, return_counts=True, axis=0
-                )
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
-                result = exe.run(
-                    feed={"x": x_np}, fetch_list=[unique, inverse, counts]
-                )
+            ),
+        ):
+            x = paddle.static.data(name='x', shape=[3, 2], dtype='float64')
+            unique, inverse, counts = paddle.unique(
+                x, return_inverse=True, return_counts=True, axis=0
+            )
+            place = paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
+            x_np = np.array([[1, 2], [3, 4], [1, 2]]).astype('float64')
+            result = exe.run(
+                feed={"x": x_np}, fetch_list=[unique, inverse, counts]
+            )
 
 
 class TestUniqueError(unittest.TestCase):
@@ -478,6 +480,16 @@ class TestUniqueError(unittest.TestCase):
                 result = paddle.unique(x, dtype='float64')
 
             self.assertRaises(TypeError, test_axis)
+
+
+class TestUniqueAPI_ZeroSize(unittest.TestCase):
+    def test_dygraph_api_out(self):
+        paddle.disable_static()
+        x_data = np.random.randint(0, 10, (0, 2))
+        x = paddle.to_tensor(x_data)
+        out = paddle.unique(x)
+        expected_out = np.random.random([0, 2])
+        np.testing.assert_allclose(out.numpy(), expected_out)
 
 
 if __name__ == "__main__":

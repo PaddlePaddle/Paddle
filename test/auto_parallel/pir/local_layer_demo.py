@@ -33,9 +33,9 @@ paddle.seed(2025)
 
 
 class LocalLossLayer(dist.LocalLayer):
-    def __init__(self, mesh):
+    def __init__(self, out_dist_attrs, grad_dist_attrs):
         super().__init__(
-            out_dist_attrs=[(mesh, [dist.Partial(dist.ReduceType.kRedSum)])]
+            out_dist_attrs=out_dist_attrs, grad_dist_attrs=grad_dist_attrs
         )
         self.loss = nn.MSELoss()
 
@@ -46,11 +46,15 @@ class LocalLossLayer(dist.LocalLayer):
 class TestMLPTensorParallel(unittest.TestCase):
     def test_to_static_program(self):
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        mp_layer = DemoNet(mesh)
+        mp_layer = DemoNet(mesh, shard=False)
         opt = paddle.optimizer.SGD(
             learning_rate=0.1, parameters=mp_layer.parameters()
         )
-        loss_fn = LocalLossLayer(mesh)
+
+        placement = [dist.Partial(dist.ReduceType.kRedSum)]
+        out_dist_attrs = [(mesh, placement)]
+        grad_dist_attrs = [(mesh, placement), None]  # input, label
+        loss_fn = LocalLossLayer(out_dist_attrs, grad_dist_attrs)
         loader = create_data_loader()
         dist_loader = dist.shard_dataloader(loader, meshes=[mesh])
         dist_model = dist.to_static(mp_layer, dist_loader, loss_fn, opt)

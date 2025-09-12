@@ -109,87 +109,76 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def sample_predictor_configs(
-        self, program_config
-    ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if self.dims == 1:
-                self.dynamic_shape.min_input_shape = {
-                    "condition_data": [1],
-                    "condition_data_bool": [1],
-                    "input_x_data": [1],
-                    "input_y_data": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "condition_data": [2],
-                    "condition_data_bool": [2],
-                    "input_x_data": [2],
-                    "input_y_data": [2],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "condition_data": [1],
-                    "condition_data_bool": [1],
-                    "input_x_data": [1],
-                    "input_y_data": [1],
-                }
-            elif self.dims == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "condition_data": [1, 4],
-                    "condition_data_bool": [1, 4],
-                    "input_x_data": [1, 4],
-                    "input_y_data": [1, 4],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "condition_data": [2, 4],
-                    "condition_data_bool": [2, 4],
-                    "input_x_data": [2, 4],
-                    "input_y_data": [2, 4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "condition_data": [1, 4],
-                    "condition_data_bool": [1, 4],
-                    "input_x_data": [1, 4],
-                    "input_y_data": [1, 4],
-                }
-            elif self.dims == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "condition_data": [1, 4, 6],
-                    "condition_data_bool": [1, 4, 6],
-                    "input_x_data": [1, 4, 6],
-                    "input_y_data": [1, 4, 6],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "condition_data": [2, 4, 6],
-                    "condition_data_bool": [2, 4, 6],
-                    "input_x_data": [2, 4, 6],
-                    "input_y_data": [2, 4, 6],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "condition_data": [1, 4, 6],
-                    "condition_data_bool": [1, 4, 6],
-                    "input_x_data": [1, 4, 6],
-                    "input_y_data": [1, 4, 6],
-                }
-            elif self.dims == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "condition_data": [1, 4, 6, 8],
-                    "condition_data_bool": [1, 4, 6, 8],
-                    "input_x_data": [1, 4, 6, 8],
-                    "input_y_data": [1, 4, 6, 8],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "condition_data": [2, 4, 6, 8],
-                    "condition_data_bool": [2, 4, 6, 8],
-                    "input_x_data": [2, 4, 6, 8],
-                    "input_y_data": [2, 4, 6, 8],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "condition_data": [1, 4, 6, 8],
-                    "condition_data_bool": [1, 4, 6, 8],
-                    "input_x_data": [1, 4, 6, 8],
-                    "input_y_data": [1, 4, 6, 8],
-                }
+    def generate_dynamic_shape(self, attrs):
+        if self.dims == 1:
+            self.dynamic_shape.min_input_shape = {
+                "condition_data": [1],
+                "input_x_data": [1],
+                "input_y_data": [1],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "condition_data": [2],
+                "input_x_data": [2],
+                "input_y_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "condition_data": [1],
+                "input_x_data": [1],
+                "input_y_data": [1],
+            }
+        elif self.dims == 2:
+            self.dynamic_shape.min_input_shape = {
+                "condition_data": [1, 4],
+                "input_x_data": [1, 4],
+                "input_y_data": [1, 4],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "condition_data": [2, 4],
+                "input_x_data": [2, 4],
+                "input_y_data": [2, 4],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "condition_data": [1, 4],
+                "input_x_data": [1, 4],
+                "input_y_data": [1, 4],
+            }
+        elif self.dims == 3:
+            self.dynamic_shape.min_input_shape = {
+                "condition_data": [1, 4, 6],
+                "input_x_data": [1, 4, 6],
+                "input_y_data": [1, 4, 6],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "condition_data": [2, 4, 6],
+                "input_x_data": [2, 4, 6],
+                "input_y_data": [2, 4, 6],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "condition_data": [1, 4, 6],
+                "input_x_data": [1, 4, 6],
+                "input_y_data": [1, 4, 6],
+            }
+        elif self.dims == 4:
+            self.dynamic_shape.min_input_shape = {
+                "condition_data": [1, 4, 6, 8],
+                "input_x_data": [1, 4, 6, 8],
+                "input_y_data": [1, 4, 6, 8],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "condition_data": [2, 4, 6, 8],
+                "input_x_data": [2, 4, 6, 8],
+                "input_y_data": [2, 4, 6, 8],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "condition_data": [1, 4, 6, 8],
+                "input_x_data": [1, 4, 6, 8],
+                "input_y_data": [1, 4, 6, 8],
+            }
+        return self.dynamic_shape
 
+    def sample_predictor_configs(
+        self, program_config, run_pir=False
+    ) -> tuple[paddle_infer.Config, list[int], float]:
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
             self.dynamic_shape.max_input_shape = {}
@@ -206,32 +195,41 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False
-        ), 1e-5
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
 
     def test(self):
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

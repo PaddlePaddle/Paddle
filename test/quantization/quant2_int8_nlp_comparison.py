@@ -104,35 +104,37 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         assert labels_file, "The labels file is missing."
 
         def reader():
-            with open(data_file, 'r') as df:
-                with open(labels_file, 'r') as lf:
-                    data_lines = df.readlines()
-                    labels_lines = lf.readlines()
-                    assert len(data_lines) == len(
-                        labels_lines
-                    ), "The number of labels does not match the length of the dataset."
+            with (
+                open(data_file, 'r') as df,
+                open(labels_file, 'r') as lf,
+            ):
+                data_lines = df.readlines()
+                labels_lines = lf.readlines()
+                assert len(data_lines) == len(labels_lines), (
+                    "The number of labels does not match the length of the dataset."
+                )
 
-                    for i in range(len(data_lines)):
-                        data_fields = data_lines[i].split(';')
-                        assert (
-                            len(data_fields) >= 2
-                        ), "The number of data fields in the dataset is less than 2"
-                        buffers = []
-                        shape = []
-                        for j in range(2):
-                            data = data_fields[j].split(':')
-                            assert (
-                                len(data) >= 2
-                            ), "Size of data in the dataset is less than 2"
-                            # Shape is stored under index 0, while data under 1
-                            shape = data[0].split()
-                            shape.pop(0)
-                            shape_np = np.array(shape).astype("int64")
-                            buffer_i = data[1].split()
-                            buffer_np = np.array(buffer_i).astype("int64")
-                            buffer_np.shape = tuple(shape_np)
-                            buffers.append(buffer_np)
-                        yield buffers[0], buffers[1], int(labels_lines[i])
+                for i in range(len(data_lines)):
+                    data_fields = data_lines[i].split(';')
+                    assert len(data_fields) >= 2, (
+                        "The number of data fields in the dataset is less than 2"
+                    )
+                    buffers = []
+                    shape = []
+                    for j in range(2):
+                        data = data_fields[j].split(':')
+                        assert len(data) >= 2, (
+                            "Size of data in the dataset is less than 2"
+                        )
+                        # Shape is stored under index 0, while data under 1
+                        shape = data[0].split()
+                        shape.pop(0)
+                        shape_np = np.array(shape).astype("int64")
+                        buffer_i = data[1].split()
+                        buffer_np = np.array(buffer_i).astype("int64")
+                        buffer_np.shape = tuple(shape_np)
+                        buffers.append(buffer_np)
+                    yield buffers[0], buffers[1], int(labels_lines[i])
 
         return reader
 
@@ -156,9 +158,9 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
         config.switch_specify_input_names(True)
         config.switch_ir_optim(True)
         config.switch_use_feed_fetch_ops(True)
-        config.enable_mkldnn()
+        config.enable_onednn()
         if target == 'int8':
-            config.enable_mkldnn_int8(self._quantized_ops)
+            config.enable_onednn_int8(self._quantized_ops)
         config.delete_pass(
             "constant_folding_pass"
         )  # same reason as in analyzer_ernie_int8_tester.cc
@@ -285,13 +287,13 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             return
 
         quant_model_path = test_case_args.quant_model
-        assert (
-            quant_model_path
-        ), 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        assert quant_model_path, (
+            'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        )
         data_path = test_case_args.infer_data
-        assert (
-            data_path
-        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert data_path, (
+            'The dataset path cannot be empty. Please, use the --infer_data option.'
+        )
         fp32_model_path = test_case_args.fp32_model
         labels_path = test_case_args.labels
         batch_size = test_case_args.batch_size
@@ -313,9 +315,9 @@ class QuantInt8NLPComparisonTest(unittest.TestCase):
             )
 
         self._targets = self._strings_from_csv(test_case_args.targets)
-        assert self._targets.intersection(
-            {'quant', 'int8', 'fp32'}
-        ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
+        assert self._targets.intersection({'quant', 'int8', 'fp32'}), (
+            'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
+        )
 
         _logger.info('Quant & INT8 prediction run.')
         _logger.info(f'Quant model: {quant_model_path}')

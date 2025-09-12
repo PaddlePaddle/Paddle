@@ -46,27 +46,27 @@ class Collective(Fleet):
         self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'init_worker' method for collective mode."
         )
 
     def run_worker(self, main_programs=None, scopes=None):
-        logging.warn(
+        logging.warning(
             "You should not call 'run_worker' method for collective mode."
         )
 
     def init_server(self, model_dir=None):
-        logging.warn(
+        logging.warning(
             "You should not call 'init_server' method for collective mode."
         )
 
     def run_server(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'run_server' method for collective mode."
         )
 
     def stop_worker(self):
-        logging.warn(
+        logging.warning(
             "You should not call 'stop_worker' method for collective mode."
         )
 
@@ -233,9 +233,9 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
     """
 
     def __init__(self, optimizer, strategy=None):
-        assert isinstance(
-            strategy, DistributedStrategy
-        ), "strategy must be DistributedStrategy"
+        assert isinstance(strategy, DistributedStrategy), (
+            "strategy must be DistributedStrategy"
+        )
         super().__init__(optimizer, strategy)
 
     def backward(
@@ -272,7 +272,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._forward_recompute = strategy.forward_recompute
         if not isinstance(strategy.recompute_checkpoints, list):
             raise ValueError(
-                "DistStrategy.recompute_checkpoints should" "be a List"
+                "DistStrategy.recompute_checkpoints should be a List"
             )
         self._recompute_checkpoints = strategy.recompute_checkpoints
         self._use_amp = strategy.use_amp
@@ -320,9 +320,9 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb,
             )
-            assert (
-                strategy.dist_fc_config is not None
-            ), "DistributedStrategy.dist_fc_config should be set"
+            assert strategy.dist_fc_config is not None, (
+                "DistributedStrategy.dist_fc_config should be set"
+            )
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
@@ -337,9 +337,9 @@ class CollectiveOptimizer(DistributedOptimizer):
             self._strategy.collective_mode == "local_sgd"
             or self._strategy.collective_mode == "grad_allreduce"
         ):
-            assert (
-                self._strategy.mode == "collective"
-            ), "local_sgd and grad_allreduce can be used under collective mode"
+            assert self._strategy.mode == "collective", (
+                "local_sgd and grad_allreduce can be used under collective mode"
+            )
 
     def _transpile(self, startup_program, main_program):
         """
@@ -410,11 +410,13 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         if node_num <= 1:
             if self._strategy.nccl_comm_num > 1:
-                logging.warn("set nccl_comm_num=1 since you only have 1 node.")
+                logging.warning(
+                    "set nccl_comm_num=1 since you only have 1 node."
+                )
             self._strategy.nccl_comm_num = 1
 
             if self._strategy.use_hierarchical_allreduce:
-                logging.warn(
+                logging.warning(
                     "set use_hierarchical_allreduce=False since you only have 1 node."
                 )
             self._strategy.use_hierarchical_allreduce = False
@@ -426,7 +428,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         if sync_batch_norm is not None and sync_batch_norm is True:
             self._strategy.nccl_comm_num = 1
             self._strategy.use_hierarchical_allreduce = False
-            logging.warn(
+            logging.warning(
                 "use sync_batch_norm will hang when set num_threads > 1, so "
                 "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
             )

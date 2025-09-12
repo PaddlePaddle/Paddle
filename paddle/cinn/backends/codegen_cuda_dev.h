@@ -31,10 +31,15 @@ class CodeGenCudaDev : public CodeGenGpuDev {
  public:
   explicit CodeGenCudaDev(Target target);
   static const std::string& GetSourceHeader();
+  static const std::string& GetGeneralSourceHeader();
   void PrintIncludes() override;
 
  private:
   static const std::string source_header_;
+  // general_source_header_ is used for the more general situation, which load
+  // some header files while compiling but not set them into header files while
+  // creating the kernel function.
+  static const std::string general_source_header_;
 };
 
 }  // namespace backends

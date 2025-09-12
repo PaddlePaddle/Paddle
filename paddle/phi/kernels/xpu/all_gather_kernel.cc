@@ -46,7 +46,7 @@ void AllGatherKernel(const Context& dev_ctx,
       errors::InvalidArgument(
           "nranks: %s should equal to %s", nranks, comm_ctx->GetSize()));
 
-  XPUStream stream = comm_ctx->GetStream();
+  XPUStream stream = dev_ctx.stream();
   comm_ctx->AllGather(out, x, stream);
 #else
   PADDLE_THROW(common::errors::PreconditionNotMet(
@@ -65,5 +65,5 @@ PD_REGISTER_KERNEL(all_gather,
                    bool,
                    uint8_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -262,10 +262,11 @@ inline std::string GetPrefix(pir::IrContext* ctx, const OpDesc& op_desc) {
   }
 #ifdef PADDLE_WITH_DNNL
   if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+      op_desc.GetAttrIfExists<bool>("use_onednn") ||
       paddle::dialect::IsOneDNNOnlyOp(op_desc.Type())) {
     if (!HasOpInfo(ctx, op_desc, kOneDNNTargetDialectPrefix)) {
       VLOG(3) << op_desc.Type()
-              << "'s use_mkldnn == True, but PIR not support OneDNN for this "
+              << "'s use_onednn == True, but PIR not support OneDNN for this "
                  "op right now.";
       return kTargetDialectPrefix;
     } else {
@@ -1075,6 +1076,10 @@ struct CastOpTranscriber : public OpTranscriber {
       attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
           ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
     }
+    if (op_desc.HasAttr("onednn_data_type")) {  // NOLINT
+      attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+          ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+    }
 #endif
     return attribute_map;
   }
@@ -1660,12 +1665,16 @@ struct SplitOpTranscriber : public OpTranscriber {
       return attribute_map;
     }
 #ifdef PADDLE_WITH_DNNL
-    else if (op_desc.HasAttr("mkldnn_data_type")) {  // NOLINT
-      pir::AttributeMap attribute_map = {
-          {"mkldnn_data_type",
-           pir::StrAttribute::get(
-               ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"))},
-      };
+    else {  // NOLINT
+      pir::AttributeMap attribute_map = {};
+      if (op_desc.HasAttr("mkldnn_data_type")) {
+        attribute_map["mkldnn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("mkldnn_data_type"));
+      }
+      if (op_desc.HasAttr("onednn_data_type")) {
+        attribute_map["onednn_data_type"] = pir::StrAttribute::get(
+            ctx, op_desc.GetAttrIfExists<std::string>("onednn_data_type"));
+      }
       return attribute_map;
     }
 #endif
@@ -1838,7 +1847,8 @@ struct MulOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,
@@ -2015,7 +2025,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                              const OpDesc& op_desc,
                              pir::Block* block) override {
 #ifdef PADDLE_WITH_DNNL
-    if (op_desc.GetAttrIfExists<bool>("use_mkldnn")) {
+    if (op_desc.GetAttrIfExists<bool>("use_mkldnn") ||
+        op_desc.GetAttrIfExists<bool>("use_onednn")) {
       return static_cast<OpTranscriber>(*this).operator()(  // NOLINT
           ctx,
           param_map,

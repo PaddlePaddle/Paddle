@@ -254,9 +254,12 @@ class ClipHelper:
 
         for op in self.block.ops:
             if (
-                op.type == "c_allreduce_sum"
-                or (
+                (
                     op.type == "reduce"
+                    and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
+                )
+                or (
+                    op.type == "all_reduce"
                     and op.desc.attr("reduce_type") == dist.ReduceOp.SUM
                 )
                 and not is_data_parallel_reduce_op(op)
@@ -284,9 +287,9 @@ class ClipHelper:
                 rank = sizes.index(min(sizes))
                 mapping[rank].append(param.name)
                 numel = reduce(lambda x, y: x * y, param.shape, 1)
-                assert (
-                    numel > 0
-                ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
+                assert numel > 0, (
+                    f"param [{param.name}] should larger than 0, but it is [{numel}]"
+                )
                 sizes[rank] += numel
         return mapping
 
@@ -479,12 +482,12 @@ class ClipGradByGlobalNormPass(PassBase):
 
                     allreduce_op = block._insert_op(
                         idx + offset,
-                        type='c_allreduce_sum',
-                        inputs={'X': [input_var]},
-                        outputs={'Out': [input_var]},
+                        type='all_reduce',
+                        inputs={'x': [input_var]},
+                        outputs={'out': [input_var]},
                         attrs={
                             'ring_id': 0,
-                            'use_calc_stream': True,
+                            'reduce_type': paddle.distributed.ReduceOp.SUM,
                             OP_ROLE_KEY: OpRole.Optimize,
                         },
                     )
@@ -507,13 +510,13 @@ class ClipGradByGlobalNormPass(PassBase):
                                 prior_op = block.ops[j]
                                 break
                             j -= 1
-                        assert (
-                            prior_op is not None
-                        ), "Unexpected: ClipByGlobalNorm could not find priory depend op"
+                        assert prior_op is not None, (
+                            "Unexpected: ClipByGlobalNorm could not find priory depend op"
+                        )
                         prior_var = block.vars[prior_op.output_arg_names[0]]
-                        assert (
-                            prior_var is not None
-                        ), "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        assert prior_var is not None, (
+                            "Unexpected: ClipByGlobalNorm could not find priory depend var"
+                        )
                         insert_dependencies_for_vars(
                             block,
                             idx,

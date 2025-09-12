@@ -101,7 +101,7 @@ TEST(paddle_inference_api, AnalysisConfigCopyCtor) {
     PADDLE_ENFORCE_NE(ps,
                       delete_pass,
                       common::errors::InvalidArgument(
-                          "Required ps shouldn't be euqal to delete_pass. "));
+                          "Required ps shouldn't be equal to delete_pass. "));
   }
 }
 

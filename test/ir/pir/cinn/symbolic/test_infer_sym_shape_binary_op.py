@@ -67,6 +67,36 @@ class EmbeddingOpInferSymbolicShapeTest(TestBase):
         return out
 
 
+class ExpandAsNet(paddle.nn.Layer):
+    def __init__(self, target_shape):
+        super().__init__()
+        self.target_shape = target_shape
+
+    def forward(self, x):
+        y = paddle.empty(shape=self.target_shape)
+        return paddle.expand_as(x, y)
+
+
+class ExpandAsOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.target_shape = [10, 3]
+
+        self.expected = ['shape[10, 3], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = ExpandAsNet(self.target_shape)
+        input_spec = [
+            InputSpec(shape=[None, 1], dtype='float32'),  # x
+        ]
+        net = apply_to_static(net, False, input_spec)
+        net.eval()
+
+        check_infer_results(
+            net, input_spec, 'builtin.shadow_output', self.expected
+        )
+        return True
+
+
 class KronNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()

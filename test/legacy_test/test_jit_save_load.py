@@ -698,9 +698,17 @@ class TestUtilsMapAndPack(unittest.TestCase):
 
         dfs(nested_list_copy, nested_list_copy_pack_back)
 
+        dict_x = {
+            "a": paddle.to_tensor([1.0]),
+            "b": paddle.to_tensor([2.0]),
+            "c": paddle.to_tensor([3.0]),
+        }
+        dict_y = copy.deepcopy(dict_x)
+        dict_z = paddle.utils.pack_sequence_as(dict_x, dict_y)
+        dfs(dict_x, dict_z)
+
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
-
     def test_dict_input(self):
         # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
@@ -756,7 +764,6 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
-
     def test_dict_input(self):
         net = LinearNetWithDictInputNoPrune(8, 8)
         temp_dir = tempfile.TemporaryDirectory()
@@ -2285,6 +2292,7 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
             layer=layer,
             path=path,
             input_spec=[InputSpec([5, 7], dtype="float32")],
+            skip_prune_program=True,
         )
 
         loaded_layer = paddle.jit.load(path)
@@ -2294,6 +2302,43 @@ class TestLayerWithUnusedBuffer(unittest.TestCase):
                 loaded_layer.program(), layer.buffer.shape
             )
         )
+
+
+class SimpleModelWithSaveDtype(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fc = paddle.nn.Linear(32, 1)
+
+    def forward(self, x):
+        return self.fc(x)
+
+
+class TestSaveDtype(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_save_dtype(self):
+        model = SimpleModelWithSaveDtype()
+        model = paddle.amp.decorate(
+            models=model, level='O2', save_dtype='float32'
+        )
+        data = np.random.random([32]).astype('float32')
+        data = paddle.to_tensor(data)
+        with paddle.amp.auto_cast(level='O2'):
+            out = model(data)
+        save_dir = os.path.join(self.temp_dir.name, "test_save_dtype")
+        path = save_dir + "/model"
+        paddle.jit.save(
+            model, path, input_spec=[InputSpec([None, 32], dtype='float32')]
+        )
+        loaded_model = paddle.jit.load(path)
+        loaded_model = paddle.amp.decorate(models=loaded_model, level='O2')
+        with paddle.amp.auto_cast(level='O2'):
+            loaded_out = loaded_model(data)
+        np.testing.assert_allclose(out.numpy(), loaded_out.numpy(), atol=1e-5)
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ struct UnrollMutator : public ir::IRMutator<Expr*> {
   void Visit(const ir::ScheduleBlock* op, Expr* expr) override {
     auto attr_it = op->attrs.find(ir::attr::auto_unroll_max_step);
     if (attr_it != op->attrs.end()) {
-      const int* attr_v = absl::get_if<int>(&attr_it->second);
+      const int* attr_v = std::get_if<int>(&attr_it->second);
       if (attr_v) {
         int value = *attr_v;
         std::swap(auto_max_step_, value);

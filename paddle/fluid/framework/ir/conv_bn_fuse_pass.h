@@ -23,7 +23,7 @@ namespace framework {
 namespace ir {
 
 /*
- * Fuse the Conv and BatchNorm to a ConvBNMKLDNNOp.
+ * Fuse the Conv and BatchNorm to a ConvBNONEDNNOp.
  */
 
 class ConvBNFusePass : public FusePassBase {

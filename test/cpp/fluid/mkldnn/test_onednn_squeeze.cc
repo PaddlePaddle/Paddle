@@ -62,7 +62,7 @@ void test_squeeze() {
   std::vector<int> axes({-2});
 
   desc.SetAttr("axes", axes);
-  desc.SetAttr("use_mkldnn", true);
+  desc.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(desc);
 
@@ -86,7 +86,7 @@ void test_squeeze2() {
   std::vector<int> axes({-1});
 
   desc.SetAttr("axes", axes);
-  desc.SetAttr("use_mkldnn", true);
+  desc.SetAttr("use_onednn", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(desc);
 

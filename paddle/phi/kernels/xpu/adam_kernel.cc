@@ -17,7 +17,6 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -56,7 +55,7 @@ void AdamDenseKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   float* param_ptr = nullptr;
@@ -291,7 +290,7 @@ void MergedAdamKernel(
   PADDLE_ENFORCE_NE(
       amsgrad,
       true,
-      phi::errors::Unimplemented("Operation amsgrad is not supported yet."));
+      common::errors::Unimplemented("Operation amsgrad is not supported yet."));
 
   VLOG(4) << "use_global_beta_pow:" << use_global_beta_pow;
 
@@ -496,7 +495,7 @@ void MergedAdamKernel(
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::dtype::float16) {
+    adam, XPU, ALL_LAYOUT, phi::AdamDenseKernel, float, phi::float16) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);

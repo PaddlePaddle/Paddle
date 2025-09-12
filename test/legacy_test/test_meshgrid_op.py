@@ -170,7 +170,6 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
 
 class TestMeshgridOp3(unittest.TestCase):
-
     def test_api(self):
         input_1 = np.random.randint(
             0,
@@ -208,7 +207,6 @@ class TestMeshgridOp3(unittest.TestCase):
 
 
 class TestMeshgridOp4(unittest.TestCase):
-
     def test_list_input(self):
         input_1 = np.random.randint(
             0,
@@ -246,7 +244,6 @@ class TestMeshgridOp4(unittest.TestCase):
 
 
 class TestMeshgridOp5(unittest.TestCase):
-
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,
@@ -362,7 +359,6 @@ class TestMeshgridOp8(unittest.TestCase):
 
 
 class TestMeshgridOpComplexStatic(unittest.TestCase):
-
     def test_tuple_input(self):
         input_1 = np.random.randint(
             0,
@@ -550,6 +546,24 @@ class TestMeshgridEmptyTensor2(TestMeshgridEmptyTensor):
         self._test_with_shapes(
             [(0,), (0,), (0,)], [[0, 0, 0], [0, 0, 0], [0, 0, 0]], place
         )
+
+
+class TestMeshgridZeroSizeGrad(unittest.TestCase):
+    def test_zero_size_grad_dynamic(self):
+        with base.dygraph.guard():
+            x = paddle.to_tensor(
+                np.ones([3]), dtype="float32", stop_gradient=False
+            )
+            y = paddle.to_tensor(
+                np.ones([0]), dtype="float32", stop_gradient=False
+            )
+            x_grid, y_grid = paddle.meshgrid(x, y)
+            z = paddle.sum(x_grid + y_grid)
+            z.backward()
+            x_grad_expacted = np.zeros([3])
+            y_grad_expacted = np.zeros([0])
+            np.testing.assert_array_equal(x.grad, x_grad_expacted)
+            np.testing.assert_array_equal(y.grad, y_grad_expacted)
 
 
 if __name__ == '__main__':

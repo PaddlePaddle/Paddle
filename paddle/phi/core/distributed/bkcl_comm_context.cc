@@ -27,9 +27,19 @@ namespace distributed {
 
 BKCLCommContext::BKCLCommContext(int rank, int size, BKCLUniqueId bkcl_id)
     : CommContext(rank, size) {
-  PADDLE_ENFORCE_XPU_SUCCESS(
+  PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_init_rank(&bkcl_comm_, rank_, size_, &bkcl_id));
 }
+
+#if defined(PADDLE_WITH_FLAGCX)
+BKCLCommContext::BKCLCommContext(int rank,
+                                 int size,
+                                 flagcxHandlerGroup_t flagcx_handler)
+    : CommContext(rank, size), flagcx_handler_(flagcx_handler) {
+  phi::dynload::flagcxCommInitRank(
+      &flagcx_handler_->comm, size_, flagcx_handler_->uniqueId, rank_);
+}
+#endif
 
 BKCLContext_t BKCLCommContext::GetBKCLComm() { return bkcl_comm_; }
 
@@ -66,13 +76,24 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              /*cur_rank*/ rank_,
                              size_,
                              phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_broadcast(bkcl_comm_,
-                                            in_tensor.data(),
-                                            out_tensor->data(),
-                                            in_tensor.numel(),
-                                            ToBKCLDataType(in_tensor.type()),
-                                            root,
-                                            stream));
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxBroadcast(in_tensor.data(),
+                                    out_tensor->data(),
+                                    in_tensor.numel(),
+                                    ToFlagcxDataType(in_tensor.type()),
+                                    root,
+                                    flagcx_handler_->comm,
+                                    reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_broadcast(bkcl_comm_,
+                                             in_tensor.data(),
+                                             out_tensor->data(),
+                                             in_tensor.numel(),
+                                             ToBKCLDataType(in_tensor.type()),
+                                             root,
+                                             stream));
+#endif
 }
 
 void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
@@ -84,12 +105,22 @@ void BKCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                                      /*cur_rank*/ rank_,
                                                      size_,
                                                      phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_gather(bkcl_comm_,
-                                             in_tensor.data(),
-                                             in_tensor.numel(),
-                                             out_tensor->data(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             stream));
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxAllGather(in_tensor.data(),
+                                    out_tensor->data(),
+                                    in_tensor.numel(),
+                                    ToFlagcxDataType(in_tensor.type()),
+                                    flagcx_handler_->comm,
+                                    reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_gather(bkcl_comm_,
+                                              in_tensor.data(),
+                                              in_tensor.numel(),
+                                              out_tensor->data(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              stream));
+#endif
 }
 
 void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
@@ -102,7 +133,17 @@ void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                                       /*cur_rank*/ rank_,
                                                       size_,
                                                       phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(phi::dynload::flagcxReduceScatter(
+      in_tensor.data(),
+      out_tensor->data(),
+      out_tensor->numel(),
+      ToFlagcxDataType(in_tensor.type()),
+      BkclToFlagcxRedType(reduce_type),
+      flagcx_handler_->comm,
+      reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(
       bkcl_reduce_scatter(bkcl_comm_,
                           in_tensor.data(),
                           out_tensor->data(),
@@ -110,6 +151,7 @@ void BKCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                           ToBKCLDataType(in_tensor.type()),
                           reduce_type,
                           stream));
+#endif
 }
 
 void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
@@ -119,12 +161,23 @@ void BKCLCommContext::Send(const phi::DenseTensor& in_tensor,
   phi::distributed::CommStaticCheck::CheckShape(
       in_tensor, rank_, size_, phi::AllocationType::XPU);
 
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_send(bkcl_comm_,
-                                       in_tensor.data(),
-                                       count,
-                                       peer,
-                                       ToBKCLDataType(in_tensor.dtype()),
-                                       stream));
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxSend(in_tensor.data(),
+                               count,
+                               ToFlagcxDataType(in_tensor.dtype()),
+                               peer,
+                               flagcx_handler_->comm,
+                               reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_send(bkcl_comm_,
+                                        in_tensor.data(),
+                                        count,
+                                        peer,
+                                        ToBKCLDataType(in_tensor.dtype()),
+                                        stream));
+#endif
   VLOG(3) << "rank " << GetRank() << " send " << phi::product(in_tensor.dims())
           << " to " << peer;
 }
@@ -135,13 +188,23 @@ void BKCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            XPUStream stream) {
   phi::distributed::CommStaticCheck::CheckShape(
       *out_tensor, rank_, size_, phi::AllocationType::XPU);
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxRecv(out_tensor->data(),
+                               count,
+                               ToFlagcxDataType(out_tensor->dtype()),
+                               peer,
+                               flagcx_handler_->comm,
+                               reinterpret_cast<flagcxStream_t>(&stream)));
+#else
 
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_recv(bkcl_comm_,
-                                       out_tensor->data(),
-                                       count,
-                                       peer,
-                                       ToBKCLDataType(out_tensor->dtype()),
-                                       stream));
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_recv(bkcl_comm_,
+                                        out_tensor->data(),
+                                        count,
+                                        peer,
+                                        ToBKCLDataType(out_tensor->dtype()),
+                                        stream));
+#endif
   VLOG(3) << "rank " << GetRank() << " recv "
           << common::product(out_tensor->dims()) << " from " << peer;
 }
@@ -156,13 +219,25 @@ void BKCLCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_reduce(bkcl_comm_,
-                                             in_tensor.data(),
-                                             out_tensor->data(),
-                                             in_tensor.numel(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             reduce_type,
-                                             stream));
+
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxAllReduce(in_tensor.data(),
+                                    out_tensor->data(),
+                                    in_tensor.numel(),
+                                    ToFlagcxDataType(in_tensor.type()),
+                                    BkclToFlagcxRedType(reduce_type),
+                                    flagcx_handler_->comm,
+                                    reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_reduce(bkcl_comm_,
+                                              in_tensor.data(),
+                                              out_tensor->data(),
+                                              in_tensor.numel(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              reduce_type,
+                                              stream));
+#endif
 }
 
 void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
@@ -174,12 +249,64 @@ void BKCLCommContext::AllToAll(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_all_to_all(bkcl_comm_,
-                                             in_tensor.data(),
-                                             in_tensor.numel() / size_,
-                                             out_tensor->data(),
-                                             ToBKCLDataType(in_tensor.type()),
-                                             stream));
+
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxAlltoAll(in_tensor.data(),
+                                   out_tensor->data(),
+                                   in_tensor.numel() / size_,
+                                   ToFlagcxDataType(in_tensor.type()),
+                                   flagcx_handler_->comm,
+                                   reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_all_to_all(bkcl_comm_,
+                                              in_tensor.data(),
+                                              in_tensor.numel() / size_,
+                                              out_tensor->data(),
+                                              ToBKCLDataType(in_tensor.type()),
+                                              stream));
+#endif
+}
+
+void BKCLCommContext::AllToAllUnequalSplit(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const phi::DenseTensor& out_size_tensor,
+    const phi::DenseTensor& out_offset_tensor,
+    const phi::DenseTensor& in_size_tensor,
+    const phi::DenseTensor& in_offset_tensor,
+    XPUStream stream) {
+  auto in_size_ptr = reinterpret_cast<const size_t*>(in_size_tensor.data());
+  auto in_offset_ptr = reinterpret_cast<const size_t*>(in_offset_tensor.data());
+  auto out_size_ptr = reinterpret_cast<const size_t*>(out_size_tensor.data());
+  auto out_offset_ptr =
+      reinterpret_cast<const size_t*>(out_offset_tensor.data());
+
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxAlltoAllv(in_tensor.data(),
+                                    const_cast<size_t*>(in_size_ptr),
+                                    const_cast<size_t*>(in_offset_ptr),
+                                    out_tensor->data(),
+                                    const_cast<size_t*>(out_size_ptr),
+                                    const_cast<size_t*>(out_offset_ptr),
+                                    ToFlagcxDataType(in_tensor.type()),
+                                    flagcx_handler_->comm,
+                                    reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+
+  PADDLE_ENFORCE_BKCL_SUCCESS(
+      bkcl_all_to_all_v(bkcl_comm_,
+                        in_tensor.data(),
+                        in_size_ptr,
+                        in_offset_ptr,
+                        ToBKCLDataType(in_tensor.type()),
+                        out_tensor->data(),
+                        out_size_ptr,
+                        out_offset_ptr,
+                        ToBKCLDataType(out_tensor->type()),
+                        stream));
+#endif
 }
 
 void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
@@ -193,21 +320,55 @@ void BKCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                                /*cur_rank*/ rank_,
                                                size_,
                                                phi::AllocationType::XPU);
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_reduce(bkcl_comm_,
-                                         in_tensor.data(),
-                                         out_tensor->data(),
-                                         in_tensor.numel(),
-                                         ToBKCLDataType(in_tensor.type()),
-                                         reduce_type,
-                                         root,
-                                         stream));
+
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(
+      phi::dynload::flagcxReduce(in_tensor.data(),
+                                 out_tensor->data(),
+                                 in_tensor.numel(),
+                                 ToFlagcxDataType(in_tensor.type()),
+                                 BkclToFlagcxRedType(reduce_type),
+                                 root,
+                                 flagcx_handler_->comm,
+                                 reinterpret_cast<flagcxStream_t>(&stream)));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_reduce(bkcl_comm_,
+                                          in_tensor.data(),
+                                          out_tensor->data(),
+                                          in_tensor.numel(),
+                                          ToBKCLDataType(in_tensor.type()),
+                                          reduce_type,
+                                          root,
+                                          stream));
+#endif
 }
 
 void BKCLCommContext::GroupStart() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(phi::dynload::flagcxGroupStart(flagcx_handler_->comm));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_start());
+#endif
 }
 void BKCLCommContext::GroupEnd() {
-  PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
+#if defined(PADDLE_WITH_FLAGCX)
+  FLAGCX_CHECK(phi::dynload::flagcxGroupEnd(flagcx_handler_->comm));
+#else
+  PADDLE_ENFORCE_BKCL_SUCCESS(bkcl_group_end());
+#endif
 }
+
+#if defined(PADDLE_WITH_FLAGCX)
+flagcxRedOp_t BKCLCommContext::BkclToFlagcxRedType(BKCLOp redOp) {
+  switch (redOp) {
+    case BKCL_MIN:
+      return flagcxMin;
+    case BKCL_MAX:
+      return flagcxMax;
+    case BKCL_ADD:
+      return flagcxSum;
+  }
+}
+#endif
 }  // namespace distributed
 }  // namespace phi

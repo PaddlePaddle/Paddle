@@ -54,6 +54,10 @@ Variable* Scope::Var(const std::string& name) {
   return ret;
 }
 
+Variable* Scope::VarLockFree(const std::string& name) {
+  return VarInternal(name);
+}
+
 Variable* Scope::Var(std::string* name) {
   Variable* ret = nullptr;
   std::string new_name;
@@ -71,6 +75,10 @@ Variable* Scope::Var(std::string* name) {
 
 Variable* Scope::FindVar(const std::string& name) const {
   SCOPE_VARS_READER_LOCK
+  return FindVarInternal(name);
+}
+
+Variable* Scope::FindVarLockFree(const std::string& name) const {
   return FindVarInternal(name);
 }
 

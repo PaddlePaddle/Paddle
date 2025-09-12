@@ -148,11 +148,11 @@ bool cudaCoreGemmLauncher(GemmParams const& params) {
 }
 
 template <typename T, typename Context>
-void CudaGemm(const Context& ctx,
+void CudaGemm(const Context& dev_ctx,
               const DenseTensor& input,
               const DenseTensor& w,
               DenseTensor* output) {
-  ctx.template Alloc<int32_t>(output);
+  dev_ctx.template Alloc<int32_t>(output);
   auto input_dims = input.dims();
   PADDLE_ENFORCE_EQ(input_dims.size(),
                     2UL,
@@ -187,7 +187,7 @@ void CudaGemm(const Context& ctx,
       m,
       n,
       k,
-      ctx.stream(),
+      dev_ctx.stream(),
   };
 
   if (!cudaCoreGemmLauncher<int8_t, int32_t>(params)) {

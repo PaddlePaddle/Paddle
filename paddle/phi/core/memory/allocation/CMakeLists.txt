@@ -38,6 +38,9 @@ if(NOT WIN32)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
+  if(WITH_XPU)
+    list(APPEND ALLOCATOR_SRCS xpu_ipc_allocator.cc)
+  endif()
 endif()
 
 if(WITH_CUSTOM_DEVICE)
@@ -46,7 +49,8 @@ if(WITH_CUSTOM_DEVICE)
 endif()
 
 if(WITH_XPU)
-  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc stream_safe_xpu_allocator.cc)
+  list(APPEND ALLOCATOR_SRCS xpu_allocator.cc xpu_pinned_allocator.cc
+       stream_safe_xpu_allocator.cc)
 endif()
 
 collect_srcs(core_srcs SRCS ${ALLOCATOR_SRCS})

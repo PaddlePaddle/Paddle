@@ -68,7 +68,7 @@ class CodeGenSwitchHost : public CodeGenInvokeModule {
       : CodeGenInvokeModule(m, b, vars) {}
   // only support call of args get function and inner case host function call
   llvm::Value *Visit(const ir::Call *op) override {
-    if (op->name == runtime::intrinsic::get_value_in_cuda_kernel_args) {
+    if (op->name == runtime::intrinsic::get_value_in_kernel_args) {
       return CodeGenLLVM::Visit(op);
     } else {
       return LowerInnerCaseCall(op);

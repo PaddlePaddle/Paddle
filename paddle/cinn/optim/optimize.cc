@@ -22,6 +22,7 @@
 #include "paddle/cinn/optim/cast_bool_to_int8.h"
 #include "paddle/cinn/optim/eliminate_broadcast_in_forloop.h"
 #include "paddle/cinn/optim/eliminate_invariant_loop.h"
+#include "paddle/cinn/optim/entail_loop_condition_pass.h"
 #include "paddle/cinn/optim/extern_call_process_pass.h"
 #include "paddle/cinn/optim/fold_cinn_call_arguments.h"
 #include "paddle/cinn/optim/if_fold_pass.h"
@@ -31,10 +32,10 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
+#include "paddle/cinn/optim/realize_composite_reduce_pass.h"
 #include "paddle/cinn/optim/rearrange_load_instruction_pass.h"
 #include "paddle/cinn/optim/reindex_transpose_buffer_pass.h"
 #include "paddle/cinn/optim/remove_schedule_block_pass.h"
-#include "paddle/cinn/optim/replace_const_param_to_integer.h"
 #include "paddle/cinn/optim/replace_cross_block_reduction.h"
 #include "paddle/cinn/optim/replace_cross_thread_reduction.h"
 #include "paddle/cinn/optim/trans_buffer_with_dynamic_shape.h"
@@ -42,7 +43,6 @@
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_for_trans.h"
-#include "paddle/cinn/optim/vectorize_loops.h"
 #include "paddle/cinn/pass/pass_manager.h"
 
 PD_DECLARE_bool(cinn_enable_vectorize);
@@ -63,22 +63,24 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
   auto copied = ir::ir_utils::IRCopy(fn);
   if (!copied->body.As<ir::Block>()) return copied;
 
-  ReplaceConstParamToInteger(&copied->body);
   // Simplify already contains CastSimplify
   Simplify(&copied->body);
   EliminateInvariantLoop(&copied->body);
   VLOG(4) << "After Optimize EliminateInvariantLoop:" << copied;
+
+  {
+    FuncPassManager func_pass_manager;
+    func_pass_manager.AddPass(CreateRealizeCompositeReducePass(target));
+    func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
+    func_pass_manager.Run(copied);
+    VLOG(4) << "After Optimize CompositeReducePass and ReindexTransposeBuffer: "
+            << copied;
+  }
+
   ReplaceCrossThreadReduction(copied);
   VLOG(4) << "After Optimize ReplaceCrossThreadReduction:" << copied;
   ReplaceCrossBlockReduction(copied);
   VLOG(4) << "After Optimize ReplaceCrossBlockReduction:" << copied;
-
-  {
-    FuncPassManager func_pass_manager;
-    func_pass_manager.AddPass(CreateReindexTransposeBufferPass());
-    func_pass_manager.Run(copied);
-    VLOG(4) << "After Optimize ReindexTransposeBuffer:" << copied;
-  }
 
   target.arch.Match(
       [&](common::NVGPUArch) {
@@ -103,8 +105,7 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
 #endif
       },
-      [&](common::HygonDCUArchHIP) {
-#ifdef CINN_WITH_HIP
+      [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
         ir::SetCudaAxisInfo(copied);
         if (remove_gpu_for_loops) {
           VLOG(4) << "Before removing GPU for loops:\n" << copied;
@@ -118,13 +119,17 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         blk_pass_manager.AddPass(CreateCudaSyncThreadsDropIfThenElsePass());
         blk_pass_manager.Run(copied->body_block);
         VLOG(10) << "After Optimize CudaSyncThreadsDropIfThenElse:" << copied;
-#endif
+        FuncPassManager func_pass_manager;
+        VLOG(10) << "Before Optimize TransBufferWithDynamicShape:" << copied;
+        func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
+        func_pass_manager.Run(copied);
+        VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
       },
-      [&](common::HygonDCUArchSYCL) { CINN_NOT_IMPLEMENTED },
-      [](auto) {});
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      });
 
-  SimplifyBlocks(&copied->body);
-  VLOG(4) << "After SimplifyBlocks:" << copied;
+  SimplifyUnitBlock(&copied->body);
+  VLOG(4) << "After SimplifyUnitBlock:" << copied;
 
   MapExternCall(&copied->body, target);
   VLOG(10) << "After Optimize MapExternCall:" << copied;
@@ -143,7 +148,9 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   BlockPassManager pass_manager;
   pass_manager.AddPass(CreateIfFusionPass());
+  pass_manager.AddPass(CreateEntailLoopConditionPass());
   pass_manager.Run(copied);
+  VLOG(4) << "After Optimize IfFusion and EntailLoopCondition:" << copied;
 
   target.arch.Match(
       [&](common::NVGPUArch) {
@@ -152,7 +159,14 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         func_pass_manager.Run(copied);
         VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
-      [](auto) {});
+      [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
+        FuncPassManager func_pass_manager;
+        func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
+        func_pass_manager.Run(copied);
+        VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
+      },
+      [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
+      });
 
   VectorizeForTrans(&copied->body);
   VLOG(10) << "After Optimize vectorize" << copied;
@@ -171,7 +185,10 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 
   LowerIntrin(&copied->body, target);
   VLOG(10) << "After LowerIntrin:" << copied;
-
+  // re-compute buffer cast exprs since
+  // x86 codegen needs correct buffer types to generate
+  // symbol table
+  copied->PrepareBufferCastExprs(false);
   return copied;
 }
 

@@ -64,7 +64,7 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   complex& operator=(complex<T>&& o) = default;
   ~complex() = default;
 
-  HOSTDEVICE complex(T real, T imag) : real(real), imag(imag) {}
+  HOSTDEVICE constexpr complex(T real, T imag) : real(real), imag(imag) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 

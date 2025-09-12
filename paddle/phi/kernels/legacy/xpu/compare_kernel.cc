@@ -23,24 +23,25 @@
 namespace phi {
 
 template <typename T, typename XPUType, typename Context>
-void XPUCompareRawKernelImpl(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
-                             DenseTensor* out,
-                             std::function<int(xpu::Context*,
-                                               const XPUType*,
-                                               const XPUType*,
-                                               bool*,
-                                               const std::vector<int>&,
-                                               const std::vector<int>&)> func) {
-  auto x_shape = common::vectorize<int>(x.dims());
-  auto y_shape = common::vectorize<int>(y.dims());
+void XPUCompareRawKernelImpl(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& y,
+    DenseTensor* out,
+    std::function<int(xpu::Context*,
+                      const XPUType*,
+                      const XPUType*,
+                      bool*,
+                      const std::vector<int64_t>&,
+                      const std::vector<int64_t>&)> func) {
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto y_shape = common::vectorize<int64_t>(y.dims());
 
   if (x.dims().size() == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   }
   if (y.dims().size() == 0) {
-    y_shape = std::vector<int>({1});
+    y_shape = std::vector<int64_t>({1});
   }
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -60,13 +61,13 @@ void XPUCompareRawKernelImpl(const Context& dev_ctx,
                        int axis,                                         \
                        DenseTensor* out) {                               \
     using XPUType = typename XPUTypeTrait<T>::Type;                      \
-    auto f = [](xpu::Context* ctx,                                       \
+    auto f = [](xpu::Context* xpu_ctx,                                   \
                 const XPUType* x,                                        \
                 const XPUType* y,                                        \
                 bool* z,                                                 \
-                const std::vector<int>& xshape,                          \
-                const std::vector<int>& yshape) {                        \
-      return functor(ctx, x, y, z, xshape, yshape);                      \
+                const std::vector<int64_t>& xshape,                      \
+                const std::vector<int64_t>& yshape) {                    \
+      return functor(xpu_ctx, x, y, z, xshape, yshape);                  \
     };                                                                   \
     XPUCompareRawKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
@@ -90,8 +91,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -103,8 +104,8 @@ PD_REGISTER_KERNEL(less_than_raw,
                      int,                                 \
                      int64_t,                             \
                      float,                               \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16,                \
+                     phi::float16,                        \
+                     phi::bfloat16,                       \
                      bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }

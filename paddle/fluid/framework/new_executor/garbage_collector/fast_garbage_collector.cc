@@ -50,6 +50,7 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder());
     }
+    tensor_arr->clear();
   } else if (var->IsType<phi::SparseCooTensor>()) {
     Add(var->GetMutable<phi::SparseCooTensor>()
             ->mutable_indices()

@@ -160,7 +160,6 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
 
 
 class TestUniformRandomOpAPISeed(unittest.TestCase):
-
     def test_attr_tensor_API(self):
         _seed = 10
         gen = paddle.seed(_seed)

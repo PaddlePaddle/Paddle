@@ -356,9 +356,9 @@ def _worker_loop(
 
             # None as poison piil, so worker event should be set
             if data is None:
-                assert (
-                    done_event.is_set() or iterator_drained
-                ), "get None when worker done_event set"
+                assert done_event.is_set() or iterator_drained, (
+                    "get None when worker done_event set"
+                )
                 break
             # If worker done event is set but get still get data in
             # indices_queue, remaining data should be get and skipped.

@@ -24,8 +24,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "glog/logging.h"               // For VLOG()
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/common/flags.h"
 #include "paddle/common/macros.h"
 #include "paddle/fluid/framework/attribute.h"
@@ -171,7 +170,7 @@ inline void RegisterKernelClass(const char* op_type,
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
   if (library == "MKLDNN") {
-    data_layout = "MKLDNNLAYOUT";
+    data_layout = "ONEDNNLAYOUT";
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (std::is_same<PlaceType, phi::CustomPlace>::value) {
@@ -322,7 +321,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
       "REGISTER_OPERATOR must be called in global namespace");           \
   static ::paddle::framework::OperatorRegistrar<op_class, ##__VA_ARGS__> \
       __op_registrar_##op_type##__(#op_type);                            \
-  int TouchOpRegistrar_##op_type() {                                     \
+  PADDLE_API int TouchOpRegistrar_##op_type() {                          \
     __op_registrar_##op_type##__.Touch();                                \
     return 0;                                                            \
   }

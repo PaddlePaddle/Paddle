@@ -315,8 +315,8 @@ ShardableAxesSignature CreateSignatureForReshape(
   const auto output_value = op->result(0);
   const auto input_rank = GetCompatibleRank(op->operand_source(0));
   const auto output_rank = GetCompatibleRank(op->result(0));
-  const auto in_shape = GetDimExprsFromValue(input_value);
-  const auto out_shape = GetDimExprsFromValue(output_value);
+  const auto in_shape = GetCompatibleValueAllDims(input_value);
+  const auto out_shape = GetCompatibleValueAllDims(output_value);
 
   ShardableAxesSignature result = ShardableAxesSignature();
   const auto input_axes = CreateNewNamesWithRank(input_rank);

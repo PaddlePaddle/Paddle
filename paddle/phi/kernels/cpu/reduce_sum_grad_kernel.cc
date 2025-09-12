@@ -31,6 +31,10 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool reduce_all,
                          DenseTensor* x_grad) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   ReduceGradKernel<Context, T, funcs::SumGradFunctor, true>(dev_ctx,
                                                             x,
                                                             paddle::none,
@@ -50,12 +54,12 @@ PD_REGISTER_KERNEL(sum_grad,
                    bool,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

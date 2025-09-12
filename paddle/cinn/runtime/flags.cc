@@ -25,15 +25,6 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
-#ifdef CINN_WITH_CUDNN
-PD_DEFINE_bool(
-    cinn_cudnn_deterministic,
-    false,
-    "Whether allow using an autotuning algorithm for convolution "
-    "operator. The autotuning algorithm may be non-deterministic. If "
-    "true, the algorithm is deterministic.");
-#endif
-
 using ::paddle::flags::BoolFromEnv;
 using ::paddle::flags::DoubleFromEnv;
 using ::paddle::flags::Int32FromEnv;
@@ -324,24 +315,6 @@ bool CheckStringFlagFalse(const std::string& flag) {
   static const std::unordered_set<std::string> kFalse = {
       "0", "f", "false", "n", "no", "F", "False", "FALSE", "N", "No", "NO"};
   return flag.empty() || kFalse.count(flag);
-}
-
-void SetCinnCudnnDeterministic(bool state) {
-#ifdef CINN_WITH_CUDNN
-  FLAGS_cinn_cudnn_deterministic = state;
-#else
-  LOG(WARNING) << "CINN is compiled without cuDNN, this api is invalid!";
-#endif
-}
-
-bool GetCinnCudnnDeterministic() {
-#ifdef CINN_WITH_CUDNN
-  return FLAGS_cinn_cudnn_deterministic;
-#else
-  PADDLE_THROW(::common::errors::Fatal(
-      "CINN is compiled without cuDNN, this api is invalid!"));
-  return false;
-#endif
 }
 
 uint64_t RandomSeed::seed_ = 0ULL;

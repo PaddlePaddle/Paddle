@@ -99,7 +99,7 @@ class TestCompositeMean(unittest.TestCase):
             primapi.to_prim(blocks)
 
             fwd_ops_new = [op.type for op in blocks[0].ops]
-            # Ensure that reduce_mean is splitted into small ops
+            # Ensure that reduce_mean is split into small ops
             self.assertTrue('reduce_mean' not in fwd_ops_new)
 
             z = paddle.static.gradients([y], x)

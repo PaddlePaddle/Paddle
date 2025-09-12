@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/custom_device_common_op_registry.h"
 #include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/utils/string/string_helper.h"
@@ -503,6 +502,7 @@ static void SlotNameMatching(
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(common::errors::Fatal(
                   "Detected mismatched slot names."
+                  "Detected mismatched slot names: "
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
                   grad_fwd_slotname_map[grad_slot_name],
@@ -537,7 +537,7 @@ static void SlotNameMatching(
             if (grad_fwd_slotname_map.count(grad_slot_name) &&
                 grad_fwd_slotname_map[grad_slot_name] != fwd_slot_name) {
               PADDLE_THROW(common::errors::Fatal(
-                  "Detected mismatched slot names"
+                  "Detected mismatched slot names: "
                   "grad_slot_name %s matches both %s and %s fwd_slot_name",
                   grad_slot_name,
                   grad_fwd_slotname_map[grad_slot_name],
@@ -3400,10 +3400,6 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"c_broadcast", {"Out"}},
     {"c_sync_calc_stream", {"Out"}},
     {"c_sync_comm_stream", {"Out"}},
-    {"c_reduce_sum", {"Out"}},
-    {"c_reduce_max", {"Out"}},
-    {"c_reduce_min", {"Out"}},
-    {"c_reduce_prod", {"Out"}},
     {"c_reduce", {"Out"}},
     {"c_scatter", {"Out"}},
     {"barrier", {"Out"}},
@@ -3790,12 +3786,6 @@ std::set<std::string> special_no_need_buffer_op_set = {
 };
 
 int run_generator(int argc, char* argv[]) {
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  // We need a fake device to trigger the registration of the common kernel and
-  // generate api
-  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
-#endif
-
   std::string eager_root = argv[1];
   int split_count = atoi(argv[2]);
 

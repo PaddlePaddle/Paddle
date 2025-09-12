@@ -49,7 +49,7 @@ def parse_args():
         '--num_threads', type=int, default=1, help='Number of threads.'
     )
     parser.add_argument(
-        '--mkldnn_cache_capacity',
+        '--onednn_cache_capacity',
         type=int,
         default=0,
         help='Mkldnn cache capacity. The default value in Python API is 15, which can slow down int8 models. Default 0 means unlimited cache.',
@@ -101,7 +101,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         self,
         model_path,
         num_threads,
-        mkldnn_cache_capacity,
+        onednn_cache_capacity,
         warmup_data=None,
         use_analysis=False,
         mode="fp32",
@@ -112,16 +112,16 @@ class TestLstmModelPTQ(unittest.TestCase):
             config.disable_gpu()
             config.switch_use_feed_fetch_ops(True)
             config.switch_ir_optim(True)
-            config.enable_mkldnn()
-            config.disable_mkldnn_fc_passes()  # fc passes caused dnnl error
+            config.enable_onednn()
+            config.disable_onednn_fc_passes()  # fc passes caused dnnl error
             config.pass_builder().insert_pass(5, "fc_lstm_fuse_pass")
-            config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
+            config.set_onednn_cache_capacity(onednn_cache_capacity)
             if mode == "ptq":
                 config.enable_quantizer()
                 config.quantizer_config().set_quant_data(warmup_data)
                 config.quantizer_config().set_quant_batch_size(1)
             elif mode == "qat":
-                config.enable_mkldnn_int8()
+                config.enable_onednn_int8()
 
         return config
 
@@ -130,7 +130,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         model_path,
         data_path,
         num_threads,
-        mkldnn_cache_capacity,
+        onednn_cache_capacity,
         warmup_iter,
         use_analysis=False,
         mode="fp32",
@@ -141,7 +141,7 @@ class TestLstmModelPTQ(unittest.TestCase):
         config = self.set_config(
             model_path,
             num_threads,
-            mkldnn_cache_capacity,
+            onednn_cache_capacity,
             warmup_data,
             use_analysis,
             mode,
@@ -204,19 +204,19 @@ class TestLstmModelPTQ(unittest.TestCase):
             return
 
         fp32_model = test_case_args.fp32_model
-        assert (
-            fp32_model
-        ), 'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
+        assert fp32_model, (
+            'The FP32 model path cannot be empty. Please, use the --fp32_model option.'
+        )
         quant_model = test_case_args.quant_model
-        assert (
-            quant_model
-        ), 'The quant model path cannot be empty. Please, use the --quant_model option.'
+        assert quant_model, (
+            'The quant model path cannot be empty. Please, use the --quant_model option.'
+        )
         infer_data = test_case_args.infer_data
-        assert (
-            infer_data
-        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert infer_data, (
+            'The dataset path cannot be empty. Please, use the --infer_data option.'
+        )
         num_threads = test_case_args.num_threads
-        mkldnn_cache_capacity = test_case_args.mkldnn_cache_capacity
+        onednn_cache_capacity = test_case_args.onednn_cache_capacity
         warmup_iter = test_case_args.warmup_iter
         acc_diff_threshold = test_case_args.acc_diff_threshold
 
@@ -224,7 +224,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             fp32_model,
             infer_data,
             num_threads,
-            mkldnn_cache_capacity,
+            onednn_cache_capacity,
             warmup_iter,
             False,
             mode="fp32",
@@ -234,7 +234,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             fp32_model,
             infer_data,
             num_threads,
-            mkldnn_cache_capacity,
+            onednn_cache_capacity,
             warmup_iter,
             True,
             mode="ptq",
@@ -244,7 +244,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             quant_model,
             infer_data,
             num_threads,
-            mkldnn_cache_capacity,
+            onednn_cache_capacity,
             warmup_iter,
             True,
             mode="qat",

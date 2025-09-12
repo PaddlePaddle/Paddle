@@ -60,13 +60,16 @@ void AddmmKernel(const Context& dev_ctx,
                         input_dims));
 
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
+
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());
   const XPUType* input_ptr = reinterpret_cast<const XPUType*>(input.data<T>());
   XPUType* out_ptr = reinterpret_cast<XPUType*>(out->data<T>());
 
   int r;
-  if (alpha == 0.f) {
+  // If x.numel or y.numel is 0, we just need to do a broadcast mul.
+  if (alpha == 0.f || x.numel() == 0 || y.numel() == 0) {
     if (beta == 0.f) {
       r = xpu::constant(dev_ctx.x_context(),
                         out_ptr,
@@ -151,11 +154,11 @@ void AddmmKernel(const Context& dev_ctx,
       broadcast_flag = true;
       input_2d_ptr = RAII_GUARD.alloc_l3_or_gm<XPUType>(x_dims[0] * y_dims[1]);
       PADDLE_ENFORCE_XDNN_NOT_NULL(input_2d_ptr);
-      int r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
-                                      input_ptr,
-                                      input_2d_ptr,
-                                      common::vectorize<int64_t>(input_dims),
-                                      {x_dims[0], y_dims[1]});
+      r = xpu::broadcast<XPUType>(dev_ctx.x_context(),
+                                  input_ptr,
+                                  input_2d_ptr,
+                                  common::vectorize<int64_t>(input_dims),
+                                  {x_dims[0], y_dims[1]});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
     }
 
@@ -214,7 +217,7 @@ void AddmmKernel(const Context& dev_ctx,
                          float,
                          float>(
         dev_ctx.x_context(), t_x, t_y, t_input, t_out, desc, epilogue);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "fc_fusion");
+    PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
   } else {
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
@@ -232,5 +235,5 @@ PD_REGISTER_KERNEL(addmm,
                    ALL_LAYOUT,
                    phi::AddmmKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

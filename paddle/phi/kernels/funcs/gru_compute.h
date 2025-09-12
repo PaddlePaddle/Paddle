@@ -42,7 +42,7 @@ struct GRUMetaGrad {
 
 template <typename DeviceContext, typename T>
 struct GRUUnitFunctor {
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -53,7 +53,7 @@ struct GRUUnitFunctor {
 
 template <typename DeviceContext, typename T>
 struct GRUUnitGradFunctor {
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,
@@ -65,7 +65,7 @@ struct GRUUnitGradFunctor {
 
 template <typename DeviceContext, typename T>
 struct GRUUnitFunctorV2 {
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       GRUMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -75,7 +75,7 @@ struct GRUUnitFunctorV2 {
 
 template <typename DeviceContext, typename T>
 struct GRUUnitGradFunctorV2 {
-  static void compute(const DeviceContext &context,
+  static void compute(const DeviceContext &dev_ctx,
                       GRUMetaValue<T> value,
                       GRUMetaGrad<T> grad,
                       int frame_size,

@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle.base import core
@@ -126,8 +125,7 @@ class TestCumprod(OpTest):
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
         self.x = (
-            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype)
-            + 0.5
+            np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
             # np.ones(self.shape).astype(self.val_dtype)
         )
         if zero_num > 0:
@@ -263,15 +261,7 @@ class TestCumprodAPI(unittest.TestCase):
         paddle.enable_static()
         self.init_dtype()
         self.x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.place.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.place.append(paddle.CUDAPlace(0))
+        self.place = get_places()
 
     # test static graph api.
 
@@ -1089,6 +1079,89 @@ class TestCumprodOuter1AndInner1(OpTest):  # used to pass ci-coverage
                     user_defined_grad_outputs=[self.grad_out],
                     check_pir=True,
                 )
+
+
+class TestCumprodAPI_ZeroSize(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [0, 3, 10, 10]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = (np.random.rand(0, 3, 10, 10) + 0.5).astype(self.dtype)
+        self.place = get_places()
+
+    # test dynamic graph api.
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            x.stop_gradient = False
+            out = paddle.cumprod(x, 1)
+            out_ref = np.cumprod(self.x, 1)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+            paddle.sum(out).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+class TestCumprodAPI_WithFlatten(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [3, 10, 10]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = (np.random.rand(3, 10, 10) + 0.5).astype(self.dtype)
+        self.place = get_places()
+
+    # test dynamic graph api.
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            x.stop_gradient = False
+            out = paddle.cumprod(x, None)
+            out_ref = np.cumprod(self.x, None)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+            out_grad_ref = np.ones_like(out_ref)
+            out_grad = paddle.to_tensor(out_grad_ref)
+            x_grad_ref = np.zeros_like(self.x).flatten()
+            (x_grad,) = paddle.grad(out, [x], [out_grad])
+            cumprod_grad(
+                self.x.flatten(),
+                out_ref,
+                out_grad_ref,
+                x_grad_ref,
+                [np.prod(self.shape)],
+                -1,
+                exclusive=False,
+                reverse=False,
+            )
+            x_grad_ref = x_grad_ref.reshape(self.shape)
+            np.testing.assert_allclose(x_grad_ref, x_grad.numpy(), rtol=1e-05)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_static_api(self):
+        def run(place):
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.shape, dtype=self.dtype)
+                out = paddle.cumprod(x, None)
+                exe = paddle.static.Executor(place)
+                (out,) = exe.run(feed={'X': self.x}, fetch_list=[out])
+            out_ref = np.cumprod(self.x, None)
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":

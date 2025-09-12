@@ -156,7 +156,7 @@ std::shared_ptr<AsyncLoad::Task> AsyncLoad::OffloadWithOffset(
     gpu_place_ = place;
     place_to_calc_event_.emplace(
         key, platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
-    load_ctx_ = std::move(std::make_unique<phi::GPUContext>(place));
+    load_ctx_ = std::make_unique<phi::GPUContext>(place);
   }
   SyncCalcStream(gpu_place_, load_ctx_.get(), place_to_calc_event_.at(key));
 

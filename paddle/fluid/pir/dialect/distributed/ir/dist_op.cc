@@ -43,9 +43,9 @@ void VerifyOpArgNum(const pir::OpBase* op,
                     size_t num_outputs,
                     size_t op_dist_attr_ninputs,
                     size_t op_dist_attr_noutputs) {
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+  VLOG(6) << "Start Verifying inputs, outputs and attributes for: "
           << T::name();
-  VLOG(4) << "Verifying inputs num:";
+  VLOG(6) << "Verifying inputs num:";
   {
     auto input_size = op->num_operands();
     PADDLE_ENFORCE_EQ(input_size,
@@ -57,7 +57,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           input_size));
   }
 
-  VLOG(4) << "Verifying outputs num:";
+  VLOG(6) << "Verifying outputs num:";
   {
     auto output_size = op->num_results();
     PADDLE_ENFORCE_EQ(output_size,
@@ -69,7 +69,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           output_size));
   }
 
-  VLOG(4) << "Verifying attributes:";
+  VLOG(6) << "Verifying attributes:";
   {
     auto& attributes = op->attributes();
     PADDLE_ENFORCE_EQ(
@@ -87,7 +87,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           "Type of attribute: op_dist_attr is not right."));
   }
 
-  VLOG(4) << "Verifying op dist attrs:";
+  VLOG(6) << "Verifying op dist attrs:";
   {
     auto op_dist_attr =
         op->attribute<paddle::dialect::OperationDistAttribute>("op_dist_attr");
@@ -103,7 +103,7 @@ void VerifyOpArgNum(const pir::OpBase* op,
                           "The op_dist_attr output size must be equal to %u.",
                           op_dist_attr_noutputs));
   }
-  VLOG(4) << "End Verifying inputs, outputs and attributes num for: "
+  VLOG(6) << "End Verifying inputs, outputs and attributes num for: "
           << T::name();
 }
 
@@ -124,7 +124,7 @@ void ShardTensorOp::VerifySig() {
           "Mismatched output type. ShardTensorOp requires "
           "'DistDenseTensorType' for output."));
 
-  VLOG(4) << "End Verifying for: ShardTensorOp.";
+  VLOG(6) << "End Verifying for: ShardTensorOp.";
 }
 
 void ShardTensorOp::Build(pir::Builder& builder,
@@ -413,7 +413,8 @@ std::vector<std::vector<pir::Value>> DtensorFromLocalOp::Vjp(
                    ->result(0);
   }
 
-  auto grad_op = builder.Build<DtensorToLocalOp>(out_grad);
+  auto grad_op = builder.Build<DtensorToLocalOp>(
+      out_grad, dist_type.tensor_dist_attr() /*unused*/);
 
   VLOG(6) << "End call vjp for dtensor_from_local op.";
 
@@ -422,13 +423,23 @@ std::vector<std::vector<pir::Value>> DtensorFromLocalOp::Vjp(
 
 void DtensorToLocalOp::Build(pir::Builder& builder,
                              pir::OperationArgument& argument,
-                             pir::Value input) {
+                             pir::Value input,
+                             TensorDistAttribute grad_dist_attr) {
   VLOG(4) << "Start build DtensorToLocalOp";
+  paddle::dialect::DistDenseTensorType input_tensor_type;
+  if (input.type().isa<paddle::dialect::DistDenseTensorType>()) {
+    input_tensor_type =
+        input.type().dyn_cast<paddle::dialect::DistDenseTensorType>();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Only support paddle::dialect::DistDenseTensorType"));
+  }
 
   VLOG(4) << "Builder construction inputs";
   argument.AddInput(input);
 
   VLOG(4) << "Builder construction attributes";
+  argument.AddAttribute("grad_dist_attr", grad_dist_attr);
 
   VLOG(4) << "Builder construction outputs";
 
@@ -494,9 +505,11 @@ std::vector<std::vector<pir::Value>> DtensorToLocalOp::Vjp(
           "dtensor_from_local op's outputs grad[0] size should be 1"));
 
   auto& builder = *ApiBuilder::Instance().GetBuilder();
+  const auto& grad_dist_attr =
+      op->attribute<paddle::dialect::TensorDistAttribute>("grad_dist_attr");
 
-  auto grad_op = builder.Build<DtensorFromLocalOp>(
-      out_grads[0][0], dist_type.tensor_dist_attr());
+  auto grad_op =
+      builder.Build<DtensorFromLocalOp>(out_grads[0][0], grad_dist_attr);
 
   VLOG(6) << "End call vjp for dtensor_from_local op.";
 

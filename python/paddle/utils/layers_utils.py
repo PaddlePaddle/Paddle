@@ -219,7 +219,12 @@ def _packed_nest_with_indices(structure, flat, index):
             packed.append(_sequence_like(s, child))
             index = new_index
         else:
-            packed.append(flat[index])
+            # Paddle requires python version > 3.7, so dict is always OrderedDict
+            packed.append(
+                flat[index]
+                if not isinstance(flat, dict)
+                else list(flat.values())[index]
+            )
             index += 1
     return index, packed
 
@@ -478,7 +483,15 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
+        shape_out = []
+        for x in shape:
+            if isinstance(x, Variable):
+                # skip item if size = 0
+                if x.size > 0:
+                    shape_out.append(x.item(0))
+            else:
+                shape_out.append(x)
+        shape = shape_out
     else:
         if in_dygraph_mode():
             shape = shape.astype(int).tolist()
@@ -545,12 +558,12 @@ def get_inputs_outputs_in_block(block):
     Returns the inputs and outputs variable used in this block but not
     created in this block.
     """
-    assert isinstance(
-        block, Block
-    ), "input non-Block argument for get_inputs_outputs_in_block."
-    assert (
-        block.parent_idx != -1
-    ), "input block should be a sub-block, not main block."
+    assert isinstance(block, Block), (
+        "input non-Block argument for get_inputs_outputs_in_block."
+    )
+    assert block.parent_idx != -1, (
+        "input block should be a sub-block, not main block."
+    )
 
     # Find input/output var names of all ops in block
     inner_inputs = set()

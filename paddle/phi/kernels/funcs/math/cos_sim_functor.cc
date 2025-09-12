@@ -18,7 +18,7 @@ namespace phi {
 namespace math {
 template <typename T>
 struct CosSimDyFunctor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& dev_ctx,
                   const T* x_norm,
                   const T* y_norm,
                   const T* x,

@@ -58,6 +58,18 @@ bool StreamSafeCustomDeviceAllocation::RecordStream(
   return true;
 }
 
+void StreamSafeCustomDeviceAllocation::EraseStream(
+    phi::stream::stream_t stream) {
+  VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
+  std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
+  auto it = outstanding_event_map_.find(stream);
+  if (it == outstanding_event_map_.end()) {
+    return;
+  }
+  it->second->Destroy();
+  outstanding_event_map_.erase(it);
+}
+
 bool StreamSafeCustomDeviceAllocation::CanBeFreed() {
   std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
   if (!phi::DeviceManager::HasDeviceType(place_.GetDeviceType())) {
@@ -191,7 +203,8 @@ uint64_t StreamSafeCustomDeviceAllocator::ReleaseImpl(const phi::Place& place) {
 
 void StreamSafeCustomDeviceAllocator::ProcessUnfreedAllocations() {
   // NOTE(Ruibiao): This condition is to reduce lock completion. It does not
-  // need to be thread-safe since here occasional misjudgments are permissible.
+  // need to be thread-safe since here occasional misjudgments are
+  // permissible.
   if (unfreed_allocations_.empty()) {
     return;
   }

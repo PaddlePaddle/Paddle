@@ -27,7 +27,7 @@ static const std::set<std::string> kExternFp32CallsGPU{
      "floor", "ceil",  "round",   "trunc",    "cos",   "cosh",      "tan",
      "sin",   "sinh",  "acos",    "acosh",    "asin",  "asinh",     "atan",
      "atanh", "isnan", "tanh",    "isfinite", "isinf", "remainder", "rsqrt",
-     "cbrt",  "abs",   "pow",     "mod"}};
+     "cbrt",  "abs",   "pow",     "mod",      "rint"}};
 
 static const std::set<std::string> kExternInt32CallsGPU{{"left_shift",
                                                          "right_shift",
@@ -41,11 +41,14 @@ static const std::set<std::string> kExternInt32CallsGPU{{"left_shift",
                                                          "popc",
                                                          "mod"}};
 
+static const std::set<std::string> kExternFp64CallsCPU{"atan"};
+
 static const std::set<std::string> kExternFp32CallsCPU = {
     "erf", "acos", "acosh", "asin", "asinh", "atan", "atanh", "remainder"};
 
 void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
-  if (kExternFp32CallsCPU.count(node->name)) {
+  if (kExternFp32CallsCPU.count(node->name) ||
+      kExternFp64CallsCPU.count(node->name)) {
     PADDLE_ENFORCE_GE(
         node->read_args.size(),
         1UL,
@@ -61,6 +64,11 @@ void DealWithCpuIntrinsics(ir::Call *node, Expr *expr) {
     if (node->read_args.front().type().is_float(32)) {
       auto out_type = node->type();
       *expr = lang::CallExtern(node->name + "f", node->read_args);
+    }
+    if (node->read_args.front().type().is_float(64)) {
+      auto out_type = node->type();
+      *expr = lang::CallExtern("cinn_host_" + node->name + "_fp64",
+                               node->read_args);
     }
   }
 }

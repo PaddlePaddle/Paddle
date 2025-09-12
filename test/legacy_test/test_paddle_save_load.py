@@ -453,34 +453,36 @@ class TestSaveLoadAny(unittest.TestCase):
             state_dict_dy = layer.state_dict()
             paddle.save(state_dict_dy, path)
         paddle.enable_static()
-        with paddle.pir_utils.IrGuard():
-            with new_program_scope():
-                layer = LinearNet()
-                data = paddle.static.data(
-                    name='x_static_save',
-                    shape=(None, IMAGE_SIZE),
-                    dtype='float32',
+        with (
+            paddle.pir_utils.IrGuard(),
+            new_program_scope(),
+        ):
+            layer = LinearNet()
+            data = paddle.static.data(
+                name='x_static_save',
+                shape=(None, IMAGE_SIZE),
+                dtype='float32',
+            )
+            y_static = layer(data)
+            program = paddle.static.default_main_program()
+            place = (
+                base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else base.CUDAPlace(0)
+            )
+            exe = paddle.static.Executor(paddle.CPUPlace())
+            exe.run(paddle.static.default_startup_program())
+            state_dict = paddle.load(path, keep_name_table=True)
+            paddle.pir.core.set_state_dict(
+                program, state_dict, paddle.static.global_scope()
+            )
+            state_dict_param = program.state_dict(
+                "param", paddle.static.global_scope()
+            )
+            for name, tensor in state_dict_dy.items():
+                np.testing.assert_array_equal(
+                    tensor.numpy(), np.array(state_dict_param[tensor.name])
                 )
-                y_static = layer(data)
-                program = paddle.static.default_main_program()
-                place = (
-                    base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else base.CUDAPlace(0)
-                )
-                exe = paddle.static.Executor(paddle.CPUPlace())
-                exe.run(paddle.static.default_startup_program())
-                state_dict = paddle.load(path, keep_name_table=True)
-                paddle.pir.core.set_state_dict(
-                    program, state_dict, paddle.static.global_scope()
-                )
-                state_dict_param = program.state_dict(
-                    "param", paddle.static.global_scope()
-                )
-                for name, tensor in state_dict_dy.items():
-                    np.testing.assert_array_equal(
-                        tensor.numpy(), np.array(state_dict_param[tensor.name])
-                    )
 
     def test_save_load_complex_object_dygraph_save(self):
         paddle.disable_static()

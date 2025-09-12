@@ -58,7 +58,6 @@ def parameter_accuracy(body):
         'Devs',
         'Not User Facing',
         'Security',
-        'Deprecations',
         'Others',
     ]
     body = re.sub("\r\n", "", body)

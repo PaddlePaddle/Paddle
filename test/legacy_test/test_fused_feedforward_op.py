@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
@@ -279,7 +279,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
                 pre_layer_norm=False,
             )
 
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
 
             fetch = exe.run(
                 feed={
@@ -357,7 +357,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
                 bias=ln2_bias,
             )
 
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
 
             fetch = exe.run(
                 feed={
@@ -426,7 +426,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
 
 
 class TestFusedFFNOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -494,6 +493,15 @@ class TestFusedFFNOpError(unittest.TestCase):
                 )
 
             self.assertRaises(ValueError, test_dropout_mode)
+
+
+class APITestStaticFusedFFNZeroSizeTensor(unittest.TestCase):
+    def setUp(self):
+        self.dtype = "float32"
+        self.layer_norm_dtype = "float32"
+        self.batch_size = 1
+        self.d_model = 8
+        self.dim_feedforward = 0
 
 
 if __name__ == "__main__":

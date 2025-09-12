@@ -117,12 +117,12 @@ class CollectiveHelper:
                 },
             )
             block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': [sync_var]},
-                outputs={'Out': [sync_var]},
+                type='all_reduce',
+                inputs={'x': [sync_var]},
+                outputs={'out': [sync_var]},
                 attrs={
                     'ring_id': global_ring_id,
-                    'use_calc_stream': True,
+                    'reduce_type': paddle.distributed.ReduceOp.SUM,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )

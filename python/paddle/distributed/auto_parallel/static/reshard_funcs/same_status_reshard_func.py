@@ -123,9 +123,9 @@ class SameStatusReshardFunction(ReshardFunction):
                     if var.dist_attr().process_mesh == dst_mesh:
                         chunk_id = find_var_used_op_chunk_id(var)
 
-                assert (
-                    -1 not in dst_type.shape
-                ), "dynamic shape is not supported by pir-auto parallel yet."
+                assert -1 not in dst_type.shape, (
+                    "dynamic shape is not supported by pir-auto parallel yet."
+                )
 
                 comm_group = new_process_group([src, dst], group_type="p2p")
                 recv_value = paddle._C_ops.recv_v2(

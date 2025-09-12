@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import builtins
+import copy
 import inspect
 import sys
 import time
@@ -22,36 +23,42 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
-from enum import Enum
+from dataclasses import is_dataclass
+from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
 
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    dataclass_as_dict,
+    dataclass_from_dict,
+)
 from paddle.utils import flatten, map_structure
 
 from .envs import (
-    ENV_CLEAN_CODE,
-    ENV_COST_MODEL,
     ENV_SOT_LOG_LEVEL,
+    ENV_SOT_SPECIALIZED_DIM_NUMBERS,
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
-    break_graph_set,
+    break_graph_functions,
     paddle_api_list,
     paddle_api_module_prefix,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from paddle._typing import NestedStructure
-    from paddle.framework import Program
 
 T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
-ConstTypes = (int, float, str, bool, type(None))
+ConstTypes = (int, float, str, bool, type(None), bytes)
 
 
 class Singleton(type):
@@ -128,26 +135,42 @@ class ResumeFnNameFactory(metaclass=Singleton):
         return name
 
 
+class SIRToCodeMap(metaclass=Singleton):
+    def __init__(self):
+        self._map = {}
+
+    def register(self, sir, code):
+        self._map[sir.name] = code
+
+    def get(self, sir):
+        return self._map.get(sir.name)
+
+
 def log(level, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(*args, end="", flush=True)
 
 
 def log_do(level, fn):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         fn()
 
 
 def log_format(level, str, *args):
-    cur_level = ENV_SOT_LOG_LEVEL.get_with_cache()
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(str.format(*args), end="", flush=True)
 
 
 def log_enabled(level):
-    return level <= ENV_SOT_LOG_LEVEL.get_with_cache()
+    return level <= ENV_SOT_LOG_LEVEL.get()
+
+
+@lru_cache
+def log_once(msg):
+    print(msg, flush=True)
 
 
 def no_eval_frame(func):
@@ -178,6 +201,14 @@ def is_paddle_api(func):
     ):  # paddle.Tensor should not be wrapped, but how about other situations?
         return False
     return in_paddle_module(func) or func in paddle_api_list
+
+
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
 
 
 def is_builtin_fn(fn):
@@ -212,7 +243,18 @@ def in_paddle_module(func):
 
 
 def is_break_graph_api(func):
-    return func in break_graph_set
+    return func in break_graph_functions
+
+
+def is_namedtuple_class(cls):
+    if not inspect.isclass(cls):
+        return False
+    if not issubclass(cls, tuple):
+        return False
+    # The signature created by nametuple function
+    namedtuple_attrs = {"_make", "_asdict", "_fields", "_replace"}
+    cls_attrs = set(dir(cls))
+    return namedtuple_attrs.issubset(cls_attrs)
 
 
 def map_if(
@@ -245,6 +287,8 @@ def map_if_extend(structure, pred, true_fn, false_fn):
     def wrapped_pred(x):
         if isinstance(x, slice):
             return True
+        if is_dataclass(x) and not isinstance(x, type):
+            return True
         return pred(x)
 
     def wrapped_true_fn(x):
@@ -252,6 +296,12 @@ def map_if_extend(structure, pred, true_fn, false_fn):
             l = [x.start, x.stop, x.step]
             l = map_if_extend(l, pred, true_fn, false_fn)
             return slice(*l)
+
+        if is_dataclass(x) and not isinstance(x, type):
+            dt_dict = dataclass_as_dict(x)
+            dt_dict = map_if_extend(dt_dict, pred, true_fn, false_fn)
+            return dataclass_from_dict(type(x), dt_dict)
+
         return true_fn(x)
 
     return map_if(
@@ -269,12 +319,13 @@ def count_if(*structures, pred):
 
 
 class Cache:
-    def __init__(self, weak=False):
+    def __init__(self, weak=False, copy=False):
         if not weak:
             self.cache = {}
         else:
             self.cache = WeakValueDictionary()
         self.hit_num = 0
+        self.copy = copy
 
     def __call__(self, *args, **kwargs):
         cache_key = self.key_fn(*args, **kwargs)
@@ -283,7 +334,10 @@ class Cache:
         if cache_key in self.cache:
             log(5, "cache hit: ", cache_key, "\n")
             self.hit_num += 1
-            return self.cache[cache_key]
+            cache_item = self.cache[cache_key]
+            if self.copy:
+                cache_item = copy.deepcopy(cache_item)
+            return cache_item
         value = self.value_fn(*args, **kwargs)
         self.cache[cache_key] = value
         return value
@@ -319,10 +373,6 @@ def is_strict_mode():
     return ENV_STRICT_MODE.get()
 
 
-def is_clean_code() -> bool:
-    return ENV_CLEAN_CODE.get()
-
-
 def list_find_index_by_id(li: list[Any], item: Any) -> int:
     return [id(it) for it in li].index(id(item))
 
@@ -334,59 +384,6 @@ def list_contain_by_id(li: list[Any], item: Any) -> int:
 def get_unbound_method(obj, name):
     # TODO(dev): Consider the case of patching methods to instances
     return getattr(obj.__class__, name)
-
-
-class GraphLogger(metaclass=Singleton):
-    graph_num: int
-    graphs: list[Program]
-    num_ops_per_graph: list[int]
-
-    def __init__(self):
-        self.clear()
-
-    def clear(self):
-        self.graph_num = 0
-        self.graphs = []
-        self.num_ops_per_graph = []
-
-    def get_graph_num(self):
-        return self.graph_num
-
-    def get_op_num(self):
-        return sum(self.num_ops_per_graph)
-
-    def add_subgraph(self, program: Program):
-        self.graph_num += 1
-        self.graphs.append(program)
-        sub_graph_op_num = len(program.global_block().ops)
-        self.num_ops_per_graph.append(sub_graph_op_num)
-
-    def add_subgraph_info(self, strs):
-        for i in range(len(self.graphs)):
-            strs.append(
-                "------------------------------------------------------"
-            )
-
-            strs.append(f"subgraph {i}, OpNum: {self.num_ops_per_graph[i]}")
-            strs.append(f"{self.graphs[i]}")
-
-    def __str__(self):
-        strs = []
-        strs.append("---------------- PaddleSOT graph info ----------------")
-        strs.append(f"SubgraphNum: {self.get_graph_num()}")
-        strs.append(f"OpNum: {self.get_op_num()}")
-
-        # We can display every subgraph info
-        log_do(5, lambda: self.add_subgraph_info(strs))
-
-        strs.append("---------------- PaddleSOT graph info ----------------")
-        return "\n".join(strs)
-
-    def __repr__(self):
-        return self.__str__()
-
-    def print_info(self):
-        print(self)
 
 
 class SotUndefinedVar(metaclass=Singleton):
@@ -409,68 +406,14 @@ def printable(obj):
         return False
 
 
-class StepState(Enum):
-    COLLECT_INFO = 1
-    RUN_SOT = 2
-    RUN_DYN = 3
-
-
 class StepInfo:
-    REQUIRED_DYN_INFOS = 10
-    REQUIRED_SOT_INFOS = 10
-
-    USED_DYN_INFOS = 5
-
-    COLLECT_INFO_MAX_STEP = 50
-    CV_BOUNDARY = 0.1
-
     BACK_TRACE_STEPS = 20
 
     def __init__(self):
         self.step_count = -1
-        self.state = (
-            StepState.COLLECT_INFO
-            if ENV_COST_MODEL.get()
-            else StepState.RUN_SOT
-        )
-        self.dyn_time_costs = []
-        self.avg_dyn_time = 0
-        self.sot_time_costs = []
-        self.sot_step = -1
-
-    def add_dynamic_time_info(self, time_cost):
-        self.dyn_time_costs.append(time_cost)
-        if len(self.dyn_time_costs) == self.REQUIRED_DYN_INFOS:
-            self.avg_dyn_time = np.mean(
-                self.dyn_time_costs[-self.USED_DYN_INFOS :]
-            )
-
-    def add_sot_time_info(self, time_cost, current_code):
-        self.sot_time_costs.append(time_cost)
-        if len(self.sot_time_costs) == self.REQUIRED_SOT_INFOS:
-            avg_sot_time = np.mean(self.sot_time_costs)
-            log(
-                1,
-                f"[Cost Model] sot: {avg_sot_time}, dyn: {self.avg_dyn_time}\n",
-            )
-            if avg_sot_time < self.avg_dyn_time:
-                log(1, f"[Cost Model] Switch to RUN_SOT: {current_code} \n")
-                self.state = StepState.RUN_SOT
-            elif (
-                self.step_count > self.COLLECT_INFO_MAX_STEP
-                or np.std(self.sot_time_costs) / avg_sot_time < self.CV_BOUNDARY
-            ):
-                log(1, f"[Cost Model] Switch to RUN_DYN: {current_code}\n")
-                self.state = StepState.RUN_DYN
-            else:
-                log(1, f"[Cost Model] Decision delayed: {current_code}\n")
-                self.sot_time_costs.clear()
 
     def need_back_trace(self):
         return self.step_count < self.BACK_TRACE_STEPS
-
-    def need_dynamic_info(self):
-        return len(self.dyn_time_costs) < self.REQUIRED_DYN_INFOS
 
 
 class StepInfoManager(metaclass=Singleton):
@@ -491,45 +434,21 @@ class StepInfoManager(metaclass=Singleton):
             self.current_step_info = self.step_record[code]
 
             self.current_step_info.step_count += 1
-
-            log(
-                2,
-                f"[Cost Model] New step start, current state is {self.current_state}\n",
-            )
             yield
         finally:
             self.current_code = old_code
             self.current_step_info = old_info
 
-    def sot_step(self):
-        self.current_step_info.sot_step += 1
-
-    def collect_info(self, impl_dynamic, impl_sot, /, *args, **kwargs):
-        if self.current_step_info.need_dynamic_info():
-            start_time = time.perf_counter()
-            outs = impl_dynamic(*args, **kwargs)
-            time_cost = time.perf_counter() - start_time
-            self.current_step_info.add_dynamic_time_info(time_cost)
-        else:
-            start_time = time.perf_counter()
-            outs = impl_sot(*args, **kwargs)
-            time_cost = time.perf_counter() - start_time
-            self.current_step_info.add_sot_time_info(
-                time_cost, self.current_code
-            )
-        return outs
-
     @property
     def need_back_trace(self):
-        return self.current_step_info.need_back_trace()
+        return (
+            self.current_step_info is not None
+            and self.current_step_info.need_back_trace()
+        )
 
     @property
     def current_step(self):
         return self.current_step_info.step_count
-
-    @property
-    def current_state(self):
-        return self.current_step_info.state
 
     def clear(self):
         self.step_record.clear()
@@ -546,3 +465,70 @@ def get_api_fullname(api):
             return module_str + "." + api_name
         module_str = module_str.rpartition(".")[0]
     return None
+
+
+def get_numpy_ufuncs():
+    ufuncs = [
+        ufunc
+        for _, ufunc in inspect.getmembers(
+            np, lambda member: isinstance(member, np.ufunc)
+        )
+    ]
+    unary_ufuncs = filter(lambda ufunc: ufunc.nin == 1, ufuncs)
+    binary_ufuncs = filter(lambda ufunc: ufunc.nin == 2, ufuncs)
+    return list(unary_ufuncs), list(binary_ufuncs)
+
+
+def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    from paddle.jit.sot.utils.exceptions import SotCapturedStopIteration
+
+    res = []
+    while True:
+        try:
+            res.append(fn())
+        except SotCapturedStopIteration:
+            break
+    return res
+
+
+def update_list_inplace(
+    original_list: list[T], new_contents: list[T]
+) -> list[T]:
+    original_list.clear()
+    original_list.extend(new_contents)
+    return original_list
+
+
+def get_obj_stable_repr(obj) -> str:
+    if hasattr(obj, '__qualname__'):
+        return obj.__qualname__
+    if hasattr(obj, '__name__'):
+        return obj.__name__
+
+    class_name = obj.__class__.__name__
+
+    # If module is available and not __main__, include it
+    if hasattr(obj, "__class__") and hasattr(obj.__class__, "__module__"):
+        module = obj.__class__.__module__
+        if module not in ("__main__", "builtins"):
+            return f"{module}.{class_name}()"
+
+    return f"{class_name}()"
+
+
+def get_min_non_specialized_number() -> int:
+    specialized_dim_numbers_raw_str = (
+        ENV_SOT_SPECIALIZED_DIM_NUMBERS.get().lower()
+    )
+    assert specialized_dim_numbers_raw_str in [
+        "no",
+        "0",
+        "01",
+    ], f"Unsupported specialized_dim_numbers: {specialized_dim_numbers_raw_str}"
+    to_min_non_specialized_number = {
+        # specialized numbers, minimum non-specialized number
+        "no": 0,
+        "0": 1,
+        "01": 2,
+    }
+    return to_min_non_specialized_number[specialized_dim_numbers_raw_str]

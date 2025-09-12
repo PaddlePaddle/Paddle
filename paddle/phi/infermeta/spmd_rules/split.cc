@@ -46,13 +46,13 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   }
 
   // get einsum notation for input, use a special
-  // notation 'k' to mark the splitted axis in input
+  // notation 'k' to mark the split axis in input
   std::string x_axes = alphabet.substr(0, x_ndim);
   x_axes[axis] = 'k';
 
   // get einsum notation for output
   std::string out_axes(x_axes);
-  // the splitted axis cannot be sharded, set its notation
+  // the split axis cannot be sharded, set its notation
   // with the special '1' to set its dim mapping to -1.
   out_axes[axis] = '1';
 
@@ -73,7 +73,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
     out_dist_attrs[i].set_dims_mapping(out_dims_mapping);
   }
 
-  // Step2.3 get new dist attribute for input. the splitted
+  // Step2.3 get new dist attribute for input. the split
   // cannot be sharded, if it is sharded, set it to replicated.
   TensorDistAttr x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr_src);
   x_dims_mapping[axis] = -1;
@@ -145,7 +145,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   std::string alphabet = "abcdefghijlmnopqrstuvwxyz";
 
   // get einsum notation for input, use a special
-  // notation 'k' to mark the splitted axis in input
+  // notation 'k' to mark the split axis in input
   std::string x_axes = alphabet.substr(0, x_ndim);
   x_axes[axis] = 'k';
 
@@ -171,7 +171,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   auto x_dist_attr_dst = CopyTensorDistAttrForOutput(x_dist_attr);
   x_dist_attr_dst.set_dims_mapping(x_dims_mapping);
 
-  // step2.3 get new dist attribute for output. the splitted
+  // step2.3 get new dist attribute for output. the split
   // cannot be sharded, if it is sharded, set it to replicated.
   std::vector<TensorDistAttr> out_dist_attrs;
   for (int i = 0; i < nouts; i++) {

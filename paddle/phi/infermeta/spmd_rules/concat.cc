@@ -85,8 +85,17 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   std::string align_axis;
   std::tie(all_axis, align_axis) = FillConcatNotation(ndim, dim);
   std::vector<std::string> axis_names(input_attrs.size(), all_axis);
-  AlignDimsSharding(
-      &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
+  if (ndim == 1 && align_axis.empty()) {
+    // Simply set the 1D tensor to Replicate, and calling AlignDimsSharding
+    // requires !align_axis.empty()
+    std::vector<int64_t> dims_mapping(1, -1);
+    for (size_t i = 0; i < input_attrs.size(); i++) {
+      input_attrs[i].set_dims_mapping(dims_mapping);
+    }
+  } else {
+    AlignDimsSharding(
+        &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
+  }
 
   auto out_dist_attr =
       CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);

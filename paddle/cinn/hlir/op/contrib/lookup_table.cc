@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -35,6 +34,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/common/flags.h"
 
 namespace cinn {
@@ -92,7 +92,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForLookupTable(
                     true,
                     ::common::errors::InvalidArgument(
                         "The padding_idx should be set in lookup_table."));
-  auto padding_idx = absl::get<int64_t>(attr_store.at("padding_idx"));
+  auto padding_idx = std::get<int64_t>(attr_store.at("padding_idx"));
 
   framework::CINNCompute lookup_table_compute([=](lang::Args args,
                                                   lang::RetValue* ret) {

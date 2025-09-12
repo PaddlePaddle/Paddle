@@ -21,6 +21,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 namespace paddle {
 namespace framework {
 namespace {
@@ -209,6 +211,10 @@ CustomEngineInstruction::CustomEngineInstruction(
 }
 
 void CustomEngineInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CustomEngineInstruction " + op_name_ + " begin");
+  }
+
   if (!is_builed_) {
     VLOG(6) << "Start Build custom engine";
     interface_ = paddle::custom_engine::CustomEngineManager::Instance()
@@ -239,6 +245,10 @@ void CustomEngineInstruction::Run() {
     PADDLE_THROW(common::errors::Unimplemented(
         "CustomEngineInstruction's C_CustomEngineInterface->graph_engine_run "
         "not implemented"));
+  }
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("CustomEngineInstruction " + op_name_ + " finish");
   }
 }
 

@@ -233,12 +233,21 @@ typedef struct PD_MaxInputShape {
 PADDLE_CAPI_EXPORT extern void PD_SwitchIrDebug(PD_AnalysisConfig* config,
                                                 bool x);
 
-PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(PD_AnalysisConfig* config);
+PADDLE_CAPI_EXPORT extern void PD_EnableMKLDNN(
+    PD_AnalysisConfig* config);  // deprecated
 
 PADDLE_CAPI_EXPORT extern void PD_SetMkldnnCacheCapacity(
-    PD_AnalysisConfig* config, int capacity);
+    PD_AnalysisConfig* config, int capacity);  // deprecated
 
 PADDLE_CAPI_EXPORT extern bool PD_MkldnnEnabled(
+    const PD_AnalysisConfig* config);  // deprecated
+
+PADDLE_CAPI_EXPORT extern void PD_EnableONEDNN(PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern void PD_SetOnednnCacheCapacity(
+    PD_AnalysisConfig* config, int capacity);
+
+PADDLE_CAPI_EXPORT extern bool PD_OnednnEnabled(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SetCpuMathLibraryNumThreads(
@@ -248,9 +257,15 @@ PADDLE_CAPI_EXPORT extern int PD_CpuMathLibraryNumThreads(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_EnableMkldnnBfloat16(
-    PD_AnalysisConfig* config);
+    PD_AnalysisConfig* config);  // deprecated
 
 PADDLE_CAPI_EXPORT extern bool PD_MkldnnBfloat16Enabled(
+    const PD_AnalysisConfig* config);  // deprecated
+
+PADDLE_CAPI_EXPORT extern void PD_EnableOnednnBfloat16(
+    PD_AnalysisConfig* config);
+
+PADDLE_CAPI_EXPORT extern bool PD_OnednnBfloat16Enabled(
     const PD_AnalysisConfig* config);
 
 PADDLE_CAPI_EXPORT extern void PD_SetModelBuffer(PD_AnalysisConfig* config,

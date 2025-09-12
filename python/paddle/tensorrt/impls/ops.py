@@ -18,9 +18,13 @@ import tensorrt as trt
 from paddle.tensorrt.converter_utils import (
     WithFp16,
     get_trt_plugin,
+    set_layer_name,
     unary_op_converter,
 )
 from paddle.tensorrt.register import converter_registry
+from paddle.tensorrt.util import (
+    TensorRTConstantManager,
+)
 
 
 @converter_registry.register("pd_op.sqrt", trt_version="trt_version_ge=8.0")
@@ -91,7 +95,8 @@ def roi_align_converter(network, paddle_op, inputs):
         ),
         trt.PluginField(
             "aligned",
-            np.array(aligned, dtype=np.bool),
+            np.array(aligned, dtype=np.bool_),
+            trt.PluginFieldType.INT32,
         ),
     ]
     plugin_field_collection = trt.PluginFieldCollection(plugin_fields)
@@ -102,6 +107,7 @@ def roi_align_converter(network, paddle_op, inputs):
     )
     roi_align_inputs = [x, rois]
     roi_align_layer = network.add_plugin_v2(roi_align_inputs, plugin)
+    set_layer_name(roi_align_layer, paddle_op)
     return roi_align_layer.get_output(0)
 
 
@@ -174,6 +180,7 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
 
     yolo_box_inputs = [x, imgSize]
     yolo_box_layer = network.add_plugin_v2(yolo_box_inputs, plugin)
+    set_layer_name(yolo_box_layer, paddle_op)
     out0 = yolo_box_layer.get_output(0)
     out1 = yolo_box_layer.get_output(1)
     return (out0, out1)
@@ -184,9 +191,22 @@ def YoloBoxOpConverter(network, paddle_op, inputs):
 )
 def deformable_conv_converter(network, paddle_op, inputs):
     input = inputs[0]
+    constant_manager = TensorRTConstantManager()
     offset = inputs[1]
     filter = inputs[2]
     mask = inputs[3]
+
+    if isinstance(filter, trt.ITensor):
+        filter_name = (
+            paddle_op.operands()[2]
+            .source()
+            .get_defining_op()
+            .attrs()['parameter_name']
+        )
+
+        filter = constant_manager.get_constant_value(filter_name)
+    else:
+        filter = filter.numpy()
 
     groups = paddle_op.attrs().get("groups")
     deformable_groups = paddle_op.attrs().get("deformable_groups")
@@ -206,7 +226,7 @@ def deformable_conv_converter(network, paddle_op, inputs):
         ),
         trt.PluginField(
             "weights",
-            filter.numpy(),
+            filter,
             trt.PluginFieldType.FLOAT32,
         ),
         trt.PluginField(
@@ -254,4 +274,5 @@ def deformable_conv_converter(network, paddle_op, inputs):
     deformable_conv_layer = network.add_plugin_v2(
         [inputs[0], inputs[1], inputs[3]], plugin
     )
+    set_layer_name(deformable_conv_layer, paddle_op)
     return deformable_conv_layer.get_output(0)

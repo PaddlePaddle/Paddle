@@ -21,7 +21,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -45,7 +44,6 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
         )
         np.testing.assert_allclose(static_fn(*inputs), fn(*inputs), rtol=1e-05)
 
-    @test_pir_only
     @test_ast_only
     def test_conv2d(self):
         self.check_dynamic_shape(
@@ -54,7 +52,6 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
-    @test_pir_only
     @test_ast_only
     def test_bn(self):
         self.check_dynamic_shape(
@@ -63,7 +60,6 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
-    @test_pir_only
     @test_ast_only
     def test_depthwise_conv2d(self):
         self.check_dynamic_shape(
@@ -72,7 +68,6 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
-    @test_pir_only
     @test_ast_only
     def test_group_norm(self):
         self.check_dynamic_shape(
@@ -81,7 +76,6 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
         )
 
-    @test_pir_only
     @test_ast_only
     def test_functional_conv(self):
         self.check_dynamic_shape(

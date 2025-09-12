@@ -104,6 +104,7 @@ def _reduce_tensor(tensor):
         tensor.place.is_cpu_place()
         or tensor.place.is_gpu_place()
         or tensor.place.is_cuda_pinned_place()
+        or tensor.place.is_xpu_place()
     ):
         if type(tensor) == paddle.base.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
@@ -191,6 +192,29 @@ def _rebuild_cuda_tensor(
     return lodtensor
 
 
+def _rebuild_xpu_tensor(
+    cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
+):
+    cache_tensor = _cuda_from_cache((handle, offset_bytes))
+    if cache_tensor is None:
+        lodtensor = cls._new_shared_xpu(
+            (handle, offset_bytes, size, type_idx, dims, lod, device_idx)
+        )
+        # We only cache cuda shared tensor here.
+        # The opening cost of cudaIpcMemoryHandle is very high.
+        # Since we cache the received tensor directly,
+        # The sender may reallocate the tensor space,
+        # you should manually maintain the lifecycle of ipc tensor
+        shared_cache[(handle, offset_bytes)] = lodtensor
+    else:
+        lodtensor = paddle.base.core.DenseTensor()
+        lodtensor._share_buffer_with(
+            cache_tensor, (size, type_idx, dims, lod, device_idx)
+        )
+
+    return lodtensor
+
+
 def _rebuild_lodtensor_empty(cls):
     # TODO: check if tensor initialized
     # TODO: handle the dtype of empty tensor
@@ -234,8 +258,13 @@ def _reduce_lodtensor(lodtensor):
             if prev_id != cur_id:
                 paddle.base.core.set_cuda_current_device_id(prev_id)
         rebuild = _rebuild_cuda_tensor
+    elif lodtensor._place().is_xpu_place():
+        metadata = lodtensor._share_xpu()
+        rebuild = _rebuild_xpu_tensor
     else:
-        raise RuntimeError("We only support pass cpu/gpu lodtensor for now!")
+        raise RuntimeError(
+            "We only support pass cpu/gpu/xpu lodtensor for now!"
+        )
 
     return (rebuild, (type(lodtensor), *metadata))
 

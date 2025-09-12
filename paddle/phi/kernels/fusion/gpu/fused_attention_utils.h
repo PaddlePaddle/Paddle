@@ -39,7 +39,7 @@ static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
     pg = map->get(ring_id);
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "ring_id %d is not in ProcessGroupMap, please check related"
+        "ring_id %d is not in ProcessGroupMap, please check related "
         "configurations and retry.",
         ring_id));
   }
@@ -60,8 +60,8 @@ template <typename T>
 static void AllReduce(phi::DenseTensor &tensor,  // NOLINT
                       const int ring_id,
                       const int count UNUSED,
-                      const phi::GPUContext &ctx) {
-  AllReduce<T>(tensor, ring_id, ctx);
+                      const phi::GPUContext &dev_ctx) {
+  AllReduce<T>(tensor, ring_id, dev_ctx);
 }
 
 }  // namespace fusion

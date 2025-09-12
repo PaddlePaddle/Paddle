@@ -35,7 +35,6 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
 
     class TestXPUPutAlongAxisOpAssign(XPUOpTest):
         def setUp(self):
-
             self.init_config()
             self.init_data()
             self.x = np.random.random(self.x_shape).astype(
@@ -65,17 +64,17 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
                                 self.value_broadcast[i, j, k]
                             )
                         elif self.reduce == "add":
-                            self.target[
-                                loc_[0], loc_[1], loc_[2]
-                            ] += self.value_broadcast[i, j, k]
+                            self.target[loc_[0], loc_[1], loc_[2]] += (
+                                self.value_broadcast[i, j, k]
+                            )
                         elif self.reduce == "mul" or self.reduce == "multiply":
-                            self.target[
-                                loc_[0], loc_[1], loc_[2]
-                            ] *= self.value_broadcast[i, j, k]
+                            self.target[loc_[0], loc_[1], loc_[2]] *= (
+                                self.value_broadcast[i, j, k]
+                            )
                         elif self.reduce == "mean":
-                            self.target[
-                                loc_[0], loc_[1], loc_[2]
-                            ] += self.value_broadcast[i, j, k]
+                            self.target[loc_[0], loc_[1], loc_[2]] += (
+                                self.value_broadcast[i, j, k]
+                            )
                             loc = tuple(loc_)
                             if loc in mean_record.keys():
                                 mean_record[loc] += 1
@@ -245,6 +244,8 @@ class XPUTestPutAlongAxis(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('put_along_axis')
 for stype in support_types:
+    if stype == 'int32' or stype == 'int64':
+        continue
     create_test_class(globals(), XPUTestPutAlongAxis, stype)
 
 if __name__ == "__main__":

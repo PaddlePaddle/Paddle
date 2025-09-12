@@ -43,6 +43,17 @@ SpmdInfo FlashAttInferSpmdStatic(const DistMetaTensor& q,
                                  bool return_softmax,
                                  bool is_test);
 
+SpmdInfo FlashMaskInferSpmd(const DistMetaTensor& q,
+                            const DistMetaTensor& k,
+                            const DistMetaTensor& v,
+                            const DistMetaTensor& startend_row_indices,
+                            const DistMetaTensor& fixed_seed_offset,
+                            float dropout,
+                            bool causal,
+                            bool return_softmax,
+                            bool is_test,
+                            const std::string& rng_name);
+
 SpmdInfo FlashAttInferSpmdReverse(const DistMetaTensor& q,
                                   const DistMetaTensor& k,
                                   const DistMetaTensor& v,
@@ -68,5 +79,15 @@ SpmdInfo FlashAttGradInferSpmd(const DistMetaTensor& q,
                                float dropout = 0.0,
                                bool causal = false);
 
+SpmdInfo FlashMaskGradInferSpmd(const DistMetaTensor& q,
+                                const DistMetaTensor& k,
+                                const DistMetaTensor& v,
+                                const DistMetaTensor& startend_row_indices,
+                                const DistMetaTensor& out,
+                                const DistMetaTensor& softmax_lse,
+                                const DistMetaTensor& seed_offset,
+                                const DistMetaTensor& out_grad,
+                                float dropout,
+                                bool causal);
 }  // namespace distributed
 }  // namespace phi

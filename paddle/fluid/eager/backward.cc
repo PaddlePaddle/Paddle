@@ -186,15 +186,36 @@ std::vector<paddle::Tensor> RunBackward(
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           common::errors::Fatal(
-              "Detected size mismatch between tensors and grad_tensors"
+              "Detected size mismatch between tensors and grad_tensors, "
               "grad_tensors should either have "
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
       VLOG(3) << "Fill grad input tensor " << i << "with give grad tensor";
 
-      // Deep copy
-      node_input_buffers_dict[grad_node]->CopyValueFromTensor(
-          input_info.first, input_info.second, grad_tensors[i]);
+      bool use_shared_buffer = false;
+      // Check if inputs and outputs are equal in size and share the same buffer
+      if (tensors.size() == inputs.size() &&
+          tensors[i].numel() == inputs[i].numel()) {
+        auto output_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(tensors[i].impl());
+        auto input_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(inputs[i].impl());
+        use_shared_buffer = output_tensor->IsSharedBufferWith(*input_tensor);
+      }
+
+      if (use_shared_buffer) {
+        // Share buffer with given grad_tensor
+        paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
+            inputs_grad_tensors;
+        inputs_grad_tensors.push_back({grad_tensors[i]});
+        auto grad_holder = GradTensorHolder(std::move(inputs_grad_tensors));
+        node_input_buffers_dict[grad_node] =
+            std::make_unique<GradTensorHolder>(grad_holder);
+      } else {
+        // Deep copy
+        node_input_buffers_dict[grad_node]->CopyValueFromTensor(
+            input_info.first, input_info.second, grad_tensors[i]);
+      }
     } else {
       VLOG(3) << "Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
@@ -224,6 +245,14 @@ std::vector<paddle::Tensor> RunBackward(
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
+
+  std::deque<GradNodeBase*> ready_queue;
+  for (GradNodeBase* item : queue) {
+    if (!node_in_degree_map.count(item)) {
+      ready_queue.push_back(item);
+    }
+  }
+  queue = ready_queue;
 
   std::list<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
@@ -256,10 +285,6 @@ std::vector<paddle::Tensor> RunBackward(
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
     try {
-      if (queue.size() > 1 && node_in_degree_map[node] != 0) {
-        queue.pop_front();
-        continue;
-      }
       queue.pop_front();
 
       // Run node: This is where Hook happens
@@ -394,7 +419,7 @@ std::vector<paddle::Tensor> RunBackward(
           PADDLE_ENFORCE(
               node_in_degree_map[next_node] >= 0,
               common::errors::Fatal(
-                  "Detected in-degree value smaller than zero. For Node: %s"
+                  "Detected in-degree value smaller than zero. For Node: %s, "
                   "Node's in-degree cannot be negative.",
                   next_node->name()));
 

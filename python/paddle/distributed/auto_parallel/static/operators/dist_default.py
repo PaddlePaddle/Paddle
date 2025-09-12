@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..completion import contains_spmd_rule, get_phi_spmd_rule
@@ -60,19 +60,19 @@ def prim_operator_data_parallel_functor(ctx, src_op):
 
     var_name = src_op.output_arg_names[0]
     if var_name in ctx.grads_params:
-        assert (
-            var_name not in ctx.synced_gradient
-        ), f"in primitive mode, grad is already {var_name} synced"
+        assert var_name not in ctx.synced_gradient, (
+            f"in primitive mode, grad is already {var_name} synced"
+        )
         ctx.synced_gradient.add(var_name)
         sync_group = new_process_group(ctx.data_parallel_group)
 
         allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [var_name]},
-            outputs={'Out': [var_name]},
+            type='all_reduce',
+            inputs={'x': [var_name]},
+            outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Backward,
             },
         )
@@ -119,18 +119,18 @@ class DistributedDefault(DistributedOperatorImplContainer):
         num_inputs = len(input_arg_names)
         input_specs = []
         for i in range(num_inputs):
-            assert not is_parameter_related(
-                input_arg_names[i], main_block
-            ), f"input {input_arg_names[i]} of op {dist_op.serial_op} is parameter, op should not use default rule."
+            assert not is_parameter_related(input_arg_names[i], main_block), (
+                f"input {input_arg_names[i]} of op {dist_op.serial_op} is parameter, op should not use default rule."
+            )
             input_specs.append(
                 get_dist_tensor_spec(dist_op, input_arg_names[i])
             )
         num_outputs = len(output_arg_names)
         output_specs = []
         for i in range(num_outputs):
-            assert not is_parameter_related(
-                output_arg_names[i], main_block
-            ), f"output {output_arg_names[i]} of op {dist_op.serial_op} is parameter, op should not use default rule."
+            assert not is_parameter_related(output_arg_names[i], main_block), (
+                f"output {output_arg_names[i]} of op {dist_op.serial_op} is parameter, op should not use default rule."
+            )
             output_specs.append(
                 get_dist_tensor_spec(dist_op, output_arg_names[i], False)
             )
@@ -632,9 +632,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         main_block = dist_op_context.work_block
         backward_op = dist_op_context.cur_src_op
         dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
-        assert (
-            dist_attr is not None
-        ), f"backward op [{backward_op}] don't have dist attribute !"
+        assert dist_attr is not None, (
+            f"backward op [{backward_op}] don't have dist attribute !"
+        )
         rank_id = dist_op_context.rank_id
 
         # check validation of inputs / outputs

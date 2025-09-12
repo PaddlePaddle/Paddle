@@ -156,7 +156,7 @@ struct DeviceContext::Impl {
         ClearHolder(tensor);
       }
     } else {
-      if (tensor->initialized() && tensor->place() != place) {
+      if (tensor->has_allocation() && tensor->place() != place) {
         ClearHolder(tensor);
       }
     }
@@ -213,7 +213,7 @@ struct DeviceContext::Impl {
         ClearHolder(tensor);
       }
     } else {
-      if (tensor->initialized() && tensor->place() != CPUPlace()) {
+      if (tensor->has_allocation() && tensor->place() != CPUPlace()) {
         ClearHolder(tensor);
       }
     }
@@ -417,10 +417,10 @@ T* DeviceContext::HostAlloc(TensorBase* tensor, size_t requested_size) const {
 }
 
 #define DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(dtype)              \
-  template TEST_API dtype* DeviceContext::Alloc(                     \
+  template PADDLE_API dtype* DeviceContext::Alloc(                   \
       TensorBase* tensor, size_t requested_size, bool pinned) const; \
-  template dtype* DeviceContext::HostAlloc(TensorBase* tensor,       \
-                                           size_t requested_size) const;
+  template PADDLE_API dtype* DeviceContext::HostAlloc(               \
+      TensorBase* tensor, size_t requested_size) const;
 
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(bool)
 DEVICE_CONTEXT_MEMBER_FUNC_INSTANTIATION(int8_t)

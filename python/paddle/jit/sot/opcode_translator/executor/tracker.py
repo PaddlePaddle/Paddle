@@ -15,10 +15,11 @@
 from __future__ import annotations
 
 import builtins
-import dis
 import sys
 from itertools import chain
 from typing import TYPE_CHECKING
+
+import paddle
 
 from ...utils import InnerError, NameGenerator
 from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
@@ -26,8 +27,9 @@ from .guard import StringifiedExpression, stringify_pyobject, union_free_vars
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ...utils.magic_methods import BinaryOp, UnaryOp
     from .pycode_generator import PyCodeGen
-    from .variables import VariableBase
+    from .variables import FunctionVariable, VariableBase
 
 
 class Tracker:
@@ -58,6 +60,11 @@ class Tracker:
             codegen (PyCodeGen): An instance of PyCodeGen to generate instructions.
         """
         raise NotImplementedError
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} has no guard_tree_expr_node"
+        )
 
     # TODO(xiongkun): trace_value_from_frame is not a good name, it should be more related to guard but not tracable.
     def trace_value_from_frame(self) -> StringifiedExpression:
@@ -124,9 +131,9 @@ class SymbolicOperationTracker(Tracker):
         inputs (list[VariableBase]): The input variables associated with the generated variables.
     """
 
-    def __init__(self, inputs: Sequence[VariableBase], method_name: str):
+    def __init__(self, inputs: Sequence[VariableBase], op: UnaryOp | BinaryOp):
         super().__init__(inputs)
-        self.method_name = method_name
+        self.op = op
 
     def gen_instructions(self, codegen: PyCodeGen):
         raise InnerError("SymbolicOperationTracker has no instructions")
@@ -140,11 +147,6 @@ class SymbolicOperationTracker(Tracker):
         return f"SymbolicOperationTracker(num_inputs={len(self.inputs)})"
 
     def is_traceable(self):
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
-        return False
-
-    def need_guard(self) -> bool:
-        # TODO(zrr1999): to implement gen_instructions and trace_value_from_frame
         return False
 
 
@@ -195,6 +197,9 @@ class LocalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_fast(self.name)
 
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        return paddle.framework.core.LocalVarExprNode(self.name)
+
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
 
@@ -205,6 +210,9 @@ class LocalTracker(Tracker):
 class CellTracker(LocalTracker):
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_deref(self.name)
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        return paddle.framework.core.LocalVarExprNode(self.name)
 
     def trace_value_from_frame(self):
         return StringifiedExpression(f"frame.f_locals['{self.name}']", [], {})
@@ -228,6 +236,9 @@ class GlobalTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
 
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        return paddle.framework.core.GlobalVarExprNode(self.name)
+
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(f"frame.f_globals['{self.name}']", [], {})
 
@@ -249,6 +260,11 @@ class BuiltinTracker(Tracker):
 
     def gen_instructions(self, codegen: PyCodeGen) -> None:
         codegen.gen_load_global(self.name, push_null=False)
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        return paddle.framework.core.ConstantExprNode(
+            getattr(builtins, self.name)
+        )
 
     def trace_value_from_frame(self) -> StringifiedExpression:
         return StringifiedExpression(
@@ -274,6 +290,9 @@ class ConstTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen):
         codegen.gen_load_const(self.value)
 
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        return paddle.framework.core.ConstantExprNode(self.value)
+
     def trace_value_from_frame(self):
         value_str, value_free_vars = stringify_pyobject(self.value)
         return StringifiedExpression(
@@ -285,54 +304,6 @@ class ConstTracker(Tracker):
 
     def need_guard(self) -> bool:
         return False
-
-
-class BinaryOperatorTracker(Tracker):
-    def __init__(
-        self, operator: str, operands: list[VariableBase], addition=None
-    ):
-        """
-        addition is for the case that the operator is "COMPARE_OP", which represents the dis.cmp_op's index.
-        """
-        super().__init__(operands, False)
-        assert len(operands) == 2, "Currently only support binary operator."
-        self.operands = operands
-        self.operator = operator
-        self.addition = addition
-
-    def gen_instructions(self, codegen: PyCodeGen):
-        for operand in self.operands:
-            operand.tracker.gen_instructions(codegen)
-        self.gen_operator_instr(codegen)
-
-    def gen_operator_instr(self, codegen: PyCodeGen):
-        if self.operator == "COMPARE_OP":
-            codegen.gen_compare(self.addition)
-        else:
-            codegen.gen_operator(self.operator)
-
-    def get_operator_symbol(self):
-        if self.operator == "COMPARE_OP":
-            return dis.cmp_op[self.addition]
-        return {
-            "BINARY_ADD": "+",
-            "BINARY_SUBTRACT": "-",
-            "BINARY_MUL": "*",
-            "BINARY_POWER": "**",
-        }[self.operator]
-
-    def trace_value_from_frame(self):
-        sub_exprs = [x.tracker.trace_value_from_frame() for x in self.operands]
-        sub_frees = [x.free_vars for x in sub_exprs]
-        expr = f"({{}} {self.get_operator_symbol()} {{}})"
-        return StringifiedExpression(
-            expr,
-            list(sub_exprs),
-            union_free_vars(*list(sub_frees)),
-        )
-
-    def __repr__(self) -> str:
-        return f"BinaryOperatorTracker(operator={self.operator})"
 
 
 class GetAttrTracker(Tracker):
@@ -352,6 +323,13 @@ class GetAttrTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen):
         self.obj.tracker.gen_instructions(codegen)
         codegen.gen_load_attr(self.attr)
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        obj_tracer = self.obj.tracker.guard_tree_expr_node()
+        return paddle.framework.core.AttributeExprNode(
+            obj_tracer,
+            self.attr,
+        )
 
     def trace_value_from_frame(self):
         obj_tracer = self.obj.tracker.trace_value_from_frame()
@@ -399,6 +377,13 @@ class GetItemTracker(Tracker):
             codegen.gen_load_const(self.key)
         codegen.gen_subscribe()
 
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        container_tracer = self.container.tracker.guard_tree_expr_node()
+        return paddle.framework.core.ItemExprNode(
+            container_tracer,
+            paddle.framework.core.ConstantExprNode(self.key),
+        )
+
     def trace_value_from_frame(self):
         container_tracer = self.container.tracker.trace_value_from_frame()
         key_string, key_free_vars = stringify_pyobject(self.key)
@@ -432,6 +417,10 @@ class GetIterTracker(Tracker):
     def gen_instructions(self, codegen: PyCodeGen):
         self.iter_source.tracker.gen_instructions(codegen)
         codegen.add_instr("GET_ITER")
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        # TODO(zrr1999): implement IterExprNode
+        raise NotImplementedError("IterExprNode is not implemented")
 
     def trace_value_from_frame(self):
         iter_source_tracer = self.iter_source.tracker.trace_value_from_frame()
@@ -470,6 +459,10 @@ class CreateLayerTracker(Tracker):
             codegen.gen_build_map(len(self.kwargs))
             codegen.gen_call_function_ex(has_kwargs=True)
 
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        # TODO(zrr1999): implement LayerExprNode.guard_tree_expr_node
+        raise NotImplementedError("LayerExprNode is not implemented")
+
     def trace_value_from_frame(self):
         class_tracer = self.layer_class.tracker.trace_value_from_frame()
         arg_tracers = [
@@ -503,3 +496,121 @@ class CreateLayerTracker(Tracker):
 
     def __repr__(self) -> str:
         return f"CreateLayerTracker(Layer={self.layer_class}, args={self.args}, kwargs={self.kwargs})"
+
+
+class FunctionClosureTracker(Tracker):
+    """
+    A tracker class that represents a function closure variable.
+
+    Args:
+        fn: The FunctionVariable object.
+        idx: The index of the closure variable.
+
+    """
+
+    def __init__(self, fn: FunctionVariable, idx: int):
+        super().__init__([fn])
+        self.fn = fn
+        self.idx = idx
+
+    def gen_instructions(self, codegen: PyCodeGen):
+        """
+        Generate bytecode instructions to trace the value of the function closure variable.
+
+        Args:
+            codegen: The PyCodeGen object used to generate bytecode.
+
+        """
+        self.fn.tracker.gen_instructions(codegen)
+        codegen.gen_load_attr("__closure__")
+        codegen.gen_load_const(self.idx)
+        codegen.gen_subscribe()
+        codegen.gen_load_attr("cell_contents")
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        fn_tracer = self.fn.tracker.guard_tree_expr_node()
+        return paddle.framework.core.AttributeExprNode(
+            paddle.framework.core.ItemExprNode(
+                paddle.framework.core.AttributeExprNode(
+                    fn_tracer,
+                    "__closure__",
+                ),
+                paddle.framework.core.ConstantExprNode(self.idx),
+            ),
+            "cell_contents",
+        )
+
+    def trace_value_from_frame(self):
+        """
+        Trace the value of the function closure variable from the frame.
+
+        Returns:
+            The traced value of the function closure variable.
+
+        """
+        fn_tracer = self.fn.tracker.trace_value_from_frame()
+        return StringifiedExpression(
+            f"{{}}.__closure__[{self.idx}].cell_contents",
+            [fn_tracer],
+            union_free_vars(fn_tracer.free_vars),
+        )
+
+    def __repr__(self) -> str:
+        return f"FunctionClosureTracker(fn={self.fn}, idx={self.idx})"
+
+
+class FunctionGlobalTracker(Tracker):
+    """
+    A tracker class that represents a function global variable.
+
+    Args:
+        fn: FunctionVariable object.
+        name: The name of the global variable.
+
+    """
+
+    def __init__(self, fn: FunctionVariable, name: str):
+        super().__init__([fn])
+        self.fn = fn
+        self.name = name
+
+    def gen_instructions(self, codegen: PyCodeGen):
+        """
+        Generate bytecode instructions in order to put the variables at the top of the stack.
+
+        Args:
+            codegen: The PyCodeGen object used to generate bytecode.
+
+        """
+        self.fn.tracker.gen_instructions(codegen)
+        codegen.gen_load_attr("__globals__")
+        codegen.gen_load_const(self.name)
+        codegen.gen_subscribe()
+
+    def guard_tree_expr_node(self) -> paddle.framework.core.ExprNodeBase:
+        fn_tracer = self.fn.tracker.guard_tree_expr_node()
+        return paddle.framework.core.ItemExprNode(
+            paddle.framework.core.AttributeExprNode(
+                fn_tracer,
+                "__globals__",
+            ),
+            paddle.framework.core.ConstantExprNode(self.name),
+        )
+
+    def trace_value_from_frame(self) -> StringifiedExpression:
+        """
+        Trace the value of the function global variable from the frame.
+
+        Returns:
+            StringifiedExpression: The traced value of the function global variable.
+
+        """
+        fn_tracer = self.fn.tracker.trace_value_from_frame()
+        return StringifiedExpression(
+            f"{{}}.__globals__['{self.name}']",
+            [fn_tracer],
+            union_free_vars(fn_tracer.free_vars),
+        )
+
+    def __repr__(self) -> str:
+        return f"FunctionGlobalTracker(fn={self.fn}, name={self.name})"

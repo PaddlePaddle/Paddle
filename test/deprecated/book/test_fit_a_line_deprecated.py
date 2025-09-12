@@ -213,7 +213,7 @@ def main(use_cuda, is_local=True, use_bf16=False, pure_bf16=False):
     if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
-    if use_bf16 and not base.core.is_compiled_with_mkldnn():
+    if use_bf16 and not base.core.is_compiled_with_onednn():
         return
 
     temp_dir = tempfile.TemporaryDirectory()
@@ -231,9 +231,11 @@ class TestFitALineBase(unittest.TestCase):
         prog = base.Program()
         startup_prog = base.Program()
         scope = base.core.Scope()
-        with base.scope_guard(scope):
-            with base.program_guard(prog, startup_prog):
-                yield
+        with (
+            base.scope_guard(scope),
+            base.program_guard(prog, startup_prog),
+        ):
+            yield
 
 
 class TestFitALine(TestFitALineBase):

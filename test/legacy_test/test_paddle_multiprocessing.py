@@ -55,7 +55,7 @@ def check_ipc_tensor(event, ipc_metas):
     ground_truth1 = paddle.to_tensor([1, 2, 3])
     ground_truth2 = paddle.to_tensor([3, 4, 5])
     shared_ipc_tensor = paddle.to_tensor(
-        paddle.base.core.LoDTensor._new_shared_cuda(ipc_metas)
+        paddle.base.core.DenseTensor._new_shared_cuda(ipc_metas)
     )
 
     def tensor_equal(t1, t2):

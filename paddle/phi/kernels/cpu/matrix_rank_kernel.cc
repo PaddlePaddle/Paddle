@@ -39,5 +39,11 @@ void MatrixRankKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    matrix_rank, CPU, ALL_LAYOUT, phi::MatrixRankKernel, float, double) {}
+PD_REGISTER_KERNEL(matrix_rank,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MatrixRankKernel,
+                   float,
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}

@@ -52,7 +52,7 @@ def classify_cases_by_mem(rootPath):
         'test_post_training_quantization_while',
         'test_mkldnn_log_softmax_op',
         'test_mkldnn_matmulv2_op',
-        'test_mkldnn_shape_op',
+        'test_onednn_shape_op',
         'interceptor_pipeline_short_path_test',
         'interceptor_pipeline_long_path_test',
         'test_cpuonly_spawn',

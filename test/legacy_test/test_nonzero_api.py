@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import dygraph_guard
 
 import paddle
 from paddle import base
@@ -38,13 +39,13 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
 
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0, 0], [1, 1]])
+        expect_out = np.array([0, 1, 0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([1, 1, 0], dtype="float32")
@@ -55,13 +56,25 @@ class TestNonZeroAPI(unittest.TestCase):
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0], [1]])
+        expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        data = np.zeros([10, 3, 0], dtype="float32")
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[10, 3, 0], dtype='float32')
+            if not paddle.framework.use_pir_api():
+                x.desc.set_need_check_feed(False)
+            y = paddle.nonzero(x, as_tuple=True)
+            self.assertEqual(type(y), tuple)
+            self.assertEqual(len(y), 3)
+            expect_out = np.zeros([0])
+            for item in y:
+                np.testing.assert_array_equal(expect_out, item)
 
     def test_nonzero_api(self):
         paddle.enable_static()
@@ -133,6 +146,22 @@ class TestNonzeroOp(OpTest):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
 
 
+class TestNonzeroComplex64Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestNonzeroComplex128Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [1, 2, 3]
+
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+
 class TestNonzeroFP32Op(TestNonzeroOp):
     def init_shape(self):
         self.shape = [2, 10, 2]
@@ -179,6 +208,95 @@ class TestNonzeroBF16(OpTest):
 
     def return_outputs(self):
         return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
+
+
+class TestZeroSizeOp(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+
+class TestZeroSizeOpCase2(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [0, 10]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output(check_pir=True, check_symbol_infer=True)
+
+
+class TestNonzeroCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+        self.input_data = [[1, 0, 3], [0, 5, 0], [7, 0, 9]]
+        self.expected_indices = np.array(
+            [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]]
+        )
+
+    def test_nonzero_with_param_aliases(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                input_tensor = paddle.to_tensor(
+                    self.input_data, dtype='float32'
+                )
+                for param_name in ['x', 'input']:
+                    for as_tuple in [False, True]:
+                        kwargs = {
+                            param_name: input_tensor,
+                            'as_tuple': as_tuple,
+                        }
+                        result = paddle.nonzero(**kwargs)
+                        if as_tuple:
+                            combined = np.stack(
+                                [r.numpy() for r in result], axis=1
+                            )
+                            np.testing.assert_array_equal(
+                                combined, self.expected_indices
+                            )
+                        else:
+                            np.testing.assert_array_equal(
+                                result.numpy(), self.expected_indices
+                            )
+
+    def test_nonzero_with_out(self):
+        def run_nonzero(test_type):
+            x = paddle.to_tensor(self.input_data, dtype='float32')
+            x.stop_gradient = False
+            out_shape = [len(self.expected_indices), 2]
+            out = (
+                paddle.zeros(out_shape, dtype='int64')
+                if test_type in ["with_out", "both"]
+                else None
+            )
+            if test_type == "return":
+                out = paddle.nonzero(x, out=None)
+            elif test_type == "with_out":
+                paddle.nonzero(x, out=out)
+            elif test_type == "both":
+                out = paddle.nonzero(x, out=out)
+            expected = paddle._C_ops.nonzero(x)
+            np.testing.assert_array_equal(out.numpy(), expected.numpy())
+            loss = out.sum().astype('float32')
+            loss.backward()
+            return out, x.grad
+
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                out1, _ = run_nonzero("return")
+                out2, _ = run_nonzero("with_out")
+                out3, _ = run_nonzero("both")
+                for out in [out2, out3]:
+                    np.testing.assert_allclose(
+                        out1.numpy(), out.numpy(), rtol=1e-10
+                    )
 
 
 if __name__ == "__main__":

@@ -31,6 +31,7 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     get_chunk_id,
     get_comp_op_name,
     get_current_insertion_point,
+    get_fake_value_name,
     get_op_role,
     is_fake_value,
     register_dist_dialect,

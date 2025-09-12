@@ -36,14 +36,27 @@ void WeightQuantizeKernel(const Context& dev_ctx,
       common::errors::InvalidArgument(
           "Currently, group_size only support -1(per-channel), 64 or 128."));
 
+  const int64_t m = x.dims()[0];
+  const int64_t n = x.dims()[1];
+  PADDLE_ENFORCE_LE(
+      m,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument(
+          "Currently only supports x.shape[0] <= INT_MAX, but got %d", m));
+
   DenseTensor quanted_x;
   dev_ctx.template Alloc<int8_t>(out);
-  size_t m = x.dims()[0];
-  size_t n = x.dims()[1];
-  quanted_x.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
+  if (out->numel() == 0) {
+    if (algo == "llm.int8") {
+      dev_ctx.template Alloc<float>(scale);
+    } else {
+      dev_ctx.template Alloc<T>(scale);
+    }
+    return;
+  }
+  quanted_x.Resize({m, n});
   dev_ctx.template Alloc<int8_t>(&quanted_x);
-  std::vector<int> weight_shape{static_cast<int>(x.dims()[0]),
-                                static_cast<int>(x.dims()[1])};
+  std::vector<int64_t> weight_shape{m, n};
 #ifndef PADDLE_WITH_HIP
   PADDLE_ENFORCE_EQ(
       ((arch == 70) || (arch == 75) || (arch == 80) || (arch == 86) ||
@@ -66,13 +79,26 @@ void WeightQuantizeKernel(const Context& dev_ctx,
     trans(dev_ctx, quanted_x, out, axis);
   } else if (algo == "weight_only_int8") {
     dev_ctx.template Alloc<T>(scale);
-    weight_quant_gpu<T, Context>(dev_ctx,
-                                 x.data<T>(),
-                                 quanted_x.data<int8_t>(),
-                                 scale->data<T>(),
-                                 weight_shape,
-                                 arch,
-                                 algo);
+
+    if (std::is_same<T, int8_t>::value) {
+      // Zkk: you are loading already quantized weight, so we skip doing
+      // quantize. and just copy!
+#ifdef PADDLE_WITH_CUDA
+      cudaMemcpy(quanted_x.data<int8_t>(),
+                 x.data<T>(),
+                 x.numel(),
+                 cudaMemcpyDeviceToDevice);
+#endif
+    } else {
+      weight_quant_gpu<T, Context>(dev_ctx,
+                                   x.data<T>(),
+                                   quanted_x.data<int8_t>(),
+                                   scale->data<T>(),
+                                   weight_shape,
+                                   arch,
+                                   algo);
+    }
+
 #ifdef PADDLE_WITH_HIP
     std::vector<int> axis = {1, 0};
     funcs::Transpose<Context, int8_t, 2> trans;
@@ -86,11 +112,6 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 algo);
 #endif
   } else if (algo == "weight_only_int4") {
-#ifdef PADDLE_WITH_HIP
-    PADDLE_FATAL(
-        "Weight quant gpu kernel currently don't support weight_only_int4 "
-        "algo, please use cpu version.");
-#else
     dev_ctx.template Alloc<T>(scale);
     weight_quant_gpu<T, Context>(dev_ctx,
                                  x.data<T>(),
@@ -99,6 +120,19 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                  weight_shape,
                                  arch,
                                  algo);
+#ifdef PADDLE_WITH_HIP
+    DenseTensor x_int_tmp(out->type());
+    x_int_tmp.Resize({m, n / 2});
+    dev_ctx.template Alloc<int8_t>(&x_int_tmp);
+    int8_t* x_int_tmp_data = x_int_tmp.data<int8_t>();
+    int8_t* quanted_x_data = quanted_x.data<int8_t>();
+    for (int i = 0; i < out->numel(); ++i) {
+      x_int_tmp_data[i] = quanted_x_data[i];
+    }
+    std::vector<int> axis = {1, 0};
+    funcs::Transpose<Context, int8_t, 2> trans;
+    trans(dev_ctx, x_int_tmp, out, axis);
+#else
     weight_permute_gpu<Context>(dev_ctx,
                                 quanted_x.data<int8_t>(),
                                 out->data<int8_t>(),
@@ -106,10 +140,24 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                                 arch,
                                 algo);
 #endif
+  } else if (algo == "w4a8") {
+    weight_permute_gpu_w4a8<Context>(dev_ctx,
+                                     x.data<int8_t>(),
+                                     out->data<int8_t>(),
+                                     weight_shape,
+                                     arch,
+                                     algo);
+  } else if (algo == "w4afp8") {
+    weight_permute_gpu_w4afp8<Context>(dev_ctx,
+                                       x.data<int8_t>(),
+                                       out->data<int8_t>(),
+                                       weight_shape,
+                                       arch,
+                                       algo);
   } else {
     PADDLE_FATAL(
         "The algo must be in ['weight_only_int8', 'weight_only_int4', "
-        "'llm.int8'], but got[%s]",
+        "'llm.int8', 'w4a8', 'w4afp8'], but got[%s]",
         algo);
   }
 }
@@ -119,5 +167,6 @@ PD_REGISTER_KERNEL(weight_quantize,
                    GPU,
                    ALL_LAYOUT,
                    phi::WeightQuantizeKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   int8_t) {}

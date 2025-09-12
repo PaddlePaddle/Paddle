@@ -20,7 +20,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void BilinearInterpGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const paddle::optional<DenseTensor>& out_size,
     const paddle::optional<std::vector<const DenseTensor*>>& size_tensor,

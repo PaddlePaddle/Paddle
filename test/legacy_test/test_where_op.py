@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle import base
@@ -63,6 +64,30 @@ class TestWhereOp2(TestWhereOp):
 class TestWhereFP16OP(TestWhereOp):
     def init_config(self):
         self.dtype = np.float16
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex64(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex64
+        self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
+        self.cond = np.ones((60, 2)).astype('bool')
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestWhereOpComplex128(TestWhereOp):
+    def init_config(self):
+        self.dtype = np.complex128
         self.x = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
         self.y = np.random.uniform((-5), 5, (60, 2)).astype(self.dtype)
         self.cond = np.ones((60, 2)).astype('bool')
@@ -120,6 +145,13 @@ class TestWhereOp3(TestWhereOp):
         self.x = np.random.uniform((-3), 5, (20, 2, 4)).astype('float64')
         self.y = np.random.uniform((-3), 5, (20, 2, 4)).astype('float64')
         self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
+
+
+class TestWhereOp_ZeroSize(TestWhereOp):
+    def init_config(self):
+        self.x = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.y = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.cond = np.ones((60, 0)).astype('bool')
 
 
 class TestWhereAPI(unittest.TestCase):
@@ -220,8 +252,11 @@ class TestWhereAPI(unittest.TestCase):
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
-                with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
                 ):
                     cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
@@ -787,27 +822,27 @@ class TestWhereDygraphAPI(unittest.TestCase):
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0, 0], [1, 1]])
+        expect_out = np.array([0, 1, 0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)], dtype='bool')
+            x = paddle.static.data(name='x', shape=[-1], dtype='bool')
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
             y = paddle.where(x)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = paddle.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=0)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': data}, fetch_list=[z], return_numpy=False
             )
-        expect_out = np.array([[0], [1]])
+        expect_out = np.array([0, 1])
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
 
@@ -972,6 +1007,151 @@ class TestWhereDygraphAPINonBoolCondition(unittest.TestCase):
                 cond_wrong_dtype = cond.to(dtype)
                 with self.assertRaises(ValueError):
                     x = x.where_(cond_wrong_dtype, x, x)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for zero size tensor is not fully supported",
+)
+class TestWhereZeroSizeTensor(unittest.TestCase):
+    def init_inputs_outputs(self, shapes):
+        cond = np.random.randint(0, 2, size=shapes[0]).astype('bool')
+        x = np.random.random(shapes[1]).astype('float64')
+        y = np.random.random(shapes[2]).astype('float64')
+        out_ref = np.where(cond, x, y)
+        return (cond, x, y), out_ref
+
+    def _test_with_shapes(self, shapes):
+        inputs, out_ref = self.init_inputs_outputs(shapes)
+
+        with dygraph_guard():
+            tensors = [paddle.to_tensor(inp) for inp in inputs]
+            result = paddle.where(tensors[0], tensors[1], tensors[2])
+        np.testing.assert_allclose(result, out_ref, rtol=1e-05)
+
+        with (
+            static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='float64')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='float64')
+            result = paddle.where(cond_t, x_t, y_t)
+
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
+                fetch_list=[result],
+            )
+        np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
+
+    def test_api_with_zero_size_input(self):
+        self._test_with_shapes([(0, 0), (0, 0), (0, 0)])
+        self._test_with_shapes([(0, 1), (0, 1), (0, 1)])
+        self._test_with_shapes([(0, 2, 1), (0, 2, 1), (0, 2, 1)])
+        self._test_with_shapes([(5, 17, 0, 6), (5, 17, 0, 6), (5, 17, 0, 6)])
+        self._test_with_shapes([(0, 5, 17, 6), (0, 5, 17, 6), (0, 5, 17, 6)])
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip XPU for bool dtype is not fully supported",
+)
+class TestWhereBoolInput(unittest.TestCase):
+    def test_api_with_dygraph(self):
+        cond = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        x = np.random.random([2, 3, 5]).astype('bool')
+        y = np.random.random([2, 3, 5]).astype('bool')
+        out_ref = np.where(cond, x, y)
+
+        with dygraph_guard():
+            cond_t = paddle.to_tensor(cond)
+            x_t = paddle.to_tensor(x)
+            y_t = paddle.to_tensor(y)
+            result = paddle.where(cond_t, x_t, y_t)
+        np.testing.assert_allclose(result, out_ref, rtol=1e-05)
+
+    def test_api_with_static(self):
+        cond = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        x = np.random.random([2, 3, 5]).astype('bool')
+        y = np.random.random([2, 3, 5]).astype('bool')
+        out_ref = np.where(cond, x, y)
+
+        with (
+            static_guard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='bool')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='bool')
+            result = paddle.where(cond_t, x_t, y_t)
+
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': cond, 'x': x, 'y': y},
+                fetch_list=[result],
+            )
+        np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
+
+
+class TestWhereAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_where_alias(self):
+        """
+        Test the alias of where function.
+        ``where(condition=cond, input=x, other=y)`` is equivalent to
+        ``where(condition=cond, x=x, y=y)``
+        """
+        shape = [2, 4]
+        cond = paddle.randint(0, 2, shape).astype("bool")
+        x = paddle.rand(shape).astype("float32")
+        y = paddle.rand(shape).astype("float32")
+
+        # Test all alias combinations
+        combinations = [
+            {"condition": cond, "x": x, "y": y},
+            {"condition": cond, "input": x, "y": y},
+            {"condition": cond, "x": x, "other": y},
+            {"condition": cond, "input": x, "other": y},
+        ]
+
+        # Get baseline result
+        expected = np.where(cond.numpy(), x.numpy(), y.numpy())
+
+        for params in combinations:
+            out = paddle.where(**params)
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+
+class TestWhereOut(unittest.TestCase):
+    def setUp(self):
+        self.cond_np = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        self.x_np = np.random.random([2, 3, 5]).astype('float32')
+        self.y_np = np.random.random([2, 3, 5]).astype('float32')
+
+    def test_api_with_dygraph(self):
+        paddle.disable_static()
+        cond = paddle.to_tensor(self.cond_np)
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        out_holder = paddle.zeros_like(cond)
+        out_ref = paddle.where(cond, x, y)
+
+        paddle.where(cond, x, y, out=out_holder)
+        np.testing.assert_allclose(out_holder, out_ref, rtol=1e-20)
 
 
 if __name__ == "__main__":

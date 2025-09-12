@@ -105,6 +105,11 @@ class XPUTestTileOpRank1(XPUOpTestWrapper):
             self.ori_shape = []
             self.repeat_times = [2, 3]
 
+    class TestTileOpRank_ZeroElement(TestTileOpRank1):
+        def init_data(self):
+            self.ori_shape = [0]
+            self.repeat_times = [8]
+
 
 # Situation 2: repeat_times is a list (with tensor)
 class XPUTestTileOpRank1_tensor_attr(XPUOpTestWrapper):

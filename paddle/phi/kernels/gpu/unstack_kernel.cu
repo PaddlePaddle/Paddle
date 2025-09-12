@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnStackKernel(const Context& ctx,
+void UnStackKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int axis,
                    int num,
@@ -38,7 +38,7 @@ void UnStackKernel(const Context& ctx,
           split_dim,
           outs.size()));
 
-  funcs::UnStackRawKernel<T, Context>(ctx, x, axis, &outs);
+  funcs::UnStackRawKernel<T, Context>(dev_ctx, x, axis, &outs);
 }
 
 }  // namespace phi
@@ -51,7 +51,7 @@ PD_REGISTER_KERNEL(unstack,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

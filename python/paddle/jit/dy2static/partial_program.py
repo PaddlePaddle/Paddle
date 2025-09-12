@@ -745,7 +745,7 @@ class PartialProgramLayer:
         is_prim_enabled = (
             core._is_fwd_prim_enabled() or core._is_bwd_prim_enabled()
         )
-        in_cinn_backend = self._backend == "CINN"
+        in_cinn_backend = self._backend.is_cinn()
         is_cinn_enabled = self._build_strategy.build_cinn_pass
         if is_prim_enabled or in_cinn_backend or is_cinn_enabled:
             in_pir_pt_mode = False

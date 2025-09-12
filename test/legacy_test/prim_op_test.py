@@ -120,9 +120,9 @@ class OpTestUtils:
             return isinstance(a, Empty)
 
         def get_default(idx, defaults):
-            assert not isinstance(
-                defaults[idx], Empty
-            ), f"{idx}-th params of python api don't have default value."
+            assert not isinstance(defaults[idx], Empty), (
+                f"{idx}-th params of python api don't have default value."
+            )
             return defaults[idx]
 
         def to_defaults_list(params, defaults):
@@ -191,9 +191,9 @@ class OpTestUtils:
         if "one_hot" in str(api):
             api_defaults = [None for x in range(len(api_params))]
 
-        assert len(api_defaults) == len(
-            api_params
-        ), "Error happens. contack xiongkun03 to solve."
+        assert len(api_defaults) == len(api_params), (
+            "Error happens. contact xiongkun03 to solve."
+        )
         inputs_sig, attrs_sig, outputs_sig = kernel_sig
         inputs_and_attrs = inputs_sig + attrs_sig
         input_arguments = [
@@ -256,9 +256,9 @@ class OpTestUtils:
             [inp] if inp is None else inp for inp in args[:inp_num]
         ]  # convert None -> [None]
         for inp in inp_args:
-            assert isinstance(
-                inp, list
-            ), "currently only support `X` is [Tensor], don't support other structure."
+            assert isinstance(inp, list), (
+                "currently only support `X` is [Tensor], don't support other structure."
+            )
         args = [inp[0] if len(inp) == 1 else inp for inp in inp_args] + args[
             inp_num:
         ]
@@ -272,11 +272,14 @@ class OpTestUtils:
 
 
 def apply_to_static(net, use_cinn):
-    build_strategy = paddle.static.BuildStrategy()
-    build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(
-        net, build_strategy=build_strategy, full_graph=True
-    )
+    if not paddle.framework.use_pir_api():
+        build_strategy = paddle.static.BuildStrategy()
+        build_strategy.build_cinn_pass = use_cinn
+        return paddle.jit.to_static(
+            net, build_strategy=build_strategy, full_graph=True
+        )
+    backend = "CINN" if use_cinn else None
+    return paddle.jit.to_static(net, backend=backend, full_graph=True)
 
 
 class PrimNet(paddle.nn.Layer):
@@ -301,21 +304,21 @@ class PrimForwardChecker:
         pass
 
     def init_checker(self):
-        assert hasattr(
-            self.op_test, 'prim_op_type'
-        ), "if you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
+        assert hasattr(self.op_test, 'prim_op_type'), (
+            "If you want to test comp op, please set prim_op_type with 'prim' or 'comp' in setUp function."
+        )
         assert self.op_test.prim_op_type in [
             "comp",
             "prim",
         ], "prim_op_type must be comp or prim in setUp function."
-        assert hasattr(
-            self.op_test, 'dtype'
-        ), "Please set dtype in setUp function."
+        assert hasattr(self.op_test, 'dtype'), (
+            "Please set dtype in setUp function."
+        )
         self.op_type = self.op_test.op_type
         self.prim_op_type = self.op_test.prim_op_type
-        assert hasattr(
-            self.op_test, 'public_python_api'
-        ), "If you want to check prim, please set public_python_api in setUp function."
+        assert hasattr(self.op_test, 'public_python_api'), (
+            "If you want to check prim, please set public_python_api in setUp function."
+        )
         self.public_python_api = self.op_test.public_python_api
         self.dtype = np.dtype(self.op_test.dtype)
         self.inputs = self.op_test.inputs
@@ -671,16 +674,16 @@ class PrimForwardChecker:
                         op.name() for op in main_program.global_block().ops
                     ]
 
-                    assert (
-                        before_ops != after_ops
-                    ), f"For {after_ops} , since op which has been decomposed should not exist, the op list should differ from origin ones."
+                    assert before_ops != after_ops, (
+                        f"For {after_ops} , since op which has been decomposed should not exist, the op list should differ from origin ones."
+                    )
 
                 # ensure the operator not in program if check_prim is True
                 if not in_pir_mode():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
-                    assert (
-                        self.op_type not in forward_ops
-                    ), f"{self.op_type} shouldn't appear in program when check_prim is True"
+                    assert self.op_type not in forward_ops, (
+                        f"{self.op_type} shouldn't appear in program when check_prim is True"
+                    )
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
                 ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -759,9 +762,9 @@ class PrimForwardChecker:
                     .forward_program.block(0)
                     .ops
                 ]
-                assert (
-                    self.op_type not in forward_ops
-                ), f"{self.op_type} shouldn't appear in program when check_prim is True"
+                assert self.op_type not in forward_ops, (
+                    f"{self.op_type} shouldn't appear in program when check_prim is True"
+                )
             ret = flatten(_as_list(net(args)))
             ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
             if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -849,9 +852,9 @@ class PrimForwardChecker:
                 .forward_program.block(0)
                 .ops
             ]
-            assert (
-                self.op_type not in forward_ops
-            ), f"{self.op_type} shouldn't appear in program when check_prim is True"
+            assert self.op_type not in forward_ops, (
+                f"{self.op_type} shouldn't appear in program when check_prim is True"
+            )
             ret = flatten(_as_list(net(args)))
             ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
             if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -928,9 +931,9 @@ class PrimGradChecker(PrimForwardChecker):
                     self.check_jit_comp()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
-        assert len(api_outputs) <= len(
-            outputs_sig
-        ), f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
+        assert len(api_outputs) <= len(outputs_sig), (
+            f"forward api outputs length must be the less than or equal to KernelSignature outputs,but receive {len(api_outputs)} and {len(outputs_sig)}"
+        )
         output_dict = {}
         for i in range(len(api_outputs)):
             output_name = outputs_sig[i]
@@ -1030,7 +1033,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
@@ -1119,7 +1122,15 @@ class PrimGradChecker(PrimForwardChecker):
                 if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
-                    fw_outs = decompose(main_program, fw_outs)
+                    blacklist = set()
+                    for op in main_program.global_block().ops:
+                        if core.has_custom_vjp(op):
+                            blacklist.add(op.name())
+                    fw_outs = decompose(
+                        main_program,
+                        fw_outs,
+                        blacklist=blacklist,
+                    )
                 outputs_dict = self.get_output_dict(
                     self.outputs, fw_outs, outputs_sig
                 )
@@ -1138,7 +1149,7 @@ class PrimGradChecker(PrimForwardChecker):
                 vs, vs_feed = self.gen_static_grad_outputs_and_feed()
                 feed.update(vs_feed)
                 no_grad_vars = self.gen_no_grad_set(
-                    var_dict={**inputs_dict, **outputs_dict}
+                    var_dict=inputs_dict | outputs_dict
                 )
                 if not in_pir_mode():
                     ret = paddle.static.gradients(
@@ -1150,17 +1161,17 @@ class PrimGradChecker(PrimForwardChecker):
                 if not in_pir_mode():
                     ops = [op.type for op in main_program.blocks[0].ops]
                     backward_op_type = self.op_type + "_grad"
-                    assert (
-                        backward_op_type not in ops
-                    ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
+                    assert backward_op_type not in ops, (
+                        f"{backward_op_type} shouldn't appear in program when check_prim is True"
+                    )
                 elif self.prim_op_type == "prim":
                     grad_ops = []
                     for op in main_program.global_block().ops:
                         if op.name().endswith("_grad"):
                             grad_ops.append(op.name())
-                    assert (
-                        not grad_ops
-                    ), f"For {grad_ops} , grad op shouldn't appear in program when check_prim is True"
+                    assert not grad_ops, (
+                        f"For {grad_ops} , grad op shouldn't appear in program when check_prim is True"
+                    )
                 exe = paddle.static.Executor(self.place)
                 exe.run(startup_program)
                 actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1183,7 +1194,7 @@ class PrimGradChecker(PrimForwardChecker):
                 atol=atol,
                 err_msg=(
                     'Check static comp grad out failed. Mismatch between static comp '
-                    f'and eager on {self.place}, when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is { self.enable_rev_comp},'
+                    f'and eager on {self.place}, when enable_fw_comp is {self.enable_fw_comp},enable_rev_comp is {self.enable_rev_comp},'
                     f'the forward api out tensor\'s index is : {i} \n'
                     f'static comp grad out tensor:\n{actual_ret[i]}\n eager grad out tensor:\n{self.eager_desire[i]}\n'
                 ),
@@ -1246,9 +1257,9 @@ class PrimGradChecker(PrimForwardChecker):
                     .ops
                 ]
                 backward_op_type = self.op_type + "_grad"
-                assert (
-                    backward_op_type not in ops
-                ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
+                assert backward_op_type not in ops, (
+                    f"{backward_op_type} shouldn't appear in program when check_prim is True"
+                )
             out = _as_list(net(args))
             if hasattr(self.op_test, "python_out_sig"):
                 outputs_sig = self.op_test.python_out_sig
@@ -1267,7 +1278,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars
@@ -1367,9 +1378,9 @@ class PrimGradChecker(PrimForwardChecker):
                 .ops
             ]
             backward_op_type = self.op_type + "_grad"
-            assert (
-                backward_op_type not in ops
-            ), f"{backward_op_type} shouldn't appear in program when check_prim is True"
+            assert backward_op_type not in ops, (
+                f"{backward_op_type} shouldn't appear in program when check_prim is True"
+            )
 
             out = _as_list(net(args))
             if hasattr(self.op_test, "python_out_sig"):
@@ -1389,7 +1400,7 @@ class PrimGradChecker(PrimForwardChecker):
                 xs.append(inputs_dict[self.inputs_to_check])
             vs = self.gen_eager_grad_outputs()
             no_grad_vars = self.gen_no_grad_set(
-                var_dict={**inputs_dict, **outputs_dict}
+                var_dict=inputs_dict | outputs_dict
             )
             ret = paddle.grad(
                 ys, xs, vs, allow_unused=True, no_grad_vars=no_grad_vars

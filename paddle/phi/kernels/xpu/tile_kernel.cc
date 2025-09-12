@@ -66,7 +66,7 @@ void TileKernel(const Context& dev_ctx,
 
   auto in_dims = x.dims();
   for (size_t i = 0; i < repeat_times.size(); ++i) {
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         repeat_times[i],
         0,
         errors::InvalidArgument(
@@ -74,12 +74,12 @@ void TileKernel(const Context& dev_ctx,
             "be positive integers, but the value received is %d.",
             repeat_times[i]));
   }
-  auto vec_in_dims = common::vectorize<int>(in_dims);
+  auto vec_in_dims = common::vectorize<int64_t>(in_dims);
   if (repeat_times.size() < vec_in_dims.size()) {
-    int diff = vec_in_dims.size() - repeat_times.size();
+    size_t diff = vec_in_dims.size() - repeat_times.size();
     repeat_times.insert(repeat_times.begin(), diff, 1);
   } else {
-    int diff = repeat_times.size() - vec_in_dims.size();
+    size_t diff = repeat_times.size() - vec_in_dims.size();
     vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   }
   PADDLE_ENFORCE_EQ(
@@ -97,41 +97,36 @@ void TileKernel(const Context& dev_ctx,
   for (size_t i = 0; i < repeat_times.size(); ++i) {
     out_dims[i] *= repeat_times[i];
   }
-  auto vec_out_dims = common::vectorize<int>(out_dims);
+  auto vec_out_dims = common::vectorize<int64_t>(out_dims);
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
 
   std::vector<int64_t> temp(repeat_times.size(), 1);
   if (rank == 0 || repeat_times == temp) {
     out->Resize(out_dims);
     dev_ctx.template Alloc<T>(out);
     int64_t count = x.numel() * sizeof(T);
-    int r = xpu::copy(dev_ctx.x_context(),
-                      reinterpret_cast<const int8_t*>(x.data<T>()),
-                      reinterpret_cast<int8_t*>(out->data<T>()),
-                      count);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    if (count > 0) {
+      int r = xpu::copy(dev_ctx.x_context(),
+                        reinterpret_cast<const int8_t*>(x.data<T>()),
+                        reinterpret_cast<int8_t*>(out->data<T>()),
+                        count);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    }
     return;
   }
 
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int ret = XPU_SUCCESS;
-  if (std::is_same<T, bool>::value) {
-    ret = xpu::broadcast<int8_t>(dev_ctx.x_context(),
-                                 reinterpret_cast<const int8_t*>(x.data<T>()),
-                                 reinterpret_cast<int8_t*>(out->data<T>()),
-                                 vec_in_dims,
-                                 vec_out_dims);
-
-  } else {
+  int ret = 0;
+  if (out->numel() > 0) {
     const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
     auto* out_data = reinterpret_cast<XPUType*>(out->data<T>());
     ret = xpu::broadcast<XPUType>(
         dev_ctx.x_context(), x_data, out_data, vec_in_dims, vec_out_dims);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "broadcast");
 }
-
 }  // namespace phi
 
 PD_REGISTER_KERNEL(tile,
@@ -143,5 +138,5 @@ PD_REGISTER_KERNEL(tile,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

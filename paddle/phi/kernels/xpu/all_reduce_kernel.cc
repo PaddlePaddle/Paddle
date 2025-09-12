@@ -37,7 +37,8 @@ void AllReduceKernel(const Context& dev_ctx,
                     common::errors::Unavailable(
                         "BKCLCommContext is nullptr, collective op should "
                         "has ring_id attr."));
-  XPUStream stream = comm_ctx->GetStream();
+
+  XPUStream stream = dev_ctx.stream();
 
   BKCLOp bkcl_reduce_type = BKCL_ADD;
   switch (static_cast<ReduceType>(reduce_type)) {
@@ -78,5 +79,5 @@ PD_REGISTER_KERNEL(all_reduce,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

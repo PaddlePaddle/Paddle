@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void NormGradKernel(const Context& ctx,
+void NormGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& norm,
                     const DenseTensor& out_grad,
@@ -36,14 +36,14 @@ void NormGradKernel(const Context& ctx,
   auto* in_norm = &norm;
   auto* out_dx = x_grad;
 
-  ctx.template Alloc<T>(out_dx);
+  dev_ctx.template Alloc<T>(out_dx);
 
   auto xdim = in_x->dims();
   if (axis < 0) axis = xdim.size() + axis;
   int pre = 0, n = 0, post = 0;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
-  auto* place = ctx.eigen_device();
+  auto* place = dev_ctx.eigen_device();
 
   auto x_e = phi::EigenVector<T>::Flatten(*in_x);
   auto dy_e = phi::EigenVector<T>::Flatten(*in_dy);
@@ -59,7 +59,7 @@ void NormGradKernel(const Context& ctx,
 
   DenseTensor rsum;
   rsum.Resize({pre, post});
-  ctx.template Alloc<T>(&rsum);
+  dev_ctx.template Alloc<T>(&rsum);
   auto sum = phi::EigenTensor<T, 2>::From(rsum);
 
   Eigen::DSizes<int, 1> rdim(1);

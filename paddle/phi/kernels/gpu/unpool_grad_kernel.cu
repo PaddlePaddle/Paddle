@@ -159,6 +159,9 @@ void UnpoolGradKernel(const Context& dev_ctx,
                       const std::string& data_format,
                       DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   const T* output_grad_data = out_grad.data<T>();
   phi::funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));
@@ -185,6 +188,9 @@ void Unpool3dGradKernel(const Context& dev_ctx,
                         const std::string& data_format,
                         DenseTensor* x_grad) {
   T* input_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (x_grad && x_grad->numel() == 0) {
+    return;
+  }
   const T* output_grad_data = out_grad.data<T>();
   phi::funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, x_grad, static_cast<T>(0));

@@ -18,7 +18,6 @@ import contextlib
 import copy
 import types
 import unittest
-from functools import wraps
 
 import numpy as np
 
@@ -27,7 +26,6 @@ from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
-from paddle.jit.sot.utils import faster_guard_guard
 
 
 @contextlib.contextmanager
@@ -36,31 +34,6 @@ def test_instruction_translator_cache_context():
     cache.clear()
     yield cache
     cache.clear()
-
-
-FASTER_GUARD_CACHE_STATE = {
-    "cache": {},
-    "translate_count": 0,
-    "code_symbolic_inputs": {},
-}
-
-
-def test_with_faster_guard(func):
-    @wraps(func)
-    def impl(*args, **kwargs):
-        with faster_guard_guard(False):
-            func(*args, **kwargs)
-        with faster_guard_guard(True):
-            cache = OpcodeExecutorCache()
-            original_cache_state = cache.dump_state()
-            cache.load_state(FASTER_GUARD_CACHE_STATE)
-            try:
-                func(*args, **kwargs)
-            finally:
-                FASTER_GUARD_CACHE_STATE.update(cache.dump_state())
-                cache.load_state(original_cache_state)
-
-    return impl
 
 
 class TestCaseBase(unittest.TestCase):
@@ -90,7 +63,7 @@ class TestCaseBase(unittest.TestCase):
                 self.assertEqual(x, y)
         elif cls_x in (np.ndarray, paddle.Tensor):
             # TODO: support assert_allclose github error log
-            np.testing.assert_allclose(x, y)
+            np.testing.assert_allclose(x, y, rtol=1e-6, atol=1e-8)
         else:
             self.assertEqual(x, y)
 
@@ -98,6 +71,51 @@ class TestCaseBase(unittest.TestCase):
         sym_output = symbolic_translate(func)(*args, **kwargs)
         paddle_output = func(*args, **kwargs)
         self.assert_nest_match(sym_output, paddle_output)
+
+    def assert_results_with_grad(self, inputs, func, *args, **kwargs):
+        def _find_all_tensors(obj):
+            ret = []
+            container_types = (tuple, list, set)
+            if isinstance(obj, container_types):
+                for item in obj:
+                    ret.extend(_find_all_tensors(item))
+            elif isinstance(obj, dict):
+                for value in obj.values():
+                    ret.extend(_find_all_tensors(value))
+            elif isinstance(obj, paddle.Tensor):
+                ret.append(obj)
+            return ret
+
+        def _accumulate(tensors: list):
+            out = paddle.empty(shape=[], dtype='float64')
+            for tensor in tensors:
+                out += paddle.mean(tensor.astype('float64'))
+            return out
+
+        def _cal_input_grads(outputs):
+            tensor_outs = _find_all_tensors(outputs)
+            acc = _accumulate(tensor_outs)
+            acc.backward()
+            tensor_inputs = _find_all_tensors(inputs)
+            input_grads = []
+            for input in tensor_inputs:
+                input_grads.append(
+                    None if input.grad is None else input.grad.clone()
+                )
+                input.clear_gradient()
+            return input_grads
+
+        sym_output = symbolic_translate(func)(*args, **kwargs)
+        paddle_output = func(*args, **kwargs)
+        sym_input_grads = _cal_input_grads(sym_output)
+        paddle_input_grads = _cal_input_grads(paddle_output)
+        self.assert_nest_match(sym_input_grads, paddle_input_grads)
+        self.assert_nest_match(sym_output, paddle_output)
+
+    def assert_exceptions(self, exec, info, func, *args, **kwargs):
+        self.assertRaisesRegex(
+            exec, info, symbolic_translate(func), *args, **kwargs
+        )
 
     def assert_results_with_side_effects(self, func, *args, **kwargs):
         sym_args, sym_kwargs = copy.deepcopy((args, kwargs))

@@ -61,7 +61,7 @@ void test_conv2d_transpose_bias() {
   AddVarToScope<float>("convtranspose-Bias", &scope, {256});
   AddVarToScope<float>("convtranspose-Out", &scope, {1, 256, 27, 23});
 
-  desc.SetAttr("use_mkldnn", true);
+  desc.SetAttr("use_onednn", true);
   desc.SetAttr("is_test", true);
 
   auto op = paddle::framework::OpRegistry::CreateOp(desc);

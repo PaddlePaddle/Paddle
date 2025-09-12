@@ -29,7 +29,9 @@ void TraceKernel(const Context& dev_ctx,
                  int axis2,
                  DenseTensor* out) {
   auto* out_data = dev_ctx.template Alloc<T>(out);
-
+  if (out && out->numel() == 0) {
+    return;
+  }
   const DenseTensor diag =
       funcs::Diagonal<T, Context>(dev_ctx, &x, offset, axis1, axis2);
   if (diag.numel() > 0) {
@@ -53,6 +55,6 @@ PD_REGISTER_KERNEL(trace,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128) {}

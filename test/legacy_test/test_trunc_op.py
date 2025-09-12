@@ -30,12 +30,16 @@ class TestTruncOp(OpTest):
         self.python_api = paddle.trunc
         self.public_python_api = paddle.trunc
         self.init_dtype_type()
+        self.init_shape()
         np.random.seed(2021)
-        self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
 
     def init_dtype_type(self):
         self.dtype = np.float64
+
+    def init_shape(self):
+        self.shape = (20, 20)
 
     def test_check_output(self):
         self.check_output(
@@ -68,6 +72,11 @@ class TestIntTruncOp(TestTruncOp):
 
     def test_check_grad(self):
         pass
+
+
+class TestTruncOp_ZeroSize(TestTruncOp):
+    def init_shape(self):
+        self.shape = (20, 0)
 
 
 class TestTruncAPI(unittest.TestCase):

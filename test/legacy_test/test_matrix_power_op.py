@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -216,6 +215,185 @@ class TestMatrixPowerOpLarge2(TestMatrixPowerOp):
         self.n = 32
 
 
+class TestMatrixPowerOpZeroSize(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = 32
+
+
+class TestMatrixPowerOpZeroSize1(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpZeroSize2(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [0, 0]
+        self.dtype = "float32"
+        self.n = -1
+
+
+class TestMatrixPowerOpBatchedZeroSize1(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = 4
+
+
+class TestMatrixPowerOpBatchedZeroSize2(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpBatchedZeroSize3(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 0, 4, 4]
+        self.dtype = "float32"
+        self.n = -1
+
+
+class TestMatrixPowerOpBatchedZeroSize4(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = 1
+
+
+class TestMatrixPowerOpBatchedZeroSize5(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = 0
+
+
+class TestMatrixPowerOpBatchedZeroSize6(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [2, 6, 0, 0]
+        self.dtype = "float32"
+        self.n = -1
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex64(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = 2
+
+    def test_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=1e-2, check_pir=True)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpBatchedComplex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [2, 8, 4, 4]
+        self.dtype = "complex64"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge1Complex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [32, 32]
+        self.dtype = "complex64"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge2Complex64(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = 32
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex64Minus(TestMatrixPowerOpComplex64):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex64"
+        self.n = -1
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex128(TestMatrixPowerOp):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = 2
+
+    def test_grad(self):
+        self.check_grad(["X"], "Out", max_relative_error=1e-2, check_pir=True)
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpBatchedComplex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [2, 8, 4, 4]
+        self.dtype = "complex128"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge1Complex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [32, 32]
+        self.dtype = "complex128"
+        self.n = 2
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpLarge2Complex128(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = 32
+
+
+@unittest.skipIf(
+    core.is_compiled_with_xpu(),
+    "Skip complex due to lack of mean support",
+)
+class TestMatrixPowerOpComplex128Minus(TestMatrixPowerOpComplex128):
+    def config(self):
+        self.matrix_shape = [10, 10]
+        self.dtype = "complex128"
+        self.n = -1
+
+
 class TestMatrixPowerOpFP32(TestMatrixPowerOp):
     def config(self):
         self.matrix_shape = [10, 10]
@@ -257,15 +435,7 @@ class TestMatrixPowerOpFP32Minus(TestMatrixPowerOpFP32):
 class TestMatrixPowerAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with static.program_guard(static.Program(), static.Program()):
@@ -303,7 +473,6 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
-
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
@@ -347,15 +516,7 @@ class TestMatrixPowerAPIError(unittest.TestCase):
 
 class TestMatrixPowerSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with static.program_guard(static.Program(), static.Program()):
@@ -398,56 +559,45 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
 
 class TestMatrixPowerEmptyTensor(unittest.TestCase):
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        return places
+        return get_places()
 
     def _test_matrix_power_empty_static(self, place):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x2 = paddle.static.data(
-                    name='x2', shape=[0, 6], dtype='float32'
-                )
-                x3 = paddle.static.data(
-                    name='x3', shape=[6, 0], dtype='float32'
-                )
-                x4 = paddle.static.data(
-                    name='x4', shape=[0, 0, 2, 3], dtype='float32'
-                )
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x2)
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x3)
-                self.assertRaises(TypeError, paddle.linalg.matrix_power, x4)
+            ),
+        ):
+            x2 = paddle.static.data(name='x2', shape=[0, 6], dtype='float32')
+            x3 = paddle.static.data(name='x3', shape=[6, 0], dtype='float32')
+            x4 = paddle.static.data(
+                name='x4', shape=[0, 0, 2, 3], dtype='float32'
+            )
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x2)
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x3)
+            self.assertRaises(TypeError, paddle.linalg.matrix_power, x4)
 
-                x = paddle.static.data(name='x', shape=[0, 0], dtype='float32')
-                y = paddle.linalg.matrix_power(x, 2)
-                x5 = paddle.static.data(
-                    name='x5', shape=[2, 3, 0, 0], dtype='float32'
-                )
-                y5 = paddle.linalg.matrix_power(x5, 2)
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    feed={
-                        'x2': np.zeros((0, 6), dtype='float32'),
-                        'x3': np.zeros((6, 0), dtype='float32'),
-                        'x4': np.zeros((0, 0, 2, 3), dtype='float32'),
-                        'x': np.zeros((0, 0), dtype='float32'),
-                        'x5': np.zeros((2, 3, 0, 0), dtype='float32'),
-                    },
-                    fetch_list=[y, y5],
-                )
-                self.assertEqual(res[0].shape, (0, 0))
-                self.assertEqual(res[1].shape, (2, 3, 0, 0))
+            x = paddle.static.data(name='x', shape=[0, 0], dtype='float32')
+            y = paddle.linalg.matrix_power(x, 2)
+            x5 = paddle.static.data(
+                name='x5', shape=[2, 3, 0, 0], dtype='float32'
+            )
+            y5 = paddle.linalg.matrix_power(x5, 2)
+            exe = paddle.static.Executor(place)
+            res = exe.run(
+                feed={
+                    'x2': np.zeros((0, 6), dtype='float32'),
+                    'x3': np.zeros((6, 0), dtype='float32'),
+                    'x4': np.zeros((0, 0, 2, 3), dtype='float32'),
+                    'x': np.zeros((0, 0), dtype='float32'),
+                    'x5': np.zeros((2, 3, 0, 0), dtype='float32'),
+                },
+                fetch_list=[y, y5],
+            )
+            self.assertEqual(res[0].shape, (0, 0))
+            self.assertEqual(res[1].shape, (2, 3, 0, 0))
 
-    def _test_matrix_power_empty_dynamtic(self):
+    def _test_matrix_power_empty_dynamic(self):
         with dygraph_guard():
             x2 = paddle.full((0, 6), 1.0, dtype='float32')
             x3 = paddle.full((6, 0), 1.0, dtype='float32')
@@ -465,7 +615,7 @@ class TestMatrixPowerEmptyTensor(unittest.TestCase):
     def test_matrix_power_empty_tensor(self):
         for place in self._get_places():
             self._test_matrix_power_empty_static(place)
-        self._test_matrix_power_empty_dynamtic()
+        self._test_matrix_power_empty_dynamic()
 
 
 if __name__ == "__main__":

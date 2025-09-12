@@ -100,30 +100,7 @@ void CodeGenSyclDevice::Visit(const ir::_LoweredFunc_ *op) {
   DoIndent();
   str_ += "h.parallel_for<class " + GenerateKernelName(op) +
           ">(sycl::nd_range<3>(dimGrid * dimBlock, dimBlock), "
-          "[=](sycl::nd_item<3> item) "
-          "[[intel::kernel_args_restrict]]";
-  if (op->cuda_axis_info.valid()) {
-    bool has_symbol_in_thread_num = false;
-    std::string launch_bounds_max_work_group_size =
-        "[[intel::max_work_group_size(";
-    for (int i = 0; i < 3; i++) {
-      ir::Expr block_dim = op->cuda_axis_info.block_dim(i);
-      if (block_dim.is_constant()) {
-        launch_bounds_max_work_group_size +=
-            std::to_string(block_dim.as_int64());
-        if (i < 2) {
-          launch_bounds_max_work_group_size += ", ";
-        }
-      } else {
-        has_symbol_in_thread_num = true;
-        break;
-      }
-    }
-    launch_bounds_max_work_group_size += ")]]";
-    if (!has_symbol_in_thread_num) {
-      str_ += launch_bounds_max_work_group_size;
-    }
-  }
+          "[=](sycl::nd_item<3> item) ";
   str_ += "\n";
 
   PrintFunctionBody(op);
@@ -131,7 +108,7 @@ void CodeGenSyclDevice::Visit(const ir::_LoweredFunc_ *op) {
   str_ += ");\n";
   DecIndent();
   DoIndent();
-  str_ += "});\n";
+  str_ += "}).wait();\n";
   DecIndent();
   str_ += "}\n";
 }
@@ -194,7 +171,7 @@ void CodeGenSyclDevice::PrintFunctionBody(const ir::_LoweredFunc_ *op) {
   APPEND_TO_NEW_BODY_STMTS(dealloc_temp_buffer_stmts);
   ir::stmt::BlockRef func_body_block = ir::stmt::BlockRef(new_body_stmts);
   // Use ir_simplify when pass updated.
-  // optim::SimplifyBlocks(&func_body);
+  // optim::SimplifyUnitBlock(&func_body);
   // // Make sure that the function's body is wrapped by a block
   // if (!func_body.As<ir::Block>()) {
   //   func_body = ir::Block::Make({func_body});
@@ -230,9 +207,9 @@ void CodeGenSyclDevice::PrintFunctionDeclaration(const ir::_LoweredFunc_ *op) {
     } else {
       CINN_NOT_IMPLEMENTED
     }
-    str_ += ")(*(void **)(void_args[";
+    str_ += ")(void_args[";
     str_ += std::to_string(i);
-    str_ += "]));\n";
+    str_ += "]);\n";
   }
 }
 
@@ -253,7 +230,7 @@ void CodeGenSyclDevice::PrintTempBufferCreation(const ir::Buffer &buffer) {
     for (int i = 0; i < buffer->shape.size(); i++) {
       buffer_size = buffer_size * buffer->shape[i];
     }
-    optim::Simplify(&buffer_size);
+    buffer_size = optim::ArithSimplify(buffer_size);
     IrPrinter::Visit(buffer_size);
     str_ += " ]";
   };
@@ -268,7 +245,7 @@ void CodeGenSyclDevice::PrintTempBufferCreation(const ir::Buffer &buffer) {
       for (int i = 0; i < buffer->shape.size(); i++) {
         buffer_size = buffer_size * buffer->shape[i];
       }
-      optim::Simplify(&buffer_size);
+      buffer_size = optim::ArithSimplify(buffer_size);
       IrPrinter::Visit(buffer_size);
       str_ += " ]>(item.get_group())";
       break;

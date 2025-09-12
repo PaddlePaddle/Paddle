@@ -11,6 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Compatibility Note: The design of certain PaddlePaddle public APIs
+# incorporates principles from PyTorch and NumPy, maintaining compatibility
+# with PyTorch's API conventions in terms of function signatures and
+# parameter semantics. It is important to clarify that these APIs are
+# implemented as independent modules with no runtime dependency on PyTorch.
 
 import math
 import typing
@@ -36,19 +42,30 @@ except ImportError:
 # NOTE(SigureMo): We should place the import of base.core before other modules,
 # because there are some initialization codes in base/core/__init__.py.
 from .base import core  # noqa: F401
+from .base.dygraph.generated_tensor_methods_patch import (
+    monkey_patch_generated_methods_for_tensor,
+)
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
 # We need remove the duplicated code here once we fix
 # the illogical implement in the monkey-patch methods later.
-from .framework import monkey_patch_math_tensor, monkey_patch_variable
+from .framework import (
+    monkey_patch_math_tensor,
+    monkey_patch_variable,
+)
 from .pir import monkey_patch_dtype, monkey_patch_program, monkey_patch_value
+from .pir.generated_methods_patch import (
+    monkey_patch_generated_methods_for_value,
+)
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_value()
 monkey_patch_program()
 monkey_patch_dtype()
+
+monkey_patch_generated_methods_for_value()
 
 from .base.dataset import *  # noqa: F403
 from .framework import (
@@ -84,8 +101,66 @@ from .framework.dtype import (
 if typing.TYPE_CHECKING:
     from .tensor.tensor import Tensor
 else:
+    import builtins
+
     Tensor = framework.core.eager.Tensor
     Tensor.__qualname__ = 'Tensor'
+    original_init = Tensor.__init__
+
+    def new_init(self, *args, **kwargs):
+        """
+        New Usage Example:
+        1. paddle.Tensor()
+        2. paddle.Tensor(device="cpu")
+        3. paddle.Tensor(1,2,3)
+        4. paddle.Tensor(1,2,3, device="cpu")
+        5. paddle.Tensor([1,2,3])
+        6. paddle.Tensor([1,2,3], device="cpu")
+        7. paddle.Tensor(data=[1,2,3])
+        8. paddle.Tensor(data=[1,2,3], device="cpu")
+        Original Usage Example:
+        9. paddle.Tensor(value=data, place="cpu", persistable=False, zero_copy=False, name=None, stop_gradient=True)
+        """
+        if 'device' in kwargs:
+            device = kwargs.pop('device')
+        else:
+            device = "cpu"
+        device = framework._get_paddle_place(device)
+        if len(args) == 0 and len(kwargs) == 0:  # case 1, 2
+            original_init(
+                self,
+                paddle.empty(shape=[0], dtype='float32', device=device),
+                place=device,
+            )
+            return
+        if 'data' in kwargs:  # case 7,8
+            data = kwargs.pop('data')
+            original_init(
+                self,
+                paddle.tensor(data, dtype='float32', device=device),
+                place=device,
+            )
+        elif len(args) == 1 and isinstance(args[0], (list, tuple)):
+            # case 5, 6
+            original_init(
+                self,
+                paddle.tensor(args[0], dtype='float32', device=device),
+                place=device,
+            )
+        elif (
+            builtins.all(isinstance(arg, builtins.int) for arg in args)
+            and len(kwargs) == 0
+        ):
+            # case 3, 4
+            original_init(
+                self,
+                paddle.empty(shape=list(args), dtype='float32', device=device),
+                place=device,
+            )
+        else:
+            original_init(self, *args, **kwargs)
+
+    Tensor.__init__ = new_init
 
 import paddle.distributed.fleet
 import paddle.text
@@ -109,6 +184,7 @@ from paddle import (
     onnx as onnx,
     optimizer as optimizer,
     quantization as quantization,
+    random as random,
     reader as reader,
     regularizer as regularizer,
     sparse as sparse,
@@ -119,14 +195,27 @@ from paddle import (
 
 # high-level api
 from . import (
+    _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
+    compat as compat,
     fft as fft,
     hub as hub,
+    library as library,
     linalg as linalg,
     signal as signal,
+    special as special,
     tensor as tensor,
+    utils as utils,
+)
+from ._classes import classes as classes
+from ._ops import ops as ops
+from .amp import (
+    get_autocast_cpu_dtype,
+    get_autocast_dtype,
+    get_autocast_gpu_dtype,
+    is_autocast_enabled,
 )
 from .autograd import (
     enable_grad,
@@ -136,6 +225,8 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    PaddleStream as Stream,
+    device_guard,
     get_cudnn_version,
     get_device,
     is_compiled_with_cinn,
@@ -155,6 +246,7 @@ from .framework import (  # noqa: F401
     CustomPlace,
     IPUPlace,
     ParamAttr,
+    XPUPinnedPlace,
     XPUPlace,
     async_save,
     clear_async_save_task_queue,
@@ -188,7 +280,19 @@ from .tensor.attribute import (
     real,
     shape,
 )
+from .tensor.compat_softmax import softmax
 from .tensor.creation import (
+    BFloat16Tensor,
+    BoolTensor,
+    ByteTensor,
+    CharTensor,
+    DoubleTensor,
+    FloatTensor,
+    HalfTensor,
+    IntTensor,
+    LongTensor,
+    MmapStorage,
+    ShortTensor,
     arange,
     assign,
     cauchy_,
@@ -210,6 +314,8 @@ from .tensor.creation import (
     ones,
     ones_like,
     polar,
+    range,
+    tensor as as_tensor,
     to_tensor,
     tril,
     tril_,
@@ -238,6 +344,7 @@ from .tensor.linalg import (  # noqa: F401
     matrix_transpose,
     mv,
     norm,
+    permute,
     t,
     t_,
     transpose,
@@ -323,7 +430,9 @@ from .tensor.manipulation import (
     masked_scatter,
     masked_scatter_,
     moveaxis,
+    narrow,
     put_along_axis,
+    ravel,
     repeat_interleave,
     reshape,
     reshape_,
@@ -332,8 +441,11 @@ from .tensor.manipulation import (
     row_stack,
     scatter,
     scatter_,
+    scatter_add,
+    scatter_add_,
     scatter_nd,
     scatter_nd_add,
+    scatter_reduce,
     select_scatter,
     shard_index,
     slice,
@@ -358,6 +470,8 @@ from .tensor.manipulation import (
     unstack,
     view,
     view_as,
+    view_as_complex,
+    view_as_real,
     vsplit,
     vstack,
 )
@@ -393,6 +507,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_right_shift,
     bitwise_right_shift_,
     broadcast_shape,
+    broadcast_shapes,
     cartesian_prod,
     ceil,
     clip,
@@ -488,6 +603,7 @@ from .tensor.math import (  # noqa: F401
     mm,
     mod,
     mod_,
+    mul,
     multigammaln,
     multigammaln_,
     multiplex,
@@ -532,6 +648,7 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     subtract,
+    subtract_,
     sum,
     take,
     tan,
@@ -540,6 +657,7 @@ from .tensor.math import (  # noqa: F401
     tanh_,
     trace,
     trapezoid,
+    true_divide,
     trunc,
     trunc_,
     vander,
@@ -556,9 +674,11 @@ from .tensor.random import (
     normal_,
     poisson,
     rand,
+    rand_like,
     randint,
     randint_like,
     randn,
+    randn_like,
     randperm,
     standard_gamma,
     standard_normal,
@@ -568,12 +688,14 @@ from .tensor.search import (
     argmax,
     argmin,
     argsort,
+    argwhere,
     bucketize,
     index_sample,
     index_select,
     kthvalue,
     masked_select,
     mode,
+    msort,
     nonzero,
     searchsorted,
     sort,
@@ -581,6 +703,7 @@ from .tensor.search import (
     where,
     where_,
 )
+from .tensor.size import Size
 from .tensor.stat import (
     mean,
     median,
@@ -597,6 +720,34 @@ from .utils.dlpack import (
     to_dlpack,
 )
 
+
+class _TensorMethodOrModule:
+    def __init__(self):
+        import paddle.tensor as tensor_module
+
+        from .tensor.creation import tensor as tensor_api
+
+        self.module = tensor_module
+        self.method = tensor_api
+
+    def __call__(self, *args, **kwargs):
+        return self.method(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+    def __repr__(self):
+        return repr(self.method)
+
+    def __str__(self):
+        return str(self.method)
+
+    def __dir__(self):
+        return dir(self.module)
+
+
+tensor = _TensorMethodOrModule()  # noqa: F811
+
 # CINN has to set a flag to include a lib
 if is_compiled_with_cinn():
     import os
@@ -609,17 +760,8 @@ if is_compiled_with_cinn():
     if os.path.exists(cuh_file):
         os.environ.setdefault('runtime_include_dir', runtime_include_dir)
 
-    if sys.version_info >= (3, 9):
-
-        data_file_path = resources.files('paddle.cinn_config')
-        os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
-    else:
-        import pkg_resources
-
-        data_file_path = pkg_resources.resource_filename(
-            'paddle.cinn_config', ''
-        )
-        os.environ['CINN_CONFIG_PATH'] = data_file_path
+    data_file_path = resources.files('paddle.cinn_config')
+    os.environ['CINN_CONFIG_PATH'] = str(data_file_path)
 
 if __is_metainfo_generated and is_compiled_with_cuda():
     import os
@@ -654,6 +796,10 @@ if __is_metainfo_generated and is_compiled_with_cuda():
 
         cupti_dir_lib_path = package_dir + "/.." + "/nvidia/cuda_cupti/lib"
         set_flags({"FLAGS_cupti_dir": cupti_dir_lib_path})
+
+        if is_compiled_with_cinn():
+            cuda_cccl_path = package_dir + "/.." + "/nvidia/cuda_cccl/include/"
+            set_flags({"FLAGS_cuda_cccl_dir": cuda_cccl_path})
 
     elif (
         platform.system() == 'Windows'
@@ -776,7 +922,6 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
-
 # Constants
 newaxis: None = None
 inf = math.inf
@@ -784,8 +929,25 @@ nan = math.nan
 pi = math.pi
 e = math.e
 
+# API alias
+cat = concat
+concatenate = concat
+take_along_dim = take_along_axis
+clamp = clip
+ger = outer
+div = divide
+div_ = divide_
+eq = equal
+gt = greater_than
+swapdims = transpose
+swapaxes = transpose
+sub = subtract
+sub_ = subtract_
+
 __all__ = [
     'block_diag',
+    'gt',
+    'eq',
     'iinfo',
     'finfo',
     'dtype',
@@ -815,6 +977,7 @@ __all__ = [
     't_',
     'add',
     'subtract',
+    'subtract_',
     'diag',
     'diagflat',
     'diag_embed',
@@ -840,6 +1003,7 @@ __all__ = [
     'logit',
     'logit_',
     'LazyGuard',
+    'Size',
     'sign',
     'is_empty',
     'equal',
@@ -862,6 +1026,7 @@ __all__ = [
     'mv',
     'in_dynamic_mode',
     'min',
+    'narrow',
     'amin',
     'any',
     'slice',
@@ -879,6 +1044,7 @@ __all__ = [
     'summary',
     'flops',
     'sort',
+    'msort',
     'searchsorted',
     'bucketize',
     'split',
@@ -888,6 +1054,7 @@ __all__ = [
     'vsplit',
     'logical_and',
     'logical_and_',
+    'MmapStorage',
     'full_like',
     'less_than',
     'less_than_',
@@ -895,7 +1062,18 @@ __all__ = [
     'less_',
     'kron',
     'clip',
+    'clamp',
     'Tensor',
+    'FloatTensor',
+    'DoubleTensor',
+    'HalfTensor',
+    'BFloat16Tensor',
+    'ByteTensor',
+    'CharTensor',
+    'ShortTensor',
+    'IntTensor',
+    'LongTensor',
+    'BoolTensor',
     'crop',
     'ParamAttr',
     'stanh',
@@ -909,6 +1087,7 @@ __all__ = [
     'squeeze',
     'squeeze_',
     'to_tensor',
+    'as_tensor',
     'gather_nd',
     'isin',
     'isinf',
@@ -966,6 +1145,7 @@ __all__ = [
     'pdist',
     'unbind',
     'meshgrid',
+    'range',
     'arange',
     'load',
     'numel',
@@ -1011,6 +1191,7 @@ __all__ = [
     'DataParallel',
     'argmin',
     'prod',
+    'broadcast_shapes',
     'broadcast_shape',
     'conj',
     'neg',
@@ -1026,10 +1207,16 @@ __all__ = [
     'erfinv',
     'inner',
     'outer',
+    'ger',
     'square',
     'square_',
     'divide',
     'divide_',
+    'div',
+    'div_',
+    'sub',
+    'sub_',
+    'true_divide',
     'gammaln',
     'gammaln_',
     'ceil',
@@ -1077,10 +1264,15 @@ __all__ = [
     'tanh',
     'tanh_',
     'transpose',
+    'swapaxes',
+    'swapdims',
     'transpose_',
+    'permute',
     'cauchy_',
     'geometric_',
     'randn',
+    'randn_like',
+    'rand_like',
     'strided_slice',
     'unique',
     'unique_consecutive',
@@ -1090,7 +1282,9 @@ __all__ = [
     'std',
     'flatten',
     'flatten_',
+    'ravel',
     'asin',
+    'mul',
     'multiply',
     'multiply_',
     'disable_static',
@@ -1119,7 +1313,9 @@ __all__ = [
     'atleast_3d',
     'reverse',
     'nonzero',
+    'argwhere',
     'CUDAPinnedPlace',
+    'XPUPinnedPlace',
     'logical_not',
     'logical_not_',
     'add_n',
@@ -1135,6 +1331,8 @@ __all__ = [
     'log10',
     'log10_',
     'concat',
+    'cat',
+    'concatenate',
     'check_shape',
     'trunc',
     'trunc_',
@@ -1152,7 +1350,9 @@ __all__ = [
     'acosh',
     'atanh',
     'as_complex',
+    'view_as_complex',
     'as_real',
+    'view_as_real',
     'diff',
     'angle',
     'fmax',
@@ -1164,12 +1364,16 @@ __all__ = [
     'renorm',
     'renorm_',
     'take_along_axis',
+    'take_along_dim',
+    'scatter_reduce',
     'put_along_axis',
+    'scatter_add',
     'select_scatter',
     'multigammaln',
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'scatter_add_',
     'heaviside',
     'tril_indices',
     'index_add',
@@ -1226,9 +1430,16 @@ __all__ = [
     'nan',
     'pi',
     'e',
+    'is_autocast_enabled',
+    'get_autocast_dtype',
+    'get_autocast_cpu_dtype',
+    'get_autocast_gpu_dtype',
+    'softmax',
 ]
-
 import os
+
+monkey_patch_generated_methods_for_tensor()
+import paddle._paddle_docs
 
 FLAGS_trace_api = os.environ.get("FLAGS_trace_api", None)
 if FLAGS_trace_api is not None and FLAGS_trace_api != "":

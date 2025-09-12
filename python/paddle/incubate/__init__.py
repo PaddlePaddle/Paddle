@@ -18,6 +18,7 @@ from . import (  # noqa: F401
     asp,
     autograd,
     autotune,
+    cc,
     layers,
     multiprocessing,
     nn,
@@ -68,4 +69,5 @@ __all__ = [
     'segment_min',
     'identity_loss',
     'inference',
+    'cc',
 ]

@@ -29,7 +29,6 @@ class TestEmbeddingWithEltwiseAddXPUFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # lookup_table_v2
         lookup_table_num = draw(st.sampled_from([2, 3, 4]))
-        print("lookup_table_num: ", lookup_table_num)
         ids_shape = draw(st.sampled_from([[1, 32]]))
         w_shape = draw(st.sampled_from([[1000, 32]]))
         padding_idx = draw(st.sampled_from([-1]))

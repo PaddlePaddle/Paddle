@@ -14,6 +14,7 @@
 
 import copy
 
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 
 from ..completion import get_phi_spmd_rule
@@ -43,13 +44,13 @@ class DistributedReduceSum(DistributedOperatorImplContainer):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
 
         op_desc = dist_op.serial_op.desc
-        assert (
-            len(op_desc.input_arg_names()) == 1
-        ), f"reduce_sum op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
+        assert len(op_desc.input_arg_names()) == 1, (
+            f"reduce_sum op [{op_desc.type}] has [{len(op_desc.input_arg_names())}] inputs"
+        )
         input_arg_name = op_desc.input_arg_names()[0]
-        assert (
-            len(op_desc.output_arg_names()) == 1
-        ), f"reduce_sum op [{op_desc.type}] has [{len(op_desc.output_arg_names())}] outputs"
+        assert len(op_desc.output_arg_names()) == 1, (
+            f"reduce_sum op [{op_desc.type}] has [{len(op_desc.output_arg_names())}] outputs"
+        )
         output_arg_name = op_desc.output_arg_names()[0]
         keep_dim = op_desc.attr('keep_dim')
         dims = op_desc.attr('dim')
@@ -204,12 +205,12 @@ class DistributedReduceSumPrimitiveImpl0(DistributedOperatorImpl):
         var_name = src_op.output_arg_names[0]
         sync_group = new_process_group(ctx.data_parallel_group)
         allreduce_op = main_block.append_op(
-            type='c_allreduce_sum',
-            inputs={'X': [var_name]},
-            outputs={'Out': [var_name]},
+            type='all_reduce',
+            inputs={'x': [var_name]},
+            outputs={'out': [var_name]},
             attrs={
                 'ring_id': sync_group.id,
-                'use_calc_stream': True,
+                'reduce_type': paddle.distributed.ReduceOp.SUM,
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )

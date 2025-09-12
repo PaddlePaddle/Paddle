@@ -63,9 +63,8 @@ class DenseTensor;
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(check_nan_inf);
-PD_DECLARE_bool(enable_unused_var_check);
 COMMON_DECLARE_bool(run_kp_kernel);
-PHI_DECLARE_bool(enable_host_event_recorder_hook);
+COMMON_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle::framework {
 
@@ -135,13 +134,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     return "strings";
   } else if (var->IsType<phi::SparseCooTensor>()) {
     const phi::SparseCooTensor& tensor = var->Get<phi::SparseCooTensor>();
-    if (UNLIKELY(!tensor.initialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
   } else if (var->IsType<phi::SparseCsrTensor>()) {
     const phi::SparseCsrTensor& tensor = var->Get<phi::SparseCsrTensor>();
-    if (UNLIKELY(!tensor.initialized())) {
+    if (UNLIKELY(!tensor.has_allocation())) {
       return "";
     }
     return DataTypeToString(framework::TransToProtoVarType(tensor.dtype()));
@@ -527,7 +526,7 @@ void RuntimeInferShapeContext::SetLoDLevel(const std::string& out,
 
 bool RuntimeInferShapeContext::IsRuntime() const { return true; }
 
-bool RuntimeInferShapeContext::IsRunMKLDNNKernel() const {
+bool RuntimeInferShapeContext::IsRunONEDNNKernel() const {
   try {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
@@ -1153,8 +1152,6 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
-  LogVarUsageIfUnusedVarCheckEnabled(name);
-
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -1185,8 +1182,6 @@ Variable* ExecutionContext::OutputVar(const std::string& name) const {
 template <>
 const std::vector<const phi::DenseTensor*>
 ExecutionContext::MultiInput<phi::DenseTensor>(const std::string& name) const {
-  LogVarUsageIfUnusedVarCheckEnabled(name);
-
   auto vars = MultiInputVar(name);
   if (vars.empty()) {
     return {};
@@ -1446,7 +1441,7 @@ bool OperatorWithKernel::SupportCustomDevice() const {
 #endif
 }
 
-bool OperatorWithKernel::SupportsMKLDNN(const phi::DataType data_type) const {
+bool OperatorWithKernel::SupportsONEDNN(const phi::DataType data_type) const {
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
       phi::TransToPhiKernelName(type_));
   auto has_phi_kernel =
@@ -1583,7 +1578,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
-      this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
+      this->CanONEDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
     tmp_kernel_type.library_type_ = framework::LibraryType::kMKLDNN;
     tmp_kernel_type.data_layout_ = framework::DataLayout::ONEDNN;
@@ -1602,15 +1597,16 @@ bool OperatorWithKernel::SupportsKernelType(
   return kernel_iter != kernels.end();
 }
 
-bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                                          phi::DataType data_type) const {
-  return ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn") &&
-         phi::is_cpu_place(ctx.GetPlace()) && this->SupportsMKLDNN(data_type);
+  return ((ctx.HasAttr("use_mkldnn") && ctx.Attr<bool>("use_mkldnn")) ||
+          (ctx.HasAttr("use_onednn") && ctx.Attr<bool>("use_onednn"))) &&
+         phi::is_cpu_place(ctx.GetPlace()) && this->SupportsONEDNN(data_type);
 }
 
-bool OperatorWithKernel::CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
+bool OperatorWithKernel::CanONEDNNBeUsed(const framework::ExecutionContext& ctx,
                                          proto::VarType::Type data_type) const {
-  return this->CanMKLDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
+  return this->CanONEDNNBeUsed(ctx, phi::TransToPhiDataType(data_type));
 }
 
 bool OperatorWithKernel::CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
@@ -1843,7 +1839,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                 << phi_kernel_name << " | kernel key: " << phi_kernel_key
                 << " | kernel: " << *phi_kernel_;
       } else {
-        VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `"
+        VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `"
                 << phi_kernel_name << "` not found.";
       }
     } else {
@@ -1858,14 +1854,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
           !paddle::platform::in_onednn_white_list(type_) &&
-          this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
+          this->CanONEDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       } else if (phi::is_cpu_place(kernel_type_->place_) &&
                  kernel_type_->data_type_ ==
                      proto::VarType::Type::VarType_Type_BF16 &&
                  !this->SupportsCPUBF16() &&
-                 this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
+                 this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
         kernel_type_->library_type_ = framework::LibraryType::kMKLDNN;
         kernel_type_->data_layout_ = framework::DataLayout::ONEDNN;
       }
@@ -2046,10 +2042,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         Type(), Attrs(), infer_shape_ctx, *runtime_ctx, Id());
   }
 
-  if (FLAGS_enable_unused_var_check) {
-    GetThreadLocalUsedVarNameSet()->clear();
-  }
-
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
@@ -2121,15 +2113,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     HandleComplexGradToRealGrad(scope, runtime_ctx);
   }
 
-  if (FLAGS_enable_unused_var_check) {
-    // skip op that uses onednn because it has different memory reuse strategy.
-    // use attr here because some GradMakers (like ActivationGradOpMaker) add
-    // input when use_mkldnn=true;
-    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
-      CheckUnusedVar(*this, scope);
-    }
-  }
-
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
     dev_ctx->Wait();
@@ -2190,14 +2173,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
 // 3. Whether onednn kernel can be used.
 #ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_onednn_white_list(type_) &&
-      this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
+      this->CanONEDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   } else if (phi::is_cpu_place(expected_kernel_key.place_) &&
              expected_kernel_key.data_type_ ==
                  proto::VarType::Type::VarType_Type_BF16 &&
              !this->SupportsCPUBF16() &&
-             this->SupportsMKLDNN(phi::DataType::BFLOAT16)) {
+             this->SupportsONEDNN(phi::DataType::BFLOAT16)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
     expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
   }
@@ -2323,7 +2306,7 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
             << phi_kernel_name << " | kernel key: " << phi_kernel_key
             << " | kernel: " << *phi_kernel_;
   } else {
-    VLOG(6) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
+    VLOG(1) << "Static graph mode ChoosePhiKernel - kernel `" << phi_kernel_name
             << "` not found.";
   }
   return phi_kernel_key;
@@ -2347,10 +2330,11 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   auto kernel_iter = kernels.find(expected_kernel_key);
 
 #ifdef PADDLE_WITH_DNNL
-  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  // workaround for missing ONEDNN kernel when FLAGS_use_mkldnn or
+  // FLAGS_use_onednn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
-    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    VLOG(3) << "missing ONEDNN kernel: fallbacking to PLAIN one";
     expected_kernel_key.library_type_ = LibraryType::kPlain;
     expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
     kernel_iter = kernels.find(expected_kernel_key);
@@ -3144,6 +3128,26 @@ static void SetDnnAttrIntoDeviceContext(
     }
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (phi::CustomContext::classof(dev_ctx) &&
+      attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
+    VLOG(4) << "Runtime attr `" << attr_name << "` is passed to CustomContext.";
+    phi::CustomContext* custom_dnn_ctx =
+        static_cast<phi::CustomContext*>(dev_ctx);
+    switch (AttrTypeID(attr)) {
+      case proto::AttrType::INT:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(int, attr));
+        break;
+      case proto::AttrType::BOOLEAN:
+        custom_dnn_ctx->SetDnnAttr(attr_name, PADDLE_GET_CONST(bool, attr));
+        break;
+      default:
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Unsupported Attribute value type `%s` for phi.",
+            common::demangle(attr.type().name())));
+    }
+  }
+#endif
 #ifdef PADDLE_WITH_CUDA
   if (phi::GPUContext::classof(dev_ctx) &&
       attr_properties.Support(operators::ExtraAttrProperty::GPUDNN)) {
@@ -3522,8 +3526,21 @@ void OperatorWithKernel::BuildPhiKernelContext(
                 PADDLE_GET_CONST(bool, attr_iter->second));
             break;
           case phi::AttributeType::INT64:
-            phi_kernel_context->EmplaceBackAttr(
-                PADDLE_GET_CONST(int64_t, attr_iter->second));
+            switch (AttrTypeID(attr_iter->second)) {
+              case proto::AttrType::LONG:
+                phi_kernel_context->EmplaceBackAttr(
+                    PADDLE_GET_CONST(int64_t, attr_iter->second));
+                break;
+              case proto::AttrType::INT: {
+                const auto val = PADDLE_GET_CONST(int, attr_iter->second);
+                phi_kernel_context->EmplaceBackAttr(static_cast<int64_t>(val));
+              } break;
+              default:
+                PADDLE_THROW(common::errors::Unimplemented(
+                    "Unsupported cast op attribute `%s` to int64_t when "
+                    "construct KernelContext.",
+                    attr_names[i]));
+            }
             break;
           case phi::AttributeType::INT32S:  // NOLINT
             phi_kernel_context->EmplaceBackAttr(
@@ -3608,7 +3625,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
   #endif
   */
   // For compatible with Op with extra attrs for specific backend
-#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;

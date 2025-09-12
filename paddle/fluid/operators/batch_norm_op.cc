@@ -107,10 +107,10 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
           "= [%s], the dimension of input X = [%d]",
           x_dims,
           x_dims.size()));
-  VLOG(4) << ctx->IsRunMKLDNNKernel();
+  VLOG(4) << ctx->IsRunONEDNNKernel();
   VLOG(4) << data_layout;
   const int64_t C =
-      ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
+      ((ctx->IsRunONEDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
@@ -370,7 +370,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
       common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C = static_cast<int>(
-      ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
+      ((ctx->IsRunONEDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]));
 
@@ -511,7 +511,7 @@ void BatchNormDoubleGradOp::InferShape(
   const DataLayout data_layout =
       common::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C = static_cast<int>(
-      ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
+      ((ctx->IsRunONEDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]));
 

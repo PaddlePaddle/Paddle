@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -33,6 +32,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -106,9 +106,9 @@ std::shared_ptr<framework::OpStrategy> StrategyForRepeat(
   int axis = 0;
   for (auto &iter : attrs.attr_store) {
     if (iter.first == "repeats") {
-      repeats = absl::get<int>(iter.second);
+      repeats = std::get<int>(iter.second);
     } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
+      axis = std::get<int>(iter.second);
     }
   }
   PADDLE_ENFORCE_GE(

@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest
+from op_test import OpTest, get_devices, get_places
 
 import paddle
 from paddle import base
@@ -577,16 +576,7 @@ class TestSparseAdamOp(unittest.TestCase):
                 self.assertLess((actual[i] - np_array[i]), 0.00001)
 
     def test_sparse_adam(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(core.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
+        for place in get_places():
             for lazy_mode in (True, False):
                 self.check_with_place(place, lazy_mode)
 
@@ -899,33 +889,35 @@ class TestAdamOpV2(unittest.TestCase):
             exe = base.Executor(place)
             train_prog = paddle.static.Program()
             startup = paddle.static.Program()
-            with paddle.static.program_guard(train_prog, startup):
-                with base.unique_name.guard():
-                    data = paddle.static.data(name="data", shape=shape)
-                    conv_layer = paddle.nn.Conv2D(3, 8, 3)
-                    conv = conv_layer(data)
-                    loss = paddle.mean(conv)
+            with (
+                paddle.static.program_guard(train_prog, startup),
+                base.unique_name.guard(),
+            ):
+                data = paddle.static.data(name="data", shape=shape)
+                conv_layer = paddle.nn.Conv2D(3, 8, 3)
+                conv = conv_layer(data)
+                loss = paddle.mean(conv)
 
-                    beta1 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.85),
-                    )
-                    beta2 = paddle.pir.core.create_parameter(
-                        'float32',
-                        [1],
-                        initializer=paddle.nn.initializer.Constant(0.95),
-                    )
-                    betas = [beta1, beta2]
-                    opt = paddle.optimizer.Adam(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                        amsgrad=self.amsgrad,
-                    )
-                    opt.minimize(loss)
+                beta1 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.85),
+                )
+                beta2 = paddle.pir.core.create_parameter(
+                    'float32',
+                    [1],
+                    initializer=paddle.nn.initializer.Constant(0.95),
+                )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.Adam(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                    amsgrad=self.amsgrad,
+                )
+                opt.minimize(loss)
 
             exe.run(startup)
             data_np = np.random.random(shape).astype('float32')
@@ -1304,16 +1296,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         return out
 
     def _get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
+        return get_devices()
 
     def _check_with_place_amp(self, place, use_amp):
         # test dygraph mode
@@ -1341,7 +1324,7 @@ class TestMultiTensorAdam(unittest.TestCase):
                     output_static1[idx], output_static2[idx], rtol=1e-05
                 )
 
-    def _check_with_param_arrt(self, place, use_amp):
+    def _check_with_param_attr(self, place, use_amp):
         output1, params1 = self._adam_optimize_dygraph(
             place=place,
             use_amp=use_amp,
@@ -1382,7 +1365,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             use_amp_list = [True, False]
             for use_amp in use_amp_list:
                 self._check_with_place_amp(place, use_amp)
-                self._check_with_param_arrt(place, use_amp)
+                self._check_with_param_attr(place, use_amp)
                 self._check_with_param_group(place, use_amp)
 
     def test_pir_main(self):

@@ -25,7 +25,7 @@ namespace funcs {
 
 template <typename T, typename IndexT, typename ArrayT>
 __global__ void StackCudaKernel(ArrayT array,
-                                GeneralDivMod<IndexT> divmoder,
+                                FastDivMod<IndexT> divmoder,
                                 IndexT split_size,
                                 IndexT rows,
                                 IndexT cols,
@@ -37,7 +37,7 @@ __global__ void StackCudaKernel(ArrayT array,
   for (; grid_x < cols; grid_x += grid_x_stride) {
     IndexT grid_y = static_cast<IndexT>(blockIdx.y) * blockDim.y + threadIdx.y;
 
-    auto divmod_rslt = divmoder.div_mod(grid_x);
+    auto divmod_rslt = divmoder.Divmod(grid_x);
     IndexT split = divmod_rslt[0];       // grid_x / split_size
     IndexT col_offset = divmod_rslt[1];  // grid_x % split_size
     const T* input_ptr = array.data[split];
@@ -53,24 +53,25 @@ template <typename Context,
           typename T,
           typename IndexT,
           SegmentedArraySize Size>
-void LaunchStackKernel(const Context& ctx,
+void LaunchStackKernel(const Context& dev_ctx,
                        const IndexT x_col,
                        const IndexT x_row,
                        const IndexT out_col,
                        const std::vector<const DenseTensor*>& x,
                        DenseTensor* out) {
-  T* out_ptr = ctx.template Alloc<T>(out);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig2D(ctx, out_col, x_row);
+  T* out_ptr = dev_ctx.template Alloc<T>(out);
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig2D(dev_ctx, out_col, x_row);
 
-  ConstPointerArraySetter<Context, T, Size> setter(ctx, x);
-  GeneralDivMod<IndexT> divmoder(x_col);
+  ConstPointerArraySetter<Context, T, Size> setter(dev_ctx, x);
+  FastDivMod<IndexT> divmoder(x_col);
   StackCudaKernel<T, IndexT, decltype(setter.array)>
-      <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           setter.array, divmoder, x_col, x_row, out_col, out_ptr);
 }
 
 template <typename T, typename Context>
-void StackRawKernel(const Context& ctx,
+void StackRawKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& x,
                     int axis,
                     DenseTensor* out) {
@@ -79,7 +80,7 @@ void StackRawKernel(const Context& ctx,
 
   // zero sized tensor case
   if (x[0]->numel() == 0) {
-    ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<T>(out);
     auto out_dims = out->dims();
     out->Resize(out_dims);
     return;
@@ -98,13 +99,13 @@ void StackRawKernel(const Context& ctx,
     switch (CalcArraySize(num)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int32_t, kArraySize>(
-              ctx, x_col, x_row, out_col, x, out));
+              dev_ctx, x_col, x_row, out_col, x, out));
     }
   } else {
     switch (CalcArraySize(num)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchStackKernel<Context, T, int64_t, kArraySize>(
-              ctx, x_col, x_row, out_col, x, out));
+              dev_ctx, x_col, x_row, out_col, x, out));
     }
   }
 }
@@ -115,7 +116,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
                                   IndexT split_dim,
                                   IndexT out_col,
                                   IndexT num_splits,
-                                  GeneralDivMod<IndexT> col_divmoder,
+                                  FastDivMod<IndexT> col_divmoder,
                                   ArrayT array) {
   assert(blockDim.y == 1);
   assert(blockDim.z == 1);
@@ -129,7 +130,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
   IndexT offset = blockIdx.x * blockDim.x + threadIdx.x;
   if (each_dim_size == 1) {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
-      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+      auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
       IndexT j = col_divmod_rslt[0] - i * split_dim;
@@ -143,7 +144,7 @@ __global__ void UnStackCudaKernel(const T* __restrict__ input,
     }
   } else {
     for (; offset < numel; offset += blockDim.x * gridDim.x) {
-      auto col_divmod_rslt = col_divmoder.div_mod(offset);
+      auto col_divmod_rslt = col_divmoder.Divmod(offset);
 
       IndexT i = offset / split_dim_with_out_col;
       IndexT j = col_divmod_rslt[0] - i * split_dim;
@@ -190,7 +191,7 @@ template <typename Context,
           typename T,
           typename IndexT,
           SegmentedArraySize Size>
-void LaunchUnStackKernel(const Context& ctx,
+void LaunchUnStackKernel(const Context& dev_ctx,
                          const IndexT out_row,
                          const IndexT split_dim,
                          const IndexT out_col,
@@ -202,7 +203,8 @@ void LaunchUnStackKernel(const Context& ctx,
           << ", out_col=" << out_col << ", num_splits=" << num_splits;
 
   auto x_ptr = x.data<T>();
-  PointerArraySetter<Context, T, Size> setter(ctx, outs, /*need_alloc=*/true);
+  PointerArraySetter<Context, T, Size> setter(
+      dev_ctx, outs, /*need_alloc=*/true);
 
   if (out_col == 1) {
     // For the case axis == (x.dims().size() - 1)
@@ -210,7 +212,7 @@ void LaunchUnStackKernel(const Context& ctx,
     constexpr int kWarpSize = 32;
     constexpr int kMaxOut = 16;
 
-    int tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
+    int64_t tid_x = 0, tid_y = 0, bid_x = 0, bid_y = 1;
     if (split_dim < kMaxOut) {
       tid_y = split_dim;
       tid_x =
@@ -219,49 +221,52 @@ void LaunchUnStackKernel(const Context& ctx,
     } else {
       tid_y = kMaxOut;
       tid_x = kWarpSize;
-      bid_y = backends::gpu::DivUp<int>(split_dim, kMaxOut);
+      bid_y = backends::gpu::DivUp<int64_t>(split_dim, kMaxOut);
     }
-    int tile_x_num = backends::gpu::DivUp<int>(out_row, tid_x);
-    bid_x = std::min(tile_x_num, backends::gpu::kMultiDimslimit);
+    int64_t tile_x_num = backends::gpu::DivUp<int64_t>(out_row, tid_x);
+    if (tile_x_num < static_cast<int64_t>(backends::gpu::kMultiDimslimit))
+      bid_x = tile_x_num;
+    else
+      bid_x = backends::gpu::kMultiDimslimit;
     dim3 blocks(tid_x, tid_y, 1);
     dim3 grids(bid_x, bid_y, 1);
 
     UnStackCudaKernelForLastDim<T, IndexT, decltype(setter.array)>
-        <<<grids, blocks, 0, ctx.stream()>>>(
+        <<<grids, blocks, 0, dev_ctx.stream()>>>(
             x_ptr, split_dim, out_row, tile_x_num, setter.array);
   } else {
-    GeneralDivMod<IndexT> col_divmoder(out_col);
+    FastDivMod<IndexT> col_divmoder(out_col);
     auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
-        ctx, out_row * split_dim * out_col);
+        dev_ctx, out_row * split_dim * out_col);
 
     UnStackCudaKernel<T, IndexT, decltype(setter.array)>
         <<<config.block_per_grid.x,
            config.thread_per_block.x,
            0,
-           ctx.stream()>>>(x_ptr,
-                           out_row,
-                           split_dim,
-                           out_col,
-                           num_splits,
-                           col_divmoder,
-                           setter.array);
+           dev_ctx.stream()>>>(x_ptr,
+                               out_row,
+                               split_dim,
+                               out_col,
+                               num_splits,
+                               col_divmoder,
+                               setter.array);
   }
 }
 
 template <typename T, typename Context>
-void UnStackRawKernel(const Context& ctx,
+void UnStackRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       int axis,
                       std::vector<DenseTensor*>* outs) {
   auto x_dims = x.dims();
 
-  // Input tensor is splited to split_dim tensors along split_dim dimension.
+  // Input tensor is split to split_dim tensors along split_dim dimension.
   int64_t split_dim = x_dims[axis];
 
   // zero sized tensor case
   if (x.numel() == 0) {
     for (int i = 0; i < split_dim; i++) {
-      ctx.template Alloc<T>((*outs)[i]);
+      dev_ctx.template Alloc<T>((*outs)[i]);
       auto x_grad_dim = (*outs)[i]->dims();
       (*outs)[i]->Resize(x_grad_dim);
     }
@@ -280,13 +285,13 @@ void UnStackRawKernel(const Context& ctx,
     switch (CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchUnStackKernel<Context, T, int32_t, kArraySize>(
-              ctx, out_row, split_dim, out_col, split_dim, x, outs));
+              dev_ctx, out_row, split_dim, out_col, split_dim, x, outs));
     }
   } else {
     switch (CalcArraySize(split_dim)) {
       SEGMENTED_ARRAY_KERNEL_HELPER(
           LaunchUnStackKernel<Context, T, int64_t, kArraySize>(
-              ctx, out_row, split_dim, out_col, split_dim, x, outs));
+              dev_ctx, out_row, split_dim, out_col, split_dim, x, outs));
     }
   }
 }

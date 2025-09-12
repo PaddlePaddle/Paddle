@@ -25,6 +25,7 @@ from test_case_base import (
     test_instruction_translator_cache_context,
 )
 
+import paddle
 from paddle.jit.sot.opcode_translator.custom_code import CustomCode
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
@@ -84,14 +85,35 @@ def fake_frames() -> tuple[
 ) = fake_frames()
 
 
+class GuardCode:
+    def __init__(self, recompile):
+        self.func = lambda frame: recompile
+        self.mirror_guard = self.func
+        self.expr = f"lambda frame: {recompile}"
+        self.inlined_expr = f"lambda frame: {recompile}"
+        self.__globals__ = {}
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+
 def mock_start_translate(frame: FrameType, **kwargs):
     translate_map = {
-        FRAME_1: (CustomCode(FRAME_2.f_code, False), lambda frame: True),
+        FRAME_1: (
+            CustomCode(FRAME_2.f_code, False),
+            GuardCode(True),
+            [paddle.framework.core.DummyGuardNode()],
+        ),
         FRAME_3: (
             CustomCode(FRAME_4.f_code, False),
-            lambda frame: False,
+            GuardCode(False),
+            [paddle.framework.core.DummyGuardNode(False)],
         ),  # Always re-compile
-        FRAME_5: (CustomCode(None, False), lambda frame: True),
+        FRAME_5: (
+            CustomCode(None, False),
+            lambda frame: True,
+            [paddle.framework.core.DummyGuardNode()],
+        ),
     }
     return translate_map[frame]
 

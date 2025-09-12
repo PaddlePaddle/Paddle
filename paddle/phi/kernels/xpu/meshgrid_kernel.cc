@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MeshgridKernel(const Context& ctx,
+void MeshgridKernel(const Context& dev_ctx,
                     const std::vector<const DenseTensor*>& inputs,
                     std::vector<DenseTensor*> outputs) {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -35,10 +35,11 @@ void MeshgridKernel(const Context& ctx,
     xshape_list.emplace_back(common::vectorize<int64_t>(x->dims()));
   }
   for (auto& x : outputs) {
-    ctx.template Alloc<T>(x);
+    dev_ctx.template Alloc<T>(x);
     y_list.push_back(reinterpret_cast<XPUType*>(x->data<T>()));
   }
-  int r = xpu::meshgrid<XPUType>(ctx.x_context(), x_list, y_list, xshape_list);
+  int r =
+      xpu::meshgrid<XPUType>(dev_ctx.x_context(), x_list, y_list, xshape_list);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "meshgrid");
 }
 

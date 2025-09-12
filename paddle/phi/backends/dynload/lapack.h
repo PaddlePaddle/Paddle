@@ -28,6 +28,48 @@ extern "C" void dgetrf_(
     int *m, int *n, double *a, int *lda, int *ipiv, int *info);
 extern "C" void sgetrf_(
     int *m, int *n, float *a, int *lda, int *ipiv, int *info);
+extern "C" void cgetrf_(
+    int *m, int *n, std::complex<float> *a, int *lda, int *ipiv, int *info);
+extern "C" void zgetrf_(
+    int *m, int *n, std::complex<double> *a, int *lda, int *ipiv, int *info);
+
+// getrs_
+extern "C" void sgetrs_(char *trans,
+                        int *n,
+                        int *nrhs,
+                        float *a,
+                        int *lda,
+                        int *ipiv,
+                        float *b,
+                        int *ldb,
+                        int *info);
+extern "C" void dgetrs_(char *trans,
+                        int *n,
+                        int *nrhs,
+                        double *a,
+                        int *lda,
+                        int *ipiv,
+                        double *b,
+                        int *ldb,
+                        int *info);
+extern "C" void cgetrs_(char *trans,
+                        int *n,
+                        int *nrhs,
+                        std::complex<float> *a,
+                        int *lda,
+                        int *ipiv,
+                        std::complex<float> *b,
+                        int *ldb,
+                        int *info);
+extern "C" void zgetrs_(char *trans,
+                        int *n,
+                        int *nrhs,
+                        std::complex<double> *a,
+                        int *lda,
+                        int *ipiv,
+                        std::complex<double> *b,
+                        int *ldb,
+                        int *info);
 
 // evd
 extern "C" void zheevd_(char *jobz,
@@ -279,35 +321,64 @@ extern "C" void spotrs_(char *uplo,
                         float *b,
                         int *ldb,
                         int *info);
-extern "C" void dgesdd_(char *,
-                        int *,
-                        int *,
-                        double *,
-                        int *,
-                        double *,
-                        double *,
-                        int *,
-                        double *,
-                        int *,
-                        double *,
-                        int *,
-                        int *,
-                        int *);
-extern "C" void sgesdd_(char *,
-                        int *,
-                        int *,
-                        float *,
-                        int *,
-                        float *,
-                        float *,
-                        int *,
-                        float *,
-                        int *,
-                        float *,
-                        int *,
-                        int *,
-                        int *);
-
+extern "C" void dgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        double *a,
+                        int *lda,
+                        double *s,
+                        double *u,
+                        int *ldu,
+                        double *vt,
+                        int *ldvt,
+                        double *work,
+                        int *lwork,
+                        int *iwork,
+                        int *info);
+extern "C" void sgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        float *a,
+                        int *lda,
+                        float *s,
+                        float *u,
+                        int *ldu,
+                        float *vt,
+                        int *ldvt,
+                        float *work,
+                        int *lwork,
+                        int *iwork,
+                        int *info);
+extern "C" void zgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        std::complex<double> *a,
+                        int *lda,
+                        std::complex<double> *s,
+                        std::complex<double> *u,
+                        int *ldu,
+                        std::complex<double> *vt,
+                        int *ldvt,
+                        std::complex<double> *work,
+                        int *lwork,
+                        double *rwork,
+                        int *iwork,
+                        int *info);
+extern "C" void cgesdd_(char *jobz,
+                        int *m,
+                        int *n,
+                        std::complex<float> *a,
+                        int *lda,
+                        std::complex<float> *s,
+                        std::complex<float> *u,
+                        int *ldu,
+                        std::complex<float> *vt,
+                        int *ldvt,
+                        std::complex<float> *work,
+                        int *lwork,
+                        float *rwork,
+                        int *iwork,
+                        int *info);
 namespace phi {
 namespace dynload {
 
@@ -339,6 +410,12 @@ extern void *lapack_dso_handle;
 #define LAPACK_ROUTINE_EACH(__macro) \
   __macro(dgetrf_);                  \
   __macro(sgetrf_);                  \
+  __macro(cgetrf_);                  \
+  __macro(zgetrf_);                  \
+  __macro(sgetrs_);                  \
+  __macro(dgetrs_);                  \
+  __macro(cgetrs_);                  \
+  __macro(zgetrs_);                  \
   __macro(zheevd_);                  \
   __macro(cheevd_);                  \
   __macro(dsyevd_);                  \
@@ -357,6 +434,8 @@ extern void *lapack_dso_handle;
   __macro(sgelss_);                  \
   __macro(sgesdd_);                  \
   __macro(dgesdd_);                  \
+  __macro(cgesdd_);                  \
+  __macro(zgesdd_);                  \
   __macro(zpotrs_);                  \
   __macro(cpotrs_);                  \
   __macro(dpotrs_);                  \

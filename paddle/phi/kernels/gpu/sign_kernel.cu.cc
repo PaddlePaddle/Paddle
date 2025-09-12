@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/sign_kernel_impl.h"
 
-// See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/amp_type_traits.h"
 
 PD_REGISTER_KERNEL(sign,
@@ -32,7 +31,7 @@ PD_REGISTER_KERNEL(sign,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

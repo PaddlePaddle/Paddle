@@ -99,23 +99,23 @@ class TestLambda(Dy2StTestBase):
 
     def test_call_lambda_as_func(self):
         fn = call_lambda_as_func
-        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+        np.testing.assert_allclose(self.run_dygraph(fn), self.run_static(fn))
 
     def test_call_lambda_directly(self):
         fn = call_lambda_directly
-        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+        np.testing.assert_allclose(self.run_dygraph(fn), self.run_static(fn))
 
     def test_call_lambda_in_func(self):
         fn = call_lambda_in_func
-        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+        np.testing.assert_allclose(self.run_dygraph(fn), self.run_static(fn))
 
     def test_call_lambda_with_if_expr(self):
         fn = call_lambda_with_if_expr
-        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+        np.testing.assert_allclose(self.run_dygraph(fn), self.run_static(fn))
 
     def test_call_lambda_with_if_expr2(self):
         fn = call_lambda_with_if_expr2
-        self.assertTrue((self.run_dygraph(fn) == self.run_static(fn)).all())
+        np.testing.assert_allclose(self.run_dygraph(fn), self.run_static(fn))
 
 
 if __name__ == '__main__':

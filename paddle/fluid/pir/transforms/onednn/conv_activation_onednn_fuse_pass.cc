@@ -50,9 +50,9 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
     return "Conv" + std::to_string(fused_level_) + activation_name_ +
            "FusePattern";
   }
-
-  uint32_t benefit() const override { return activation_count_; }
-
+  uint32_t benefit() const override {
+    return static_cast<uint32_t>(activation_count_);
+  }
   void operator()(paddle::drr::DrrPatternContext *ctx) const override {
     paddle::drr::SourcePattern pat = ctx->SourcePattern();
     std::string conv_name = paddle::dialect::Conv2dOp::name();
@@ -78,6 +78,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", pat.Attr("fuse_activation")},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
@@ -180,6 +181,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"onednn_data_type", res.StrAttr("")},
                          {"fuse_activation", res.StrAttr(new_act_name)},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
@@ -199,6 +201,7 @@ class ConvActivationFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", res.StrAttr(new_act_name)},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
@@ -266,6 +269,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", pat.Attr("fuse_activation")},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
@@ -324,6 +328,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"onednn_data_type", res.StrAttr("")},
                          {"fuse_activation", gelu},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
@@ -343,6 +348,7 @@ class ConvGeluFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", gelu},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
@@ -416,6 +422,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", pat.Attr("fuse_activation")},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},
@@ -474,6 +481,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", res.StrAttr("float32")},
+                         {"onednn_data_type", res.StrAttr("")},
                          {"fuse_activation", res.StrAttr("clip")},
                          {"fuse_residual_connection", res.BoolAttr(false)},
                          {"force_fp32_output", res.BoolAttr(false)},
@@ -493,6 +501,7 @@ class ConvClipFusePattern : public paddle::drr::DrrPatternBase {
                          {"groups", pat.Attr("groups")},
                          {"data_format", pat.Attr("data_format")},
                          {"mkldnn_data_type", pat.Attr("mkldnn_data_type")},
+                         {"onednn_data_type", pat.Attr("onednn_data_type")},
                          {"fuse_activation", res.StrAttr("clip")},
                          {"fuse_residual_connection",
                           pat.Attr("fuse_residual_connection")},

@@ -113,7 +113,6 @@ class TestLambOpV2(unittest.TestCase):
 
 
 class TestLambOpWithCombinedOp(unittest.TestCase):
-
     def test_lamb_op_with_multi_steps(self):
         paddle.enable_static()
 

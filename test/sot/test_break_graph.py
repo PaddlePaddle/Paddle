@@ -18,7 +18,7 @@ import numpy as np
 from test_case_base import TestCaseBase
 
 import paddle
-from paddle.jit.sot.utils.paddle_api_config import add_break_graph_apis
+from paddle.jit.sot.utils.paddle_api_config import add_break_graph_function
 
 
 def ifelse_func(x, y):
@@ -74,7 +74,7 @@ def to_tensor_break_graph(x, y):
 
 class TestToTensor(TestCaseBase):
     def test_simple(self):
-        add_break_graph_apis([paddle.to_tensor])
+        add_break_graph_function(paddle.to_tensor)
         x = paddle.to_tensor(2)
         y = paddle.to_tensor(3)
         self.assert_results(to_tensor_break_graph, x, y)

@@ -33,7 +33,8 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
                             const std::vector<int64_t>& dims,
                             bool keep_dim,
                             bool reduce_all,
-                            DenseTensor* x_grad) {
+                            DenseTensor* x_grad,
+                            bool NanEqual = false) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto* in_x = &x;
   auto* out_y = &out;
@@ -43,7 +44,7 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   int dim_size = in_x->dims().size();
   auto reduce_dims = funcs::details::GetReduceDim(dims, dim_size, reduce_all);
   auto update_dims = common::vectorize(d_x->dims());
-  int reduce_num = 1;
+  int64_t reduce_num = 1;
   for (auto i : reduce_dims) {
     reduce_num *= (in_x->dims())[i];
     update_dims[i] = 1;
@@ -81,8 +82,12 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
   // 1. equal_out = Equal(x, y)
   std::vector<const phi::DenseTensor*> equal_inputs = {&new_y, new_in_tensor};
   std::vector<phi::DenseTensor*> equal_outputs = {&equal_out_tensor};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
+  if (NanEqual)
+    funcs::BroadcastKernel<T>(
+        dev_ctx, equal_inputs, &equal_outputs, funcs::NanEqualFunctor<T>(), 0);
+  else
+    funcs::BroadcastKernel<T>(
+        dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
   // 2. equal_count = reduceSum(equal_out)
   phi::SumKernel<T, Context>(dev_ctx,
                              equal_out_tensor,

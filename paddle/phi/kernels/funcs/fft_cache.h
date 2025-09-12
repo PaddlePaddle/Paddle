@@ -25,12 +25,15 @@
 #include "paddle/phi/kernels/funcs/cufft_util.h"
 #elif defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/hipfft_util.h"
+#elif defined(PADDLE_WITH_XPU_FFT)
+#include "paddle/phi/kernels/funcs/xpufft_util.h"
 #endif
 
 namespace phi {
 namespace funcs {
 namespace detail {
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if CUDA_VERSION < 10000
 // Note that the max plan number for CUDA version < 10 has to be 1023
 // due to a bug that fails on the 1024th plan
@@ -42,6 +45,12 @@ constexpr size_t CUFFT_MAX_PLAN_NUM = std::numeric_limits<size_t>::max();
 // This number puts a limit on how big of a plan cache should we maintain by
 // default. Users can always configure it via cufft_set_plan_cache_max_size.
 constexpr size_t CUFFT_DEFAULT_CACHE_SIZE = 4096;
+#endif
+#endif
+
+#ifdef PADDLE_WITH_XPU_FFT
+constexpr size_t CUFFT_MAX_PLAN_NUM = 1023;
+constexpr size_t CUFFT_DEFAULT_CACHE_SIZE = CUFFT_MAX_PLAN_NUM;
 #endif
 
 static_assert(CUFFT_MAX_PLAN_NUM >= 0 &&
@@ -174,7 +183,7 @@ static std::mutex plan_caches_mutex;
 static inline FFTConfigCache& get_fft_plan_cache(int64_t device_index) {
   std::lock_guard<std::mutex> guard(plan_caches_mutex);
 
-  if (device_index >= plan_caches.size()) {
+  if (device_index >= static_cast<int64_t>(plan_caches.size())) {
     plan_caches.resize(device_index + 1);
   }
 

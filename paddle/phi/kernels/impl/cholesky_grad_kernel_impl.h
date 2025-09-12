@@ -242,20 +242,19 @@ void CholeskyGradKernel(const Context& dev_ctx,
                         const DenseTensor& out_grad,
                         bool upper,
                         DenseTensor* x_grad) {
-  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
-
-  auto& dims = out.dims();
-  if (out.numel() == 0) {
-    x_grad->Resize(dims);
+  if (x_grad->numel() == 0) {
     dev_ctx.template Alloc<T>(x_grad);
     return;
   }
+
+  auto* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  auto& dims = out.dims();
   int batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
   auto m = dims[dims.size() - 1];
-  int tensor_size = batch_count * m * m;
+  int64_t tensor_size = static_cast<int64_t>(batch_count) * m * m;
 
   std::vector<int> axis(dims.size() - 2);
   std::iota(axis.begin(), axis.end(), 0);
@@ -305,6 +304,7 @@ void CholeskyGradKernel(const Context& dev_ctx,
   for_range(eye_functor);
   // TODO(guosheng): use trsmBatched for GPU
   for (int i = 0; i < batch_count; i++) {
+    int64_t offset = static_cast<int64_t>(i) * m * m;
     blas.TRSM(/*side*/ CblasLeft,
               /*uplo*/ CblasLower,
               /*trans*/ CblasNoTrans,
@@ -312,9 +312,9 @@ void CholeskyGradKernel(const Context& dev_ctx,
               /*m*/ m,
               /*n*/ m,
               /*alpha*/ T(1),
-              l_data + i * m * m,
+              l_data + offset,
               /*lda*/ m,
-              identity_data + i * m * m,
+              identity_data + offset,
               /*ldb*/ m);
   }
   DenseTensor& l_inverse = identity;

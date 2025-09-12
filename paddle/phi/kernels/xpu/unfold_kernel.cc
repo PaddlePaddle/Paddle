@@ -21,15 +21,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void UnfoldKernel(const Context& ctx,
+void UnfoldKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_sizes,
-                  const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
+                  const std::vector<int>& kernel_sizes_,
+                  const std::vector<int>& strides_,
+                  const std::vector<int>& paddings_,
+                  const std::vector<int>& dilations_,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   const std::string data_format = common::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
   PADDLE_ENFORCE_EQ(is_nchw,
@@ -37,27 +40,31 @@ void UnfoldKernel(const Context& ctx,
                     common::errors::PreconditionNotMet(
                         "Unfold op only supports datalayout == NCHW"));
   auto x_dims = x.dims();
-  int n = static_cast<int>(x_dims[0]);
-  int c = static_cast<int>(x_dims[1]);
-  int h = static_cast<int>(x_dims[2]);
-  int w = static_cast<int>(x_dims[3]);
+  int64_t n = x_dims[0];
+  int64_t c = x_dims[1];
+  int64_t h = x_dims[2];
+  int64_t w = x_dims[3];
+  std::vector<int64_t> kernel_sizes(kernel_sizes_.begin(), kernel_sizes_.end());
+  std::vector<int64_t> strides(strides_.begin(), strides_.end());
+  std::vector<int64_t> paddings(paddings_.begin(), paddings_.end());
+  std::vector<int64_t> dilations(dilations_.begin(), dilations_.end());
 
-  int out_height = phi::funcs::CalcOutputSize(x_dims[2],
-                                              kernel_sizes[0],
-                                              dilations[0],
-                                              paddings[0],
-                                              paddings[2],
-                                              strides[0]);
-  int out_width = phi::funcs::CalcOutputSize(x_dims[3],
-                                             kernel_sizes[1],
-                                             dilations[1],
-                                             paddings[1],
-                                             paddings[3],
-                                             strides[1]);
+  int64_t out_height = phi::funcs::CalcOutputSize(x_dims[2],
+                                                  kernel_sizes[0],
+                                                  dilations[0],
+                                                  paddings[0],
+                                                  paddings[2],
+                                                  strides[0]);
+  int64_t out_width = phi::funcs::CalcOutputSize(x_dims[3],
+                                                 kernel_sizes[1],
+                                                 dilations[1],
+                                                 paddings[1],
+                                                 paddings[3],
+                                                 strides[1]);
 
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   XPUType* out_pre_trans = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
-  int r = xpu::im2col(ctx.x_context(),
+  int r = xpu::im2col(dev_ctx.x_context(),
                       reinterpret_cast<const XPUType*>(x.data<T>()),
                       out_pre_trans,
                       n,
@@ -72,7 +79,7 @@ void UnfoldKernel(const Context& ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "im2col");
 
   r = xpu::transpose(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       out_pre_trans,
       reinterpret_cast<XPUType*>(out->data<T>()),
       {n, out_height, out_width, c, kernel_sizes[0], kernel_sizes[1]},
@@ -82,4 +89,4 @@ void UnfoldKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    unfold, XPU, ALL_LAYOUT, phi::UnfoldKernel, float, phi::dtype::float16) {}
+    unfold, XPU, ALL_LAYOUT, phi::UnfoldKernel, float, phi::float16) {}

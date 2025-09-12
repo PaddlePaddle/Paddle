@@ -156,13 +156,14 @@ def find_arch_range(archs):
         elif arch >= 80 and arch < 90:
             compile_archs.append(80)
         elif arch >= 90 and arch < 91:
-            compile_archs.append(90)
+            compile_archs.append(80)
     compile_archs = list(set(compile_archs))
     compile_archs.sort()
     return compile_archs
 
 
 def convert_to_arch_list(archs):
+    archs = archs.replace("90a", "90")
     archs = archs.lower().strip()
     if archs == "all":
         return DefaultArch
@@ -237,8 +238,6 @@ if __name__ == "__main__":
     if archs:
         for element_type in ElementTypes.keys():
             for arch in archs:
-                if arch == 90 and 80 in archs:
-                    continue
                 for epilogue_tag in EpilogueTags.keys():
                     for stages in StagesList[arch]:
                         file_name = f"autogen_tmp/generic_mixed_gemm_kernelLauncher_{element_type}_sm{arch}_stages{stages}_{epilogue_tag}.cu"

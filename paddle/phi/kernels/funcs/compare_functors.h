@@ -26,11 +26,42 @@ namespace funcs {
     }                                                            \
   };
 
+#define COMPARE_COMPLEX_FUNCTOR(func_name, op)                              \
+  template <typename T>                                                     \
+  struct func_name<phi::dtype::complex<T>> {                                \
+    HOSTDEVICE bool operator()(const phi::dtype::complex<T> a,              \
+                               const phi::dtype::complex<T> b) const {      \
+      if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
+        return false;                                                       \
+      return (a.real op b.real) || (a.real == b.real && a.imag op b.imag);  \
+    }                                                                       \
+  };
+
+#define COMPARE_COMPLEX_EQUAL_FUNCTOR(func_name, op_equal, op)              \
+  template <typename T>                                                     \
+  struct func_name<phi::dtype::complex<T>> {                                \
+    HOSTDEVICE bool operator()(const phi::dtype::complex<T> a,              \
+                               const phi::dtype::complex<T> b) const {      \
+      if (isnan(a.real) || isnan(a.imag) || isnan(b.real) || isnan(b.imag)) \
+        return false;                                                       \
+      return (a.real op b.real) ||                                          \
+             (a.real == b.real && a.imag op_equal b.imag);                  \
+    }                                                                       \
+  };
+
 COMPARE_FUNCTOR(LessThanFunctor, <)
 COMPARE_FUNCTOR(LessEqualFunctor, <=)
 COMPARE_FUNCTOR(GreaterThanFunctor, >)
 COMPARE_FUNCTOR(GreaterEqualFunctor, >=)
+
+COMPARE_COMPLEX_FUNCTOR(LessThanFunctor, <)
+COMPARE_COMPLEX_FUNCTOR(GreaterThanFunctor, >)
+COMPARE_COMPLEX_EQUAL_FUNCTOR(LessEqualFunctor, <=, <)
+COMPARE_COMPLEX_EQUAL_FUNCTOR(GreaterEqualFunctor, >=, >)
+
 #undef COMPARE_FUNCTOR
+#undef COMPARE_COMPLEX_FUNCTOR
+#undef COMPARE_COMPLEX_EQUAL_FUNCTOR
 
 template <typename InT, typename OutT = bool>
 struct EqualFunctor {
@@ -42,7 +73,26 @@ struct EqualFunctor {
       if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
         return static_cast<OutT>(a == b);
       }
-      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-8);
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-15);
+    } else {
+      return static_cast<OutT>(a == b);
+    }
+  }
+};
+template <typename InT, typename OutT = bool>
+struct NanEqualFunctor {
+  HOSTDEVICE OutT operator()(const InT a, const InT b) const {
+    if (std::is_floating_point<InT>::value) {
+      if (isnan(static_cast<float>(a)) && isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(true);
+      }
+      if (isnan(static_cast<float>(a)) || isnan(static_cast<float>(b))) {
+        return static_cast<OutT>(false);
+      }
+      if (isinf(static_cast<float>(a)) || isinf(static_cast<float>(b))) {
+        return static_cast<OutT>(a == b);
+      }
+      return static_cast<OutT>(fabs(static_cast<double>(a - b)) < 1e-15);
     } else {
       return static_cast<OutT>(a == b);
     }
@@ -65,9 +115,9 @@ struct EqualFunctor<phi::dtype::complex<T>> {
         isinf(static_cast<float>(b.imag))) {
       return static_cast<bool>(a.real == b.real && a.imag == b.imag);
     }
-    return static_cast<bool>(fabs(static_cast<double>(a.real - b.real)) <
-                                 1e-8 &&
-                             fabs(static_cast<double>(a.imag - b.imag)) < 1e-8);
+    return static_cast<bool>(
+        fabs(static_cast<double>(a.real - b.real)) < 1e-15 &&
+        fabs(static_cast<double>(a.imag - b.imag)) < 1e-15);
   }
 };
 

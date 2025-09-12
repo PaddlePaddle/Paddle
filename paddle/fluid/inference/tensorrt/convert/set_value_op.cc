@@ -147,7 +147,7 @@ class SetValueConverter : public OpConverter {
         updates->getDimensions().nbDims,
         input_rank,
         common::errors::InvalidArgument(
-            "ValueTensor‘s rank not equal to Input's rank, "
+            "ValueTensor's rank not equal to Input's rank, "
             "you should try use C++ API "
             "config.exp_disable_tensorrt_ops({\"%s\"}) to forbid this op "
             "enter into TRT, "

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle import base
@@ -143,11 +143,7 @@ class TestDiagonalScatterAPI(unittest.TestCase):
                 x, y, offset=self.offset, axis1=self.axis1, axis2=self.axis2
             )
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
 
             exe = base.Executor(place)
             result = exe.run(

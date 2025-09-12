@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.tensorrt.converter_utils import trt_shape
+from paddle.tensorrt.converter_utils import set_layer_name, trt_shape
 from paddle.tensorrt.register import converter_registry
 
 
 @converter_registry.register("pd_op.shape", trt_version="trt_version_ge=8.0")
 def shape_converter(network, paddle_op, inputs):
-    return trt_shape(network, inputs[0])
+    return trt_shape(network, inputs[0], name=[paddle_op.name(), 'trt_shape'])
 
 
 @converter_registry.register("pd_op.shape64", trt_version="trt_version_ge=8.0")
 def shape64_converter(network, paddle_op, inputs):
     input_tensor = inputs[0]
     shape_layer = network.add_shape(input_tensor)
+    set_layer_name(shape_layer, paddle_op)
     return shape_layer.get_output(0)

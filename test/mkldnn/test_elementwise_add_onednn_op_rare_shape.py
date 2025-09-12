@@ -30,7 +30,7 @@ from paddle.base.framework import _current_expected_place
 # Special cases for swin transformer, will ignore grad check
 class TestOneDNNElementwiseAddSrcDifferentShape(TestElementwiseAddOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.check_pir_onednn = True
 
     def init_dtype(self):

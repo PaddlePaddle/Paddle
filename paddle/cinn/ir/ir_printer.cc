@@ -735,7 +735,7 @@ void IrPrinter::Visit(const ScheduleBlockRealize *x) {
       if (comma) str_ += ", ";
       str_ += kv.first;
       str_ += ":";
-      absl::visit(
+      std::visit(
           [this](auto &&arg) {
             std::ostringstream ss;
             ss << arg;
@@ -997,7 +997,7 @@ void IrPrinter::VisitStmt(const stmt::Schedule &stmt) {
       if (comma) str_ += ", ";
       str_ += kv.first;
       str_ += ":";
-      absl::visit(
+      std::visit(
           [this](auto &&arg) {
             std::ostringstream ss;
             ss << arg;

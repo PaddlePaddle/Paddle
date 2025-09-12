@@ -17,6 +17,7 @@
 #include <memory>
 #include <queue>
 
+#include <unordered_set>
 #include "paddle/cinn/hlir/framework/pir/op_lowering_group.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
@@ -92,6 +93,17 @@ void UnifyTempSpaceArgs(std::vector<ir::LoweredFunc>* funcs);
 std::vector<int64_t> CollectTempSpaceSizes(
     const std::vector<ir::LoweredFunc>& funcs);
 
+/* Apply longlong2int pass on func, it will add a int32 branch into buckets, and
+ * the original branch predicates will be changed */
+void LongLong2Int(const std::unordered_set<std::string> symbol_args_set,
+                  const std::vector<ir::Expr>& loop_ranges_expr,
+                  const std::vector<Expr>& inputs_element_size,
+                  int priorities,
+                  ir::Expr* predicates,
+                  ir::LoweredFunc* func,
+                  std::vector<ir::Expr>* ret_predicates,
+                  std::vector<ir::LoweredFunc>* ret_lowered_funcs,
+                  std::vector<int>* ret_priorities);
 }  // namespace pir
 }  // namespace framework
 }  // namespace hlir

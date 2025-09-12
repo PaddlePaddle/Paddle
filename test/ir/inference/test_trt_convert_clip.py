@@ -48,7 +48,7 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: list[dict[str, Any]]):
             return np.array([np.random.uniform(10, 20)]).astype("float32")
 
-        for dims in [0, 1, 2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for dtype in [np.float32, np.int32]:
                     for op_inputs in [
@@ -142,24 +142,32 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         if not run_pir:
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-5
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
             self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), (1e-3, 1e-3)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                (1e-3, 1e-3),
+            )
 
         # for dynamic_shape
         self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-3, 1e-3),
+        )
 
     def test(self):
         # test for old ir

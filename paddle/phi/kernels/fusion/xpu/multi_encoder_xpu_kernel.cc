@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/assign_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
@@ -23,7 +22,7 @@ namespace fusion {
 
 #define TRANSFORMER_ENCODER_KERNEL_IMPL(x_dtype_, w_dtype_, gemm_dtype_) \
   int r = xpu::transformer_encoder<x_dtype_, w_dtype_, gemm_dtype_>(     \
-      ctx.x_context(),                                                   \
+      dev_ctx.x_context(),                                               \
       x_fp16_data,                                                       \
       fc_weight_data_##w_dtype_,                                         \
       out_fp16_data,                                                     \
@@ -38,7 +37,7 @@ namespace fusion {
 
 template <typename T, typename Context>
 void MultiEncoderXPUKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& x,
     const std::vector<const DenseTensor*>& fc_input_max,
     const std::vector<const DenseTensor*>& fc_weight,
@@ -103,19 +102,18 @@ void MultiEncoderXPUKernel(
   XPUTypeFP16* out_fp16_data = nullptr;
   if (x_dtype == phi::DataType::FLOAT32) {
     auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
-        ctx.template Alloc<phi::dtype::float16>(x_fp16));
+        dev_ctx.template Alloc<phi::float16>(x_fp16));
     int r_cast_x = xpu::cast<float, XPUTypeFP16>(
-        ctx.x_context(), x.data<float>(), x_fp16_data_t, x.numel());
+        dev_ctx.x_context(), x.data<float>(), x_fp16_data_t, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x,
                                 "multi_encoder_xpu(cast x from fp32 to fp16)");
     x_fp16_data = x_fp16_data_t;
     out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
-        ctx.template Alloc<phi::dtype::float16>(out_fp16));
+        dev_ctx.template Alloc<phi::float16>(out_fp16));
   } else {
-    x_fp16_data =
-        reinterpret_cast<const XPUTypeFP16*>(x.data<phi::dtype::float16>());
+    x_fp16_data = reinterpret_cast<const XPUTypeFP16*>(x.data<phi::float16>());
     out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
-        ctx.template Alloc<phi::dtype::float16>(out));
+        dev_ctx.template Alloc<phi::float16>(out));
   }
 
   // q,k,v weight are fused.
@@ -199,8 +197,8 @@ void MultiEncoderXPUKernel(
       qkv_attn_param.is_smooth_quant = true;
       std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
       for (const auto& weight : smooth_scale_weight) {
-        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
-            weight->data<phi::dtype::float16>());
+        auto tmp_ptr =
+            reinterpret_cast<const XPUTypeFP16*>(weight->data<phi::float16>());
         smooth_scale_weight_ptr.push_back(tmp_ptr);
       }
       qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
@@ -250,8 +248,8 @@ void MultiEncoderXPUKernel(
       qkv_attn_param.is_smooth_quant = true;
       std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
       for (const auto& weight : smooth_scale_weight) {
-        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
-            weight->data<phi::dtype::float16>());
+        auto tmp_ptr =
+            reinterpret_cast<const XPUTypeFP16*>(weight->data<phi::float16>());
         smooth_scale_weight_ptr.push_back(tmp_ptr);
       }
       qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
@@ -302,8 +300,8 @@ void MultiEncoderXPUKernel(
       qkv_attn_param.is_smooth_quant = true;
       std::vector<const XPUTypeFP16*> smooth_scale_weight_ptr;
       for (const auto& weight : smooth_scale_weight) {
-        auto tmp_ptr = reinterpret_cast<const XPUTypeFP16*>(
-            weight->data<phi::dtype::float16>());
+        auto tmp_ptr =
+            reinterpret_cast<const XPUTypeFP16*>(weight->data<phi::float16>());
         smooth_scale_weight_ptr.push_back(tmp_ptr);
       }
       qkv_attn_param.smooth_scale.assign(smooth_scale_weight_ptr.begin(),
@@ -331,9 +329,9 @@ void MultiEncoderXPUKernel(
 
   if (x_dtype == phi::DataType::FLOAT32) {
     int r_cast_out =
-        xpu::cast<XPUTypeFP16, float>(ctx.x_context(),
+        xpu::cast<XPUTypeFP16, float>(dev_ctx.x_context(),
                                       out_fp16_data,
-                                      ctx.template Alloc<float>(out),
+                                      dev_ctx.template Alloc<float>(out),
                                       out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r_cast_out, "multi_encoder_xpu(cast out from fp16 to fp32)");
@@ -348,7 +346,7 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    ALL_LAYOUT,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(10).SetBackend(phi::Backend::CPU);
   kernel->InputAt(11).SetBackend(phi::Backend::CPU);
 }

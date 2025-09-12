@@ -20,29 +20,27 @@ limitations under the License. */
 namespace phi {
 
 // If T is not complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
-                         !std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
-void GaussianInplaceGrad(const Context& ctx, DenseTensor* x_grad) {
+template <typename T,
+          typename Context,
+          std::enable_if_t<!std::is_same<T, phi::complex64>::value &&
+                               !std::is_same<T, phi::complex128>::value,
+                           bool> = true>
+void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
-    auto* data = ctx.template Alloc<T>(x_grad);
+    auto* data = dev_ctx.template Alloc<T>(x_grad);
     std::fill(data, data + x_grad->numel(), T(0));
   }
 }
 
 // If T is complex
-template <
-    typename T,
-    typename Context,
-    std::enable_if_t<std::is_same<T, phi::dtype::complex<float>>::value ||
-                         std::is_same<T, phi::dtype::complex<double>>::value,
-                     bool> = true>
-void GaussianInplaceGrad(const Context& ctx, DenseTensor* x_grad) {
+template <typename T,
+          typename Context,
+          std::enable_if_t<std::is_same<T, phi::complex64>::value ||
+                               std::is_same<T, phi::complex128>::value,
+                           bool> = true>
+void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
   if (x_grad) {
-    auto* data = ctx.template Alloc<T>(x_grad);
+    auto* data = dev_ctx.template Alloc<T>(x_grad);
     T value = T(static_cast<phi::dtype::Real<T>>(0.0f),
                 static_cast<phi::dtype::Real<T>>(0.0f));
     std::fill(data, data + x_grad->numel(), value);
@@ -50,13 +48,13 @@ void GaussianInplaceGrad(const Context& ctx, DenseTensor* x_grad) {
 }
 
 template <typename T, typename Context>
-void GaussianInplaceGradKernel(const Context& ctx,
+void GaussianInplaceGradKernel(const Context& dev_ctx,
                                const DenseTensor& out_grad UNUSED,
                                float mean UNUSED,
                                float std UNUSED,
                                int seed UNUSED,
                                DenseTensor* x_grad) {
-  GaussianInplaceGrad<T>(ctx, x_grad);
+  GaussianInplaceGrad<T>(dev_ctx, x_grad);
 }
 
 }  // namespace phi
@@ -67,5 +65,5 @@ PD_REGISTER_KERNEL(gaussian_inplace_grad,
                    phi::GaussianInplaceGradKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

@@ -19,7 +19,7 @@
 namespace phi {
 namespace distributed {
 
-class SameNdMeshReshardFunction final : public ReshardFunction {
+class PADDLE_API SameNdMeshReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
@@ -30,9 +30,22 @@ class SameNdMeshReshardFunction final : public ReshardFunction {
             DistTensor* out) override;
 
   std::string Name() override { return "SameNdMeshReshard"; }
+
+  class PADDLE_API ReshardStrategy {
+   public:
+    virtual ~ReshardStrategy() = default;
+    virtual void Eval() = 0;
+    void SetValue(DistTensor* tensor, const DenseTensor& value) {
+      ReshardFunction::SetValue(tensor, value);
+    }
+
+    void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr) {
+      ReshardFunction::SetDistProps(tensor, dist_attr);
+    }
+  };
 };
 
-class CrossNdMeshReshardFunction final : public ReshardFunction {
+class PADDLE_API CrossNdMeshReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;

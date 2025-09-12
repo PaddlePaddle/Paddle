@@ -30,7 +30,7 @@ class TestExpandV2OneDNNOp(OpTest):
         self.op_type = "expand_v2"
         self.init_data()
         self.x = np.random.random(self.ori_shape).astype("float32")
-        self.attrs = {'shape': self.shape, 'use_mkldnn': True}
+        self.attrs = {'shape': self.shape, 'use_onednn': True}
         self.set_inputs()
         self.set_additional_inputs()
         output = np.tile(self.x, self.expand_times)
@@ -170,6 +170,7 @@ create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioShapeNotGivenOneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor1OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
+
 
 if __name__ == '__main__':
     paddle.enable_static()

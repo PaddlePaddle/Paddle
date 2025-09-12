@@ -134,7 +134,7 @@ class TestSubsetRandomSampler(unittest.TestCase):
         sampler = SubsetRandomSampler(indices)
         assert len(sampler) == len(indices)
 
-        hints = {i: 0 for i in indices}
+        hints = dict.fromkeys(indices, 0)
         for index in iter(sampler):
             hints[index] += 1
         for h in hints.values():

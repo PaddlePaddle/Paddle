@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -33,6 +32,7 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -165,10 +165,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForSort(
       1,
       ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
-  int axis = absl::get<int>(attr_store.at("axis"));
+  int axis = std::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
   if (attr_store.count("is_ascend")) {
-    is_ascend = absl::get<bool>(attr_store.at("is_ascend"));
+    is_ascend = std::get<bool>(attr_store.at("is_ascend"));
   }
 
   framework::CINNCompute sort_compute([=](lang::Args args,
@@ -235,10 +235,10 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgSort(
       1,
       ::common::errors::InvalidArgument(
           "The attr_store doesn't have the attribute of 'axis'."));
-  int axis = absl::get<int>(attr_store.at("axis"));
+  int axis = std::get<int>(attr_store.at("axis"));
   bool is_ascend = true;
   if (attr_store.count("is_ascend")) {
-    is_ascend = absl::get<bool>(attr_store.at("is_ascend"));
+    is_ascend = std::get<bool>(attr_store.at("is_ascend"));
   }
 
   framework::CINNCompute argsort_compute([=](lang::Args args,

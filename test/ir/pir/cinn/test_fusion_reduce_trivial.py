@@ -17,20 +17,14 @@ import unittest
 
 import numpy
 
-os.environ['FLAGS_cinn_new_group_scheduler'] = '1'
 os.environ['FLAGS_prim_all'] = 'true'
 os.environ['FLAGS_prim_enable_dynamic'] = 'true'
-os.environ['FLAGS_print_ir'] = '1'
-os.environ['FLAGS_enable_pir_api'] = '1'
 os.environ['FLAGS_use_cinn'] = '1'
 os.environ['FLAGS_deny_cinn_ops'] = 'slice;'
 
 from utils import check_jit_kernel_number
 
 import paddle
-
-build_strategy = paddle.static.BuildStrategy()
-build_strategy.build_cinn_pass = True
 
 
 class TestFusion(unittest.TestCase):
@@ -41,9 +35,9 @@ class TestFusion(unittest.TestCase):
         pass
 
     def compare_result(self, dy_compute, data_init, expect_fusion_num):
-        static_compute = paddle.jit.to_static(
-            full_graph=True, build_strategy=build_strategy
-        )(dy_compute)
+        static_compute = paddle.jit.to_static(full_graph=True, backend="CINN")(
+            dy_compute
+        )
         inputs = data_init()
         dy_out = dy_compute(*inputs)
         st_out = static_compute(*inputs)
@@ -84,7 +78,7 @@ class TestFusion(unittest.TestCase):
         def init():
             return [paddle.rand((32, 33, 34))]
 
-        self.compare_result(func, init, 2)
+        self.compare_result(func, init, 1)
 
 
 if __name__ == "__main__":

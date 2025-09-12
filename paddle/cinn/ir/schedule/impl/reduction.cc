@@ -36,21 +36,6 @@
 namespace cinn {
 namespace ir {
 
-Expr DyScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
-  CINN_IR_SCHEDULE_BEGIN();
-  std::string primitive = "Rfactor";
-  std::ostringstream os;
-
-  CHECKRfactorValidation(rf_loop, rf_axis);
-  // get root ScheduleBlockRealize
-  Expr root = GetRootBlock(rf_loop);
-  // create all stmts after rfactor transformation
-  RfCreator rf_create(root, rf_loop, rf_axis);
-  // return new created rfactor tensor
-  return rf_create.CreateRfAllStmts();
-  CINN_IR_SCHEDULE_END(this->err_msg_level_);
-}
-
 Expr DyScheduleImpl::FactorizeReduction(const Expr& rf_loop,
                                         int rf_axis,
                                         bool with_write_back_block_init) {

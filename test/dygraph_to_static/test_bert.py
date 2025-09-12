@@ -22,7 +22,6 @@ from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
 from dygraph_to_static_utils import (
     Dy2StTestBase,
-    enable_to_static_guard,
     test_sot_only,
 )
 from predictor_utils import PredictorTools
@@ -31,7 +30,6 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.framework import unique_name
-from paddle.framework import use_pir_api
 from paddle.jit.pir_translated_layer import PIR_INFER_MODEL_SUFFIX
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -100,6 +98,12 @@ class TestBert(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @staticmethod
+    def to_static_if_need(model, to_static):
+        if to_static:
+            model = paddle.jit.to_static(model)
+        return model
+
     def train(self, bert_config, data_reader, to_static):
         with unique_name.guard():
             paddle.seed(SEED)
@@ -109,8 +113,11 @@ class TestBert(Dy2StTestBase):
                 fake_dataset, places=place, batch_size=None
             )
 
-            bert = PretrainModelLayer(
-                config=bert_config, weight_sharing=False, use_fp16=False
+            bert = TestBert.to_static_if_need(
+                PretrainModelLayer(
+                    config=bert_config, weight_sharing=False, use_fp16=False
+                ),
+                to_static,
             )
 
             optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
@@ -149,14 +156,16 @@ class TestBert(Dy2StTestBase):
                         print(
                             f"Step: {step_idx}, loss: {loss:f}, ppl: {ppl:f}, next_sent_acc: {acc:f}"
                         )
-                        avg_batch_time = time.time()
+                        avg_batch_time = time.perf_counter()
                     else:
-                        speed = PRINT_STEP / (time.time() - avg_batch_time)
+                        speed = PRINT_STEP / (
+                            time.perf_counter() - avg_batch_time
+                        )
                         speed_list.append(speed)
                         print(
                             f"Step: {step_idx}, loss: {loss:f}, ppl: {ppl:f}, next_sent_acc: {acc:f}, speed: {speed:.3f} steps/s"
                         )
-                        avg_batch_time = time.time()
+                        avg_batch_time = time.perf_counter()
 
                 step_idx += 1
                 if step_idx == STEP_NUM:
@@ -171,8 +180,7 @@ class TestBert(Dy2StTestBase):
             return loss, ppl
 
     def train_dygraph(self, bert_config, data_reader):
-        with enable_to_static_guard(False):
-            return self.train(bert_config, data_reader, False)
+        return self.train(bert_config, data_reader, False)
 
     def train_static(self, bert_config, data_reader):
         return self.train(bert_config, data_reader, True)
@@ -180,10 +188,7 @@ class TestBert(Dy2StTestBase):
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         # load inference model
         [
@@ -206,40 +211,37 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_dygraph(self, bert_config, data):
-        with enable_to_static_guard(False):
-            with unique_name.guard():
-                bert = PretrainModelLayer(
-                    config=bert_config, weight_sharing=False, use_fp16=False
-                )
-                model_dict = paddle.load(
-                    self.dy_state_dict_save_path + '.pdparams'
-                )
+        with unique_name.guard():
+            bert = PretrainModelLayer(
+                config=bert_config, weight_sharing=False, use_fp16=False
+            )
+            model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
 
-                bert.set_dict(model_dict)
-                bert.eval()
+            bert.set_dict(model_dict)
+            bert.eval()
 
-                input_vars = [paddle.to_tensor(x) for x in data]
-                (
-                    src_ids,
-                    pos_ids,
-                    sent_ids,
-                    input_mask,
-                    mask_label,
-                    mask_pos,
-                    labels,
-                ) = input_vars
-                pred_res = bert(
-                    src_ids=src_ids,
-                    position_ids=pos_ids,
-                    sentence_ids=sent_ids,
-                    input_mask=input_mask,
-                    mask_label=mask_label,
-                    mask_pos=mask_pos,
-                    labels=labels,
-                )
-                pred_res = [var.numpy() for var in pred_res]
+            input_vars = [paddle.to_tensor(x) for x in data]
+            (
+                src_ids,
+                pos_ids,
+                sent_ids,
+                input_mask,
+                mask_label,
+                mask_pos,
+                labels,
+            ) = input_vars
+            pred_res = bert(
+                src_ids=src_ids,
+                position_ids=pos_ids,
+                sentence_ids=sent_ids,
+                input_mask=input_mask,
+                mask_label=mask_label,
+                mask_pos=mask_pos,
+                labels=labels,
+            )
+            pred_res = [var.numpy() for var in pred_res]
 
-                return pred_res
+            return pred_res
 
     def predict_dygraph_jit(self, data):
         bert = paddle.jit.load(self.model_save_prefix)
@@ -268,10 +270,7 @@ class TestBert(Dy2StTestBase):
         return pred_res
 
     def predict_analysis_inference(self, data):
-        if use_pir_api():
-            model_filename = self.pir_model_filename
-        else:
-            model_filename = self.model_filename
+        model_filename = self.pir_model_filename
 
         output = PredictorTools(
             self.model_save_dir, model_filename, self.params_filename, data

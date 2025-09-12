@@ -52,6 +52,11 @@ TEST(CrossThreadReductionReplacer, basic) {
   ir_sch.Bind(ir_sch.GetLoops("B")[0], "blockIdx.x");
   ir_sch.Bind(ir_sch.GetLoops("B")[1], "threadIdx.x");
 
+  ir::Expr block = ir_sch.GetBlock("B");
+  block.As<ir::ScheduleBlockRealize>()
+      ->schedule_block.As<ir::ScheduleBlock>()
+      ->reduce_method = ir::BlockReduceMethod();
+
   ir::Expr func_body = ir_sch.GetModule().GetExprs()[0];
   std::vector<ir::Argument> args{
       ir::Argument(ir::Var("A"), ir::Argument::IO::kInput),

@@ -25,7 +25,7 @@ namespace phi {
 using Tensor = DenseTensor;
 
 template <typename Context, typename T, int Rank>
-void Expand(const Context& ctx,
+void Expand(const Context& dev_ctx,
             const DenseTensor& x,
             const IntArray& shape,
             DenseTensor* out) {
@@ -36,7 +36,7 @@ void Expand(const Context& ctx,
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
   if (Rank == 0) {
-    phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
@@ -96,11 +96,11 @@ void Expand(const Context& ctx,
 
   out->Resize(out_dims);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   out->data<T>();
 
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   // use 32-bit index to speed up
   bool use_32bit_index = y.size() < Eigen::NumTraits<int>::highest();
   if (use_32bit_index) {
@@ -113,7 +113,7 @@ void Expand(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void ExpandKernel(const Context& ctx,
+void ExpandKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
@@ -154,31 +154,31 @@ void ExpandKernel(const Context& ctx,
   rank = std::max(rank, static_cast<int>(shape_size));
   switch (rank) {
     case 0:
-      Expand<Context, T, 0>(ctx, x, shape, out);
+      Expand<Context, T, 0>(dev_ctx, x, shape, out);
       break;
     case 1:
-      Expand<Context, T, 1>(ctx, x, shape, out);
+      Expand<Context, T, 1>(dev_ctx, x, shape, out);
       break;
     case 2:
-      Expand<Context, T, 2>(ctx, x, shape, out);
+      Expand<Context, T, 2>(dev_ctx, x, shape, out);
       break;
     case 3:
-      Expand<Context, T, 3>(ctx, x, shape, out);
+      Expand<Context, T, 3>(dev_ctx, x, shape, out);
       break;
     case 4:
-      Expand<Context, T, 4>(ctx, x, shape, out);
+      Expand<Context, T, 4>(dev_ctx, x, shape, out);
       break;
     case 5:
-      Expand<Context, T, 5>(ctx, x, shape, out);
+      Expand<Context, T, 5>(dev_ctx, x, shape, out);
       break;
     case 6:
-      Expand<Context, T, 6>(ctx, x, shape, out);
+      Expand<Context, T, 6>(dev_ctx, x, shape, out);
       break;
     case 7:
-      Expand<Context, T, 7>(ctx, x, shape, out);
+      Expand<Context, T, 7>(dev_ctx, x, shape, out);
       break;
     case 8:
-      Expand<Context, T, 8>(ctx, x, shape, out);
+      Expand<Context, T, 8>(dev_ctx, x, shape, out);
       break;
   }
 }

@@ -67,29 +67,20 @@ struct LayoutDetailsB<TypeB, arch::Sm70> {
   using Operator = cutlass::arch::OpMultiplyAdd;
 };
 
-// Specializations for Turing+ when B is FP16. These are currently only used for
-// MoE networks.
-template <typename Arch>
-struct LayoutDetailsB<
-    half_t,
-    Arch,
-    typename platform::enable_if<Arch::kMinComputeCapability >= 75>::type> {
-  static constexpr int ThreadblockK = 64;
-  using Layout = layout::RowMajor;
-  static constexpr int ElementsPerAccess =
-      128 / cutlass::sizeof_bits<half_t>::value;
-  using Operator = cutlass::arch::OpMultiplyAdd;
-};
+// Specializations for Turing+ when B is 16 bit. These are currently only used
+// for MoE networks.
 
-template <typename Arch>
+template <typename TypeB, typename Arch>
 struct LayoutDetailsB<
-    bfloat16_t,
+    TypeB,
     Arch,
-    typename platform::enable_if<Arch::kMinComputeCapability >= 75>::type> {
+    typename platform::enable_if<
+        Arch::kMinComputeCapability >= 75 &&
+        (platform::is_same<TypeB, half_t>::value ||
+         platform::is_same<TypeB, bfloat16_t>::value)>::type> {
   static constexpr int ThreadblockK = 64;
   using Layout = layout::RowMajor;
-  static constexpr int ElementsPerAccess =
-      128 / cutlass::sizeof_bits<bfloat16_t>::value;
+  static constexpr int ElementsPerAccess = 8;
   using Operator = cutlass::arch::OpMultiplyAdd;
 };
 

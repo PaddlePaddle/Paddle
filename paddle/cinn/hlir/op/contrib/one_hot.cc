@@ -19,7 +19,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/macros.h"
@@ -34,6 +33,7 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/compute.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace hlir {
@@ -129,11 +129,11 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
 
   for (auto& iter : attrs.attr_store) {
     if (iter.first == "depth") {
-      depth = absl::get<int>(iter.second);
+      depth = std::get<int>(iter.second);
     } else if (iter.first == "axis") {
-      axis = absl::get<int>(iter.second);
+      axis = std::get<int>(iter.second);
     } else if (iter.first == "dtype") {
-      dtype = absl::get<std::string>(iter.second);
+      dtype = std::get<std::string>(iter.second);
     }
   }
 
@@ -167,7 +167,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     PADDLE_ENFORCE_NOT_NULL(
         indices_expr.as_tensor(),
         ::common::errors::InvalidArgument(
-            "Required indixes must be a tensor. Please check."));
+            "Required indices must be a tensor. Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         on_value_expr.as_tensor(),
         ::common::errors::InvalidArgument(

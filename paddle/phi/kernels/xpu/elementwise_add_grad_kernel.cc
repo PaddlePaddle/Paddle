@@ -23,6 +23,8 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
@@ -34,6 +36,25 @@ void AddGradKernel(const Context& dev_ctx,
                    int axis,
                    DenseTensor* dx,
                    DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      if (dx->numel() == 0) {
+        dev_ctx.template Alloc<T>(dx);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      if (dy->numel() == 0) {
+        dev_ctx.template Alloc<T>(dy);
+      } else {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   funcs::ElementwiseGradPreProcess(dout, dx);
   auto* dz = &dout;
@@ -61,14 +82,14 @@ void AddGradKernel(const Context& dev_ctx,
       }
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dx->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
+      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
 
-      int ret =
-          xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                   reinterpret_cast<const XPUType*>(dz_data),
-                                   reinterpret_cast<XPUType*>(dx->data<T>()),
-                                   dz_vector,
-                                   reduce_dims);
+      int ret = xpu::reduce_sum<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dz_data),
+          reinterpret_cast<XPUType*>(dx->data<T>()),
+          dz_vector,
+          std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
   }
@@ -86,25 +107,88 @@ void AddGradKernel(const Context& dev_ctx,
     } else {
       std::vector<int> reduce_dims =
           funcs::GetReduceDim(dy->dims(), dz_dims, axis);
-      std::vector<int> dz_vector = common::vectorize<int>(dz_dims);
-      int ret =
-          xpu::reduce_sum<XPUType>(dev_ctx.x_context(),
-                                   reinterpret_cast<const XPUType*>(dz_data),
-                                   reinterpret_cast<XPUType*>(dy_data),
-                                   dz_vector,
-                                   reduce_dims);
+      std::vector<int64_t> dz_vector = common::vectorize<int64_t>(dz_dims);
+      int ret = xpu::reduce_sum<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dz_data),
+          reinterpret_cast<XPUType*>(dy_data),
+          dz_vector,
+          std::vector<int64_t>(reduce_dims.begin(), reduce_dims.end()));
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reduce_sum");
     }
   }
 }
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void AddGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                               const DenseTensor& x,
+                                               const DenseTensor& y,
+                                               const DenseTensor& dout,
+                                               int axis,
+                                               DenseTensor* dx,
+                                               DenseTensor* dy) {
+  using T = phi::complex64;
+  const bool compute_dx = (dx != nullptr);
+  const bool compute_dy = (dy != nullptr);
+
+  // The current complex number implementation uses separate real/imaginary
+  // parts,resulting in redundant operations and performance
+  // penalties.Optimization should address this in future iterations.
+  DenseTensor dout_real = Real<T, XPUContext>(dev_ctx, dout);
+  DenseTensor dout_imag = Imag<T, XPUContext>(dev_ctx, dout);
+
+  if (compute_dx || compute_dy) {
+    DenseTensor dx_real, dx_imag, dy_real, dy_imag;
+    DenseTensor tmp_real, tmp_imag;
+
+    if (compute_dx) {
+      dx_real.Resize(dx->dims());
+      dx_imag.Resize(dx->dims());
+    }
+    if (compute_dy) {
+      dy_real.Resize(dy->dims());
+      dy_imag.Resize(dy->dims());
+    }
+
+    AddGradKernel<float, XPUContext>(dev_ctx,
+                                     tmp_real,  // unused
+                                     tmp_imag,  // unused
+                                     dout_real,
+                                     axis,
+                                     compute_dx ? &dx_real : nullptr,
+                                     compute_dy ? &dy_real : nullptr);
+
+    AddGradKernel<float, XPUContext>(dev_ctx,
+                                     tmp_real,  // unused
+                                     tmp_imag,  // unused
+                                     dout_imag,
+                                     axis,
+                                     compute_dx ? &dx_imag : nullptr,
+                                     compute_dy ? &dy_imag : nullptr);
+
+    if (compute_dx) {
+      dev_ctx.template Alloc<T>(dx);
+      phi::ComplexKernel<float>(dev_ctx, dx_real, dx_imag, dx);
+    }
+    if (compute_dy) {
+      dev_ctx.template Alloc<T>(dy);
+      phi::ComplexKernel<float>(dev_ctx, dy_real, dy_imag, dy);
+    }
+  }
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(add_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::AddGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::complex64,
+#endif
                    float,
                    int,
-                   int64_t) {}
+                   int64_t) {
+}

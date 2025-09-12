@@ -57,7 +57,7 @@ __global__ void AdagradGPUKernel(const T* param,
 
 template <typename T>
 struct DenseAdagradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& ctx,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const DenseTensor& param_t,
                   const DenseTensor& grad_t,
                   const DenseTensor& moment_t,
@@ -69,21 +69,22 @@ struct DenseAdagradFunctor<phi::GPUContext, T> {
                   DenseTensor* moment_out_tensor,
                   DenseTensor* master_param_outs) {
     using MPDType = typename phi::dtype::template MPTypeTrait<T>::Type;
-    T* param_out_data = ctx.template Alloc<T>(param_out_tensor);
-    MPDType* moment_out_data = ctx.template Alloc<MPDType>(moment_out_tensor);
+    T* param_out_data = dev_ctx.template Alloc<T>(param_out_tensor);
+    MPDType* moment_out_data =
+        dev_ctx.template Alloc<MPDType>(moment_out_tensor);
     const MPDType* master_in_data =
         multi_precision ? master_param->data<MPDType>() : nullptr;
     MPDType* master_out_data =
-        multi_precision ? ctx.template Alloc<MPDType>(master_param_outs)
+        multi_precision ? dev_ctx.template Alloc<MPDType>(master_param_outs)
                         : nullptr;
 
     MPDType epsilon = static_cast<MPDType>(epsilon_t);
 
     int numel = param_t.numel();
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx, numel, 1);
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, 1);
     int grid = config.block_per_grid.x;
     int block = config.thread_per_block.x;
-    auto stream = ctx.stream();
+    auto stream = dev_ctx.stream();
     AdagradGPUKernel<T, MPDType>
         <<<block, grid, 0, stream>>>(param_t.data<T>(),
                                      grad_t.data<T>(),
@@ -152,7 +153,7 @@ __global__ void SparseAdagradFunctorKernel(const T* grad,
 
 template <typename T>
 struct SparseAdagradFunctor<phi::GPUContext, T> {
-  void operator()(const phi::GPUContext& context,
+  void operator()(const phi::GPUContext& dev_ctx,
                   const phi::SelectedRows& grad,
                   const DenseTensor& learning_rate,
                   T epsilon,
@@ -161,15 +162,15 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
     phi::funcs::scatter::MergeAdd<phi::GPUContext, T> merge_func;
-    auto grad_merge = merge_func(context, grad);
+    auto grad_merge = merge_func(dev_ctx, grad);
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
     phi::Vector<int64_t> merge_rows(grad_merge.rows());
     // 2. m += g_m * g_m
     auto grad_square =
-        SquareSelectedRows<phi::GPUContext, T>(context, grad_merge);
+        SquareSelectedRows<phi::GPUContext, T>(dev_ctx, grad_merge);
 
     phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, T> functor;
-    functor(context, grad_square, moment);
+    functor(dev_ctx, grad_square, moment);
 
     // 3. update parameter
     auto* lr = learning_rate.data<T>();
@@ -184,9 +185,9 @@ struct SparseAdagradFunctor<phi::GPUContext, T> {
         <<<grid2,
            threads,
            0,
-           reinterpret_cast<const phi::GPUContext&>(context).stream()>>>(
+           reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream()>>>(
             grad_merge_data,
-            mixv_merge_rows.CUDAMutableData(context.GetPlace()),
+            mixv_merge_rows.CUDAMutableData(dev_ctx.GetPlace()),
             lr,
             param_data,
             moment_data,
@@ -200,7 +201,7 @@ template struct SparseAdagradFunctor<phi::GPUContext, float>;
 template struct SparseAdagradFunctor<phi::GPUContext, double>;
 template struct DenseAdagradFunctor<phi::GPUContext, float>;
 template struct DenseAdagradFunctor<phi::GPUContext, double>;
-template struct DenseAdagradFunctor<phi::GPUContext, phi::dtype::float16>;
+template struct DenseAdagradFunctor<phi::GPUContext, phi::float16>;
 
 }  // namespace phi
 
@@ -210,7 +211,7 @@ PD_REGISTER_KERNEL(adagrad,
                    phi::AdagradDenseKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

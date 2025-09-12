@@ -17,17 +17,29 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddGradKernel(const Context& ctx,
+void IndexAddGradKernel(const Context& dev_ctx,
                         const DenseTensor& index,
                         const DenseTensor& add_value UNUSED,
                         const DenseTensor& out_grad,
                         int axis,
                         DenseTensor* x_grad,
                         DenseTensor* add_value_grad) {
+  if (out_grad.numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (add_value_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(add_value_grad->dims())),
+          0,
+          add_value_grad);
+    }
+    return;
+  }
   if (axis < 0) {
     axis += out_grad.dims().size();
   }
@@ -46,8 +58,8 @@ void IndexAddGradKernel(const Context& ctx,
 
   // get x_grad: copy out_grad to x_grad.
   if (x_grad) {
-    ctx.template Alloc<T>(x_grad);
-    phi::Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    dev_ctx.template Alloc<T>(x_grad);
+    phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
 
   if (add_value_grad) {
@@ -55,10 +67,10 @@ void IndexAddGradKernel(const Context& ctx,
     // get add_value_grad by using index_select(out_grad, index, axis)
     if (index_type == phi::DataType::INT32) {
       IndexSelectInner<Context, T, int>(
-          ctx, &inputs, index, add_value_grad, axis);
+          dev_ctx, &inputs, index, add_value_grad, axis);
     } else if (index_type == phi::DataType::INT64) {
       IndexSelectInner<Context, T, int64_t>(
-          ctx, &inputs, index, add_value_grad, axis);
+          dev_ctx, &inputs, index, add_value_grad, axis);
     }
   }
 }
@@ -71,6 +83,6 @@ PD_REGISTER_KERNEL(index_add_grad,
                    phi::IndexAddGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}

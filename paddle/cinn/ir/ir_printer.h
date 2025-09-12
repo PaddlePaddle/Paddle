@@ -41,7 +41,7 @@ struct IrPrinter : public IRVisitorRequireReImpl<void>,
   void Print(const stmt::StmtRef &stmt);
   //! Emit a block on the output stream.
   void Print(const stmt::BlockRef &block);
-  //! Emit a expression list with , splitted.
+  //! Emit a expression list with , split.
   void Print(const std::vector<Expr> &exprs,
              const std::string &splitter = ", ");
   //! Emit a binary operator

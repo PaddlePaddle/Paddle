@@ -28,6 +28,10 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
                           bool keep_dim,
                           bool reduce_all,
                           DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   ReduceGradKernel<Context, T, funcs::MeanGradFunctor, true>(dev_ctx,
                                                              x,
@@ -48,7 +52,7 @@ PD_REGISTER_KERNEL(mean_grad,
                    bool,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::complex64,
+                   phi::complex128,
                    int,
                    int64_t) {}

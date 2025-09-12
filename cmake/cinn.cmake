@@ -26,12 +26,21 @@ else()
 endif()
 
 if(NOT DEFINED ENV{runtime_include_dir})
-  message(
-    STATUS
-      "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
-  set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
-  add_definitions(
-    -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+  if(WITH_GPU)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
+  elseif(WITH_ROCM)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+  endif()
 endif()
 
 if(WITH_TESTING)
@@ -87,9 +96,10 @@ if(WITH_GPU)
 
   message(
     STATUS
-      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h to $ENV{runtime_include_dir}"
+      "copy paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h paddle/cinn/common/float8e4m3.h to $ENV{runtime_include_dir}"
   )
   file(COPY paddle/cinn/common/float16.h paddle/cinn/common/bfloat16.h
+            paddle/cinn/common/float8e4m3.h
        DESTINATION $ENV{runtime_include_dir})
 
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
@@ -104,16 +114,23 @@ if(WITH_GPU)
                                              /usr/lib /usr/lib64 REQUIRED)
 endif()
 
-if(WITH_ROCM)
-  message(STATUS "CINN Compile with ROCM support")
-  add_definitions(-DCINN_WITH_HIP)
-endif()
-
-if(CINN_WITH_SYCL)
+if(WITH_SYCL)
   message(STATUS "CINN Compile with SYCL support")
   set(DPCPP_DIR ${PROJECT_SOURCE_DIR}/cmake/cinn)
   find_package(DPCPP REQUIRED CONFIG)
   add_definitions(-DCINN_WITH_SYCL)
+endif()
+
+if(WITH_ROCM)
+  message(STATUS "CINN Compile with ROCM support")
+  if(NOT WITH_SYCL)
+    add_definitions(-DCINN_WITH_HIP)
+  endif()
+  link_libraries(${ROCM_HIPRTC_LIB})
+
+  message(
+    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
 set(cinnapi_src CACHE INTERNAL "" FORCE)
@@ -136,29 +153,12 @@ set(LINK_FLAGS
 set(global_test_args
     "--cinn_x86_builtin_code_root=${CMAKE_SOURCE_DIR}/paddle/cinn/backends")
 
-set(Python_VIRTUALENV FIRST)
-
-if(NOT PYTHON_EXECUTABLE)
-  find_package(PythonInterp ${PY_VERSION} REQUIRED)
-endif()
-
-if(NOT PYTHON_LIBRARIES)
-  find_package(PythonLibs ${PY_VERSION} REQUIRED)
-endif()
-
-message(STATUS "PYTHON_LIBRARIES: ${PYTHON_LIBRARIES}")
-message(STATUS "PYTHON_INCLUDE_DIR: ${PYTHON_INCLUDE_DIR}")
-
-include_directories(${PYTHON_INCLUDE_DIR})
-
 set(core_deps CACHE INTERNAL "" FORCE)
 set(hlir_src CACHE INTERNAL "" FORCE)
 
 # TODO(chenweihang): The logic later depends adding cinn subdirectory here,
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
-
-set(core_src "${cinnapi_src}")
 
 cinn_cc_library(
   cinnapi
@@ -171,18 +171,17 @@ cinn_cc_library(
   param_proto
   schedule_desc_proto
   tile_config_proto
-  absl
   isl
   ginac
   op_fusion
   cinn_op_dialect
   ${jitify_deps})
+
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 target_link_libraries(cinnapi op_dialect pir phi)
 add_dependencies(cinnapi op_dialect pir phi)
 
-add_dependencies(cinnapi python)
 if(WITH_MKL)
   target_link_libraries(cinnapi cinn_mklml)
   add_dependencies(cinnapi cinn_mklml)
@@ -212,6 +211,8 @@ if(WITH_CUTLASS)
   add_dependencies(cinnapi cutlass)
 endif()
 
+set(core_src "${cinnapi_src}")
+
 function(gen_cinncore LINKTYPE)
   set(CINNCORE_TARGET cinncore)
   if(${LINKTYPE} STREQUAL "STATIC")
@@ -228,10 +229,8 @@ function(gen_cinncore LINKTYPE)
     param_proto
     schedule_desc_proto
     tile_config_proto
-    absl
     isl
     ginac
-    pybind
     op_fusion
     cinn_op_dialect
     ${jitify_deps})
@@ -239,9 +238,6 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   target_link_libraries(${CINNCORE_TARGET} op_dialect pir phi)
   add_dependencies(${CINNCORE_TARGET} op_dialect pir phi)
-
-  # add_dependencies(${CINNCORE_TARGET} pybind)
-  target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
 
   if(WITH_MKL)
     target_link_libraries(${CINNCORE_TARGET} cinn_mklml)
@@ -284,6 +280,8 @@ if(PUBLISH_LIBS)
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   set(core_includes
       "${core_includes};paddle/cinn/runtime/hip/cinn_hip_runtime_source.h")
+  set(core_includes
+      "${core_includes};paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
   foreach(header ${core_includes})

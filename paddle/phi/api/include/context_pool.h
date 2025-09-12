@@ -24,6 +24,7 @@ namespace phi {
 class DeviceContext;
 class CPUContext;
 class GPUContext;
+class CustomContext;
 class Allocator;
 class CUDAStream;
 }  // namespace phi
@@ -42,6 +43,11 @@ struct DefaultDeviceContextType<AllocationType::CPU> {
 template <>
 struct DefaultDeviceContextType<AllocationType::GPU> {
   using TYPE = phi::GPUContext;
+};
+
+template <>
+struct DefaultDeviceContextType<AllocationType::CUSTOM> {
+  using TYPE = phi::CustomContext;
 };
 
 /**

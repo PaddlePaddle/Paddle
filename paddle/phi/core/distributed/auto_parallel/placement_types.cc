@@ -87,7 +87,7 @@ phi::distributed::Placements cvt_dim_map_to_placements(
       auto& p = placements[mesh_id];
       if (p->is_shard()) {
         PADDLE_THROW(common::errors::PreconditionNotMet(
-            "ProcessMesh dimension cann't be mapped to two  dimension of the "
+            "ProcessMesh dimension can't be mapped to two  dimension of the "
             "same tensor: {%d} and {%d}",
             i,
             dynamic_cast<phi::distributed::Shard&>(*p).get_dim()));

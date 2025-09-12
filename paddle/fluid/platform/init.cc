@@ -218,6 +218,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
 #ifdef PADDLE_WITH_XPU
     places.emplace_back(phi::XPUPlace(device));
+    places.emplace_back(phi::XPUPinnedPlace());
 #endif
 #ifdef PADDLE_WITH_IPU
     places.emplace_back(phi::IPUPlace(device));
@@ -435,7 +436,7 @@ void InitMemoryMethod() {
     memory_method->allocation_deleter =
         paddle::memory::allocation::Allocator::AllocationDeleter;
 #if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_XPU)
     memory_method->copy_with_stream =
         paddle::memory::Copy<phi::Place, phi::Place>;
 #endif
@@ -501,8 +502,11 @@ void InitMemoryMethod() {
           .GetZeroAllocator(phi::CPUPlace())
           .get();
     };
-    // XPUs do not have the concept of pinned memory,
-    // so the get_pinned_allocator function is not set.
+    memory_method->get_pinned_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::XPUPinnedPlace())
+          .get();
+    };
     memory_method->get_new_xpu_event = [](int device_id) {
       return paddle::platform::XpuEventResourcePool::Instance().New(device_id);
     };

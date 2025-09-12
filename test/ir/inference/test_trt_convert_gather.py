@@ -49,135 +49,111 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             return np.array([axis]).astype(np.int32)
 
         for shape in [[32], [16, 64], [32, 16, 16], [32, 64, 16, 32]]:
-            for index in [[1, 4], [4, 8]]:
+            for index in [[0, 1]]:
                 for axis in [0, 1, 2, 3]:
-                    for overwrite in [True, False]:
-                        for input in [
-                            {"X": ["input_data"], "Index": ["index_data"]},
-                            {
-                                "X": ["input_data"],
-                                "Index": ["index_data"],
-                                "Axis": ["axis_data"],
-                            },
-                        ]:
-                            for index_type_int32 in [True, False]:
-                                self.shape = shape
-                                self.axis = axis
-                                self.input_num = len(input)
-                                self.index_type_int32 = index_type_int32
-                                dics = [{"overwrite": overwrite, "axis": axis}]
-                                ops_config = [
+                    for input in [
+                        {"X": ["input_data"], "Index": ["index_data"]},
+                    ]:
+                        for index_type_int32 in [True, False]:
+                            self.shape = shape
+                            self.axis = axis
+                            self.input_num = len(input)
+                            self.index_type_int32 = index_type_int32
+                            ops_config = [
+                                {
+                                    "op_type": "gather",
+                                    "op_inputs": input,
+                                    "op_outputs": {"Out": ["output_data"]},
+                                    "op_attrs": {"axis": axis},
+                                }
+                            ]
+                            ops = self.generate_op_config(ops_config)
+
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs=(
                                     {
-                                        "op_type": "gather",
-                                        "op_inputs": input,
-                                        "op_outputs": {"Out": ["output_data"]},
-                                        "op_attrs": dics[0],
+                                        "index_data": TensorConfig(
+                                            data_gen=partial(
+                                                (
+                                                    generate_input2
+                                                    if index_type_int32
+                                                    else generate_input4
+                                                ),
+                                                index,
+                                            )
+                                        ),
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, shape
+                                            )
+                                        ),
                                     }
-                                ]
-                                ops = self.generate_op_config(ops_config)
+                                ),
+                                outputs=["output_data"],
+                            )
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs=(
-                                        {
-                                            "input_data": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, shape
-                                                )
-                                            ),
-                                            "index_data": TensorConfig(
-                                                data_gen=partial(
-                                                    (
-                                                        generate_input2
-                                                        if index_type_int32
-                                                        else generate_input4
-                                                    ),
-                                                    index,
-                                                )
-                                            ),
-                                        }
-                                        if len(input) == 2
-                                        else {
-                                            "input_data": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input1, shape
-                                                )
-                                            ),
-                                            "index_data": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input2, index
-                                                )
-                                            ),
-                                            "axis_data": TensorConfig(
-                                                data_gen=partial(
-                                                    generate_input3, axis
-                                                )
-                                            ),
-                                        }
-                                    ),
-                                    outputs=["output_data"],
-                                )
+                            yield program_config
 
-                                yield program_config
+    def generate_dynamic_shape(self, attrs):
+        if len(self.shape) == 1:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2],
+                "index_data": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [128],
+                "index_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [16],
+                "index_data": [2],
+            }
+        elif len(self.shape) == 2:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 4],
+                "index_data": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [256, 256],
+                "index_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [64, 32],
+                "index_data": [2],
+            }
+        elif len(self.shape) == 3:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 4, 4],
+                "index_data": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [128, 256, 256],
+                "index_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [16, 64, 32],
+                "index_data": [2],
+            }
+        elif len(self.shape) == 4:
+            self.dynamic_shape.min_input_shape = {
+                "input_data": [2, 4, 4, 4],
+                "index_data": [2],
+            }
+            self.dynamic_shape.max_input_shape = {
+                "input_data": [128, 256, 64, 128],
+                "index_data": [2],
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "input_data": [16, 64, 16, 32],
+                "index_data": [2],
+            }
+        return self.dynamic_shape
 
     def sample_predictor_configs(
-        self, program_config
+        self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-        def generate_dynamic_shape(attrs):
-            if len(self.shape) == 1:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [4],
-                    "index_data": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [128],
-                    "index_data": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [16],
-                    "index_data": [2],
-                }
-            elif len(self.shape) == 2:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 4],
-                    "index_data": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [256, 256],
-                    "index_data": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [64, 32],
-                    "index_data": [2],
-                }
-            elif len(self.shape) == 3:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 4, 4],
-                    "index_data": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [128, 256, 256],
-                    "index_data": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [16, 64, 32],
-                    "index_data": [2],
-                }
-            elif len(self.shape) == 4:
-                self.dynamic_shape.min_input_shape = {
-                    "input_data": [2, 4, 4, 2],
-                    "index_data": [1],
-                }
-                self.dynamic_shape.max_input_shape = {
-                    "input_data": [128, 256, 64, 128],
-                    "index_data": [4],
-                }
-                self.dynamic_shape.opt_input_shape = {
-                    "input_data": [16, 64, 16, 32],
-                    "index_data": [2],
-                }
-
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
             self.dynamic_shape.min_input_shape = {}
@@ -198,19 +174,24 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
         # for static_shape
         clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            False
-        ), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            False
-        ), 1e-3
+        if not run_pir:
+            self.trt_param.precision = paddle_infer.PrecisionType.Float32
+            program_config.set_input_type(np.float32)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(False),
+                1e-5,
+            )
+            self.trt_param.precision = paddle_infer.PrecisionType.Half
+            program_config.set_input_type(np.float16)
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(False),
+                1e-3,
+            )
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
@@ -240,7 +221,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
     def test(self):
         self.add_skip_trt_case()
-        self.run_test()
+        self.run_test(run_pir=True)
 
 
 if __name__ == "__main__":

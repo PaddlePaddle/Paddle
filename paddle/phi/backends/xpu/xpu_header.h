@@ -33,12 +33,6 @@ limitations under the License. */
 
 namespace xpu = baidu::xpu::api;
 
-static std::map<int, std::string> XPUAPIErrorMsg = {
-    {xpu::Error_t::SUCCESS, "xpu api success"},
-    {xpu::Error_t::INVALID_PARAM, "xpu api invalid param"},
-    {xpu::Error_t::RUNTIME_ERROR, "xpu api runtime error"},
-    {xpu::Error_t::NO_ENOUGH_WORKSPACE, "xpu api no enough workspace"}};
-
 template <typename T>
 class XPUTypeTrait {
  public:
@@ -73,6 +67,44 @@ template <>
 class XPUTypeToPhiType<bfloat16> {
  public:
   using Type = phi::dtype::bfloat16;
+};
+
+// XPUCopyTypeTrait is the same as XPUTypeTrait except for double, int16_t, and
+// uint8_t. Used for ops that simply copy data and do not need to calculate
+template <typename T>
+class XPUCopyTypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class XPUCopyTypeTrait<phi::dtype::float16> {
+ public:
+  using Type = float16;
+};
+
+template <>
+class XPUCopyTypeTrait<phi::dtype::bfloat16> {
+ public:
+  using Type = bfloat16;
+};
+
+template <>
+class XPUCopyTypeTrait<double> {
+ public:
+  using Type = int64_t;
+};
+
+template <>
+class XPUCopyTypeTrait<int16_t> {
+ public:
+  using Type = float16;
+};
+
+template <>
+class XPUCopyTypeTrait<uint8_t> {
+ public:
+  using Type = int8_t;
 };
 
 #endif

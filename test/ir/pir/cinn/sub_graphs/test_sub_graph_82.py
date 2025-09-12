@@ -149,6 +149,12 @@ class TestLayer(TestBase):
                 stop_gradient=True,
             ),
             InputSpec(
+                shape=(),
+                dtype=paddle.float32,
+                name=None,
+                stop_gradient=True,
+            ),
+            InputSpec(
                 shape=(-1, -1, -1),
                 dtype=paddle.float32,
                 name=None,

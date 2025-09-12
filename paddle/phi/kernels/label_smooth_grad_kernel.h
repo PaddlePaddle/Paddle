@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void LabelSmoothGradKernel(const Context& ctx,
+void LabelSmoothGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            float epsilon,
                            DenseTensor* label_grad);

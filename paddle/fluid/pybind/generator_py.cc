@@ -56,21 +56,24 @@ void BindGenerator(py::module* m_ptr) {
             return py::make_tuple(s.device, s.seed, s.offset, bitstream);
           },
           [](py::tuple s) {  // __setstate__
-            if (s.size() != 4)
+            if (s.size() != 3 && s.size() != 4)
               throw std::runtime_error(
                   "Invalid Random state. Please check the format(device, "
-                  "current_seed, thread_offset ,rng_state).");
+                  "current_seed, thread_offset [, rng_state]).");
             int64_t device = s[0].cast<int64_t>();
             int64_t seed = s[1].cast<int64_t>();
             uint64_t offset = s[2].cast<uint64_t>();
             // NOTE(zhangwl):switch bitstream to mt19937_64;
-            std::vector<uint8_t> bitstream = s[3].cast<std::vector<uint8_t>>();
-            std::string str(bitstream.begin(), bitstream.end());
-            std::stringstream ss(str);
-            std::mt19937_64 rng;
-            ss >> rng;
-            std::shared_ptr<std::mt19937_64> cpu_engine =
-                std::make_shared<std::mt19937_64>(rng);
+            std::shared_ptr<std::mt19937_64> cpu_engine = nullptr;
+            if (s.size() == 4) {
+              std::vector<uint8_t> bitstream =
+                  s[3].cast<std::vector<uint8_t>>();
+              std::string str(bitstream.begin(), bitstream.end());
+              std::stringstream ss(str);
+              std::mt19937_64 rng;
+              ss >> rng;
+              cpu_engine = std::make_shared<std::mt19937_64>(rng);
+            }
             phi::Generator::GeneratorState state(
                 device, seed, offset, cpu_engine);
             return state;

@@ -86,7 +86,7 @@ void Tree2ColUtil::construct_tree(const phi::DenseTensor &EdgeSet,
 template <typename T>
 class Tree2ColFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context,
+  void operator()(const phi::CPUContext &dev_ctx,
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &node_features,
                   phi::DenseTensor *patch,
@@ -110,8 +110,8 @@ class Tree2ColFunctor<phi::CPUContext, T> {
 
     patch->Resize({static_cast<int64_t>(patch_size),
                    static_cast<int64_t>(patch_elem_size)});
-    T *patch_data = context.template Alloc<T>(patch);
-    constant(context, patch, 0);
+    T *patch_data = dev_ctx.template Alloc<T>(patch);
+    constant(dev_ctx, patch, 0);
     const T *features = node_features.data<T>();
 
     for (auto &patch_item : processing_list) {
@@ -138,7 +138,7 @@ class Tree2ColFunctor<phi::CPUContext, T> {
 template <typename T>
 class Col2TreeFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext &context,
+  void operator()(const phi::CPUContext &dev_ctx,
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &out_grad,
                   phi::DenseTensor *in_grad,
@@ -167,9 +167,9 @@ class Col2TreeFunctor<phi::CPUContext, T> {
     }
     in_grad->Resize({static_cast<int64_t>(node_count),
                      static_cast<int64_t>(grad_elem_size)});
-    T *grad_data = context.template Alloc<T>(in_grad);
+    T *grad_data = dev_ctx.template Alloc<T>(in_grad);
 
-    constant(context, in_grad, 0);
+    constant(dev_ctx, in_grad, 0);
     const T *out_g = out_grad.data<T>();
     for (auto &patch_item : grad_list) {
       size_t pointer_base = grad_count * grad_elem_size;

@@ -29,13 +29,14 @@ void DiagKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   auto* out_data = reinterpret_cast<XPUType*>(out->data<T>());
 
-  auto x_shape = common::vectorize<int>(x.dims());
-  auto out_shape = common::vectorize<int>(out->dims());
+  auto x_shape = common::vectorize<int64_t>(x.dims());
+  auto out_shape = common::vectorize<int64_t>(out->dims());
 
   if (x.dims().size() == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   }
 
   int r = xpu::diag<XPUType>(dev_ctx.x_context(),
@@ -50,11 +51,6 @@ void DiagKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(diag,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::DiagKernel,
-                   phi::dtype::float16,
-                   int,
-                   float,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    diag, XPU, ALL_LAYOUT, phi::DiagKernel, phi::float16, int, float, int64_t) {
+}

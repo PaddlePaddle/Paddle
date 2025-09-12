@@ -22,7 +22,6 @@ import weakref
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
-    test_with_faster_guard,
 )
 
 import paddle
@@ -136,6 +135,26 @@ def test_log(x: int):
 
 
 @check_no_breakgraph
+def test_any(var):
+    return any(var)
+
+
+@check_no_breakgraph
+def test_any_iter(var):
+    return any(iter(var))
+
+
+@check_no_breakgraph
+def test_all(var):
+    return all(var)
+
+
+@check_no_breakgraph
+def test_all_iter(var):
+    return all(iter(var))
+
+
+@check_no_breakgraph
 def test_builtin_type_check_eq():
     a = 1
     b = []
@@ -154,12 +173,15 @@ def test_builtin_type_check_eq():
     return eq_results, ne_results
 
 
+@check_no_breakgraph
+def test_is(x, y):
+    return x is y
+
+
 class TestBuiltinDispatch(TestCaseBase):
-    @test_with_faster_guard
     def test_dispatch_len(self):
         self.assert_results(dispatch_len, paddle.to_tensor([1, 2, 3]))
 
-    @test_with_faster_guard
     def test_dispatch_bool(self):
         self.assert_results(dispatch_bool, paddle.to_tensor([1, 2, 3]))
 
@@ -199,7 +221,6 @@ class TestBuiltinDispatch(TestCaseBase):
     def test_dispatch_float_floor(self):
         self.assert_results(dispatch_floor, 1.2)
 
-    @test_with_faster_guard
     def test_dispatch_sum(self):
         self.assert_results(test_sum_tuple, 1, 1)
         self.assert_results(test_sum_tuple, paddle.to_tensor(1), 1)
@@ -300,6 +321,46 @@ class TestBuiltinDispatch(TestCaseBase):
 
     def test_dispatch_builtin_type_check_eq(self):
         self.assert_results(test_builtin_type_check_eq)
+
+    def test_dispatch_any(self):
+        l_pure_true = [1, True, 5, 6]
+        l_pure_false = [False, 0, 0]
+        l_true_and_false = [1, False, 0, 3]
+        d_true = {"a": 1}
+        d_false = {}
+        self.assert_results(test_any, l_pure_true)
+        self.assert_results(test_any, l_pure_false)
+        self.assert_results(test_any, l_true_and_false)
+        self.assert_results(test_any, d_true)
+        self.assert_results(test_any, d_false)
+        self.assert_results(test_any_iter, l_true_and_false)
+
+    def test_dispatch_all(self):
+        l_pure_true = [1, True, 5, 6]
+        l_pure_false = [False, 0, 0]
+        l_true_and_false = [1, False, 0, 3]
+        d_true = {"a": 1}
+        d_false = {}
+        self.assert_results(test_all, l_pure_true)
+        self.assert_results(test_all, l_pure_false)
+        self.assert_results(test_all, l_true_and_false)
+        self.assert_results(test_all, d_true)
+        self.assert_results(test_all, d_false)
+        self.assert_results(test_all_iter, l_true_and_false)
+
+    def test_dispatch_is(self):
+        x = paddle.ones(shape=[1, 2])
+        y = paddle.ones(shape=[1, 2])
+        # TODO(wangmingkai02): support comparison of same tensor object
+        # self.assert_results(test_is, x, x)
+        # self.assert_results(test_is, [x], [x])
+        self.assert_results(test_is, x, y)
+        self.assert_results(test_is, x, None)
+        self.assert_results(test_is, [x], x)
+        self.assert_results(test_is, None, x)
+        self.assert_results(test_is, [x], None)
+        self.assert_results(test_is, None, [x])
+        self.assert_results(test_is, None, None)
 
 
 def run_getattr(x: paddle.Tensor):

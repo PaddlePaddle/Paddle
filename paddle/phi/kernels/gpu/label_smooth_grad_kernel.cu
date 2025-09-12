@@ -35,16 +35,16 @@ struct LabelSmoothGradFunctor {
 };
 
 template <typename T, typename Context>
-void LabelSmoothGradKernel(const Context& ctx,
+void LabelSmoothGradKernel(const Context& dev_ctx,
                            const DenseTensor& out_grad,
                            float epsilon,
                            DenseTensor* label_grad) {
-  ctx.template Alloc<T>(label_grad);
+  dev_ctx.template Alloc<T>(label_grad);
 
   std::vector<const DenseTensor*> ins = {&out_grad};
   std::vector<DenseTensor*> outs = {label_grad};
   auto functor = LabelSmoothGradFunctor<T>(epsilon);
-  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
 }
 
 }  // namespace phi
@@ -55,5 +55,5 @@ PD_REGISTER_KERNEL(label_smooth_grad,
                    phi::LabelSmoothGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

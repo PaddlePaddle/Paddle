@@ -410,7 +410,7 @@ class FC(paddle.nn.Layer):
                 type="sum",
                 inputs={"X": mul_results},
                 outputs={"Out": pre_bias},
-                attrs={"use_mkldnn": False},
+                attrs={"use_onednn": False},
             )
 
         if self._b is not None:

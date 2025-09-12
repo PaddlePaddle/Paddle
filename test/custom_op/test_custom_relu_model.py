@@ -250,72 +250,74 @@ class TestStaticModel(unittest.TestCase):
         # set device
         paddle.set_device(device)
 
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(
+        with (
+            paddle.static.scope_guard(paddle.static.Scope()),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data(
-                    shape=[None, self.in_dim], name='x', dtype='float32'
-                )
-                y = paddle.static.data(
-                    shape=[None, 1], name='y', dtype='float32'
-                )
+            ),
+        ):
+            x = paddle.static.data(
+                shape=[None, self.in_dim], name='x', dtype='float32'
+            )
+            y = paddle.static.data(shape=[None, 1], name='y', dtype='float32')
 
-                net = Net(self.in_dim, self.out_dim, use_custom_op)
-                out = net(x)
+            net = Net(self.in_dim, self.out_dim, use_custom_op)
+            out = net(x)
 
-                loss = nn.functional.mse_loss(out, y)
-                sgd = paddle.optimizer.SGD(learning_rate=0.01)
-                sgd.minimize(loss)
+            loss = nn.functional.mse_loss(out, y)
+            sgd = paddle.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
 
-                exe = exe = paddle.static.Executor()
-                exe.run(paddle.static.default_startup_program())
+            exe = exe = paddle.static.Executor()
+            exe.run(paddle.static.default_startup_program())
 
-                main_program = paddle.static.default_main_program()
+            main_program = paddle.static.default_main_program()
 
-                for batch_id in range(self.batch_num):
-                    x_data = self.datas[batch_id]
-                    y_data = self.labels[batch_id]
+            for batch_id in range(self.batch_num):
+                x_data = self.datas[batch_id]
+                y_data = self.labels[batch_id]
 
-                    res = exe.run(
-                        main_program,
-                        feed={'x': x_data, 'y': y_data},
-                        fetch_list=[out],
-                    )
-
-                # save model
-                paddle.static.save_inference_model(
-                    self.model_path_template.format(use_custom_op),
-                    [x],
-                    [out],
-                    exe,
+                res = exe.run(
+                    main_program,
+                    feed={'x': x_data, 'y': y_data},
+                    fetch_list=[out],
                 )
 
-                return res[0]
+            # save model
+            paddle.static.save_inference_model(
+                self.model_path_template.format(use_custom_op),
+                [x],
+                [out],
+                exe,
+            )
+
+            return res[0]
 
     def eval_model(self, device, use_custom_op=False):
         paddle.set_device(device)
 
-        with paddle.static.scope_guard(paddle.static.Scope()):
-            with paddle.static.program_guard(paddle.static.Program()):
-                exe = paddle.static.Executor()
+        with (
+            paddle.static.scope_guard(paddle.static.Scope()),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            exe = paddle.static.Executor()
 
-                [
-                    inference_program,
-                    feed_target_names,
-                    fetch_targets,
-                ] = paddle.static.load_inference_model(
-                    self.model_path_template.format(use_custom_op), exe
-                )
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = paddle.static.load_inference_model(
+                self.model_path_template.format(use_custom_op), exe
+            )
 
-                x_data = self.datas[0]
-                results = exe.run(
-                    inference_program,
-                    feed={feed_target_names[0]: x_data},
-                    fetch_list=fetch_targets,
-                )
+            x_data = self.datas[0]
+            results = exe.run(
+                inference_program,
+                feed={feed_target_names[0]: x_data},
+                fetch_list=fetch_targets,
+            )
 
-                return results[0]
+            return results[0]
 
 
 if __name__ == '__main__':

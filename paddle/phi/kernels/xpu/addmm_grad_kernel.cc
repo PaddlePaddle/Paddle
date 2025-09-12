@@ -16,8 +16,8 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -32,6 +32,24 @@ void AddmmGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad,
                      DenseTensor* y_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (out_grad.numel() == 0) {
+    if (input_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(input_grad->dims())),
+          0,
+          input_grad);
+    }
+    if (x_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    }
+    return;
+  }
 
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
@@ -59,7 +77,16 @@ void AddmmGradKernel(const Context& dev_ctx,
   if (y_grad) {
     dev_ctx.template Alloc<T>(y_grad);
   }
-
+  if (x_grad && x_grad->numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y_grad->dims())), 0, y_grad);
+    return;
+  }
+  if (y_grad && y_grad->numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   const XPUType* out_grad_ptr =
       reinterpret_cast<const XPUType*>(out_grad.data<T>());
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
@@ -111,8 +138,10 @@ void AddmmGradKernel(const Context& dev_ctx,
           xpu_ctx,
           c_1,
           reinterpret_cast<XPUType*>(x_grad->data<T>()),
-          {info_forward.bs, info_forward.m, info_forward.k},
-          {0});
+          {(int64_t)info_forward.bs,
+           (int64_t)info_forward.m,
+           (int64_t)info_forward.k},
+          {0LL});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
   }
@@ -123,8 +152,10 @@ void AddmmGradKernel(const Context& dev_ctx,
           xpu_ctx,
           c_2,
           reinterpret_cast<XPUType*>(y_grad->data<T>()),
-          {info_forward.bs, info_forward.k, info_forward.n},
-          {0});
+          {(int64_t)info_forward.bs,
+           (int64_t)info_forward.k,
+           (int64_t)info_forward.n},
+          {0LL});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "reduce_sum");
     }
   }
@@ -136,5 +167,5 @@ PD_REGISTER_KERNEL(addmm_grad,
                    ALL_LAYOUT,
                    phi::AddmmGradKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

@@ -30,17 +30,20 @@ struct CondFunctor {
 };
 
 template <typename T, typename Context>
-void WhereKernel(const Context& ctx,
+void WhereKernel(const Context& dev_ctx,
                  const DenseTensor& condition,
                  const DenseTensor& x,
                  const DenseTensor& y,
                  DenseTensor* out) {
   std::vector<const DenseTensor*> ins = {&condition, &x, &y};
   std::vector<DenseTensor*> outs = {out};
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) {
+    return;
+  }
 
   CondFunctor<T> func;
-  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(ctx, ins, &outs, func);
+  funcs::ElementwiseKernel<T, CondFunctor<T>, 1>(dev_ctx, ins, &outs, func);
 }
 
 }  // namespace phi
@@ -49,9 +52,15 @@ PD_REGISTER_KERNEL(where,
                    GPU,
                    ALL_LAYOUT,
                    phi::WhereKernel,
+                   bool,
                    float,
                    double,
                    int,
+                   int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   int16_t,
+                   uint8_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

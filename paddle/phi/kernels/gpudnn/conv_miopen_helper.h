@@ -35,10 +35,10 @@ struct SearchAlgorithm<miopenConvFwdAlgorithm_t> {
                      bool exhaustive_search,
                      bool deterministic,
                      size_t workspace_size,
-                     const phi::GPUContext& ctx) {
+                     const phi::GPUContext& dev_ctx) {
     algo_t algo;
 
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -91,10 +91,10 @@ struct SearchAlgorithm<miopenConvBwdDataAlgorithm_t> {
                      bool exhaustive_search,
                      bool deterministic,
                      size_t workspace_size,
-                     const phi::GPUContext& ctx) {
+                     const phi::GPUContext& dev_ctx) {
     algo_t algo;
 
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;
@@ -147,10 +147,10 @@ struct SearchAlgorithm<miopenConvBwdWeightsAlgorithm_t> {
                      bool exhaustive_search,
                      bool deterministic,
                      size_t workspace_size,
-                     const phi::GPUContext& ctx) {
+                     const phi::GPUContext& dev_ctx) {
     algo_t algo;
 
-    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int find_count;
     miopenConvAlgoPerf_t find_result;

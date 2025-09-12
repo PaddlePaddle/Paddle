@@ -64,7 +64,7 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
 
                 yield program_config
 
-    def generate_dynamic_shape(self):
+    def generate_dynamic_shape(self, attrs):
         if self.dims == 4:
             self.dynamic_shape.min_input_shape = {"input1": [1, 3, 24, 24]}
             self.dynamic_shape.max_input_shape = {"input1": [4, 3, 48, 48]}
@@ -88,7 +88,6 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def generate_trt_nodes_num(dynamic_shape):
             if not dynamic_shape:
                 return 0, 3
@@ -104,20 +103,24 @@ class TrtConvertSumTest(TrtLayerAutoScanTest):
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
             program_config.set_input_type(np.float32)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                False
-            ), 1e-5
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(False),
+                1e-5,
+            )
             self.trt_param.precision = paddle_infer.PrecisionType.Half
             program_config.set_input_type(np.float16)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                False
-            ), 1e-3
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(False),
+                1e-3,
+            )
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
         # for dynamic_shape
-        self.generate_dynamic_shape()
+        self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5

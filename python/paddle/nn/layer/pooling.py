@@ -279,11 +279,13 @@ class AvgPool3D(Layer):
             Otherwise, the pool stride size will be a cube of an int.
             Default None, then stride will be equal to the kernel_size.
         padding(str|int|list|tuple, optional): The padding size. Padding could be in one of the following forms.
+
             1. A string in ['valid', 'same'].
             2. An int, which means the feature map is zero padded by size of `padding` on every sides.
             3. A list[int] or tuple(int) whose length is 3, [pad_depth, pad_height, pad_weight] whose value means the padding size of each dimension.
             4. A list[int] or tuple(int) whose length is 6. [pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right] whose value means the padding size of each side.
             5. A list or tuple of pairs of integers. It has the form [[pad_before, pad_after], [pad_before, pad_after], ...]. Note that, the batch dimension and channel dimension should be [0,0] or (0,0).
+
             The default value is 0.
         ceil_mode(bool, optional): ${ceil_mode_comment}
         exclusive(bool, optional): Whether to exclude padding points in average pooling mode, default is True.

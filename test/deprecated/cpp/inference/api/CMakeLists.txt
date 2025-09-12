@@ -1,5 +1,5 @@
 # In Windows, c_api test link must link both 2 shared to avoid symbols redefinition,
-# in Linux, c_api test cant do like this or graph_to_program register more than once.
+# in Linux, c_api test can't do like this or graph_to_program register more than once.
 # Both Windows and Linux can only use paddle_inference_c, but this will increase size
 # of build folder by 30G.
 set(inference_api_tester_deps paddle_inference_api analysis_config)
@@ -213,7 +213,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
            test_binary model_dir disable_fc)
     inference_analysis_test_run(
       ${TARGET_NAME} COMMAND ${test_binary} ARGS
-      --infer_model=${model_dir}/model --disable_mkldnn_fc=${disable_fc})
+      --infer_model=${model_dir}/model --disable_onednn_fc=${disable_fc})
   endfunction()
 
   function(

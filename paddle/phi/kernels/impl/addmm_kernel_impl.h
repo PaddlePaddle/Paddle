@@ -97,6 +97,8 @@ void AddmmKernel(const Context& dev_ctx,
           y_dims[0]));
 
   dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) return;
+
   auto blas = funcs::GetBlas<Context, T>(dev_ctx);
 
   // calc broadcast dim
@@ -111,6 +113,13 @@ void AddmmKernel(const Context& dev_ctx,
   auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
+
+  // Just return input X beta
+  if (x.numel() == 0 || y.numel() == 0) {
+    auto eigen_out2 = phi::EigenVector<T>::Flatten(*out);
+    eigen_out2.device(place) = eigen_out2 * static_cast<T>(beta);
+    return;
+  }
 
   T t_alpha = static_cast<T>(alpha);
   T t_beta = static_cast<T>(beta);

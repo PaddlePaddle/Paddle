@@ -171,7 +171,7 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
                               ->assert_is_op_output("strided_slice", "Out")
                               ->assert_is_op_nth_input("concat", "X", 2);
   right_slice->LinksFrom({x}).LinksTo({right_slice_out});
-  // left silce pattern
+  // left slice pattern
   auto* left_ew_mul =
       pattern->NewNode(left_ew_mul_repr())
           ->assert_is_op("elementwise_mul")

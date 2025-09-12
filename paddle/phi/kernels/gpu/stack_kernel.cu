@@ -21,11 +21,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void StackKernel(const Context& ctx,
+void StackKernel(const Context& dev_ctx,
                  const std::vector<const DenseTensor*>& x,
                  int axis,
                  DenseTensor* out) {
-  funcs::StackRawKernel<T, Context>(ctx, x, axis, out);
+  funcs::StackRawKernel<T, Context>(dev_ctx, x, axis, out);
 }
 
 }  // namespace phi
@@ -42,7 +42,9 @@ PD_REGISTER_KERNEL(stack,
                    int64_t,
                    int16_t,
                    uint8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::complex64,
+                   phi::complex128) {}

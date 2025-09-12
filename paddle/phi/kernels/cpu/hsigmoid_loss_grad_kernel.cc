@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void HSigmoidLossGradKernel(const Context& ctx,
+void HSigmoidLossGradKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& w,
                             const DenseTensor& label,
@@ -35,7 +35,7 @@ void HSigmoidLossGradKernel(const Context& ctx,
                             DenseTensor* x_grad,
                             DenseTensor* w_grad,
                             DenseTensor* bias_grad) {
-  HSigmoidLossGradKernelImpl<T>(ctx,
+  HSigmoidLossGradKernelImpl<T>(dev_ctx,
                                 x,
                                 w,
                                 label,

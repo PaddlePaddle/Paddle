@@ -244,7 +244,7 @@ void MultinomialKernel(const Context& dev_ctx,
   auto gen_cuda = dev_ctx.GetGenerator();
   size_t curand4_loop_times =
       (num_distributions + 4 * grid_y - 1) / (4 * grid_y);
-  // 'increment' shoulde be multiple of 4
+  // 'increment' should be multiple of 4
   uint64_t increment = curand4_loop_times * 4;
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 
@@ -265,8 +265,8 @@ PD_REGISTER_KERNEL(multinomial,
                    GPU,
                    ALL_LAYOUT,
                    phi::MultinomialKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);

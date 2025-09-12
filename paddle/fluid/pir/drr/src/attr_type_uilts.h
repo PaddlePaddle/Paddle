@@ -53,7 +53,7 @@ PD_SPECIALIZE_CppTypeToIrAttribute(phi::IntArray,
 template <typename T>
 struct IrAttributeCreator {
   typename CppTypeToIrAttribute<T>::type operator()(T obj) const {
-    return CppTypeToIrAttribute<T>::type::template get(
+    return CppTypeToIrAttribute<T>::type::template get<T>(
         pir::IrContext::Instance(), obj);
   }
 };

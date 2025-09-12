@@ -36,12 +36,18 @@ void ConvKernel(const Context& dev_ctx,
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                      : false;
-  bool is_BFLOAT16 =
+  bool is_bfloat16 =
       dev_ctx.HasDnnAttr("mkldnn_data_type")
           ? PADDLE_GET_CONST(std::string,
                              dev_ctx.GetDnnAttr("mkldnn_data_type")) ==
                 "bfloat16"
           : false;
+  bool is_onednn_BFLOAT16 =
+      dev_ctx.HasDnnAttr("onednn_data_type")
+          ? PADDLE_GET_CONST(std::string,
+                             dev_ctx.GetDnnAttr("onednn_data_type")) ==
+                "bfloat16"
+          : is_bfloat16;
   bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
           ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
@@ -59,7 +65,7 @@ void ConvKernel(const Context& dev_ctx,
                 groups,
                 data_format,
                 is_test,
-                is_BFLOAT16,
+                is_onednn_BFLOAT16,
                 "",
                 false,
                 force_fp32_output,
@@ -142,7 +148,7 @@ PD_REGISTER_KERNEL(conv2d,
                    ONEDNN,
                    phi::ConvKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvGetKernelTypeForVar;
@@ -153,7 +159,7 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    ONEDNN,
                    phi::DepthwiseConvKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    uint8_t,
                    int8_t) {
   kernel->get_kerneltype_forvar_fn_ = phi::ConvGetKernelTypeForVar;

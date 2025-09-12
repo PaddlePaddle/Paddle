@@ -43,7 +43,8 @@ class CodeGenGpuHost : public CodeGenHost {
         [&](common::X86Arch) { return CodeGenHost::Visit(op); },
         [&](common::ARMArch) { return CodeGenHost::Visit(op); },
         [&](common::NVGPUArch) {
-          if (op->name == runtime::intrinsic::call_cuda_kernel) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel ||
+              op->name == runtime::intrinsic::call_cuda_cooperative_kernel) {
             return LowerGPUKernelCall(op);
           } else {
             return CodeGenHost::Visit(op);

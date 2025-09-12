@@ -21,6 +21,7 @@ from paddle.distributed import fleet
 from paddle.nn import functional as F
 
 from ....communication.reduce import ReduceOp, _get_reduce_op
+from ....flex_checkpoint.dcp.sharded_weight import build_sharded_state_dict
 from ...base import topology as tp
 from ...utils.log_util import logger
 from . import mp_ops
@@ -125,9 +126,9 @@ class VocabParallelEmbedding(paddle.nn.Layer):
         self.origin_num_embeddings = num_embeddings
         self.is_mp = self.world_size > 1
 
-        assert (
-            num_embeddings % self.world_size == 0
-        ), "The length of the vocabulary must be divisible by the parallelism degree of MP"
+        assert num_embeddings % self.world_size == 0, (
+            "The length of the vocabulary must be divisible by the parallelism degree of MP"
+        )
 
         per_part_size = num_embeddings // self.world_size
 
@@ -183,6 +184,15 @@ class VocabParallelEmbedding(paddle.nn.Layer):
             )
         return output
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )
+
 
 _raise_cuda_env_unset_warning = True
 
@@ -227,7 +237,7 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
             dx = paddle.matmul(
                 dy, paddle.cast(weight, dtype=dy.dtype), transpose_y=True
             )
-        op_type = _get_reduce_op(ReduceOp.SUM, "_c_identity")
+        op_type = _get_reduce_op(ReduceOp.SUM)
         task = ctx.model_parallel_group.process_group.all_reduce(
             dx, op_type, sync_op=False
         )
@@ -474,9 +484,9 @@ class ColumnParallelLinear(paddle.nn.Layer):
             or self.mp_skip_c_identity
             or self.mp_fused_linear_param_grad_add
         ):
-            assert (
-                paddle.in_dynamic_mode()
-            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
+            assert paddle.in_dynamic_mode(), (
+                "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
+            )
         if self.fuse_matmul_bias:
             if not is_fused_matmul_bias_supported():
                 raise NotImplementedError(
@@ -528,6 +538,15 @@ class ColumnParallelLinear(paddle.nn.Layer):
             output = output_parallel
         return output
 
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 1, "bias": 0}, structured_name_prefix
+        )
+
 
 class MPScale(PyLayer):
     @staticmethod
@@ -550,7 +569,7 @@ class RowParallelLinear(paddle.nn.Layer):
         weight_attr(ParamAttr|None): The attribute for the learnable weight of this layer. The default value is None
             and the weight will be initialized to zero. For detailed information, please refer to paddle.ParamAttr.
         has_bias(bool): whether to add bias.
-        input_is_parallel(bool): whether the input has already been splitted across the mp group.
+        input_is_parallel(bool): whether the input has already been split across the mp group.
         fuse_matmul_bias(bool): whether to fuse matmul and bias.
         mp_group(Group): The tensor parallel group.
         name(str, optional): Normally there is no need for user to set this parameter.
@@ -644,9 +663,9 @@ class RowParallelLinear(paddle.nn.Layer):
             or self.mp_skip_c_identity
             or self.mp_fused_linear_param_grad_add
         ):
-            assert (
-                paddle.in_dynamic_mode()
-            ), "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
+            assert paddle.in_dynamic_mode(), (
+                "mp_async_allreduce, mp_skip_c_identity and mp_fused_linear_param_grad_add are only available under dygraph mode"
+            )
         assert in_features % self.world_size == 0, (
             f"Number of row of the weight for linear ({in_features}) must be"
             f" divisible by model parallel size ({self.world_size})"
@@ -739,6 +758,15 @@ class RowParallelLinear(paddle.nn.Layer):
             )
 
         return output
+
+    def sharded_state_dict(
+        self,
+        structured_name_prefix: str = "",
+    ):
+        state_dict = self.state_dict(structured_name_prefix="")
+        return build_sharded_state_dict(
+            state_dict, {"weight": 0}, structured_name_prefix
+        )
 
 
 class ParallelCrossEntropy(paddle.nn.Layer):

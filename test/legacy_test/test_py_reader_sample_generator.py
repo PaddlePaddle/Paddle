@@ -27,10 +27,11 @@ os.environ['CPU_NUM'] = '1'
 def random_reader(sample_num):
     def __impl__():
         for _ in range(sample_num):
-            yield np.random.random(size=[784]).astype(
-                'float32'
-            ), np.random.random_integers(low=0, high=9, size=[1]).astype(
-                'int64'
+            yield (
+                np.random.random(size=[784]).astype('float32'),
+                np.random.random_integers(low=0, high=9, size=[1]).astype(
+                    'int64'
+                ),
             )
 
     return paddle.reader.cache(__impl__)

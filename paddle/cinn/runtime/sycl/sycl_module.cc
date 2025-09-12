@@ -16,6 +16,7 @@
 #include <glog/logging.h>
 #include <glog/raw_logging.h>
 
+#include <hip/hip_runtime.h>
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
@@ -32,12 +33,13 @@ SYCLModule::SYCLModule(const std::string& source_code,
   PADDLE_ENFORCE_NE(
       shared_library.empty(),
       true,
-      ::common::errors::InvalidArgument("sharede library is not empty !"));
+      ::common::errors::InvalidArgument("shared library is not empty !"));
 }
 
 SYCLModule::~SYCLModule() { VLOG(3) << "destructor for SYCLModule"; }
 
 void* SYCLModule::GetFunction(const std::string& func_name) {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (so_handler_ == nullptr) {
     so_handler_ = dlopen(shared_library_.c_str(), RTLD_NOW | RTLD_GLOBAL);
   }

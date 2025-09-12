@@ -256,7 +256,8 @@ bool RelativeJudgePolicy::ReducePlusTrivialCanMerge(
       GetValueUsage(downstream->sink_op()->result(0), 0), fakes);
 
   // TODO(huangjiyi): support fusion when fake_reduce.size < reduce.size
-  bool res = ElementwiseEqual(non_related_dims, upstream_reduce_dims) ||
+  bool res = (ElementwiseEqual(non_related_dims, upstream_reduce_dims) &&
+              fakes.size() == upstream_reduce_dims.size()) ||
              (IsProductSmallerOrEqual(downstream_free_dims,
                                       upstream_non_reduce_dims) &&
               (fakes.empty() || fakes.size() == upstream_reduce_dims.size()));
@@ -298,15 +299,23 @@ std::vector<size_t> RelativeJudgePolicy::GetFakeReduceIterIdx(
       upstream_non_reduce_dims);
 
   std::unordered_set<DimUsage, DimUsageHash> visited_dims;
-  std::vector<size_t> result;
+  std::vector<size_t> fake_reduce_indices;
   for (auto& reduce_dim : upstream_reduce_dims) {
     for (auto& trivial_dim : trivial_reorder_dims) {
       if (visited_dims.find(trivial_dim) == visited_dims.end() &&
           trivial_dim.SymbolicEqualTo(reduce_dim)) {
         visited_dims.emplace(trivial_dim);
-        result.emplace_back(trivial_dim.idx_);
+        fake_reduce_indices.emplace_back(trivial_dim.idx_);
         break;
       }
+    }
+  }
+  // Skip fake reduce dim which is 1
+  std::vector<size_t> result;
+  for (auto& fake_reduce_idx : fake_reduce_indices) {
+    if (downstream->loop_axis_mapping().loop[fake_reduce_idx] !=
+        symbol::DimExpr(1)) {
+      result.push_back(fake_reduce_idx);
     }
   }
   VLOG(4) << "FakeReduceIterIdx: " << cinn::utils::Join(result, ", ");

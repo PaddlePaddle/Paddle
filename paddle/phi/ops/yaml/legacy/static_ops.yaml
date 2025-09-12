@@ -242,6 +242,19 @@
     force_backend : force_cpu
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : expand_as
+  args : (Tensor x, Tensor y, int[] target_shape = {})
+  output : Tensor(out)
+  infer_meta :
+    func : ExpandAsInferMeta
+    local_shape: out
+  kernel :
+    func : expand_as
+    data_type : x
+  optional : y
+  backward : expand_as_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : exponential_
   args : (Tensor x, float lam = 1.0f)
   output : Tensor(out)
@@ -390,6 +403,16 @@
     data_type: x
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : kthvalue
+  args : (Tensor x, int k = 1, int axis = -1, bool keepdim = false)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : KthvalueInferMeta
+  kernel :
+    func : kthvalue
+  backward : kthvalue_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+
 - op : legacy_bilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_format="NCHW", int out_d=0, int out_h=0, int out_w=0, float scale=0.0, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
@@ -490,6 +513,18 @@
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : lp_pool2d
+  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT", float norm_type = 0.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : lp_pool2d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm, norm_type]
+  backward : lp_pool2d_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : lrn
   args: (Tensor x, int n = 5, float k = 2.0, float alpha = 0.0001, float beta = 0.75, str data_format = "AnyLayout")
   output: Tensor (out), Tensor (mid_out)
@@ -537,7 +572,7 @@
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMetaBase
+    func : StrictReduceIntArrayAxisInferMetaBase
     param : [x, axis, keepdim, reduce_all]
   kernel :
     func : max_raw
@@ -557,7 +592,7 @@
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMetaBase
+    func : StrictReduceIntArrayAxisInferMetaBase
     param : [x, axis, keepdim, reduce_all]
   kernel :
     func : min_raw
@@ -719,6 +754,17 @@
     func : randperm
     param : [n, dtype]
     data_type : dtype
+  traits : paddle::dialect::ForwardOnlyTrait
+
+- op : range_v2
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : RangeTensorInferMeta
+  kernel :
+    func : range_tensor
+  data_transform :
+    skip_transform : start, end, step
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : remainder

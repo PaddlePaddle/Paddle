@@ -28,24 +28,16 @@ namespace phi {
 template <typename T, typename Context>
 void CBroadcastKernel(const Context& dev_ctx,
                       const DenseTensor& x_in,
-                      int ring_id,
                       int root,
-                      bool use_calc_stream,
                       DenseTensor* out) {
   auto x = &x_in;
   const auto& place = dev_ctx.GetPlace();
   dev_ctx.template Alloc<T>(out);
-  int rid = ring_id;
   auto comm = reinterpret_cast<phi::distributed::XCCLCommContext*>(
-      phi::distributed::CommContextManager::GetInstance().Get(
-          std::to_string(rid)));
+      dev_ctx.GetCommContext());
 
   std::shared_ptr<phi::stream::Stream> stream;
-  if (use_calc_stream) {
-    stream = dev_ctx.GetStream();
-  } else {
-    stream = comm->GetStream();
-  }
+  stream = comm->GetStream();
 
   int numel = x->numel();
   auto dtype = x->dtype();
@@ -56,7 +48,7 @@ void CBroadcastKernel(const Context& dev_ctx,
                                      dtype,
                                      root,
                                      comm->GetXcclComm(),
-                                     *stream);
+                                     stream->raw_stream());
     VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. sent "
             << x->numel();
     if (out != x) {
@@ -73,7 +65,7 @@ void CBroadcastKernel(const Context& dev_ctx,
                                      dtype,
                                      root,
                                      comm->GetXcclComm(),
-                                     *stream);
+                                     stream->raw_stream());
     VLOG(3) << "rank " << comm->GetRank() << " invoke Bcast. received "
             << common::product(out->dims());
   }
@@ -89,5 +81,5 @@ PD_REGISTER_KERNEL(c_broadcast,
                    double,
                    int32_t,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

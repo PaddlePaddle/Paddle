@@ -20,7 +20,6 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/add_store_in_group_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_cluster_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/lowering_pass/lower_cinn_fusion_op_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/merge_reshape_with_broadcast_pass.h"
@@ -76,7 +75,6 @@ static void RunAndCheckResult(::pir::Program* program,
       common::errors::Unavailable("stage_1_pm fail to run program"));
 
   pir::PassManager stage_2_pm(ctx);
-  stage_2_pm.AddPass(cinn::dialect::ir::CreateAddStoreInGroupOpPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateCinnGroupClusterPass());
   stage_2_pm.AddPass(pir::CreateDeadCodeEliminationPass());
   stage_2_pm.AddPass(cinn::dialect::ir::CreateLowerCinnFusionOpPass());

@@ -69,8 +69,8 @@ python/paddle/incubate/autograd/composite_rules.py @xiaoguoguo626807 @JiabinYang
 python/paddle/incubate/autograd/primitives.py @xiaoguoguo626807 @JiabinYang @phlrain
 python/paddle/_typing @SigureMo @zrr1999 @gouzil
 python/requirements.txt @phlrain @jzhang533 @kolinwei
-test/dygraph_to_static @SigureMo @zrr1999 @gouzil
-test/sot @SigureMo @zrr1999 @gouzil
+test/dygraph_to_static @SigureMo @DrRyanHuang @zrr1999 @gouzil
+test/sot @SigureMo @DrRyanHuang @zrr1999 @gouzil
 tools/parallel_UT_rule.py @zhwesky2010 @wanghuancoder
 tools/windows/run_unittests.sh @zhwesky2010 @wanghuancoder
 .pre-commit-config.yaml @SigureMo @gouzil

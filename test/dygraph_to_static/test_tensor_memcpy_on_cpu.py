@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
+    BackendMode,
     Dy2StTestBase,
-    IrMode,
     ToStaticMode,
     disable_test_case,
     enable_to_static_guard,
@@ -99,7 +99,9 @@ class TestTensorCopyToCUDAWithWarningOnCPU(Dy2StTestBase):
         )
         return x1.place, x2.place, x2.numpy()
 
-    @disable_test_case((ToStaticMode.SOT_MGS10, IrMode.PIR))
+    @disable_test_case(
+        (ToStaticMode.SOT_MGS10, BackendMode.PHI | BackendMode.CINN)
+    )
     def test_with_warning_on_cpu(self):
         if not paddle.is_compiled_with_cuda():
             return

@@ -45,14 +45,14 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
 
   // squared_l2_norm_grad: dx = dout(it is a scalar value!) * x * 2.0
 
-  // int scale(Context* ctx, const T* x, T* y, int64_t len, bool
+  // int scale(Context* xpu_ctx, const T* x, T* y, int64_t len, bool
   // bias_after_scale, float _scale, float _bias);
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),
                      reinterpret_cast<XPUType*>(dx->data<T>()),
                      x.numel(),
                      false,
-                     dout_value_cpu * 2,
+                     static_cast<float>(dout_value_cpu * 2),
                      0.0f);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
@@ -64,5 +64,5 @@ PD_REGISTER_KERNEL(squared_l2_norm_grad,
                    ALL_LAYOUT,
                    phi::SquaredL2NormGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

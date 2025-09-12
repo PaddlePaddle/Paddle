@@ -40,7 +40,7 @@ void XPUFlattenUniqueKernelImpl(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   const auto* x_data = x.data<T>();
   int64_t x_len = x.numel();
-  int r = XPU_SUCCESS;
+  int r = 0;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int64_t unique_len_cpu = 0;
   int64_t* unique_len_xpu = RAII_GUARD.alloc_l3_or_gm<int64_t>(1);
@@ -116,15 +116,15 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
                             DenseTensor* counts) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-  int r = xpu::SUCCESS;
+  int r = 0;
   const auto* x_data = x.data<T>();
   auto* x_trans_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
-  std::vector<int> permute(x.dims().size());
+  std::vector<int64_t> permute(x.dims().size());
   std::iota(permute.begin(), permute.end(), 0);
   permute[axis] = 0;
   permute[0] = axis;
   if (axis != 0) {
-    auto x_shape = common::vectorize<int>(x.dims());
+    auto x_shape = common::vectorize<int64_t>(x.dims());
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 reinterpret_cast<const XPUType*>(x_data),
                                 x_trans_data,
@@ -284,7 +284,7 @@ void XPUDimUniqueKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
   DDim out_trans_dims = x_trans_dims;
   out_trans_dims[0] = unique_len;
-  auto out_trans_dims_vec = common::vectorize<int>(out_trans_dims);
+  auto out_trans_dims_vec = common::vectorize<int64_t>(out_trans_dims);
   if (axis != 0) {
     r = xpu::transpose<XPUType>(dev_ctx.x_context(),
                                 out_trans_data,

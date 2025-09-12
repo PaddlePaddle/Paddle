@@ -65,8 +65,8 @@ struct PDNode {
   };
 
   // this link to others
-  PDNode& LinksTo(const std::vector<PDNode*>& others);
-  PDNode& LinksFrom(const std::vector<PDNode*>& others);
+  PADDLE_API PDNode& LinksTo(const std::vector<PDNode*>& others);
+  PADDLE_API PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
     if (teller_) return teller_(node);
@@ -168,6 +168,20 @@ struct PDNode {
     return this;
   }
 
+  template <typename T>
+  PDNode* assert_op_attr_or(const std::string& attr_name1,
+                            const std::string& attr_name2,
+                            const T& attr) {
+    asserts_.emplace_back([=](Node* x) {
+      return x && x->IsOp() &&
+             ((x->Op()->HasAttr(attr_name1) &&
+               PADDLE_GET_CONST(T, x->Op()->GetAttr(attr_name1)) == attr) ||
+              (x->Op()->HasAttr(attr_name2) &&
+               PADDLE_GET_CONST(T, x->Op()->GetAttr(attr_name2)) == attr));
+    });
+    return this;
+  }
+
  private:
   PDNode(PDPattern* pattern,
          const std::string& name = "",
@@ -230,19 +244,20 @@ class PDPattern {
  public:
   using edge_t = std::pair<PDNode*, PDNode*>;
 
-  void AddEdge(PDNode* a, PDNode* b);
+  PADDLE_API void AddEdge(PDNode* a, PDNode* b);
 
-  PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
-  PDNode* NewNode(const std::string& name = NewID());
+  PADDLE_API PDNode* NewNode(PDNode::teller_t&& teller,
+                             const std::string& name = NewID());
+  PADDLE_API PDNode* NewNode(const std::string& name = NewID());
   PDNode* NewNode(const std::string& prefix, const std::string& name) {
     return NewNode(prefix + "/" + name);
   }
-  PDNode* RetrieveNode(const std::string& id) const;
+  PADDLE_API PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
-  std::string DotString() const;
+  PADDLE_API std::string DotString() const;
 
  private:
 #ifdef PADDLE_WITH_TESTING
@@ -250,7 +265,7 @@ class PDPattern {
   FRIEND_TEST(PDPattern, NewNode);
 #endif
 
-  static std::string NewID() { return "pdnode-" + std::to_string(id_++); }
+  PADDLE_API static std::string NewID();
 
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
@@ -327,19 +342,19 @@ class GraphPatternDetector {
 
   // Operate on the detected pattern.
   using handle_t =
-      std::function<void(const subgraph_t& /*hitted pattern*/, Graph*)>;
+      std::function<void(const subgraph_t& /*hit pattern*/, Graph*)>;
 
-  void operator()(Graph* graph, handle_t handler);
+  PADDLE_API void operator()(Graph* graph, handle_t handler);
 
   const PDPattern& pattern() const { return pattern_; }
   PDPattern* mutable_pattern() { return &pattern_; }
 
  private:
   // Mark the nodes that fits the pattern.
-  bool MarkPDNodesInGraph(const ir::Graph& graph);
+  PADDLE_API bool MarkPDNodesInGraph(const ir::Graph& graph);
 
   // Detect all the pattern and output the hit records.
-  std::vector<subgraph_t> DetectPatterns();
+  PADDLE_API std::vector<subgraph_t> DetectPatterns();
 
   // Remove duplicate patterns.
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
@@ -654,8 +669,8 @@ struct FC : public PatternBase {
 // named node:
 // fc
 // w, bias, output, residual_data
-struct FCMKLDNN : public PatternBase {
-  FCMKLDNN(PDPattern* pattern, const std::string& name_scope)
+struct FCONEDNN : public PatternBase {
+  FCONEDNN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc_mkldnn") {}
 
   PDNode* operator()(bool with_residual_data);
@@ -1585,8 +1600,8 @@ struct SelfAttention : public PatternBase {
 
 // Conv + ElementwiseAdd + an activation
 // This pattern can further fuse the conv related ops after the conv+bn fusion.
-struct ConvElementwiseaddAct : public PatternBase {
-  ConvElementwiseaddAct(PDPattern* pattern, const std::string& name_scope)
+struct ConvElementwiseAddAct : public PatternBase {
+  ConvElementwiseAddAct(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd_act") {}
 
   PDNode* operator()(PDNode* conv_in,
@@ -1631,9 +1646,9 @@ struct ConvElementwiseAdd2Act : public PatternBase {
 
 // Conv + ElementwiseAdd
 // This pattern should be used after ConvElementwiseAdd2Act or
-// ConvElementwiseadd pass
-struct ConvElementwiseadd : public PatternBase {
-  ConvElementwiseadd(PDPattern* pattern, const std::string& name_scope)
+// ConvElementwiseAdd pass
+struct ConvElementwiseAdd : public PatternBase {
+  ConvElementwiseAdd(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_elementwiseadd") {}
 
   PDNode* operator()(PDNode* conv_in);
@@ -1760,8 +1775,8 @@ struct UnsupportedBfloat16 : public PatternBase {
   PATTERN_DECL_NODE(op);
 };
 
-struct Bloat16Ops : public PatternBase {
-  Bloat16Ops(PDPattern* pattern, const std::string& name_scope)
+struct Bfloat16Ops : public PatternBase {
+  Bfloat16Ops(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "many_bfloat16_ops") {}
 
   PDNode* operator()();
@@ -1771,8 +1786,8 @@ struct Bloat16Ops : public PatternBase {
 
 // Pattern used for enforcing inplace computation for in-place computation
 // supporting DNNL ops. softmax, batch_norm and layer_norm
-struct MKLDNNInPlace : public PatternBase {
-  MKLDNNInPlace(PDPattern* pattern, const std::string& name_scope)
+struct ONEDNNInPlace : public PatternBase {
+  ONEDNNInPlace(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 

@@ -34,7 +34,7 @@ class DeformableConvV1OpMaker : public framework::OpProtoAndCheckerMaker {
              "[N, deformable_groups * kernel_w * kernel_h * 2, H, W");
     AddInput("Filter",
              "(Tensor) The Input Filter "
-             "The shape of the wight is "
+             "The shape of the weight is "
              "[num_filters, channel_in, kernel_h, kernel_w.");
     AddOutput("Output",
               "(Tensor) The output. "

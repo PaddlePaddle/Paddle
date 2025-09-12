@@ -15,6 +15,7 @@
 #include <glog/logging.h>
 #include "paddle/phi/core/enforce.h"
 
+#include "paddle/pir/include/core/block_argument.h"
 #include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_printer.h"
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
@@ -144,37 +145,79 @@ void TuplePopOp::VerifySig() {
 }
 
 void TuplePopOp::VerifyRegion() {
-  PADDLE_ENFORCE_EQ(
-      operand_source(0).HasOneUse(),
-      true,
-      common::errors::InvalidArgument(
-          "The outlet value of cf.tuple_pop can only be used once."));
+  if (auto arg = operand_source(0).dyn_cast<OpResult>()) {
+    PADDLE_ENFORCE_EQ(operand_source(0).HasOneUse(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "The outlet value of cf.tuple_pop can only be used "
+                          "once except ShadowOutputOp."));
 
-  // Verify stack validity:
-  if (has_container()) {
-    // can be verified only if TuplePopOp and TuplePushOp are in the same
-    // sub_program
-    auto pop_op = container_interface().tuple_pop_op();
-    PADDLE_ENFORCE(
-        *this == pop_op,
-        common::errors::InvalidArgument(
-            "The pop_op of tuple_pop_op must be this tuple_pop_op self."));
-
-    auto inlet_size = tuple_push_op().tuple_size();
-    PADDLE_ENFORCE(
-        inlet_size == tuple_size(),
-        common::errors::InvalidArgument(
-            "The pop elements size must equal to push elements size."));
-    for (size_t index = 0; index < inlet_size; ++index) {
+    // Verify stack validity:
+    if (has_container()) {
+      // can be verified only if TuplePopOp and TuplePushOp are in the same
+      // sub_program
+      auto pop_op = container_interface().tuple_pop_op();
       PADDLE_ENFORCE(
-          outlet_element(index).type() == inlet_element(index).type(),
+          *this == pop_op,
           common::errors::InvalidArgument(
-              "The %d element's push type (%s) isn't equal to pop type (%s)",
-              index,
-              outlet_element(index).type(),
-              inlet_element(index).type()));
+              "The pop_op of tuple_pop_op must be this tuple_pop_op self."));
+
+      auto inlet_size = tuple_push_op().tuple_size();
+      PADDLE_ENFORCE(
+          inlet_size == tuple_size(),
+          common::errors::InvalidArgument(
+              "The pop elements size must equal to push elements size."));
+      auto CheckType = [](const pir::Type &type1,
+                          const pir::Type &type2) -> bool {
+        if (type1.isa<DenseTensorType>() && type2.isa<DenseTensorType>()) {
+          DenseTensorType::Dim input_dims =
+              type1.dyn_cast<pir::DenseTensorType>().dims();
+          DenseTensorType::Dim output_dims =
+              type2.dyn_cast<pir::DenseTensorType>().dims();
+          PADDLE_ENFORCE_EQ(
+              input_dims.size(),
+              output_dims.size(),
+              common::errors::InvalidArgument(
+                  "The input and output dims size must be equal"));
+
+          for (int i = 0; i < input_dims.size(); i++) {
+            if (input_dims[i] == -1 || output_dims[i] == -1) {
+              continue;
+            }
+            if (input_dims[i] != output_dims[i]) {
+              return false;
+            }
+          }
+          return true;
+        } else {
+          if (type1 == type2) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+      };
+
+      for (size_t index = 0; index < inlet_size; ++index) {
+        bool check_result = CheckType(outlet_element(index).type(),
+                                      inlet_element(index).type());
+        PADDLE_ENFORCE(
+            check_result,
+            common::errors::InvalidArgument(
+                "tuple_pop[id:%d]: The %d element's push type (%s) isn't equal "
+                "to pop type (%s)",
+                operation()->id(),
+                index,
+                outlet_element(index).type(),
+                inlet_element(index).type()));
+      }
     }
+
+  } else {
+    LOG(WARNING)
+        << "TuplePop's outlet used by ShadowOutputOp added by dy2static !";
   }
+
   VLOG(4) << "End Verifying for TuplePopOp.";
 }
 

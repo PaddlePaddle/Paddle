@@ -16,7 +16,24 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/reduce_min_grad_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_amin_grad_kernel.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void ReduceMinGradKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         const DenseTensor& out,
+                         const DenseTensor& out_grad,
+                         const IntArray& dims,
+                         bool keep_dim,
+                         bool reduce_all,
+                         DenseTensor* x_grad) {
+  ReduceAMinGradKernel<T, Context>(
+      dev_ctx, x, out, out_grad, dims.GetData(), keep_dim, reduce_all, x_grad);
+}
+
+}  // namespace phi
 
 PD_REGISTER_KERNEL(min_grad,
                    CPU,

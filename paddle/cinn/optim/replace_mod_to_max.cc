@@ -16,10 +16,10 @@
 
 #include <unordered_map>
 
-#include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/optim/ir_simplify.h"
 
 namespace cinn {
 namespace optim {

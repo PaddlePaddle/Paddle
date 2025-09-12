@@ -24,7 +24,6 @@ paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -22,10 +22,10 @@ namespace phi {
 
 // WHY add this op?
 // This op is used for convert fused_all_reduce_op_handle in Graph to Program.
-// i.e, fused_all_reduce_op_handle = check_memory_continue + c_allreduce_sum
+// i.e, fused_all_reduce_op_handle = check_memory_continue + all_reduce_sum
 // There are two reasons that check_memory_continue is added:
-// 1. c_allreduce_sum takes single tensor as input, while
-// fused_all_reduce_op_handle takse tensor array as input, so we need a op to
+// 1. all_reduce_sum takes single tensor as input, while
+// fused_all_reduce_op_handle takes tensor array as input, so we need a op to
 // convert tensor array into a single tensor
 // 2. fused_all_reduce_op_handle has a premise that all tensor's addresses are
 // continue, so we need a op to do the check.

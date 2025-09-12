@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/ast_gen_ius/ast_gen.h"
+#include "paddle/cinn/hlir/pe/reduction.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
@@ -34,13 +35,75 @@ bool IsReduceBool(const ir::Expr& lhs, const ir::Expr& rhs) {
   return lhs.type().is_bool() || rhs.type().is_bool();
 }
 
+inline ir::Expr PackArgIdxStructExpr(ir::Tensor tensor,
+                                     ir::Expr value,
+                                     const std::vector<ir::Var>& reduce_axes) {
+  ir::Expr index_value;
+  if (reduce_axes.empty()) {
+    // default initialization, for reduce init
+    index_value = ir::Expr(0);
+    index_value->set_type(common::Int(32));
+    if (tensor->type().is_int(64)) {
+      index_value->set_type(common::Int(64));
+    }
+  } else {
+    index_value = (Expr)reduce_axes[0];
+    for (size_t i = 1; i < reduce_axes.size(); ++i) {
+      PADDLE_ENFORCE_EQ(reduce_axes[i]->lower_bound.as_int32(),
+                        0,
+                        ::common::errors::PreconditionNotMet(
+                            "Reduce axis should start from 0."));
+      index_value = ir::Mul::Make(index_value, reduce_axes[i]->upper_bound);
+      index_value = ir::Add::Make(index_value, (Expr)reduce_axes[i]);
+    }
+  }
+
+  return ir::Call::Make(tensor->type(),
+                        "argidx" +
+                            hlir::pe::Type2StrForArgReduce(value.type()) +
+                            hlir::pe::Type2StrForArgReduce(tensor->type()),
+                        {value, index_value},
+                        {},
+                        ir::CallType::Extern);
+}
+
+Expr ReplaceArgReduceInitialValue(ir::Expr body,
+                                  ir::Tensor tensor,
+                                  Expr init_val) {
+  ir::Reduce* reduce_node = body.As<ir::Reduce>();
+  if (!reduce_node) {
+    // TODO(heqianyue): actually, this is weird, why would this happen anyway?
+    return init_val;
+  }
+
+  if (reduce_node->reduce_type == ir::Reduce::kArgmax ||
+      reduce_node->reduce_type == ir::Reduce::kArgmin) {
+    std::vector<ir::Var> reduce_axes;
+    return PackArgIdxStructExpr(tensor, init_val, reduce_axes);
+  }
+  return init_val;  // fall through
+}
+
 StmtRef ConvertReduceBody(ir::Expr body,
                           ir::Tensor tensor,
-                          const std::vector<Expr>& axis_exprs) {
+                          const std::vector<Expr>& axis_exprs,
+                          const std::vector<ir::Var>& reduce_axes) {
   ir::Reduce* reduce_node = body.As<ir::Reduce>();
   if (!reduce_node) {
     return Store(tensor, body, axis_exprs);
   }
+
+  auto argidx_reduce_fn = [&](const char* func_name) {
+    auto pack_argidx =
+        PackArgIdxStructExpr(tensor, reduce_node->body, reduce_axes);
+    return Store(tensor,
+                 ir::Call::Make(tensor->type(),
+                                func_name,
+                                {tensor(axis_exprs), pack_argidx},
+                                {},
+                                ir::CallType::Intrinsic),
+                 axis_exprs);
+  };
 
   switch (reduce_node->reduce_type) {
     case ir::Reduce::kSum:
@@ -67,6 +130,20 @@ StmtRef ConvertReduceBody(ir::Expr body,
       return Store(tensor, tensor(axis_exprs) && reduce_node->body, axis_exprs);
     case ir::Reduce::kAny:
       return Store(tensor, tensor(axis_exprs) || reduce_node->body, axis_exprs);
+    case ir::Reduce::kVariance:
+      return Store(tensor,
+                   ir::Call::Make(tensor->type(),
+                                  hlir::pe::kVarianceFuncName,
+                                  {tensor(axis_exprs), reduce_node->body},
+                                  {},
+                                  ir::CallType::Intrinsic),
+                   axis_exprs);
+    case ir::Reduce::kArgmax: {
+      return argidx_reduce_fn(hlir::pe::kArgmaxFuncName);
+    }
+    case ir::Reduce::kArgmin: {
+      return argidx_reduce_fn(hlir::pe::kArgminFuncName);
+    }
     default:
       CINN_NOT_IMPLEMENTED
   }
@@ -99,6 +176,12 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     tensor_group->Insert(init_tensor);
     tensor_group->MarkShareMemBuffer(tensor, init_tensor);
     tensor_group->CtrlDepend(tensor, init_tensor);
+    const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
+
+    // replace initial value for argmax/argmin
+    // TODO(heqianyue): Welford variance can also replace initial value in here
+    init_value =
+        ReplaceArgReduceInitialValue(tensor->body(), tensor, init_value);
     StmtRef init_body = Store(init_tensor, init_value, axis_exprs);
     // create schedule block itervars, i0,i1...
     std::vector<ir::Var> block_vars;
@@ -106,7 +189,6 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
     // reduce body and reduce init schedule block should have different objects
     // for same axis so we re-create objects
     std::vector<Var> axis_vars = cinn::common::GenDefaultAxis(axis_len);
-    const std::vector<ir::Var>& reduce_axis = tensor->reduce_axis;
     VLOG(4) << "ast gen: tensor init_body is " << init_body;
     for (int i = 0; i < shape.size(); ++i) {
       block_vars.push_back(Var(Expr(0),
@@ -115,8 +197,8 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                /*is_reduce = */ false));
       optim::ReplaceVarWithExpr(init_body, axis[i], block_vars.back());
       axis_vars[i]->is_reduce_axis = false;
+      if (shape[i].type() == Int(64)) axis_vars[i]->set_type(Int(64));
       iter_values.push_back(axis_vars[i]);
-      ir::TryElevateInt32ToInt64({ir::Expr(axis_vars[i]), shape[i]});
     }
     VLOG(4) << "iter_value.size() and block_vars.size() is "
             << iter_values.size() << " " << block_vars.size();
@@ -128,7 +210,8 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                          BlockRef({init_body}));
 
     // For the remaining reduce axis, make reduce body
-    StmtRef reduce_body = ConvertReduceBody(tensor->body(), tensor, axis_exprs);
+    StmtRef reduce_body =
+        ConvertReduceBody(tensor->body(), tensor, axis_exprs, reduce_axis);
 
     VLOG(4) << "ast gen: reduce body is " << reduce_body;
 
@@ -144,8 +227,8 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                                       cinn::UniqName("i" + std::to_string(i)),
                                       /*is_reduce = */ false));
       reduce_axis_vars[i]->is_reduce_axis = false;
+      if (shape[i].type() == Int(64)) axis_vars[i]->set_type(Int(64));
       reduce_iter_values.push_back(axis_vars[i]);
-      ir::TryElevateInt32ToInt64({ir::Expr(axis_vars[i]), shape[i]});
     }
     VLOG(4) << "ast gen: reduce body is after replace 0" << reduce_body;
     for (int i = 0; i < reduce_axis.size(); ++i) {
@@ -196,9 +279,6 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
                            tensor->name,
                            BlockRef({reduce_body}));
     for (int i = static_cast<int>(reduce_axis.size()) - 1; i >= 0; --i) {
-      ir::TryElevateInt32ToInt64({reduce_axis[i],
-                                  reduce_axis[i]->lower_bound,
-                                  reduce_axis[i]->upper_bound});
       reduce_body = For(reduce_axis[i],
                         reduce_axis[i]->lower_bound,
                         reduce_axis[i]->upper_bound,
@@ -230,6 +310,7 @@ StmtRef AstGen::Build(const ir::Tensor& tensor, TensorGroup* tensor_group) {
       block_vars.push_back(Var(
           Expr(0), shape[i], cinn::UniqName("i" + std::to_string(i)), false));
       optim::ReplaceVarWithExpr(body, axis[i], block_vars[i]);
+      if (shape[i].type() == Int(64)) axis_vars[i]->set_type(Int(64));
       axis_vars[i]->is_reduce_axis = false;
       iter_values.push_back(axis_vars[i]);
     }

@@ -142,7 +142,7 @@ FunctionProto *FunctionProtoRegistry::Lookup(const std::string &name) {
   return nullptr;
 }
 
-FunctionProto *FunctionProtoRegistry::Register(absl::string_view name,
+FunctionProto *FunctionProtoRegistry::Register(std::string name,
                                                FunctionProto *x) {
 #ifdef CINN_WITH_DEBUG
   if (FLAGS_verbose_function_register) {

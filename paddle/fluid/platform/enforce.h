@@ -59,7 +59,6 @@ limitations under the License. */
 #include <execinfo.h>
 #endif
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "glog/logging.h"
 #include "paddle/common/errors.h"
 #include "paddle/common/flags.h"

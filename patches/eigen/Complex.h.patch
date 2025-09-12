@@ -1,7 +1,7 @@
-diff --git a/old/Complex.h b/new/Complex.h
-index f6f1b8c..7558e8c 100644
---- a/old/Complex.h
-+++ b/new/Complex.h
+diff --git a/Eigen/src/Core/arch/SSE/Complex.h b/Eigen/src/Core/arch/SSE/Complex.h
+index f6f1b8c9f..7558e8c70 100644
+--- a/Eigen/src/Core/arch/SSE/Complex.h
++++ b/Eigen/src/Core/arch/SSE/Complex.h
 @@ -17,7 +17,7 @@ namespace internal {
  //---------- float ----------
  struct Packet2cf

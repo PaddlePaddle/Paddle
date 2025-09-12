@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 
 import paddle
 from paddle import base, tensor
@@ -60,6 +60,33 @@ class TestTraceOpCase2(TestTraceOp):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
+        self.__class__.exist_check_grad = True
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+class TestTraceOpCase3(TestTraceOp):
+    def init_config(self):
+        self.case = np.random.randn(0, 3, 2).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -1, 'axis1': 2, 'axis2': -2}
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+class TestTraceOpCase4(TestTraceOp):
+    def init_config(self):
+        self.case = np.random.randn(2, 30, 3).astype('float64')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -1, 'axis1': 2, 'axis2': -2}
         self.target = np.trace(
             self.inputs['Input'],
             offset=self.attrs['offset'],
@@ -149,7 +176,6 @@ class TestTraceBF16Op2(TestTraceBF16Op1):
 
 
 class TestTraceAPICase(unittest.TestCase):
-
     def test_case1(self):
         with paddle.static.program_guard(paddle.static.Program()):
             case = np.random.randn(2, 20, 2, 3).astype('float32')
@@ -175,9 +201,7 @@ class TestTraceAPICase(unittest.TestCase):
 
 class TestTraceAPIZerodimCase(unittest.TestCase):
     def setUp(self):
-        self.places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
         self.x = np.random.random([5, 0, 0, 0]).astype('float32')
 
     def test_dygraph(self):

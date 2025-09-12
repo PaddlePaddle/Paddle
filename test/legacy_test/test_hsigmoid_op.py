@@ -259,9 +259,7 @@ class TestHSigmoidOpSparse(OpTest):
                 (1, 0, 0, -1, -1),
                 (0, 1, -1, -1, -1),
             ]
-        ).astype(
-            'int64'
-        )  # np.array to store
+        ).astype('int64')  # np.array to store
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': True}
         self.inputs = {
@@ -312,9 +310,7 @@ class TestHSigmoidOpWithCustomTree(OpTest):
                 (1, 0, 0, -1, -1),
                 (0, 1, -1, -1, -1),
             ]
-        ).astype(
-            'int64'
-        )  # np.array to store
+        ).astype('int64')  # np.array to store
         bias = np.random.random((num_classes - 1, 1))
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {
@@ -373,9 +369,7 @@ class TestHSigmoidOpWithCustomTreeWithoutBias(OpTest):
                 (1, 0, 0, -1, -1),
                 (0, 1, -1, -1, -1),
             ]
-        ).astype(
-            'int64'
-        )  # np.array to store
+        ).astype('int64')  # np.array to store
         # bias = np.random.random((num_classes - 1, 1)).astype("float32")
         self.attrs = {'num_classes': num_classes, 'is_sparse': False}
         self.inputs = {

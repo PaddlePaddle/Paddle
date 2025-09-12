@@ -24,6 +24,10 @@ from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,
 )
+from paddle.distributed.communication.serialization_utils import (
+    convert_object_to_tensor,
+    convert_tensor_to_object,
+)
 from paddle.framework.recall_error import check_naninf
 from paddle.utils import strtobool
 
@@ -58,24 +62,37 @@ class SendRecvMeta:
     def init_or_erase_meta(self):
         self.send_shape_message = None
         self.send_dtype_message = None
+        self.send_key_message = None
 
         self.recv_shape_message = None
         self.recv_dtype_message = None
         self.recv_stop_gradient = None
+        self.recv_key_message = None
 
         self.has_send_meta = False
         self.has_recv_meta = False
 
-    def recv_meta(self, group):
-        src_rank = _hcg._get_p2p_prev_rank()
+    def recv_meta(self, group, reverse=False, broadcast=False):
+        if reverse:
+            src_rank = _hcg._get_p2p_next_rank()
+        else:
+            src_rank = _hcg._get_p2p_prev_rank()
 
         data_numel = paddle.empty([1], dtype="int64")
-        paddle.distributed.recv(data_numel, src=src_rank, group=group)
+        if not broadcast:
+            paddle.distributed.recv(data_numel, src=src_rank, group=group)
+        else:
+            paddle.distributed.broadcast(
+                data_numel, src=group.ranks[0], group=group
+            )
         data_numel = data_numel.item()
 
         data = paddle.empty([data_numel], dtype="int64")
 
-        paddle.distributed.recv(data, src=src_rank, group=group)
+        if not broadcast:
+            paddle.distributed.recv(data, src=src_rank, group=group)
+        else:
+            paddle.distributed.broadcast(data, src=group.ranks[0], group=group)
         data = data.numpy().tolist()
         # parse data
         tensor_type = data.pop(0)
@@ -88,6 +105,7 @@ class SendRecvMeta:
         shapes = []
         dtypes = []
         stop_grads = []
+        keys = []
 
         for _ in range(tensor_num):
             shape_len = data.pop(0)
@@ -95,26 +113,44 @@ class SendRecvMeta:
             data = data[shape_len:]
             dtype_number = data.pop(0)
             stop_gradient = bool(data.pop(0))
+            # ------------------tensor key meta send-------------
+            key_len = data.pop(0)
+            key_data = data[:key_len]
+            if key_len > 0:
+                key = convert_tensor_to_object(
+                    paddle.to_tensor(key_data).astype("uint8"),
+                    paddle.to_tensor(key_len),
+                )
+            else:
+                key = None
+            data = data[key_len:]
+            # ------------------tensor key meta send-------------
 
             shapes.append(shape)
             dtypes.append(dtype_number)
             stop_grads.append(stop_gradient)
+            keys.append(key)
 
-        assert (
-            len(data) == 0
-        ), f"send data must be parsed zero, now it is {data}"
+        assert len(data) == 0, (
+            f"send data must be parsed zero, now it is {data}"
+        )
 
         if tensor_type == 0:
             self.recv_shape_message = shapes[0]
             self.recv_dtype_message = dtypes[0]
             self.recv_stop_gradient = stop_grads[0]
+            self.recv_key_message = keys[0]
         else:
             self.recv_shape_message = tuple(shapes)
             self.recv_dtype_message = tuple(dtypes)
             self.recv_stop_gradient = tuple(stop_grads)
+            self.recv_key_message = tuple(keys)
 
-    def send_meta(self, tensor, group):
-        dst_rank = _hcg._get_p2p_next_rank()
+    def send_meta(self, tensor, group, reverse=False, broadcast=False):
+        if reverse:
+            dst_rank = _hcg._get_p2p_prev_rank()
+        else:
+            dst_rank = _hcg._get_p2p_next_rank()
 
         if isinstance(tensor, paddle.Tensor):
             tensor_type = 0
@@ -122,6 +158,9 @@ class SendRecvMeta:
         elif isinstance(tensor, tuple):
             tensor_type = 1
             tensors_to_send = list(tensor)
+        elif isinstance(tensor, list):
+            tensor_type = 1
+            tensors_to_send = tensor
         else:
             raise TypeError(
                 "tensor must be paddle.Tensor or Tuple of paddle.Tensor"
@@ -135,56 +174,88 @@ class SendRecvMeta:
 
         for t in tensors_to_send:
             assert isinstance(t, paddle.Tensor)
+            # ------------------tensor key meta send-------------
+            if hasattr(t, "key"):
+                current_tensor_name = t.key
+                key_data_tensor, _ = convert_object_to_tensor(
+                    current_tensor_name
+                )
+                key_data = key_data_tensor.numpy().tolist()
+            else:
+                key_data = []
+            # ------------------tensor key meta send-------------
             data.extend(
                 [
                     len(t.shape),
                     *t.shape,
                     paddle_2_number(t.dtype),
                     int(t.stop_gradient),
+                    len(key_data),
+                    *key_data,
                 ]
             )
 
         data_tensor = paddle.to_tensor(data).astype("int64")
         data_numel = np.prod(data_tensor.shape)
 
-        paddle.distributed.send(
-            paddle.to_tensor(data_numel).astype("int64"),
-            dst=dst_rank,
-            group=group,
-        )
-        paddle.distributed.send(data_tensor, dst=dst_rank, group=group)
+        if not broadcast:
+            paddle.distributed.send(
+                paddle.to_tensor(data_numel).astype("int64"),
+                dst=dst_rank,
+                group=group,
+            )
+            paddle.distributed.send(data_tensor, dst=dst_rank, group=group)
+        else:
+            assert group.rank == 0
+            paddle.distributed.broadcast(
+                paddle.to_tensor(data_numel).astype("int64"),
+                src=group.ranks[0],
+                group=group,
+            )
+            paddle.distributed.broadcast(
+                data_tensor, src=group.ranks[0], group=group
+            )
 
     def _obtain_send_message(self, tensor):
         if isinstance(tensor, paddle.Tensor):
-            return tensor.shape, paddle_2_number(tensor.dtype)
+            key = tensor.key if hasattr(tensor, "key") else None
+            return tensor.shape, paddle_2_number(tensor.dtype), key
         else:
             shapes = []
             dtypes = []
+            keys = []
             for d in tensor:
                 assert isinstance(d, paddle.Tensor)
                 if d.stop_gradient:
                     continue
-                shape, dtype = self._obtain_send_message(d)
+                shape, dtype, key = self._obtain_send_message(d)
                 shapes.append(shape)
                 dtypes.append(dtype)
-            return tuple(shapes), tuple(dtypes)
+                keys.append(key)
+            return tuple(shapes), tuple(dtypes), tuple(keys)
 
     def set_send_message(self, tensor):
         (
             self.send_shape_message,
             self.send_dtype_message,
+            self.send_key_message,  # (key1_str, key2_str, key3_str ... )
         ) = self._obtain_send_message(tensor)
 
     def check_send_message(self, tensor):
         if self.send_shape_message is None or self.send_dtype_message is None:
             return
-        actual_shape, actual_dtype = self._obtain_send_message(tensor)
-        assert (
-            self.send_shape_message == actual_shape
-        ), f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
-        assert (
-            self.send_dtype_message == actual_dtype
-        ), f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
+        actual_shape, actual_dtype, actual_key = self._obtain_send_message(
+            tensor
+        )
+        assert self.send_shape_message == actual_shape, (
+            f"send_shape_message: {self.send_shape_message}, actual_shape: {actual_shape}"
+        )
+        assert self.send_dtype_message == actual_dtype, (
+            f"send_dtype_message: {self.send_dtype_message}, actual_dtype: {actual_dtype}"
+        )
+        assert self.send_key_message == actual_key, (
+            f"send_key_message: {self.send_key_message}, actual_key: {actual_key}"
+        )
 
     def __repr__(self):
         return f"send_shape_message: {self.send_shape_message}, send_dtype_message: {self.send_dtype_message}, recv_shape_message: {self.recv_shape_message}, recv_dtype_message: {self.recv_dtype_message}, recv_stop_gradient: {self.recv_stop_gradient}"
@@ -199,9 +270,9 @@ def _is_valid_send_recv_partial(tensor, mp_degree):
 
 
 def _send_on_calc_stream(tensor, group, dst, nranks=1, rank_id=0):
-    assert (
-        group is not None
-    ), "Group should be an instance for _send_on_calc_stream."
+    assert group is not None, (
+        "Group should be an instance for _send_on_calc_stream."
+    )
     dst_rank_in_group = group.get_group_rank(dst)
     if _is_valid_send_recv_partial(tensor, nranks):
         return group.process_group.send_partial_on_calc_stream(
@@ -214,9 +285,9 @@ def _send_on_calc_stream(tensor, group, dst, nranks=1, rank_id=0):
 
 
 def _recv_on_calc_stream(tensor, group, src, nranks=1, rank_id=0):
-    assert (
-        group is not None
-    ), "Group should be an instance for _recv_on_calc_stream."
+    assert group is not None, (
+        "Group should be an instance for _recv_on_calc_stream."
+    )
     src_rank_in_group = group.get_group_rank(src)
     if _is_valid_send_recv_partial(tensor, nranks):
         return group.process_group.recv_partial_on_calc_stream(
@@ -579,6 +650,7 @@ def _p2p_helper(
     send_recv_meta=None,
     batch_p2p_comm=True,
     wait_on_reqs=True,
+    dynamic_shape=False,
 ):
     global _hcg
 
@@ -590,9 +662,11 @@ def _p2p_helper(
     recv_shape_msg = send_recv_meta.recv_shape_message
     recv_dtype_msg = send_recv_meta.recv_dtype_message
     recv_stop_gradient = send_recv_meta.recv_stop_gradient
+    recv_key_msg = send_recv_meta.recv_key_message
 
     send_shape_msg = send_recv_meta.send_shape_message
     send_dtype_msg = send_recv_meta.send_dtype_message
+    # backward has no key meta message
 
     # model parallel message
     mp_group = _hcg.get_model_parallel_group()
@@ -607,6 +681,8 @@ def _p2p_helper(
                     shape=shape, dtype=number_2_dtype(recv_dtype_msg[idx])
                 )
                 tmp.stop_gradient = recv_stop_gradient[idx]
+                if recv_key_msg[idx] is not None:
+                    tmp.key = recv_key_msg[idx]
                 tensor_recv_prev.append(tmp)
             tensor_recv_prev = tuple(tensor_recv_prev)
         else:
@@ -614,8 +690,13 @@ def _p2p_helper(
                 shape=recv_shape_msg, dtype=number_2_dtype(recv_dtype_msg)
             )
             tensor_recv_prev.stop_gradient = recv_stop_gradient
+            if recv_key_msg is not None:
+                tensor_recv_prev.key = recv_key_msg
 
     if recv_next:
+        if dynamic_shape:
+            send_shape_msg = send_recv_meta.recv_shape_message
+            send_dtype_msg = send_recv_meta.recv_dtype_message
         if isinstance(send_shape_msg, tuple):
             tensor_recv_next = []
             for idx, shape in enumerate(send_shape_msg):
@@ -649,24 +730,67 @@ def _p2p_helper(
 
 
 class P2pHelper:
-    def __init__(self, use_cache=True):
+    def __init__(self, use_cache=True, dynamic_shape=False):
         self._send_recv_meta = SendRecvMeta()
         self._use_cache = use_cache
+        self._dynamic_shape = dynamic_shape
 
-    def _send_meta(self, output_tensor, skip_check_meta=False):
-        if not self._send_recv_meta.has_send_meta:
-            self._send_recv_meta.set_send_message(output_tensor)
-            self._send_recv_meta.send_meta(
-                output_tensor, _hcg.get_pipe_parallel_group()
-            )
-            self._send_recv_meta.has_send_meta = self._use_cache
-        elif not skip_check_meta:
-            self._send_recv_meta.check_send_message(output_tensor)
+        if dynamic_shape:
+            self._send_recv_meta_list = []
+            self._dynamic_cnt = 0
 
-    def _recv_meta(self):
-        if not self._send_recv_meta.has_recv_meta:
-            self._send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
-            self._send_recv_meta.has_recv_meta = self._use_cache
+    def _send_meta(self, output_tensor, skip_check_meta=False, reverse=False):
+        if not self._dynamic_shape:
+            if not self._send_recv_meta.has_send_meta:
+                self._send_recv_meta.set_send_message(output_tensor)
+                self._send_recv_meta.send_meta(
+                    output_tensor,
+                    _hcg.get_pipe_parallel_group(),
+                    reverse=reverse,
+                )
+                self._send_recv_meta.has_send_meta = self._use_cache
+            elif not skip_check_meta:
+                self._send_recv_meta.check_send_message(output_tensor)
+        else:
+            if len(self._send_recv_meta_list) <= self._dynamic_cnt:
+                meta = SendRecvMeta()
+                meta.set_send_message(output_tensor)
+                meta.send_meta(
+                    output_tensor,
+                    _hcg.get_pipe_parallel_group(),
+                    reverse=reverse,
+                )
+                meta.has_send_meta = self._use_cache
+                self._send_recv_meta_list.append(meta)
+                self._send_recv_meta = meta
+            elif not skip_check_meta:
+                meta = self._send_recv_meta_list[self._dynamic_cnt]
+                meta.check_send_message(output_tensor)
+                self._send_recv_meta = meta
+
+    def _recv_meta(self, reverse=False):
+        if not self._dynamic_shape:
+            if not self._send_recv_meta.has_recv_meta:
+                self._send_recv_meta.recv_meta(
+                    _hcg.get_pipe_parallel_group(), reverse=reverse
+                )
+                self._send_recv_meta.has_recv_meta = self._use_cache
+        else:
+            if len(self._send_recv_meta_list) <= self._dynamic_cnt:
+                meta = SendRecvMeta()
+                meta.recv_meta(_hcg.get_pipe_parallel_group(), reverse=reverse)
+                meta.has_recv_meta = self._use_cache
+                self._send_recv_meta_list.append(meta)
+                self._send_recv_meta = meta
+            elif not self._send_recv_meta_list[self._dynamic_cnt].has_recv_meta:
+                meta = self._send_recv_meta_list[self._dynamic_cnt]
+                meta.recv_meta(_hcg.get_pipe_parallel_group(), reverse=reverse)
+                meta.has_recv_meta = self._use_cache
+                self._send_recv_meta = meta
+            else:
+                self._send_recv_meta = self._send_recv_meta_list[
+                    self._dynamic_cnt
+                ]
 
     def clear_meta_cache(self):
         self._send_recv_meta.init_or_erase_meta()
@@ -688,18 +812,34 @@ class P2pHelper:
                 sync_recv=sync_recv,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+            if self._dynamic_shape:
+                self._dynamic_cnt += 1
+
         if _timers is not None:
             _timers("recv_forward").stop()
         return input_tensor
 
-    def recv_backward(self, pp_last_stage, sync_recv=True, batch_p2p_comm=True):
+    def recv_backward(
+        self,
+        pp_last_stage,
+        sync_recv=True,
+        batch_p2p_comm=True,
+    ):
         global _timers
         if _timers is not None:
             _timers("recv_backward").start()
+
+        need_increase_cnt = False
+
         if pp_last_stage:
             output_tensor_grad = None
         else:
+            if self._dynamic_shape:
+                self._recv_meta(reverse=True)
+                need_increase_cnt = True
+
             _, output_tensor_grad, _ = _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=None,
@@ -708,9 +848,15 @@ class P2pHelper:
                 sync_recv=sync_recv,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+
+        if self._dynamic_shape and need_increase_cnt:
+            self._dynamic_cnt += 1
+
         if _timers is not None:
             _timers("recv_backward").stop()
+
         return output_tensor_grad
 
     def send_forward(
@@ -723,9 +869,9 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
+
         if not pp_last_stage:
             self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
-
             _p2p_helper(
                 tensor_send_next=output_tensor,
                 tensor_send_prev=None,
@@ -733,7 +879,11 @@ class P2pHelper:
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+            if self._dynamic_shape:
+                self._dynamic_cnt += 1
+
         if _timers is not None:
             _timers("send_forward").stop()
 
@@ -743,7 +893,10 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_backward").start()
+
         if not pp_first_stage:
+            if self._dynamic_shape:
+                self._send_meta(input_tensor_grad, reverse=True)
             _p2p_helper(
                 tensor_send_next=None,
                 tensor_send_prev=input_tensor_grad,
@@ -751,7 +904,10 @@ class P2pHelper:
                 recv_next=False,
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
+                dynamic_shape=self._dynamic_shape,
             )
+            if self._dynamic_shape:
+                self._dynamic_cnt += 1
         if _timers is not None:
             _timers("send_backward").stop()
 
@@ -761,6 +917,11 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_forward_recv_backward").start()
+
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_forward_recv_backward function doesn't support dynamic_shape now"
+        )
+
         if pp_last_stage:
             output_tensor_grad = None
         else:
@@ -782,6 +943,11 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_forward").start()
+
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_backward_recv_forward function doesn't support dynamic_shape now"
+        )
+
         if pp_first_stage:
             input_tensor = None
         else:
@@ -810,6 +976,10 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_forward_backward_recv_forward_backward").start()
+
+        assert not self._dynamic_shape, (
+            "p2p_helper.send_forward_backward_recv_forward_backward function doesn't support dynamic_shape now"
+        )
 
         if output_tensor is not None:
             self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
@@ -842,11 +1012,18 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_forward_recv_forward").start()
 
+        need_increase_cnt = False
+
         if output_tensor is not None:
-            self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
+            self._send_meta(
+                output_tensor,
+                skip_check_meta=skip_check_meta,
+            )
+            need_increase_cnt = True
 
         if recv_prev:
             self._recv_meta()
+            need_increase_cnt = True
 
         input_tensor, _, wait_handles = _p2p_helper(
             tensor_send_next=output_tensor,
@@ -860,6 +1037,9 @@ class P2pHelper:
         )
         if _timers is not None:
             _timers("send_forward_recv_forward").stop()
+
+        if self._dynamic_shape and need_increase_cnt:
+            self._dynamic_cnt += 1
 
         if overlap_p2p_comm:
             return input_tensor, wait_handles
@@ -875,6 +1055,17 @@ class P2pHelper:
         global _timers
         if _timers is not None:
             _timers("send_backward_recv_backward").start()
+
+        if self._dynamic_shape:
+            need_increase_cnt = False
+            if input_tensor_grad is not None:
+                self._send_meta(input_tensor_grad, reverse=True)
+                need_increase_cnt = True
+
+            if recv_next:
+                self._recv_meta(reverse=True)
+                need_increase_cnt = True
+
         _, output_tensor_grad, wait_handles = _p2p_helper(
             tensor_send_next=None,
             tensor_send_prev=input_tensor_grad,
@@ -884,9 +1075,13 @@ class P2pHelper:
             send_recv_meta=self._send_recv_meta,
             batch_p2p_comm=batch_p2p_comm,
             wait_on_reqs=(not overlap_p2p_comm),
+            dynamic_shape=self._dynamic_shape,
         )
         if _timers is not None:
             _timers("send_backward_recv_backward").stop()
+
+        if self._dynamic_shape and need_increase_cnt:
+            self._dynamic_cnt += 1
 
         if overlap_p2p_comm:
             return output_tensor_grad, wait_handles

@@ -132,6 +132,10 @@ void GammainccKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   auto* y_data = y.data<T>();

@@ -955,6 +955,31 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (resize_inputs.find("SizeTensor") != resize_inputs.end()) {
 #if IS_TRT_VERSION_GE(8200)
         if (desc.Input("SizeTensor").size() == 2) {
+          // TODO(lizexu123): When SizeTensor exists, at least one of the input
+          // variable names must contain 'shape' in order for TRT conversion to
+          // proceed; otherwise, TRT conversion will be disallowed."
+          auto* block = desc.Block();
+          if (block == nullptr) {
+            VLOG(3)
+                << "The block desc is nullptr,we can't continue to analyze.";
+            return false;
+          }
+          bool valid_source = false;
+          //
+          std::vector<std::string> size_tensor_names = desc.Input("SizeTensor");
+          for (const auto& tensor_name : size_tensor_names) {
+            auto* var_desc = block->FindVarRecursive(tensor_name);
+            if (!var_desc) continue;
+            if (tensor_name.find("shape") != std::string::npos) {
+              valid_source = true;
+              break;
+            }
+          }
+          if (!valid_source) {
+            VLOG(3) << "The SizeTensor for bilinear_interp_v2 doesn't come "
+                       "from a valid source.";
+            return false;
+          }
           return true;
         }
 #else
@@ -1395,7 +1420,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
       if (dtype != -1 && dtype != 2 && dtype != 3 && dtype != 5 && dtype != 6) {
         VLOG(3)
-            << "the fill_any_like only supports int32/int64/float32/float64 by"
+            << "the fill_any_like only supports int32/int64/float32/float64 by "
                "trt8.4 below";
         return false;
       }
@@ -1405,7 +1430,7 @@ struct SimpleOpTypeSetTeller : public Teller {
             input_type != framework::proto::VarType::FP32 &&
             input_type != framework::proto::VarType::FP64) {
           VLOG(3) << "the fill_any_like only supports "
-                     "int32/int64/float32/float64 by"
+                     "int32/int64/float32/float64 by "
                      "trt8.4 below";
           return false;
         }
@@ -3167,9 +3192,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "fused_preln_embedding_eltwise_layernorm",
       "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
       "roll",
       "cast",
       "preln_skip_layernorm",
@@ -3344,9 +3366,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "preln_skip_layernorm",
       "fused_bias_dropout_residual_layer_norm",
       "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
       "roll",
       "cast",
       "transformer_input_convert",

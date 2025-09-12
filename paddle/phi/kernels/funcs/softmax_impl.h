@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -43,7 +41,7 @@ struct ValueClip {
 template <typename DeviceContext, typename T>
 class SoftmaxEigen {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y) {
@@ -72,7 +70,7 @@ class SoftmaxEigen {
     if (num_remain == 1) {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits - logits.maximum(along_axis)
                         .eval()
                         .reshape(batch_by_one)
@@ -81,7 +79,7 @@ class SoftmaxEigen {
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits.reshape(batch_classes) - logits.reshape(batch_axis_remain)
                                                .maximum(along_axis)
                                                .eval()
@@ -91,8 +89,8 @@ class SoftmaxEigen {
               .unaryExpr(ValueClip<T>());
     }
 
-    softmax.device(*context.eigen_device()) = softmax.exp();
-    softmax.device(*context.eigen_device()) =
+    softmax.device(*dev_ctx.eigen_device()) = softmax.exp();
+    softmax.device(*dev_ctx.eigen_device()) =
         (softmax * softmax.reshape(batch_axis_remain)
                        .sum(along_axis)
                        .inverse()
@@ -102,9 +100,9 @@ class SoftmaxEigen {
 };
 
 template <typename DeviceContext>
-class SoftmaxEigen<DeviceContext, phi::dtype::float16> {
+class SoftmaxEigen<DeviceContext, phi::float16> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y) {
@@ -112,8 +110,8 @@ class SoftmaxEigen<DeviceContext, phi::dtype::float16> {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    auto logits = EigenMatrix<phi::dtype::float16>::From(*X);
-    auto softmax = EigenMatrix<phi::dtype::float16>::From(*Y);
+    auto logits = EigenMatrix<phi::float16>::From(*X);
+    auto softmax = EigenMatrix<phi::float16>::From(*Y);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -133,25 +131,25 @@ class SoftmaxEigen<DeviceContext, phi::dtype::float16> {
     if (num_remain == 1) {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits - logits.maximum(along_axis)
                         .reshape(batch_by_one)
                         .broadcast(one_by_class))
-              .unaryExpr(ValueClip<phi::dtype::float16>());
+              .unaryExpr(ValueClip<phi::float16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
                                                    .maximum(along_axis)
                                                    .reshape(batch_one_remain)
                                                    .broadcast(one_axis_one)
                                                    .reshape(batch_classes))
-              .unaryExpr(ValueClip<phi::dtype::float16>());
+              .unaryExpr(ValueClip<phi::float16>());
     }
 
-    softmax.device(*context.eigen_device()) = softmax.exp();
-    softmax.device(*context.eigen_device()) =
+    softmax.device(*dev_ctx.eigen_device()) = softmax.exp();
+    softmax.device(*dev_ctx.eigen_device()) =
         (softmax * softmax.reshape(batch_axis_remain)
                        .sum(along_axis)
                        .inverse()
@@ -160,9 +158,9 @@ class SoftmaxEigen<DeviceContext, phi::dtype::float16> {
 };
 
 template <typename DeviceContext>
-class SoftmaxEigen<DeviceContext, phi::dtype::bfloat16> {
+class SoftmaxEigen<DeviceContext, phi::bfloat16> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y) {
@@ -170,8 +168,8 @@ class SoftmaxEigen<DeviceContext, phi::dtype::bfloat16> {
     constexpr int kClassDim = 1;
     constexpr int kAxisDim = 1;
 
-    auto logits = EigenMatrix<phi::dtype::bfloat16>::From(*X);
-    auto softmax = EigenMatrix<phi::dtype::bfloat16>::From(*Y);
+    auto logits = EigenMatrix<phi::bfloat16>::From(*X);
+    auto softmax = EigenMatrix<phi::bfloat16>::From(*Y);
 
     const int batch_size = logits.dimension(kBatchDim);
     const int num_classes = logits.dimension(kClassDim);
@@ -191,25 +189,25 @@ class SoftmaxEigen<DeviceContext, phi::dtype::bfloat16> {
     if (num_remain == 1) {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits - logits.maximum(along_axis)
                         .reshape(batch_by_one)
                         .broadcast(one_by_class))
-              .unaryExpr(ValueClip<phi::dtype::bfloat16>());
+              .unaryExpr(ValueClip<phi::bfloat16>());
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
-      softmax.device(*context.eigen_device()) =
+      softmax.device(*dev_ctx.eigen_device()) =
           (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
                                                    .maximum(along_axis)
                                                    .reshape(batch_one_remain)
                                                    .broadcast(one_axis_one)
                                                    .reshape(batch_classes))
-              .unaryExpr(ValueClip<phi::dtype::bfloat16>());
+              .unaryExpr(ValueClip<phi::bfloat16>());
     }
 
-    softmax.device(*context.eigen_device()) = softmax.exp();
-    softmax.device(*context.eigen_device()) =
+    softmax.device(*dev_ctx.eigen_device()) = softmax.exp();
+    softmax.device(*dev_ctx.eigen_device()) =
         (softmax * softmax.reshape(batch_axis_remain)
                        .sum(along_axis)
                        .inverse()
@@ -219,11 +217,11 @@ class SoftmaxEigen<DeviceContext, phi::dtype::bfloat16> {
 
 template <typename DeviceContext, typename T, typename Enable>
 void SoftmaxFunctor<DeviceContext, T, Enable>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const int axis_dim,
     const phi::DenseTensor* X,
     phi::DenseTensor* Y) {
-  SoftmaxEigen<DeviceContext, T>()(context, axis_dim, X, Y);
+  SoftmaxEigen<DeviceContext, T>()(dev_ctx, axis_dim, X, Y);
 }
 
 template <class DeviceContext>
@@ -233,7 +231,7 @@ using enable_if_CPU = typename std::enable_if<
 template <typename DeviceContext, typename T>
 class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* X,
                   phi::DenseTensor* Y) {
@@ -268,7 +266,7 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
         out_data += num_classes;
       }
     } else {
-      SoftmaxEigen<DeviceContext, T>()(context, axis_dim, X, Y);
+      SoftmaxEigen<DeviceContext, T>()(dev_ctx, axis_dim, X, Y);
     }
   }
 };
@@ -276,7 +274,7 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
 template <typename DeviceContext, typename T>
 class SoftmaxGradEigen {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
@@ -303,22 +301,22 @@ class SoftmaxGradEigen {
                    .sum(along_class)
                    .eval()
                    .broadcast(one_axis);
-    logits_grad.device(*context.eigen_device()) =
+    logits_grad.device(*dev_ctx.eigen_device()) =
         (softmax_grad - dot) * softmax;
   }
 };
 
 template <typename DeviceContext>
-class SoftmaxGradEigen<DeviceContext, phi::dtype::float16> {
+class SoftmaxGradEigen<DeviceContext, phi::float16> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
                   phi::DenseTensor* x_grad) {
-    auto softmax = EigenMatrix<phi::dtype::float16>::From(*y);
-    auto softmax_grad = EigenMatrix<phi::dtype::float16>::From(*y_grad);
-    auto logits_grad = EigenMatrix<phi::dtype::float16>::From(*x_grad);
+    auto softmax = EigenMatrix<phi::float16>::From(*y);
+    auto softmax_grad = EigenMatrix<phi::float16>::From(*y_grad);
+    auto logits_grad = EigenMatrix<phi::float16>::From(*x_grad);
 
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
@@ -337,22 +335,22 @@ class SoftmaxGradEigen<DeviceContext, phi::dtype::float16> {
                    .reshape(batch_axis_remain)
                    .sum(along_class)
                    .broadcast(one_axis);
-    logits_grad.device(*context.eigen_device()) =
+    logits_grad.device(*dev_ctx.eigen_device()) =
         (softmax_grad - dot) * softmax;
   }
 };
 
 template <typename DeviceContext>
-class SoftmaxGradEigen<DeviceContext, phi::dtype::bfloat16> {
+class SoftmaxGradEigen<DeviceContext, phi::bfloat16> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
                   phi::DenseTensor* x_grad) {
-    auto softmax = EigenMatrix<phi::dtype::bfloat16>::From(*y);
-    auto softmax_grad = EigenMatrix<phi::dtype::bfloat16>::From(*y_grad);
-    auto logits_grad = EigenMatrix<phi::dtype::bfloat16>::From(*x_grad);
+    auto softmax = EigenMatrix<phi::bfloat16>::From(*y);
+    auto softmax_grad = EigenMatrix<phi::bfloat16>::From(*y_grad);
+    auto logits_grad = EigenMatrix<phi::bfloat16>::From(*x_grad);
 
     constexpr int kBatchDim = 0;
     constexpr int kClassDim = 1;
@@ -371,25 +369,25 @@ class SoftmaxGradEigen<DeviceContext, phi::dtype::bfloat16> {
                    .reshape(batch_axis_remain)
                    .sum(along_class)
                    .broadcast(one_axis);
-    logits_grad.device(*context.eigen_device()) =
+    logits_grad.device(*dev_ctx.eigen_device()) =
         (softmax_grad - dot) * softmax;
   }
 };
 
 template <typename DeviceContext, typename T, typename Enable>
 void SoftmaxGradFunctor<DeviceContext, T, Enable>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const int axis_dim,
     const phi::DenseTensor* y,
     const phi::DenseTensor* y_grad,
     phi::DenseTensor* x_grad) {
-  SoftmaxGradEigen<DeviceContext, T>()(context, axis_dim, y, y_grad, x_grad);
+  SoftmaxGradEigen<DeviceContext, T>()(dev_ctx, axis_dim, y, y_grad, x_grad);
 }
 
 template <typename DeviceContext, typename T>
 class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int axis_dim,
                   const phi::DenseTensor* y,
                   const phi::DenseTensor* y_grad,
@@ -421,7 +419,7 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
       }
     } else {
       SoftmaxGradEigen<DeviceContext, T>()(
-          context, axis_dim, y, y_grad, x_grad);
+          dev_ctx, axis_dim, y, y_grad, x_grad);
     }
   }
 };

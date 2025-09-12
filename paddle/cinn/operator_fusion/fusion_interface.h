@@ -22,6 +22,6 @@ namespace cinn::fusion {
 std::vector<ir::Expr> OperationFusion(
     const std::vector<::pir::Operation*>& ops,
     const std::vector<ir::Expr>& op_compute_bodies,
-    FusionTrackerPtr fusion_tracker_ptr);
-
+    FusionTrackerPtr fusion_tracker_ptr,
+    const std::unordered_map<symbol::DimExpr, symbol::DimExpr>& dimexpr_map);
 }

@@ -148,9 +148,9 @@ class TestLlamaAttentionForSemiAutoParallel:
         )
 
     def check_dim_mapping(self, output, expected_dim_mapping):
-        assert (
-            output.dist_attr.dims_mapping == expected_dim_mapping
-        ), f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+        assert output.dist_attr.dims_mapping == expected_dim_mapping, (
+            f"{output.dist_attr.dims_mapping}  vs {expected_dim_mapping}"
+        )
 
     def get_shard_check_hook(self, dims_mapping, check_input=False):
         def check_func(layer, input, output=None):

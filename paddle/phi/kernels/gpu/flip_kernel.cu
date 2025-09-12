@@ -68,6 +68,9 @@ void FlipKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   auto* in_data = x.data<T>();
   auto* out_data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
 
   auto x_dims = x.dims();
   const int rank = x_dims.size();
@@ -111,10 +114,10 @@ PD_REGISTER_KERNEL(flip,
                    phi::FlipKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

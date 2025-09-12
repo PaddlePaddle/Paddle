@@ -148,19 +148,21 @@ def __initialize_meta_info__():
 def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     fn = __initialize_meta_info__()
     np.random.seed(rand_seed)
-    with zipfile.ZipFile(file=fn) as package:
-        with package.open('ml-1m/ratings.dat') as rating:
-            for line in rating:
-                line = line.decode(encoding='latin')
-                if (np.random.random() < test_ratio) == is_test:
-                    uid, mov_id, rating, _ = line.strip().split("::")
-                    uid = int(uid)
-                    mov_id = int(mov_id)
-                    rating = float(rating) * 2 - 5.0
+    with (
+        zipfile.ZipFile(file=fn) as package,
+        package.open('ml-1m/ratings.dat') as rating,
+    ):
+        for line in rating:
+            line = line.decode(encoding='latin')
+            if (np.random.random() < test_ratio) == is_test:
+                uid, mov_id, rating, _ = line.strip().split("::")
+                uid = int(uid)
+                mov_id = int(mov_id)
+                rating = float(rating) * 2 - 5.0
 
-                    mov = MOVIE_INFO[mov_id]
-                    usr = USER_INFO[uid]
-                    yield usr.value() + mov.value() + [[rating]]
+                mov = MOVIE_INFO[mov_id]
+                usr = USER_INFO[uid]
+                yield usr.value() + mov.value() + [[rating]]
 
 
 @deprecated(

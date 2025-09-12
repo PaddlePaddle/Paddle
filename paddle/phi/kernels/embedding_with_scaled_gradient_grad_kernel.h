@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EmbeddingWithScaledGradientGradKernel(const Context& ctx,
+void EmbeddingWithScaledGradientGradKernel(const Context& dev_ctx,
                                            const DenseTensor& input,
                                            const DenseTensor& weight,
                                            const DenseTensor& out_grad,

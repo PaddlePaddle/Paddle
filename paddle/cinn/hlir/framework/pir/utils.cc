@@ -139,15 +139,12 @@ class OpTransInfo {
                                                     "pool2d",
                                                     "pool2d_grad",
                                                     "pool3d",
-                                                    "pool3d_grad"
+                                                    "pool3d_grad",
                                                     "split",
                                                     "matmul",
                                                     "matmul_grad",
                                                     "embedding_grad",
                                                     "embedding",
-                                                    "arange",
-                                                    "argmax",
-                                                    "argmin",
                                                     "argsort",
                                                     "assign_value",
                                                     "one_hot",
@@ -554,6 +551,7 @@ const std::unordered_set<std::string> TOCINN_OPS = {
     PD_OP_NAME(ScaleOp),
     PD_OP_NAME(Pool2dOp),
     PD_OP_NAME(IscloseOp),
+    PD_OP_NAME(ArangeOp),
     // PD_OP_NAME(SliceOp),
     PD_OP_NAME(ConcatOp),
     PD_OP_NAME(SplitOp),
@@ -831,6 +829,7 @@ utils::AttributeMap CompatibleInfo::ConvertAttributes(
   else if (type.isa<::pir::src>()) return cinn::common::dst();
 
 cinn::common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
+  if (type.isa<::pir::Float8E4M3FNType>()) return cinn::common::F8E4M3();
   if (type.isa<::pir::BFloat16Type>()) return cinn::common::BF16();
   CASE_TYPE(Float16Type, F16)
   CASE_TYPE(Float32Type, F32)

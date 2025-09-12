@@ -53,17 +53,19 @@ class InplaceTestBase(unittest.TestCase):
         main_program = base.Program()
 
         scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.unique_name.guard():
-                loss = simple_fc_net()
-                adam = paddle.optimizer.Adam(learning_rate=1e-3)
-                adam.minimize(loss)
+        with (
+            base.program_guard(main_program, startup_program),
+            base.unique_name.guard(),
+        ):
+            loss = simple_fc_net()
+            adam = paddle.optimizer.Adam(learning_rate=1e-3)
+            adam.minimize(loss)
 
-                with base.scope_guard(scope):
-                    exe = base.Executor(
-                        base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
-                    )
-                    exe.run(startup_program)
+            with base.scope_guard(scope):
+                exe = base.Executor(
+                    base.CUDAPlace(0) if self.use_cuda else base.CPUPlace()
+                )
+                exe.run(startup_program)
 
         return main_program, scope, exe, loss
 

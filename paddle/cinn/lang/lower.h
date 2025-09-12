@@ -26,7 +26,6 @@
 #include "paddle/cinn/ir/module.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/lang/packed_func.h"
-#include "paddle/cinn/poly/schedule.h"
 
 namespace cinn {
 namespace lang {
@@ -58,6 +57,8 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument> &args,
 
 std::vector<ir::Buffer> GetTempBuffers(
     const std::vector<cinn::ir::Tensor> &tensor_args, Expr body);
+
+std::vector<ir::Buffer> GetPreLoadTempBufferAfterVectorize(Expr body);
 
 }  // namespace lang
 }  // namespace cinn

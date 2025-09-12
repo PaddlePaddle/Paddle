@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import copy
-import os
 import unittest
 
 import numpy as np
+from op_test import get_devices
 
 import paddle
+from paddle.base import core
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -30,8 +31,8 @@ def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
         return x_np
 
 
-def raw_index_put(x, indices, value, accummulate):
-    return paddle.index_put(x, indices, value, accummulate)
+def raw_index_put(x, indices, value, accumulate):
+    return paddle.index_put(x, indices, value, accumulate)
 
 
 def has_duplicate_index(indices, shapes):
@@ -120,17 +121,9 @@ class TestIndexPutAPIBase(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if self.dtype_np is np.float16:
-            self.place = []
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
+        if self.dtype_np is np.float16 and "cpu" in self.place:
+            self.place.remove("cpu")
 
     def test_dygraph_forward(self):
         paddle.disable_static()
@@ -628,15 +621,7 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def test_dygraph_forward(self):
         paddle.disable_static()
@@ -677,15 +662,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         self.setPlace()
 
     def setPlace(self):
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def test_backward(self):
         paddle.disable_static()
@@ -1026,6 +1003,249 @@ class TestIndexPutAPIMixedIndices1(TestIndexPutAPIBase):
         self.index_type_np1 = np.bool_
         self.indices_shapes1 = [(32,)]
         self.index_type_pd1 = "bool"
+
+
+class TestIndexPutAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_dtype_type()
+        self.setPlace()
+
+    def init_dtype_type(self):
+        self.dtype_np = np.float32
+        self.index_type_np = np.int64
+        self.x_shape = (10, 0)
+        self.indices_shapes = [[10]]
+        self.value_shape = [1, 1]
+        self.dtype_pd = paddle.float32
+        self.index_type_pd = paddle.int64
+
+    def setPlace(self):
+        self.place = get_devices()
+        if self.dtype_np is np.float16 and "cpu" in self.place:
+            self.place.remove("cpu")
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            x_pd = paddle.randn(self.x_shape, dtype=self.dtype_pd)
+            x_np = x_pd.numpy()
+            value_pd = paddle.randn(self.value_shape, dtype=self.dtype_pd)
+            value_np = value_pd.numpy()
+            x_pd.stop_gradient = False
+            value_pd.stop_gradient = False
+            indices_pd = [
+                paddle.randn(indices_shape).astype(dtype=self.index_type_pd)
+                for indices_shape in self.indices_shapes
+            ]
+            indices_np = [item.numpy() for item in indices_pd]
+            indices_pd = tuple(indices_pd)
+            accumulate = False
+            ref_res = compute_index_put_ref(
+                x_np, indices_np, value_np, accumulate
+            )
+            pd_res = paddle.index_put(x_pd, indices_pd, value_pd, accumulate)
+            np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
+
+            # check grad
+            pd_res.sum().backward()
+            np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+            np.testing.assert_allclose(
+                value_pd.grad.numpy(), np.zeros(value_pd.shape)
+            )
+
+
+class TestIndexPutPrim(unittest.TestCase):
+    def __int__(self):
+        self().__init__()
+
+    def test_prim(self):
+        try:
+            paddle.framework.core._set_prim_all_enabled(True)
+            for accumulate in [False, True]:
+                for x_shape, indices_shape, value_shape in [
+                    ([16], [10], [10]),
+                    ([16, 16], [20, 2], [20]),
+                    ([12, 13, 14], [88, 1], [88, 13, 14]),
+                    ([12, 13, 14], [88, 2], [88, 14]),
+                    ([12, 13, 14], [88, 3], [88]),
+                    ([12, 13, 14], [12 * 13 * 14, 3], [12 * 13 * 14]),
+                ]:
+                    n_indices = indices_shape[0]
+                    index_dim_size = (
+                        indices_shape[1] if len(indices_shape) > 1 else 1
+                    )
+
+                    x_np = np.random.randn(*x_shape)
+                    indices_np = tuple(
+                        [
+                            np.random.randint(
+                                -x_shape[i], x_shape[i], [n_indices]
+                            )
+                            for i in range(max(index_dim_size, 1))
+                        ]
+                    )
+                    value_np = np.random.randn(*value_shape).astype("float32")
+
+                    # run paddle
+                    x_pd = paddle.to_tensor(
+                        x_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+                    indices_pd = tuple(
+                        [
+                            paddle.to_tensor(
+                                indice.copy(),
+                                "int64",
+                                stop_gradient=True,
+                            )
+                            for indice in indices_np
+                        ]
+                    )
+                    value_pd = paddle.to_tensor(
+                        value_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+
+                    out_pd = paddle.index_put(
+                        x_pd, indices_pd, value_pd, accumulate=accumulate
+                    )
+                    # out_pd = paddle.tanh(out_pd) #
+                    dout_np = np.random.randn(*out_pd.shape)
+
+                    dout_pd = paddle.to_tensor(
+                        dout_np.copy(),
+                        "float32",
+                        stop_gradient=False,
+                    )
+                    dout_pd.stop_gradient = False
+
+                    if accumulate:
+
+                        def compute_dx_dv(x, indices, v, dy, accumulate=True):
+                            y = paddle.index_put(x, indices, v, True)
+                            return paddle.grad(y, [x, v], dy, create_graph=True)
+
+                    else:
+
+                        def compute_dx_dv(x, indices, v, dy, accumulate=False):
+                            y = paddle.index_put(x, indices, v, False)
+                            return paddle.grad(y, [x, v], dy, create_graph=True)
+
+                    # eager
+                    dx_ref, dv_ref = compute_dx_dv(
+                        x_pd, indices_pd, value_pd, dout_pd
+                    )
+
+                    # static dynamic shape
+                    st_func1 = paddle.jit.to_static(
+                        compute_dx_dv,
+                        input_spec=[
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                            tuple(
+                                paddle.static.InputSpec(
+                                    shape=[-1], dtype='int64'
+                                )
+                                for _ in range(len(indices_pd))
+                            ),
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                            paddle.static.InputSpec(
+                                shape=[-1, -1], dtype='float32'
+                            ),
+                        ],
+                        full_graph=True,
+                        backend=None,
+                    )
+                    dx_1, dv_1 = st_func1(x_pd, indices_pd, value_pd, dout_pd)
+
+                    # static fixed shape
+                    st_func2 = paddle.jit.to_static(
+                        compute_dx_dv,
+                        full_graph=True,
+                        backend=None,
+                    )
+                    dx_2, dv_2 = st_func2(x_pd, indices_pd, value_pd, dout_pd)
+
+                    np.testing.assert_allclose(
+                        dx_1.numpy(),
+                        dx_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dv_1.numpy(),
+                        dv_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dx_2.numpy(),
+                        dx_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+                    np.testing.assert_allclose(
+                        dv_2.numpy(),
+                        dv_ref.numpy(),
+                        err_msg=f"accumulate={accumulate}\nx_np:\n{x_np}\nindices_np:\n{indices_np}\nvalue_np:\n{value_np}\nout_np:{out_pd.numpy()}\n",
+                    )
+        finally:
+            paddle.framework.core._set_prim_all_enabled(False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseMaximumOp_Stride(unittest.TestCase):
+    def setUp(self):
+        self.is_all_false = False
+        self.init_dtype_type()
+        self.setPlace()
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype_np)
+        self.x_trans_np = np.transpose(self.x_np, self.perm)
+        self.value_np = np.random.random(self.value_shape).astype(self.dtype_np)
+        self.indices_np = gen_indices_np(
+            self.x_shape,
+            self.indices_shapes,
+            self.index_type_np,
+            self.is_all_false,
+        )
+
+    def init_dtype_type(self):
+        self.dtype_np = np.float64
+        self.index_type_np = np.int64
+        self.x_shape = (100, 110)
+        self.indices_shapes = [(21,), (21,)]
+        self.value_shape = (21,)
+        self.perm = [1, 0]
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
+        self.accumulate = False
+
+    def setPlace(self):
+        self.place = core.CUDAPlace(0)
+
+    def test_dygraph_forward(self):
+        paddle.disable_static()
+        paddle.device.set_device(self.place)
+        self.x_pd = paddle.to_tensor(self.x_np, dtype=self.dtype_pd)
+        self.x_trans_pd = paddle.to_tensor(self.x_trans_np, dtype=self.dtype_pd)
+        self.value_pd = paddle.to_tensor(self.value_np, dtype=self.dtype_pd)
+        self.indices_pd = [
+            paddle.to_tensor(indice) for indice in self.indices_np
+        ]
+        self.indices_pd = tuple(self.indices_pd)
+        self.x_non_conti = paddle.transpose(self.x_trans_pd, self.perm)
+        ref_res = compute_index_put_ref(
+            self.x_np, self.indices_np, self.value_np, self.accumulate
+        )
+        pd_res = paddle.index_put(
+            self.x_non_conti, self.indices_pd, self.value_pd, self.accumulate
+        )
+        np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
 
 if __name__ == '__main__':

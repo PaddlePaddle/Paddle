@@ -33,6 +33,9 @@ namespace sparse {
                              const SparseCooTensor& dout,                 \
                              SparseCooTensor* dx) {                       \
     EmptyLikeCooKernel<T, Context>(dev_ctx, x_or_out, dx);                \
+    if (dx->mutable_non_zero_elements()->numel() == 0) {                  \
+      return;                                                             \
+    }                                                                     \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
                                         dout.non_zero_elements(),         \
@@ -45,6 +48,9 @@ namespace sparse {
                              const SparseCsrTensor& dout,                 \
                              SparseCsrTensor* dx) {                       \
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x_or_out, dx);                \
+    if (dx->mutable_non_zero_elements()->numel() == 0) {                  \
+      return;                                                             \
+    }                                                                     \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
                                         dout.non_zero_elements(),         \
@@ -59,6 +65,9 @@ namespace sparse {
                              float attr,                                  \
                              SparseCooTensor* dx) {                       \
     EmptyLikeCooKernel<T, Context>(dev_ctx, x_or_out, dx);                \
+    if (dx->mutable_non_zero_elements()->numel() == 0) {                  \
+      return;                                                             \
+    }                                                                     \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
                                         dout.non_zero_elements(),         \
@@ -73,6 +82,9 @@ namespace sparse {
                              float attr,                                  \
                              SparseCsrTensor* dx) {                       \
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x_or_out, dx);                \
+    if (dx->mutable_non_zero_elements()->numel() == 0) {                  \
+      return;                                                             \
+    }                                                                     \
     phi::prefix##GradKernel<T, Context>(dev_ctx,                          \
                                         x_or_out.non_zero_elements(),     \
                                         dout.non_zero_elements(),         \

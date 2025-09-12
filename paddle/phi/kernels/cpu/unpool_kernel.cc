@@ -77,6 +77,10 @@ void UnpoolKernel(const Context& dev_ctx,
                   const IntArray& output_size UNUSED,
                   const std::string& data_format UNUSED,
                   DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
     Unpool<T, int, Context>(dev_ctx, x, indices, out);
@@ -142,6 +146,10 @@ void Unpool3dKernel(const Context& dev_ctx,
                     const std::vector<int>& output_size UNUSED,
                     const std::string& data_format UNUSED,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   const auto& indices_type = indices.dtype();
   if (indices_type == phi::DataType::INT32) {
     Unpool3d<T, int, Context>(dev_ctx, x, indices, out);

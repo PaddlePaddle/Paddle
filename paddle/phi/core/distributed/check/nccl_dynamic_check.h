@@ -52,6 +52,13 @@ struct NCCLDynamicCheck {
                          int world_size,
                          ncclComm_t comm);
 
+  static void CheckAlltoAllShape(
+      const std::vector<phi::DenseTensor>& out_tensor,
+      const std::vector<phi::DenseTensor>& in_tensor,
+      int cur_rank,
+      int world_size,
+      ncclComm_t comm);
+
   // can be used to check gather and all gather
   static void CheckGatherShape(const phi::DenseTensor& in_tensor,
                                const std::vector<phi::DenseTensor>& out_tensors,

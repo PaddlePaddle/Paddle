@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_devices
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 
 
 def run_adam_op(
@@ -62,7 +62,7 @@ def run_adam_op(
 
     if not use_merged:
         for i in range(len(param_vars)):
-            _, _, _, _, _, _, _ = _legacy_C_ops.adam(
+            _, _, _, _, _, _, _ = _C_ops.adam_(
                 param_vars[i],
                 grad_vars[i],
                 lr_vars[i],
@@ -72,22 +72,14 @@ def run_adam_op(
                 beta1_pow_vars[i],
                 beta2_pow_vars[i],
                 master_param_vars[i],
-                param_vars[i],
-                moment1_vars[i],
-                moment2_vars[i],
-                moment2_max_vars[i],
-                beta1_pow_vars[i],
-                beta2_pow_vars[i],
-                master_param_vars[i],
-                'epsilon',
-                epsilon,
-                'beta1',
+                None,
                 beta1,
-                'beta2',
                 beta2,
-                'multi_precision',
+                epsilon,
+                False,
+                1000,
                 multi_precision,
-                'amsgrad',
+                False,
                 amsgrad,
             )
     else:
@@ -211,21 +203,9 @@ class TestMergedAdam(unittest.TestCase):
                         value1[i], value2[i], rtol=1e-05, atol=1e-07
                     )
 
-    def get_places(self):
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            places.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
-        return places
-
     def test_main(self):
         for multi_precision in [False, True]:
-            for place in self.get_places():
+            for place in get_devices():
                 self.check_with_place(place, multi_precision)
 
 

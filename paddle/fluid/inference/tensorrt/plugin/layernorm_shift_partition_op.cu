@@ -640,7 +640,7 @@ int LayernormShiftPartitionPluginDynamic::enqueue(
       input_resolution_ * input_resolution_,
       input_dims.d[1],
       common::errors::InvalidArgument(
-          "The LayernormShiftPartition‘s input_resolution is wrong (%d)",
+          "The LayernormShiftPartition's input_resolution is wrong (%d)",
           input_dims.d[1]));
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. LayernormShiftPartition-->fp32";

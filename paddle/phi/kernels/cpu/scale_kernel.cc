@@ -20,8 +20,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
@@ -46,7 +44,19 @@ void ScaleKernel(const Context& dev_ctx,
   phi::funcs::EigenScale<std::decay_t<decltype(dev)>, T>::Eval(
       dev, eigen_out, eigen_x, scale.to<T>(), bias.to<T>(), bias_after_scale);
 }
-
+#ifdef _WIN32
+INSTANCE_SCALAR_KERNEL(int, CPUContext)
+INSTANCE_SCALAR_KERNEL(int64_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(float, CPUContext)
+INSTANCE_SCALAR_KERNEL(double, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::bfloat16, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::float16, CPUContext)
+INSTANCE_SCALAR_KERNEL(uint8_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(int8_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(int16_t, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::complex64, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::complex128, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(scale,
@@ -56,12 +66,12 @@ PD_REGISTER_KERNEL(scale,
                    bool,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16,
+                   phi::bfloat16,
+                   phi::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

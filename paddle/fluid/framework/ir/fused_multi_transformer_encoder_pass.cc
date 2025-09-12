@@ -919,7 +919,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
                                     ->AsIntermediate()
                                     ->assert_is_op_input("c_allreduce_sum");
 
-  // communication c_allreduce_sum
+  // communication all_reduce_sum
   auto* c_allreduce_sum =
       pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
   auto* c_allreduce_sum_out_var = pattern->NewNode(c_allreduce_sum_out_repr())
@@ -1042,7 +1042,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderPattern::operator()() {
                                   ->AsIntermediate()
                                   ->assert_is_op_input("c_allreduce_sum");
 
-  // communication c_allreduce_sum
+  // communication all_reduce_sum
   auto* ffn_c_allreduce_sum = pattern->NewNode(ffn_c_allreduce_sum_repr())
                                   ->assert_is_op("c_allreduce_sum");
   auto* ffn_c_allreduce_sum_out_var =
@@ -1291,7 +1291,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
                                     ->AsIntermediate()
                                     ->assert_is_op_input("c_allreduce_sum");
 
-  // communication c_allreduce_sum
+  // communication all_reduce_sum
   auto* c_allreduce_sum =
       pattern->NewNode(c_allreduce_sum_repr())->assert_is_op("c_allreduce_sum");
   auto* c_allreduce_sum_out_var = pattern->NewNode(c_allreduce_sum_out_repr())
@@ -1411,7 +1411,7 @@ PDNode* MultiDevicesFusedMultiTransformerEncoderFuseQKVPattern::operator()() {
                                   ->AsIntermediate()
                                   ->assert_is_op_input("c_allreduce_sum");
 
-  // communication c_allreduce_sum
+  // communication all_reduce_sum
   auto* ffn_c_allreduce_sum = pattern->NewNode(ffn_c_allreduce_sum_repr())
                                   ->assert_is_op("c_allreduce_sum");
   auto* ffn_c_allreduce_sum_out_var =

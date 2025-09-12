@@ -22,6 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
@@ -36,25 +37,38 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+  if (y && y->numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    if (mean) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+    }
+    if (var) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
-  const auto x_dims = common::vectorize<int>(x.dims());
-  const int N = x_dims[0];
+  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::kNCHW || data_layout == DataLayout::kNCDHW;
-  const int C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int L =
-      (channel_first
-           ? std::accumulate(
-                 x_dims.begin() + 2, x_dims.end(), 1, std::multiplies<int>())
-           : std::accumulate(x_dims.begin() + 1,
-                             x_dims.end() - 1,
-                             1,
-                             std::multiplies<int>()));
+  const int64_t C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int64_t L =
+      (channel_first ? std::accumulate(x_dims.begin() + 2,
+                                       x_dims.end(),
+                                       1,
+                                       std::multiplies<int64_t>())
+                     : std::accumulate(x_dims.begin() + 1,
+                                       x_dims.end() - 1,
+                                       1,
+                                       std::multiplies<int64_t>()));
 
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(mean);
@@ -122,5 +136,5 @@ PD_REGISTER_KERNEL(group_norm,
                    ALL_LAYOUT,
                    phi::GroupNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
