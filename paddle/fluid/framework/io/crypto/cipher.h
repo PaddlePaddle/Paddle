@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -44,7 +45,7 @@ class Cipher {
 class CipherFactory {
  public:
   CipherFactory() = default;
-  static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
+  PADDLE_API static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
 };
 }  // namespace framework
 }  // namespace paddle

@@ -720,7 +720,7 @@ struct KernelRegistrar {
                               kernel_unfold_macro,                             \
                               variadic_kernel_unfold_marco,                    \
                               cpp_dtype)                                       \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+  PADDLE_EXP_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
     return 0;                                                                  \
   }
 #define _PD_KERNEL_REGISTRAR_INIT_2(reg_type,                         \
@@ -1306,7 +1306,7 @@ struct KernelRegistrar {
           &__PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout,       \
           PHI_KERNEL(kernel_fn),                                               \
           PHI_VARIADIC_KERNEL(kernel_fn));                                     \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+  PADDLE_EXP_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
     return 0;                                                                  \
   }                                                                            \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(           \
@@ -1443,7 +1443,7 @@ struct KernelRegistrar {
           &args_def_fn,                                                        \
           PHI_KERNEL(kernel_fn),                                               \
           PHI_VARIADIC_KERNEL(kernel_fn));                                     \
-  PADDLE_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
+  PADDLE_EXP_API int TouchKernelSymbolFor_##kernel_name##_##backend##_##layout() { \
     return 0;                                                                  \
   }
 #endif

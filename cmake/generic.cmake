@@ -472,25 +472,53 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
+    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/libs"
+         PADDLE_LIBS_PATH)
+    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/base"
+         PADDLE_BASE_PATH)
+    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/pybind"
+         PADDLE_PYBIND_PATH)
+    string(
+      REPLACE
+        ";"
+        "\;"
+        PATH
+        "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};$ENV{PATH}"
+    )
     if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          FLAGS_enable_pir_api=0
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true FLAGS_enable_pir_api=0
+                   "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            FLAGS_enable_pir_api=0
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     else()
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     endif()
     # No unit test should exceed 2 minutes.
     if(WIN32)
@@ -589,7 +617,7 @@ function(paddle_test_build TARGET_NAME)
     endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} phi)
-      if(WITH_GPU)
+      if(WITH_GPU AND NOT WIN32)
         target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                               -Wl,--no-as-needed)
       endif()

@@ -348,7 +348,7 @@ struct PassRegistrar : public Registrar {
       "REGISTER_PASS must be called in global namespace");  \
   static ::paddle::framework::ir::PassRegistrar<pass_class> \
       __pass_registrar_##pass_type##__(#pass_type);         \
-  PADDLE_API int TouchPassRegistrar_##pass_type() {         \
+  PADDLE_EXP_API int TouchPassRegistrar_##pass_type() {         \
     __pass_registrar_##pass_type##__.Touch();               \
     return 0;                                               \
   }                                                         \
@@ -360,7 +360,7 @@ struct PassRegistrar : public Registrar {
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                    \
       __use_pass_itself_##pass_type,                      \
       "USE_PASS must be called in global namespace");     \
-  PADDLE_API extern int TouchPassRegistrar_##pass_type(); \
+  extern int TouchPassRegistrar_##pass_type(); \
   static int use_pass_itself_##pass_type##_ UNUSED =      \
       TouchPassRegistrar_##pass_type()
 

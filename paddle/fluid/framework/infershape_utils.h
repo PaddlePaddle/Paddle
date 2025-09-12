@@ -140,7 +140,7 @@ class CompatInferMetaContext : public phi::InferMetaContext {
       compat_outputs_;
 };
 
-CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
+PADDLE_API CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
                                              const std::string& op_type);
 
 #define DECLARE_INFER_SHAPE_FUNCTOR(op_type, functor_name, fn)      \
