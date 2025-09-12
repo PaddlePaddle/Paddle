@@ -26,9 +26,8 @@ __all__ = []
 
 
 def seed(seed: int) -> paddle.base.core.Generator:
-    """
-
-    Sets the seed for global default generator, which manages the random number generation.
+    """Sets the seed for global default generator, which manages the random
+    number generation.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
@@ -41,7 +40,6 @@ def seed(seed: int) -> paddle.base.core.Generator:
 
             >>> import paddle
             >>> gen = paddle.seed(102)
-
     """
     # TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
     # 2. support gpu generator by global device
@@ -72,8 +70,7 @@ def seed(seed: int) -> paddle.base.core.Generator:
 def get_rng_state(
     device: str | None = None,
 ) -> list[paddle.base.core.GeneratorState]:
-    """
-    Get all random states of random generators of specified device.
+    """Get all random states of random generators of specified device.
 
     Args:
         device(str): This parameter determines the specific running device.
@@ -125,9 +122,7 @@ def get_rng_state(
 
 
 def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
-    """
-
-    Get random state of cuda generators.
+    """Get random state of cuda generators.
 
     Args:
         None.
@@ -140,7 +135,6 @@ def get_cuda_rng_state() -> list[paddle.base.core.GeneratorState]:
 
             >>> import paddle
             >>> sts = paddle.get_cuda_rng_state()
-
     """
     state_list = []
     if paddle.is_compiled_with_cuda():
@@ -154,9 +148,7 @@ def set_rng_state(
     state_list: Sequence[paddle.base.core.GeneratorState],
     device: str | None = None,
 ) -> None:
-    """
-
-    Sets generator state for all device generators.
+    """Sets generator state for all device generators.
 
     Args:
         state_list(list|tuple): The device states to set back to device generators. state_list is obtained from get_rng_state().
@@ -173,7 +165,6 @@ def set_rng_state(
             >>> import paddle
             >>> sts = paddle.get_rng_state()
             >>> paddle.set_rng_state(sts)
-
     """
     if device is None:
         place = paddle.framework._current_expected_place_()
@@ -222,9 +213,7 @@ def set_rng_state(
 def set_cuda_rng_state(
     state_list: Sequence[paddle.base.core.GeneratorState],
 ) -> None:
-    """
-
-    Sets generator state for all cuda generators.
+    """Sets generator state for all cuda generators.
 
     Args:
         state_list(list|tuple): The cuda states to set back to cuda generators. state_list is obtained from get_cuda_rng_state().
@@ -238,7 +227,6 @@ def set_cuda_rng_state(
             >>> import paddle
             >>> sts = paddle.get_cuda_rng_state()
             >>> paddle.set_cuda_rng_state(sts)
-
     """
     if paddle.is_compiled_with_cuda():
         if not len(state_list) == core.get_cuda_device_count():
@@ -250,8 +238,7 @@ def set_cuda_rng_state(
 
 
 def _manual_program_seed(seed: int) -> None:
-    """
-    Sets global seed for generating random numbers.
+    """Sets global seed for generating random numbers.
 
     NOTE(zhiqiu): This is the original implementation of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
