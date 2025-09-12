@@ -654,6 +654,18 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
         )
 
     @dygraph_guard()
+    def test_from_dlpack_same_place_cuda(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
+        tensor_from_dlpack = paddle.from_dlpack(tensor)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
     def test_from_dlpack_same_place_force_copy(self):
         cpu_place = paddle.CPUPlace()
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
