@@ -68,8 +68,8 @@ if core.is_compiled_with_cuda():
 elif core.is_compiled_with_xpu():
     from .xpu import device_count
 else:
-    if hasattr(core, 'get_all_custom_dev_type'):
-        dev_types = core.get_all_custom_dev_type()
+    if hasattr(core, 'get_all_custom_device_type'):
+        dev_types = core.get_all_custom_device_type()
     else:
         dev_types = []
     if dev_types and core.is_compiled_with_custom_device(dev_types[0]):

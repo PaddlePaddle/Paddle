@@ -19,7 +19,7 @@ from paddle.base import core
 # if TYPE_CHECKING:
 #     from paddle import CustomPlace
 
-dev_types = core.get_all_custom_dev_type()
+dev_types = core.get_all_custom_device_type()
 if not dev_types:
     raise ValueError(
         "No custom device available, please install paddle with custom device support"
