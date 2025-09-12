@@ -52,6 +52,8 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/fluid/ir_adaptor/*" \
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
+	"${PADDLE_ROOT}/paddle/ap/*" \
+	"${PADDLE_ROOT}/paddle/common/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
 	"${PADDLE_ROOT}/paddle/cinn/adt/*" \
         "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
