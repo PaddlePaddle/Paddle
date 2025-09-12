@@ -1156,15 +1156,13 @@ std::string CreateNodeLabelInDot(GradNodeBase* node) {
 }
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
   std::ostringstream oss;
-  oss << "Place: " << tensor.place() << "\\nDtype: " << tensor.dtype()
-      << "\\nLayout: " << tensor.layout() << "\\n Shape: (" << tensor.dims()
-      << ")";
+  oss << tensor.place() << "\\n"
+      << tensor.dtype() << "[" << tensor.dims() << "]";
   return oss.str();
 }
 std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
   std::ostringstream oss;
-  oss << "\\nDtype: " << tensor.dtype << "\\nLayout: " << tensor.layout
-      << "\\n Shape: (" << tensor.dims << ")";
+  oss << tensor.dtype << " [" << tensor.dims << "]";
   return oss.str();
 }
 void SaveStringToFile(const std::string& file_path,
