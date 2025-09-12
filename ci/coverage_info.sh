@@ -39,24 +39,6 @@ echo "::endgroup::"
 
 mkdir coverage_files
 
-function gen_full_report_cinn(){
-    lcov --extract coverage.info \
-        "${PADDLE_ROOT}/paddle/cinn/adt/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
-        "${PADDLE_ROOT}/paddle/cinn/backends/*" \
-        "${PADDLE_ROOT}/paddle/cinn/common/*" \
-        "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/lang/*" \
-        "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
-        "${PADDLE_ROOT}/paddle/cinn/optim/*" \
-        "${PADDLE_ROOT}/paddle/cinn/pass/*" \
-        "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
-        "${PADDLE_ROOT}/paddle/cinn/utils/*" \
-        -o coverage-full.tmp \
-        --rc lcov_branch_coverage=0
-}
-
 
 function gen_full_report() {
     lcov --extract coverage.info \
@@ -71,6 +53,18 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
+	"${PADDLE_ROOT}/paddle/cinn/adt/*" \
+        "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
+        "${PADDLE_ROOT}/paddle/cinn/backends/*" \
+        "${PADDLE_ROOT}/paddle/cinn/common/*" \
+        "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
+        "${PADDLE_ROOT}/paddle/cinn/ir/*" \
+        "${PADDLE_ROOT}/paddle/cinn/lang/*" \
+        "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
+        "${PADDLE_ROOT}/paddle/cinn/optim/*" \
+        "${PADDLE_ROOT}/paddle/cinn/pass/*" \
+        "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
+        "${PADDLE_ROOT}/paddle/cinn/utils/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -88,6 +82,7 @@ function gen_full_report() {
         --rc lcov_branch_coverage=0
 
     mv -f coverage-full.tmp coverage-full.info
+    lcov --list coverage-full.info
 }
 
 function gen_full_report_xpu() {
@@ -139,14 +134,6 @@ else
     echo "::endgroup::"
 fi
 
-if [ ${WITH_CINN:-OFF} == "ON" ]; then
-    echo "::group::Gen full report for cinn"
-    gen_full_report_cinn || true  # coverage-full.tmp. Didn't use this file
-    echo "::endgroup::"
-else
-    gen_full_report || true
-fi
-
 # mkdir coverage
 
 if [ "${PR_ID}" != "" ]; then
@@ -192,6 +179,7 @@ function gen_python_full_report() {
         --rc lcov_branch_coverage=0
 
     mv -f python-coverage-full.tmp python-coverage-full.info
+    lcov --list coverage-full.info
 }
 
 gen_python_full_report || true  # python-coverage-full.info
@@ -213,5 +201,3 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-d
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
 cp python-coverage-diff.info coverage_files
-
-curl https://paddle-ci.gz.bcebos.com/coverage/scripts/paddle_coverage_night_v4.sh | bash
