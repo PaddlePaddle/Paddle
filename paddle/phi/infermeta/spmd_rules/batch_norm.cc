@@ -51,10 +51,12 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
   TensorDistAttr variance_dist_attr_src = variance.dist_attr();
   TensorDistAttr scale_dist_attr_src = scale.dist_attr();
   TensorDistAttr bias_dist_attr_src = bias.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  std::vector<int64_t> mean_dims_mapping = mean.dist_attr().dims_mapping();
-  std::vector<int64_t> variance_dims_mapping =
-      variance.dist_attr().dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
+  std::vector<std::vector<int64_t>> mean_dims_mapping =
+      mean.dist_attr().multi_dims_mapping();
+  std::vector<std::vector<int64_t>> variance_dims_mapping =
+      variance.dist_attr().multi_dims_mapping();
   std::vector<int64_t> scale_dims_mapping = scale.dist_attr().dims_mapping();
   std::vector<int64_t> bias_dims_mapping = bias.dist_attr().dims_mapping();
 
@@ -125,11 +127,15 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                                 // "NCDHW"
 
   for (int i = 0; i < x_ndim; ++i) {
-    x_dims_mapping[i] = -1;
+    if (!x_dims_mapping.empty()) {
+      for (const auto dim : x_dims_mapping) {
+        c_dim.emplace_back(dim);
+      }
+    }
   }
   x_dims_mapping[c_index] = c_dim;
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors({{x_axes, x_dims_mapping}});
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      axis_to_dim_map = ShardingMergeForTensors({{x_axes, x_dims_mapping}});
 
   // Step2.2: infer output dims mapping
   TensorDistAttr out_dist_attr = CopyTensorDistAttrForOutput(x_dist_attr_src);
@@ -238,7 +244,8 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   int reserve_space_ndim = static_cast<int>(reserve_space_shape.size());
   int out_grad_ndim = static_cast<int>(out_grad_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
   TensorDistAttr scale_dist_attr_src = scale.dist_attr();
   TensorDistAttr bias_dist_attr_src = bias.dist_attr();
   TensorDistAttr mean_out_dist_attr_src = mean_out.dist_attr();
@@ -339,11 +346,15 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 // "NCDHW"
 
   for (int i = 0; i < x_ndim; ++i) {
-    x_dims_mapping[i] = -1;
+    if (!x_dims_mapping.empty()) {
+      for (const auto dim : x_dims_mapping) {
+        c_dim.emplace_back(dim);
+      }
+    }
   }
   x_dims_mapping[c_index] = c_dim;
 
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
       ShardingMergeForTensors({{x_axes, x_dims_mapping}});
   // infer output spmdinfo
   TensorDistAttr x_grad_dist_attr =
@@ -392,8 +403,10 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
   std::vector<int64_t> partial_on_dims;
   for (int i = 0; i < x_ndim; ++i) {
     auto mapping = x_dims_mapping[i];
-    if (mapping != -1) {
-      partial_on_dims.push_back(mapping);
+    if (!mapping.empty()) {
+      for (const auto mp : mapping) {
+        partial_on_dims.emplace_back(mp);
+      }
     }
   }
   scale_grad_dist_attr.set_partial_status(partial_on_dims);
