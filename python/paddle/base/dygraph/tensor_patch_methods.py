@@ -1466,11 +1466,10 @@ def monkey_patch_tensor():
                 None, meaning the exported capsule should be on the same device as self is. When
                 specified, the format must be a 2-tuple, following that of the return value of
                 array.__dlpack_device__().
-            copy (bool | None, optional): boolean indicating whether or not to copy the input.
-                If True, the output tensor always copied. If False, the output tensor must never
-                copied, and raise a BufferError in case a copy is deemed necessary. If None, the
-                output tensor must reuse the existing memory buffer if possible and copy otherwise.
-                Default: None.
+            copy (bool | None, optional): Whether or not to copy the input. If True, the output
+                tensor always copied. If False, the output tensor must never copied, and raise a
+                BufferError in case a copy is deemed necessary. If None, the output tensor must
+                reuse the existing memory buffer if possible and copy otherwise. Default: None.
         """
 
         if self.is_sparse():

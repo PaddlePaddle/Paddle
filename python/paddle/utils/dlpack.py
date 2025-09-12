@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
+    from paddle._typing import PlaceLike
 
 
 __all__ = [
@@ -137,6 +138,9 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
 def from_dlpack(
     dlpack: SupportDLPack | CapsuleType,
+    *,
+    device: PlaceLike | None = None,
+    copy: bool | None = None,
 ) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
@@ -151,6 +155,14 @@ def from_dlpack(
             method). Otherwise `dlpack` may be a DLPack capsule, which is
             an opaque `PyCapsule` instance, typically produced by a
             `to_dlpack` function or method.
+
+        device (PlaceLike, optional): The device of the returned tensor. If not
+            specified, the device will be the same as that of the input `dlpack`.
+        copy (bool, optional): Whether or not to copy the input.
+            If True, the output tensor always copied. If False, the output tensor must never
+            copied, and raise a BufferError in case a copy is deemed necessary. If None, the
+            output tensor must reuse the existing memory buffer if possible and copy otherwise.
+            Default: None.
 
     Returns:
         out (Tensor): A tensor decoded from DLPack. The data type of returned tensor
@@ -203,20 +215,27 @@ def from_dlpack(
     if hasattr(dlpack, "__dlpack__"):
         kwargs = {}
         kwargs["max_version"] = (1, 1)
-        device = dlpack.__dlpack_device__()
+        if copy is not None:
+            kwargs["copy"] = copy
+
+        if device is not None:
+            place = paddle.base.framework._get_paddle_place(device)
+            kwargs["dl_device"] = paddle.base.core.place_to_dl_device(place)
+
+        dlpack_device = dlpack.__dlpack_device__()
         # device is CUDA, we need to pass the current
         # stream
-        if device[0] in (DLDeviceType.kDLCUDA,):
+        if dlpack_device[0] in (DLDeviceType.kDLCUDA,):
             with warnings.catch_warnings():
                 # ignore deprecation warning
                 warnings.filterwarnings("ignore", category=UserWarning)
-                stream = paddle.device.cuda.current_stream(device[1])
+                stream = paddle.device.cuda.current_stream(dlpack_device[1])
             # cuda_stream is the pointer to the stream and it is a public
             # attribute, but it is not documented
             # The array API specify that the default legacy stream must be passed
             # with a value of 1 for CUDA
             # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
-            is_gpu = device[0] == DLDeviceType.kDLCUDA
+            is_gpu = dlpack_device[0] == DLDeviceType.kDLCUDA
             stream_ptr = (
                 1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
             )

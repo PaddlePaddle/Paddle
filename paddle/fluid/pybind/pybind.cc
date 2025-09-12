@@ -1748,6 +1748,12 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
+  m.def("place_to_dl_device", [](const phi::Place &place) {
+    ::DLDevice dl_device = PlaceToDLDevice(place);
+    return py::make_tuple(static_cast<int>(dl_device.device_type),
+                          dl_device.device_id);
+  });
+
   m.def("from_dlpack", [](py::object data) {
     if (PyCapsule_IsValid(data.ptr(),
                           DLPackTraits<DLManagedTensorVersioned>::capsule)) {

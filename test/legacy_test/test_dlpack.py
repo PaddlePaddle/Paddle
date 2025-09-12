@@ -464,7 +464,7 @@ class TestDtypesLowPrecision(unittest.TestCase):
                 self.assertEqual(x.data_ptr(), o_v2.data_ptr())
 
 
-class TestCopySemantic(unittest.TestCase):
+class TestCopySemanticDLPackProtocol(unittest.TestCase):
     @dygraph_guard()
     def test_dlpack_same_place_cpu(self):
         cpu_place = paddle.CPUPlace()
@@ -554,7 +554,7 @@ class TestCopySemantic(unittest.TestCase):
         )
 
     @dygraph_guard()
-    def test_cross_device_cpu_to_cuda(self):
+    def test_dlpack_cross_device_cpu_to_cuda(self):
         if not paddle.is_compiled_with_cuda():
             return
         cpu_place = paddle.CPUPlace()
@@ -571,7 +571,7 @@ class TestCopySemantic(unittest.TestCase):
         )
 
     @dygraph_guard()
-    def test_cross_device_cuda_to_cpu(self):
+    def test_dlpack_cross_device_cuda_to_cpu(self):
         if not paddle.is_compiled_with_cuda():
             return
         cpu_place = paddle.CPUPlace()
@@ -588,7 +588,7 @@ class TestCopySemantic(unittest.TestCase):
         )
 
     @dygraph_guard()
-    def test_cross_device_cpu_to_cuda_force_copy(self):
+    def test_dlpack_cross_device_cpu_to_cuda_force_copy(self):
         if not paddle.is_compiled_with_cuda():
             return
         cpu_place = paddle.CPUPlace()
@@ -606,7 +606,7 @@ class TestCopySemantic(unittest.TestCase):
         )
 
     @dygraph_guard()
-    def test_cross_device_cuda_to_cpu_force_copy(self):
+    def test_dlpack_cross_device_cuda_to_cpu_force_copy(self):
         if not paddle.is_compiled_with_cuda():
             return
         cpu_place = paddle.CPUPlace()
@@ -624,7 +624,7 @@ class TestCopySemantic(unittest.TestCase):
         )
 
     @dygraph_guard()
-    def test_cross_device_cpu_to_cuda_disallow_copy(self):
+    def test_dlpack_cross_device_cpu_to_cuda_disallow_copy(self):
         if not paddle.is_compiled_with_cuda():
             return
         cpu_place = paddle.CPUPlace()
@@ -633,13 +633,90 @@ class TestCopySemantic(unittest.TestCase):
             tensor.__dlpack__(dl_device=(DLDeviceType.kDLCUDA, 0), copy=False)
 
     @dygraph_guard()
-    def test_cross_device_cuda_to_cpu_disallow_copy(self):
+    def test_dlpack_cross_device_cuda_to_cpu_disallow_copy(self):
         if not paddle.is_compiled_with_cuda():
             return
         cuda_place = paddle.CUDAPlace(0)
         tensor = paddle.to_tensor([1, 2, 3], place=cuda_place)
         with self.assertRaises(BufferError):
             tensor.__dlpack__(dl_device=(DLDeviceType.kDLCPU, 0), copy=False)
+
+
+class TestCopySemanticFromDLPack(unittest.TestCase):
+    @dygraph_guard()
+    def test_from_dlpack_same_place(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        tensor_from_dlpack = paddle.from_dlpack(dlpack)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_from_dlpack_same_place_force_copy(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        tensor_from_dlpack = paddle.from_dlpack(dlpack, copy=True)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_from_dlpack_same_place_disallow_copy(self):
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        tensor_from_dlpack = paddle.from_dlpack(dlpack, copy=False)
+        self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_from_dlpack_cross_device(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        tensor_from_dlpack = paddle.from_dlpack(dlpack, device=cuda_place)
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_from_dlpack_cross_device_force_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        cuda_place = paddle.CUDAPlace(0)
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        tensor_from_dlpack = paddle.from_dlpack(
+            dlpack, device=cuda_place, copy=True
+        )
+        self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
+        self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
+        np.testing.assert_array_equal(
+            tensor.numpy(), tensor_from_dlpack.numpy()
+        )
+
+    @dygraph_guard()
+    def test_from_dlpack_cross_device_disallow_copy(self):
+        if not paddle.is_compiled_with_cuda():
+            return
+        cpu_place = paddle.CPUPlace()
+        tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
+        dlpack = tensor.__dlpack__()
+        with self.assertRaises(BufferError):
+            paddle.from_dlpack(dlpack, device=paddle.CUDAPlace(0), copy=False)
 
 
 if __name__ == "__main__":

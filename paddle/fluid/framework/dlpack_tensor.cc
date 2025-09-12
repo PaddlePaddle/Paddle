@@ -250,6 +250,24 @@ struct DLDeviceVisitor {
 };
 }  // namespace internal
 
+phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
+  phi::Place place;
+  if (dl_device.device_type == kDLCPU) {
+    place = phi::CPUPlace();
+  } else if (dl_device.device_type == kDLCUDA) {
+    place = phi::GPUPlace(dl_device.device_id);
+  } else if (dl_device.device_type == kDLCUDAHost) {
+    place = phi::GPUPinnedPlace();
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
+  }
+  return place;
+}
+
+DLDevice PlaceToDLDevice(const phi::Place &place) {
+  return phi::VisitPlace(place, internal::DLDeviceVisitor());
+}
+
 template <typename T>
 struct PaddleDLMTensor {
   phi::DenseTensor handle;
@@ -310,8 +328,7 @@ T *toDLPackImpl(const phi::DenseTensor &src) {
 
   pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
   auto place = src.place();
-  pdDLMTensor->tensor.dl_tensor.device =
-      phi::VisitPlace(place, internal::DLDeviceVisitor());
+  pdDLMTensor->tensor.dl_tensor.device = PlaceToDLDevice(place);
   pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
       framework::TransToProtoVarType(src.dtype()));
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
@@ -325,20 +342,6 @@ DLManagedTensor *toDLPack(const phi::DenseTensor &src) {
 
 DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src) {
   return toDLPackImpl<DLManagedTensorVersioned>(src);
-}
-
-phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
-  phi::Place place;
-  if (dl_device.device_type == kDLCPU) {
-    place = phi::CPUPlace();
-  } else if (dl_device.device_type == kDLCUDA) {
-    place = phi::GPUPlace(dl_device.device_id);
-  } else if (dl_device.device_type == kDLCUDAHost) {
-    place = phi::GPUPinnedPlace();
-  } else {
-    PADDLE_THROW(common::errors::Unimplemented("Given Place is not supported"));
-  }
-  return place;
 }
 
 template <typename T>
