@@ -347,6 +347,58 @@ class TestBackward_6(unittest.TestCase):
             y = f(x)
             self.assertEqual(x.shape, y.shape)
 
+    def test_negative_shape_error1(self):
+        with dygraph_guard():
+            model = paddle.nn.Linear(2, 3)
+
+            def f(x):
+                y = model(x)
+                y = paddle.tanh(y)
+                return paddle.grad(
+                    y, x, create_graph=True, grad_outputs=paddle.randn(1, 3)
+                )[0]
+
+            with self.assertRaisesRegex(
+                ValueError,
+                r"The shape of grad_output\[0\] \[1, 3\] should be the same as the shape of output\[0\] \[4, 3\]",
+            ):
+                x = paddle.randn(4, 2, requires_grad=True)
+                f = paddle.jit.to_static(
+                    f,
+                    full_graph=True,
+                    backend=None,
+                    input_spec=[
+                        paddle.static.InputSpec(x.shape, dtype="float32")
+                    ],
+                )
+                y = f(x)
+
+    def test_negative_shape_error2(self):
+        with dygraph_guard():
+            model = paddle.nn.Linear(2, 3)
+
+            def f(x):
+                y = model(x)
+                y = paddle.tanh(y)
+                return paddle.grad(
+                    y, x, create_graph=True, grad_outputs=paddle.randn(4)
+                )[0]
+
+            with self.assertRaisesRegex(
+                ValueError,
+                r"The shape of grad_output\[0\] \[4\] should be the same as the shape of output\[0\] \[4, 3\]",
+            ):
+                x = paddle.randn(4, 2, requires_grad=True)
+                f = paddle.jit.to_static(
+                    f,
+                    full_graph=True,
+                    backend=None,
+                    input_spec=[
+                        paddle.static.InputSpec(x.shape, dtype="float32")
+                    ],
+                )
+                y = f(x)
+
 
 class TestValueSet(unittest.TestCase):
     def setUp(self) -> None:
