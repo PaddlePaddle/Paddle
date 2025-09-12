@@ -647,8 +647,7 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
     def test_from_dlpack_same_place(self):
         cpu_place = paddle.CPUPlace()
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
-        tensor_from_dlpack = paddle.from_dlpack(dlpack)
+        tensor_from_dlpack = paddle.from_dlpack(tensor)
         self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
         np.testing.assert_array_equal(
             tensor.numpy(), tensor_from_dlpack.numpy()
@@ -658,8 +657,7 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
     def test_from_dlpack_same_place_force_copy(self):
         cpu_place = paddle.CPUPlace()
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
-        tensor_from_dlpack = paddle.from_dlpack(dlpack, copy=True)
+        tensor_from_dlpack = paddle.from_dlpack(tensor, copy=True)
         self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
         np.testing.assert_array_equal(
             tensor.numpy(), tensor_from_dlpack.numpy()
@@ -669,8 +667,7 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
     def test_from_dlpack_same_place_disallow_copy(self):
         cpu_place = paddle.CPUPlace()
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
-        tensor_from_dlpack = paddle.from_dlpack(dlpack, copy=False)
+        tensor_from_dlpack = paddle.from_dlpack(tensor, copy=False)
         self.assertEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
         np.testing.assert_array_equal(
             tensor.numpy(), tensor_from_dlpack.numpy()
@@ -683,8 +680,7 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
         cpu_place = paddle.CPUPlace()
         cuda_place = paddle.CUDAPlace(0)
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
-        tensor_from_dlpack = paddle.from_dlpack(dlpack, device=cuda_place)
+        tensor_from_dlpack = paddle.from_dlpack(tensor, device=cuda_place)
         self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
         self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
         np.testing.assert_array_equal(
@@ -698,9 +694,8 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
         cpu_place = paddle.CPUPlace()
         cuda_place = paddle.CUDAPlace(0)
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
         tensor_from_dlpack = paddle.from_dlpack(
-            dlpack, device=cuda_place, copy=True
+            tensor, device=cuda_place, copy=True
         )
         self.assertNotEqual(tensor.data_ptr(), tensor_from_dlpack.data_ptr())
         self.assertEqual(str(tensor_from_dlpack.place), str(cuda_place))
@@ -714,9 +709,8 @@ class TestCopySemanticFromDLPack(unittest.TestCase):
             return
         cpu_place = paddle.CPUPlace()
         tensor = paddle.to_tensor([1, 2, 3], place=cpu_place)
-        dlpack = tensor.__dlpack__()
         with self.assertRaises(BufferError):
-            paddle.from_dlpack(dlpack, device=paddle.CUDAPlace(0), copy=False)
+            paddle.from_dlpack(tensor, device=paddle.CUDAPlace(0), copy=False)
 
 
 if __name__ == "__main__":

@@ -223,9 +223,11 @@ phi::DenseTensor HandleTensorCopy(
   }
 
   if (force_copy || src.place() != dst_place) {
+    phi::Place ctx_place =
+        src.place() != phi::CPUPlace() ? src.place() : dst_place;
     phi::DenseTensor dst(
         std::make_shared<phi::Allocation>(nullptr, 0, dst_place), src.meta());
-    const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(dst_place);
+    const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
     phi::Copy(*dev_ctx, src, dst_place, false, &dst);
     return dst;
   }
