@@ -20,6 +20,7 @@
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 COMMON_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_string(dump_grad_node_forward_stack_path);
 namespace egr {
 using paddle::inference::analysis::Dot;
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
@@ -82,7 +83,7 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop_front();
-    std::string dot_node_label = CreateNodeLabelInDot(node);
+    std::string dot_node_label = CreateForwardNodeLabelInDot(node);
     if (visited.count(node)) {
       continue;
     }
@@ -113,7 +114,8 @@ void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
         if (!next_node) {
           continue;
         }
-        std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+        std::string dot_next_node_label =
+            CreateForwardNodeLabelInDot(next_node);
         auto& tm = meta.GetTensorMeta();
         std::string tensor_label = CreateEdgeLabelInDot(tm);
         if (!dot->ContainsNode(dot_next_node_label)) {
@@ -193,8 +195,10 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& no_grad_vars = {},
     std::string debug_info_path = "") {
   VLOG(3) << "Start Backward";
-
+  std::cout << FLAGS_dump_grad_node_forward_stack_path << std::endl;
   bool need_debug_backward_graph = !debug_info_path.empty();
+  bool need_dump_forward_stack =
+      !FLAGS_dump_grad_node_forward_stack_path.empty();
   egr::EagerBackwardStateGuard guard;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -329,7 +333,7 @@ std::vector<paddle::Tensor> RunBackward(
       getInDegreeMap(queue);
   Dot forward_debug_dot_graph;
   std::string debug_call_stack = "";
-  if (need_debug_backward_graph)
+  if (need_debug_backward_graph || need_dump_forward_stack)
     ConstructForwardDebugDotGraph(
         queue, &forward_debug_dot_graph, &debug_call_stack);
   std::deque<GradNodeBase*> ready_queue;
@@ -584,6 +588,13 @@ std::vector<paddle::Tensor> RunBackward(
 
       LOG(WARNING) << "While running Node (" << node->name()
                    << ") raises an EnforceNotMet exception";
+      // Save Debug info to the debug_info_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(debug_info_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
       throw ex;
     } catch (std::exception& ex) {
       LOG(WARNING) << "While running Node (" << node->name()
@@ -594,6 +605,13 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
+      // Save Debug info to the debug_info_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(debug_info_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
       std::rethrow_exception(std::current_exception());
     } catch (...) {
       LOG(WARNING) << "While running Node (" << node->name()
@@ -603,14 +621,31 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
+      // Save Debug info to the debug_info_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(debug_info_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
+
       std::rethrow_exception(std::current_exception());
     }
   }
+  // Save Debug info to the debug_info_path
   if (need_debug_backward_graph) {
     SaveDebugInfo(debug_info_path,
                   forward_debug_dot_graph.Build(),
                   debug_call_stack,
                   dot.Build());
+  }
+  // Dump the forward graph and call stack into
+  // FLAGS_dump_grad_node_forward_stack_path
+  if (need_dump_forward_stack) {
+    SaveDebugInfo(FLAGS_dump_grad_node_forward_stack_path,
+                  forward_debug_dot_graph.Build(),
+                  debug_call_stack,
+                  "");
   }
   VLOG(6) << "Run Backward Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();

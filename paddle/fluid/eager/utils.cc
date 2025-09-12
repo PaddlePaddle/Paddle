@@ -1154,6 +1154,23 @@ std::string CreateNodeLabelInDot(GradNodeBase* node) {
   oss << node->name() << "\\nPtr: " << std::hex << node;
   return oss.str();
 }
+std::string CreateForwardNodeLabelInDot(GradNodeBase* node) {
+  std::ostringstream oss;
+  std::string name = node->name();
+  if (name == "GradNodeAccumulation") {
+    name = "Node";
+  } else {
+    // erase "GradNode"
+    const std::string suffix = "GradNode";
+    size_t pos = name.find(suffix);
+    if (pos != std::string::npos) {
+      name.erase(pos, suffix.length());
+    }
+  }
+  oss << name << "\\nGradNode: " << std::hex << node;
+
+  return oss.str();
+}
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor) {
   std::ostringstream oss;
   oss << tensor.place() << "\\n"
@@ -1183,6 +1200,7 @@ void SaveDebugInfo(const std::string& dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
                    const std::string& serialized_backward_graph) {
+  // Use timestamps to distinguish multiple logs
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);
   auto now_tm = *std::localtime(&now_time_t);
@@ -1195,15 +1213,26 @@ void SaveDebugInfo(const std::string& dir_path,
   oss << std::put_time(&now_tm, "%Y-%m-%d_%H:%M:%S");
   oss << "." << std::setfill('0') << std::setw(6) << microseconds;
   std::string timestamp = oss.str();
+#ifdef _WIN32
+  auto sep = '\\';
+#else
+  auto sep = '/';
+#endif  // _WIN32
   std::string file_path_prefix =
-      (dir_path.back() == '/' ? dir_path : dir_path + "/") + timestamp;
-  std::string forward_graph_file_path =
-      file_path_prefix + "_ref_forward_graph" + ".dot";
-  SaveStringToFile(forward_graph_file_path, serialized_forward_graph);
-  std::string call_stack_file = file_path_prefix + "_call_stack" + ".log";
-  SaveStringToFile(call_stack_file, call_stack);
-  std::string backward_graph_file_path =
-      file_path_prefix + "_backward_graph" + ".dot";
-  SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
+      (dir_path.back() == sep ? dir_path : dir_path + sep) + timestamp;
+  if (serialized_forward_graph.empty() == false) {
+    std::string forward_graph_file_path =
+        file_path_prefix + "_ref_forward_graph" + ".dot";
+    SaveStringToFile(forward_graph_file_path, serialized_forward_graph);
+  }
+  if (call_stack.empty() == false) {
+    std::string call_stack_file = file_path_prefix + "_call_stack" + ".log";
+    SaveStringToFile(call_stack_file, call_stack);
+  }
+  if (serialized_backward_graph.empty() == false) {
+    std::string backward_graph_file_path =
+        file_path_prefix + "_backward_graph" + ".dot";
+    SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
+  }
 }
 }  // namespace egr
