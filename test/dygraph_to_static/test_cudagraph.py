@@ -99,8 +99,8 @@ def replay_run_impl_guard():
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(),
-    "Skipped on non-GPU devices as this test requires NVIDIA CUDA Graph.",
+    (not paddle.is_compiled_with_cuda()) or paddle.is_compiled_with_rocm(),
+    "Skipped on non-GPU devices and ROCm devices(DCU) as this test requires NVIDIA CUDA Graph.",
 )
 class TestCUDAGraph(Dy2StTestBase):
     def initialize(self):
