@@ -1456,6 +1456,16 @@ def monkey_patch_value():
 
     import paddle
 
+    def get_device(self) -> None:
+        """
+        Value don't have 'get_device' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warning here and return None.
+        """
+        warnings.warn(
+            "Value do not have 'get_device' interface for pir graph mode, try not to use it. None will be returned."
+        )
+
     value_methods = [
         ('cpu', cpu),
         ('cuda', cuda),
@@ -1493,6 +1503,7 @@ def monkey_patch_value():
         ("tolist", tolist),
         ("numpy", numpy),
         ("register_hook", register_hook),
+        ("get_device", get_device),
         ("__deepcopy__", __deepcopy__),
         # For basic operators
         (

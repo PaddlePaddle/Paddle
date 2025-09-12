@@ -73,18 +73,18 @@ class SplitFunctor {
 }  // namespace funcs
 }  // namespace phi
 
-#define FOR_ALL_TYPES(macro)        \
-  macro(int);                       \
-  macro(float);                     \
-  macro(double);                    \
-  macro(bool);                      \
-  macro(int64_t);                   \
-  macro(int16_t);                   \
-  macro(uint8_t);                   \
-  macro(int8_t);                    \
-  macro(phi::float16);              \
-  macro(phi::bfloat16);             \
-  macro(phi::complex64);            \
-  macro(phi::complex128);           \
-  macro(phi::dtype::float8_e4m3fn); \
-  macro(phi::dtype::float8_e5m2);
+#define FOR_ALL_TYPES(macro) \
+  macro(int);                \
+  macro(float);              \
+  macro(double);             \
+  macro(bool);               \
+  macro(int64_t);            \
+  macro(int16_t);            \
+  macro(uint8_t);            \
+  macro(int8_t);             \
+  macro(phi::float16);       \
+  macro(phi::bfloat16);      \
+  macro(phi::complex64);     \
+  macro(phi::complex128);    \
+  macro(phi::float8_e4m3fn); \
+  macro(phi::float8_e5m2);

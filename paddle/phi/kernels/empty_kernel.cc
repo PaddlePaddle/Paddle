@@ -14,7 +14,6 @@
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -52,8 +51,8 @@ PD_REGISTER_KERNEL(empty,
                    bool,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}
 
@@ -91,8 +90,8 @@ PD_REGISTER_KERNEL(empty,
                    bool,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}
 
