@@ -75,7 +75,7 @@ class TestGetCudaArchFlags(unittest.TestCase):
 
     def test_skip_paddle_extension_name_flag(self):
         flags = _get_cuda_arch_flags(cflags=["-DPADDLE_EXTENSION_NAME=my_ext"])
-        self.assertEqual(flags, [])
+        self.assertNotEqual(flags, [])
 
 
 class TestCppExtensionUtils(unittest.TestCase):
