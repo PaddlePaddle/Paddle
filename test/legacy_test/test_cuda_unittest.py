@@ -16,9 +16,8 @@ import ctypes
 import types
 import unittest
 
-from op_test import get_device, is_custom_device
-
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.cuda import (
