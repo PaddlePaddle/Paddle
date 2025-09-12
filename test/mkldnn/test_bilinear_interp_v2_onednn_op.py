@@ -16,7 +16,12 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+    skip_check_grad_ci,
+)
 
 
 def bilinear_interp_onednn_np(
@@ -64,6 +69,7 @@ def bilinear_interp_onednn_np(
     return out.astype(input.dtype)
 
 
+@OpTestTool.skip_if_not_cpu()
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestBilinearInterpOneDNNOp(OpTest):
     def init_test_case(self):

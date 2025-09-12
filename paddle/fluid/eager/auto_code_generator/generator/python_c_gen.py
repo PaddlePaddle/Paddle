@@ -20,6 +20,7 @@ from codegen_utils import (
     GeneratorBase,
     GetForwardFunctionName,
     GetInplacedFunctionName,
+    IsUsePredefinedOut,
     IsVectorTensorType,
     ParsePythonAPIInfoFromYAML,
 )
@@ -700,19 +701,20 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         dygraph_function_call_str = ",".join(dygraph_function_call_list)
 
         get_predefined_out_str = ""
-        if (
-            not no_predefined_out_tensor
-            and len(self.forward_outputs_position_map) == 1
-            and next(iter(self.forward_outputs_position_map.values()))[0]
-            == "Tensor"
-            and forward_api_name != "empty_like"
-        ):
-            dygraph_function_call_str = (
-                dygraph_function_call_str + ", predefined_out"
+        if not no_predefined_out_tensor and forward_api_name != "empty_like":
+            forward_outputs_position_list = list(
+                self.forward_outputs_position_map.values()
             )
-            get_predefined_out_str = (
-                "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
-            )
+            if IsUsePredefinedOut(forward_outputs_position_list):
+                length = len(forward_outputs_position_list)
+                if length == 1:
+                    get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
+                else:
+                    get_predefined_out_str = f"    auto predefined_out = GetPredefinedOutTupleTensorFromKwargs_{length}(kwargs);"
+
+                dygraph_function_call_str = (
+                    dygraph_function_call_str + ", predefined_out"
+                )
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(

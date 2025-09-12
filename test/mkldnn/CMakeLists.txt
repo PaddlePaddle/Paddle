@@ -22,10 +22,10 @@ endforeach()
 # NODE(Ruibiao): Remove it after static build is enabled by default.
 if(WITH_ONEDNN AND NOT WIN32)
   py_test_modules(
-    test_dequantize_mkldnn_op_static_build MODULES test_dequantize_mkldnn_op
+    test_dequantize_onednn_op_static_build MODULES test_dequantize_onednn_op
     ENVS FLAGS_new_executor_static_build=true)
   py_test_modules(
-    test_quantize_mkldnn_op_static_build MODULES test_quantize_mkldnn_op ENVS
+    test_quantize_onednn_op_static_build MODULES test_quantize_onednn_op ENVS
     FLAGS_new_executor_static_build=true)
 endif()
 
