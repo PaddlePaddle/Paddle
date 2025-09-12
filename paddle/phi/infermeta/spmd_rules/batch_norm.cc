@@ -127,10 +127,8 @@ SpmdInfo BatchNormInferSpmd(const DistMetaTensor& x,
                                 // "NCDHW"
 
   for (int i = 0; i < x_ndim; ++i) {
-    if (!x_dims_mapping.empty()) {
-      for (const auto dim : x_dims_mapping) {
-        c_dim.emplace_back(dim);
-      }
+    if (!x_dims_mapping[i].empty()) {
+      x_dims_mapping[i] = std::vector<int64_t>{};
     }
   }
   x_dims_mapping[c_index] = c_dim;
@@ -349,10 +347,8 @@ SpmdInfo BatchNormGradInferSpmd(const DistMetaTensor& x,
                                 // "NCDHW"
 
   for (int i = 0; i < x_ndim; ++i) {
-    if (!x_dims_mapping.empty()) {
-      for (const auto dim : x_dims_mapping) {
-        c_dim.emplace_back(dim);
-      }
+    if (!x_dims_mapping[i].empty()) {
+      x_dims_mapping[i] = std::vector<int64_t>{};
     }
   }
   x_dims_mapping[c_index] = c_dim;

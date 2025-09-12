@@ -95,9 +95,7 @@ SpmdInfo GroupNormInferSpmdBase(const DistMetaTensor& x,
   auto b_dim = x_dims_mapping[0];
   for (int i = 1; i < x_ndim; ++i) {
     if (!x_dims_mapping[i].empty()) {
-      for (const auto dim : x_dims_mapping[i]) {
-        b_dim.emplace_back(dim);
-      }
+      x_dims_mapping[i] = std::vector<int64_t>{};
     }
   }
   x_dims_mapping[0] = b_dim;
@@ -268,9 +266,7 @@ SpmdInfo GroupNormGradInferSpmdBase(const DistMetaTensor& x,
   auto b_dim = x_dims_mapping[0];
   for (int i = 1; i < x_ndim; ++i) {
     if (!x_dims_mapping[i].empty()) {
-      for (const auto dim : x_dims_mapping[i]) {
-        b_dim.emplace_back(dim);
-      }
+      x_dims_mapping[i] = std::vector<int64_t>{};
     }
   }
   x_dims_mapping[0] = b_dim;
