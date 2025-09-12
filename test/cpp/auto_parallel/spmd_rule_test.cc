@@ -616,11 +616,11 @@ TEST(GroupNorm, Ctor) {
   // output:[[0,1],-1, -1, -1], [0,1], [0,1]
 
   x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
-  x(common::make_ddim(x_shape), x_dist_attr);
+  x.set_dist_attr(x_dist_attr);
   forward_info = phi::distributed::GroupNormInferSpmd(
       x, scale, bias, epsilon, groups, data_format);
-  size_t input_size = 3;
-  size_t output_size = 3;
+  input_size = 3;
+  output_size = 3;
   EXPECT_EQ(forward_info.first.size(), input_size);
   EXPECT_EQ(forward_info.second.size(), output_size);
   check_multi_dims_mapping(forward_info.first[0], {{0, 1}, {}, {}, {}});
@@ -680,8 +680,8 @@ TEST(GroupNorm, Ctor) {
   // -1],[0,1], [0,1], [[0,1], -1, -1, -1] infer output:[[0,1], -1, -1, -1],
   // [-1],[-1]
   x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
-  y(common::make_ddim(x_shape), x_dist_attr);
-  y_grad(common::make_ddim(x_shape), x_dist_attr);
+  y.set_dist_attr(x_dist_attr);
+  y_grad.set_dist_attr(x_dist_attr);
 
   backward_info = phi::distributed::GroupNormGradInferSpmd(
       x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_format);
@@ -3004,7 +3004,7 @@ TEST(BatchNorm, Ctor) {
   check_multi_dims_mapping(forward_info.second[0], {{}, {0, 1}, {}, {}});
   check_multi_dims_mapping(forward_info.second[1], {{0, 1}});
   check_multi_dims_mapping(forward_info.second[2], {{0, 1}});
-  ccheck_multi_dims_mapping(forward_info.second[3], {{0, 1}});
+  check_multi_dims_mapping(forward_info.second[3], {{0, 1}});
   check_multi_dims_mapping(forward_info.second[4], {{0, 1}});
   check_multi_dims_mapping(forward_info.second[5], {{}});
 
