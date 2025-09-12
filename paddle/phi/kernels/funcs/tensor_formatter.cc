@@ -111,9 +111,9 @@ std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
   } else if (dtype == phi::DataType::BFLOAT16) {
     FormatData<phi::bfloat16>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::FLOAT8_E4M3FN) {
-    FormatData<phi::dtype::float8_e4m3fn>(print_tensor, log_stream);
+    FormatData<phi::float8_e4m3fn>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::FLOAT8_E5M2) {
-    FormatData<phi::dtype::float8_e5m2>(print_tensor, log_stream);
+    FormatData<phi::float8_e5m2>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::COMPLEX64) {
     FormatData<phi::complex64>(print_tensor, log_stream);
   } else if (dtype == phi::DataType::COMPLEX128) {
