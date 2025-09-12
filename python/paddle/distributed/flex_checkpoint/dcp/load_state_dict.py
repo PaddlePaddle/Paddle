@@ -1143,11 +1143,12 @@ def _load_state_dict(
                 or idx + 1 == len(read_items)
             ):
                 if isinstance(value, ShardedWeight):
-                    target_value = value.local_tensor
+                    target_value = target_state_dict[key].local_tensor
                     paddle.assign(
                         copied_target_state_dict[key].cpu(),
                         target_value,
                     )
+                    target_state_dict[key].local_tensor = target_value
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
                 del t
