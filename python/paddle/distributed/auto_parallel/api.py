@@ -4007,14 +4007,22 @@ class ShardDataloader:
     ):
         dist_data = []
         for j in range(len(list_tensors)):
-            if dense_tensor_idx is not None and j in dense_tensor_idx:
-                dist_data.append(list_tensors[j])
-            else:
+            if not isinstance(list_tensors[j], paddle.Tensor):
+                list_tensors[j] = paddle.to_tensor(list_tensors[j])
                 dist_data.append(
                     dtensor_from_local(
-                        list_tensors[j], meshes[j], placements[j]
+                        list_tensors[j], meshes[j], [dist.Replicate()]
                     )
                 )
+            else:
+                if dense_tensor_idx is not None and j in dense_tensor_idx:
+                    dist_data.append(list_tensors[j])
+                else:
+                    dist_data.append(
+                        dtensor_from_local(
+                            list_tensors[j], meshes[j], placements[j]
+                        )
+                    )
         return dist_data
 
     def _get_batch(self, batch_data):
@@ -4095,9 +4103,17 @@ class ShardDataloader:
                             batch_data[key], mesh, placements
                         )
                 else:
-                    raise ValueError(
-                        f"Unsupported input_data type {type(input_data)}"
-                    )
+                    input_data = paddle.to_tensor(input_data)
+                    if (
+                        self.dense_tensor_idx is not None
+                        and self.dense_tensor_idx[i] != []
+                    ):
+                        dist_batch_data.append(input_data)
+                    else:
+                        mesh, placements = self._get_mesh_and_placement(i)
+                        dist_batch_data[key] = dtensor_from_local(
+                            input_data, mesh, [dist.Replicate()]
+                        )
             return dist_batch_data
         elif isinstance(batch_data, paddle.Tensor):
             mesh, placements = self._get_mesh_and_placement(0)
