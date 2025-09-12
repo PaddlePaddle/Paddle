@@ -102,6 +102,50 @@ struct uniform_int_transform {
   int min_;
 };
 
+template <typename T, typename R>
+struct uniform_int_from_to_distribution {
+  explicit uniform_int_from_to_distribution(uint64_t range, int64_t base)
+      : range_(range), base_(base) {}
+
+  HOSTDEVICE inline T operator()(R rand) const {
+    return static_cast<T>(static_cast<int>(rand % range_) + base_);
+  }
+
+ private:
+  uint64_t range_;
+  int64_t base_;
+};
+
+template <typename T, typename R>
+struct uniform_int_distribution {
+  HOSTDEVICE inline T operator()(R rand) const { return uniform_int(rand); }
+
+ private:
+  HOSTDEVICE inline T uniform_int(R val) const {
+    if constexpr (std::is_floating_point_v<T>) {
+      return static_cast<T>(
+          val %
+          static_cast<uint64_t>((1ULL << std::numeric_limits<T>::digits) + 1));
+    } else if constexpr (std::is_same_v<T, bool>) {
+      return static_cast<bool>(val & 1);
+    } else if constexpr (std::is_same_v<T, int64_t>) {
+      return static_cast<T>(
+          val % (static_cast<uint64_t>(std::numeric_limits<T>::max()) + 1));
+    } else if constexpr (std::is_same_v<T, phi::dtype::float16> ||  // NOLINT
+                         std::is_same_v<T, phi::dtype::bfloat16>) {
+      return static_cast<T>(
+          val %
+          static_cast<uint64_t>((1ULL << std::numeric_limits<T>::digits) + 1));
+    } else if constexpr (std::is_integral_v<T>) {
+      return static_cast<T>(
+          val % (static_cast<uint64_t>(std::numeric_limits<T>::max()) + 1));
+    } else {
+      assert(false);
+      return 0;
+    }
+  }
+};
+
 template <typename T>
 struct normal_transform {
   explicit normal_transform(T mean, T std) : mean_(mean), std_(std) {}

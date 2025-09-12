@@ -4352,6 +4352,31 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
+- op : random
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomInferMeta
+  kernel :
+    func : random
+  inplace : (x -> out)
+  backward: random_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
+
+- op : random_from_to
+  args : (Tensor x, int64_t from, int64_t to)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomInferMeta
+    param : [x]
+  kernel :
+    func : random_from_to
+  inplace : (x -> out)
+  backward: random_from_to_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
+
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
   output : Tensor(out)

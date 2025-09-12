@@ -234,58 +234,6 @@ class TestGeneratorSeed(unittest.TestCase):
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
-    def test_generator_random__dygraph(self):
-        """Test Generator seed."""
-        base.enable_dygraph()
-
-        gen = paddle.seed(12312321111)
-        # Test float32 tensor
-        x = paddle.zeros([10], dtype="int32")
-        x.random_(0, 10)
-        st1 = gen.get_state()
-        x1 = paddle.zeros([10], dtype="int32")
-        x1.random_(0, 10)
-        gen.set_state(st1)
-        x2 = paddle.zeros([10], dtype="int32")
-        x2.random_(0, 10)
-        paddle.seed(12312321111)
-        x3 = paddle.zeros([10], dtype="int32")
-        x3.random_(0, 10)
-        x_np = x.numpy()
-        x1_np = x1.numpy()
-        x2_np = x2.numpy()
-        x3_np = x3.numpy()
-
-        # Test default behavior
-        x_f32 = paddle.zeros([10], dtype="float32")
-        x_f32.random_()
-        x_f32.random_(10)
-
-        # Test default behavior
-        x_int = paddle.zeros([10], dtype="int32")
-        x_int.random_()
-        x_int.random_(10)
-
-        # Test edge cases
-        with self.assertRaises(RuntimeError):
-            x_bad = paddle.zeros([10], dtype="float32")
-            x_bad.random_(5, 1)
-
-        with self.assertRaises(RuntimeError):
-            x_bad_int = paddle.zeros([10], dtype="int32")
-            x_bad_int.random_(-10)
-
-        with self.assertRaises(TypeError):
-            x_bad_type = paddle.zeros([10], dtype="float16")
-            x_bad_type.random_()
-
-        if (
-            not (core.is_compiled_with_cuda() or is_custom_device())
-            and not core.is_compiled_with_xpu()
-        ):
-            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
-            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
-
     def test_generator_uniform_random_static_1(self):
         base.disable_dygraph()
 

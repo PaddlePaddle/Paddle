@@ -4245,6 +4245,37 @@ bool UniformInplace_OpInferSymbolicShape(
   return UniformInplaceOpInferSymbolicShape(op, infer_context);
 }
 
+bool RandomOpInferSymbolicShape(pir::Operation *op,
+                                pir::InferSymbolicShapeContext *infer_context) {
+  const auto &x_shape_or_data =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  const std::vector<symbol::DimExpr> &x_shape = x_shape_or_data.shape();
+  PADDLE_ENFORCE_NE(op->result(0),
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "uniform_random should have output tensor out."));
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{symbol::TensorShapeOrDataDimExprs(x_shape)});
+  return true;
+}
+
+bool Random_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return RandomOpInferSymbolicShape(op, infer_context);
+}
+
+bool RandomFromToOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return RandomOpInferSymbolicShape(op, infer_context);
+}
+
+bool RandomFromTo_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return RandomOpInferSymbolicShape(op, infer_context);
+}
+
 bool UniformRandomBatchSizeLikeOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return BatchSizeLikeInferSymbolicShape(op, infer_context);
