@@ -213,3 +213,5 @@ python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-d
 mv -f python-coverage-diff.tmp python-coverage-diff.info
 
 cp python-coverage-diff.info coverage_files
+
+curl https://paddle-ci.gz.bcebos.com/coverage/scripts/paddle_coverage_night_v4.sh | bash
