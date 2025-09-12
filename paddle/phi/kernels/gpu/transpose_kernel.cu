@@ -19,7 +19,6 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/impl/transpose_grad_kernel_impl.h"
@@ -70,5 +69,5 @@ PD_REGISTER_KERNEL(transpose,
                    phi::bfloat16,
                    phi::complex64,
                    phi::complex128,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

@@ -184,6 +184,7 @@ from paddle import (
     onnx as onnx,
     optimizer as optimizer,
     quantization as quantization,
+    random as random,
     reader as reader,
     regularizer as regularizer,
     sparse as sparse,
@@ -194,6 +195,7 @@ from paddle import (
 
 # high-level api
 from . import (
+    _C as _C,
     _pir_ops as _pir_ops,
     _typing as _typing,
     callbacks as callbacks,
@@ -223,6 +225,7 @@ from .autograd import (
     set_grad_enabled,
 )
 from .device import (  # noqa: F401
+    PaddleStream as Stream,
     device_guard,
     get_cudnn_version,
     get_device,
@@ -645,6 +648,7 @@ from .tensor.math import (  # noqa: F401
     square_,
     stanh,
     subtract,
+    subtract_,
     sum,
     take,
     tan,
@@ -918,7 +922,6 @@ from .pir_utils import IrGuard
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
 
-
 # Constants
 newaxis: None = None
 inf = math.inf
@@ -938,6 +941,8 @@ eq = equal
 gt = greater_than
 swapdims = transpose
 swapaxes = transpose
+sub = subtract
+sub_ = subtract_
 
 __all__ = [
     'block_diag',
@@ -972,6 +977,7 @@ __all__ = [
     't_',
     'add',
     'subtract',
+    'subtract_',
     'diag',
     'diagflat',
     'diag_embed',
@@ -1208,6 +1214,8 @@ __all__ = [
     'divide_',
     'div',
     'div_',
+    'sub',
+    'sub_',
     'true_divide',
     'gammaln',
     'gammaln_',

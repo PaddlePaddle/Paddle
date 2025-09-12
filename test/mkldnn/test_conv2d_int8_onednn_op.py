@@ -177,7 +177,7 @@ class TestConv2DInt8Op(TestConv2DOp):
             'fuse_alpha': self.fuse_alpha,
             'fuse_beta': self.fuse_beta,
             'fuse_residual_connection': self.fuse_residual,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
         self.outputs = {'Output': output}
 

@@ -15,7 +15,6 @@
 #include <limits>
 #include <set>
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -341,8 +340,8 @@ PD_REGISTER_KERNEL(max,
                    int64_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}
 
 PD_REGISTER_KERNEL(mean_raw,
                    KPS,
@@ -352,7 +351,7 @@ PD_REGISTER_KERNEL(mean_raw,
                    double,
                    bool,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    float16,
                    int,
                    int64_t,

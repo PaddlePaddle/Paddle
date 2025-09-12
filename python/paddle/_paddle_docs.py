@@ -93,7 +93,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
             >>> # the axis is a int element
@@ -235,7 +234,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
             >>> # the axis is a int element
@@ -369,7 +367,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
             >>> #    [[True, False]
@@ -842,7 +839,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isinf(x)
@@ -878,7 +874,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
 
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -928,7 +923,6 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-            >>> # type: ignore
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -1033,8 +1027,6 @@ add_doc_and_signature(
         .. code-block:: python
 
             >>> import paddle
-
-            >>> # type: ignore
 
             >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
             >>> x = paddle.assign(x)

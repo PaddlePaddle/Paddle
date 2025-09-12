@@ -39,6 +39,11 @@ class ApiSubtractTest(unittest.TestCase):
         self.np_expected3 = np.subtract(self.input_a, self.input_c)
         self.np_expected4 = np.subtract(self.input_b, self.input_c)
 
+        self.np_expected5 = np.subtract(self.input_x, self.input_y * 2)
+        self.np_expected6 = np.subtract(self.input_x, self.input_z * 2)
+        self.np_expected7 = np.subtract(self.input_a, self.input_c * 2)
+        self.np_expected8 = np.subtract(self.input_b, self.input_c * 2)
+
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -109,6 +114,74 @@ class ApiSubtractTest(unittest.TestCase):
             )
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_y = paddle.static.data(
+                "y", shape=self.input_y.shape, dtype="float32"
+            )
+            result_max = paddle.sub(data_x, data_y, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "y": self.input_y},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected5, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_z = paddle.static.data(
+                "z", shape=self.input_z.shape, dtype="float32"
+            )
+            result_max = paddle.sub(data_x, data_z, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "z": self.input_z},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected6, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_a = paddle.static.data(
+                "a", shape=self.input_a.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_b.shape, dtype="int64"
+            )
+            result_max = paddle.sub(data_a, data_c, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"a": self.input_a, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected7, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_b = paddle.static.data(
+                "b", shape=self.input_b.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_c.shape, dtype="int64"
+            )
+            result_max = paddle.sub(data_b, data_c, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"b": self.input_b, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected8, rtol=1e-05)
+
     def test_dynamic_api(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.input_x)
@@ -136,6 +209,25 @@ class ApiSubtractTest(unittest.TestCase):
         res = res.numpy()
         np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
+        res = paddle.sub(x, y, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected5, rtol=1e-05)
+
+        res = paddle.sub(x, z, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected6, rtol=1e-05)
+
+        res = paddle.sub(a, c, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected7, rtol=1e-05)
+
+        res = paddle.sub(b, c, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected8, rtol=1e-05)
+
+        x.sub_(y, alpha=2)
+        np.testing.assert_allclose(x, self.np_expected5, rtol=1e-05)
+
 
 class ApiSubtractTestZeroSize(ApiSubtractTest):
     def setUp(self):
@@ -155,6 +247,11 @@ class ApiSubtractTestZeroSize(ApiSubtractTest):
         self.np_expected2 = np.subtract(self.input_x, self.input_z)
         self.np_expected3 = np.subtract(self.input_a, self.input_c)
         self.np_expected4 = np.subtract(self.input_b, self.input_c)
+
+        self.np_expected5 = np.subtract(self.input_x, self.input_y * 2)
+        self.np_expected6 = np.subtract(self.input_x, self.input_z * 2)
+        self.np_expected7 = np.subtract(self.input_a, self.input_c * 2)
+        self.np_expected8 = np.subtract(self.input_b, self.input_c * 2)
 
 
 if __name__ == "__main__":

@@ -318,6 +318,9 @@ option(
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
+option(KERNEL_WITH_FLAGCX
+       "Use FlagCX as communication backend in kernels involving communication"
+       OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -551,6 +554,9 @@ endif()
 
 if(WITH_FLAGCX)
   add_definitions("-DPADDLE_WITH_FLAGCX")
+  if(KERNEL_WITH_FLAGCX)
+    add_definitions("-DPADDLE_KERNEL_WITH_FLAGCX")
+  endif()
 endif()
 
 if(WITH_DISTRIBUTE)

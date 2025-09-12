@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/common/macros.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>

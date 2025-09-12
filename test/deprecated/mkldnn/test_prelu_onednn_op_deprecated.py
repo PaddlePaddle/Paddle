@@ -142,7 +142,7 @@ def create_bf16_test_class(parent):
             }
 
         def set_dtype_attr(self):
-            self.attrs['mkldnn_data_type'] = "bfloat16"
+            self.attrs['onednn_data_type'] = "bfloat16"
 
         def calculate_grads(self):
             dout = self.outputs['Out']

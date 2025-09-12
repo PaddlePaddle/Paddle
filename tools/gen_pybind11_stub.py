@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import argparse
 import functools
+import importlib
+import inspect
 import keyword
 import logging
 import os
@@ -159,7 +161,40 @@ FUNCTION_VALUE_TRANS = {
     'true': 'True',
     'false': 'False',
 }
-OPS_YAML_IMPORTS = ['import paddle\n']
+# TODO: Duplicate of python/paddle/tensor/tensor.prototype.pyi
+# Consider a better way to manage these common mappings.
+OPS_YAML_IMPORTS = """
+# Import common typings for generated methods
+# isort: off
+from typing import *  # noqa: F403
+from typing_extensions import *  # type: ignore # noqa: F403
+from paddle._typing import *  # noqa: F403
+
+# isort: on
+from builtins import (  # noqa: F401
+    bool as _bool,
+    bytes as _bytes,
+    complex as _complex,
+    float as _float,
+    int as _int,
+    str as _str,
+)
+from collections.abc import Iterator
+from typing import Any, Literal, overload
+
+import numpy.typing as npt
+
+import paddle
+from paddle import (
+    ParamAttr,  # noqa: F401
+    _typing,
+)
+from paddle.base.dygraph.tensor_patch_methods import (
+    TensorHookRemoveHelper,  # noqa: F401
+)
+from paddle.tensor.linalg import _POrder  # noqa: F401
+from paddle.tensor.stat import _Interpolation  # noqa: F401
+"""
 
 
 def _get_pybind11_stubgen_annotation_text(annotation: Annotation) -> str:
@@ -434,6 +469,13 @@ def parse_args():
         "like `/foo/bar/ops.yaml;paddle.x.y.ops` or /foo/bar/ops.yaml;paddle.x.y.ops;sparse",
     )
 
+    parser.add_argument(
+        "--python-api-info-yaml-path",
+        type=str,
+        default=None,
+        help="the yaml file path for python api info",
+    )
+
     args = parser.parse_args()
 
     return args
@@ -445,6 +487,7 @@ def generate_stub_file(
     ignore_all_errors: bool = False,
     print_invalid_expressions_as_is: bool = False,
     ops_yaml: list[str] | None = None,
+    python_api_info_yaml_path: str | None = None,
 ):
     # patch `pybind11-stubgen`
     patch_pybind11_stubgen_printer()
@@ -462,6 +505,11 @@ def generate_stub_file(
         # parse ops yaml into file
         if ops_yaml is not None:
             ops_yaml_helper = OpsYamlBaseAPI()
+            python_api_info: dict[str, list[str]] = {}
+            if python_api_info_yaml_path is not None:
+                python_api_info = ops_yaml_helper.parse_python_api_info(
+                    python_api_info_yaml_path
+                )
             for (
                 yaml_path,
                 dst_module,
@@ -474,7 +522,10 @@ def generate_stub_file(
                 )
 
                 ops_yaml_helper.parse_yaml_ops(
-                    yaml_path, dst_module_path, op_prefix
+                    yaml_path,
+                    dst_module_path,
+                    python_api_info,
+                    op_prefix,
                 )
                 ops_yaml_helper.insert_yaml_imports(dst_module_path)
 
@@ -496,6 +547,15 @@ def generate_stub_file(
 
     # post process
     post_process(output_dir)
+
+
+def load_python_api_function_by_name(name: str) -> Any:
+    components = name.split('.')
+    mod = importlib.import_module(components[0])
+    fn = mod
+    for comp in components[1:]:
+        fn = getattr(fn, comp)
+    return fn
 
 
 class _OpsYamlInputs(TypedDict):
@@ -657,6 +717,24 @@ class OpsYamlBaseAPI:
     def _make_sig(self, name: str, sig: tuple[str, str]) -> str:
         return self._make_sig_name(name) + ': ' + self._make_attr(sig)
 
+    def make_function_signature(
+        self,
+        raw_name: str,
+        name: str,
+        inputs: _OpsYamlInputs,
+        attrs: _OpsYamlAttr,
+        output_type_list: list[str],
+        python_api_info: dict[str, list[str]],
+    ):
+        if name in python_api_info:
+            return self.make_python_api_function(
+                name, python_api_info[raw_name]
+            )
+        else:
+            return self.make_op_function(
+                raw_name, inputs, attrs, output_type_list
+            )
+
     def make_op_function(
         self,
         name: str,
@@ -688,9 +766,35 @@ class OpsYamlBaseAPI:
 
         return f'def {name}({sig_input}) -> {sig_output}:\n'
 
+    def make_python_api_function(
+        self,
+        name: str,
+        python_api_names: list[str],
+    ) -> str:
+        fn = load_python_api_function_by_name(python_api_names[0])
+        sig = inspect.signature(fn)
+        return f'def {name}{sig}:\n'
+
+    def parse_python_api_info(self, yaml_path: str) -> dict[str, list[str]]:
+        # op name -> python api names
+        # e.g. {'add': ['paddle.add', 'paddle.Tensor.add']}
+        api_info: dict[str, list[str]] = {}
+        with open(yaml_path) as f:
+            api_list = yaml.load(f, Loader=yaml.FullLoader)
+            for api_item_yaml in api_list:
+                op_name = api_item_yaml['op']
+                api_names = [item.strip() for item in api_item_yaml['name']]
+                api_info[op_name] = api_names
+
+        return api_info
+
     # ref: paddle/phi/api/generator/api_base.py
     def parse_yaml_ops(
-        self, yaml_file: str, dst_module_path: str, op_prefix: str | None = None
+        self,
+        yaml_file: str,
+        dst_module_path: str,
+        python_api_info: dict[str, list[str]],
+        op_prefix: str | None = None,
     ) -> None:
         ops_names = {}
         ops_file = []
@@ -714,37 +818,41 @@ class OpsYamlBaseAPI:
                     ]
 
                 # get op_name, and add op_prefix
-                op_name = api_item_yaml['op']
-                op_name = (
-                    f'{op_prefix}_{op_name}'
+                raw_op_name = api_item_yaml['op']
+                raw_op_name = (
+                    f'{op_prefix}_{raw_op_name}'
                     if op_prefix is not None
-                    else op_name
+                    else raw_op_name
                 )
                 op_args = api_item_yaml['args']
                 op_output = api_item_yaml['output']
 
                 # generate input and output
                 op_inputs, op_attrs = self.parse_input_and_attr(
-                    op_name, op_args, optional_vars
+                    raw_op_name, op_args, optional_vars
                 )
-                output_type_list, _, _ = self.parse_output(op_name, op_output)
+                output_type_list, _, _ = self.parse_output(
+                    raw_op_name, op_output
+                )
 
                 # generate full signature from op and inplace op
-                for _op_name in [op_name, op_name + '_']:
-                    if _op_name in ops_names:
+                for op_name in [raw_op_name, raw_op_name + '_']:
+                    if op_name in ops_names:
                         try:
                             # replace the line from stub file with full signature
-                            ops_file[ops_names[_op_name]] = (
-                                self.make_op_function(
-                                    _op_name,
+                            ops_file[ops_names[op_name]] = (
+                                self.make_function_signature(
+                                    raw_op_name,
+                                    op_name,
                                     op_inputs,
                                     op_attrs,
                                     output_type_list,
+                                    python_api_info,
                                 )
                             )
                         except:
                             print(
-                                _op_name, op_inputs, op_attrs, output_type_list
+                                op_name, op_inputs, op_attrs, output_type_list
                             )
                             raise
 
@@ -768,11 +876,13 @@ class OpsYamlBaseAPI:
                 break
 
         # insert imports
-        ops_file = (
-            ops_file[:import_line_no]
-            + OPS_YAML_IMPORTS
-            + ops_file[import_line_no:]
-        )
+        ops_file = [
+            *ops_file[:import_line_no],
+            "\n",
+            *OPS_YAML_IMPORTS.strip().splitlines(keepends=True),
+            "\n",
+            *ops_file[import_line_no:],
+        ]
 
         with open(dst_module_path, 'w') as f:
             f.writelines(ops_file)
@@ -816,6 +926,7 @@ def main():
         ignore_all_errors=args.ignore_all_errors,
         print_invalid_expressions_as_is=args.print_invalid_expressions_as_is,
         ops_yaml=args.ops_yaml,
+        python_api_info_yaml_path=args.python_api_info_yaml_path,
     )
 
 

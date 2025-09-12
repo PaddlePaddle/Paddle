@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/phi/kernels/fusion/gpu/cudnn_norm_conv.cu.h"

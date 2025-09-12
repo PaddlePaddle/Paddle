@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/split_kernel.h"
 
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/split_kernel_impl.h"
 
@@ -32,7 +31,7 @@ PD_REGISTER_KERNEL(split,
                    int16_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::complex64,
                    phi::complex128) {}
 
@@ -49,4 +48,4 @@ PD_REGISTER_KERNEL(split_with_num,
                    int8_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn) {}
+                   phi::float8_e4m3fn) {}

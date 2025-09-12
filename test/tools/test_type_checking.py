@@ -373,17 +373,10 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_pass)
-        self.assertEqual(len(test_results), 3)
-
-        for tr in test_results:
-            self.assertFalse(tr.fail)
+        self.assertIsNone(test_results)
 
         test_results = get_test_results(doctester, docstrings_from_sampcd)
-        self.assertEqual(len(test_results), 15)
-
-        for tr in test_results:
-            print(tr.msg)
-            self.assertFalse(tr.fail)
+        self.assertIsNone(test_results)
 
     def test_mypy_fail(self):
         docstrings_fail = {
@@ -438,10 +431,8 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
-        self.assertEqual(len(test_results), 3)
-
-        for tr in test_results:
-            self.assertTrue(tr.fail)
+        error_messages, _ = test_results
+        self.assertEqual(len(error_messages), 3)
 
     def test_mypy_partial_fail(self):
         docstrings_fail = {
@@ -483,11 +474,8 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
-        self.assertEqual(len(test_results), 2)
-
-        tr_0, tr_1 = test_results
-        self.assertTrue(tr_0.fail)
-        self.assertFalse(tr_1.fail)
+        error_messages, _ = test_results
+        self.assertEqual(len(error_messages), 1)
 
     def test_mypy_ignore(self):
         docstrings_ignore = {
@@ -545,11 +533,7 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_ignore)
-        self.assertEqual(len(test_results), 3)
-
-        for tr in test_results:
-            print(tr.msg)
-            self.assertFalse(tr.fail)
+        self.assertIsNone(test_results)
 
         docstrings_pass = {
             'pass': """
@@ -595,11 +579,7 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_pass)
-        self.assertEqual(len(test_results), 2)
-
-        for tr in test_results:
-            print(tr.msg)
-            self.assertFalse(tr.fail)
+        self.assertIsNone(test_results)
 
         docstrings_fail = {
             'fail': """
@@ -646,11 +626,8 @@ class TestMypyChecker(unittest.TestCase):
         doctester = MypyChecker(CONFIG_FILE, CACHE_DIR)
 
         test_results = get_test_results(doctester, docstrings_fail)
-        self.assertEqual(len(test_results), 2)
-
-        for tr in test_results:
-            print(tr.msg)
-            self.assertTrue(tr.fail)
+        error_messages, _ = test_results
+        self.assertEqual(len(error_messages), 2)
 
 
 if __name__ == '__main__':

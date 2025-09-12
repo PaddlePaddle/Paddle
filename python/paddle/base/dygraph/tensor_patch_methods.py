@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import inspect
 import warnings
@@ -592,6 +593,7 @@ def monkey_patch_tensor():
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        copy_tensor: bool | None = None,
     ) -> Tensor:
         if device is None and dtype is None and blocking is None:
             return self
@@ -654,7 +656,7 @@ def monkey_patch_tensor():
                 "blocking value error, must be the True, False or None"
             )
 
-        def transform(t, device, dtype, blocking):
+        def transform(t, device, dtype, blocking, copy_tensor):
             if device is None:
                 device = t.place
             if dtype is None:
@@ -681,6 +683,7 @@ def monkey_patch_tensor():
                     t_used = t._copy_to(paddle.CPUPlace(), blocking)
                     # Release memory of t
                     t._clear()
+                    copy_tensor = False
                 else:
                     # Tensor still in GPU
                     t_used = t
@@ -693,20 +696,25 @@ def monkey_patch_tensor():
                     place=t_used.place
                 ):
                     t_casted = t_used.cast(dtype=dtype)
+                    copy_tensor = False
             else:
                 t_casted = t_used
 
             # 3. Copy casted Tensor(in CPU or GPU) to device if needed
             if device is not None and not t_casted.place._equals(device):
                 new_t = t_casted._copy_to(device, blocking)
+                copy_tensor = False
             else:
                 new_t = t_casted
             new_t.stop_gradient = t.stop_gradient
-            return new_t
+            if copy_tensor:
+                return copy.deepcopy(new_t)
+            else:
+                return new_t
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=UserWarning)
-            return transform(self, device, dtype, blocking)
+            return transform(self, device, dtype, blocking, copy_tensor)
 
     @overload
     def to(
@@ -778,6 +786,17 @@ def monkey_patch_tensor():
         device = None
         dtype = None
         blocking = None
+
+        if "non_blocking" in kwargs:
+            non_blocking = kwargs.pop("non_blocking")
+        else:
+            non_blocking = False
+
+        if "copy" in kwargs:
+            copy_tensor = kwargs.pop("copy")
+        else:
+            copy_tensor = False
+
         size_args = len(args)
         size_kwargs = len(kwargs)
 
@@ -852,7 +871,8 @@ def monkey_patch_tensor():
                 device, dtype = get_device_dtype_from_tensor(
                     kwargs.get("other", None)
                 )
-        return self._to(device, dtype, blocking)
+        blocking = False if not blocking or non_blocking else True
+        return self._to(device, dtype, blocking, copy_tensor)
 
     def clear_grad(self: Tensor) -> None:
         """
@@ -1456,6 +1476,21 @@ def monkey_patch_tensor():
 
         return paddle.to_dlpack(self)
 
+    def __tvm_ffi_env_stream__(self) -> int:
+        """
+        Returns the raw stream pointer of the current tensor's device context.
+        This is used for TVM FFI environment integration.
+        """
+        if self.place.is_gpu_place():
+            return paddle.base.libpaddle._get_current_raw_stream(
+                self.place.gpu_device_id()
+            )
+        else:
+            # TODO: Add XPU and custom device support.
+            raise RuntimeError(
+                "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
+            )
+
     if not hasattr(core, "eager"):
         return
 
@@ -1503,6 +1538,7 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

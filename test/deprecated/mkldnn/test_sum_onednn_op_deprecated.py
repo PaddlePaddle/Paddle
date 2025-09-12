@@ -84,7 +84,7 @@ class TestONEDNNSumInplaceOp(unittest.TestCase):
             out_array,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='Inplace sum_mkldnn_op output has diff with expected output',
+            err_msg='Inplace sum_onednn_op output has diff with expected output',
         )
 
     def test_check_grad(self):
