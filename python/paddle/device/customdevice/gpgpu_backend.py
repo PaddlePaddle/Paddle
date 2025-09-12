@@ -54,7 +54,7 @@ def get_device_properties(
             >>> paddle.device.get_device_properties('metax_gpu:0')
     """
     if device is None:
-        dev_types = core.get_all_custom_dev_type()
+        dev_types = core.get_all_custom_device_type()
         if not dev_types:
             raise ValueError("No custom device types available")
         device_name = dev_types[0]

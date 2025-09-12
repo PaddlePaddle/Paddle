@@ -33,7 +33,7 @@ if not core.is_compiled_with_custom_device(dev_type):
     )
 
 if dev_type in ['metax_gpu', 'iluvatar_gpu']:
-    from gpgpu_backend import get_device_properties
+    from .gpgpu_backend import get_device_properties
 
 __all__ = [
     'device_count',
@@ -41,12 +41,12 @@ __all__ = [
 ]
 
 
-def device_count(dev_type: str | None = None) -> int:
+def device_count(device_type: str | None = None) -> int:
     '''
     Return the number of custom devices available.
 
     Args:
-        dev_type (str, optional): The type of custom device (e.g., 'npu', 'mlu', etc.).
+        device_type (str, optional): The type of custom device (e.g., 'npu', 'mlu', etc.).
             If None, returns the count of the first available custom device type.
 
     Returns:
@@ -60,6 +60,9 @@ def device_count(dev_type: str | None = None) -> int:
             >>> paddle.device.device_count('npu')
     '''
 
-    num = core.get_custom_device_count(dev_type)
+    if device_type:
+        num = core.get_custom_device_count(device_type)
+    else:
+        num = core.get_custom_device_count(dev_type)
 
     return num

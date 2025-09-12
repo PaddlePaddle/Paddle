@@ -100,6 +100,7 @@ __all__ = [
     'stream_guard',
     'device_guard',
     'synchronize',
+    'device_count',
 ]
 
 _cudnn_version = None
