@@ -55,7 +55,7 @@ void LinspaceKernel(const Context& dev_ctx,
   T* out_data = dev_ctx.template Alloc<T>(out);
 
   if (num > 1) {
-    // step should be of double type for all types
+    // step should be of StepT type
     StepT step =
         (static_cast<StepT>(stop_data) - static_cast<StepT>(start_data)) /
         (num - 1);
