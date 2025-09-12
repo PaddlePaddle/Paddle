@@ -19,20 +19,10 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void RandomFromToGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad UNUSED,
-                            int64_t from,
-                            int64_t to,
-                            DenseTensor* x_grad) {
-  if (x_grad) {
-    auto* data = dev_ctx.template Alloc<T>(x_grad);
-    std::fill(data, data + x_grad->numel(), T(0));
-  }
-}
-
-template <typename T, typename Context>
 void RandomGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad UNUSED,
+                      int64_t from,
+                      int64_t to,
                       DenseTensor* x_grad) {
   if (x_grad) {
     auto* data = dev_ctx.template Alloc<T>(x_grad);
@@ -42,14 +32,6 @@ void RandomGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(random_from_to_grad,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RandomFromToGradKernel,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(random_grad,
                    CPU,
                    ALL_LAYOUT,

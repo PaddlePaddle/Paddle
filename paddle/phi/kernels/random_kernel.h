@@ -23,15 +23,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandomFromToKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        int64_t from,
-                        int64_t to,
-                        DenseTensor* out);
-
-template <typename T, typename Context>
 void RandomKernel(const Context& dev_ctx,
                   const DenseTensor& x,
+                  int64_t from,
+                  int64_t to,
                   DenseTensor* out);
 
 template <typename scalar_t>

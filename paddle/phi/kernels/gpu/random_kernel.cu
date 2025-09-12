@@ -23,11 +23,11 @@
 
 namespace phi {
 template <typename T, typename Context>
-void RandomFromToKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        int64_t from,
-                        int64_t to,
-                        DenseTensor* out) {
+void RandomKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int64_t from,
+                  int64_t to,
+                  DenseTensor* out) {
   out->Resize(x.dims());
   T* data = dev_ctx.template Alloc<T>(out);
 
@@ -58,35 +58,8 @@ void RandomFromToKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void RandomKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  DenseTensor* out) {
-  out->Resize(x.dims());
-  T* data = dev_ctx.template Alloc<T>(out);
-  if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int64_t>) {
-    funcs::uniform_distribution<uint64_t> dist;
-    funcs::uniform_int_distribution<T, uint64_t> random;
-    funcs::distribution_and_transform<T>(dev_ctx, out, dist, random);
-  } else {
-    funcs::uniform_distribution<uint32_t> dist;
-    funcs::uniform_int_distribution<T, uint32_t> random;
-    funcs::distribution_and_transform<T>(dev_ctx, out, dist, random);
-  }
-}
-
 }  // namespace phi
 
-PD_REGISTER_KERNEL(random_from_to,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::RandomFromToKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(random,
                    GPU,
                    ALL_LAYOUT,

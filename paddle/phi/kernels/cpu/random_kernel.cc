@@ -22,20 +22,20 @@
 
 namespace phi {
 template <typename T, typename Context>
-void RandomFromToKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        int64_t from,
-                        int64_t to,
-                        DenseTensor* out) {
+void RandomKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  int64_t from,
+                  int64_t to,
+                  DenseTensor* out) {
   out->Resize(x.dims());
   T* data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
   std::shared_ptr<std::mt19937_64> engine =
       dev_ctx.GetGenerator()->GetCPUEngine();
 
-  if constexpr (std::is_floating_point_v<T> ||
-                std::is_same_v<T, phi::float16> ||
-                std::is_same_v<T, phi::bfloat16>) {
+  if constexpr (std::is_floating_point<T>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
     from = update_from<T>(from);
     to = update_to<T>(to);
 
@@ -61,41 +61,7 @@ void RandomFromToKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void RandomKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  DenseTensor* out) {
-  out->Resize(x.dims());
-  T* data = dev_ctx.template Alloc<T>(out);
-  int64_t size = out->numel();
-
-  std::shared_ptr<std::mt19937_64> engine =
-      dev_ctx.GetGenerator()->GetCPUEngine();
-  if constexpr (std::is_same_v<T, double> || std::is_same_v<T, int64_t>) {
-    funcs::uniform_int_distribution<T, uint64_t> random;
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = random(engine->operator()());
-    }
-  } else {
-    funcs::uniform_int_distribution<T, uint32_t> random;
-    for (int64_t i = 0; i < size; ++i) {
-      data[i] = random(static_cast<uint32_t>(engine->operator()()));
-    }
-  }
-}
-
 }  // namespace phi
-
-PD_REGISTER_KERNEL(random_from_to,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RandomFromToKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   phi::float16,
-                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(random,
                    CPU,

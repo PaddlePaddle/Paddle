@@ -19,15 +19,10 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void RandomFromToGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
-                            int64_t from,
-                            int64_t to,
-                            DenseTensor* x_grad);
-
-template <typename T, typename Context>
 void RandomGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
+                      int64_t from,
+                      int64_t to,
                       DenseTensor* x_grad);
 
 }  // namespace phi

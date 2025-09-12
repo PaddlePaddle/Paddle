@@ -1856,7 +1856,7 @@ def random_(
     """
     Fills self tensor with numbers sampled from the discrete uniform distribution over [from, to - 1].
     If not specified, the values are usually only bounded by self tensor’s data type. However,
-    for floating point types, if unspecified, range will be [0, min(2^mantissa, 2^31 - 1)] to ensure that every value is representable.
+    for floating point types, if unspecified, range will be [0, 2^mantissa] to ensure that every value is representable.
 
     Args:
         from (int, optional): The lower bound on the range of random values to generate. Default is 0.
@@ -1876,14 +1876,30 @@ def random_(
             >>> x = paddle.zeros([3], dtype=paddle.int32)
             >>> x.random_(0, 10)
     """
-    if from_ == 0 and to is None:
-        return _C_ops.random_(x)
+    dtype = x.dtype
+    if to is None:
+        if from_ == 0:
+            if paddle.is_floating_point(x):
+                if dtype == paddle.float32:
+                    mantissa = 24
+                elif dtype == paddle.float64:
+                    mantissa = 53
+                elif dtype == paddle.float16:
+                    mantissa = 11
+                else:
+                    mantissa = 8
+                to = 2**mantissa
+            else:
+                to = paddle.iinfo(dtype).max
+        else:
+            to = from_
+            from_ = 0
 
-    if from_ != 0 and to is None:
-        to = from_
-        from_ = 0
-
-    return _C_ops.random_from_to_(x, from_, to)
+    if from_ >= to:
+        raise ValueError(
+            f"random_ expects 'from' to be less than 'to', but got from={from_} >= to={to}"
+        )
+    return _C_ops.random_(x, from_, to)
 
 
 def randint_like(

@@ -2826,23 +2826,13 @@
   kernel :
     func : qr_grad
 
-- backward_op : random_from_to_grad
-  forward : random_from_to(Tensor x, int64_t from, int64_t to)-> Tensor(out)
+- backward_op : random_grad
+  forward : random(Tensor x, int64_t from, int64_t to)-> Tensor(out)
   args : (Tensor out_grad, int64_t from, int64_t to)
   output : Tensor(x_grad)
   infer_meta :
     func : RandomGradInferMeta
     param : [out_grad]
-  kernel :
-    func : random_from_to_grad
-  inplace : (out_grad -> x_grad)
-
-- backward_op : random_grad
-  forward : random(Tensor x)-> Tensor(out)
-  args : (Tensor out_grad)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : RandomGradInferMeta
   kernel :
     func : random_grad
   inplace : (out_grad -> x_grad)
