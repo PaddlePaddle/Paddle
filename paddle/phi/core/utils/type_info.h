@@ -48,19 +48,19 @@ class TypeInfoTraits {
   static bool classof(const BaseT* obj);
 };
 
-template <typename BaseT, typename DerivedT>
-TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
-  static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
-}
+// template <typename BaseT, typename DerivedT>
+// TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
+//   static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
+// }
 
-template <typename BaseT, typename DerivedT>
-const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
-    RegisterStaticType<BaseT>(DerivedT::name());
+// template <typename BaseT, typename DerivedT>
+// const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
+//     RegisterStaticType<BaseT>(DerivedT::name());
 
-template <typename BaseT, typename DerivedT>
-bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
-  return obj->type_info() == kType;
-}
+// template <typename BaseT, typename DerivedT>
+// bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
+//   return obj->type_info() == kType;
+// }
 
 template <typename BaseT>
 TypeInfo<BaseT> RegisterStaticType(const std::string& type);

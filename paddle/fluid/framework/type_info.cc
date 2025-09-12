@@ -24,17 +24,31 @@ limitations under the License. */
 
 namespace phi {
 
-// template <typename BaseT, typename DerivedT>
-// TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
-//   static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
+template <typename BaseT, typename DerivedT>
+TypeInfoTraits<BaseT, DerivedT>::TypeInfoTraits() {
+  static_cast<BaseT*>(static_cast<DerivedT*>(this))->type_info_ = kType;
+}
+
+template <typename BaseT, typename DerivedT>
+const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
+    RegisterStaticType<BaseT>(DerivedT::name());
+
+template <typename BaseT, typename DerivedT>
+bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
+  return obj->type_info() == kType;
+}
+
+// template <>
+// PADDLE_API TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::TypeInfoTraits() {
+//   static_cast<phi::TensorBase*>(static_cast<egr::VariableCompatTensor*>(this))->type_info_ = kType;
 // }
 
-// template <typename BaseT, typename DerivedT>
-// const TypeInfo<BaseT> TypeInfoTraits<BaseT, DerivedT>::kType =
-//     RegisterStaticType<BaseT>(DerivedT::name());
+// template <>
+// const TypeInfo<phi::TensorBase> TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::kType =
+//     RegisterStaticType<phi::TensorBase>(egr::VariableCompatTensor::name());
 
-// template <typename BaseT, typename DerivedT>
-// bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
+// template <>
+// bool TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::classof(const phi::TensorBase* obj) {
 //   return obj->type_info() == kType;
 // }
 
