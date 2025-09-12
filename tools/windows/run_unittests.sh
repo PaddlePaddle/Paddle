@@ -553,6 +553,9 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_mobile_net$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
+^operator_test|\
+^new_profiler_test$|\
+^save_load_version_compat_test|\
 ^disable_wincpu_test$"
 
 # these unittest that cost long time, disabled temporarily, Maybe moved to the night

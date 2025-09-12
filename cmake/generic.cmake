@@ -480,12 +480,14 @@ function(cc_test_run TARGET_NAME)
          PADDLE_PYBIND_PATH)
     file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference"
          PADDLE_INFERENCE_PATH)
+    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp"
+         PADDLE_INFERENCE_C_PATH)
     string(
       REPLACE
         ";"
         "\;"
         PATH
-        "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};$ENV{PATH}"
+        "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
     )
     if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
       if(WIN32)
