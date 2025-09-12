@@ -805,7 +805,12 @@ add_doc_and_signature(
 
     Returns:
         `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
-    >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isfinite(x)
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
