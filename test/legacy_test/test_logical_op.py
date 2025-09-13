@@ -156,11 +156,17 @@ def test(unit_test, use_gpu=False, test_error=False):
                 )
                 if meta_data['binary_op'] and test_error:
                     # catch C++ Exception
-                    unit_test.assertRaises(
-                        BaseException, run_static, **meta_data
+                    unit_test.assertRaisesRegex(
+                        ValueError,
+                        r"\(InvalidArgument\) Broadcast dimension mismatch",
+                        run_static,
+                        **meta_data,
                     )
-                    unit_test.assertRaises(
-                        BaseException, run_dygraph, **meta_data
+                    unit_test.assertRaisesRegex(
+                        ValueError,
+                        r"\(InvalidArgument\) Broadcast dimension mismatch",
+                        run_dygraph,
+                        **meta_data,
                     )
                     continue
                 static_result = run_static(**meta_data)
@@ -187,11 +193,17 @@ def test(unit_test, use_gpu=False, test_error=False):
                         ).astype(complex_data_type)
                         if meta_data['binary_op'] and test_error:
                             # catch C++ Exception
-                            unit_test.assertRaises(
-                                BaseException, run_static, **meta_data
+                            unit_test.assertRaisesRegex(
+                                ValueError,
+                                r"\(InvalidArgument\) Broadcast dimension mismatch",
+                                run_static,
+                                **meta_data,
                             )
-                            unit_test.assertRaises(
-                                BaseException, run_dygraph, **meta_data
+                            unit_test.assertRaisesRegex(
+                                ValueError,
+                                r"\(InvalidArgument\) Broadcast dimension mismatch",
+                                run_dygraph,
+                                **meta_data,
                             )
                             continue
                         static_result = run_static(**meta_data)
