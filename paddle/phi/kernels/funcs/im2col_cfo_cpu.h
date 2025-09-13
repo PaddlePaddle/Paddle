@@ -57,8 +57,8 @@ inline void im2col_common(const phi::DenseTensor& im,
         int col_idx = (c * output_height + h) * output_width + w;
 
         // Check bounds first to avoid buffer overflow in im_idx calculation
-        if (im_row_idx < 0 || im_row_idx >= im_height ||
-            im_col_idx < 0 || im_col_idx >= im_width) {
+        if (im_row_idx < 0 || im_row_idx >= im_height || im_col_idx < 0 ||
+            im_col_idx >= im_width) {
           col_data[col_idx] = static_cast<T>(0);
         } else {
           int im_idx;
