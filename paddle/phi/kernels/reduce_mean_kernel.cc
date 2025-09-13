@@ -74,7 +74,7 @@ PD_REGISTER_KERNEL(mean,
                    int64_t,
                    phi::float16,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::complex64,
                    phi::complex128) {}
 #endif

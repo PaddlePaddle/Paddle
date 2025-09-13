@@ -369,5 +369,5 @@ PD_REGISTER_KERNEL(moe_permute,
                    GPU,
                    ALL_LAYOUT,
                    phi::MoePermuteKernel,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::bfloat16) {}

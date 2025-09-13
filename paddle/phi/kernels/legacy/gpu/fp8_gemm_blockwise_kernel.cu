@@ -358,7 +358,7 @@ PD_REGISTER_KERNEL(fp8_gemm_blockwise,
                    ALL_LAYOUT,
                    phi::Fp8GemmBlockwiseKernel,
                    phi::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    uint8_t,
                    float,
                    double) {}

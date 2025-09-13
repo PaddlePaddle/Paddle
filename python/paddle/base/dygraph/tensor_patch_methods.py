@@ -1476,6 +1476,32 @@ def monkey_patch_tensor():
 
         return paddle.to_dlpack(self)
 
+    def get_device(self: Tensor) -> int:
+        """
+        Return the device id where the Tensor is located.
+
+        Returns:
+            int: The device id of the Tensor. Returns -1 for CPU tensors; for GPU tensors,
+                 returns the CUDA device id (e.g., 0 for `gpu:0`).
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+                >>> x.get_device()
+                -1
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+                >>> y.get_device()
+                0
+        """
+        if self.place.is_cpu_place():
+            return -1
+        else:
+            return self.place.gpu_device_id()
+
     def __tvm_ffi_env_stream__(self) -> int:
         """
         Returns the raw stream pointer of the current tensor's device context.
@@ -1538,6 +1564,7 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("get_device", get_device),
         ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
