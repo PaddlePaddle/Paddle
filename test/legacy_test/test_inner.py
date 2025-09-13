@@ -145,7 +145,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaisesRegex(
             ValueError,
-            "After performing an optional transpose,",
+            r"(.|)+After performing an optional transpose",
             paddle.inner,
             x,
             y,
@@ -156,20 +156,30 @@ class TestMultiplyError(unittest.TestCase):
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(TypeError, paddle.inner, x_data, y)
+        self.assertRaisesRegex(
+            Exception, r"(.|)+matmul\(\): argument", paddle.inner, x_data, y
+        )
 
     def test_errors_dynamic_case3(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(TypeError, paddle.inner, x, y_data)
+        self.assertRaisesRegex(
+            Exception, r"(.|)+matmul\(\): argument", paddle.inner, x, y_data
+        )
 
     def test_errors_dynamic_case4(self):
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(TypeError, paddle.inner, x_data, y_data)
+        self.assertRaisesRegex(
+            Exception,
+            r"(.|)+matmul\(\): argument",
+            paddle.inner,
+            x_data,
+            y_data,
+        )
 
 
 class TestMultiplyApi_ZeroSize(unittest.TestCase):

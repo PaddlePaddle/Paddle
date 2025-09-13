@@ -176,8 +176,8 @@ class TestSumOpError(unittest.TestCase):
             with base.dygraph.guard():
                 base._C_ops.sum([None])
 
-        self.assertRaises(Exception, test_empty_list_input)
-        self.assertRaises(Exception, test_list_of_none_input)
+        self.assertRaises(ValueError, test_empty_list_input)
+        self.assertRaises(ValueError, test_list_of_none_input)
 
 
 class TestDenseTensorAndSelectedRowsOp(unittest.TestCase):
