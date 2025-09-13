@@ -190,7 +190,21 @@ paddle::Tensor CallScalarFunction(const paddle::Tensor& self_tensor,
   } else if (op_type == "mul") {
     ret = scale_ad_func(self_tensor, phi::Scalar(other), 0.0, true);
   } else if (op_type == "div") {
-    ret = scale_ad_func(self_tensor, phi::Scalar(1.0 / other), 0.0, true);
+    auto MPType = (self_tensor.dtype() == phi::DataType::FLOAT16 ||
+                   self_tensor.dtype() == phi::DataType::BFLOAT16 ||
+                   self_tensor.dtype() == phi::DataType::FLOAT8_E5M2 ||
+                   self_tensor.dtype() == phi::DataType::FLOAT8_E4M3FN)
+                      ? phi::DataType::FLOAT32
+                      : self_tensor.dtype();
+    PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_AND_COMPLEX_TYPES(
+        MPType, "CallScalarFunction", ([&] {
+          ret = scale_ad_func(
+              self_tensor,
+              phi::Scalar(static_cast<data_t>(static_cast<data_t>(1.0) /
+                                              static_cast<data_t>(other))),
+              0.0,
+              true);
+        }));
   } else if (op_type == "pow") {
     ret = pow_ad_func(self_tensor, other);
   }
