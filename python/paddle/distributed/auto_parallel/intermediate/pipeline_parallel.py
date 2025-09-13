@@ -94,7 +94,7 @@ class PipelineParallel(ParallelModel):
                         self.get_mesh(pipeline_stage_index + 1),
                         tensor.placements,
                     )
-            elif isinstance(output, (list, tuple)):
+            elif isinstance(output, list):
                 for i in range(len(output)):
                     assert is_tensor(output[i])
                     output[i] = dist.reshard(
@@ -102,6 +102,16 @@ class PipelineParallel(ParallelModel):
                         self.get_mesh(pipeline_stage_index + 1),
                         output[i].placements,
                     )
+            elif isinstance(output, tuple):
+                output = list(output)
+                for i in range(len(output)):
+                    assert is_tensor(output[i])
+                    output[i] = dist.reshard(
+                        output[i],
+                        self.get_mesh(pipeline_stage_index + 1),
+                        output[i].placements,
+                    )
+                output = tuple(output)
             elif is_tensor(output):
                 output = dist.reshard(
                     output,
@@ -110,7 +120,7 @@ class PipelineParallel(ParallelModel):
                 )
             else:
                 raise ValueError(
-                    f"output should be a dict of tensors or list of tensors or tensor, but {type(output)}"
+                    f"output between pp stages should be a dict of tensors or list of tensors or tuple of tensors or tensor, but {type(output)}"
                 )
             return output
 
