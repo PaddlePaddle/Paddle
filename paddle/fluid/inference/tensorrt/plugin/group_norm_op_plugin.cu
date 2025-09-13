@@ -787,13 +787,14 @@ int GroupNormPluginDynamic::enqueue(
       params_.invDHWC =
           1.F / static_cast<float>(params_.dhw * params_.cPerGroup);
       params_.groupsPerBlock = cPerBlock / params_.cPerGroup;
-      PADDLE_ENFORCE_EQ(cPerBlock % params_.cPerGroup,
-                        0,
-                        common::errors::InvalidArgument(
-                            "cPerBlock should be multiple of params_.cPerGroup"
-                            "now cPerBlock is %d, params_.cPerGroup is %d",
-                            cPerBlock,
-                            params_.cPerGroup));
+      PADDLE_ENFORCE_EQ(
+          cPerBlock % params_.cPerGroup,
+          0,
+          common::errors::InvalidArgument(
+              "cPerBlock should be multiple of params_.cPerGroup, "
+              "now cPerBlock is %d, params_.cPerGroup is %d",
+              cPerBlock,
+              params_.cPerGroup));
       PADDLE_ENFORCE_EQ(
           params_.cPerGroup % 2,
           0,
