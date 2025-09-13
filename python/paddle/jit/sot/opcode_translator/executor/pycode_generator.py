@@ -482,7 +482,7 @@ class PyCodeGen:
             elif not self._code_options['co_name'].startswith("#"):
                 random_number = int(CODE_NAME_RNG.random() * 100000000)
                 self._code_options['co_name'] = (
-                    f"#{self._code_options['co_name']}_{hex(random_number & 0xFFFFF)[2:]:0>5}"
+                    f"#{self._code_options['co_name']}_{(random_number & 0xFFFFF):05x}"
                 )
 
     def gen_pycode(self) -> types.CodeType:
