@@ -195,15 +195,12 @@ def set_rng_state(
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
     elif isinstance(place, paddle.CustomPlace):
-        dev_cnt = sum(
-            [
-                place.get_device_type() == s.split(':')[0]
-                for s in core.get_available_custom_device()
-            ]
-        )
+        dev_types = core.get_all_custom_device_type()
+        dev_type = dev_types[0]
+        dev_cnt = core.get_custom_device_count(dev_type)
         if not len(state_list) == dev_cnt:
             raise ValueError(
-                f"Length of custom device state list should be equal to the {place.get_dtype_type()} device count"
+                f"Length of custom device state list should be equal to the {dev_cnt} device count"
             )
         for i in range(dev_cnt):
             core.default_custom_device_generator(

@@ -365,12 +365,16 @@ def fp8_fp8_half_gemm_fused(
             return out
 
 
+@ParamAliasDecorator({"p": ["ord"], "axis": ["dim"]})
 def vector_norm(
     x: Tensor,
     p: float = 2.0,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    dtype: paddle._typing.DTypeLike | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Calculate the p-order vector norm for certain  dimension of Tensor `input`.
@@ -384,6 +388,8 @@ def vector_norm(
         keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
         name (str|None, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        dtype (paddle._typing.DTypeLike, optional): It may be used to perform the computation in a more precise dtype. It is semantically equivalent to calling linalg.vector_norm(x.to(dtype)) but it is faster in some cases. Default None.
+        out (Tensor| None, optional): output tensor. Ignored if None. Default: None.
 
     Returns:
         Tensor: results of vector_norm operation on the specified axis of input tensor,
@@ -568,6 +574,9 @@ def vector_norm(
     if not isinstance(p, (int, float)):
         raise ValueError(f"only valid p type is int and float, found {type(p)}")
 
+    if dtype is not None:
+        x = x.astype(dtype)
+
     asvector = False
     if axis is None:
         axis = -1
@@ -585,7 +594,7 @@ def vector_norm(
 
     # when len(axis) == 1, use the original op to calculate
     if isinstance(axis, int):
-        return vector_norm_axis_int(
+        tensor = vector_norm_axis_int(
             abs_x,
             axis=axis,
             porder=p,
@@ -597,17 +606,20 @@ def vector_norm(
     # when len(axis) >= 1, calculate by combining other Python apis
     elif isinstance(axis, list):
         if p == np.inf or p == -np.inf:
-            return inf_norm(
+            tensor = inf_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         elif p == 0:
-            return zero_norm(
+            tensor = zero_norm(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
         else:
-            return vector_norm_axis_tuple(
+            tensor = vector_norm_axis_tuple(
                 abs_x, porder=p, axis=axis, keepdim=keepdim, name=name
             )
+    if out is not None:
+        paddle.assign(tensor, output=out)
+    return tensor
 
 
 def matrix_norm(

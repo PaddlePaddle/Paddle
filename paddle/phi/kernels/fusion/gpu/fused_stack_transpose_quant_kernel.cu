@@ -199,7 +199,7 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
 
   // zero sized tensor case
   if (x[0]->numel() == 0) {
-    dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+    dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
     dev_ctx.template Alloc<float>(scale);
     return;
   }
@@ -209,7 +209,7 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
 
   dim3 grid((M / 128) * (K / 128), 1, N);
   dim3 block(32, 16);
-  auto* out_data = dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+  auto* out_data = dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
   auto* scale_data = dev_ctx.template Alloc<float>(scale);
   FastDivMod K_div_128(K / 128);
 
@@ -217,11 +217,11 @@ void FusedStackTransposeQuantImpl(const Context& dev_ctx,
     SEGMENTED_ARRAY_KERNEL_HELPER({
       funcs::ConstPointerArraySetter<Context, T, kArraySize> setter(dev_ctx, x);
       if (transpose) {
-        FusedStackTransposeQuantGPUKernel<phi::dtype::float8_e4m3fn>
+        FusedStackTransposeQuantGPUKernel<phi::float8_e4m3fn>
             <<<grid, block, 0, dev_ctx.stream()>>>(
                 setter.array, out_data, scale_data, M, K, K_div_128);
       } else {
-        FusedStackQuantGPUKernel<phi::dtype::float8_e4m3fn>
+        FusedStackQuantGPUKernel<phi::float8_e4m3fn>
             <<<grid, block, 0, dev_ctx.stream()>>>(
                 setter.array, out_data, scale_data, M, K, K_div_128);
       }

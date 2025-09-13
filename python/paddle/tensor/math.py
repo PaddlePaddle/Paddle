@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import math
+import numbers
 import warnings
 from typing import TYPE_CHECKING, Literal
 
@@ -45,6 +46,7 @@ from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    floor_divide_decorator,
     param_one_alias,
     param_two_alias,
 )
@@ -863,7 +865,15 @@ def logaddexp(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return log_1p + _maximum
 
 
-def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@param_two_alias(["x", "input"], ["y", "other"])
+def subtract(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    alpha: Number = 1,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Subtract two tensors element-wise. The equation is:
 
@@ -879,6 +889,8 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int16, int32, int64, complex64, complex128.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int16, int32, int64, complex64, complex128.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        alpha (Number, optional): Scaling factor for Y. Default: 1.
+        out (Tensor, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
@@ -920,13 +932,43 @@ def subtract(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [ 4.  ,  inf., -inf.])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.subtract(x, y)
+        scaled_y = y * alpha if alpha != 1 else y
+        return _C_ops.subtract(x, scaled_y, out=out)
     else:
-        return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+        helper = LayerHelper('elementwise_sub', **locals())
+        scaled_y = (
+            helper.create_variable_for_type_inference(y.dtype)
+            if alpha != 1
+            else y
+        )
+
+        if alpha != 1:
+            helper.append_op(
+                type='scale',
+                inputs={'X': [y]},
+                outputs={'Out': [scaled_y]},
+                attrs={'scale': alpha, 'bias': 0.0},
+            )
+
+        output = helper.create_variable_for_type_inference(x.dtype)
+        helper.append_op(
+            type='elementwise_sub',
+            inputs={'X': x, 'Y': scaled_y},
+            outputs={'Out': output},
+            attrs={'axis': -1},
+        )
+        return output
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 @inplace_apis_in_dygraph_only
-def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def subtract_(
+    x: Tensor,
+    y: Tensor,
+    name: str | None = None,
+    *,
+    alpha: Number = 1,
+) -> Tensor:
     """
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_subtract`.
@@ -938,7 +980,8 @@ def subtract_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             f"The shape of broadcast output {out_shape} is different from that of inplace tensor {x.shape} in the Inplace operation."
         )
 
-    return _C_ops.subtract_(x, y)
+    scaled_y = y * alpha if alpha != 1 else y
+    return _C_ops.subtract_(x, scaled_y)
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
@@ -1120,7 +1163,14 @@ def true_divide(
     return divide(input, other, out=out)
 
 
-def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+@floor_divide_decorator()
+def floor_divide(
+    x: Tensor,
+    y: Number | Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward negative infinite. The equation is:
 
@@ -1138,8 +1188,11 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
-        y (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+            alias: ``input``.
+        y (Tensor｜Number): the input tensor or number, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+            alias: ``other``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. It's dimension equals with $x$.
@@ -1165,7 +1218,9 @@ def floor_divide(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
             [2, -1, -3, -3])
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.floor_divide(x, y)
+        if isinstance(y, numbers.Number):
+            return _C_ops.floor_divide(x, paddle.to_tensor(y), out=out)
+        return _C_ops.floor_divide(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 

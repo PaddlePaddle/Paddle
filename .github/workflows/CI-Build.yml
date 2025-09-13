@@ -3,7 +3,7 @@ name: CI-Build
 on:
   pull_request:
     types: [opened, synchronize]
-    branches: [develop, release/**]
+    branches: [develop, release/**, fleety_*]
 
 permissions: read-all
 
