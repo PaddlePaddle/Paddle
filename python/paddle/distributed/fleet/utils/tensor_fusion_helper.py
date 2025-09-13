@@ -96,6 +96,27 @@ def assign_group_by_size(parameters, group_size=128 * 1024 * 1024):
     return var_groups
 
 
+def get_group_size(parameters, group_size=128 * 1024 * 1024):
+    is_sparse_gradient = [False] * len(parameters)
+
+    group_indices = core.eager_assign_group_by_size(
+        parameters, is_sparse_gradient, [group_size, group_size]
+    )
+
+    opt_states_sizes = []
+    for group_idx, indices in enumerate(group_indices):
+        group_size = 0
+        for index in indices:
+            group_size += np.prod(parameters[index].shape)
+        dtype = parameters[indices[0]].dtype
+        bytes = group_size * core.size_of_dtype(dtype)
+        param_size_G = bytes / 1024**3
+        opt_states_size_G = param_size_G * 12 / core.size_of_dtype(dtype)
+        opt_states_sizes.append(opt_states_size_G)
+
+    return opt_states_sizes
+
+
 def flatten_dense_tensors(
     parameters,
     use_main_grad=False,

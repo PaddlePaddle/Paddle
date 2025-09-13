@@ -536,6 +536,8 @@ def median(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
+    *,
+    out: tuple[Tensor, Tensor] | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
 
@@ -556,6 +558,8 @@ def median(
     keepdim=False,
     mode='avg',
     name=None,
+    *,
+    out=None,
 ):
     """
     Compute the median along the specified axis.
@@ -697,13 +701,13 @@ def median(
     if mode == "avg" and not x.dtype == paddle.float64:
         x = x.astype(paddle.float32)
 
-    out, indices = _C_ops.median(x, axis, keepdim, mode)
+    values, indices = _C_ops.median(x, axis, keepdim, mode, out=out)
     indices.stop_gradient = True
 
     if mode == 'min' and need_idx:
-        return out, indices
+        return values, indices
     else:
-        return out
+        return values
 
 
 def _compute_quantile(

@@ -327,8 +327,8 @@ struct TransposeNormal<phi::GPUContext, T> {
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::GPUContext, TYPE>
 
-DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
-DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
+DEFINE_GPU_TRANS_NORMAL(phi::float8_e4m3fn);
+DEFINE_GPU_TRANS_NORMAL(phi::float8_e5m2);
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);
