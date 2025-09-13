@@ -796,8 +796,20 @@ class TestMeanAPI(unittest.TestCase):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         x = paddle.to_tensor(x)
-        self.assertRaises(Exception, paddle.mean, x, -3)
-        self.assertRaises(Exception, paddle.mean, x, 2)
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) The reduce dim index 0 should ",
+            paddle.mean,
+            x,
+            -3,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) The reduce dim index 0 should be in the range",
+            paddle.mean,
+            x,
+            2,
+        )
 
         with self.assertRaises(Exception) as context:
             paddle.mean(x, axis=[0, 0])
