@@ -1196,7 +1196,7 @@ void SaveStringToFile(const std::string& file_path,
   outFile.close();
   return;
 }
-void SaveDebugInfo(const std::string& dir_path,
+void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
                    const std::string& serialized_backward_graph) {

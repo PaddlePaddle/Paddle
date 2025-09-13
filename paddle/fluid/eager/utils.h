@@ -367,7 +367,7 @@ std::string CreateNodeLabelInDot(GradNodeBase* node);
 std::string CreateEdgeLabelInDot(const paddle::Tensor& tensor);
 std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor);
 std::string CreateForwardNodeLabelInDot(GradNodeBase* node);
-void SaveDebugInfo(const std::string& dir_path,
+void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
                    const std::string& serialized_backward_graph);
