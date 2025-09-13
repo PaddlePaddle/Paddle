@@ -21,34 +21,20 @@ import paddle.distributed as dist
 class TestElementWiseCoShard:
     def run_unary_case_0(self):
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
-
         placements = [
             dist.Shard(0, shard_order=0),
             dist.Shard(0, shard_order=1),
         ]
-        x = dist.shard_tensor(x, mesh, placements)
-        out = paddle.pow(x, 2)
-        np.testing.assert_equal(out.shape, [4, 2])
-        np.testing.assert_equal(
-            out.placements[0], dist.Shard(dim=0, shard_order=0)
-        )
-        np.testing.assert_equal(
-            out.placements[1], dist.Shard(dim=0, shard_order=1)
-        )
 
-    def run_unary_case_1(self):
-        mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8]])
-        y = paddle.to_tensor([2], dtype='float32')
-
-        placements = [
-            dist.Shard(0, shard_order=0),
-            dist.Shard(0, shard_order=1),
-        ]
+        x = paddle.to_tensor(
+            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]], dtype="float32"
+        )
         x = dist.shard_tensor(x, mesh, placements)
-        out = paddle.pow(x, y)
+        # paddle.round
+        out = paddle.round(x)
+
         np.testing.assert_equal(out.shape, [4, 2])
+        assert out.placements, "The output should be a DistTensor"
         np.testing.assert_equal(
             out.placements[0], dist.Shard(dim=0, shard_order=0)
         )
@@ -58,28 +44,34 @@ class TestElementWiseCoShard:
 
     def run_unary_case_with_partial(self):
         mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
-        x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]])
-        y = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
-
         # TODO(ooooo): Test co_shard when matmul is supported.
         x_placements = [
             dist.Shard(0),
             dist.Shard(1),
         ]
+
+        x = paddle.to_tensor(
+            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]], dtype="float32"
+        )
+        y = paddle.to_tensor(
+            [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]], dtype="float32"
+        )
         x = dist.shard_tensor(x, mesh, x_placements)
         y = dist.shard_tensor(
             y, mesh, [dist.Replicate() for _ in range(mesh.ndim)]
         )
-
+        # Generate partial placement
         matmul_out = paddle.matmul(x, y)
+        # paddle.cast
         out = paddle.cast(matmul_out, 'float64')
+
         np.testing.assert_equal(out.shape, [2, 2])
+        assert out.placements, "The output should be a DistTensor"
         np.testing.assert_equal(out.placements[0], dist.Shard(0))
         np.testing.assert_equal(out.placements[1], dist.Partial())
 
     def run_test_case_main(self):
         self.run_unary_case_0()
-        self.run_unary_case_1()
         self.run_unary_case_with_partial()
 
 
