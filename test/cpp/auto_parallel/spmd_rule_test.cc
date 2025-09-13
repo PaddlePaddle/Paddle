@@ -557,10 +557,10 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
 }
 TEST(GroupNorm, Ctor) {
   // build input data class
-  std::vector<int64_t> x_shape = {64, 64, 64, 64};  // N,C,H,W
-  std::vector<int64_t> scale_shape = {64};
-  std::vector<int64_t> bias_shape = {64};
-  std::vector<int64_t> mean_and_variance_shape = {64, 64};
+  std::vector<int64_t> x_shape = {48, 48, 48, 48};  // N,C,H,W
+  std::vector<int64_t> scale_shape = {48};
+  std::vector<int64_t> bias_shape = {48};
+  std::vector<int64_t> mean_and_variance_shape = {48, 48};
   std::vector<int64_t> mesh_shape = {2, 3};
   std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
   std::vector<std::string> dim_names = {"x", "y"};
@@ -616,7 +616,8 @@ TEST(GroupNorm, Ctor) {
   // output:[[0,1],-1, -1, -1], [0,1], [0,1]
 
   x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
-  x.set_dist_attr(x_dist_attr);
+  x = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                       x_dist_attr);
   forward_info = phi::distributed::GroupNormInferSpmd(
       x, scale, bias, epsilon, groups, data_format);
   input_size = 3;
@@ -680,8 +681,10 @@ TEST(GroupNorm, Ctor) {
   // -1],[0,1], [0,1], [[0,1], -1, -1, -1] infer output:[[0,1], -1, -1, -1],
   // [-1],[-1]
   x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
-  y.set_dist_attr(x_dist_attr);
-  y_grad.set_dist_attr(x_dist_attr);
+  y = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                       x_dist_attr);
+  y_grad = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                            x_dist_attr);
 
   backward_info = phi::distributed::GroupNormGradInferSpmd(
       x, scale, bias, y, mean, variance, y_grad, epsilon, groups, data_format);
