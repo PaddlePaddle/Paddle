@@ -612,7 +612,7 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::float16,
                    phi::bfloat16) {}
 #else

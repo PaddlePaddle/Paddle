@@ -20,6 +20,7 @@ from codegen_utils import (
     GeneratorBase,
     GetForwardFunctionName,
     GetInplacedFunctionName,
+    IsUsePredefinedOut,
     IsVectorTensorType,
     ParsePythonAPIInfoFromYAML,
 )
@@ -704,12 +705,8 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             forward_outputs_position_list = list(
                 self.forward_outputs_position_map.values()
             )
-            all_tensor = all(
-                pos[0] == "Tensor" for pos in forward_outputs_position_list
-            )
-            length = len(forward_outputs_position_list)
-
-            if all_tensor and 1 <= length <= 7:
+            if IsUsePredefinedOut(forward_outputs_position_list):
+                length = len(forward_outputs_position_list)
                 if length == 1:
                     get_predefined_out_str = "    auto predefined_out = GetInputOutTensorFromKwargs(kwargs);"
                 else:
