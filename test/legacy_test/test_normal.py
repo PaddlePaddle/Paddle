@@ -55,7 +55,7 @@ class TestNormalAPI(unittest.TestCase):
         elif isinstance(self.std, np.ndarray):
             return self.std.dtype
         else:
-            return "float32"
+            return 'float32'
 
     def static_api(self):
         paddle.enable_static()
@@ -69,38 +69,38 @@ class TestNormalAPI(unittest.TestCase):
                 self.std, np.ndarray
             ):
                 mean = paddle.static.data(
-                    "Mean", self.mean.shape, self.mean.dtype
+                    'Mean', self.mean.shape, self.mean.dtype
                 )
-                std = paddle.static.data("Std", self.std.shape, self.std.dtype)
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
                         feed={
-                            "Mean": self.mean,
-                            "Std": self.std.reshape(shape),
+                            'Mean': self.mean,
+                            'Std': self.std.reshape(shape),
                         },
                         fetch_list=[out],
                     )
                     ret_all[i] = ret[0]
             elif isinstance(self.mean, np.ndarray):
                 mean = paddle.static.data(
-                    "Mean", self.mean.shape, self.mean.dtype
+                    'Mean', self.mean.shape, self.mean.dtype
                 )
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
-                    ret = exe.run(feed={"Mean": self.mean}, fetch_list=[out])
+                    ret = exe.run(feed={'Mean': self.mean}, fetch_list=[out])
                     ret_all[i] = ret[0]
             elif isinstance(self.std, np.ndarray):
-                std = paddle.static.data("Std", self.std.shape, self.std.dtype)
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(self.mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
-                    ret = exe.run(feed={"Std": self.std}, fetch_list=[out])
+                    ret = exe.run(feed={'Std': self.std}, fetch_list=[out])
                     ret_all[i] = ret[0]
             else:
                 out = paddle.normal(self.mean, self.std, self.shape)
@@ -161,24 +161,24 @@ class TestNormalAPI(unittest.TestCase):
 
 class TestNormalAPI_mean_is_tensor(TestNormalAPI):
     def set_attrs(self):
-        self.mean = np.random.uniform(-2, -1, [2, 3, 4, 5]).astype("float64")
+        self.mean = np.random.uniform(-2, -1, [2, 3, 4, 5]).astype('float64')
 
 
 class TestNormalAPI_std_is_tensor(TestNormalAPI):
     def set_attrs(self):
-        self.std = np.random.uniform(0.7, 1, [2, 3, 17]).astype("float64")
+        self.std = np.random.uniform(0.7, 1, [2, 3, 17]).astype('float64')
 
 
 class TestNormalAPI_mean_std_are_tensor(TestNormalAPI):
     def set_attrs(self):
-        self.mean = np.random.uniform(1, 2, [1, 100]).astype("float64")
-        self.std = np.random.uniform(0.5, 1, [1, 100]).astype("float64")
+        self.mean = np.random.uniform(1, 2, [1, 100]).astype('float64')
+        self.std = np.random.uniform(0.5, 1, [1, 100]).astype('float64')
 
 
 class TestNormalAPI_mean_std_are_tensor_with_different_dtype(TestNormalAPI):
     def set_attrs(self):
-        self.mean = np.random.uniform(1, 2, [100]).astype("float64")
-        self.std = np.random.uniform(1, 2, [100]).astype("float32")
+        self.mean = np.random.uniform(1, 2, [100]).astype('float64')
+        self.std = np.random.uniform(1, 2, [100]).astype('float32')
 
 
 class TestNormalAlias(unittest.TestCase):
@@ -201,16 +201,16 @@ class TestNormalErrors(unittest.TestCase):
             std = [1, 2, 3]
             self.assertRaises(TypeError, paddle.normal, std=std)
 
-            mean = paddle.static.data("Mean", [100], "int32")
+            mean = paddle.static.data('Mean', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean)
 
-            std = paddle.static.data("Std", [100], "int32")
+            std = paddle.static.data('Std', [100], 'int32')
             self.assertRaises(TypeError, paddle.normal, mean=1.0, std=std)
 
             self.assertRaises(TypeError, paddle.normal, shape=1)
             self.assertRaises(TypeError, paddle.normal, shape=[1.0])
 
-            shape = paddle.static.data("Shape", [100], "float32")
+            shape = paddle.static.data('Shape', [100], 'float32')
             self.assertRaises(TypeError, paddle.normal, shape=shape)
 
 
@@ -244,7 +244,7 @@ class TestNormalAPIComplex(unittest.TestCase):
         if isinstance(self.mean, np.ndarray):
             return self.mean.dtype
         else:
-            return "complex64"
+            return 'complex64'
 
     def static_api(self):
         paddle.enable_static()
@@ -258,42 +258,42 @@ class TestNormalAPIComplex(unittest.TestCase):
                 self.std, np.ndarray
             ):
                 mean = paddle.static.data(
-                    "Mean", self.mean.shape, self.mean.dtype
+                    'Mean', self.mean.shape, self.mean.dtype
                 )
-                std = paddle.static.data("Std", self.std.shape, self.std.dtype)
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
                         feed={
-                            "Mean": self.mean,
-                            "Std": self.std.reshape(shape),
+                            'Mean': self.mean,
+                            'Std': self.std.reshape(shape),
                         },
                         fetch_list=[out],
                     )
                     ret_all[i] = ret[0]
             elif isinstance(self.mean, np.ndarray):
                 mean = paddle.static.data(
-                    "Mean", self.mean.shape, self.mean.dtype
+                    'Mean', self.mean.shape, self.mean.dtype
                 )
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
-                    ret = exe.run(feed={"Mean": self.mean}, fetch_list=[out])
+                    ret = exe.run(feed={'Mean': self.mean}, fetch_list=[out])
                     ret_all[i] = ret[0]
             elif isinstance(self.std, np.ndarray):
-                mean = paddle.static.data("Mean", self.std.shape, "complex128")
-                std = paddle.static.data("Std", self.std.shape, self.std.dtype)
+                mean = paddle.static.data('Mean', self.std.shape, 'complex128')
+                std = paddle.static.data('Std', self.std.shape, self.std.dtype)
                 out = paddle.normal(mean, std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
                         feed={
-                            "Std": self.std,
-                            "Mean": np.broadcast_to(
+                            'Std': self.std,
+                            'Mean': np.broadcast_to(
                                 np.array(self.mean), self.std.shape
                             ),
                         },
@@ -301,13 +301,13 @@ class TestNormalAPIComplex(unittest.TestCase):
                     )
                     ret_all[i] = ret[0]
             else:
-                mean = paddle.static.data("Mean", (), "complex128")
+                mean = paddle.static.data('Mean', (), 'complex128')
                 out = paddle.normal(mean, self.std, self.shape)
 
                 exe = paddle.static.Executor(self.place)
                 for i in range(self.repeat_num):
                     ret = exe.run(
-                        feed={"Mean": np.array(self.mean)}, fetch_list=[out]
+                        feed={'Mean': np.array(self.mean)}, fetch_list=[out]
                     )
                     ret_all[i] = ret[0]
         paddle.disable_static()
@@ -368,7 +368,7 @@ class TestNormalAPIComplex_mean_is_tensor(TestNormalAPIComplex):
 
 class TestNormalAPIComplex_std_is_tensor(TestNormalAPIComplex):
     def set_attrs(self):
-        self.std = np.random.uniform(0.7, 1, [2, 5]).astype("float64")
+        self.std = np.random.uniform(0.7, 1, [2, 5]).astype('float64')
 
 
 class TestNormalAPIComplex_mean_std_are_tensor(TestNormalAPIComplex):
@@ -376,7 +376,7 @@ class TestNormalAPIComplex_mean_std_are_tensor(TestNormalAPIComplex):
         self.mean = np.vectorize(complex)(
             np.random.uniform(1, 2, [1, 100]), np.random.uniform(1, 2, [1, 100])
         )
-        self.std = np.random.uniform(0.5, 1, [1, 100]).astype("float64")
+        self.std = np.random.uniform(0.5, 1, [1, 100]).astype('float64')
 
 
 class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
@@ -385,8 +385,8 @@ class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
     def set_attrs(self):
         self.mean = np.vectorize(complex)(
             np.random.uniform(1, 2, [100]), np.random.uniform(1, 2, [100])
-        ).astype("complex64")
-        self.std = np.random.uniform(1, 2, [100]).astype("float32")
+        ).astype('complex64')
+        self.std = np.random.uniform(1, 2, [100]).astype('float32')
 
 
 class TestNormalComplexErrors(unittest.TestCase):
@@ -394,7 +394,7 @@ class TestNormalComplexErrors(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             mean = 1 + 1j
-            self.assertRaises(TypeError, paddle.normal, mean, dtype="float32")
+            self.assertRaises(TypeError, paddle.normal, mean, dtype='float32')
 
             mean = 2 + 0.5j
             self.assertRaises(ValueError, paddle.normal, mean)
