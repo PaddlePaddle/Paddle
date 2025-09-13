@@ -66,15 +66,19 @@ class GroupNormGradTestCase:
 
 class TestGroupNormCoShard:
     def setUp(self):
-        self.mesh = dist.ProcessMesh(
-            [[0, 1], [2, 3]], dim_names=['x', 'y']
-        )
+        self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
         self.test_cases_forward = [
             GroupNormTestCase(
                 [32, 48, 128, 256],
                 4,
-                [dist.Shard(dim=0,shard_order = 0), dist.Shard(dim=0,shard_order = 1)],
-                [dist.Shard(dim=0,shard_order = 0), dist.Shard(dim=0,shard_order = 1)],
+                [
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
                 [dist.Replicate()],
                 [dist.Replicate()],
             ),
@@ -91,9 +95,18 @@ class TestGroupNormCoShard:
             GroupNormGradTestCase(
                 [32, 48, 128, 256],
                 4,
-                [dist.Shard(dim=0,shard_order = 0), dist.Shard(dim=0,shard_order = 1)],
-                [dist.Shard(dim=0,shard_order = 0), dist.Shard(dim=0,shard_order = 1)],
-                [dist.Shard(dim=0,shard_order = 0), dist.Shard(dim=0,shard_order = 1)],
+                [
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=0, shard_order=0),
+                    dist.Shard(dim=0, shard_order=1),
+                ],
                 [dist.Replicate()],
                 [dist.Replicate()],
             ),
@@ -112,9 +125,7 @@ class TestGroupNormCoShard:
         a = paddle.rand(test_case.input_shape, "float32")
         input_placements = test_case.input_placements
         input = dist.shard_tensor(a, self.mesh, input_placements)
-        gn = paddle.nn.GroupNorm(
-            test_case.num_groups, test_case.input_shape[1]
-        )
+        gn = paddle.nn.GroupNorm(test_case.num_groups, test_case.input_shape[1])
         weight = dist.shard_tensor(
             gn.weight, self.mesh, test_case.weight_placements
         )
@@ -156,9 +167,7 @@ class TestGroupNormCoShard:
             dist.Replicate() for _ in range(len(test_case.input_shape))
         ]
         input = dist.shard_tensor(a, self.mesh, input_placements)
-        gn = paddle.nn.GroupNorm(
-            test_case.num_groups, test_case.input_shape[1]
-        )
+        gn = paddle.nn.GroupNorm(test_case.num_groups, test_case.input_shape[1])
         out = gn(input)
         out = dist.reshard(out, self.mesh, test_case.output_placements)
 

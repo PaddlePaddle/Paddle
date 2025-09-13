@@ -66,19 +66,29 @@ class BatchNormGradTestCase:
 
 class TestBatchNormCoShard:
     def setUp(self):
-        self.mesh = dist.ProcessMesh(
-            [[0, 1], [2, 3]], dim_names=['x', 'y']
-        )
+        self.mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=['x', 'y'])
         self.test_cases_forward = [
             # Shard on batch dimension
             BatchNormTestCase(
                 [32, 48, 128, 256],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
                 [dist.Replicate()],
                 [dist.Replicate()],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)]
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
             ),
             # Shard on channel dimension
             BatchNormTestCase(
@@ -95,9 +105,18 @@ class TestBatchNormCoShard:
             # Shard on batch dimension
             BatchNormGradTestCase(
                 [32, 48, 128, 256],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
-                [dist.Shard(dim=1,shard_order = 0), dist.Shard(dim=1,shard_order = 1)],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
+                [
+                    dist.Shard(dim=1, shard_order=0),
+                    dist.Shard(dim=1, shard_order=1),
+                ],
                 [dist.Replicate()],
                 [dist.Replicate()],
             ),
