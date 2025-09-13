@@ -170,11 +170,11 @@ class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
             with base.dygraph.guard():
-                base._C_ops.sum([])
+                paddle._C_ops.sum([])
 
         def test_list_of_none_input():
             with base.dygraph.guard():
-                base._C_ops.sum([None])
+                paddle._C_ops.sum([None])
 
         self.assertRaises(ValueError, test_empty_list_input)
         self.assertRaises(ValueError, test_list_of_none_input)
