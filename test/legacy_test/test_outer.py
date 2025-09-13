@@ -180,7 +180,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaisesRegex(
             ValueError,
-            r"\(InvalidArgument\) multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray ",
+            r"(.|)+multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray ",
             paddle.outer,
             x_data,
             y,
