@@ -18,6 +18,7 @@ set -e
 export log_path=${work_dir}/../case_logs
 export auto_case_path=${work_dir}/test/auto_parallel/hybrid_strategy
 export dygraph_case_path=${work_dir}/test/collective/hybrid_strategy
+export co_shard_e2e_path=${work_dir}/test/auto_parallel/end_to_end
 
 function case_list_unit() {
     if [ ! -f "testslist.csv" ]; then
@@ -62,6 +63,8 @@ main() {
     echo -e "\033[31m ---- Start executing $exec_case case \033[0m"
 
     if [[ $exec_case == "auto_unit_test" ]];then
+        cd ${co_shard_e2e_path}
+        case_list_unit
         cd ${auto_case_path}
         case_list_unit
     elif [[ $exec_case == "dygraph_unit_test" ]];then

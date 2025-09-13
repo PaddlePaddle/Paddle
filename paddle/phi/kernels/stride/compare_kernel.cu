@@ -117,11 +117,6 @@ DEFINE_CUDA_COMPARE_STRIDE_OP(NotEqual, NotEqual)
 
 }  // namespace phi
 
-using float16 = phi::float16;
-using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
 #define REGISTER_STRIDE_COMPLEX_COMPARE_KERNEL(less_than, func) \
   PD_REGISTER_KERNEL(less_than,                                 \
                      GPU,                                       \

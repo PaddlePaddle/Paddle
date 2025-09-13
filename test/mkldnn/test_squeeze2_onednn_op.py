@@ -21,10 +21,7 @@ import paddle
 from paddle.base import core
 
 
-@OpTestTool.skip_if(
-    core.is_compiled_with_cuda(),
-    "CUDA has to be skipped because it forces dygraph",
-)
+@OpTestTool.skip_if_not_cpu()
 class TestSqueeze2OneDNNOp(OpTest):
     def set_op_type(self):
         self.op_type = "squeeze2"
