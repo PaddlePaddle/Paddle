@@ -1215,6 +1215,11 @@ void SaveDebugInfo(const std::string& dir_path,
   std::string timestamp = oss.str();
 #ifdef _WIN32
   auto sep = '\\';
+  std::for_each(dir_path.begin(), dir_path.end(), [](char& ch) {
+    if (ch == '/') {
+      ch = '\\';
+    }
+  });
 #else
   auto sep = '/';
 #endif  // _WIN32
