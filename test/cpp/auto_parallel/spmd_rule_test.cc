@@ -611,27 +611,6 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(forward_info.second[2], {0, -1});
   VLOG(4) << "test forward done.";
 
-  // Test forward 2.
-  // [0,1], -1, -1, -1], [-1], [-1] --> input: [[0,1], -1, -1, -1], [-1], [-1]
-  // output:[[0,1],-1, -1, -1], [0,1], [0,1]
-
-  x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
-  x = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
-                                       x_dist_attr);
-  forward_info = phi::distributed::GroupNormInferSpmd(
-      x, scale, bias, epsilon, groups, data_format);
-  input_size = 3;
-  output_size = 3;
-  EXPECT_EQ(forward_info.first.size(), input_size);
-  EXPECT_EQ(forward_info.second.size(), output_size);
-  check_multi_dims_mapping(forward_info.first[0], {{0, 1}, {}, {}, {}});
-  check_multi_dims_mapping(forward_info.first[1], {{}});
-  check_multi_dims_mapping(forward_info.first[2], {{}});
-  check_multi_dims_mapping(forward_info.second[0], {{0, 1}, {}, {}, {}});
-  check_multi_dims_mapping(forward_info.second[1], {{0, 1}, {}});
-  check_multi_dims_mapping(forward_info.second[2], {{0, 1}, {}});
-  VLOG(4) << "test forward 2 done.";
-
   // Test backward.
   // [0, 1, -1, -1], [-1],[-1], [0, 1, -1, -1],[-1], [-1], [0, 1, -1, -1]
   // infer input:[0, -1, -1, -1], [-1],[-1], [0, -1, -1, -1],[0], [0], [0, -1,
@@ -675,12 +654,32 @@ TEST(GroupNorm, Ctor) {
   check_dim_mapping(backward_info.second[2], {-1});
   VLOG(4) << "test backward done.";
 
+  // Test forward 2.
+  // [0,1], -1, -1, -1], [-1], [-1] --> input: [[0,1], -1, -1, -1], [-1], [-1]
+  // output:[[0,1],-1, -1, -1], [0,1], [0,1]
+
+  x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
+  x = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
+                                       x_dist_attr);
+  forward_info = phi::distributed::GroupNormInferSpmd(
+      x, scale, bias, epsilon, groups, data_format);
+  input_size = 3;
+  output_size = 3;
+  EXPECT_EQ(forward_info.first.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_multi_dims_mapping(forward_info.first[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(forward_info.first[1], {{}});
+  check_multi_dims_mapping(forward_info.first[2], {{}});
+  check_multi_dims_mapping(forward_info.second[0], {{0, 1}, {}, {}, {}});
+  check_multi_dims_mapping(forward_info.second[1], {{0, 1}, {}});
+  check_multi_dims_mapping(forward_info.second[2], {{0, 1}, {}});
+  VLOG(4) << "test forward 2 done.";
+
   // Test backward 2.
   // [[0,1], -1, -1, -1], [-1],[-1], [[0,1], -1, -1, -1],[-1], [-1], [[0,1], -1,
   // -1, -1] infer input:[[0,1], -1, -1, -1], [-1],[-1], [[0,1], -1, -1,
   // -1],[0,1], [0,1], [[0,1], -1, -1, -1] infer output:[[0,1], -1, -1, -1],
   // [-1],[-1]
-  x_dist_attr.set_dims_mapping({{0, 1}, {}, {}, {}});
   y = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),
                                        x_dist_attr);
   y_grad = phi::distributed::DistMetaTensor(common::make_ddim({48, 48, 48, 48}),

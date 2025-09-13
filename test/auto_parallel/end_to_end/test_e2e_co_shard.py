@@ -29,6 +29,10 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
 
     def test_transpose_co_shard(self):
         self.run_test_case("transpose_co_shard.py")
+    def test_group_norm_co_shard(self):
+        self.run_test_case("group_norm_co_shard.py")
+    def test_batch_norm_co_shard(self):
+        self.run_test_case("batch_norm_co_shard.py")
 
 
 if __name__ == "__main__":
