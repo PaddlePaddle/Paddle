@@ -45,8 +45,12 @@ class TestFleetRuntime(unittest.TestCase):
 
     def test_fleet_ps_runtime(self):
         ps_runtime = paddle.distributed.fleet.runtime.ParameterServerRuntime()
-        self.assertRaises(
-            Exception, ps_runtime._get_optimizer_status, "test_op", None
+        self.assertRaisesRegex(
+            ValueError,
+            "fleet can not support optimizer: test_op",
+            ps_runtime._get_optimizer_status,
+            "test_op",
+            None,
         )
         reshaped_names, origin_names = ps_runtime._get_optimizer_status(
             "adam", "param"

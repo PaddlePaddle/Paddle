@@ -410,7 +410,11 @@ class TestLU_UnpackAPIError(unittest.TestCase):
                 unpack_pivots = True
                 paddle.linalg.lu_unpack(x, y, unpack_ludata, unpack_pivots)
 
-            self.assertRaises(Exception, test_y_data)
+            self.assertRaisesRegex(
+                ValueError,
+                r"(.|)+The data in Pivot must be between",
+                test_y_data,
+            )
 
 
 class TestLuUnpackAPI_ZeroSize(unittest.TestCase):
