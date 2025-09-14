@@ -340,6 +340,36 @@ def set_device(device: str) -> PlaceLike:
     return place
 
 
+def current_device() -> int:
+    """
+    Returns the current global device's identifier as an integer.
+
+    Returns an integer ID corresponding to the device in use:
+    - AssertionError: Paddle is not compiled with CUDA for CPU
+    - GPU index (e.g., 0 for 'gpu:0', 1 for 'gpu:1')
+    - XPU/NPU index (e.g., 2 for 'xpu:2', 3 for 'npu:3')
+
+    Default behavior when no global device is set:
+    - Returns default GPU index if CUDA is available
+    - AssertionError: Paddle is not compiled with CUDA for CPU
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+            >>> device_id = paddle.device.current_device()
+            >>> print(device_id)  # Output: 0 (integer)
+            >>> type(device_id)   # Output: <class 'int'>
+
+    """
+    place = framework._current_expected_place_()
+    if isinstance(place, core.CPUPlace):
+        raise AssertionError("Paddle is not compiled with CUDA")
+    device_id = place.get_device_id()
+    return int(device_id)
+
+
 def get_device() -> str:
     """
 
