@@ -181,7 +181,13 @@ class TestDotOpError(unittest.TestCase):
             # float16 only can be set on GPU place
             x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
             y1 = paddle.static.data(name='y1', shape=[-1, 120], dtype="uint8")
-            self.assertRaises(Exception, paddle.dot, x1, y1)
+            self.assertRaisesRegex(
+                TypeError,
+                r"Check data type error for op: dot",
+                paddle.dot,
+                x1,
+                y1,
+            )
 
             x2 = paddle.static.data(
                 name='x2', shape=[-1, 2, 3], dtype="float32"
@@ -189,13 +195,25 @@ class TestDotOpError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y2)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input ",
+                paddle.dot,
+                x2,
+                y2,
+            )
 
             x3 = paddle.static.data(name='x3', shape=[-1, 3], dtype="float32")
             y3 = paddle.static.data(
                 name='y3', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y3)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input",
+                paddle.dot,
+                x2,
+                y3,
+            )
 
 
 class TestDygraph(unittest.TestCase):

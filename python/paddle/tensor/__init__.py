@@ -103,6 +103,7 @@ from .linalg import (  # noqa: F401
     permute,
     pinv,
     qr,
+    slogdet,
     solve,
     svd,
     svd_lowrank,
@@ -504,6 +505,8 @@ take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
 clamp = clip
+sub = subtract
+sub_ = subtract_
 
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [
@@ -625,6 +628,8 @@ tensor_method_func = [
     'divide_',
     'div',
     'div_',
+    'sub',
+    'sub_',
     'true_divide',
     'floor_divide',
     'floor_divide_',
@@ -806,6 +811,7 @@ tensor_method_func = [
     'multi_dot',
     'solve',
     'cholesky_solve',
+    'slogdet',
     'triangular_solve',
     'asinh',
     'atanh',

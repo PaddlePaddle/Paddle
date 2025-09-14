@@ -23,4 +23,10 @@ void SlogDeterminantKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            DenseTensor* out);
 
+template <typename T, typename Context>
+void SlogDeterminantV2Kernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             DenseTensor* sign,
+                             DenseTensor* logdet);
+
 }  // namespace phi

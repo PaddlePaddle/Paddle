@@ -47,7 +47,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
         self.attrs = {
             'use_onednn': True,
             'num': self.num,
-            'mkldnn_data_type': "bfloat16",
+            'onednn_data_type': "bfloat16",
         }
 
         if self.axis is not None:

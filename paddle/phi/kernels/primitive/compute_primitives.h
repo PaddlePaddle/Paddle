@@ -140,7 +140,7 @@ __device__ __forceinline__ void Swap(T* first_value, T* second_value) {
 }
 
 /**
- * @brief Swap data according to  monotonic_type.
+ * @brief Swap data according to monotonic_type.
  */
 template <typename T>
 __device__ __forceinline__ void Comparator(T* first_value,
@@ -152,7 +152,7 @@ __device__ __forceinline__ void Comparator(T* first_value,
 }
 
 /**
- * @brief Swap data and data index according to  monotonic_type.
+ * @brief Swap data and data index according to monotonic_type.
  */
 template <typename T, typename IndexType>
 __device__ __forceinline__ void ComparatorWithIndex(T* first_value,
@@ -236,7 +236,7 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out,
  *
  * @param：
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
  */
@@ -281,7 +281,7 @@ __device__ __forceinline__ void ElementwiseBinary(
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * NY.
+ * in1: The register pointer of first input, size is NX * NY.
  * in2: The register pointer of second input, size is NX * NY.
  * in3: The register pointer of third input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT>().
@@ -355,7 +355,7 @@ __device__ __forceinline__ void ElementwiseAny(OutT* out,
  *
  * @param
  * out: The register pointer of out, the size is NX * NY.
- * in1: The register pointer of fist input, size is NX * 1.
+ * in1: The register pointer of first input, size is NX * 1.
  * in2: The register pointer of second input, size is NX * NY.
  * compute: Compute function which was declared like OpFunc<InT, OutT>().
  */
@@ -486,7 +486,7 @@ __device__ __forceinline__ void ElementwiseConstant(OutT* out, OpFunc compute) {
  *     struct XxxFunctor {
  *       HOSTDEVICE InT operator()(StateType state)
  * const {
- *         return ranomd(state);  // Returns ReturnsCount random numbers with
+ *         return random(state);  // Returns ReturnsCount random numbers with
  * data type T
  *       }
  *     };

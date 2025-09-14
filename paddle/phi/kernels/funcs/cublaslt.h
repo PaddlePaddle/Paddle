@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace dyl = phi::dynload;
@@ -312,9 +311,9 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
       dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
                           matmul_desc_,
                           &alpha_,
-                          mat_b.data<phi::dtype::float8_e4m3fn>(),
+                          mat_b.data<phi::float8_e4m3fn>(),
                           B_desc_,
-                          mat_a.data<phi::dtype::float8_e4m3fn>(),
+                          mat_a.data<phi::float8_e4m3fn>(),
                           A_desc_,
                           &beta_,
                           out->data<T>(),

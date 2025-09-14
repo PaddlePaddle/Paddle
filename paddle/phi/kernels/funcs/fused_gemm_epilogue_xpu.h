@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/scope_guard.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"

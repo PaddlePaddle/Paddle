@@ -135,8 +135,6 @@ ignore = [
     "F841",
     # It not met the "Explicit is better than implicit" rule
     "UP015",
-    # It will cause the performance regression on python3.10
-    "UP038",
     # collections.namedtuple can be quickly created a inlined class
     "PYI024",
     # `__all__.append` is a common pattern in Paddle

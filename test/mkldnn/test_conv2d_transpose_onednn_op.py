@@ -94,7 +94,7 @@ class TestConv2DTransposeONEDNNOp(TestConv2DTransposeOp):
         self.attrs['fuse_activation'] = self.fuse_activation
         self.attrs['fuse_alpha'] = self.fuse_alpha
         self.attrs['fuse_beta'] = self.fuse_beta
-        self.attrs['mkldnn_data_type'] = 'float32'
+        self.attrs['onednn_data_type'] = 'float32'
         self.attrs['force_fp32_output'] = False
 
         self.outputs['Output'] = output

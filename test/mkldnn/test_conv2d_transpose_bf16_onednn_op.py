@@ -91,7 +91,7 @@ class TestConv2DTransposeBF16ONEDNNOp(OpTest):
             'dilations': self.dilations,
             'is_test': self.is_test,
             'use_onednn': self.use_onednn,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'data_format': self.data_format,
             'fuse_activation': self.fuse_activation,

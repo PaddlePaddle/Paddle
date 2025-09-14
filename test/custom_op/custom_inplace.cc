@@ -156,6 +156,15 @@ void MultiInplaceForward(paddle::Tensor& x,  // NOLINT
       }));
 }
 
+std::vector<paddle::Tensor> MultiInplaceForwardWithAllReturn(
+    paddle::Tensor& x,  // NOLINT
+    const paddle::Tensor& y,
+    paddle::Tensor& a,  // NOLINT
+    const paddle::Tensor& b) {
+  MultiInplaceForward(x, y, a, b);
+  return {x, a};
+}
+
 std::vector<paddle::Tensor> MultiInplaceBackward(
     const paddle::Tensor& x,
     const paddle::Tensor& y,
@@ -184,6 +193,21 @@ std::vector<paddle::Tensor> MultiInplaceBackward(
   return {y_grad, b_grad};
 }
 
+std::vector<paddle::Tensor> MultiInplaceBackwardWithAllReturn(
+    const paddle::Tensor& x,
+    const paddle::Tensor& y,
+    paddle::Tensor& outxy_grad,  // NOLINT
+    const paddle::Tensor& a,
+    const paddle::Tensor& b,
+    paddle::Tensor& outab_grad) {  // NOLINT
+
+  const std::vector<paddle::Tensor>& outs =
+      MultiInplaceBackward(x, y, outxy_grad, a, b, outab_grad);
+  auto& y_grad = outs[0];
+  auto& b_grad = outs[1];
+  return {outxy_grad, y_grad, outab_grad, b_grad};
+}
+
 PD_BUILD_OP(custom_multi_inplace)
     .Inputs({"X", "Y", "A", "B"})
     .Outputs({"OutXY", "OutAB"})
@@ -199,6 +223,22 @@ PD_BUILD_GRAD_OP(custom_multi_inplace)
     .SetInplaceMap({{paddle::Grad("OutXY"), paddle::Grad("X")},
                     {paddle::Grad("OutAB"), paddle::Grad("A")}})
     .SetKernelFn(PD_KERNEL(MultiInplaceBackward));
+
+PD_BUILD_OP(custom_multi_inplace_with_all_return)
+    .Inputs({"X", "Y", "A", "B"})
+    .Outputs({"OutXY", "OutAB"})
+    .SetInplaceMap({{"X", "OutXY"}, {"A", "OutAB"}})
+    .SetKernelFn(PD_KERNEL(MultiInplaceForwardWithAllReturn));
+
+PD_BUILD_GRAD_OP(custom_multi_inplace_with_all_return)
+    .Inputs({"X", "Y", paddle::Grad("OutXY"), "A", "B", paddle::Grad("OutAB")})
+    .Outputs({paddle::Grad("X"),
+              paddle::Grad("Y"),
+              paddle::Grad("A"),
+              paddle::Grad("B")})
+    .SetInplaceMap({{paddle::Grad("OutXY"), paddle::Grad("X")},
+                    {paddle::Grad("OutAB"), paddle::Grad("A")}})
+    .SetKernelFn(PD_KERNEL(MultiInplaceBackwardWithAllReturn));
 
 void ReluForwardInplace(paddle::Tensor& x) {  // NOLINT
   CHECK_INPUT(x);

@@ -28,7 +28,6 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/phi/backends/all_context.h"
-#include "paddle/phi/common/float16.h"
 
 namespace phi {
 namespace math {

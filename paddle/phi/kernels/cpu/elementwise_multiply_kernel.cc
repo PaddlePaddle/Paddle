@@ -14,7 +14,6 @@
 
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -49,9 +48,6 @@ void MultiplyKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
-
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::bfloat16;
 
@@ -64,6 +60,6 @@ PD_REGISTER_KERNEL(multiply,
                    int,
                    int64_t,
                    bool,
-                   complex64,
-                   complex128,
+                   phi::complex64,
+                   phi::complex128,
                    phi::bfloat16) {}

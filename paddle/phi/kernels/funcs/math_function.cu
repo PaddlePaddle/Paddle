@@ -16,9 +16,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/math_function_impl.h"
@@ -329,8 +327,8 @@ struct TransposeNormal<phi::GPUContext, T> {
 #define DEFINE_GPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::GPUContext, TYPE>
 
-DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e4m3fn);
-DEFINE_GPU_TRANS_NORMAL(phi::dtype::float8_e5m2);
+DEFINE_GPU_TRANS_NORMAL(phi::float8_e4m3fn);
+DEFINE_GPU_TRANS_NORMAL(phi::float8_e5m2);
 DEFINE_GPU_TRANS_NORMAL(float16);
 DEFINE_GPU_TRANS_NORMAL(bfloat16);
 DEFINE_GPU_TRANS_NORMAL(float);
