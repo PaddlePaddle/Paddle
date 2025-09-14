@@ -49,8 +49,8 @@ if paddle.device.get_device() != "cpu":
 
 
 class TestSparseSlice(unittest.TestCase):
-    """
-    Test the API paddle.sparse.slice on some sparse tensors.
+    """Test the API paddle.sparse.slice on some sparse tensors.
+
     x: sparse, out: sparse
     """
 

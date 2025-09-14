@@ -285,10 +285,8 @@ class TestSparseUnary(unittest.TestCase):
 
 
 class TestSparseUnaryStatic(unittest.TestCase):
-    '''
-    test sparse unary op with static graph in pir mode
-    static graph only support sparse coo format
-    '''
+    """Test sparse unary op with static graph in pir mode static graph only
+    support sparse coo format."""
 
     def check_result_coo(
         self, dense_func, sparse_func, device='cpu', dtype='float32', *args

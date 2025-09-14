@@ -20,8 +20,8 @@ import paddle
 
 
 class TestReshape(unittest.TestCase):
-    """
-    Test the API paddle.sparse.reshape on some sparse tensors.
+    """Test the API paddle.sparse.reshape on some sparse tensors.
+
     x: sparse, out: sparse
     """
 
@@ -153,8 +153,9 @@ else:
 
 
 class TestSparseReshapeStatic(unittest.TestCase):
-    """
-    Test the API paddle.sparse.reshape on some sparse tensors. static graph
+    """Test the API paddle.sparse.reshape on some sparse tensors.
+
+    static graph
     x: sparse, out: sparse
     """
 

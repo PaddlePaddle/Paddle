@@ -108,7 +108,7 @@ class TestAddmm(unittest.TestCase):
 
 class TestAddmmStatic(unittest.TestCase):
     def check_result(self, input_shape, x_shape, y_shape):
-        '''Only support sparse_coo_tensor in static graph'''
+        """Only support sparse_coo_tensor in static graph."""
         if len(x_shape) == 3:
             mask = paddle.randint(0, 2, [x_shape[-2], x_shape[-1]])
         else:

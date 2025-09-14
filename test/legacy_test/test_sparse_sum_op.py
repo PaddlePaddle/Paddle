@@ -25,8 +25,8 @@ if paddle.device.get_device() != "cpu":
 
 
 class TestSparseSum(unittest.TestCase):
-    """
-    Test the API paddle.sparse.sum on some sparse tensors.
+    """Test the API paddle.sparse.sum on some sparse tensors.
+
     x: sparse tensor, out: sparse tensor
     """
 

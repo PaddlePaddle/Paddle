@@ -125,9 +125,7 @@ else:
 
 
 class TestMaxPool3DAPIStatic(unittest.TestCase):
-    '''
-    Test MaxPool3D API with static graph mode in pir mode.
-    '''
+    """Test MaxPool3D API with static graph mode in pir mode."""
 
     def setInput(self):
         self.dense_x = paddle.randn((1, 4, 4, 4, 3))

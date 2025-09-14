@@ -21,8 +21,8 @@ import paddle
 
 
 class TestSparseIsnan(unittest.TestCase):
-    """
-    Test the API paddle.sparse.isnan on some sparse tensors.
+    """Test the API paddle.sparse.isnan on some sparse tensors.
+
     x: sparse tensor, out: sparse tensor
     """
 

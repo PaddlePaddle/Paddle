@@ -43,9 +43,7 @@ def mask_to_zero(x, mask):
 
 
 class TestSparseElementWiseAPI(unittest.TestCase):
-    """
-    test paddle.sparse.add, subtract, multiply, divide
-    """
+    """Test paddle.sparse.add, subtract, multiply, divide."""
 
     def setUp(self):
         np.random.seed(2022)
@@ -409,9 +407,7 @@ class TestSparseElementWiseAPIComplex(unittest.TestCase):
 
 
 class TestSparseAddStaticAPI(unittest.TestCase):
-    """
-    test paddle.sparse.add
-    """
+    """Test paddle.sparse.add."""
 
     def setUp(self):
         np.random.seed(2022)
@@ -611,9 +607,7 @@ class TestSparseAddStaticAPI(unittest.TestCase):
 
 
 class TestSparseSubStaticAPI(unittest.TestCase):
-    """
-    test paddle.sparse.subtract
-    """
+    """Test paddle.sparse.subtract."""
 
     def setUp(self):
         np.random.seed(2022)
@@ -729,9 +723,7 @@ class TestSparseSubStaticAPI(unittest.TestCase):
 
 
 class TestSparseMulStaticAPI(unittest.TestCase):
-    """
-    test paddle.sparse.multiply
-    """
+    """Test paddle.sparse.multiply."""
 
     def setUp(self):
         np.random.seed(2022)
@@ -847,9 +839,7 @@ class TestSparseMulStaticAPI(unittest.TestCase):
 
 
 class TestSparseDivStaticAPI(unittest.TestCase):
-    """
-    test paddle.sparse.divide
-    """
+    """Test paddle.sparse.divide."""
 
     def setUp(self):
         np.random.seed(2022)

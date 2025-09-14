@@ -187,9 +187,8 @@ else:
 
 
 class TestSparseSoftmaxStaticAPI(unittest.TestCase):
-    '''
-    Test the API paddle.sparse.nn.functional.softmax on some sparse tensors in pir mode in static graph.
-    '''
+    """Test the API paddle.sparse.nn.functional.softmax on some sparse tensors
+    in pir mode in static graph."""
 
     def check_result_coo(self, x_shape):
         '''

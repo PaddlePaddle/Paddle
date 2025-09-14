@@ -20,9 +20,7 @@ from paddle.sparse.binary import is_same_shape
 
 
 class TestSparseIsSameShapeAPI(unittest.TestCase):
-    """
-    test paddle.sparse.is_same_shape
-    """
+    """Test paddle.sparse.is_same_shape."""
 
     def setUp(self):
         self.shapes = [[2, 5, 8], [3, 4]]
@@ -173,10 +171,8 @@ class TestSparseIsSameShapeAPI(unittest.TestCase):
 
 
 class TestSparseIsSameShapeStatic(unittest.TestCase):
-    '''
-    test paddle.sparse.is_same_shape in static graph in pir mode
-    only support sparse_coo_tensor in static graph
-    '''
+    """Test paddle.sparse.is_same_shape in static graph in pir mode only
+    support sparse_coo_tensor in static graph."""
 
     def setUp(self):
         self.shapes = [[2, 5, 8], [3, 4]]

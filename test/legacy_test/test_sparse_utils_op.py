@@ -539,14 +539,11 @@ else:
 
 
 class TestSparseCoalesceStatic(unittest.TestCase):
-    '''
-    test the coalesce function in static graph in pir mode
-    '''
+    """Test the coalesce function in static graph in pir mode."""
 
     def sort_and_merge(self, indices, values):
-        '''
-        sort the indices and merge the duplicate values in the same indices, using numpy and provide the correct result
-        '''
+        """Sort the indices and merge the duplicate values in the same indices,
+        using numpy and provide the correct result."""
         indices = np.array(indices)
         values = np.array(values)
         indices = indices[:, np.lexsort((indices[1], indices[0]))]

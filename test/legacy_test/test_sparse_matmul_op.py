@@ -389,9 +389,7 @@ class TestMatmulSparseDenseStatic(unittest.TestCase):
 
 
 class TestMatmulSparseSparseStatic(unittest.TestCase):
-    '''
-    only support sparse_coo_tensor in static graph
-    '''
+    """Only support sparse_coo_tensor in static graph."""
 
     # x: sparse, y: sparse, out: sparse
     def check_result(self, x_shape, y_shape):
@@ -482,9 +480,7 @@ class TestMatmulSparseSparseStatic(unittest.TestCase):
 
 
 class TestMaskedMatmulStatic(unittest.TestCase):
-    '''
-    only support sparse_csr_tensor in static graph
-    '''
+    """Only support sparse_csr_tensor in static graph."""
 
     # x: dense, y: dense, out: sparse_csr
     @unittest.skipIf(

@@ -21,9 +21,7 @@ import paddle
 
 
 def generate_data(shape, dtype):
-    """
-    Generate `data` and `mask` with the same shape and dtype.
-    """
+    """Generate `data` and `mask` with the same shape and dtype."""
     _mask = np.random.randint(0, 2, shape)
     if np.sum(_mask) == 0:
         _mask.flat[0] = 1

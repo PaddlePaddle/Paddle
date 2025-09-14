@@ -130,9 +130,7 @@ class TestCsrSoftmax(unittest.TestCase):
 
 class TestCooSoftmax(unittest.TestCase):
     def sparse_softmax(self, sparse, dense_shape, sparse_dim, dim):
-        """
-        sparse softmax algorithm in Python.
-        """
+        """Sparse softmax algorithm in Python."""
         inf = float('inf')
         indices = sparse.indices()
         values = sparse.values()

@@ -594,10 +594,11 @@ else:
 
 
 class TestSparseSubmConvStatic(unittest.TestCase):
-    '''
-    test subm_conv2d and subm_conv3d in static graph in pir mode.
-    compare the results of subm_conv2d in static graph and dynamic graph, use the result in dynamic graph as the correct answer.
-    '''
+    """Test subm_conv2d and subm_conv3d in static graph in pir mode.
+
+    compare the results of subm_conv2d in static graph and dynamic
+    graph, use the result in dynamic graph as the correct answer.
+    """
 
     def check_result_subm_conv2d(self, x_shape, weight_shape):
         '''
