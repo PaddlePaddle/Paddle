@@ -1131,7 +1131,7 @@ HOSTDEVICE inline phi::dtype::float16 min(const phi::dtype::float16& a,
 #endif  // PADDLE_CUDA_FP16
 
 // Note: HIP does not support half-float shuffles.
-#if defined(CINN_HIP_FP16)
+#if defined(PADDLE_WITH_HIP)
 __device__ inline phi::dtype::float16 __shfl(phi::dtype::float16 var,
                                              int srcLane,
                                              int width = warpSize) {
@@ -1167,7 +1167,7 @@ HOSTDEVICE inline phi::dtype::float16 min(const phi::dtype::float16& a,
                                           const phi::dtype::float16& b) {
   return a < b ? a : b;
 }
-#endif  // CINN_HIP_FP16
+#endif  // PADDLE_WITH_HIP
 
 namespace std {
 

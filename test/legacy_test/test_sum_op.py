@@ -597,14 +597,22 @@ class TestSumOpError(unittest.TestCase):
     def test_errors(self):
         def test_empty_list_input():
             with base.dygraph.guard():
-                base._legacy_C_ops.sum([])
+                paddle._legacy_C_ops.sum([])
 
         def test_list_of_none_input():
             with base.dygraph.guard():
-                base._legacy_C_ops.sum([None])
+                paddle._legacy_C_ops.sum([None])
 
-        self.assertRaises(Exception, test_empty_list_input)
-        self.assertRaises(Exception, test_list_of_none_input)
+        self.assertRaisesRegex(
+            ValueError,
+            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            test_empty_list_input,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            test_list_of_none_input,
+        )
 
 
 create_test_sum_fp16_class(TestSelectedRowsSumOp)

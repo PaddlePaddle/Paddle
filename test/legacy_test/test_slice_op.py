@@ -1087,7 +1087,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[:, 1.1:, : var.shape[1]]
 
-            self.assertRaises(Exception, test_float_in_slice_item)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, slice indices only allows None",
+                test_float_in_slice_item,
+            )
 
             def test_float_in_index():
                 with base.dygraph.guard():
@@ -1095,7 +1099,11 @@ class TestSliceApiWithDenseTensorArray(unittest.TestCase):
                     var = paddle.to_tensor(data)
                     sliced = var[1.1]
 
-            self.assertRaises(Exception, test_float_in_index)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) Currently, Tensor.__indices__\(\) only allows indexing by Boolean",
+                test_float_in_index,
+            )
 
     class TestInferShape(unittest.TestCase):
         def test_pir(self):

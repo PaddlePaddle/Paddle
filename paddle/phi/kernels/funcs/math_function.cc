@@ -81,7 +81,7 @@ template struct SetConstant<phi::XPUContext, phi::complex128>;
   template struct PADDLE_API Transpose<phi::CPUContext, phi::float16, RANK>;   \
   template struct PADDLE_API Transpose<phi::CPUContext, phi::bfloat16, RANK>;  \
   template struct PADDLE_API                                                   \
-      Transpose<phi::CPUContext, phi::dtype::float8_e4m3fn, RANK>;             \
+      Transpose<phi::CPUContext, phi::float8_e4m3fn, RANK>;                    \
   template struct PADDLE_API                                                   \
       Transpose<phi::CPUContext, phi::dtype::float8_e4m3fnuz, RANK>;           \
   template struct PADDLE_API                                                   \

@@ -93,14 +93,14 @@ class TestIdentityLossOpError(unittest.TestCase):
             def test_int():
                 paddle.incubate.identity_loss(x=input_data, reduction=3)
 
-            self.assertRaises(Exception, test_int)
+            self.assertRaises(TypeError, test_int)
 
             def test_string():
                 paddle.incubate.identity_loss(
                     x=input_data, reduction="wrongkey"
                 )
 
-            self.assertRaises(Exception, test_string)
+            self.assertRaises(TypeError, test_string)
 
             def test_dtype():
                 x2 = paddle.static.data(name='x2', shape=[-1, 1], dtype='int32')
@@ -167,10 +167,19 @@ class TestIdentityLossAPI(unittest.TestCase):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         x = paddle.to_tensor(x)
-        self.assertRaises(Exception, paddle.incubate.identity_loss, x, -1)
-        self.assertRaises(Exception, paddle.incubate.identity_loss, x, 3)
-        self.assertRaises(
-            Exception, paddle.incubate.identity_loss, x, "wrongkey"
+        err_msg = r".+reduction should be 0, 1 and 2\. But get"
+        self.assertRaisesRegex(
+            ValueError, err_msg, paddle.incubate.identity_loss, x, -1
+        )
+        self.assertRaisesRegex(
+            ValueError, err_msg, paddle.incubate.identity_loss, x, 3
+        )
+        self.assertRaisesRegex(
+            TypeError,
+            "Unsupported reduction type",
+            paddle.incubate.identity_loss,
+            x,
+            "wrongkey",
         )
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

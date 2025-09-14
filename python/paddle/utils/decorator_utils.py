@@ -474,6 +474,7 @@ class ForbidKeywordsDecorator(DecoratorBase):
             warnings.warn(
                 self.warn_msg,
                 category=UserWarning,
+                stacklevel=3,
             )
             self.warn_msg = None
         return args, kwargs
@@ -696,6 +697,24 @@ def sum_decorator() -> Callable[
                     kwargs["keepdim"] = args[3]
                 args = ()
 
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(func)
+        return wrapper
+
+    return decorator
+
+
+def floor_divide_decorator():
+    def decorator(func: Callable[_InputT, _RetT]) -> Callable[_InputT, _RetT]:
+        @functools.wraps(func)
+        def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+            if not kwargs:
+                return func(*args, **kwargs)
+            if "input" in kwargs and "x" not in kwargs:
+                kwargs["x"] = kwargs.pop("input")
+            if "other" in kwargs and "y" not in kwargs:
+                kwargs["y"] = kwargs.pop("other")
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(func)
