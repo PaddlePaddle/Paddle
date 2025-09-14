@@ -46,7 +46,13 @@ class DotOpEmptyInput(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
         y = paddle.to_tensor(np.reshape(data, [0, 0, 0]), dtype='float32')
 
-        self.assertRaises(Exception, paddle.dot, x, y)
+        self.assertRaisesRegex(
+            RuntimeError,
+            r"(.|)+ShapeError: The dimensions of input tensor X \(\[0, 0, 0\]\) should be 1 or 2",
+            paddle.dot,
+            x,
+            y,
+        )
 
 
 if __name__ == '__main__':

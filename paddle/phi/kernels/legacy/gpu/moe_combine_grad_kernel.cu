@@ -237,8 +237,8 @@ PD_REGISTER_KERNEL(moe_combine_grad,
                    phi::MoeCombineGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(moe_combine_auto_grad,
                    GPU,
@@ -246,5 +246,5 @@ PD_REGISTER_KERNEL(moe_combine_auto_grad,
                    phi::MoeCombineAutoGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

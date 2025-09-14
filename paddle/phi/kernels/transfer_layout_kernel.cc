@@ -87,8 +87,8 @@ void TransferLayoutGeneral(const Context& dev_ctx,
       col_len = src_dim[3];
     }
     if (x.dtype() == phi::DataType::FLOAT16) {
-      funcs::BatchTranspose(out->data<phi::dtype::float16>(),
-                            x.data<phi::dtype::float16>(),
+      funcs::BatchTranspose(out->data<phi::float16>(),
+                            x.data<phi::float16>(),
                             batch,
                             row_len,
                             col_len,
@@ -103,8 +103,8 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                             gpu_ctx);
       return;
     } else if (x.dtype() == phi::DataType::BFLOAT16) {
-      funcs::BatchTranspose(out->data<phi::dtype::bfloat16>(),
-                            x.data<phi::dtype::bfloat16>(),
+      funcs::BatchTranspose(out->data<phi::bfloat16>(),
+                            x.data<phi::bfloat16>(),
                             batch,
                             row_len,
                             col_len,

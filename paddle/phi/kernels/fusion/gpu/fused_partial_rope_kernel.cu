@@ -135,4 +135,4 @@ PD_REGISTER_KERNEL(fused_partial_rope,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::FusedPartialRoPEKernel,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

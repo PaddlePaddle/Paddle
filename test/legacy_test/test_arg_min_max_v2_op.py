@@ -320,7 +320,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmax(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmax_attr_type)
+            self.assertRaises(ValueError, test_argmax_attr_type)
 
             def test_argmin_attr_type():
                 data = paddle.static.data(
@@ -328,7 +328,7 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 )
                 output = paddle.argmin(x=data, dtype="float32")
 
-            self.assertRaises(TypeError, test_argmin_attr_type)
+            self.assertRaises(ValueError, test_argmin_attr_type)
 
             def test_argmax_axis_type():
                 data = paddle.static.data(

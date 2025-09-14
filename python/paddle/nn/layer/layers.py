@@ -69,12 +69,16 @@ if TYPE_CHECKING:
 __all__ = []
 
 
-_ForwardPreHook = Callable[
-    ["Layer", Tensor], Tensor
-]  # (layer, input) -> transformed_input
-_ForwardPostHook = Callable[
-    ["Layer", Tensor, Tensor], Tensor
-]  # (layer, input, output) -> transformed_output
+_ForwardPreHook = Union[
+    Callable[["Layer", Tensor], Tensor],  # (layer, input) -> transformed_input
+    Callable[["Layer", Tensor, dict[str, Any]], tuple[Tensor, dict[str, Any]]],
+]
+_ForwardPostHook = Union[
+    Callable[
+        ["Layer", Tensor, Tensor], Tensor
+    ],  # (layer, input, output) -> transformed_output
+    Callable[["Layer", Tensor, dict[str, Any], Tensor], Tensor],
+]
 _StateDict = Union[dict[str, Tensor], typing.OrderedDict[str, Tensor]]
 _StateDictHook = Callable[[_StateDict], None]
 
@@ -351,17 +355,22 @@ class HookRemoveHelper:
         self._hook_id = HookRemoveHelper.next_hook_id
         HookRemoveHelper.next_hook_id += 1
 
-        self._extra_hooks_ref = None
+        self._extra_hooks_ref: tuple = ()
         if extra_hook_dict is not None:
-            self._extra_hooks_ref = weakref.ref(extra_hook_dict)
+            if isinstance(extra_hook_dict, list):
+                self._extra_hooks_ref = tuple(
+                    weakref.ref(d) for d in extra_hook_dict
+                )
+            else:
+                self._extra_hooks_ref = (weakref.ref(extra_hook_dict),)
 
     def remove(self) -> None:
         hooks = self._hooks_ref()
         if hooks is not None and self._hook_id in hooks:
             del hooks[self._hook_id]
 
-        if self._extra_hooks_ref is not None:
-            extra_hooks = self._extra_hooks_ref()
+        for ref in self._extra_hooks_ref:
+            extra_hooks = ref()
             if extra_hooks is not None and self._hook_id in extra_hooks:
                 del extra_hooks[self._hook_id]
 
@@ -454,6 +463,12 @@ class Layer:
             OrderedDict()
         )
         self._forward_pre_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
+        self._forward_post_hooks_with_kwargs_flag: typing.OrderedDict[
+            int, bool
+        ] = OrderedDict()
+        self._forward_post_hooks_always_called: typing.OrderedDict[
             int, bool
         ] = OrderedDict()
 
@@ -665,7 +680,12 @@ class Layer:
         return self._full_name
 
     def register_forward_post_hook(
-        self, hook: _ForwardPostHook
+        self,
+        hook: _ForwardPostHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False,
+        always_call: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -678,6 +698,16 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward post-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward_post`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
+            with_kwargs (bool): If ``True``, the ``hook`` will be passed the
+                kwargs given to the forward function.
+                Default: ``False``
+            always_call (bool): If ``True`` the ``hook`` will be run regardless of
+                whether an exception is raised while calling the Module.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -714,12 +744,37 @@ class Layer:
                 >>> assert (out0.numpy() == (out1.numpy()) * 2).any()
 
         """
-        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        hook_remove_helper = HookRemoveHelper(
+            self._forward_post_hooks,
+            extra_hook_dict=[
+                self._forward_post_hooks_with_kwargs_flag,
+                self._forward_post_hooks_always_called,
+            ],
+        )
         self._forward_post_hooks[hook_remove_helper._hook_id] = hook
+        if with_kwargs:
+            self._forward_post_hooks_with_kwargs_flag[
+                hook_remove_helper._hook_id
+            ] = True
+        if always_call:
+            self._forward_post_hooks_always_called[
+                hook_remove_helper._hook_id
+            ] = True
+        if prepend:
+            self._forward_post_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
+    # [aliases]
+    register_forward_hook = register_forward_post_hook
+
     def register_forward_pre_hook(
-        self, hook: _ForwardPreHook, *, with_kwargs: bool = False
+        self,
+        hook: _ForwardPreHook,
+        *,
+        prepend: bool = False,
+        with_kwargs: bool = False,
     ) -> HookRemoveHelper:
         """
 
@@ -734,6 +789,13 @@ class Layer:
 
         Parameters:
             hook(function): a function registered as a forward pre-hook
+            prepend (bool): If ``True``, the provided ``hook`` will be fired
+                before all existing ``forward_pre`` hooks on this
+                :class:`paddle.nn.Layer`.
+                Default: ``False``
+            with_kwargs (bool): If true, the ``hook`` will be passed the kwargs
+                given to the forward function.
+                Default: ``False``
 
         Returns:
             HookRemoveHelper, a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
@@ -780,6 +842,11 @@ class Layer:
             self._forward_pre_hooks_with_kwargs_flag[
                 hook_remove_helper._hook_id
             ] = True
+
+        if prepend:
+            self._forward_pre_hooks.move_to_end(
+                hook_remove_helper._hook_id, last=False
+            )
         return hook_remove_helper
 
     def create_parameter(
@@ -1522,47 +1589,91 @@ class Layer:
         pass
 
     def _dygraph_call_func(self, *inputs: Any, **kwargs: Any) -> Any:
-        for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
-            if hook_id in self._forward_pre_hooks_with_kwargs_flag:
-                args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
-                if args_kwargs_result is not None:
-                    if (
-                        isinstance(args_kwargs_result, tuple)
-                        and len(args_kwargs_result) == 2
-                    ):
-                        inputs, kwargs = args_kwargs_result
-                    else:
-                        raise RuntimeError(
-                            "forward pre-hook must return None or a tuple "
-                            f"of (new_args, new_kwargs), but got {args_kwargs_result}."
-                        )
+        outputs = None
+        called_always_called_hooks = set()
+
+        def inner():
+            nonlocal outputs, inputs, kwargs
+
+            for hook_id, forward_pre_hook in self._forward_pre_hooks.items():
+                if hook_id in self._forward_pre_hooks_with_kwargs_flag:
+                    args_kwargs_result = forward_pre_hook(self, inputs, kwargs)
+                    if args_kwargs_result is not None:
+                        if (
+                            isinstance(args_kwargs_result, tuple)
+                            and len(args_kwargs_result) == 2
+                        ):
+                            inputs, kwargs = args_kwargs_result
+                        else:
+                            raise RuntimeError(
+                                "forward pre-hook must return None or a tuple "
+                                f"of (new_args, new_kwargs), but got {args_kwargs_result}."
+                            )
+                else:
+                    hook_result = forward_pre_hook(self, inputs)
+                    if hook_result is not None:
+                        if not isinstance(hook_result, tuple):
+                            hook_result = (hook_result,)
+                        inputs = hook_result
+
+            if not self._built:
+                self._build_once(*inputs, **kwargs)
+
+                self._built = True
+
+            if in_profiler_mode():
+                with profiler.RecordEvent(
+                    self.__class__.__name__, profiler.TracerEventType.Forward
+                ):
+                    outputs = self.forward(*inputs, **kwargs)
             else:
-                hook_result = forward_pre_hook(self, inputs)
+                with name_struct(self.__class__.__name__):
+                    outputs = self.forward(*inputs, **kwargs)
+
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                # mark that always_called_hook to be run
+                if hook_id in self._forward_post_hooks_always_called:
+                    called_always_called_hooks.add(hook_id)
+
+                if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                    hook_result = forward_post_hook(
+                        self, inputs, kwargs, outputs
+                    )
+                else:
+                    hook_result = forward_post_hook(self, inputs, outputs)
+
                 if hook_result is not None:
-                    if not isinstance(hook_result, tuple):
-                        hook_result = (hook_result,)
-                    inputs = hook_result
+                    outputs = hook_result
 
-        if not self._built:
-            self._build_once(*inputs, **kwargs)
+            return outputs
 
-            self._built = True
+        try:
+            return inner()
+        except Exception:
+            for hook_id, forward_post_hook in self._forward_post_hooks.items():
+                if (
+                    hook_id in self._forward_post_hooks_always_called
+                ) and hook_id not in called_always_called_hooks:
+                    try:
+                        if hook_id in self._forward_post_hooks_with_kwargs_flag:
+                            hook_result = forward_post_hook(
+                                self, inputs, kwargs, outputs
+                            )
+                        else:
+                            hook_result = forward_post_hook(
+                                self, inputs, outputs
+                            )
 
-        if in_profiler_mode():
-            with profiler.RecordEvent(
-                self.__class__.__name__, profiler.TracerEventType.Forward
-            ):
-                outputs = self.forward(*inputs, **kwargs)
-        else:
-            with name_struct(self.__class__.__name__):
-                outputs = self.forward(*inputs, **kwargs)
-
-        for forward_post_hook in self._forward_post_hooks.values():
-            hook_result = forward_post_hook(self, inputs, outputs)
-            if hook_result is not None:
-                outputs = hook_result
-
-        return outputs
+                        if hook_result is not None:
+                            outputs = hook_result
+                    except Exception as e:
+                        warnings.warn(
+                            "forward hook with ``always_call=True`` raised an exception "
+                            f"that was silenced as another error was raised in forward: {e!s}"
+                        )
+                        continue
+            # raise exception raised in try block
+            raise
 
     def __call__(self, *inputs: Any, **kwargs: Any) -> Any:
         if (

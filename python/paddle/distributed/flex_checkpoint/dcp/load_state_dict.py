@@ -1292,17 +1292,24 @@ def divide_positions(m, n):
     return positions
 
 
+def endswith(key, prefix_list):
+    for prefix in prefix_list:
+        if key.endswith(prefix):
+            return True
+    return False
+
+
 def merge_sharded_state_dict(
     load_path: str,
     save_path: str,
     prefix: str | None = None,
     safetensor_prefix: str = 'model',
+    skip_postfix_list: list = [],
     process_group: Group | None = None,
     unique_id: int | None = None,
     offload: bool = False,
     aoa_config: dict[str, list[str]] | None = None,
     safetensors: bool = False,
-    file_num: int = 1,
 ) -> None:
     """
     Load the distributed checkpoint and merge it to unsharded state_dict then save as safetensors.
@@ -1314,19 +1321,19 @@ def merge_sharded_state_dict(
             ...
             model-00008-of-00008.safetensors
             model.safetensors.index.json
-        model is safetensor_prefix; 00008 is file_num.
+        model is safetensor_prefix; 00008 is file_num which same ad dist total_size.
 
     Args:
         load_path(str): The directory to load checkpoint files.
         save_path(str): The directory to save merged_checkpoint files.
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         safetensor_prefix(str): The safetensors file prefix e.g., Default 'model'.
+        skip_postfix_list(list(str)): The skip postfix list of state_dict key. e.g., ['moment1_0', 'beta1_pow_acc_0'], Default [].
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
         aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
         safetensors(bool): Whether to use safetensors format. Default is False.
-        file_num(int): The number of files to split the merged_checkpoint into.
     Returns:
         None.
 
@@ -1389,6 +1396,18 @@ def merge_sharded_state_dict(
 
     for metadata in metadata_list:
         state_dict_metadata = metadata.state_dict_metadata
+        origin_size = len(state_dict_metadata)
+        rm_key_list = []
+        for key in state_dict_metadata.keys():
+            if endswith(key, skip_postfix_list):
+                rm_key_list.append(key)
+        for key in rm_key_list:
+            state_dict_metadata.pop(key)
+        cur_size = len(state_dict_metadata)
+        logger.info(
+            f"state_dict_metadata origin_size: {origin_size}, cur_size: {cur_size} skip {origin_size - cur_size}"
+        )
+
         positions = divide_positions(len(state_dict_metadata), file_num)
         rank = paddle.distributed.get_rank()
 

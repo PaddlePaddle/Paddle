@@ -18,8 +18,6 @@ limitations under the License. */
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
@@ -207,8 +205,8 @@ struct SelectedRowsAddTensor<phi::GPUContext, T> {
 
 template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, float>;
 template struct PADDLE_API SelectedRowsAddTensor<phi::GPUContext, double>;
-template struct SelectedRowsAdd<phi::GPUContext, phi::dtype::float16>;
-template struct SelectedRowsAddTensor<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAdd<phi::GPUContext, phi::float16>;
+template struct SelectedRowsAddTensor<phi::GPUContext, phi::float16>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::GPUContext, T> {
@@ -264,7 +262,7 @@ template struct PADDLE_API SelectedRowsAddTo<phi::GPUContext, float>;
 template struct SelectedRowsAddTo<phi::GPUContext, double>;
 template struct SelectedRowsAddTo<phi::GPUContext, int>;
 template struct SelectedRowsAddTo<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddTo<phi::GPUContext, phi::dtype::float16>;
+template struct SelectedRowsAddTo<phi::GPUContext, phi::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -334,11 +332,9 @@ template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, float>;
 template struct PADDLE_API SelectedRowsAddToTensor<phi::GPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::GPUContext, int64_t>;
-template struct SelectedRowsAddToTensor<phi::GPUContext, phi::dtype::float16>;
-template struct SelectedRowsAddToTensor<phi::GPUContext,
-                                        phi::dtype::complex<float>>;
-template struct SelectedRowsAddToTensor<phi::GPUContext,
-                                        phi::dtype::complex<double>>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::float16>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex64>;
+template struct SelectedRowsAddToTensor<phi::GPUContext, phi::complex128>;
 
 namespace scatter {
 
@@ -538,10 +534,10 @@ TEMPLATE_SPECIALIZED_FOR_MERGEADD(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(double)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(int)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD(int64_t)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::float16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::bfloat16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::complex<float>)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::dtype::complex<double>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::float16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::complex64)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD(phi::complex128)
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,

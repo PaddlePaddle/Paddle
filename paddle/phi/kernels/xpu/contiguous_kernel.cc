@@ -57,9 +57,10 @@ void ContiguousKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void ContiguousKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx, const DenseTensor& input, DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void ContiguousKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                  const DenseTensor& input,
+                                                  DenseTensor* out) {
+  using T = phi::complex64;
 
   phi::DenseTensorMeta meta = input.meta();
   meta.strides = meta.calc_strides(meta.dims);
@@ -126,7 +127,7 @@ PD_REGISTER_KERNEL(contiguous,
                    float,
                    double,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    ::phi::float16,
                    ::phi::bfloat16) {

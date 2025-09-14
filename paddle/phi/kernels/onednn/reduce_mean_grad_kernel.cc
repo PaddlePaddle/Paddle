@@ -60,11 +60,7 @@ void MeanGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(mean_grad,
-                   OneDNN,
-                   ONEDNN,
-                   phi::MeanGradKernel,
-                   float,
-                   phi::dtype::bfloat16) {
+PD_REGISTER_KERNEL(
+    mean_grad, OneDNN, ONEDNN, phi::MeanGradKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::ReduceGradCheckIfOneDNNSupport;
 }

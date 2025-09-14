@@ -58,13 +58,12 @@ void PadKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void PadKernel<phi::dtype::complex<float>, XPUContext>(
-    const XPUContext& dev_ctx,
-    const DenseTensor& x,
-    const std::vector<int>& paddings,
-    const Scalar& pad_value,
-    DenseTensor* out) {
-  using T = phi::dtype::complex<float>;
+void PadKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                           const DenseTensor& x,
+                                           const std::vector<int>& paddings,
+                                           const Scalar& pad_value,
+                                           DenseTensor* out) {
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(out);
   std::vector<int64_t> pad_left, pad_right;
   std::vector<int64_t> xshape = common::vectorize<int64_t>(x.dims());
@@ -117,7 +116,7 @@ PD_REGISTER_KERNEL(pad,
                    int16_t,
                    int64_t,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    phi::bfloat16,
                    phi::float16) {

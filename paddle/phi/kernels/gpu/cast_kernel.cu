@@ -50,8 +50,8 @@ INSTANTIATE_CAST_KERNEL(int64_t, GPUContext)
 INSTANTIATE_CAST_KERNEL(uint8_t, GPUContext)
 INSTANTIATE_CAST_KERNEL(bool, GPUContext)
 INSTANTIATE_CAST_KERNEL(int16_t, GPUContext)
-INSTANTIATE_CAST_KERNEL(phi::dtype::float16, GPUContext)
-INSTANTIATE_CAST_KERNEL(phi::dtype::bfloat16, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::float16, GPUContext)
+INSTANTIATE_CAST_KERNEL(phi::bfloat16, GPUContext)
 #endif
 }  // namespace phi
 
@@ -77,5 +77,5 @@ INSTANTIATE_CAST_KERNEL(phi::dtype::bfloat16, GPUContext)
 
 PTEN_REGISTER_CAST_CUDA_BASE_TYPE(cast,
                                   phi::bfloat16,
-                                  phi::dtype::float8_e4m3fn,
-                                  phi::dtype::float8_e5m2)
+                                  phi::float8_e4m3fn,
+                                  phi::float8_e5m2)

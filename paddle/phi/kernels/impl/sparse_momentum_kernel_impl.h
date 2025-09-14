@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

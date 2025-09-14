@@ -141,25 +141,10 @@ inline torch::IValue OperationInvoker::to_ivalue(py::handle obj) {
     }
     return torch::IValue(ivalue_list);
   } else {
-    try {
-      auto val = py::cast<int>(obj);
-      return torch::IValue(val);
-    } catch (...) {
-      try {
-        auto val = py::cast<double>(obj);
-        return torch::IValue(val);
-      } catch (...) {
-        try {
-          auto val = py::cast<std::string>(obj);
-          return torch::IValue(val);
-        } catch (...) {
-          PADDLE_THROW(common::errors::Unimplemented(
-              "Conversion of Python object to torch::IValue for type %s is not "
-              "implemented yet.",
-              std::string(py::str(py::type::of(obj))).c_str()));
-        }
-      }
-    }
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Conversion of Python object to torch::IValue for type %s is not "
+        "implemented yet.",
+        std::string(py::str(py::type::of(obj))).c_str()));
   }
 }
 

@@ -657,5 +657,5 @@ PD_REGISTER_KERNEL(fused_conv2d_add_act,  // cuda_only
                    phi::fusion::FusedConv2dAddActKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

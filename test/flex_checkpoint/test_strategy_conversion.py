@@ -20,8 +20,6 @@ import sys
 import tempfile
 import unittest
 
-import paddle
-
 
 def p_str_to_dict(p_str):
     """Parses a strategy string like 'd2·t2' into a config dictionary."""
@@ -189,6 +187,8 @@ TEST_CASES = [
 
 class TestStrategyConversion(unittest.TestCase):
     def _run_workflow(self, case, logic_script="strategy_conversion_engine.py"):
+        import paddle
+
         if case["gpu_num"] > paddle.device.cuda.device_count():
             self.skipTest("number of GPUs is not enough")
 

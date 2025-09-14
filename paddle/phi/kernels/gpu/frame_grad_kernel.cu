@@ -14,7 +14,6 @@
 
 #include "paddle/phi/kernels/frame_grad_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/frame_grad_kernel_impl.h"
 
