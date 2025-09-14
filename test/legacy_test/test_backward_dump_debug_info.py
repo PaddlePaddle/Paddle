@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import os
 import platform
 import shutil
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest.mock import patch
 
 import paddle
 
@@ -38,7 +41,6 @@ class TestDumpDebugInfo(unittest.TestCase):
         y = paddle.randn([5, 5], dtype='float16')
         x.stop_gradient = False
         y.stop_gradient = False
-
         z = x + y
         h = z + 1
         h = h * z
@@ -97,6 +99,75 @@ class TestDumpDebugInfo(unittest.TestCase):
                 raise AssertionError(
                     f"Error: File '{keywords}' not found in directory '{directory}'! "
                 )
+
+    # Just execute vlog for the coverage ci
+    def test_vlog(self):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with redirect_stdout(stdout), redirect_stderr(stderr):
+            os.environ['GLOG_v'] = '6'
+            import paddle
+
+            x = paddle.randn([5, 5], dtype='float32')
+            y = paddle.randn([5, 5], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z = x + y
+            h = x * z
+            w = h + y
+            grads = paddle.autograd.backward(
+                [x, y],
+                [None, None],
+            )
+            del os.environ['GLOG_v']
+        stdout.close()
+        stderr.close()
+
+    # Test the input path is not valid
+    @patch('os.path.exists')
+    @patch('os.path.isdir')
+    def test_raise_not_a_directory_error(self, mock_isdir, mock_exists):
+        # simulate
+        mock_exists.return_value = True
+        mock_isdir.return_value = False
+        paddle.disable_static()
+        with self.assertRaises(NotADirectoryError) as context:
+            x = paddle.randn([5, 5], dtype='float32')
+            y = paddle.randn([5, 5], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z = x + y
+            h = x * z
+            w = h + y
+            grads = paddle.autograd.backward(
+                [x, y], [None, None], debug_info_path="/path/to/check"
+            )
+
+        self.assertTrue(
+            " path:'/path/to/check' must be directory "
+            in str(context.exception)
+        )
+
+    @patch('os.makedirs')
+    def test_create_file_error(self, mock_makedirs):
+        # simulate os.makedirs throw exception
+        mock_makedirs.side_effect = Exception("Mocked exception")
+        with self.assertRaises(OSError) as context:
+            x = paddle.randn([5, 5], dtype='float32')
+            y = paddle.randn([5, 5], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            z = x + y
+            h = x * z
+            w = h + y
+            grads = paddle.autograd.backward(
+                [x, y], [None, None], debug_info_path='/path/to/create'
+            )
+
+        self.assertTrue(
+            "Create '/path/to/create' failed : Mocked exception"
+            in str(context.exception)
+        )
 
 
 if __name__ == "__main__":
