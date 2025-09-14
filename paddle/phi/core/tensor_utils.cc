@@ -400,7 +400,7 @@ template void PADDLE_API Copy(const DeviceContext& dev_ctx,
                               TensorArray* dst);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template void Copy(const GPUContext& dev_ctx,
+template PADDLE_API void Copy(const GPUContext& dev_ctx,
                    const DenseTensor& src,
                    Place dst_place,
                    bool blocking,

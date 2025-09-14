@@ -26,7 +26,7 @@ using complex128 = ::phi::dtype::complex<double>;
 namespace phi {
 
 template <typename T, typename Context>
-void AllKernel(const Context& dev_ctx,
+PADDLE_API void AllKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int64_t>& dims,
                bool keep_dim,

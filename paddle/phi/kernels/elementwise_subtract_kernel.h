@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
+PADDLE_API void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out);

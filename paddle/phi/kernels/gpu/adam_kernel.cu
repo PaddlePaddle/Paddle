@@ -158,7 +158,7 @@ __global__ void UpdateBetaPow(T beta1,
 }
 
 template <typename T, typename Context>
-void AdamDenseKernel(const Context& dev_ctx,
+PADDLE_API void AdamDenseKernel(const Context& dev_ctx,
                      const DenseTensor& param,
                      const DenseTensor& grad,
                      const DenseTensor& learning_rate,

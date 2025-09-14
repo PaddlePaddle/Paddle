@@ -27,7 +27,7 @@ void AllRawKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-TEST_API void AllKernel(const Context& dev_ctx,
+PADDLE_API void AllKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const std::vector<int64_t>& dims,
                         bool keep_dim,

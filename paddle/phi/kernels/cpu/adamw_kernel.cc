@@ -29,7 +29,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AdamwDenseKernel(const Context& dev_ctx,
+PADDLE_API void AdamwDenseKernel(const Context& dev_ctx,
                       const DenseTensor& param,
                       const DenseTensor& grad,
                       const DenseTensor& learning_rate,

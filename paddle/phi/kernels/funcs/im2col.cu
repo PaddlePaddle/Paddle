@@ -304,40 +304,40 @@ class Col2ImFunctor<phi::funcs::ColFormat::kCFO, DeviceContext, T> {
   }
 };
 
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              float>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              double>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::complex<float>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::complex<double>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::float16>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::bfloat16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              float>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              double>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::complex<float>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::complex<double>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::float16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kCFO,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kCFO,
                              phi::GPUContext,
                              phi::dtype::bfloat16>;
 
@@ -579,40 +579,40 @@ class Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T> {
   }
 };
 
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              double>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::complex<float>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::complex<double>>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::float16>;
-template class Im2ColFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Im2ColFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::bfloat16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              float>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              double>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::complex<float>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::complex<double>>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::float16>;
-template class Col2ImFunctor<phi::funcs::ColFormat::kOCF,
+template class PADDLE_API Col2ImFunctor<phi::funcs::ColFormat::kOCF,
                              phi::GPUContext,
                              phi::dtype::bfloat16>;
 

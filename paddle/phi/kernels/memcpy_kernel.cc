@@ -26,7 +26,7 @@ namespace phi {
 static constexpr size_t WAIT_THRESHOLD = 64 * 1024;
 
 template <typename Context>
-void MemcpyH2DKernel(const Context& dev_ctx,
+PADDLE_API void MemcpyH2DKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {
@@ -43,7 +43,7 @@ void MemcpyH2DKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void MemcpyD2HKernel(const Context& dev_ctx,
+PADDLE_API void MemcpyD2HKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      int dst_place_type,
                      DenseTensor* out) {

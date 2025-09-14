@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& dev_ctx,
+PADDLE_API void GaussianKernel(const Context& dev_ctx,
                     const IntArray& shape,
                     float mean,
                     float std,
