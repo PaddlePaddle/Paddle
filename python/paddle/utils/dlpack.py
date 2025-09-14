@@ -173,43 +173,61 @@ def from_dlpack(
         .. code-block:: python
             :name: code-paddle-from-paddle
 
+            >>> print("[debug] code-paddle-from-paddle 111")
             >>> import paddle
+            >>> print("[debug] code-paddle-from-paddle 222")
             >>> # From DLPack capsule
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
+            >>> print("[debug] code-paddle-from-paddle 333")
             >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+            >>> print("[debug] code-paddle-from-paddle 444")
 
             >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> print("[debug] code-paddle-from-paddle 555")
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
             >>> print(dlpack)
+            >>> print("[debug] code-paddle-from-paddle 666")
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
 
+            >>> print("[debug] code-paddle-from-paddle 777")
             >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
                    [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+            >>> print("[debug] code-paddle-from-paddle 888")
             >>> # data of tensor x is shared with tensor y
             >>> y[0, 0] = 10.0
+            >>> print("[debug] code-paddle-from-paddle 999")
             >>> print(x)
             Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [[10.       , 0.30000001, 0.50000000, 0.89999998],
                     [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
+            >>> print("[debug] code-paddle-from-paddle aaa")
 
         .. code-block:: python
             :name: code-paddle-from-numpy
 
             >>> # Directly from external tensor that implements '__dlpack__' and '__dlpack_device__' methods
+            >>> print("[debug] code-paddle-from-numpy 111")
             >>> import paddle
+            >>> print("[debug] code-paddle-from-numpy 222")
             >>> import numpy as np
+            >>> print("[debug] code-paddle-from-numpy 333")
             >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
             ...              [0.1, 0.2, 0.6, 0.7]])
+            >>> print("[debug] 444")
             >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> print("[debug] code-paddle-from-numpy 555")
             >>> y[0, 0] = 10.0
+            >>> print("[debug] code-paddle-from-numpy 666")
             >>> # data of tensor x is shared with tensor y
+            >>> print("[debug] code-paddle-from-numpy 777")
             >>> print(x)
             [[10.   0.3  0.5  0.9]
             [ 0.1  0.2  0.6  0.7]]
+            >>> print("[debug] code-paddle-from-numpy 888")
     """
 
     if hasattr(dlpack, "__dlpack__"):
