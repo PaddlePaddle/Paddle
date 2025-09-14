@@ -3777,7 +3777,9 @@ class TestELUInplaceAPI(TestELUAPI):
     def test_alpha_error(self):
         with dynamic_guard():
             x = paddle.to_tensor(self.x_np)
-            self.assertRaises(Exception, F.elu_, x, -0.2)
+            self.assertRaisesRegex(
+                AssertionError, "elu_ only support alpha >= 0", F.elu_, x, -0.2
+            )
 
 
 def celu(x, alpha):

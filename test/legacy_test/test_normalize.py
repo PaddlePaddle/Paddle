@@ -54,7 +54,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+Attr\(axis\) value should be in range \[-R, R-1\]",
+            r"Attr\(axis\) value should be in range \[-R, R-1\]",
             F.normalize,
             x,
         )

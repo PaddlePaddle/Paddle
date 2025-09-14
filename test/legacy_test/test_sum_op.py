@@ -605,12 +605,12 @@ class TestSumOpError(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            r"sum\(\): argument 'X' \(position 0\) must be list of Tensors",
             test_empty_list_input,
         )
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            r"sum\(\): argument 'X' \(position 0\) must be list of Tensors",
             test_list_of_none_input,
         )
 

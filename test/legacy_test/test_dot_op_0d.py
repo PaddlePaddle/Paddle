@@ -48,7 +48,7 @@ class DotOpEmptyInput(unittest.TestCase):
 
         self.assertRaisesRegex(
             RuntimeError,
-            r"(.|)+ShapeError: The dimensions of input tensor X \(\[0, 0, 0\]\) should be 1 or 2",
+            r"ShapeError: The dimensions of input tensor X \(\[0, 0, 0\]\) should be 1 or 2",
             paddle.dot,
             x,
             y,

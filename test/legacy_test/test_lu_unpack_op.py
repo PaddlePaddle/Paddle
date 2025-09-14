@@ -412,7 +412,7 @@ class TestLU_UnpackAPIError(unittest.TestCase):
 
             self.assertRaisesRegex(
                 ValueError,
-                r"(.|)+The data in Pivot must be between",
+                "The data in Pivot must be between",
                 test_y_data,
             )
 
