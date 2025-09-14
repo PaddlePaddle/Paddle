@@ -331,7 +331,12 @@ class API_DygraphTest(unittest.TestCase):
     def test_single_tensor_error(self):
         with base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
-            self.assertRaises(Exception, paddle.stack, x)
+            self.assertRaisesRegex(
+                ValueError,
+                r"\(InvalidArgument\) stack\(\): argument 'x' \(position 0\) must be list of Tensors",
+                paddle.stack,
+                x,
+            )
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):

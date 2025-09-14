@@ -52,7 +52,12 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         y = F.normalize(x, axis=0)
         np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
-        self.assertRaises(BaseException, F.normalize, x)
+        self.assertRaisesRegex(
+            ValueError,
+            r"(.|)+Attr\(axis\) value should be in range \[-R, R-1\]",
+            F.normalize,
+            x,
+        )
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')

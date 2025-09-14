@@ -352,7 +352,9 @@ class TestVariable(unittest.TestCase):
         def _test():
             var.lod_level()
 
-        self.assertRaises(Exception, _test)
+        self.assertRaisesRegex(
+            NotImplementedError, "SelectedRows DO NOT support lod", _test
+        )
 
     def test_size(self):
         prog = paddle.static.Program()

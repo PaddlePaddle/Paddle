@@ -1199,11 +1199,27 @@ class TestPad3dOpError(unittest.TestCase):
             )
 
         paddle.disable_static()
-        for place in self.places:
-            self.assertRaises(ValueError, test_variable)
-            self.assertRaises(Exception, test_reflect_1)
-            self.assertRaises(Exception, test_reflect_2)
-            self.assertRaises(Exception, test_reflect_3)
+        for _ in self.places:
+            self.assertRaisesRegex(
+                ValueError,
+                r"(.|)+pad3d\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
+                test_variable,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"(.|)+The width of Input\(X\)'s dimension should be greater than pad_left in reflect mode",
+                test_reflect_1,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"(.|)+The height of Input\(X\)'s dimension should be greater than pad_top in reflect mode",
+                test_reflect_2,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"(.|)+The depth of Input\(X\)'s dimension should be greater than pad_back in reflect mode",
+                test_reflect_3,
+            )
             # comment out because pad3d support 0-size now.
             # self.assertRaises(Exception, test_circular_1)
             # self.assertRaises(Exception, test_replicate_1)
