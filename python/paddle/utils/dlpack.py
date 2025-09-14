@@ -190,6 +190,7 @@ def from_dlpack(
             >>> print("[debug] code-paddle-from-paddle 666")
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
+            >>> # doctest: -SKIP
 
             >>> print("[debug] code-paddle-from-paddle 777")
             >>> print(y)
