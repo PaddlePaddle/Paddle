@@ -241,7 +241,6 @@ def linear_interp_np(
 
 class TestBilinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
     def test_case(self):
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -284,7 +283,6 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
 
 class TestBilinearInterpOpAPI_RecomputeScaleFactorList(unittest.TestCase):
     def test_case(self):
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -330,7 +328,6 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactorDifferentTensors(
     unittest.TestCase
 ):
     def test_case(self):
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -422,7 +419,6 @@ class TestBilinearInterpOpAPI_RecomputeScaleFactorScalarTensor(
 
 class TestNearestInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
     def test_case(self):
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
@@ -511,7 +507,6 @@ class TestLinearInterpOpAPI_RecomputeScaleFactor(unittest.TestCase):
 
 class TestInterpRecomputeScaleFactorError(unittest.TestCase):
     def test_size_and_recompute_scale_factor_error(self):
-
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:

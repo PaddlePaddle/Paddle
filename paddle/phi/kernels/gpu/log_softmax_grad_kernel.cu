@@ -34,6 +34,7 @@ void LogSoftmaxGradKernel(const Context &dev_ctx,
     phi::funcs::set_constant(dev_ctx, x_grad, static_cast<T>(0.0));
     return;
   }
+  if (out.numel() == 0) return;
   phi::SoftmaxBackwardCUDAKernelDriver<T, true>(
       dev_ctx, out, out_grad, axis, x_grad);
 }
@@ -46,8 +47,8 @@ PD_REGISTER_KERNEL(log_softmax_grad,
                    ALL_LAYOUT,
                    phi::LogSoftmaxGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(log_softmax_grad,
                    GPU,
@@ -55,6 +56,6 @@ PD_REGISTER_KERNEL(log_softmax_grad,
                    phi::LogSoftmaxGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

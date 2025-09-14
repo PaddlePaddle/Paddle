@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard, randomize_probability
+from op_test import (
+    OpTest,
+    get_places,
+    paddle_static_guard,
+    randomize_probability,
+)
 
 import paddle
 from paddle import base
@@ -466,6 +471,55 @@ class TestCrossEntropyOpError(unittest.TestCase):
                     )
 
             self.assertRaises(ValueError, test_input_dims)
+
+
+class TestCrossEntropyOp_ZeroSize(TestCrossEntropyOp):
+    def setUp(self):
+        self.op_type = "cross_entropy"
+        self.python_api = api_wrapper
+        self.soft_label = False
+        self.ignore_index = -100
+        self.dtype = np.float64
+        # 0-size
+        self.batch_size = 0
+        self.class_num = 10
+
+        self.init_dtype_type()
+        self.init_attr_type()
+        self.init_bs_class_num()
+        self.init_x()
+        self.init_label()
+        self.get_cross_entropy()
+
+        self.inputs = {"X": self.x, "Label": self.label}
+        self.outputs = {"Y": self.cross_entropy}
+        self.attrs = {
+            "soft_label": self.soft_label,
+            "ignore_index": self.ignore_index,
+        }
+
+    def get_cross_entropy(self):
+        self.cross_entropy = np.random.random([0, 1]).astype(np.float64)
+
+
+class TestCrossEntropyOp_ZeroSize2(unittest.TestCase):
+    def test_dygraph_api(self):
+        for place in get_places():
+            paddle.disable_static(place)
+            x_np = np.random.random((16, 0)).astype(np.float64)
+            label_np = np.random.random((16, 0)).astype(np.float64)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            label = paddle.to_tensor(label_np)
+            label.stop_gradient = False
+            out1 = paddle.nn.functional.cross_entropy(
+                x, label, soft_label=True, reduction="mean"
+            )
+            out2 = np.array(np.nan).astype(np.float64)
+            np.testing.assert_allclose(out1.numpy(), out2)
+            paddle.sum(out1).backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+            paddle.enable_static()
 
 
 if __name__ == "__main__":

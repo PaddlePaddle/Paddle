@@ -17,6 +17,11 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 
+#if defined(PADDLE_WITH_FLAGCX)
+#include "paddle/phi/backends/dynload/flagcx.h"
+#include "paddle/phi/core/distributed/flagcx_tools.h"
+#endif
+
 namespace phi {
 class DenseTensor;
 namespace distributed {
@@ -24,6 +29,9 @@ namespace distributed {
 class BKCLCommContext final : public CommContext {
  public:
   BKCLCommContext(int rank, int size, BKCLUniqueId BKCL_id);
+#if defined(PADDLE_WITH_FLAGCX)
+  BKCLCommContext(int rank, int size, flagcxHandlerGroup_t flagcx_handler);
+#endif
   ~BKCLCommContext() override = default;
 
   BKCLContext_t GetBKCLComm();
@@ -95,6 +103,10 @@ class BKCLCommContext final : public CommContext {
 
   void GroupEnd();
 
+#if defined(PADDLE_WITH_FLAGCX)
+  flagcxRedOp_t BkclToFlagcxRedType(BKCLOp redOp);
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(BKCLCommContext);
 
@@ -107,6 +119,12 @@ class BKCLCommContext final : public CommContext {
 
   // used for compute wait comm, comm_stream-->event-->compute_stream
   std::shared_ptr<std::remove_pointer<XPUEvent>::type> comm_event_;
+
+#if defined(PADDLE_WITH_FLAGCX)
+
+ public:
+  flagcxHandlerGroup_t flagcx_handler_;
+#endif
 };
 
 }  // namespace distributed

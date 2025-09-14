@@ -48,7 +48,12 @@ void Copy(const Context& dev_ctx,
     }
   }
 }
-
+#ifdef _WIN32
+template PADDLE_API void Copy<CPUContext>(const CPUContext&,
+                                          const StringTensor&,
+                                          bool,
+                                          StringTensor*);
+#endif
 }  // namespace phi::strings
 
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(strings_copy,

@@ -15,23 +15,23 @@
 # verify
 OP_VERIFY_TEMPLATE = """
 void {op_name}::VerifySig() {{
-  VLOG(4) << "Start Verifying inputs, outputs and attributes for: {op_name}.";
-  VLOG(4) << "Verifying inputs:";
+  VLOG(8) << "Start Verifying inputs, outputs and attributes for: {op_name}.";
+  VLOG(8) << "Verifying inputs:";
   {{
   auto input_size = num_operands();
   PADDLE_ENFORCE_EQ(input_size , {inputs_size}, common::errors::InvalidArgument(
                     "The size of inputs must be equal to {inputs_size}."));{inputs_type_check}
   }}
-  VLOG(4) << "Verifying attributes:";
+  VLOG(8) << "Verifying attributes:";
   {{{attributes_check}
   }}
-  VLOG(4) << "Verifying outputs:";
+  VLOG(8) << "Verifying outputs:";
   {{
   auto output_size = num_results();
   PADDLE_ENFORCE_EQ(output_size, {outputs_size}, common::errors::InvalidArgument(
                     "The size of outputs must be equal to {outputs_size}."));{outputs_type_check}
   }}
-  VLOG(4) << "End Verifying for: {op_name}.";
+  VLOG(8) << "End Verifying for: {op_name}.";
 }}
 """
 

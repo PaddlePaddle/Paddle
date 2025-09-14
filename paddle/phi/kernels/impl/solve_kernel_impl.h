@@ -76,15 +76,6 @@ static std::vector<int64_t> get_broadcast_batch_portion(
   return batchPortion;
 }
 
-static inline std::vector<int> convert_to_int_vec(std::vector<int64_t> a) {
-  std::vector<int> ret;
-  for (size_t i = 0; i < a.size(); i++) {
-    ret.emplace_back(static_cast<int>(a[i]));
-  }
-
-  return ret;
-}
-
 // broadcast the batch dimensions of tensor x and tensor y.
 static inline std::tuple<std::vector<int64_t>, std::vector<int64_t>>
 get_broadcast_dims(const Tensor& x, const Tensor& y) {
@@ -150,11 +141,11 @@ static void linalg_solve(const Context& dev_ctx,
   Tensor tmp_x_bc;
 
   phi::ExpandAsKernel<T, Context>(
-      dev_ctx, tmp_x, nullptr, convert_to_int_vec(x_broadcast_dims), &tmp_x_bc);
+      dev_ctx, tmp_x, nullptr, x_broadcast_dims, &tmp_x_bc);
 
   Tensor tmp_y_bc;
   phi::ExpandAsKernel<T, Context>(
-      dev_ctx, tmp_y, nullptr, convert_to_int_vec(y_broadcast_dims), &tmp_y_bc);
+      dev_ctx, tmp_y, nullptr, y_broadcast_dims, &tmp_y_bc);
 
   auto x_dim = x.dims();
   auto y_dim = y.dims();

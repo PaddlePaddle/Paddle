@@ -24,7 +24,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void FoldGradKernel(const Context& ctx,
+void FoldGradKernel(const Context& dev_ctx,
                     const DenseTensor& x UNUSED,
                     const DenseTensor& out_grad,
                     const std::vector<int>& output_sizes,
@@ -33,7 +33,7 @@ void FoldGradKernel(const Context& ctx,
                     const std::vector<int>& paddings,
                     const std::vector<int>& dilations,
                     DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
 
   if (!x_grad) return;
 
@@ -63,7 +63,8 @@ void FoldGradKernel(const Context& ctx,
     DenseTensor out_grad_batch = out_grad.Slice(i, i + 1).Resize(out_shape);
     DenseTensor x_grad_batch =
         x_grad->Slice(i, i + 1).Resize(input_matrix_shape);
-    im2col(ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
+    im2col(
+        dev_ctx, out_grad_batch, dilations, strides, paddings, &x_grad_batch);
   }
 }
 

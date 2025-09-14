@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/common/exception.h"
+#include "paddle/common/macros.h"
 #include "paddle/phi/common/data_type.h"
 
 namespace paddle {
@@ -279,6 +280,9 @@ class ScalarBase {
       case DataType::BFLOAT16:
         ss << data_.bf16;
         break;
+      case DataType::FLOAT8_E4M3FN:
+        ss << data_.f8e4m3;
+        break;
       case DataType::INT32:
         ss << data_.i32;
         break;
@@ -382,6 +386,7 @@ class ScalarBase {
     float16 f16;
     float f32;
     double f64;
+    float8_e4m3fn f8e4m3;
     complex64 c64;
     complex128 c128;
   } data_;
@@ -394,9 +399,9 @@ void CopyScalar(const ScalarBase<T1>& src, ScalarBase<T2>* dst) {
 }
 
 using Scalar = paddle::experimental::ScalarBase<Tensor>;
-TEST_API bool operator==(const Scalar& lhs, const Scalar& rhs);
+PADDLE_API bool operator==(const Scalar& lhs, const Scalar& rhs);
 
-TEST_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
+PADDLE_API std::ostream& operator<<(std::ostream& os, const Scalar& s);
 
 template <typename T>
 std::vector<T> ExtractPlainVector(

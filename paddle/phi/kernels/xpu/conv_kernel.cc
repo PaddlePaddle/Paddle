@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/conv_utils_xpu.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 #ifdef PADDLE_WITH_XPU_XRE5
@@ -37,6 +38,11 @@ void ConvKernel(const Context& dev_ctx,
                 int groups,
                 const std::string& data_format,
                 DenseTensor* out) {
+  if (input.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   std::vector<int64_t> dilations(dilations_t.begin(), dilations_t.end());
@@ -243,7 +249,7 @@ void Conv3DKernel(const Context& dev_ctx,
   int fc_calc_type = GetConvCalcType<XPUType>();
   PD_VISIT_XPU_CONV_TYPES(XPUType, fc_calc_type, "conv3d", [&] {
 #ifdef PADDLE_WITH_XPU_XRE5
-    using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+    using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
     using RealTGEMM = std::conditional_t<std::is_same_v<XPUType, XPUTypeFP16> &&
                                              std::is_same_v<TGEMM, float>,
                                          XPUTypeFP16,
@@ -306,23 +312,23 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }
 PD_REGISTER_KERNEL(depthwise_conv2d,
                    XPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConvKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(conv3d,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv3DKernel,
                    float,
 #ifdef PADDLE_WITH_XPU_XRE5
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
 #endif
-                   phi::dtype::float16) {
+                   phi::float16) {
 }

@@ -276,16 +276,20 @@ class XPUTestUpdateLossScalingOp(XPUOpTestWrapper):
         def test_loss_scaling(self):
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.loss_scaling_check()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.loss_scaling_check()
 
         def test_loss_scaling_inf(self):
             main = base.Program()
             startup = base.Program()
-            with base.unique_name.guard():
-                with base.program_guard(main, startup):
-                    self.loss_scaling_check_inf()
+            with (
+                base.unique_name.guard(),
+                base.program_guard(main, startup),
+            ):
+                self.loss_scaling_check_inf()
 
 
 support_types = get_xpu_op_support_types('update_loss_scaling')

@@ -19,6 +19,7 @@ import unittest
 import warnings
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 
@@ -133,11 +134,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
                 )
                 net = SimpleNet()
                 loss = static_program(net, data)
-            place = (
-                paddle.CUDAPlace(0)
-                if paddle.base.core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(startup_program)
             x = np.random.random(size=data_shape).astype('float32')

@@ -23,12 +23,6 @@ limitations under the License. */
 #include <object.h>
 #include "pybind11/numpy.h"
 
-#if !defined(PyObject_CallOneArg) && !PY_3_9_PLUS
-static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
-  return PyObject_CallFunctionObjArgs(func, arg, NULL);
-}
-#endif
-
 #if !PY_3_10_PLUS
 #define Py_IsNone(x) ((x) == Py_None)
 #endif
@@ -59,6 +53,29 @@ static inline PyObject* PyObject_CallOneArg(PyObject* func, PyObject* arg) {
       return false;              \
     }                            \
   }
+
+template <typename T>
+static inline bool check_shape(
+    const std::vector<std::optional<int64_t>>& expected,
+    int ndim,
+    const T& actual_shape,
+    int64_t min_non_specialized_number) {
+  if (expected.size() != static_cast<size_t>(ndim)) {
+    return false;
+  }
+  for (size_t i = 0; i < expected.size(); ++i) {
+    if (!expected[i]) {
+      // For dynamic dim check
+      // Check the inherent constraint for dynamic dim
+      // i.e. Ge(min_non_specialized_number)
+      if (actual_shape[i] < min_non_specialized_number) return false;
+    } else {
+      // For static dim check, need exactly match
+      if (actual_shape[i] != expected[i].value()) return false;
+    }
+  }
+  return true;
+}
 
 static inline bool PyObject_Equal(PyObject* a, PyObject* b) {
   if (a == b) {
@@ -137,15 +154,8 @@ bool ShapeMatchGuard::check(PyObject* value) {
   auto tensor = GetTensorFromPyObject(value);
   HANDLE_NULL_TENSOR(tensor);
   auto shape = tensor->shape();
-  if (shape.size() != expected_.size()) {
-    return false;
-  }
-  for (size_t i = 0; i < shape.size(); ++i) {
-    if (expected_[i] && shape[i] != *expected_[i]) {
-      return false;
-    }
-  }
-  return true;
+  return check_shape<std::vector<int64_t>>(
+      expected_, shape.size(), shape, min_non_specialized_number_);
 }
 
 bool AttributeMatchGuard::check(PyObject* value) {
@@ -199,16 +209,9 @@ bool NumPyArrayShapeMatchGuard::check(PyObject* value) {
     return false;
   }
   int ndim = array.ndim();
-  auto shape = array.shape();
-  if (ndim != static_cast<int>(expected_.size())) {
-    return false;
-  }
-  for (int i = 0; i < ndim; ++i) {
-    if (expected_[i].has_value() && shape[i] != expected_[i].value()) {
-      return false;
-    }
-  }
-  return true;
+  const Py_ssize_t* shape = array.shape();
+  return check_shape<const Py_ssize_t*>(
+      expected_, ndim, shape, min_non_specialized_number_);
 }
 
 bool WeakRefMatchGuard::check(PyObject* value) {
@@ -234,6 +237,42 @@ bool WeakRefMatchGuard::check(PyObject* value) {
 #else
   return PyObject_Equal(value, PyWeakref_GetObject(expected_));
 #endif
+}
+
+bool IsNotDenseTensorHoldAllocationMatchGuard::check(PyObject* value) {
+  auto tensor = GetTensorFromPyObject(value);
+  HANDLE_NULL_TENSOR(tensor);
+
+  if (!tensor->defined() ||
+      (!tensor->is_dense_tensor() && !tensor->is_dist_tensor()))
+    return true;
+
+  PyObject* method =
+      PyObject_GetAttrString(value, "_is_dense_tensor_hold_allocation");
+  if (!method) {
+    PyErr_Print();
+    return false;
+  }
+
+  if (!PyCallable_Check(method)) {
+    Py_DECREF(method);
+    PyErr_SetString(PyExc_TypeError, "Attribute is not callable");
+    return false;
+  }
+
+  PyObject* result = PyObject_CallOneArg(method, value);
+  Py_DECREF(method);
+  if (result == nullptr) {
+    PyErr_Print();
+    return false;
+  }
+  int truthy = PyObject_IsTrue(result);
+  Py_DECREF(result);
+  if (truthy == -1) {
+    PyErr_Print();
+    return false;
+  }
+  return !static_cast<bool>(truthy);
 }
 
 PyObject* ConstantExprNode::eval(FrameProxy* frame) { return value_ptr_; }
@@ -478,7 +517,7 @@ std::string DummyGuardNode::stringify(int indent) {
 void GuardTree::add_guard_chain(
     const std::vector<std::shared_ptr<GuardNodeBase>>& guard_chain) {
   if (guard_chain.empty()) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Empty guard chain, please check the guard chain"));
   }
   for (size_t i = 1; i < guard_chain.size(); ++i) {

@@ -22,6 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -41,25 +42,49 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    if (d_scale) {
+      // If batch dim is 0, we should set d_scale to zero, or else NAN
+      if (x.dims().size() > 0 && x.dims()[0] == 0) {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              0,
+                              d_scale);
+
+      } else {
+        phi::Full<T, Context>(dev_ctx,
+                              phi::IntArray(common::vectorize(d_scale->dims())),
+                              NAN,
+                              d_scale);
+      }
+    }
+    if (d_bias) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(d_bias->dims())), 0, d_bias);
+    }
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
   int ret = 0;
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
-  const auto x_dims = common::vectorize<int>(x.dims());
-  const int N = x_dims[0];
+  const auto x_dims = common::vectorize<int64_t>(x.dims());
+  const int64_t N = x_dims[0];
   const bool channel_first =
       data_layout == DataLayout::kNCHW || data_layout == DataLayout::kNCDHW;
-  const int C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
-  const int L =
-      (channel_first
-           ? std::accumulate(
-                 x_dims.begin() + 2, x_dims.end(), 1, std::multiplies<int>())
-           : std::accumulate(x_dims.begin() + 1,
-                             x_dims.end() - 1,
-                             1,
-                             std::multiplies<int>()));
+  const int64_t C = (channel_first ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int64_t L =
+      (channel_first ? std::accumulate(x_dims.begin() + 2,
+                                       x_dims.end(),
+                                       1,
+                                       std::multiplies<int64_t>())
+                     : std::accumulate(x_dims.begin() + 1,
+                                       x_dims.end() - 1,
+                                       1,
+                                       std::multiplies<int64_t>()));
 
   dev_ctx.template Alloc<T>(d_x);
   phi::funcs::SetConstant<XPUContext, T> set_zero;
@@ -172,4 +197,4 @@ PD_REGISTER_KERNEL(group_norm_grad,
                    ALL_LAYOUT,
                    phi::GroupNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

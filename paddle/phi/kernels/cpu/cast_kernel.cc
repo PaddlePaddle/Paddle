@@ -37,17 +37,28 @@ void CastKernel(const Context& dev_ctx,
   }
 
   if (out->IsSharedWith(x)) {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
-                         CastInplaceKernelImpl<T, data_t>(
-                             dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastInplaceKernelImpl", ([&] {
+                             CastInplaceKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   } else {
-    PD_VISIT_ALL_TYPES(out_dtype, "CastKernelImpl", ([&] {
-                         CastKernelImpl<T, data_t>(dev_ctx, x, out_dtype, out);
-                       }));
+    PD_VISIT_ALL_CPU_TYPES(out_dtype, "CastKernelImpl", ([&] {
+                             CastKernelImpl<T, data_t>(
+                                 dev_ctx, x, out_dtype, out);
+                           }));
   }
 }
-
+#ifdef _WIN32
+INSTANTIATE_CAST_KERNEL(float, CPUContext)
+INSTANTIATE_CAST_KERNEL(double, CPUContext)
+INSTANTIATE_CAST_KERNEL(int, CPUContext)
+INSTANTIATE_CAST_KERNEL(int64_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(uint8_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(bool, CPUContext)
+INSTANTIATE_CAST_KERNEL(int16_t, CPUContext)
+INSTANTIATE_CAST_KERNEL(phi::float16, CPUContext)
+INSTANTIATE_CAST_KERNEL(phi::bfloat16, CPUContext)
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(cast,
@@ -62,11 +73,11 @@ PD_REGISTER_KERNEL(cast,
                    bool,
                    int8_t,
                    uint8_t,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

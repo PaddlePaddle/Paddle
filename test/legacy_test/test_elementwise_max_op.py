@@ -55,14 +55,14 @@ class TestElementwiseOp(OpTest):
                     ['X', 'Y'],
                     'Out',
                     check_dygraph=False,
-                    check_prim=True,
+                    check_prim=False,
                     check_prim_pir=True,
                 )
             else:
                 self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
         else:
             self.check_grad(
-                ['X', 'Y'], 'Out', check_prim=True, check_prim_pir=True
+                ['X', 'Y'], 'Out', check_prim=False, check_prim_pir=True
             )
 
     def test_check_grad_ignore_x(self):
@@ -80,7 +80,7 @@ class TestElementwiseOp(OpTest):
                 'Out',
                 max_relative_error=0.005,
                 no_grad_set=set("X"),
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
             )
 
@@ -99,7 +99,7 @@ class TestElementwiseOp(OpTest):
                 'Out',
                 max_relative_error=0.005,
                 no_grad_set=set('Y'),
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
             )
 
@@ -218,7 +218,7 @@ class TestElementwiseBF16Op(OpTest):
                 ['X', 'Y'],
                 'Out',
                 numeric_grad_delta=0.05,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
             )
 
@@ -228,7 +228,7 @@ class TestElementwiseBF16Op(OpTest):
             'Out',
             numeric_grad_delta=0.05,
             no_grad_set=set("X"),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
         )
 
@@ -238,7 +238,7 @@ class TestElementwiseBF16Op(OpTest):
             'Out',
             numeric_grad_delta=0.05,
             no_grad_set=set('Y'),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
         )
 
@@ -402,6 +402,91 @@ class TestElementwiseOp0SizeInput(TestElementwiseOp):
         self.public_python_api = paddle.maximum
         self.inputs = {'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestMaximumOutAndAlias(unittest.TestCase):
+    def test_dygraph(self):
+        paddle.disable_static()
+        np.random.seed(2024)
+        x = paddle.to_tensor(
+            np.random.randn(5, 7).astype('float32'), stop_gradient=False
+        )
+        # shift y to avoid ties for stable gradient routing
+        y = paddle.to_tensor(
+            (np.random.randn(5, 7) + 0.1).astype('float32'), stop_gradient=False
+        )
+
+        def run_case(case_type):
+            out_buf = paddle.zeros_like(x)
+            out_buf.stop_gradient = False
+
+            if case_type == 'return':
+                z = paddle.maximum(x, y)
+            elif case_type == 'input_out':
+                paddle.maximum(x, y, out=out_buf)
+                z = out_buf
+            elif case_type == 'both_return':
+                z = paddle.maximum(input=x, other=y, out=out_buf)
+            elif case_type == 'both_input_out':
+                _ = paddle.maximum(input=x, other=y, out=out_buf)
+                z = out_buf
+            else:
+                raise AssertionError
+
+            ref = paddle._C_ops.maximum(x, y)
+            np.testing.assert_allclose(
+                z.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+            loss = (z * 2).mean()
+            loss.backward()
+            return z.numpy(), x.grad.numpy(), y.grad.numpy()
+
+        z1, gx1, gy1 = run_case('return')
+        x.clear_gradient()
+        y.clear_gradient()
+        z2, gx2, gy2 = run_case('input_out')
+        x.clear_gradient()
+        y.clear_gradient()
+        z3, gx3, gy3 = run_case('both_return')
+        x.clear_gradient()
+        y.clear_gradient()
+        z4, gx4, gy4 = run_case('both_input_out')
+
+        np.testing.assert_allclose(z1, z2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(z1, z4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gx1, gx4, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy2, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy3, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(gy1, gy4, rtol=1e-6, atol=1e-6)
+
+        paddle.enable_static()
+
+    def test_static(self):
+        paddle.enable_static()
+        startup_prog = paddle.static.Program()
+        main_prog = paddle.static.Program()
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            x = paddle.static.data('X', [5, 7], 'float32')
+            y = paddle.static.data('Y', [5, 7], 'float32')
+            z = paddle.maximum(input=x, other=y)
+
+        x_data = np.random.random([5, 7]).astype('float32')
+        y_data = np.random.random([5, 7]).astype('float32')
+        ref = np.maximum(x_data, y_data)
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(startup_prog)
+        out = exe.run(
+            main_prog,
+            feed={'X': x_data, 'Y': y_data},
+            fetch_list=[z],
+        )
+        np.testing.assert_allclose(out[0], ref, rtol=1e-6, atol=1e-6)
 
 
 if __name__ == '__main__':

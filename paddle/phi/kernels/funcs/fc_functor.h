@@ -25,7 +25,7 @@ namespace funcs {
 template <typename DeviceContext, typename T>
 class FCFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int M,
                   const int N,
                   const int K,
@@ -40,7 +40,7 @@ class FCFunctor {
 template <typename DeviceContext, typename T>
 class FCInt8Functor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const int M,
                   const int N,
                   const int K,

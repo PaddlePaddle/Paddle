@@ -115,29 +115,29 @@ class TestExecutor(unittest.TestCase):
         main_program = base.Program()
         startup_program = base.Program()
         scope = base.Scope()
-        with base.program_guard(main_program, startup_program):
-            with base.scope_guard(scope):
-                lr, cost = self.net()
-                cpu = base.CPUPlace()
-                exe = base.Executor(cpu)
-                exe.run(startup_program)
-                compiled_prog = base.CompiledProgram(main_program)
-                train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
-                    'float32'
-                )
-                y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype(
-                    'float32'
-                )
-                a = 0.01
-                _lr, _ = exe.run(
-                    compiled_prog,
-                    feed={'x': train_data, 'y': y_true, 'lr': a},
-                    fetch_list=[lr, cost],
-                    return_numpy=False,
-                )
-                self.assertEqual(_lr._dtype(), lr.dtype)
-                self.assertEqual(_lr._dtype(), paddle.float32)
-                self.assertEqual(type(a), float)
+        with (
+            base.program_guard(main_program, startup_program),
+            base.scope_guard(scope),
+        ):
+            lr, cost = self.net()
+            cpu = base.CPUPlace()
+            exe = base.Executor(cpu)
+            exe.run(startup_program)
+            compiled_prog = base.CompiledProgram(main_program)
+            train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
+                'float32'
+            )
+            y_true = numpy.array([[2.0], [4.0], [6.0], [8.0]]).astype('float32')
+            a = 0.01
+            _lr, _ = exe.run(
+                compiled_prog,
+                feed={'x': train_data, 'y': y_true, 'lr': a},
+                fetch_list=[lr, cost],
+                return_numpy=False,
+            )
+            self.assertEqual(_lr._dtype(), lr.dtype)
+            self.assertEqual(_lr._dtype(), paddle.float32)
+            self.assertEqual(type(a), float)
 
 
 if __name__ == '__main__':

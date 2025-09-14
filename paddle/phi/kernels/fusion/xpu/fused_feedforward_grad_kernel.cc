@@ -538,7 +538,7 @@ PD_REGISTER_KERNEL(fused_feedforward_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedFeedForwardGradKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);

@@ -184,6 +184,10 @@ struct VisitDataCudaArgMinMaxFunctor {
       x_dims = x.dims();
       if (axis < 0) new_axis = axis + x.dims().size();
     }
+    if (x.numel() == 0) {
+      dev_ctx.template Alloc<IndType>(out);
+      return;
+    }
     // For 0D Tensor
     if (x.dims().size() == 0) {
       dev_ctx.template Alloc<IndType>(out);
@@ -205,7 +209,7 @@ struct VisitDataCudaArgMinMaxFunctor {
       post *= x_dims[i];
     }
 
-    if (x_dims[new_axis] > std::numeric_limits<int32_t>::max()) {
+    if (numel > std::numeric_limits<int32_t>::max()) {
       ComputeFullArg<T, IndType, Reducer, int64_t>(
           dev_ctx, x, out, pre, post, n);
     } else {
@@ -223,7 +227,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            bool flatten,
                            DataType dtype,
                            DenseTensor* out) {
-  PADDLE_ENFORCE_GT(
+  PADDLE_ENFORCE_GE(
       x.numel(),
       0,
       common::errors::InvalidArgument(
@@ -273,8 +277,8 @@ PD_REGISTER_KERNEL(argmin,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMinKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
                    int32_t,
@@ -288,8 +292,8 @@ PD_REGISTER_KERNEL(argmax,
                    GPU,
                    ALL_LAYOUT,
                    phi::ArgMaxKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    double,
                    int32_t,

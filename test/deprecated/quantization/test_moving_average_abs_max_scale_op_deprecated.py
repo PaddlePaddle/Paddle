@@ -62,9 +62,9 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
             for op in main_program.blocks[0].ops
             if op.type == 'moving_average_abs_max_scale'
         ]
-        assert (
-            len(moving_average_abs_max_scale_ops) == 1
-        ), "The number of moving_average_abs_max_scale_ops should be 1."
+        assert len(moving_average_abs_max_scale_ops) == 1, (
+            "The number of moving_average_abs_max_scale_ops should be 1."
+        )
 
         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
         exe = paddle.static.Executor(place)

@@ -24,7 +24,6 @@ namespace cub = hipcub;
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 
@@ -74,7 +73,7 @@ __global__ void Normalize(const T* x,
 }
 
 template <typename T, typename Context>
-void NormKernel(const Context& ctx,
+void NormKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int axis,
                 float epsilon,
@@ -99,8 +98,8 @@ void NormKernel(const Context& ctx,
   }
 
   const T* x_ptr = in_x->data<T>();
-  ctx.template Alloc<T>(out_y);
-  ctx.template Alloc<T>(out_norm);
+  dev_ctx.template Alloc<T>(out_y);
+  dev_ctx.template Alloc<T>(out_norm);
 
   T* y = out_y->data<T>();
   T* norm_ptr = out_norm->data<T>();
@@ -109,10 +108,10 @@ void NormKernel(const Context& ctx,
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
   const int block = 512;
-  int max_threads = ctx.GetMaxPhysicalThreadCount();
+  int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(max_threads / block, 1);
   int grid = std::min(max_blocks, pre * post);
-  Normalize<T, block><<<grid, block, 0, ctx.stream()>>>(
+  Normalize<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
       x_ptr, pre, n, post, epsilon, y, norm_ptr);
 }
 
@@ -124,5 +123,5 @@ PD_REGISTER_KERNEL(norm,
                    phi::NormKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

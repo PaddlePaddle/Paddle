@@ -24,7 +24,7 @@
 
 namespace phi {
 template <typename Context, typename T, typename IndexT = int>
-void IndexAddInner(const Context& ctx,
+void IndexAddInner(const Context& dev_ctx,
                    DenseTensor* input,
                    const DenseTensor& index,
                    int axis,
@@ -38,11 +38,12 @@ void IndexAddInner(const Context& ctx,
 
   const IndexT* index_data = index.data<IndexT>();
 
-  ctx.template Alloc<T>(output);
+  dev_ctx.template Alloc<T>(output);
 
   // copy x to output.
   // todo(@limin29): inplace do not need copy.
-  phi::Copy(ctx, *input, ctx.GetPlace(), false, output);
+  phi::Copy(dev_ctx, *input, dev_ctx.GetPlace(), false, output);
+  if (index.numel() == 0) return;
 
   auto slice_size = 1;
   for (auto i = axis + 1; i < input_dim_size; i++) {
@@ -87,7 +88,7 @@ void IndexAddInner(const Context& ctx,
   auto add_value_tensor = EigenTensor<T, 3>::From(*add_value);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
 
-  auto& place = *ctx.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   for (auto j = 0; j < index_size; j++) {
     IndexT index_value = index_data[j];
     if (index_value < 0) {
@@ -107,6 +108,10 @@ void IndexAddBaseKernel(const Context& dev_ctx,
                         int axis,
                         const DenseTensor& add_value,
                         DenseTensor* output) {
+  if (output && output->numel() == 0) {
+    dev_ctx.template Alloc<T>(output);
+    return;
+  }
   const auto& index_type = index.dtype();
   if (axis < 0) {
     axis += x.dims().size();

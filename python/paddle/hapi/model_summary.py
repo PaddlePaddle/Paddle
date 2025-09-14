@@ -348,10 +348,10 @@ def summary(
         for item in input_size:
             if isinstance(item, int):
                 item = (item,)
-            assert isinstance(
-                item, (tuple, InputSpec)
-            ), f'When input_size is list, \
+            assert isinstance(item, (tuple, InputSpec)), (
+                f'When input_size is list, \
             expect item in input_size is a tuple or InputSpec, but got {type(item)}'
+            )
 
             if isinstance(item, InputSpec):
                 _input_size.append(tuple(item.shape))

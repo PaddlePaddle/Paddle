@@ -18,13 +18,19 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 paddle::Tensor dtensor_to_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& process_mesh,
-    const phi::distributed::Placements& placements) {
+    const phi::distributed::Placements& placements,
+    paddle::optional<paddle::Tensor*> predefined_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_to_local dygraph";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_to_local_ad_function begin");
+  }
   bool rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(
       static_cast<phi::distributed::DistTensor*>(input.impl().get())
           ->process_mesh());
@@ -76,7 +82,7 @@ paddle::Tensor dtensor_to_local_ad_function(
   PADDLE_ENFORCE_EQ(
       input.initialized(),
       true,
-      phi::errors::InvalidArgument("Input tensor must be initialized."));
+      common::errors::InvalidArgument("Input tensor must be initialized."));
 
   paddle::Tensor api_result;
   if (input.is_dist_tensor()) {
@@ -89,13 +95,13 @@ paddle::Tensor dtensor_to_local_ad_function(
 
     PADDLE_ENFORCE_NE(local_dense,
                       nullptr,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "The local DenseTensor inside DistTensor is null."));
 
     PADDLE_ENFORCE_EQ(
         local_dense->initialized(),
         true,
-        phi::errors::PreconditionNotMet(
+        common::errors::PreconditionNotMet(
             "The local DenseTensor inside DistTensor is not initialized."));
 
     api_result = paddle::Tensor(local_dense);
@@ -122,7 +128,9 @@ paddle::Tensor dtensor_to_local_ad_function(
     }
     grad_node->SetGradInMeta(out, 0);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_to_local_ad_function finish");
+  }
   return out;
 #else
   PADDLE_THROW(common::errors::Unavailable(

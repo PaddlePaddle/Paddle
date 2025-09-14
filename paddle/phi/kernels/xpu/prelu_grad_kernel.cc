@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 template <typename T, typename Context>
 void PReluGradKernel(const Context& dev_ctx,
@@ -28,7 +28,16 @@ void PReluGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad,
                      DenseTensor* alpha_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
+  if (x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    if (alpha_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(alpha_grad->dims())),
+          0,
+          alpha_grad);
+    }
+  }
   const T* x_ptr = x.data<T>();
   const T* alpha_ptr = alpha.data<T>();
   const T* out_grad_ptr = out_grad.data<T>();
@@ -38,68 +47,52 @@ void PReluGradKernel(const Context& dev_ctx,
 
   auto x_dim = x.dims();
   auto x_rank = x_dim.size();
-
-  std::vector<int> x_shape(x_rank);
+  std::vector<int64_t> x_shape(x_rank);
   if (x_rank == 0) {
-    x_shape = std::vector<int>({1});
+    x_shape = std::vector<int64_t>({1});
   } else {
-    for (int i = 0; i < x_rank; i++) {
-      x_shape[i] = x_dim[i];
-    }
+    x_shape = common::vectorize<int64_t>(x_dim);
   }
 
-  auto alpha_dim = alpha.dims();
-  auto alpha_rank = alpha_dim.size();
-
-  std::vector<int> alpha_shape(alpha_rank);
-  if (alpha_rank == 0) {
-    alpha_shape = std::vector<int>({1});
-  } else {
-    for (int i = 0; i < x_rank; i++) {
-      alpha_shape[i] = alpha_dim[i];
-    }
-  }
-
-  // mode = 0: channel_nchw, slope_shape = {c}, default. meanwhile, xshape = {n,
-  // c, h, w}
-  // mode = 1, channel_nhwc, slope_shape = {c}, meanwhile, xshape = {n, h, w, c}
-  // mode = 2, elementwise, slope_shape = {c*h*w}
-  // mode = 3, single slope, slope_shape = {1}
+  // mode = 0: channel_nchw, xshape = {n, c, h, w}, alpha_shape = {c}
+  // mode = 1, channel_nhwc, xshape = {n, h, w, c}, alpha_shape = {c}
+  // mode = 2, elementwise, deprecated in Paddle 2.x
+  // mode = 3, alpha_shape = {} or {1}
 
   int xpu_mode = 0;
 
   if (mode == "channel") {
     if (data_format == "NCHW") {
       xpu_mode = 0;
-    } else {
-      // NHWC
+      if (x_rank == 2) {  // special case for NC shape, use channel last mode
+        xpu_mode = 1;
+      }
+    } else {  // NHWC, channel last
       xpu_mode = 1;
     }
   } else if (mode == "element") {
     xpu_mode = 2;
-  } else {
+  } else if (mode == "all") {
     xpu_mode = 3;
+  } else {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Expected mode of prelu kernel is 'channel' or 'all', But got "
+        "unsupported mode: %s.",
+        mode));
   }
 
-  int r = xpu::prelu_grad(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x_ptr),
-      reinterpret_cast<const XPUType*>(
-          out_grad_ptr), /* const T* y, not used in xpu kernel */
-      reinterpret_cast<const XPUType*>(alpha_ptr),
-      reinterpret_cast<const XPUType*>(out_grad_ptr),
-      reinterpret_cast<XPUType*>(x_grad_ptr),
-      reinterpret_cast<XPUType*>(alpha_grad_ptr),
-      x_shape,
-      xpu_mode);
+  int r = xpu::prelu_grad(dev_ctx.x_context(),
+                          reinterpret_cast<const XPUType*>(x_ptr),
+                          reinterpret_cast<const XPUType*>(alpha_ptr),
+                          reinterpret_cast<const XPUType*>(out_grad_ptr),
+                          reinterpret_cast<XPUType*>(x_grad_ptr),
+                          reinterpret_cast<XPUType*>(alpha_grad_ptr),
+                          x_shape,
+                          xpu_mode);
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "prelu_grad");
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(prelu_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::PReluGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    prelu_grad, XPU, ALL_LAYOUT, phi::PReluGradKernel, float, phi::float16) {}

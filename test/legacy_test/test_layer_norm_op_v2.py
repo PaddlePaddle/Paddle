@@ -12,30 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_places
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import Program, program_guard
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
     def test_dygraph(self):
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
@@ -56,18 +45,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
     def test_eager(self):
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v1(x):
@@ -96,18 +74,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
     def test_static(self):
         paddle.enable_static()
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             exe = base.Executor(p)
             shape = [4, 10, 16, 16]
 
@@ -141,18 +108,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
 class TestLayerNormFunction(unittest.TestCase):
     def test_dygraph(self):
-        places = []
-        if os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower() in [
-            '1',
-            'true',
-            'on',
-        ] or not (
-            core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm")
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             shape = [4, 10, 4, 4]
 
             def compute_v0(x):

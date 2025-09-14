@@ -493,7 +493,8 @@ void LarsMomentumKernel(
   using MT = MultiPrecisionType<T>;
   int num_blocks_per_sm = 0;
   int sm_num = dev_ctx.GetSMCount();
-  // phi::DenseTensor tmp_buffer_t = ctx.AllocateTmpTensor<MT, phi::GPUContext>(
+  // phi::DenseTensor tmp_buffer_t = dev_ctx.AllocateTmpTensor<MT,
+  // phi::GPUContext>(
   //     {LARS_BLOCK_SIZE << 1}, cuda_ctx);
   phi::DenseTensor tmp_buffer_t;
   tmp_buffer_t.Resize({LARS_BLOCK_SIZE << 1});
@@ -677,7 +678,7 @@ PD_REGISTER_KERNEL(lars_momentum,
                    phi::LarsMomentumKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);

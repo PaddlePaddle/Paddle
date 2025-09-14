@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/gather_nd_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
@@ -23,14 +22,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GatherNdGradKernel(const Context &ctx,
+void GatherNdGradKernel(const Context &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,
                         DenseTensor *x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   auto dxt = phi::EigenVector<T>::Flatten(*x_grad);
-  auto &place = *ctx.eigen_device();
+  auto &place = *dev_ctx.eigen_device();
   dxt.device(place) = dxt.constant(static_cast<T>(0));
   if (out_grad.numel() == 0) return;
 
@@ -48,9 +47,9 @@ void GatherNdGradKernel(const Context &ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    phi::funcs::GPUScatterNdAdd<T, int>(ctx, out_grad, index, x_grad);
+    phi::funcs::GPUScatterNdAdd<T, int>(dev_ctx, out_grad, index, x_grad);
   } else if (index_type == phi::DataType::INT64) {
-    phi::funcs::GPUScatterNdAdd<T, int64_t>(ctx, out_grad, index, x_grad);
+    phi::funcs::GPUScatterNdAdd<T, int64_t>(dev_ctx, out_grad, index, x_grad);
   }
 }
 
@@ -68,7 +67,7 @@ PD_REGISTER_KERNEL(gather_nd_grad,
                    int8_t,
                    int16_t,
                    bool,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

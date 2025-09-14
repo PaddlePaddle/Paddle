@@ -1159,7 +1159,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    "The fn of pred_fn_pairs in Op(case) must" " be callable."
+                    "The fn of pred_fn_pairs in Op(case) must be callable."
                 )
 
         if default is None:
@@ -1469,9 +1469,9 @@ class OutputSelector:
             self.unified_false_output,
             lambda x: isinstance(x, paddle.pir.Value),
         )
-        assert (
-            true_variable_indices == false_variable_indices
-        ), "true_variable_indices and false_variable_indices should be same"
+        assert true_variable_indices == false_variable_indices, (
+            "true_variable_indices and false_variable_indices should be same"
+        )
         return true_variable_indices
 
     @property
@@ -1891,9 +1891,10 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         )
 
     if in_pir_mode():
-        flattened_true_output, flattened_false_output = flatten(
-            true_output
-        ), flatten(false_output)
+        flattened_true_output, flattened_false_output = (
+            flatten(true_output),
+            flatten(false_output),
+        )
         flattened_return_names = [
             name
             for seq_out, name in zip(
@@ -1954,9 +1955,9 @@ def copy_var_to_parent_block(var, layer_helper):
         return var
     prog = layer_helper.main_program
     parent_idx = prog.current_block().parent_idx
-    assert (
-        parent_idx >= 0
-    ), "Got wrong parent block index when assigning var to parent scope in control_flow"
+    assert parent_idx >= 0, (
+        "Got wrong parent block index when assigning var to parent scope in control_flow"
+    )
     parent_block = prog.block(parent_idx)
 
     if (
@@ -2110,8 +2111,9 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable, *support_ret_buildin_type))
     ):
-        true_var, false_var = to_static_variable(true_var), to_static_variable(
-            false_var
+        true_var, false_var = (
+            to_static_variable(true_var),
+            to_static_variable(false_var),
         )
         inputs = [false_var, true_var]
     else:

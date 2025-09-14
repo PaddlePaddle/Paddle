@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 
@@ -33,11 +33,7 @@ class TestNextafterAPI(unittest.TestCase):
         self.y1 = np.array([np.inf, -np.inf, 10]).astype("float32")
         self.x2 = np.random.rand(100).astype("float32")
         self.y2 = np.random.rand(100).astype("float32")
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         paddle.enable_static()
@@ -95,9 +91,10 @@ class TestNextafterOP(OpTest):
         self.op_type = "nextafter"
         self.python_api = paddle.nextafter
         self.init_dtype()
+        self.init_shape()
 
-        x = np.array([1, 2]).astype(self.dtype)
-        y = np.array([2, 1]).astype(self.dtype)
+        x = np.random.rand(*self.x_shape).astype(self.dtype)
+        y = np.random.rand(*self.y_shape).astype(self.dtype)
         out = np.nextafter(x, y)
         self.inputs = {'x': x, 'y': y}
         self.outputs = {'out': out}
@@ -108,10 +105,70 @@ class TestNextafterOP(OpTest):
     def init_dtype(self):
         self.dtype = np.float64
 
+    def init_shape(self):
+        self.x_shape = (2,)
+        self.y_shape = (2,)
+
 
 class TestNextafterOPFP32(TestNextafterOP):
     def init_dtype(self):
         self.dtype = np.float32
+
+
+class TestNextafterOPFP32Case1(TestNextafterOP):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
+
+
+class TestNextafterOPFP32Case2(TestNextafterOP):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_shape(self):
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
+
+
+class TestNextafterOPCase1(TestNextafterOP):
+    def init_shape(self):
+        self.x_shape = (5,)
+        self.y_shape = (2, 3, 4, 5)
+
+
+class TestNextafterOPCase2(TestNextafterOP):
+    def init_shape(self):
+        self.x_shape = (2, 3, 4, 5)
+        self.y_shape = (1,)
+
+
+class TestNextafterOPZeroDim1(TestNextafterOP):
+    def setUp(self):
+        self.op_type = "nextafter"
+        self.python_api = paddle.nextafter
+        self.init_dtype()
+
+        x = np.random.rand(0, 3, 2).astype(self.dtype)
+        y = np.random.rand(0, 3, 2).astype(self.dtype)
+        out = np.nextafter(x, y)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': out}
+
+
+class TestNextafterOPZeroDim2(TestNextafterOP):
+    def setUp(self):
+        self.op_type = "nextafter"
+        self.python_api = paddle.nextafter
+        self.init_dtype()
+
+        x = np.random.rand(4, 0, 2).astype(self.dtype)
+        y = np.random.rand(4, 0, 2).astype(self.dtype)
+        out = np.nextafter(x, y)
+        self.inputs = {'x': x, 'y': y}
+        self.outputs = {'out': out}
 
 
 if __name__ == "__main__":

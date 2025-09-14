@@ -55,8 +55,8 @@ PD_REGISTER_KERNEL(as_real,
                    CPU,
                    STRIDED,
                    phi::AsRealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 
@@ -65,19 +65,19 @@ PD_REGISTER_KERNEL(as_real,
                    GPU,
                    STRIDED,
                    phi::AsRealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
 
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA)
 PD_REGISTER_KERNEL(as_real,
                    Custom,
                    STRIDED,
                    phi::AsRealStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

@@ -15,21 +15,21 @@
 #include "paddle/phi/kernels/swiglu_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 template <typename T, typename Context>
-void SwiGluKernel(const Context& ctx,
+void SwiGluKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const paddle::optional<DenseTensor>& y,
                   DenseTensor* z) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   using XPUTypefp32 = typename XPUTypeTrait<float>::Type;
   const auto* x_data = x.data<T>();
-  auto* z_data = ctx.template Alloc<T>(z);
+  auto* z_data = dev_ctx.template Alloc<T>(z);
+  if (z->numel() == 0) return;
   const auto& dims = x.dims();
   int64_t axis = dims.size() - 1;
   auto dims_vec = common::vectorize<int64_t>(dims);
-  const XPUTypefp32* const_nullptr = nullptr;
   const XPUType* y_ptr = nullptr;
 
   if (y) {
@@ -45,15 +45,13 @@ void SwiGluKernel(const Context& ctx,
                           y_dims,
                           dims));
   }
-  int ret = xpu::swiglu(ctx.x_context(),
+  int ret = xpu::swiglu(dev_ctx.x_context(),
                         reinterpret_cast<const XPUType*>(x_data),
+                        y_ptr,
                         reinterpret_cast<XPUType*>(z_data),
                         dims_vec,
                         axis,
-                        true,
-                        const_nullptr,
-                        nullptr,
-                        y_ptr);
+                        true);
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "swiglu");
 }
 }  // namespace phi
@@ -62,5 +60,5 @@ PD_REGISTER_KERNEL(swiglu,
                    ALL_LAYOUT,
                    phi::SwiGluKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16){};
+                   phi::float16,
+                   phi::bfloat16){};

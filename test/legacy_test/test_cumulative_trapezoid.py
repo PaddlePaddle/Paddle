@@ -97,6 +97,22 @@ class Testfp16CumulativeTrapezoid(Testfp16Trapezoid):
         self.ref_api = cumulative_trapezoid
 
 
+class TestCumulativeTrapezoidZeroSizeTensorCase1(TestCumulativeTrapezoidAPI):
+    def set_args(self):
+        self.y = np.random.random((3, 3, 0)).astype('float32')
+        self.x = np.random.random(3).astype('float32')
+        self.dx = None
+        self.axis = 0
+
+
+class TestCumulativeTrapezoidZeroSizeTensorCase2(TestCumulativeTrapezoidAPI):
+    def set_args(self):
+        self.y = np.random.random((1, 3, 3)).astype('float32')
+        self.x = np.random.random((0, 3, 3)).astype('float32')
+        self.dx = None
+        self.axis = -1
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/runtime/backend_api.h"
+#include "paddle/cinn/utils/string.h"
 #ifdef CINN_WITH_CUDA
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/nvrtc/nvrtc_util.h"

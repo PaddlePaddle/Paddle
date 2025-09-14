@@ -24,8 +24,28 @@ namespace py = pybind11;
 
 namespace paddle {
 namespace platform {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-phi::CUDAStream *get_current_stream(int device_id) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+PY_STREAM_TYPE get_current_stream(int device_id) {
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  if (device_id == -1) {
+    device_id = phi::DeviceManager::GetDevice(dev_types[0]);
+  }
+  auto *custom_context =
+      static_cast<const phi::CustomContext *>(DeviceContextPool::Instance().Get(
+          phi::CustomPlace(dev_types[0], device_id)));
+  return custom_context->GetStream().get();
+}
+
+PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
+  auto *original_stream = get_current_stream(stream->GetPlace().GetDeviceId());
+  auto *custom_context = static_cast<phi::CustomContext *>(
+      DeviceContextPool::Instance().Get(stream->GetPlace()));
+  custom_context->SetStream(std::shared_ptr<phi::stream::Stream>(stream));
+  return original_stream;
+}
+
+#elif defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PY_STREAM_TYPE get_current_stream(int device_id) {
   if (device_id == -1) {
     device_id = phi::backends::gpu::GetCurrentDeviceId();
   }
@@ -34,13 +54,14 @@ phi::CUDAStream *get_current_stream(int device_id) {
   return gpu_context->cuda_stream();
 }
 
-phi::CUDAStream *set_current_stream(phi::CUDAStream *stream) {
+PY_STREAM_TYPE set_current_stream(PY_STREAM_TYPE stream) {
   auto *original_stream = get_current_stream(stream->place().GetDeviceId());
   auto *gpu_context = static_cast<phi::GPUContext *>(
       DeviceContextPool::Instance().Get(stream->place()));
   gpu_context->SetCUDAStream(stream, /*clear=*/false);
   return original_stream;
 }
+
 #endif
 }  // namespace platform
 namespace pybind {
@@ -51,25 +72,55 @@ void BindCudaStream(py::module *m_ptr) {
   m.def(
       "_get_current_stream",
       [](int deviceId) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
         return platform::get_current_stream(deviceId);
 #else
-        PADDLE_THROW(
-            common::errors::Unavailable("Paddle is not compiled with CUDA. "
-                                        "Cannot visit device synchronize."));
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _get_current_stream "
+            "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
 
+  m.def("_get_stream_from_external",
+        [](uintptr_t data_ptr,
+           int device_id) -> std::unique_ptr<phi::CUDAStream> {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          if (device_id == -1) {
+            device_id = phi::backends::gpu::GetCurrentDeviceId();
+          }
+          PADDLE_ENFORCE_NE(
+              data_ptr,
+              static_cast<uintptr_t>(0),
+              common::errors::InvalidArgument("data_ptr must not be 0."));
+
+#ifdef PADDLE_WITH_HIP
+          using gpuStream_t = hipStream_t;
+#else
+        using gpuStream_t = cudaStream_t;
+#endif
+          gpuStream_t raw = reinterpret_cast<gpuStream_t>(data_ptr);
+
+          return std::make_unique<phi::CUDAStream>(phi::GPUPlace(device_id),
+                                                   raw);
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle is not compiled with CUDA/HIP, "
+            "so `_get_stream_from_external` cannot be used."));
+#endif
+        });
+
   m.def(
       "_set_current_stream",
-      [](phi::CUDAStream *stream) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      [](PY_STREAM_TYPE stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
         return platform::set_current_stream(stream);
 #else
-        PADDLE_THROW(
-            common::errors::Unavailable("Paddle is not compiled with CUDA. "
-                                        "Cannot visit device synchronize."));
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _set_current_stream "
+            "Cannot visit device synchronize."));
 #endif
       },
       py::return_value_policy::reference);
@@ -91,6 +142,22 @@ void BindCudaStream(py::module *m_ptr) {
 #else
     PADDLE_THROW(common::errors::Unavailable(
         "Paddle is not compiled with CUDA. Cannot visit device synchronize."));
+#endif
+  });
+
+  m.def("_get_current_raw_stream", [](int device_index) -> uintptr_t {
+    if (device_index == -1) {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "The device index must be a non-negative integer."));
+    }
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
+    auto *current_stream = platform::get_current_stream(device_index);
+    return reinterpret_cast<std::uintptr_t>(current_stream->raw_stream());
+#else
+        PADDLE_THROW(common::errors::Unavailable(
+            "Paddle do not support _get_current_raw_stream "
+            "Cannot visit device synchronize."));
 #endif
   });
 
@@ -238,6 +305,28 @@ void BindCudaStream(py::module *m_ptr) {
                   >>> print(cuda_stream)
 
                   >>> ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
+                  >>> print(ptr)
+
+          )DOC")
+      .def_property_readonly(
+          "raw_stream",
+          [](phi::CUDAStream &self) {
+            VLOG(10) << self.raw_stream();
+            return reinterpret_cast<std::uintptr_t>(self.raw_stream());
+          },
+          R"DOC(
+          return the raw cuda stream of type cudaStream_t as type int.
+
+          Examples:
+              .. code-block:: python
+
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> import ctypes
+                  >>> raw_stream = paddle.device.cuda.current_stream().raw_stream
+                  >>> print(raw_stream)
+
+                  >>> ptr = ctypes.c_void_p(raw_stream)  # convert back to void*
                   >>> print(ptr)
 
           )DOC")

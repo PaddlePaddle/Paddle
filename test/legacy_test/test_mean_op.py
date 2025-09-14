@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, OpTestTool, convert_float_to_uint16
+from op_test import OpTest, OpTestTool, convert_float_to_uint16, get_places
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -141,6 +140,22 @@ class TestMeanOp_float64ZeroSize3D(TestMeanOp_float64ZeroSize):
         out_np = np.nan
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np}
+
+
+class TestMeanOp_Int32ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.int32
+        self.public_python_api = paddle.mean
+        self.inputs = {'X': np.array([]).astype(self.dtype)}
+        self.outputs = {'Out': np.nan}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestMeanOp_Int64ZeroSize(OpTest):
@@ -781,8 +796,20 @@ class TestMeanAPI(unittest.TestCase):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         x = paddle.to_tensor(x)
-        self.assertRaises(Exception, paddle.mean, x, -3)
-        self.assertRaises(Exception, paddle.mean, x, 2)
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) The reduce dim index 0 should ",
+            paddle.mean,
+            x,
+            -3,
+        )
+        self.assertRaisesRegex(
+            ValueError,
+            r"\(InvalidArgument\) The reduce dim index 0 should be in the range",
+            paddle.mean,
+            x,
+            2,
+        )
 
         with self.assertRaises(Exception) as context:
             paddle.mean(x, axis=[0, 0])
@@ -804,6 +831,58 @@ class TestMeanAPI(unittest.TestCase):
         self.assertTrue(
             "Axis contains duplicate dimensions" in str(context.exception)
         )
+
+
+class TestMeanAPIInt32(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "int32"
+        self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
+            self.dtype
+        )
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(self.x_np)
+                out = paddle.mean(x=x)
+            np.testing.assert_equal(
+                out.numpy(),
+                np.mean(self.x_np.astype("float32")).astype(self.dtype),
+            )
+
+    def test_static(self):
+        paddle.enable_static()
+        for place in self.places:
+            with base.program_guard(base.Program(), base.Program()):
+                x = paddle.static.data(
+                    "x", shape=self.x_shape, dtype=self.dtype
+                )
+                out = paddle.mean(x=x)
+                exe = base.Executor(place)
+                res = exe.run(feed={"x": self.x_np}, fetch_list=[out])
+            np.testing.assert_equal(
+                res[0], np.mean(self.x_np.astype("float32")).astype(self.dtype)
+            )
+
+
+class TestMeanAPIInt64(TestMeanAPIInt32):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "int64"
+        self.x_np = np.random.randint(-1, 10000, self.x_shape).astype(
+            self.dtype
+        )
+        self.places = get_places()
+
+
+class TestMeanAPIBool(TestMeanAPIInt32):
+    def setUp(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.dtype = "bool"
+        self.x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
+        self.places = get_places()
 
 
 class TestMeanWithTensorAxis1(TestReduceOPTensorAxisBase):
@@ -852,16 +931,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -889,16 +959,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 

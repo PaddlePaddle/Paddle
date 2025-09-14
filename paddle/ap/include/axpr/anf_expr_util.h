@@ -239,7 +239,7 @@ struct AnfExprToCoreExprConverter {
           PADDLE_ENFORCE_EQ(
               core_expr.Has<Atomic<CoreExpr>>(),
               true,
-              phi::errors::InvalidArgument(
+              common::errors::InvalidArgument(
                   "core_expr should return a Atomic<CoreExpr> instance"));
           const Atomic<CoreExpr> val = core_expr.Get<Atomic<CoreExpr>>();
           return LazyCoreExpr([val](const Atomic<CoreExpr>& continuation) {
@@ -331,7 +331,7 @@ struct AnfExprToCoreExprConverter {
     PADDLE_ENFORCE_EQ(
         lazy_core_exprs.size(),
         symbol_names.size() + 1,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "lazy_core_exprs.size() should equal to symbol_names.size() + 1"));
     return LazyCoreVal(
         [symbol_names, lazy_core_exprs](Atomic<CoreExpr> continuation) {
@@ -351,13 +351,13 @@ struct AnfExprToCoreExprConverter {
   void CheckIsAtomic(const value_type& maybe_lazy_core_expr) {
     PADDLE_ENFORCE_EQ(maybe_lazy_core_expr.Has<CoreExpr>(),
                       true,
-                      phi::errors::InvalidArgument(
+                      common::errors::InvalidArgument(
                           "ConvertAtomic should return a CoreExpr instance"));
     const auto& core_expr = maybe_lazy_core_expr.Get<CoreExpr>();
     PADDLE_ENFORCE_EQ(
         core_expr.Has<Atomic<CoreExpr>>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ConvertAtomic should return a Atomic<CoreExpr> instance"));
   }
 
@@ -375,7 +375,7 @@ struct AnfExprToCoreExprConverter {
     PADDLE_ENFORCE_EQ(
         maybe_lazy_core_expr.Has<LazyCoreExpr>(),
         true,
-        phi::errors::InvalidArgument(
+        common::errors::InvalidArgument(
             "ConvertCombined should return a LazyCoreExpr instance"));
   }
 

@@ -18,8 +18,6 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -57,6 +55,9 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   }
 
   dev_ctx.template Alloc<T>(d_x);
+  if (d_x->numel() == 0) {
+    return;
+  }
 
   std::vector<const DenseTensor*> ins = {d_out};
   std::vector<DenseTensor*> outs = {d_x};
@@ -175,6 +176,7 @@ DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, CudaReluGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, CudaTanhGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, CudaSigmoidGradFunctor);
 
+DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Rint, CudaZeroGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Round, CudaZeroGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Floor, CudaZeroGradFunctor);
 DEFINE_GPU_ACTIVATION_GRAD_KERNEL_NODEP(Ceil, CudaZeroGradFunctor);
@@ -267,6 +269,9 @@ void EluGradKernel(const Context& dev_ctx,
                    float alpha,
                    DenseTensor* dx) {
   dev_ctx.template Alloc<T>(dx);
+  if (dx->numel() == 0) {
+    return;
+  }
   std::vector<const DenseTensor*> ins = {&dout, &out};
   std::vector<DenseTensor*> outs = {dx};
   if (alpha > 0) {
@@ -304,15 +309,59 @@ void PowGradKernel(const Context& dev_ctx,
                    const DenseTensor& dout,
                    const Scalar& factor,
                    DenseTensor* dx) {
-  if (factor.to<float>() == 0) {
+  if (factor.to<double>() == 0) {
     std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(vec_dims), static_cast<T>(0), dx);
     return;
   }
+  if (factor.to<double>() == 1) {
+    std::vector<int64_t> vec_dims = common::vectorize(dx->dims());
+    phi::Copy<Context>(dev_ctx, dout, dev_ctx.GetPlace(), false, dx);
+    return;
+  }
+  if (factor.to<double>() == 2) {
+    funcs::CudaSquareGradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaSquareGradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if (factor.to<double>() == 3) {
+    funcs::CudaCubeGradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaCubeGradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if (factor.to<double>() == 4) {
+    funcs::CudaPow4GradFunctor<T> functor;
+    ActivationGradGPUImpl<T, Context, funcs::CudaPow4GradFunctor<T>>(
+        dev_ctx, &x, nullptr, &dout, dx, functor);
+    return;
+  }
+  if constexpr (!std::is_integral<T>::value) {
+    if (factor.to<double>() == 1.5) {
+      funcs::CudaPow1p5GradFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaPow1p5GradFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+    if (factor.to<double>() == 0.5) {
+      funcs::CudaSqrtGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T, Context, funcs::CudaSqrtGradDepXFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+    if (factor.to<double>() == -1) {
+      funcs::CudaReciprocalGradDepXFunctor<T> functor;
+      ActivationGradGPUImpl<T,
+                            Context,
+                            funcs::CudaReciprocalGradDepXFunctor<T>>(
+          dev_ctx, &x, nullptr, &dout, dx, functor);
+      return;
+    }
+  }
   funcs::CudaPowGradFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  functor.SetFactor(factor.to<double>());
   ActivationGradGPUImpl<T, Context, funcs::CudaPowGradFunctor<T>>(
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
@@ -326,14 +375,14 @@ PD_REGISTER_KERNEL(relu_grad,
                    phi::ReluGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 PD_REGISTER_KERNEL(relu_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ReluDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(relu_grad,
                    GPU,
@@ -341,16 +390,16 @@ PD_REGISTER_KERNEL(relu_grad,
                    phi::ReluGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(relu_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::ReluDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
@@ -360,8 +409,8 @@ PD_REGISTER_KERNEL(relu_double_grad,
                      phi::func,                        \
                      float,                            \
                      double,                           \
-                     phi::dtype::float16,              \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                     \
+                     phi::bfloat16) {}
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(name, func) \
   PD_REGISTER_KERNEL(name,                                          \
@@ -370,10 +419,10 @@ PD_REGISTER_KERNEL(relu_double_grad,
                      phi::func,                                     \
                      float,                                         \
                      double,                                        \
-                     phi::dtype::float16,                           \
-                     phi::dtype::bfloat16,                          \
-                     phi::dtype::complex<float>,                    \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                                  \
+                     phi::bfloat16,                                 \
+                     phi::complex64,                                \
+                     phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(sin_grad, SinGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(cos_grad, CosGradKernel)
@@ -419,10 +468,10 @@ PD_REGISTER_KERNEL(exp_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softshrink_grad, SoftShrinkGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hard_shrink_grad, HardShrinkGradKernel)
@@ -438,10 +487,10 @@ PD_REGISTER_KERNEL(expm1_grad,
                    phi::Expm1GradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(square_grad,
                    GPU,
@@ -451,10 +500,10 @@ PD_REGISTER_KERNEL(square_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(square_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -463,10 +512,10 @@ PD_REGISTER_KERNEL(square_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(sin_double_grad,
                    GPU,
@@ -476,10 +525,10 @@ PD_REGISTER_KERNEL(sin_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(sin_triple_grad,
                    GPU,
@@ -489,10 +538,10 @@ PD_REGISTER_KERNEL(sin_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(cos_double_grad,
                    GPU,
@@ -502,10 +551,10 @@ PD_REGISTER_KERNEL(cos_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(cos_triple_grad,
                    GPU,
@@ -515,10 +564,10 @@ PD_REGISTER_KERNEL(cos_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(softsign_grad,
                                                 SoftsignGradKernel)
@@ -540,18 +589,26 @@ PD_REGISTER_KERNEL(log_double_grad,
                    phi::LogDoubleGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL_WITH_COMPLEX(hardswish_grad,
                                                 HardSwishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(swish_grad, SwishGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(floor_grad, FloorGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(ceil_grad, CeilGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_grad, CeluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(celu_double_grad, CeluDoubleGradKernel)
 
+PD_REGISTER_KERNEL(rint_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RintGradKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(round_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -560,10 +617,10 @@ PD_REGISTER_KERNEL(round_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(pow_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -572,10 +629,10 @@ PD_REGISTER_KERNEL(pow_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(pow_double_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -584,10 +641,10 @@ PD_REGISTER_KERNEL(pow_double_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(pow_triple_grad,
                    GPU,
                    ALL_LAYOUT,
@@ -596,7 +653,33 @@ PD_REGISTER_KERNEL(pow_triple_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
+PD_REGISTER_KERNEL(ceil_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CeilGradKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(floor_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FloorGradKernel,
+                   float,
+                   double,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16) {}

@@ -217,11 +217,6 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
                                int corr_type_multiply,
                                DenseTensor *input1_grad,
                                DenseTensor *input2_grad) {
-  bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
-  PADDLE_ENFORCE_EQ(
-      is_gpu_place,
-      true,
-      common::errors::InvalidArgument("Correlation only supports GPU now."));
   const auto *grad_output = &out_grad;
 
   auto *grad_input1 = input1_grad;

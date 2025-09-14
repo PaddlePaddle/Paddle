@@ -393,6 +393,30 @@ class TestSumCase7(TestGraphSendUERecvSumOp):
         self.message_op = 'MUL'
 
 
+class TestSumCase8_ZeroSize(TestGraphSendUERecvSumOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X', 'Y'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X', 'Y'], 'Out', check_pir=True
+            )
+
+
 class TestGraphSendUERecvMeanOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -497,6 +521,32 @@ class TestMeanCase7(TestGraphSendUERecvMeanOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.message_op = 'MUL'
+
+
+class TestMeanCase8_ZeroSize(TestGraphSendUERecvMeanOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((0, 0)).astype("float64")
+        index = np.random.randint(0, 15, (0, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'ADD'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(
+                core.CUDAPlace(0),
+            )
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ['X', 'Y'], 'Out', check_pir=True
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0), ['X', 'Y'], 'Out', check_pir=True
+            )
 
 
 class TestGraphSendUERecvMaxOp(OpTest):
@@ -610,6 +660,38 @@ class TestMaxCase7(TestGraphSendUERecvMaxOp):
         self.message_op = 'MUL'
 
 
+class TestMaxCase8_ZeroSize(TestGraphSendUERecvMaxOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=self.gradients,
+            check_pir=True,
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Y'],
+                'Out',
+                user_defined_grads=self.gradients,
+                check_pir=True,
+            )
+
+
 class TestGraphSendUERecvMinOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -719,6 +801,38 @@ class TestMinCase7(TestGraphSendUERecvMinOp):
         self.src_index = index[:, 0]
         self.dst_index = index[:, 1]
         self.message_op = 'MUL'
+
+
+class TestMinCase8_ZeroSize(TestGraphSendUERecvMinOp):
+    def set_config(self):
+        self.x = np.random.random((15, 0)).astype("float64")
+        self.y = np.random.random((15, 0)).astype("float64")
+        index = np.random.randint(0, 15, (15, 2)).astype(np.int64)
+        self.src_index = index[:, 0]
+        self.dst_index = index[:, 1]
+        self.message_op = 'MUL'
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace(), check_pir=True)
+        if paddle.is_compiled_with_cuda():
+            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=self.gradients,
+            check_pir=True,
+        )
+        if paddle.is_compiled_with_cuda():
+            self.check_grad_with_place(
+                core.CUDAPlace(0),
+                ['X', 'Y'],
+                'Out',
+                user_defined_grads=self.gradients,
+                check_pir=True,
+            )
 
 
 class API_GeometricSendUERecvTest(unittest.TestCase):

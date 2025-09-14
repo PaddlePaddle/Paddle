@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void GenerateProposalsKernel(const Context& ctx,
+void GenerateProposalsKernel(const Context& dev_ctx,
                              const DenseTensor& scores,
                              const DenseTensor& bbox_deltas,
                              const DenseTensor& im_shape,

@@ -143,7 +143,7 @@ int SkipCodeInfo::in_skip_path(PyObject* filename) {
 }
 
 /*========================== code status ==============================*/
-enum CodeState { UNKNOW, WITH_GRAPH, WITHOUT_GRAPH };
+enum CodeState { UNKNOWN, WITH_GRAPH, WITHOUT_GRAPH };
 
 class CodeInfo {
  public:
@@ -179,7 +179,7 @@ int CodeStatus::is_code_without_graph(PyCodeObject* code) {
     code_map.emplace(code, code_info);
   }
   if (code_info->state == WITHOUT_GRAPH) return 1;
-  if (code_info->state == UNKNOW) {
+  if (code_info->state == UNKNOWN) {
     code_info->counter += 1;
     if (code_info->counter >= 10) code_info->state = WITHOUT_GRAPH;
   }

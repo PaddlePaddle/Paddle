@@ -41,7 +41,7 @@ inline void GetOffsets(const DDim& big_dim,
   if (small_dim[cur_dim] == big_dim[cur_dim]) {
     GetOffsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
   } else {
-    for (int i = 0; i < big_dim[cur_dim]; i++) {
+    for (int64_t i = 0; i < big_dim[cur_dim]; i++) {
       GetOffsets(big_dim, small_dim, start_offset, cur_dim + 1, offsets);
       start_offset[cur_dim] += 1;
     }
@@ -115,7 +115,7 @@ void SetValueGradImpl(const Context& dev_ctx,
   }
 
   for (size_t axis = 0; axis < axes.size(); axis++) {
-    int axis_index = axes[axis];
+    size_t axis_index = axes[axis];
     starts_indices[axis_index] = starts_local[axis];
     ends_indices[axis_index] = ends_local[axis];
     steps_indices[axis_index] = steps_local[axis];
@@ -269,7 +269,7 @@ void SetValueGradImpl(const Context& dev_ctx,
       // for value is a 0-D Tensor
       if (value_grad_dims.size() == 0) {
         value_grad_dims_vec = common::vectorize<int64_t>(
-            common::make_ddim(std::vector<int>({1})));
+            common::make_ddim(std::vector<int64_t>({1})));
       }
       for (auto offset : offsets) {
         for (int i = 0; i < out_dims_size; i++) {
@@ -314,6 +314,11 @@ void SetValueGradKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& none_axes,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) dev_ctx.template Alloc<T>(x_grad);
+    if (value_grad) dev_ctx.template Alloc<T>(value_grad);
+    return;
+  }
   const int rank = out_grad.dims().size();
 
   switch (rank) {
@@ -426,8 +431,8 @@ PD_REGISTER_KERNEL(set_value_grad,
                    ALL_LAYOUT,
                    phi::SetValueGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {}
 
@@ -436,7 +441,7 @@ PD_REGISTER_KERNEL(set_value_with_scalar_grad,
                    ALL_LAYOUT,
                    phi::SetValueWithScalarGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int,
                    int64_t) {}

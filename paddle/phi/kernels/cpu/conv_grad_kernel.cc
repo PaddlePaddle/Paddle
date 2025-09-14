@@ -76,7 +76,7 @@ void Conv3DGradKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void Conv3DDoubleGradKernel(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& input,
     const DenseTensor& filter,
     const DenseTensor& out_grad,
@@ -91,7 +91,7 @@ void Conv3DDoubleGradKernel(
     DenseTensor* input_grad,
     DenseTensor* filter_grad,
     DenseTensor* out_grad_grad) {
-  ConvGradGradKernel<T>(ctx,
+  ConvGradGradKernel<T>(dev_ctx,
                         input,
                         filter,
                         out_grad,

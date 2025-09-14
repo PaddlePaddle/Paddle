@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
+void DepthwiseConv2dTransposeGradKernel(const Context& dev_ctx,
                                         const DenseTensor& x,
                                         const DenseTensor& filter,
                                         const DenseTensor& dout,
@@ -34,7 +34,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  ConvTransposeGradRawKernel<T, Context>(ctx,
+  ConvTransposeGradRawKernel<T, Context>(dev_ctx,
                                          x,
                                          filter,
                                          dout,

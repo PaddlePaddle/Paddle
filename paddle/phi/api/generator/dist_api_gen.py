@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -87,8 +87,12 @@ NCCL_COMMCONTEXT_INIT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
   if (nranks > 1 && !comm_context_manager_.Has(std::to_string(ring_id))) {{
-    auto store = phi::distributed::CreateOrGetGlobalTCPStore();
-    CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    std::string store_key;
+    store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+    if (!comm_context_manager_.Has(store_key)) {{
+        auto store = phi::distributed::CreateOrGetGlobalTCPStore();
+        CREATE_COMM_CONTEXT(store, std::to_string(ring_id), rank, nranks);
+    }}
   }}
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager_ = phi::distributed::CommContextManager::GetInstance();
@@ -103,9 +107,16 @@ SET_NCCL_COMMCONTEXT = """
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   const auto & comm_context_manager = phi::distributed::CommContextManager::GetInstance();
   COMM_CONTEXT* comm_context = nullptr;
-  if (comm_context_manager.Has(std::to_string(ring_id))) {{
-    comm_context = static_cast<COMM_CONTEXT*>(
+  std::string store_key;
+  store_key = "nccl_ids/" + std::to_string(ring_id) + "/0";
+  if (comm_context_manager.Has(std::to_string(ring_id))||comm_context_manager.Has(store_key)) {{
+    if (comm_context_manager.Has(std::to_string(ring_id))) {{
+        comm_context = static_cast<COMM_CONTEXT*>(
           comm_context_manager.Get(std::to_string(ring_id)));
+    }} else {{
+        comm_context = static_cast<COMM_CONTEXT*>(
+          comm_context_manager.Get(store_key));
+    }}
     PADDLE_ENFORCE_NE(
         comm_context,
         nullptr,
@@ -114,17 +125,14 @@ SET_NCCL_COMMCONTEXT = """
             "has ring_id(%d) attr.",
             std::to_string(ring_id)));
     #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_XPU_BKCL)
-        if (!comm_context->GetDevContext() || !comm_context->GetDevContext()->GetCommContext())
-        {{
-            auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-            "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
-            if (FLAGS_low_precision_op_list) {{
-            phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
-            }}
-            Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
-            auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
-            dev_context->SetCommContext(comm_context);
+        auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+        "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
+        if (FLAGS_low_precision_op_list) {{
+        phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{}", kernel_data_type);
         }}
+        Backend act_kernel_backend = kernel_res.has_fallback_cpu ? Backend::CPU : kernel_backend;
+        auto* dev_context = GetDeviceContextByBackend(act_kernel_backend);
+        dev_context->SetCommContext(comm_context);
     #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
         auto kernel_res = phi::KernelFactory::Instance().SelectKernelOrThrowError(
             "{}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
@@ -563,20 +571,54 @@ CALCULATE_LOCAL_SHAPE_TEMPLATE = """
       auto out_shape = {out_name}->dims();
       std::vector<{dtype}> local_shape;
       const auto& out_dist_attr = {out_dist_attr};
+      const auto& mesh_shape = out_dist_attr.process_mesh().shape();
       for (int i = 0; i < out_shape.size(); i++) {{
-        if (out_dist_attr.dims_mapping()[i] >= 0) {{
+        const auto& dims = out_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
           {dtype} shape_i = out_shape[i];
-          int64_t dim = out_dist_attr.dims_mapping()[i];
-          int64_t mesh_dim = out_dist_attr.process_mesh().shape()[dim];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= mesh_shape[dim];
+          }}
           // TODO: Support aliquant condition.
-          PADDLE_ENFORCE(shape_i % mesh_dim == 0,
+          PADDLE_ENFORCE_EQ(shape_i % num_shard, 0,
                 common::errors::InvalidArgument(
                     "{op_name} only support local shape dim is divisible "
                     "by the mesh dim, however local_shape[%lld] is %lld "
-                    "and shard mesh dims is %lld.", i, shape_i, mesh_dim));
-          local_shape.push_back(shape_i / mesh_dim);
+                    "and shard mesh dims is %lld.", i, shape_i, num_shard));
+          local_shape.push_back(shape_i / num_shard);
         }} else {{
           local_shape.push_back(out_shape[i]);
+        }}
+      }}
+"""
+
+# Note: After unify the expand, expand_as and their grad kernel for all device,
+# this logic is no practical effect. But for semantically correct and can be removed.
+CALCULATE_LOCAL_SHAPE_KERNEL_TEMPLATE = """
+
+      auto out_grad_shape = out_grad.dims();
+      std::vector<{dtype}> local_kernel_shape;
+      const auto& out_grad_dist_attr = {out_grad_dist_attr};
+      const auto& grad_mesh_shape = out_grad_dist_attr.process_mesh().shape();
+      for (int i = 0; i < out_grad_shape.size(); i++) {{
+        const auto& dims = out_grad_dist_attr.multi_dims_mapping()[i];
+        if (dims.size() > 0) {{
+          {dtype} shape_i = out_grad_shape[i];
+          int64_t num_shard = 1;
+          for (auto dim : dims) {{
+            num_shard *= grad_mesh_shape[dim];
+          }}
+          // TODO: Support aliquant condition.
+          PADDLE_ENFORCE_EQ(
+            shape_i % num_shard, 0,
+            common::errors::InvalidArgument(
+                "{op_name} only support local shape dim is divisible "
+                "by the mesh dim, however local_kernel_shape[%lld] is %lld "
+                "and shard mesh dims is %lld.",
+                i, shape_i, num_shard));
+        }} else {{
+          local_kernel_shape.push_back(out_grad_shape[i]);
         }}
       }}
 """
@@ -683,9 +725,9 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def vector_output_size_assertion_check(self):
-        assert (
-            self.outputs['out_size_expr'] is not None
-        ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+        assert self.outputs['out_size_expr'] is not None, (
+            f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+        )
 
     def generate_non_computation_rank_clip_code(self) -> str:
         if len(self.inputs['names']) > 0:
@@ -743,13 +785,15 @@ class DistForwardAPI(ForwardAPI):
         if self.kernel['backend'] is not None:
             if '>' in self.kernel['backend']:
                 vars_list = self.kernel['backend'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (vars_list[0].strip() in self.attrs['names']) and (
                     self.attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
-                ), f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                ), (
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                )
                 backend_select_code = f"""
     kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
@@ -783,19 +827,19 @@ class DistForwardAPI(ForwardAPI):
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'const Place&':
-                assert (
-                    kernel['backend'] is not None
-                ), f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                assert kernel['backend'] is not None, (
+                    f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                )
                 attr_backend_count = attr_backend_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataLayout':
-                assert (
-                    kernel['layout'] is not None
-                ), f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                assert kernel['layout'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                )
                 attr_layout_count = attr_layout_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataType':
-                assert (
-                    kernel['data_type'] is not None
-                ), f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                assert kernel['data_type'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                )
                 attr_data_type_count = attr_data_type_count + 1
 
         # preprocess kernel configures
@@ -804,14 +848,16 @@ class DistForwardAPI(ForwardAPI):
         if kernel['layout'] is not None:
             if '>' in kernel['layout']:
                 vars_list = kernel['layout'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataLayout'
-                ), f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                ), (
+                    f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -821,9 +867,9 @@ class DistForwardAPI(ForwardAPI):
 
             else:
                 vars_list = kernel['layout'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -845,14 +891,16 @@ class DistForwardAPI(ForwardAPI):
 
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataType'
-                ), f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                ), (
+                    f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -862,9 +910,9 @@ class DistForwardAPI(ForwardAPI):
 
             else:
                 vars_list = kernel['data_type'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -873,9 +921,9 @@ class DistForwardAPI(ForwardAPI):
                 )
 
         if len(input_names) == 0:
-            assert (
-                attr_backend_count > 0 and attr_data_type_count > 0
-            ), f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            assert attr_backend_count > 0 and attr_data_type_count > 0, (
+                f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            )
 
         kernel_select_args = ""
         for input_name in input_names:
@@ -1098,9 +1146,16 @@ class DistForwardAPI(ForwardAPI):
                     return_type, inplace_assign_code
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if (
+                    len(self.outputs['names']) == 1
+                    and self.outputs['types'][0] == "Tensor"
+                    and self.api != "empty_like"
+                ):
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
@@ -1172,9 +1227,26 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_calls = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_creation_code += (
+                            f"std::tuple<{tuple_types}> out_tmp;"
+                            f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                            f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                            f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
@@ -1612,7 +1684,7 @@ class DistForwardAPI(ForwardAPI):
     def get_shape_type(self, attr_info):
         shape_type = "int"
         for name, info in attr_info.items():
-            if "IntArray" in info[0]:
+            if "IntArray" in info[0] or "int64_t" in info[0]:
                 shape_type = "int64_t"
         return shape_type
 
@@ -1755,7 +1827,7 @@ class DistForwardAPI(ForwardAPI):
 
         return output_decl_code + infer_meta_code
 
-    def generate_kernel_call_code(self) -> str:
+    def generate_kernel_call_code(self, is_forward=True) -> str:
         dense_input_trans_map = {
             'const Tensor&': 'const phi::DenseTensor&',
             'const std::vector<Tensor>&': 'const std::vector<const phi::DenseTensor*>&',
@@ -1773,6 +1845,7 @@ class DistForwardAPI(ForwardAPI):
         kernel_args_type_list = ['const phi::DeviceContext&']
 
         attr_names = self.attrs['names']
+        pure_kernel_args = self.kernel['param']
         kernel_args = self.kernel['param']
         if kernel_args is None:
             kernel_args = input_names + attr_names
@@ -1803,7 +1876,14 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append('const phi::IntArray&')
                     # TODO(GhostScreaming): kernel like reshape need calculate local_shape
                     if self.infer_meta['local_shape'] is not None:
-                        arg = 'phi::IntArray(local_shape)'
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'phi::IntArray(local_shape)'
+                        else:
+                            arg = 'phi::IntArray(local_kernel_shape)'
                     else:
                         arg = 'phi::IntArray(' + arg + ')'
                 elif 'vector<phi::Scalar>' in self.attrs['attr_info'][arg][0]:
@@ -1817,6 +1897,16 @@ class DistForwardAPI(ForwardAPI):
                     kernel_args_type_list.append(
                         self.attrs['attr_info'][arg][0]
                     )
+                    # calculate local_shape for expand_as
+                    if self.infer_meta['local_shape'] is not None:
+                        if is_forward or (
+                            pure_kernel_args is not None
+                            and self.infer_meta['local_shape']
+                            not in pure_kernel_args
+                        ):
+                            arg = 'local_shape'
+                        else:
+                            arg = 'local_kernel_shape'
                 input_args.append(arg)
             elif isinstance(arg, bool):
                 input_args.append(str(arg).lower())
@@ -2032,7 +2122,9 @@ class DistForwardAPI(ForwardAPI):
         return True
 
     # override BaseAPI's method
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
         # init status
         self.inplace_flag = inplace_flag
         self.dist_output_args = []
@@ -2098,15 +2190,29 @@ class DistForwardAPI(ForwardAPI):
 
 
 class DistBackwardAPI(DistForwardAPI):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
+        return BackwardAPI.gene_base_api_code(
+            self,
+            inplace_flag,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
-    def gene_base_api_code(self, inplace_flag=False):
-        return BackwardAPI.gene_base_api_code(self, inplace_flag)
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
+        return BackwardAPI.gene_api_code(
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
-    def gene_api_code(self):
-        return BackwardAPI.gene_api_code(self)
-
-    def gene_api_declaration(self):
-        return BackwardAPI.gene_api_declaration(self)
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
+        return BackwardAPI.gene_api_declaration(
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
 
 def generate_api(
@@ -2173,12 +2279,22 @@ def generate_api(
 
         if dist_forward_api.is_dygraph_api and is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
-            header_file.write(dist_forward_api.gene_api_declaration())
-            source_file.write(dist_forward_api.gene_api_code())
+            header_file.write(
+                dist_forward_api.gene_api_declaration(
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
+                )
+            )
+            source_file.write(
+                dist_forward_api.gene_api_code(grad_flag=grad_flag)
+            )
             dist_forward_api.is_dygraph_api = True
 
-        header_file.write(dist_forward_api.gene_api_declaration())
-        source_file.write(dist_forward_api.gene_api_code())
+        header_file.write(
+            dist_forward_api.gene_api_declaration(
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
+            )
+        )
+        source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

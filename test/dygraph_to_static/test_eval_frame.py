@@ -28,8 +28,8 @@ class TestEvalFrame(unittest.TestCase):
         pass
 
     def test_eval_frame(self):
-        if not (sys.version_info >= (3, 8) and sys.version_info < (3, 14)):
-            # skip test_eval_frame, current only support 3.8 - 3.13
+        if not (sys.version_info >= (3, 9) and sys.version_info < (3, 14)):
+            # skip test_eval_frame, current only support 3.9 - 3.13
             return
 
         CustomCode = collections.namedtuple(

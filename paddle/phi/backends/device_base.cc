@@ -36,6 +36,12 @@ size_t DeviceInterface::GetComputeCapability(size_t dev_id) {
   return 0;
 }
 
+DeviceProp& DeviceInterface::GetDeviceProperties(size_t dev_id) {
+  static DeviceProp prop;
+  VLOG(10) << Type() << " get device properties " << 0;
+  return prop;
+}
+
 size_t DeviceInterface::GetRuntimeVersion(size_t dev_id) {
   VLOG(10) << Type() << " get runtime version " << 0;
   return 0;
@@ -65,6 +71,16 @@ std::array<unsigned int, 3> DeviceInterface::GetMaxGridDimSize(size_t dev_id) {
   VLOG(10) << Type() << " get max grid dim size [" << 0 << ", " << 0 << ", "
            << 0 << "]";
   return {0, 0, 0};
+}
+
+bool DeviceInterface::IsFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is float16 supported: " << false;
+  return false;
+}
+
+bool DeviceInterface::IsBFloat16Supported(size_t dev_id) {
+  VLOG(10) << Type() << " is bfloat16 supported: " << false;
+  return false;
 }
 
 void* DeviceInterface::InitEigenDevice(const Place& place,
@@ -103,16 +119,16 @@ void DeviceInterface::CreateStream(size_t dev_id,
   INTERFACE_UNIMPLEMENT;
 }
 
-void DeviceInterface::DestroyStream(size_t dev_id, stream::Stream* stream) {
+void DeviceInterface::DestroyStream(size_t dev_id, stream::stream_t stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
 void DeviceInterface::SynchronizeStream(size_t dev_id,
-                                        const stream::Stream* stream) {
+                                        stream::stream_t stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
-bool DeviceInterface::QueryStream(size_t dev_id, const stream::Stream* stream) {
+bool DeviceInterface::QueryStream(size_t dev_id, stream::stream_t stream) {
   INTERFACE_UNIMPLEMENT;
   return true;
 }
@@ -323,7 +339,7 @@ void DeviceInterface::CCLBroadcast(void* data,
                                    phi::DataType data_type,
                                    size_t root,
                                    const ccl::CCLComm& ccl_comm,
-                                   const stream::Stream& stream) {
+                                   const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -333,7 +349,7 @@ void DeviceInterface::CCLAllReduce(void* in_data,
                                    phi::DataType data_type,
                                    ccl::CCLReduceOp reduce_op,
                                    const ccl::CCLComm& ccl_comm,
-                                   const stream::Stream& stream) {
+                                   const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -344,7 +360,7 @@ void DeviceInterface::CCLReduce(void* in_data,
                                 ccl::CCLReduceOp reduce_op,
                                 size_t root_id,
                                 const ccl::CCLComm& ccl_comm,
-                                const stream::Stream& stream) {
+                                const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -353,7 +369,7 @@ void DeviceInterface::CCLAllGather(void* in_data,
                                    size_t num,
                                    phi::DataType data_type,
                                    const ccl::CCLComm& ccl_comm,
-                                   const stream::Stream& stream) {
+                                   const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -363,7 +379,7 @@ void DeviceInterface::CCLReduceScatter(void* in_data,
                                        phi::DataType data_type,
                                        ccl::CCLReduceOp op,
                                        const ccl::CCLComm& ccl_comm,
-                                       const stream::Stream& stream) {
+                                       const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -376,7 +392,7 @@ void DeviceInterface::CCLSend(void* sendbuf,
                               phi::DataType data_type,
                               size_t dst_rank,
                               const ccl::CCLComm& ccl_comm,
-                              const stream::Stream& stream) {
+                              const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -385,7 +401,7 @@ void DeviceInterface::CCLRecv(void* recvbuf,
                               phi::DataType data_type,
                               size_t src_rank,
                               const ccl::CCLComm& ccl_comm,
-                              const stream::Stream& stream) {
+                              const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
@@ -398,13 +414,13 @@ void DeviceInterface::CCLAllToAll(const void** send_buf,
                                   size_t rank,
                                   size_t nranks,
                                   const ccl::CCLComm& comm,
-                                  const stream::Stream& stream) {
+                                  const stream::stream_t& stream) {
   INTERFACE_UNIMPLEMENT;
 }
 
 // blas
 void DeviceInterface::BlasAXPBY(size_t dev_id,
-                                const stream::Stream& stream,
+                                const stream::stream_t& stream,
                                 phi::DataType dtype,
                                 size_t numel,
                                 float alpha,
@@ -442,6 +458,30 @@ void DeviceInterface::ProfilerStopTracing(phi::TraceEventCollector* collector,
 
 void DeviceInterface::ProfilerCollectTraceData(
     phi::TraceEventCollector* collector, uint64_t start_ns, void* user_data) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::InitBlasHandle(size_t dev_id,
+                                     void** blas_handle,
+                                     phi::stream::stream_t stream) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::BlasSetMathMode(size_t dev_id,
+                                      void* blas_handle,
+                                      int math_mode) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::InitBlasLtHandle(size_t dev_id, void** blaslt_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasHandle(size_t dev_id, void* blas_handle) {
+  INTERFACE_UNIMPLEMENT;
+}
+
+void DeviceInterface::DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle) {
   INTERFACE_UNIMPLEMENT;
 }
 

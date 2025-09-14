@@ -44,6 +44,13 @@ Backend TransToPhiBackend(const phi::Place& place) {
     }
     case AllocationType::XPU:
       return Backend::XPU;
+    case AllocationType::XPUPINNED: {
+      if (FLAGS_pinned_memory_as_cpu_backend) {
+        return Backend::CPU;
+      } else {
+        return Backend::XPU;
+      }
+    }
     case AllocationType::IPU:
       return Backend::IPU;
     case AllocationType::UNDEFINED:

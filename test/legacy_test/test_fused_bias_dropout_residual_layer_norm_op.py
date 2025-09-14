@@ -178,5 +178,20 @@ class TestFusedBiasDropoutResidualLayerNormOpFp16(
         self.atol = 1e-1
 
 
+class TestFusedBiasDropoutResidualLayerNormOp_ZeroSize(
+    TestFusedBiasDropoutResidualLayerNormOp
+):
+    def config(self):
+        self.x_type = np.float32
+        self.atol = 1e-4
+        self.training = True
+        self.batch_size = 0
+        self.query_length = 128
+        self.embed_dim = 1024
+        self.dropout_prob = 0.0
+        self.weight_attr = None
+        self.bias_attr = None
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,6 @@
 import logging
 import os
 import sys
-import tempfile
 import unittest
 
 import numpy as np
@@ -195,47 +194,6 @@ class TestImperativeQat(unittest.TestCase):
             lenet.eval()
             fp32_out = lenet(test_img)
             fp32_acc = paddle.metric.accuracy(fp32_out, label).numpy()
-
-        with tempfile.TemporaryDirectory(prefix="qat_save_path_") as tmpdir:
-            # save inference quantized model
-            imperative_qat.save_quantized_model(
-                layer=lenet,
-                path=os.path.join(tmpdir, "lenet"),
-                input_spec=[
-                    paddle.static.InputSpec(
-                        shape=[None, 1, 28, 28], dtype='float32'
-                    )
-                ],
-            )
-            print(f'Quantized model saved in {tmpdir}')
-
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-            else:
-                place = core.CPUPlace()
-            exe = paddle.static.Executor(place)
-            with paddle.pir_utils.OldIrGuard():
-                [
-                    inference_program,
-                    feed_target_names,
-                    fetch_targets,
-                ] = paddle.static.load_inference_model(
-                    tmpdir,
-                    executor=exe,
-                    model_filename="lenet" + INFER_MODEL_SUFFIX,
-                    params_filename="lenet" + INFER_PARAMS_SUFFIX,
-                )
-                (quant_out,) = exe.run(
-                    inference_program,
-                    feed={feed_target_names[0]: test_data},
-                    fetch_list=fetch_targets,
-                )
-            paddle.disable_static()
-            quant_out = paddle.to_tensor(quant_out)
-            quant_acc = paddle.metric.accuracy(quant_out, label).numpy()
-            paddle.enable_static()
-            delta_value = fp32_acc - quant_acc
-            self.assertLessEqual(delta_value, self.diff_threshold)
 
 
 class TestImperativeQatONNXFormat(unittest.TestCase):

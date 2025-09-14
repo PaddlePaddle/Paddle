@@ -26,6 +26,7 @@ void CEmbeddingKernel(const Context& dev_ctx,
                       int64_t start_index,
                       int64_t vocab_size,
                       DenseTensor* out) {
+#if defined(PADDLE_WITH_XPU_BKCL)
   const T* table_data = w.data<T>();
   T* output_data = dev_ctx.template Alloc<T>(out);
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -60,6 +61,11 @@ void CEmbeddingKernel(const Context& dev_ctx,
     PADDLE_THROW(common::errors::Unavailable(
         "XPU c_embedding ids only support int32 or int64."));
   }
+#else
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using c_embedding."));
+#endif
 }
 }  // namespace phi
 
@@ -68,5 +74,5 @@ PD_REGISTER_KERNEL(c_embedding,
                    ALL_LAYOUT,
                    phi::CEmbeddingKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

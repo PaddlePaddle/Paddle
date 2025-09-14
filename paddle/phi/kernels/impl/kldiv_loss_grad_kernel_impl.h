@@ -48,6 +48,11 @@ void KLDivLossGradKernel(const Context& dev_ctx,
                          const std::string& reduction,
                          bool log_target,
                          DenseTensor* d_x) {
+  if (d_x->numel() == 0) {
+    dev_ctx.template Alloc<T>(d_x);
+    return;
+  }
+
   auto& place = *dev_ctx.eigen_device();
   auto* target = &label;
   auto* input_grad = d_x;

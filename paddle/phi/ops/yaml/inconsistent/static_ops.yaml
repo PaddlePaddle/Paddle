@@ -71,6 +71,7 @@
   output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
   infer_meta:
     func : BatchNormInferMeta
+    spmd_rule : BatchNormInferSpmd
   kernel :
     func : batch_norm
     data_type : x
@@ -520,7 +521,7 @@
   args : (Tensor x, IntArray axis={}, bool keepdim=false)
   output : Tensor(out)
   infer_meta :
-    func : ReduceIntArrayAxisInferMeta
+    func : StrictReduceIntArrayAxisInferMeta
     spmd_rule : ReductionMinInferSpmdDynamic
   kernel :
     func : min
@@ -850,6 +851,7 @@
   optional : indices, counts
   infer_meta :
     func : UniqueRawInferMeta
+    spmd_rule : UniqueInferSpmdStatic
   kernel :
     func : unique
     data_type : x

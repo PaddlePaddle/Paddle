@@ -20,7 +20,12 @@ os.environ['FLAGS_new_einsum'] = "0"
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    is_custom_device,
+)
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
@@ -30,7 +35,8 @@ from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle is not compiled with CUDA",
 )
 class TestFusedGateAttentionOp(OpTest):
     def setUp(self):
@@ -474,7 +480,7 @@ class TestFusedGateAttentionApi(unittest.TestCase):
         ]
 
     def test_api(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             pass
 
         query = paddle.rand(shape=self.query_shape, dtype="float32")

@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 import sys
 import types
 import unittest
 
+import numpy as np
 from test_case_base import (
     TestCaseBase,
     test_instruction_translator_cache_context,
@@ -23,6 +25,11 @@ from test_case_base import (
 import paddle
 from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils.exceptions import InnerError
+
+sot_test_dir = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(f'{sot_test_dir}/../dygraph_to_static'))
+
+from dygraph_to_static_utils import Dy2StTestBase, test_default_mode_only
 
 
 # ---------------------- test single inheritance case ----------------------
@@ -362,6 +369,57 @@ class TestCustomSuper(TestCaseBase):
                 super,
                 paddle.to_tensor(3.0),
             )
+
+
+# ------ test SuperVariable setattr + getattr ------
+class LrClassBase:
+    def __init__(self, last_lr, last_epoch):
+        self.last_lr = last_lr
+        self.last_epoch = last_epoch
+        self.step()
+
+    def step(self):
+        self.last_epoch += 1
+        self.last_lr = self.get_lr()
+
+    def get_lr(self):
+        return self.last_lr + 0.0001
+
+    def __call__(self) -> float:
+        return self.last_lr
+
+
+class LrClassSub(LrClassBase):
+    def __init__(self, **kwargs):
+        super().__init__(
+            kwargs.get("last_lr", 0.01), kwargs.get("last_epoch", 0)
+        )
+
+
+class TestSuperSetattrGetattr(Dy2StTestBase):
+    def setUp(self):
+        def dyfunc(lr_decay):
+            lr = lr_decay()
+            return paddle.to_tensor(lr)
+
+        lr_decay = LrClassSub(
+            base_lr=0.1, verbose=True, last_lr=0.3, last_epoch=3
+        )
+        self.dygraph_func = lambda: dyfunc(lr_decay)
+
+    def get_dygraph_output(self):
+        res = self.dygraph_func()
+        return res
+
+    def get_static_output(self):
+        static_res = paddle.jit.to_static(self.dygraph_func)()
+        return static_res
+
+    @test_default_mode_only
+    def test_transformed_static_result(self):
+        dygraph_res = self.get_dygraph_output()
+        static_res = self.get_static_output()
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 if __name__ == "__main__":

@@ -147,6 +147,13 @@ class TestWhereOp3(TestWhereOp):
         self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
 
 
+class TestWhereOp_ZeroSize(TestWhereOp):
+    def init_config(self):
+        self.x = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.y = np.random.uniform((-5), 5, (60, 0)).astype('float64')
+        self.cond = np.ones((60, 0)).astype('bool')
+
+
 class TestWhereAPI(unittest.TestCase):
     def setUp(self):
         self.init_data()
@@ -245,8 +252,11 @@ class TestWhereAPI(unittest.TestCase):
     def test_pir_api(self, use_cuda=False):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
-                with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
-                    paddle.static.Program(), paddle.static.Program()
+                with (
+                    paddle.pir_utils.IrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
                 ):
                     cond = paddle.static.data(
                         name='cond', shape=self.shape, dtype='bool'
@@ -821,7 +831,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = paddle.static.data(name='x', shape=[(-1)], dtype='bool')
+            x = paddle.static.data(name='x', shape=[-1], dtype='bool')
             if not paddle.framework.use_pir_api():
                 x.desc.set_need_check_feed(False)
             y = paddle.where(x)
@@ -1019,27 +1029,25 @@ class TestWhereZeroSizeTensor(unittest.TestCase):
             result = paddle.where(tensors[0], tensors[1], tensors[2])
         np.testing.assert_allclose(result, out_ref, rtol=1e-05)
 
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                cond_t = paddle.static.data(
-                    name='cond', shape=[2, 3, 5], dtype='bool'
-                )
-                x_t = paddle.static.data(
-                    name='x', shape=[2, 3, 5], dtype='float64'
-                )
-                y_t = paddle.static.data(
-                    name='y', shape=[2, 3, 5], dtype='float64'
-                )
-                result = paddle.where(cond_t, x_t, y_t)
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='float64')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='float64')
+            result = paddle.where(cond_t, x_t, y_t)
 
-                exe = base.Executor(base.CPUPlace())
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
-                    fetch_list=[result],
-                )
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': inputs[0], 'x': inputs[1], 'y': inputs[2]},
+                fetch_list=[result],
+            )
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
 
     def test_api_with_zero_size_input(self):
@@ -1074,28 +1082,76 @@ class TestWhereBoolInput(unittest.TestCase):
         y = np.random.random([2, 3, 5]).astype('bool')
         out_ref = np.where(cond, x, y)
 
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                cond_t = paddle.static.data(
-                    name='cond', shape=[2, 3, 5], dtype='bool'
-                )
-                x_t = paddle.static.data(
-                    name='x', shape=[2, 3, 5], dtype='bool'
-                )
-                y_t = paddle.static.data(
-                    name='y', shape=[2, 3, 5], dtype='bool'
-                )
-                result = paddle.where(cond_t, x_t, y_t)
+            ),
+        ):
+            cond_t = paddle.static.data(
+                name='cond', shape=[2, 3, 5], dtype='bool'
+            )
+            x_t = paddle.static.data(name='x', shape=[2, 3, 5], dtype='bool')
+            y_t = paddle.static.data(name='y', shape=[2, 3, 5], dtype='bool')
+            result = paddle.where(cond_t, x_t, y_t)
 
-                exe = base.Executor(base.CPUPlace())
-                out = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={'cond': cond, 'x': x, 'y': y},
-                    fetch_list=[result],
-                )
+            exe = base.Executor(base.CPUPlace())
+            out = exe.run(
+                paddle.static.default_main_program(),
+                feed={'cond': cond, 'x': x, 'y': y},
+                fetch_list=[result],
+            )
         np.testing.assert_allclose(out[0], out_ref, rtol=1e-05)
+
+
+class TestWhereAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_where_alias(self):
+        """
+        Test the alias of where function.
+        ``where(condition=cond, input=x, other=y)`` is equivalent to
+        ``where(condition=cond, x=x, y=y)``
+        """
+        shape = [2, 4]
+        cond = paddle.randint(0, 2, shape).astype("bool")
+        x = paddle.rand(shape).astype("float32")
+        y = paddle.rand(shape).astype("float32")
+
+        # Test all alias combinations
+        combinations = [
+            {"condition": cond, "x": x, "y": y},
+            {"condition": cond, "input": x, "y": y},
+            {"condition": cond, "x": x, "other": y},
+            {"condition": cond, "input": x, "other": y},
+        ]
+
+        # Get baseline result
+        expected = np.where(cond.numpy(), x.numpy(), y.numpy())
+
+        for params in combinations:
+            out = paddle.where(**params)
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-05)
+        paddle.enable_static()
+
+
+class TestWhereOut(unittest.TestCase):
+    def setUp(self):
+        self.cond_np = np.random.randint(0, 2, size=[2, 3, 5]).astype('bool')
+        self.x_np = np.random.random([2, 3, 5]).astype('float32')
+        self.y_np = np.random.random([2, 3, 5]).astype('float32')
+
+    def test_api_with_dygraph(self):
+        paddle.disable_static()
+        cond = paddle.to_tensor(self.cond_np)
+        x = paddle.to_tensor(self.x_np)
+        y = paddle.to_tensor(self.y_np)
+        out_holder = paddle.zeros_like(cond)
+        out_ref = paddle.where(cond, x, y)
+
+        paddle.where(cond, x, y, out=out_holder)
+        np.testing.assert_allclose(out_holder, out_ref, rtol=1e-20)
 
 
 if __name__ == "__main__":

@@ -20,7 +20,6 @@ import sys
 import jinja2
 import yaml
 
-# fmt: off
 # import from paddle/fluid/operators/generator
 sys.path.append(
     str(pathlib.Path(__file__).resolve().parents[2] / 'operators/generator')
@@ -31,7 +30,9 @@ from parse_utils import to_named_dict
 
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.append(
-    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
+    str(
+        pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator'
+    )
 )
 
 from decomp_interface_gen_op_list import (
@@ -160,6 +161,9 @@ CUSTOM_VJP = [
     'elu_grad',
     'swiglu_grad',
     'p_norm_grad',
+    'masked_fill_grad',
+    'index_put_grad',
+    'index_add_grad',
 ]  # custom vjp list of composite op
 
 VJP_COMPS = PRIM_VJP + CUSTOM_VJP

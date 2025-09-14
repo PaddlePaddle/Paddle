@@ -596,5 +596,38 @@ class TestFractionalMaxPool2DAPIErrorOutputSize(unittest.TestCase):
                 )
 
 
+class TestFractionalMaxPool2DAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.x_np = np.random.random([2, 0, 7, 7]).astype("float32")
+        self.res_1_np = fractional_pool2d_forward(
+            x=self.x_np, output_size=[3, 3], random_u=0.3
+        )
+
+    def test_dynamic_graph(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place, device = (
+                (paddle.CUDAPlace(0), 'gpu')
+                if use_cuda
+                else (paddle.CPUPlace(), 'cpu')
+            )
+            paddle.disable_static(place=place)
+            paddle.set_device(device)
+
+            x = paddle.to_tensor(self.x_np)
+            x.stop_gradient = False
+
+            out_1 = paddle.nn.functional.fractional_max_pool2d(
+                x=x, return_mask=False, output_size=[3, 3], random_u=0.3
+            )
+
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
+            loss = paddle.sum(out_1)
+            loss.backward()
+            np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
 if __name__ == '__main__':
     unittest.main()

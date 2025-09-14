@@ -16,6 +16,7 @@ import unittest
 from unittest import TestCase
 
 import numpy as np
+from op_test import get_devices
 
 import paddle
 from paddle import base
@@ -327,9 +328,7 @@ class TestDygraphTripleGradMatmulcase1(TestCase):
         self.input_numpy_dout = None
         self.input_numpy_ddx = None
         self.input_numpy_ddy = None
-        self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        self.places = get_devices()
 
     def actual(self):
         x = paddle.to_tensor(
@@ -657,9 +656,7 @@ class TestDygraphTripleGradMatmulcase3(TestCase):
         self.input_numpy_dout = None
         self.input_numpy_ddx = None
         self.input_numpy_ddy = None
-        self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        self.places = get_devices()
 
     def actual(self):
         x = paddle.to_tensor(
@@ -961,9 +958,7 @@ class TestDygraphTripleGradMatmulcase5(TestCase):
         self.input_numpy_dout = None
         self.input_numpy_ddx = None
         self.input_numpy_ddy = None
-        self.places = ["cpu"]
-        if paddle.is_compiled_with_cuda():
-            self.places.append("gpu")
+        self.places = get_devices()
 
     def actual(self):
         x = paddle.to_tensor(

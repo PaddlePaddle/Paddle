@@ -79,12 +79,12 @@ def determinate_rng(
     rank, dims_mapping=None, process_mesh=None, placements=None
 ):
     assert process_mesh is not None, "Must provide process mesh"
-    assert (
-        dims_mapping is not None or placements is not None
-    ), "Must provide one of dims mapping or placements."
-    assert not (
-        dims_mapping is not None and placements is not None
-    ), "Cannot provide dims mapping and placements at same time."
+    assert dims_mapping is not None or placements is not None, (
+        "Must provide one of dims mapping or placements."
+    )
+    assert not (dims_mapping is not None and placements is not None), (
+        "Cannot provide dims mapping and placements at same time."
+    )
     # TODO(JZ-LIANG) Support Mesh with any high rank
     # use a string to unique integer hashing algorithm for seed computation.
     # instead of using offsets to coordinate seed across devices.
@@ -129,9 +129,9 @@ def determinate_rng(
     if sharding_expr in _rng_name_to_seed:
         assert _rng_name_to_seed[sharding_expr] == seed_
     else:
-        assert (
-            seed_ not in _rng_name_to_seed.values()
-        ), f"Seed Conflict! current seed: {seed_}, current sharding expr: {sharding_expr}, generated seed: {_rng_name_to_seed}"
+        assert seed_ not in _rng_name_to_seed.values(), (
+            f"Seed Conflict! current seed: {seed_}, current sharding expr: {sharding_expr}, generated seed: {_rng_name_to_seed}"
+        )
         _rng_name_to_seed[sharding_expr] = seed_
         if paddle.in_dynamic_mode():
             # for dygraph, just init the seed when meeting a new seed
@@ -145,9 +145,9 @@ def determinate_rng(
 @contextlib.contextmanager
 def rng_state(name):
     global _rng_name_to_states
-    assert (
-        name in _rng_name_to_states
-    ), f"The rng state name {name} haven't been init. "
+    assert name in _rng_name_to_states, (
+        f"The rng state name {name} haven't been init. "
+    )
     orig_rng_state = paddle.get_rng_state()
     paddle.set_rng_state(_rng_name_to_states[name])
     try:

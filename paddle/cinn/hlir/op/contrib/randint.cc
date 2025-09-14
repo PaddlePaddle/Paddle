@@ -39,7 +39,6 @@
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {

@@ -44,7 +44,7 @@ class TestOneDNNElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -71,7 +71,7 @@ class TestOneDNNElementwiseSubOp(OpTest):
         self.axis = -1
 
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -225,12 +225,12 @@ class TestBf16(TestOneDNNElementwiseSubOp):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def init_dtype(self):
         self.dtype = np.float32
-        self.mkldnn_data_type = "bfloat16"
+        self.onednn_data_type = "bfloat16"
 
     def init_input_output(self):
         self.x = np.random.random(
@@ -312,7 +312,7 @@ class TestBf16Broadcasting(TestBf16):
 # complex64, int16, float64, bfloat16, complex128, float32, int32, int64
 '''class TestInt8(TestOneDNNElementwiseSubOp):
     def init_kernel_type(self):
-        self.use_mkldnn = True
+        self.use_onednn = True
         self._cpu_only = True
 
     def init_dtype(self):
@@ -341,6 +341,32 @@ class TestBf16Broadcasting(TestBf16):
     def test_check_grad_ignore_y(self):
         pass
 '''
+
+
+class TestOneDNNElementwiseSubOpZeroSize(TestOneDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [0, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [1, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["Y"],
+            "Out",
+            check_pir_onednn=True,
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            check_pir_onednn=True,
+        )
+
+    def if_check_prim(self):
+        self.check_prim = True
 
 
 if __name__ == '__main__':

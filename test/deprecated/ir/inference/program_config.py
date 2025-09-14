@@ -67,9 +67,9 @@ class TensorConfig:
             self.dtype = self.data.dtype
             self.shape = self.data.shape
         else:
-            assert (
-                shape is not None
-            ), "While data_gen is not defined, shape must not be None"
+            assert shape is not None, (
+                "While data_gen is not defined, shape must not be None"
+            )
             self.data = np.random.normal(0.0, 1.0, shape).astype(np.float32)
             self.shape = shape
             self.dtype = self.data.dtype
@@ -291,9 +291,9 @@ class ProgramConfig:
         return log_str
 
     def set_input_type(self, _type: np.dtype) -> None:
-        assert (
-            _type in self.supported_cast_type or _type is None
-        ), "PaddleTRT only supports FP32 / FP16 IO"
+        assert _type in self.supported_cast_type or _type is None, (
+            "PaddleTRT only supports FP32 / FP16 IO"
+        )
 
         ver = paddle.inference.get_trt_compile_version()
         trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
@@ -611,9 +611,9 @@ def create_quant_model(
 
     def _get_op_output_var_names(op):
         """ """
-        assert isinstance(
-            op, (IrNode, Operator)
-        ), "The input op should be IrNode or Operator."
+        assert isinstance(op, (IrNode, Operator)), (
+            "The input op should be IrNode or Operator."
+        )
         var_names = []
         op_name = op.name() if isinstance(op, IrNode) else op.type
         if op_name not in op_real_in_out_name:

@@ -211,7 +211,7 @@ void RunPredictorWithRuntimeConfig(
   PADDLE_ENFORCE_EQ(predictor->GetExecStream(),
                     runtime_config.stream,
                     common::errors::InvalidArgument(
-                        "predictor->GetExecStream() is not equal with"
+                        "predictor->GetExecStream() is not equal with "
                         "runtime_config.stream"));
 }
 

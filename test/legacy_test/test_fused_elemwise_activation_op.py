@@ -306,30 +306,30 @@ def create_test_class(
     globals()[test_case + "_scalar"] = TestFusedElementwiseActivationOp_scalar
     globals()[test_case + "_scalar2"] = TestFusedElementwiseActivationOp_scalar2
     globals()[test_case + "_Vector"] = TestFusedElementwiseActivationOp_Vector
-    globals()[
-        test_case + "_broadcast_0"
-    ] = TestFusedElementwiseActivationOp_broadcast_0
-    globals()[
-        test_case + "_broadcast_1"
-    ] = TestFusedElementwiseActivationOp_broadcast_1
-    globals()[
-        test_case + "_broadcast_2"
-    ] = TestFusedElementwiseActivationOp_broadcast_2
-    globals()[
-        test_case + "_broadcast_3"
-    ] = TestFusedElementwiseActivationOp_broadcast_3
-    globals()[
-        test_case + "_broadcast_4"
-    ] = TestFusedElementwiseActivationOp_broadcast_4
-    globals()[
-        test_case + "_rowwise_add_0"
-    ] = TestFusedElementwiseActivationOp_rowwise_add_0
-    globals()[
-        test_case + "_rowwise_add_1"
-    ] = TestFusedElementwiseActivationOp_rowwise_add_1
-    globals()[
-        test_case + "_channelwise_add"
-    ] = TestFusedElementwiseActivationOp_channelwise_add
+    globals()[test_case + "_broadcast_0"] = (
+        TestFusedElementwiseActivationOp_broadcast_0
+    )
+    globals()[test_case + "_broadcast_1"] = (
+        TestFusedElementwiseActivationOp_broadcast_1
+    )
+    globals()[test_case + "_broadcast_2"] = (
+        TestFusedElementwiseActivationOp_broadcast_2
+    )
+    globals()[test_case + "_broadcast_3"] = (
+        TestFusedElementwiseActivationOp_broadcast_3
+    )
+    globals()[test_case + "_broadcast_4"] = (
+        TestFusedElementwiseActivationOp_broadcast_4
+    )
+    globals()[test_case + "_rowwise_add_0"] = (
+        TestFusedElementwiseActivationOp_rowwise_add_0
+    )
+    globals()[test_case + "_rowwise_add_1"] = (
+        TestFusedElementwiseActivationOp_rowwise_add_1
+    )
+    globals()[test_case + "_channelwise_add"] = (
+        TestFusedElementwiseActivationOp_channelwise_add
+    )
 
 
 def scale_add_func(x, y, x_bcast, y_bcast, scale, mode=0):

@@ -25,21 +25,21 @@ struct OneHotV2OpFunctor {
   const DenseTensor* in_;
   DenseTensor* out_;
   int depth_;
-  const Context& ctx_;
+  const Context& dev_ctx_;
 
   OneHotV2OpFunctor(const DenseTensor* in,
                     DenseTensor* out,
                     int depth,
-                    const Context& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+                    const Context& dev_ctx)
+      : in_(in), out_(out), depth_(depth), dev_ctx_(dev_ctx) {}
 
   template <typename OutT>
   void apply() const {
     auto* p_in_data = in_->data<InT>();
     auto numel = in_->numel();
-    auto* p_out_data = ctx_.template Alloc<float>(out_);
+    auto* p_out_data = dev_ctx_.template Alloc<float>(out_);
     int r = xpu::one_hot<InT>(
-        ctx_.x_context(), p_in_data, p_out_data, numel, depth_, 1.0, 0.0);
+        dev_ctx_.x_context(), p_in_data, p_out_data, numel, depth_, 1.0, 0.0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "one_hot");
   }
 };

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-    high level unit test for distribute fleet.
+high level unit test for distribute fleet.
 """
 
 import argparse

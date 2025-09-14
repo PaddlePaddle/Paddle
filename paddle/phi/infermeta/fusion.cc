@@ -187,8 +187,8 @@ void FusedMultiTransformerInferMeta(
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
 
@@ -197,8 +197,8 @@ void FusedMultiTransformerInferMeta(
                       3,
                       common::errors::InvalidArgument(
                           "The dimensions of qkv_weight when use gqa must be 3"
-                          "(num_head + 2 * kv_num_heads, dim_head, dim_embed),"
-                          "but received dimensions of"
+                          "(num_head + 2 * kv_num_heads, dim_head, dim_embed), "
+                          "but received dimensions of "
                           "Input is [%d]",
                           y_dim.size()));
   } else {
@@ -206,8 +206,8 @@ void FusedMultiTransformerInferMeta(
         y_dim.size(),
         4,
         common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                        "(3, num_head, dim_head, dim_embed),"
-                                        "but received dimensions of"
+                                        "(3, num_head, dim_head, dim_embed), "
+                                        "but received dimensions of "
                                         "Input is [%d]",
                                         y_dim.size()));
   }
@@ -264,7 +264,7 @@ void FusedMultiTransformerInferMeta(
       PADDLE_ENFORCE_EQ(c_dim[2],
                         gqa_group_size,
                         common::errors::InvalidArgument(
-                            "The third dim of CacheKV must be equal with num"
+                            "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             gqa_group_size,
                             c_dim[2]));  // num_head
@@ -280,7 +280,7 @@ void FusedMultiTransformerInferMeta(
       PADDLE_ENFORCE_EQ(c_dim[2],
                         trans_qkvw ? y_dim[1] : y_dim[2],
                         common::errors::InvalidArgument(
-                            "The third dim of CacheKV must be equal with num"
+                            "The third dim of CacheKV must be equal with num "
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
@@ -853,6 +853,51 @@ void FcXPUInferMeta(const MetaTensor& x,
   out_max->set_layout(x.layout());
 }
 
+void FusedActDequantInferMeta(const MetaTensor& x,
+                              const MetaTensor& x_scale,
+                              MetaTensor* out) {
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      phi::DataType::FLOAT8_E4M3FN,
+      common::errors::InvalidArgument(
+          "The data type of X should be FLOAT8_E4M3FN, but received %s.",
+          x.dtype()));
+
+  PADDLE_ENFORCE_EQ(
+      x_scale.dtype(),
+      phi::DataType::FLOAT32,
+      common::errors::InvalidArgument(
+          "The data type of X_scale should be FLOAT32, but received %s.",
+          x_scale.dtype()));
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The input X should be a 2D tensor, but received %dD.",
+                        x_dims.size()));
+
+  int64_t rows = x_dims[0];
+  int64_t cols = x_dims[1];
+
+  PADDLE_ENFORCE_GT(
+      rows,
+      0,
+      common::errors::InvalidArgument(
+          "The rows of X should be positive, but received %d.", rows));
+
+  PADDLE_ENFORCE_GT(
+      cols,
+      0,
+      common::errors::InvalidArgument(
+          "The cols of X should be positive, but received %d.", cols));
+
+  out->set_dims(x_dims);
+  out->set_dtype(phi::DataType::BFLOAT16);
+  out->set_layout(x.layout());
+}
+
 void FusedAttentionInferMeta(const MetaTensor& x,
                              const MetaTensor& ln_scale,
                              const MetaTensor& ln_bias,
@@ -911,9 +956,9 @@ void FusedAttentionInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(y_dim.size(),
                       2,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 2 if enable"
-                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed),"
-                          "but received dimensions of"
+                          "The dimensions of qkv_weight must be 2 if enable "
+                          "transpose_qkv_wb: (dim_embed, 3 * dim_embed), "
+                          "but received dimensions of "
                           "Input is [%d]",
                           y_dim.size()));
     PADDLE_ENFORCE_GT(num_heads,
@@ -946,7 +991,7 @@ void FusedAttentionInferMeta(const MetaTensor& x,
     PADDLE_ENFORCE_EQ(y_dim.size(),
                       4,
                       common::errors::InvalidArgument(
-                          "The dimensions of qkv_weight must be 4 if not"
+                          "The dimensions of qkv_weight must be 4 if not "
                           "enable transpose_qkv_wb: (3, num_head, dim_head, "
                           "dim_embed), but received [%d]",
                           y_dim.size()));
@@ -974,8 +1019,8 @@ void FusedAttentionInferMeta(const MetaTensor& x,
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
 
@@ -1306,6 +1351,9 @@ void FusedBiasDropoutResidualLnInferMeta(
   ln_mean->set_dims({left});
   ln_variance->set_dims({left});
   y->set_dims(x.dims());
+  if (common::product(x_dim) != 0 && common::product(residual.dims()) == 0) {
+    y->set_dims(residual.dims());
+  }
 }
 
 void FusedBiasDropoutResidualLnGradInferMeta(
@@ -1375,8 +1423,8 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
   PADDLE_ENFORCE(q_dim.size() == 4 && k_dim.size() == 4 && v_dim.size() == 4,
                  common::errors::InvalidArgument(
                      "The dimensions of q, k, v must be 4"
-                     "(batch_size, seq_len, num_heads, head_size),"
-                     "but received dimensions of"
+                     "(batch_size, seq_len, num_heads, head_size), "
+                     "but received dimensions of "
                      "Input is [%d], [%d], [%d]",
                      q_dim.size(),
                      k_dim.size(),
@@ -1384,8 +1432,8 @@ void FusedDotProductAttentionInferMeta(const MetaTensor& q,
 
   PADDLE_ENFORCE(q_dim[0] == k_dim[0] && k_dim[0] == v_dim[0],
                  common::errors::InvalidArgument(
-                     "The first dimension of q, k, v must be equal"
-                     "but received dimensions of"
+                     "The first dimension of q, k, v must be equal, "
+                     "but received dimensions of "
                      "Input is [%d], [%d], [%d]",
                      q_dim[0],
                      k_dim[0],
@@ -1614,7 +1662,7 @@ void FusedElemwiseAddActivationInferMeta(
       true,
       common::errors::InvalidArgument(
           "When the FusedElemwiseAddActivationOp Is used in fused pass, the "
-          "elementwise_add Op must be"
+          "elementwise_add Op must be "
           "detected and used, Please check the fuse pass pattern"));
 }
 
@@ -1698,7 +1746,7 @@ void FusedElemwiseAddActivationGradInferMeta(
       true,
       common::errors::InvalidArgument(
           "When the FusedElemwiseAddActivationOpGrad Is used in fused pass, "
-          "the elementwise_add_grad Op must be"
+          "the elementwise_add_grad Op must be "
           "detected and used, Please check the fuse pass pattern"));
 }
 
@@ -1980,7 +2028,7 @@ void FusedGemmEpilogueGradInferMeta(const MetaTensor& x,
       dout_mat_dims[1],
       trans_y ? y_dims[0] : y_dims[1],
       common::errors::InvalidArgument(
-          "The last dimension of DOut should be equal with Y's last"
+          "The last dimension of DOut should be equal with Y's last "
           "dimension. But received DOut[-1] = [%d], Y[1] = [%d].",
           dout_mat_dims[1],
           y_dims[1]));
@@ -2280,16 +2328,16 @@ void FusedMultiTransformerInt8InferMeta(
       x_dim.size(),
       3,
       common::errors::InvalidArgument("The dimensions of x must be 3"
-                                      "(batch_size, seq_len, dim_embed),"
-                                      "but received dimensions of"
+                                      "(batch_size, seq_len, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       x_dim.size()));
   PADDLE_ENFORCE_EQ(
       y_dim.size(),
       4,
       common::errors::InvalidArgument("The dimensions of qkv_weight must be 4"
-                                      "(3, num_head, dim_head, dim_embed),"
-                                      "but received dimensions of"
+                                      "(3, num_head, dim_head, dim_embed), "
+                                      "but received dimensions of "
                                       "Input is [%d]",
                                       y_dim.size()));
   PADDLE_ENFORCE_EQ(
@@ -2370,6 +2418,259 @@ void FusedMultiTransformerInt8InferMeta(
 
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());
+}
+
+void FusedPartialRopeInferMeta(const MetaTensor& x,
+                               const MetaTensor& cos,
+                               const MetaTensor& sin,
+                               MetaTensor* out) {
+  const auto x_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input x must be a 4D tensor"));
+
+  const int64_t batch_size = x_dims[0];
+  const int64_t seq_len = x_dims[1];
+  const int64_t num_heads = x_dims[2];
+  const int64_t head_dim = x_dims[3];
+
+  PADDLE_ENFORCE_LE(
+      batch_size * seq_len * num_heads,
+      std::numeric_limits<int>::max(),
+      common::errors::InvalidArgument("Currently only supports batch_size * "
+                                      "seq_len * num_heads <= INT_MAX"));
+  PADDLE_ENFORCE_LE(head_dim,
+                    std::numeric_limits<int>::max(),
+                    common::errors::InvalidArgument(
+                        "Currently only supports head_dim <= INT_MAX"));
+
+  const auto cos_dims = cos.dims();
+  PADDLE_ENFORCE_EQ(
+      cos_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input cos must be a 4D tensor"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[0],
+      1,
+      common::errors::InvalidArgument("The batch_size of cos must be 1"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[1],
+      seq_len,
+      common::errors::InvalidArgument("The seq_len of cos must match x"));
+  PADDLE_ENFORCE_EQ(
+      cos_dims[2],
+      1,
+      common::errors::InvalidArgument("The num_heads of cos must be 1"));
+
+  const int64_t pe_head_dim = cos_dims[3];
+  PADDLE_ENFORCE_LE(pe_head_dim,
+                    head_dim,
+                    common::errors::InvalidArgument(
+                        "pe_head_dim must be no larger than head_dim"));
+  PADDLE_ENFORCE_EQ(
+      pe_head_dim % 2,
+      0,
+      common::errors::InvalidArgument("pe_head_dim must be multiple of 2"));
+  PADDLE_ENFORCE_LE(pe_head_dim,
+                    1024,
+                    common::errors::InvalidArgument(
+                        "Currently only supports pe_head_dim <= 1024"));
+
+  const auto sin_dims = sin.dims();
+  PADDLE_ENFORCE_EQ(
+      sin_dims.size(),
+      4,
+      common::errors::InvalidArgument("The input sin must be a 4D tensor"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[0],
+      1,
+      common::errors::InvalidArgument("The batch_size of sin must be 1"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[1],
+      seq_len,
+      common::errors::InvalidArgument("The seq_len of sin must match x"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[2],
+      1,
+      common::errors::InvalidArgument("The num_heads of sin must be 1"));
+  PADDLE_ENFORCE_EQ(
+      sin_dims[3],
+      pe_head_dim,
+      common::errors::InvalidArgument("The pe_head_dim of sin must match cos"));
+
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+}
+
+void FusedTransposeSplitQuantInferMeta(const MetaTensor& x,
+                                       const MetaTensor& input_scales,
+                                       const IntArray& tokens_per_expert,
+                                       bool pow_2_scales,
+                                       std::vector<MetaTensor*> outs,
+                                       std::vector<MetaTensor*> scales) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::BFLOAT16 || x.dtype() == DataType::FLOAT8_E4M3FN,
+      true,
+      common::errors::InvalidArgument("The dtype of Input(x) must be BFLOAT16 "
+                                      "or FLOAT8_E4M3FN, but received %s",
+                                      x.dtype()));
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    common::errors::InvalidArgument(
+                        "The dimensions of Input(x) must be 2, but "
+                        "received dimensions of "
+                        "Input(x) is [%d]",
+                        x_dims.size()));
+
+  const int64_t M = x_dims[0];
+  const int64_t N = x_dims[1];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  PADDLE_ENFORCE_GT(
+      num_experts,
+      0,
+      common::errors::InvalidArgument("tokens_per_expert cannot be empty"));
+
+  PADDLE_ENFORCE_EQ(
+      outs.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+          outs.size(),
+          num_experts));
+
+  PADDLE_ENFORCE_EQ(
+      scales.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+          scales.size(),
+          num_experts));
+
+  int64_t sum_tokens = 0;
+  for (size_t i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_list[i];
+
+    PADDLE_ENFORCE_EQ(
+        tokens % 128,
+        0,
+        common::errors::InvalidArgument(
+            "tokens_per_expert[%d] (%d) must be divisible by 128", i, tokens));
+
+    sum_tokens += tokens;
+
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({N, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens / 128, N}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sum_tokens,
+      M,
+      common::errors::InvalidArgument(
+          "Sum of tokens_per_expert (%d) must equal x.shape[0] (%d)",
+          sum_tokens,
+          M));
+  PADDLE_ENFORCE_LE(N,
+                    65535LL * 128,
+                    common::errors::InvalidArgument(
+                        "x.shape[1] (%d) must be <= 65535 * 128", N));
+}
+
+void FusedTransposeWLCHSplitQuantInferMeta(const MetaTensor& x,
+                                           const IntArray& tokens_per_expert,
+                                           bool pow_2_scales,
+                                           std::vector<MetaTensor*> outs,
+                                           std::vector<MetaTensor*> scales) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+
+  auto x_dims = x.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      4,
+      common::errors::InvalidArgument(
+          "Input(x) must have dimension of 4, but got %d.", x_dims.size()));
+
+  const int64_t M = x_dims[0] * x_dims[1] * x_dims[2];
+  const int64_t H = x_dims[3];
+
+  auto tokens_list = tokens_per_expert.GetData();
+  const size_t num_experts = tokens_list.size();
+
+  PADDLE_ENFORCE_EQ(
+      outs.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of outs (%d) must equal size of tokens_per_expert (%d)",
+          outs.size(),
+          num_experts));
+
+  PADDLE_ENFORCE_EQ(
+      scales.size(),
+      num_experts,
+      common::errors::InvalidArgument(
+          "Size of scales (%d) must equal size of tokens_per_expert (%d)",
+          scales.size(),
+          num_experts));
+
+  int64_t sum_tokens = 0;
+  for (size_t i = 0; i < num_experts; ++i) {
+    const int64_t tokens = tokens_list[i];
+
+    PADDLE_ENFORCE_EQ(
+        tokens % 128,
+        0,
+        common::errors::InvalidArgument(
+            "tokens_per_expert[%d] (%d) must be divisible by 128", i, tokens));
+
+    sum_tokens += tokens;
+
+    if (outs[i] != nullptr) {
+      outs[i]->set_dims(common::make_ddim({H, tokens}));
+      outs[i]->set_dtype(DataType::FLOAT8_E4M3FN);
+      outs[i]->set_layout(x.layout());
+    }
+
+    if (scales[i] != nullptr) {
+      scales[i]->set_dims(common::make_ddim({tokens / 128, H}));
+      scales[i]->set_dtype(DataType::FLOAT32);
+      scales[i]->set_layout(x.layout());
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(
+      sum_tokens,
+      M,
+      common::errors::InvalidArgument("Sum of tokens_per_expert (%d) must "
+                                      "equal the upper dims of Input(x) (%d)",
+                                      sum_tokens,
+                                      M));
+  PADDLE_ENFORCE_LE(
+      H,
+      65535 * 128,
+      common::errors::InvalidArgument("Currently only supports the hidden size "
+                                      "of Input(x) <= 65535 * 128, but got %d.",
+                                      H));
 }
 
 void YoloBoxXPUInferMeta(const MetaTensor& x,
@@ -2697,7 +2998,7 @@ void BNActXPUInferMeta(const MetaTensor& x,
           x_dims,
           x_dims.size()));
 
-  const int64_t C = ((config.is_run_mkldnn_kernel == true) ||
+  const int64_t C = ((config.is_run_onednn_kernel == true) ||
                              (data_layout_str == DataLayout::kNCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
@@ -3688,7 +3989,7 @@ void FusionGRUInferMeta(const MetaTensor& x,
       wx_dims[0],
       x_mat_dims[1],
       common::errors::InvalidArgument(
-          "The first dimension of flattened WeightX"
+          "The first dimension of flattened WeightX "
           "should equal to last dimension of flattened input X, but "
           "received fattened WeightX dimension is:%d, flattened X dimension "
           "is:%d",
@@ -3922,6 +4223,108 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   out->share_lod(*x[0]);
 }
 
+std::tuple<int64_t, int64_t, int64_t> FusedStackQuantCommonCheck(
+    const std::vector<const MetaTensor*>& x) {
+  PADDLE_ENFORCE_GT(x.size(),
+                    0UL,
+                    common::errors::InvalidArgument(
+                        "Number of Inputs(x) must be larger than 0, but"
+                        " received value is:%d.",
+                        x.size()));
+  int64_t N = x.size();
+  for (int i = 0; i < N; ++i) {
+    PADDLE_ENFORCE_EQ(
+        x[i]->dtype(),
+        DataType::BFLOAT16,
+        common::errors::InvalidArgument(
+            "input must be bfloat16, but received dtype: %s", x[i]->dtype()));
+  }
+  auto input_dims = x[0]->dims();
+  PADDLE_ENFORCE_EQ(
+      input_dims.size(),
+      2U,
+      common::errors::InvalidArgument(
+          "input must be 2-D, but received dims: %s", input_dims.to_str()));
+  int64_t M = input_dims[0];
+  int64_t K = input_dims[1];
+  for (int i = 1; i < N; ++i) {
+    input_dims = x[i]->dims();
+    PADDLE_ENFORCE_EQ(input_dims.size(),
+                      2U,
+                      common::errors::InvalidArgument(
+                          "input must be 2-D, but received input[%d] dims: %s",
+                          i,
+                          input_dims.to_str()));
+    PADDLE_ENFORCE_EQ(
+        input_dims[0],
+        M,
+        common::errors::InvalidArgument(
+            "input [%d] must be shape %d, %d, but received dims: %s",
+            i,
+            M,
+            K,
+            input_dims.to_str()));
+    PADDLE_ENFORCE_EQ(
+        input_dims[1],
+        K,
+        common::errors::InvalidArgument(
+            "input [%d] must be shape %d, %d, but received dims: %s",
+            i,
+            M,
+            K,
+            input_dims.to_str()));
+  }
+  PADDLE_ENFORCE_LE(N,
+                    65535,
+                    common::errors::InvalidArgument(
+                        "The batch size (N) must be no larger than 65535."));
+  PADDLE_ENFORCE_EQ(M % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The upper dim (M) must be multiple of 128."));
+  PADDLE_ENFORCE_EQ(K % 128,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The lower dim (K) must be multiple of 128."));
+  return {N, M, K};
+}
+
+void FusedStackTransposeQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                                       MetaTensor* out,
+                                       MetaTensor* scale) {
+  int64_t N, M, K;
+  std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
+
+  std::vector<int64_t> out_shape = {N * K, M};
+  std::vector<int64_t> scale_shape = {N * K / 128, M / 128};
+  out->set_dims(common::make_ddim(out_shape));
+  scale->set_dims(common::make_ddim(scale_shape));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+  scale->set_dtype(DataType::FLOAT32);
+  out->share_lod(*x.at(0));
+  scale->share_lod(*x.at(0));
+  out->set_layout(x.at(0)->layout());
+  scale->set_layout(x.at(0)->layout());
+}
+
+void FusedStackQuantInferMeta(const std::vector<const MetaTensor*>& x,
+                              MetaTensor* out,
+                              MetaTensor* scale) {
+  int64_t N, M, K;
+  std::tie(N, M, K) = FusedStackQuantCommonCheck(x);
+
+  std::vector<int64_t> out_shape = {N * M, K};
+  std::vector<int64_t> scale_shape = {N * M / 128, K / 128};
+  out->set_dims(common::make_ddim(out_shape));
+  scale->set_dims(common::make_ddim(scale_shape));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+  scale->set_dtype(DataType::FLOAT32);
+  out->share_lod(*x.at(0));
+  scale->share_lod(*x.at(0));
+  out->set_layout(x.at(0)->layout());
+  scale->set_layout(x.at(0)->layout());
+}
+
 // Current constraint is appropriate for GemmEpilogueOp but relaxed for FcOp
 void FCInferMeta(const MetaTensor& input,
                  const MetaTensor& w,
@@ -4125,19 +4528,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
   PADDLE_ENFORCE_EQ(
       query.dims().size(),
       4,
-      common::errors::InvalidArgument("Query should be a 4-D tensor"
+      common::errors::InvalidArgument("Query should be a 4-D tensor. "
                                       "But received Query dimension(%s)",
                                       query.dims().size()));
   PADDLE_ENFORCE_EQ(
       key.dims().size(),
       4,
-      common::errors::InvalidArgument("Key should be a 4-D tensor"
+      common::errors::InvalidArgument("Key should be a 4-D tensor. "
                                       "But received Key dimension(%s)",
                                       key.dims().size()));
   PADDLE_ENFORCE_EQ(
       value.dims().size(),
       4,
-      common::errors::InvalidArgument("Value should be a 4-D tensor"
+      common::errors::InvalidArgument("Value should be a 4-D tensor. "
                                       "But received Value dimension(%s)",
                                       value.dims().size()));
 
@@ -4168,14 +4571,17 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
                     common::errors::InvalidArgument(
                         "The head number of Key, Value should be equal."));
 
-  PADDLE_ENFORCE_EQ(
-      query_num_head % key_num_head,
-      0,
-      errors::InvalidArgument(
-          "The num_head of query must be divisible by the num_head of key, but "
-          "received num_head of query is %d, and the num_head of key is %d",
-          query_num_head,
-          key_num_head));
+  if (key_num_head != 0) {
+    PADDLE_ENFORCE_EQ(
+        query_num_head % key_num_head,
+        0,
+        errors::InvalidArgument(
+            "The num_head of query must be divisible by the num_head of key, "
+            "but "
+            "received num_head of query is %d, and the num_head of key is %d",
+            query_num_head,
+            key_num_head));
+  }
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
@@ -4186,6 +4592,20 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
                     true,
                     common::errors::InvalidArgument(
                         "The seq length of Key, Value should be equal."));
+  if (mask) {
+    PADDLE_ENFORCE_EQ(
+        mask.dims().size(),
+        4,
+        common::errors::InvalidArgument("Mask should be a 4-D tensor. "
+                                        "But received Value dimension(%s)",
+                                        mask.dims().size()));
+    const int64_t mask_batch_size = mask.dims()[0];
+    PADDLE_ENFORCE_EQ(
+        query_batch_size == mask_batch_size,
+        true,
+        common::errors::InvalidArgument(
+            "The batch size of Query, Key, Value and Mask should be equal."));
+  }
 
   std::vector<int64_t> out_dims(
       {query_batch_size, query_num_head, query_seq_length, value_head_size});
@@ -4464,7 +4884,7 @@ void MultiGruInferMeta(
     const std::string& gate_activation,
     int layers,
     bool origin_mode,
-    const std::string& mkldnn_data_type,
+    const std::string& onednn_data_type,
     float scale_data,
     float shift_data,
     bool force_fp32_output,
@@ -4486,7 +4906,7 @@ void MultiGruInferMeta(
         weight_x[i]->dims()[0],
         x_mat_dims[1],
         common::errors::InvalidArgument(
-            "The first dimension of flattened WeightX #%d"
+            "The first dimension of flattened WeightX #%d "
             "should equal to last dimension of flattened input X, but "
             "received fattened WeightX dimension is:%d, flattened X "
             "dimension "
@@ -5017,39 +5437,39 @@ void FusedTokenPruneInferMeta(const MetaTensor& attn,
   PADDLE_ENFORCE_EQ(mask_dim[0],
                     attn_dim[0],
                     common::errors::InvalidArgument(
-                        "The first dim of mask and attn should be the same"
+                        "The first dim of mask and attn should be the same "
                         "which is batch size"));
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     attn_dim[1],
                     common::errors::InvalidArgument(
-                        "The second dim of mask and attn should be the same"
+                        "The second dim of mask and attn should be the same "
                         "which is nb_head"));
   PADDLE_ENFORCE_EQ(mask_dim[0],
                     x_dim[0],
                     common::errors::InvalidArgument(
-                        "The first dim of mask and x should be the same"
+                        "The first dim of mask and x should be the same "
                         "which is batch size"));
   PADDLE_ENFORCE_EQ(
       mask_dim[2],
       mask_dim[3],
       common::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
+          "The third dim and the fourth dim of mask should be the same "
           "which is max seq len"));
   PADDLE_ENFORCE_EQ(
       attn_dim[2],
       attn_dim[3],
       common::errors::InvalidArgument(
-          "The third dim and the fourth dim of mask should be the same"
+          "The third dim and the fourth dim of mask should be the same "
           "which is max seq len"));
   PADDLE_ENFORCE_EQ(attn_dim[2],
                     mask_dim[2],
                     common::errors::InvalidArgument(
-                        "The third dim of mask and attn should be the same"
+                        "The third dim of mask and attn should be the same "
                         "which is max seq len"));
   PADDLE_ENFORCE_EQ(attn_dim[2],
                     x_dim[1],
                     common::errors::InvalidArgument(
-                        "The third dim of mask and the second dim of attn"
+                        "The third dim of mask and the second dim of attn "
                         "should be the same which is max seq len"));
 
   auto bsz = mask_dim[0];
@@ -5446,6 +5866,156 @@ static phi::DDim GetBitmaskDims(std::vector<int> out_shape) {
   int32_t nhw_int32_elems = static_cast<int32_t>(((nhw + 31) & ~31));
   std::vector<int> bitmask_shape = {nhw_int32_elems, c_int32_elems, 1};
   return common::make_ddim(bitmask_shape);
+}
+
+void FusedSwigluWeightedBwdInferMeta(const MetaTensor& o1,
+                                     const MetaTensor& do2_s,
+                                     const MetaTensor& unzipped_probs,
+                                     MetaTensor* do1,
+                                     MetaTensor* probs_grad,
+                                     MetaTensor* o2_s) {
+  PADDLE_ENFORCE_EQ(
+      o1.dtype(),
+      phi::DataType::BFLOAT16,
+      common::errors::InvalidArgument("The data type of o1 must be bfloat16. "
+                                      "But received o1 dtype: %s",
+                                      phi::DataTypeToString(o1.dtype())));
+
+  PADDLE_ENFORCE_EQ(do2_s.dtype(),
+                    phi::DataType::BFLOAT16,
+                    common::errors::InvalidArgument(
+                        "The data type of do2_s must be bfloat16. "
+                        "But received do2_s dtype: %s",
+                        phi::DataTypeToString(do2_s.dtype())));
+
+  PADDLE_ENFORCE_EQ(unzipped_probs.dtype(),
+                    phi::DataType::FLOAT32,
+                    common::errors::InvalidArgument(
+                        "The data type of unzipped_probs must be float32. "
+                        "But received unzipped_probs dtype: %s",
+                        phi::DataTypeToString(unzipped_probs.dtype())));
+
+  auto o1_dims = o1.dims();
+  auto do2_s_dims = do2_s.dims();
+  auto probs_dims = unzipped_probs.dims();
+
+  PADDLE_ENFORCE_EQ(
+      o1_dims.size(),
+      do2_s_dims.size(),
+      common::errors::InvalidArgument(
+          "o1 and do2_s should have the same number of dimensions. "
+          "But received o1 dims: %d, do2_s dims: %d",
+          o1_dims.size(),
+          do2_s_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      o1_dims.size(),
+      probs_dims.size(),
+      common::errors::InvalidArgument(
+          "o1 and unzipped_probs should have the same number of dimensions. "
+          "But received o1 dims: %d, unzipped_probs dims: %d",
+          o1_dims.size(),
+          probs_dims.size()));
+
+  int64_t o1_last_dim = o1_dims[o1_dims.size() - 1];
+  int64_t do2_s_last_dim = do2_s_dims[do2_s_dims.size() - 1];
+
+  PADDLE_ENFORCE_EQ(o1_last_dim,
+                    do2_s_last_dim * 2,
+                    common::errors::InvalidArgument(
+                        "The last dimension of o1 should be twice the last "
+                        "dimension of do2_s. "
+                        "But received o1 last dim: %d, do2_s last dim: %d",
+                        o1_last_dim,
+                        do2_s_last_dim));
+
+  int64_t o1_batch_size = 1;
+  int64_t do2_s_batch_size = 1;
+  int64_t probs_batch_size = 1;
+
+  for (int i = 0; i < o1_dims.size() - 1; i++) {
+    o1_batch_size *= o1_dims[i];
+    do2_s_batch_size *= do2_s_dims[i];
+    probs_batch_size *= probs_dims[i];
+  }
+
+  PADDLE_ENFORCE_EQ(o1_batch_size,
+                    do2_s_batch_size,
+                    common::errors::InvalidArgument(
+                        "o1 and do2_s should have the same batch size (product "
+                        "of all dimensions except last). "
+                        "But received o1 batch size: %d, do2_s batch size: %d",
+                        o1_batch_size,
+                        do2_s_batch_size));
+
+  PADDLE_ENFORCE_EQ(o1_batch_size,
+                    probs_batch_size,
+                    common::errors::InvalidArgument(
+                        "o1 and unzipped_probs should have the same batch size "
+                        "(product of all dimensions except last). "
+                        "But received o1 batch size: %d, probs batch size: %d",
+                        o1_batch_size,
+                        probs_batch_size));
+
+  do1->set_dims(o1_dims);
+  do1->set_dtype(o1.dtype());
+  do1->set_layout(o1.layout());
+
+  probs_grad->set_dims(probs_dims);
+  probs_grad->set_dtype(phi::DataType::FLOAT32);
+  probs_grad->set_layout(unzipped_probs.layout());
+
+  o2_s->set_dims(do2_s_dims);
+  o2_s->set_dtype(do2_s.dtype());
+  o2_s->set_layout(do2_s.layout());
+}
+
+void FusedWeightedSwigluActQuantInferMeta(const MetaTensor& x,
+                                          const MetaTensor& prob,
+                                          bool using_pow2_scaling,
+                                          MetaTensor* out,
+                                          MetaTensor* scale) {
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      DataType::BFLOAT16,
+      common::errors::InvalidArgument(
+          "The dtype of Input(x) must be BFLOAT16, but received %s",
+          x.dtype()));
+  if (prob) {
+    PADDLE_ENFORCE_EQ(
+        prob.dtype(),
+        DataType::FLOAT32,
+        common::errors::InvalidArgument(
+            "The dtype of Input(prob) must be FLOAT32, but received %s",
+            prob.dtype()));
+  }
+  int64_t rows = 1;
+  for (int i = 0; i < x.dims().size() - 1; ++i) {
+    rows *= x.dims()[i];
+  }
+  int64_t cols = x.dims()[x.dims().size() - 1];
+  PADDLE_ENFORCE_EQ(cols % 2,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The last dim of Input(X) should be exactly divided "
+                        "by 2 , but got %d",
+                        cols));
+  if (prob) {
+    PADDLE_ENFORCE_EQ(prob.dims()[0],
+                      rows,
+                      common::errors::InvalidArgument(
+                          "The first dim of Input(x) should be equal to the "
+                          "first dim of Input(prob) but got X.shape[0]: %d, "
+                          "prob.shape[0]: %d",
+                          rows,
+                          prob.dims()[0]));
+  }
+
+  out->set_dims(common::make_ddim({rows, cols / 2}));
+  out->set_dtype(DataType::FLOAT8_E4M3FN);
+
+  scale->set_dims(common::make_ddim({rows, ((cols / 2) + 127) / 128}));
+  scale->set_dtype(DataType::FLOAT32);
 }
 
 void ResnetUnitInferMeta(const MetaTensor& x,

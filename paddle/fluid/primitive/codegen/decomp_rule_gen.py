@@ -20,11 +20,9 @@ import sys
 import jinja2
 import yaml
 
-# fmt: off
 # import from paddle/fluid/operators/generator
 sys.path.insert(
-    0,
-    str(pathlib.Path(__file__).resolve().parents[2] / 'operators/generator')
+    0, str(pathlib.Path(__file__).resolve().parents[2] / 'operators/generator')
 )
 import filters as op_gen_filters
 import tests_utils as op_gen_tests
@@ -35,7 +33,9 @@ from type_mapping import output_type_map
 # import from paddle/fluid/pir/dialect/op_generator/api_gen.py
 sys.path.insert(
     0,
-    str(pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator')
+    str(
+        pathlib.Path(__file__).resolve().parents[2] / 'pir/dialect/op_generator'
+    ),
 )
 
 from decomp_interface_gen_op_list import (

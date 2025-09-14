@@ -104,7 +104,10 @@ class GraphNode : public Node {
       int k, const std::shared_ptr<std::mt19937_64> rng) {
     return sampler->sample_k(k, rng);
   }
-  virtual uint64_t get_neighbor_id(int idx) { return edges->get_id(idx); }
+  virtual uint64_t get_neighbor_id(int idx) {
+    return static_cast<uint64_t>(edges->get_id(idx));
+  }
+
 #ifdef PADDLE_WITH_CUDA
   virtual half get_neighbor_weight(int idx) { return edges->get_weight(idx); }
 #else

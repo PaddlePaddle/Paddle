@@ -27,6 +27,12 @@ struct GpuDevice;
 using cudaStream_t = struct CUstream_st *;
 using cudaEvent_t = struct CUevent_st *;
 
+// Forward declaration of cuBLAS types.
+using cublasHandle_t = struct cublasContext *;
+
+// Forward declaration of cuBLASLt types.
+using cublasLtHandle_t = struct cublasLtContext *;
+
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
 // Forward declaration of cuDNN types.
 using cudnnHandle_t = struct cudnnContext *;
@@ -55,20 +61,16 @@ using cudnnFusedOpsVariantParamPack_t =
     struct cudnnFusedOpsVariantParamStruct *;
 using cudnnFusedOpsPlan_t = struct cudnnFusedOpsPlanStruct *;
 
-// Forward declaration of cuBLAS types.
-using cublasHandle_t = struct cublasContext *;
-
-// Forward declaration of cuBLASLt types.
-using cublasLtHandle_t = struct cublasLtContext *;
-
 // Forward declaration of cuSOLVER types.
 using cusolverDnHandle_t = struct cusolverDnContext *;
 
 // Forward declaration of cuSparse types.
 using cusparseHandle_t = struct cusparseContext *;
 
+#ifdef PADDLE_WITH_CUDA
 // Forward declaration of cuFFT types.
 using cufftHandle = int;
+#endif
 
 // Forward declaration of NCCL types.
 using ncclComm_t = struct ncclComm *;

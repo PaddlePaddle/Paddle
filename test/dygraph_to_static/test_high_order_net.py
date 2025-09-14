@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -41,7 +40,6 @@ class HighOrderNet(paddle.nn.Layer):
 
 class TestBackwardHasNoGradError(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def _test_backward_has_no_grad_error(self):
         net = HighOrderNet()
         static_net = paddle.jit.to_static(net, full_graph=True)
@@ -98,7 +96,6 @@ class HighOrderCompareNet(HighOrderControlFlowNet):
 
 class TestBackwardControlFlow(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_control_flow_hign_order_backward(self):
         conf_net = HighOrderControlFlowNet()
         net = HighOrderCompareNet()

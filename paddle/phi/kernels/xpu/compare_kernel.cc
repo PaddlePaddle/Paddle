@@ -64,13 +64,13 @@ void XPUCompareKernelImpl(
                     const DenseTensor& y,                             \
                     DenseTensor* out) {                               \
     using XPUType = typename XPUTypeTrait<T>::Type;                   \
-    auto f = [](xpu::Context* ctx,                                    \
+    auto f = [](xpu::Context* xpu_ctx,                                \
                 const XPUType* x,                                     \
                 const XPUType* y,                                     \
                 bool* z,                                              \
                 const std::vector<int64_t>& xshape,                   \
                 const std::vector<int64_t>& yshape) {                 \
-      return functor(ctx, x, y, z, xshape, yshape);                   \
+      return functor(xpu_ctx, x, y, z, xshape, yshape);               \
     };                                                                \
     XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
@@ -93,8 +93,8 @@ PD_REGISTER_KERNEL(less_than,
                    int,
                    int64_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
@@ -106,8 +106,8 @@ PD_REGISTER_KERNEL(less_than,
                      int,                                 \
                      int64_t,                             \
                      float,                               \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16,                \
+                     phi::float16,                        \
+                     phi::bfloat16,                       \
                      bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }

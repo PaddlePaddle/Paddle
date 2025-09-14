@@ -31,7 +31,17 @@ class PdOpToCinnOpPass : public pir::PatternRewritePass {
   bool CanApplyOn(pir::Operation *op) const override;
 };
 
+class PdOpToDynamicShapeCinnOpPass : public pir::PatternRewritePass {
+ public:
+  PdOpToDynamicShapeCinnOpPass();
+
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override;
+
+  bool CanApplyOn(pir::Operation *op) const override;
+};
+
 IR_API std::unique_ptr<pir::Pass> CreatePdOpToCinnOpPass();
+IR_API std::unique_ptr<pir::Pass> CreatePdOpToDynamicShapeCinnOpPass();
 
 }  // namespace ir
 }  // namespace dialect

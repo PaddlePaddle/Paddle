@@ -38,6 +38,10 @@ StreamSafeXPUAllocation::StreamSafeXPUAllocation(
 bool StreamSafeXPUAllocation::RecordStream(XPUStream stream) {
   VLOG(8) << "Try record stream " << stream << " for address " << ptr();
   if (stream == owning_stream_) {
+    VLOG(8) << "stream " << stream << " is the same as owning stream "
+            << owning_stream_;
+    VLOG(8) << "Skip recording the same stream " << stream << " for address "
+            << ptr();
     return false;
   }
 
@@ -57,9 +61,13 @@ bool StreamSafeXPUAllocation::CanBeFreed() {
        it != outstanding_event_map_.end();
        ++it) {
     XPUEvent& event = it->second;
-
-    PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_destroy(event));
-    VLOG(8) << "Destroy event " << event;
+    if (xpu_event_query(event) == XPU_SUCCESS) {
+      PADDLE_ENFORCE_XRE_SUCCESS(xpu_event_destroy(event));
+      VLOG(8) << "Destroy event " << event;
+    } else {
+      outstanding_event_map_.erase(outstanding_event_map_.begin(), it);
+      return false;
+    }
   }
   return true;
 }

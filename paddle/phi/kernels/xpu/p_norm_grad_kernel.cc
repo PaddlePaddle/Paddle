@@ -47,6 +47,7 @@ void PNormGradKernel(const Context& dev_ctx,
                      DenseTensor* x_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
+  if (x.numel() == 0) return;
   auto xdim = x.dims();
   axis = axis < 0 ? xdim.size() + axis : axis;
   int m, t, n;

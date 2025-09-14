@@ -15,17 +15,22 @@
 #include "paddle/ap/include/axpr/builtin_functions.h"
 #include <functional>
 #include <sstream>
+#include <stdexcept>
 #include "paddle/ap/include/axpr/abstract_list.h"
 #include "paddle/ap/include/axpr/bool_helper.h"
 #include "paddle/ap/include/axpr/bool_int_double_helper.h"
+#include "paddle/ap/include/axpr/builtin_frame_util.h"
 #include "paddle/ap/include/axpr/builtin_high_order_func_type.h"
 #include "paddle/ap/include/axpr/callable_helper.h"
 #include "paddle/ap/include/axpr/data_value_util.h"
 #include "paddle/ap/include/axpr/exception_method_class.h"
+#include "paddle/ap/include/axpr/interpreter.h"
+#include "paddle/ap/include/axpr/lambda_expr_builder.h"
 #include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/string_util.h"
 #include "paddle/ap/include/axpr/value.h"
 #include "paddle/ap/include/axpr/value_method_class.h"
+#include "paddle/ap/include/memory/guard.h"
 
 namespace ap::axpr {
 
@@ -274,6 +279,78 @@ Result<axpr::Value> Map(axpr::InterpreterBase<axpr::Value>* interpreter,
   return ret;
 }
 
+Result<axpr::Value> Sorted(axpr::InterpreterBase<axpr::Value>* interpreter,
+                           const axpr::Value&,
+                           const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 2) << adt::errors::TypeError{
+      std::string() + "sorted() takes 2 arguments but " +
+      std::to_string(args.size()) + " were given."};
+
+  ADT_LET_CONST_REF(lst, axpr::AbstractList<axpr::Value>::CastFrom(args.at(0)));
+  ADT_LET_CONST_REF(lst_size, lst.size());
+  adt::List<axpr::Value> values;
+  adt::List<axpr::Value> keys;
+  {
+    values->reserve(lst_size);
+    keys->reserve(lst_size);
+    const auto& key_func = args.at(1);
+    ADT_RETURN_IF_ERR(
+        lst.Visit([&](const auto& elt) -> adt::Result<adt::LoopCtrl> {
+          values->emplace_back(elt);
+          ADT_LET_CONST_REF(key,
+                            interpreter->InterpretCall(
+                                key_func, std::vector<axpr::Value>{elt}));
+          keys->emplace_back(key);
+          return adt::Continue{};
+        }));
+  }
+  std::vector<int> sorted_indexes(lst_size);
+  std::iota(sorted_indexes.begin(), sorted_indexes.end(), 0);
+  auto TryCmp = [&](int a, int b) -> adt::Result<bool> {
+    static axpr::Lambda<axpr::CoreExpr> lambda([] {
+      ap::axpr::LambdaExprBuilder lmd{};
+      const ap::axpr::AnfExpr anf_expr = lmd.Lambda({"a", "b"}, [&](auto& ctx) {
+        return ctx.Var("__builtin_LE__").Call(ctx.Var("a"), ctx.Var("b"));
+      });
+      const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+      const auto& atomic =
+          core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+      return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+    }());
+    axpr::Function<axpr::SerializableValue> func{lambda, std::nullopt};
+    ADT_LET_CONST_REF(
+        cmp_ret, interpreter->InterpretCall(func, {keys->at(a), keys->at(b)}));
+    ADT_LET_CONST_REF(ret, cmp_ret.template CastTo<bool>());
+    return ret;
+  };
+  std::optional<adt::errors::Error> error;
+  auto Cmp = [&](int a, int b) -> bool {
+    const auto& cmp_ret = TryCmp(a, b);
+    if (cmp_ret.HasOkValue()) return cmp_ret.GetOkValue();
+    error = cmp_ret.GetError();
+    throw std::invalid_argument(error.value().msg());
+  };
+  try {
+    std::sort(sorted_indexes.begin(), sorted_indexes.end(), Cmp);
+    adt::List<axpr::Value> sorted;
+    sorted->reserve(lst_size);
+    for (int i = 0; i < sorted_indexes.size(); ++i) {
+      sorted->emplace_back(values->at(sorted_indexes.at(i)));
+    }
+    return sorted;
+  } catch (const std::invalid_argument& e) {
+    if (error.has_value()) {
+      return error.value();
+    } else {
+      return adt::errors::NotImplementedError{std::string() +
+                                              "unknown error: " + e.what()};
+    }
+  } catch (const std::exception& e) {
+    return adt::errors::NotImplementedError{std::string() +
+                                            "unknown error: " + e.what()};
+  }
+}
+
 Result<axpr::Value> ForEach(axpr::InterpreterBase<axpr::Value>* interpreter,
                             const axpr::Value&,
                             const std::vector<axpr::Value>& args) {
@@ -292,6 +369,33 @@ Result<axpr::Value> ForEach(axpr::InterpreterBase<axpr::Value>* interpreter,
         return adt::Continue{};
       }));
   return adt::Nothing{};
+}
+
+Result<axpr::Value> GetRegistry(axpr::InterpreterBase<axpr::Value>* interpreter,
+                                const axpr::Value&,
+                                const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 0);
+
+  static axpr::Lambda<axpr::CoreExpr> lambda([] {
+    ap::axpr::LambdaExprBuilder lmd{};
+    const ap::axpr::AnfExpr anf_expr = lmd.Lambda({}, [&](auto& ctx) {
+      auto& registry_hook_module =
+          ctx.Var("import").Call(ctx.String("__builtin_registry_item__"));
+      return registry_hook_module.Attr("RegistryEntry").Call();
+    });
+    const auto& core_expr = ap::axpr::ConvertAnfExprToCoreExpr(anf_expr);
+    const auto& atomic = core_expr.Get<ap::axpr::Atomic<ap::axpr::CoreExpr>>();
+    return atomic.Get<ap::axpr::Lambda<ap::axpr::CoreExpr>>();
+  }());
+
+  static Result<axpr::Value> registry([&] {
+    static ap::memory::Guard guard{};
+    ap::axpr::Interpreter interpreter(
+        ap::axpr::MakeBuiltinFrameAttrMap<ap::axpr::Value>(),
+        guard.circlable_ref_list());
+    return interpreter.Interpret(lambda, std::vector<axpr::Value>{});
+  }());
+  return registry;
 }
 
 Result<axpr::Value> Apply(axpr::InterpreterBase<axpr::Value>* interpreter,

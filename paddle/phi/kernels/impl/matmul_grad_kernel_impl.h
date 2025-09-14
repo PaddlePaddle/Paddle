@@ -231,10 +231,18 @@ void MatmulGradKernel(const Context& dev_ctx,
                       DenseTensor* dy) {
   if (x.numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
-    phi::FullKernel<T>(
-        dev_ctx, common::vectorize(y.dims()), 0.0, y.dtype(), dy);
-
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(y.dims())), 0, dy);
     return;
+  }
+  if (y.numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, dx);
+    return;
+  }
+  if (!transpose_x && transpose_y && y.dims().size() < 2) {
+    transpose_y = false;
   }
   // get dims
   std::vector<std::int64_t> x_dims = common::vectorize(x.dims());
@@ -1944,8 +1952,8 @@ void MatmulWithFlattenDoubleGradKernel(
   auto y_mat =
       y.dims().size() > 2 ? phi::ReshapeToMatrix(y, y_num_col_dims) : y;
 
-  const int m = common::flatten_to_2d(x.dims(), x_num_col_dims)[0];
-  const int n = common::flatten_to_2d(y.dims(), y_num_col_dims)[1];
+  const int64_t m = common::flatten_to_2d(x.dims(), x_num_col_dims)[0];
+  const int64_t n = common::flatten_to_2d(y.dims(), y_num_col_dims)[1];
 
   auto* dout = &out_grad;
   DenseTensor dout_mat(*dout);

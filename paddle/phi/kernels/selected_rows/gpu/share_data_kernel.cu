@@ -26,4 +26,4 @@ PD_REGISTER_KERNEL(share_data_sr,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

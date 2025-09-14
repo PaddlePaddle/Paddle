@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 from paddle.base import core
@@ -130,15 +130,99 @@ class TestZeroSizeArangeOp(TestArangeOp):
 
 
 class TestArangeOpError(unittest.TestCase):
-
     def test_static_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
+    def test_unisfinite_start_errors(self):
+        paddle.disable_static()
+        start = paddle.to_tensor(np.array([np.nan], 'float32'))
+        end = paddle.to_tensor(np.array([100], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+        start = float('nan')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        start = float('nan')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+    def test_unisfinite_end_errors(self):
+        paddle.disable_static()
+        start = paddle.to_tensor(np.array([0.0], 'float32'))
+        end = paddle.to_tensor(np.array([np.inf], 'float32'))
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
+        end = float('inf')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='int32',
+        )
+
+        end = float('inf')
+        self.assertRaises(
+            ValueError,
+            paddle.arange,
+            start=start,
+            end=end,
+            step=1,
+            dtype='float32',
+        )
+
 
 class TestArangeAPI(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -146,11 +230,7 @@ class TestArangeAPI(unittest.TestCase):
         ):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
-            place = (
-                paddle.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else paddle.CPUPlace()
-            )
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -162,11 +242,7 @@ class TestArangeAPI(unittest.TestCase):
 
 class TestArangeImperative(unittest.TestCase):
     def test_out(self):
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        place = get_device_place()
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

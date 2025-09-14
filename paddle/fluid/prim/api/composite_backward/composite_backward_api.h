@@ -26,6 +26,7 @@
 #include "paddle/fluid/prim/api/generated_prim/prim_generated_api.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 
 namespace paddle {
 namespace prim {
@@ -144,57 +145,6 @@ void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
     auto res = cast<T>(out_grad, x.dtype());
     set_output<T>(res, x_grad);
   }
-}
-
-template <typename T>
-void gather_grad(const Tensor& x,
-                 const Tensor& index,
-                 const Tensor& out_grad,
-                 const Scalar& axis,
-                 Tensor* grad_x) {
-  auto zero_tensor =
-      full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
-  std::vector<int> tmp_perm;
-
-  // change axis to rank 0
-  int axis_value = axis.to<int>();
-  int rank = x.dims().size();
-  if (axis_value < 0) {
-    axis_value += rank;
-  }
-  tmp_perm.push_back(axis_value);
-  // make other ranks
-  for (int i = 0; i < rank; ++i) {
-    if (i != axis_value) {
-      tmp_perm.push_back(i);
-    }
-  }
-  std::vector<int> reverse_perm(tmp_perm);
-  // make origin ranks
-  for (int i = 0; i < static_cast<int>(tmp_perm.size()); ++i) {
-    if (tmp_perm[i] >= 0) {
-      reverse_perm[tmp_perm[i]] = i;
-    } else {
-      reverse_perm[tmp_perm[i] + tmp_perm.size()] = i;
-    }
-  }
-
-  // transpose out_grad and zero grad to target rank.
-  auto tmp_zero_x_grad = zero_tensor;
-  auto tmp_out_grad = out_grad;
-  if (zero_tensor.dims().size() > 0) {
-    tmp_zero_x_grad = transpose<T>(zero_tensor, tmp_perm);
-  }
-  if (out_grad.dims().size() > 0) {
-    tmp_out_grad = transpose<T>(out_grad, tmp_perm);
-  }
-  // scatter grad to grad_x
-  auto tmp_grad_x = scatter<T>(tmp_zero_x_grad, index, tmp_out_grad, false);
-  auto tmp_grad_x_transposed = tmp_grad_x;
-  if (tmp_grad_x.dims().size() > 0) {
-    tmp_grad_x_transposed = transpose<T>(tmp_grad_x, reverse_perm);
-  }
-  set_output<T>(tmp_grad_x_transposed, grad_x);
 }
 
 template <typename T>
@@ -1767,6 +1717,7 @@ void batch_norm_grad(const Tensor& x,
 template <typename T>
 void instance_norm_grad(const Tensor& x,
                         const paddle::optional<Tensor>& scale,
+                        const paddle::optional<Tensor>& bias UNUSED,
                         const Tensor& saved_mean,
                         const Tensor& saved_variance,
                         const Tensor& y_grad,

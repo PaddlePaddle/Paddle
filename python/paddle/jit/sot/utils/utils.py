@@ -23,6 +23,7 @@ import types
 import weakref
 from collections import OrderedDict
 from contextlib import contextmanager
+from dataclasses import is_dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Callable, TypeVar
 from weakref import WeakValueDictionary
@@ -30,14 +31,20 @@ from weakref import WeakValueDictionary
 import numpy as np
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    TransformOptions,
+    dataclass_as_dict,
+    dataclass_from_dict,
+)
 from paddle.utils import flatten, map_structure
 
 from .envs import (
     ENV_SOT_LOG_LEVEL,
+    ENV_SOT_SPECIALIZED_DIM_NUMBERS,
     ENV_STRICT_MODE,
 )
 from .paddle_api_config import (
-    break_graph_set,
+    break_graph_functions,
     paddle_api_list,
     paddle_api_module_prefix,
 )
@@ -51,7 +58,7 @@ T = TypeVar("T")
 T1 = TypeVar("T1")
 T2 = TypeVar("T2")
 T3 = TypeVar("T3")
-ConstTypes = (int, float, str, bool, type(None))
+ConstTypes = (int, float, str, bool, type(None), bytes)
 
 
 class Singleton(type):
@@ -196,6 +203,14 @@ def is_paddle_api(func):
     return in_paddle_module(func) or func in paddle_api_list
 
 
+def already_unified_in_dynamic_and_static_graph(fn):
+    if is_paddle_api(fn):
+        return True
+    return not TransformOptions.check_fn_need_transform(
+        fn, TransformOptions.ToStaticMode.SOT
+    )
+
+
 def is_builtin_fn(fn):
     special_builtin_fns = [weakref.ref]
     if fn in special_builtin_fns:
@@ -228,7 +243,7 @@ def in_paddle_module(func):
 
 
 def is_break_graph_api(func):
-    return func in break_graph_set
+    return func in break_graph_functions
 
 
 def is_namedtuple_class(cls):
@@ -272,6 +287,8 @@ def map_if_extend(structure, pred, true_fn, false_fn):
     def wrapped_pred(x):
         if isinstance(x, slice):
             return True
+        if is_dataclass(x) and not isinstance(x, type):
+            return True
         return pred(x)
 
     def wrapped_true_fn(x):
@@ -279,6 +296,12 @@ def map_if_extend(structure, pred, true_fn, false_fn):
             l = [x.start, x.stop, x.step]
             l = map_if_extend(l, pred, true_fn, false_fn)
             return slice(*l)
+
+        if is_dataclass(x) and not isinstance(x, type):
+            dt_dict = dataclass_as_dict(x)
+            dt_dict = map_if_extend(dt_dict, pred, true_fn, false_fn)
+            return dataclass_from_dict(type(x), dt_dict)
+
         return true_fn(x)
 
     return map_if(
@@ -418,7 +441,10 @@ class StepInfoManager(metaclass=Singleton):
 
     @property
     def need_back_trace(self):
-        return self.current_step_info.need_back_trace()
+        return (
+            self.current_step_info is not None
+            and self.current_step_info.need_back_trace()
+        )
 
     @property
     def current_step(self):
@@ -454,11 +480,13 @@ def get_numpy_ufuncs():
 
 
 def do_until_stop_iteration(fn: Callable[[], T]) -> list[T]:
+    from paddle.jit.sot.utils.exceptions import SotCapturedStopIteration
+
     res = []
     while True:
         try:
             res.append(fn())
-        except StopIteration:
+        except SotCapturedStopIteration:
             break
     return res
 
@@ -486,3 +514,21 @@ def get_obj_stable_repr(obj) -> str:
             return f"{module}.{class_name}()"
 
     return f"{class_name}()"
+
+
+def get_min_non_specialized_number() -> int:
+    specialized_dim_numbers_raw_str = (
+        ENV_SOT_SPECIALIZED_DIM_NUMBERS.get().lower()
+    )
+    assert specialized_dim_numbers_raw_str in [
+        "no",
+        "0",
+        "01",
+    ], f"Unsupported specialized_dim_numbers: {specialized_dim_numbers_raw_str}"
+    to_min_non_specialized_number = {
+        # specialized numbers, minimum non-specialized number
+        "no": 0,
+        "0": 1,
+        "01": 2,
+    }
+    return to_min_non_specialized_number[specialized_dim_numbers_raw_str]

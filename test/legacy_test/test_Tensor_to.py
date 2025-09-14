@@ -140,6 +140,15 @@ class TensorToTest(unittest.TestCase):
         self.assertTrue(place2_str, "Place(cpu)")
         type2_str = str(tensor2.dtype)
         self.assertTrue(type2_str, "paddle.int8")
+        tensor3 = paddle.to_tensor([7, 8, 9])
+        tensor4 = tensor3.to(dtype="int8", non_blocking=True)
+        self.assertTrue(tensor4.dtype, "paddle.int8")
+        tensor5 = tensor3.to(dtype="int8", copy=True)
+        self.assertTrue(tensor5.dtype, "paddle.int8")
+        tensor6 = tensor3.to(dtype="int8", non_blocking=True, copy=True)
+        self.assertTrue(tensor6.dtype, "paddle.int8")
+        tensor7 = tensor3.to(dtype=tensor3.dtype, copy=True)
+        self.assertTrue(tensor7.dtype, tensor3.dtype)
 
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])

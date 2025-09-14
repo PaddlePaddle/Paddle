@@ -19,10 +19,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class ReshapeTransposeMatmulMkldnnFusePass : public FusePassBase {
+class ReshapeTransposeMatmulOnednnFusePass : public FusePassBase {
  public:
-  ReshapeTransposeMatmulMkldnnFusePass();
-  virtual ~ReshapeTransposeMatmulMkldnnFusePass() {}
+  ReshapeTransposeMatmulOnednnFusePass();
+  virtual ~ReshapeTransposeMatmulOnednnFusePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;

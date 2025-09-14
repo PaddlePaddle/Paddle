@@ -84,7 +84,7 @@ struct WorkQueueOptions {
   }
 
   // throw an exception if there is an invalid option
-  void Validate() const;
+  PADDLE_API void Validate() const;
 
   std::string name;
   size_t num_threads;
@@ -184,13 +184,13 @@ class WorkQueueGroup {
   std::vector<WorkQueueOptions> queues_options_;
 };
 
-std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
+PADDLE_API std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
     const WorkQueueOptions& options);
 
-std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
+PADDLE_API std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
     const WorkQueueOptions& options);
 
-std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
+PADDLE_API std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
     const std::vector<WorkQueueOptions>& queues_options);
 
 }  // namespace framework

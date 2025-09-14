@@ -913,7 +913,7 @@ struct AffineQuantStore {
       float normalized_i = static_cast<float>(src[i]);
       float normalized_val =
           normalized_i * gamma_pack.elem[i] + beta_pack.elem[i];
-      if constexpr (std::is_same_v<OutType, phi::dtype::float8_e4m3fn>) {
+      if constexpr (std::is_same_v<OutType, phi::float8_e4m3fn>) {
         y_pack.elem[i] = FP8QuantHelperFunc<float, OutType>(normalized_val,
                                                             quant_out_scale,
                                                             quant_round_type,
@@ -1044,6 +1044,13 @@ void FusedLayerNormKernel(const Context& dev_ctx,
   }
 
   using U = phi::funcs::LayerNormParamType<T>;
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (residual_out) dev_ctx.template Alloc<T>(residual_out);
+    if (mean) dev_ctx.template Alloc<U>(mean);
+    if (variance) dev_ctx.template Alloc<U>(variance);
+    return;
+  }
   const T* x_data = x.data<T>();
   const U* norm_weight_data =
       norm_weight ? norm_weight.get().data<U>() : nullptr;
@@ -1115,15 +1122,15 @@ void FusedLayerNormKernel(const Context& dev_ctx,
           variance_data /*ln_var_data*/);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
       SkipLoadAndStoreResidual<T> load(x_data,
                                        bias_data,
                                        residual_data,
                                        residual_out_data,
                                        residual_alpha,
                                        cols);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, U, T, true, true> store(
+      AffineQuantStore<phi::float8_e4m3fn, U, T, true, true> store(
           out_data,
           cols,
           norm_weight_data,
@@ -1180,10 +1187,10 @@ void FusedLayerNormKernel(const Context& dev_ctx,
                                                             variance_data);
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
       // Quantize and output float8_e4m3fn.
-      phi::dtype::float8_e4m3fn* out_data =
-          dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(out);
+      phi::float8_e4m3fn* out_data =
+          dev_ctx.template Alloc<phi::float8_e4m3fn>(out);
       DirectLoad<T, U> load(x_data, cols);
-      AffineQuantStore<phi::dtype::float8_e4m3fn, U, T, true, true> store(
+      AffineQuantStore<phi::float8_e4m3fn, U, T, true, true> store(
           out_data,
           cols,
           norm_weight_data,
@@ -1224,8 +1231,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
@@ -1238,7 +1245,7 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
@@ -1252,8 +1259,8 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::FusedLayerNormKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

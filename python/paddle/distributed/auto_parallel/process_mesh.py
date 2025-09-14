@@ -21,6 +21,8 @@ from typing import TYPE_CHECKING, Any, SupportsIndex, Union
 import numpy as np
 
 import paddle
+from paddle.distributed import fleet
+from paddle.distributed.collective import _get_group_map
 from paddle.distributed.communication.group import is_initialized
 from paddle.framework import core
 
@@ -42,6 +44,7 @@ _g_previous_process_mesh = None
 _g_current_process_mesh = None
 # {shape_process_ids : unique_id}
 _g_unique_process_mesh_map = {}
+_g_group_map = {}
 
 
 def get_current_process_mesh():
@@ -84,6 +87,24 @@ def retrieve_unique_id_for_process_mesh(shape, process_ids):
 def get_unique_process_mesh_map():
     global _g_unique_process_mesh_map
     return _g_unique_process_mesh_map
+
+
+def init_group_by_process_mesh(dim_names):
+    global _g_group_map
+    if dim_names is None:
+        dim_names = []
+    assert isinstance(dim_names, list), "dim_names must be a list."
+    for dim_name in dim_names:
+        if dim_name in _g_group_map:
+            continue
+        _g_group_map[dim_name] = {}
+
+
+def get_group_map_by_dim_name(dim_name):
+    global _g_group_map
+    if dim_name not in _g_group_map:
+        raise RuntimeError(f'No group found for dim_name {dim_name}')
+    return _g_group_map[dim_name]
 
 
 class ProcessMesh(core.ProcessMesh):
@@ -139,28 +160,28 @@ class ProcessMesh(core.ProcessMesh):
         self._shape = list(self._mesh.shape)
         self._process_ids = self._mesh.flatten().tolist()
 
-        assert all(
-            isinstance(p, int) for p in self._process_ids
-        ), "All elements of the mesh must be integer"
-        assert (
-            min(self._process_ids) >= 0
-        ), 'All elements of the mesh must be >= 0.'
+        assert all(isinstance(p, int) for p in self._process_ids), (
+            "All elements of the mesh must be integer"
+        )
+        assert min(self._process_ids) >= 0, (
+            'All elements of the mesh must be >= 0.'
+        )
         unique_process_ids = set(self._process_ids)
-        assert len(unique_process_ids) == len(
-            self._process_ids
-        ), 'All elements of the mesh must be unique.'
+        assert len(unique_process_ids) == len(self._process_ids), (
+            'All elements of the mesh must be unique.'
+        )
 
         if dim_names is not None:
-            assert len(dim_names) == len(
-                self._shape
-            ), "The length of dims_names must be same as the shape of the mesh."
+            assert len(dim_names) == len(self._shape), (
+                "The length of dims_names must be same as the shape of the mesh."
+            )
             self._dim_names = copy.deepcopy(dim_names)
         else:
             self._dim_names = ["d" + str(i) for i in range(len(self._shape))]
         unique_dim_names = set(self._dim_names)
-        assert len(unique_dim_names) == len(
-            self._dim_names
-        ), f'All dim_names {dim_names} must be unique.'
+        assert len(unique_dim_names) == len(self._dim_names), (
+            f'All dim_names {dim_names} must be unique.'
+        )
 
         # Follow the requirement for using pybind11
         core.ProcessMesh.__init__(
@@ -182,6 +203,7 @@ class ProcessMesh(core.ProcessMesh):
         self._unique_id = get_unique_id_for_process_mesh(
             self._shape, self._process_ids
         )
+        init_group_by_process_mesh(self._dim_names)
 
     @property
     def mesh(self) -> npt.NDArray[Any]:
@@ -274,9 +296,9 @@ class ProcessMesh(core.ProcessMesh):
         dim_name: str,
         index: slice | tuple[slice, ...] | SupportsIndex | None = None,
     ) -> ProcessMesh:
-        assert (
-            dim_name in self._dim_names
-        ), f'{dim_name} is not a valid dim name.'
+        assert dim_name in self._dim_names, (
+            f'{dim_name} is not a valid dim name.'
+        )
         index_axis = self._dim_names.index(dim_name)
         new_order = [index_axis] + [
             i for i in range(len(self._dim_names)) if i != index_axis
@@ -360,6 +382,38 @@ class ProcessMesh(core.ProcessMesh):
         sub_mesh = ProcessMesh(reorder_mesh[:, col_idx], [dim_name])
         return sub_mesh
 
+    def _get_group(
+        self,
+        dim_name: str | None = None,
+    ) -> paddle.distributed.communication.group.Group:
+        """ """
+        assert is_initialized(), (
+            "When you want to get a group from the ProcessMesh."
+            " Call paddle.distributed.init_parallel_env first "
+            "to initialize the distributed environment."
+        )
+        if len(self._dim_names) > 1 and dim_name is None:
+            raise ValueError(
+                "You should specify the dim_name when the ProcessMesh has more than one dimensions."
+            )
+        reorder_mesh = self.get_mesh_with_dim(dim_name)._mesh.reshape(
+            self.get_dim_size(dim_name), -1
+        )
+        curr_rank = paddle.distributed.get_rank()
+        groups = get_group_map_by_dim_name(dim_name)
+
+        for rank in self._process_ids:
+            col_idx = np.argmax(reorder_mesh == rank) % reorder_mesh.shape[-1]
+            if col_idx in groups:
+                continue
+            pg = paddle.distributed.new_group(reorder_mesh[:, col_idx])
+            groups[col_idx] = pg
+
+        cur_col_idx = (
+            np.argmax(reorder_mesh == curr_rank) % reorder_mesh.shape[-1]
+        )
+        return groups[cur_col_idx]
+
     def get_group(
         self,
         dim_name: str | None = None,
@@ -390,8 +444,28 @@ class ProcessMesh(core.ProcessMesh):
                     f"{dim_name} not in the dimension names {self._dim_names}"
                 )
             else:
-                pg = paddle.distributed.new_group(self._process_ids)
-                return pg
+                if hasattr(fleet.fleet, "_hcg"):
+                    hcg = fleet.get_hybrid_communicate_group()
+                    if hcg is not None:
+                        parallel_group_map = {
+                            "pp": hcg.get_pipe_parallel_group,
+                            "dp": hcg.get_data_parallel_group,
+                            "mp": hcg.get_model_parallel_group,
+                            "sep": hcg.get_sep_parallel_group,
+                            "sharding": hcg.get_sharding_parallel_group,
+                        }
+
+                        if dim_name not in parallel_group_map:
+                            raise ValueError(
+                                f"{dim_name} is not a valid dim name."
+                            )
+
+                        return parallel_group_map[dim_name]()
+                group_map = _get_group_map()
+                for group in group_map.values():
+                    if set(group.ranks) == set(self._process_ids):
+                        return group
+                return paddle.distributed.new_group(self._process_ids)
         else:
             if dim_name not in self._dim_names:
                 raise ValueError(

@@ -14,46 +14,14 @@
 
 #pragma once
 
-#include "paddle/ap/include/axpr/value.h"
+#include "paddle/ap/include/adt/adt.h"
 
 namespace ap::axpr {
 
+class Value;
+
 struct BoolHelper {
-  adt::Result<bool> ConvertToBool(const axpr::Value& cond) {
-    using TypeT = typename TypeTrait<axpr::Value>::TypeT;
-    return cond.Match(
-        [](const TypeT&) -> Result<bool> { return true; },
-        [](const bool c) -> Result<bool> { return c; },
-        [](const int64_t c) -> Result<bool> { return c != 0; },
-        [](const double c) -> Result<bool> { return c != 0; },
-        [](const std::string& c) -> Result<bool> { return !c.empty(); },
-        [](const Nothing&) -> Result<bool> { return false; },
-        [](const adt::List<axpr::Value>& list) -> Result<bool> {
-          return list->size() > 0;
-        },
-        [](const MutableList<axpr::Value>& list) -> Result<bool> {
-          ADT_LET_CONST_REF(list_ptr, list.Get());
-          return list_ptr->size() > 0;
-        },
-        [](const AttrMap<axpr::Value>& obj) -> Result<bool> {
-          return obj->size() > 0;
-        },
-        [](const Lambda<CoreExpr>&) -> Result<bool> { return true; },
-        [](const Closure<axpr::Value>&) -> Result<bool> { return true; },
-        [](const Continuation<axpr::Value>&) -> Result<bool> { return true; },
-        [](const Method<axpr::Value>&) -> Result<bool> { return true; },
-        [](const builtin_symbol::Symbol&) -> Result<bool> { return true; },
-        [](const BuiltinFuncType<axpr::Value>&) -> Result<bool> {
-          return true;
-        },
-        [](const BuiltinHighOrderFuncType<axpr::Value>&) -> Result<bool> {
-          return true;
-        },
-        [&](const auto&) -> Result<bool> {
-          return TypeError{std::string() + "'" + axpr::GetTypeName(cond) +
-                           "' could not be convert to bool"};
-        });
-  }
+  adt::Result<bool> ConvertToBool(const axpr::Value& cond);
 };
 
 }  // namespace ap::axpr

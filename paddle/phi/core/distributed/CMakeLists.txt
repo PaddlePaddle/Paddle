@@ -9,6 +9,7 @@ if(WITH_NCCL OR WITH_RCCL)
   list(APPEND DISTRIBUTED_COMMON_SRCS comm_task_manager.cc)
   list(APPEND DISTRIBUTED_COMMON_SRCS nccl_comm_context.cc nccl_comm_task.cc
        nccl_tools.cc)
+  list(APPEND DISTRIBUTED_COMMON_SRCS nccl_config.cc)
 endif()
 
 if(WITH_GLOO)
@@ -24,7 +25,10 @@ if(WITH_XPU_BKCL)
 endif()
 
 if(WITH_FLAGCX)
-  list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_comm_context.cc flagcx_tools.cc)
+  list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_tools.cc)
+  if(NOT WITH_XPU)
+    list(APPEND DISTRIBUTED_COMMON_SRCS flagcx_comm_context.cc)
+  endif()
 endif()
 
 collect_srcs(core_srcs SRCS ${DISTRIBUTED_COMMON_SRCS})

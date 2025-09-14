@@ -294,7 +294,7 @@ class TrtConvertFlashMultiHeadMatmulTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller1,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "TThe flash attention trt oss plugin do not support static shape yet",
+            "The flash attention trt oss plugin do not support static shape yet",
         )
 
         def teller2(program_config, predictor_config):
@@ -603,7 +603,7 @@ class TrtConvertFlashMultiHeadMatmulWeightInputTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller1,
             SkipReasons.TRT_NOT_IMPLEMENTED,
-            "TThe flash attention trt oss plugin do not support static shape yet",
+            "The flash attention trt oss plugin do not support static shape yet",
         )
 
         def teller2(program_config, predictor_config):

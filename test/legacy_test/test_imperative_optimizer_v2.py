@@ -16,6 +16,7 @@ import itertools
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 from test_imperative_base import new_program_scope
 
 import paddle
@@ -88,11 +89,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         seed = 90
         batch_size = 128
         if place is None:
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
 
         try:
             paddle.disable_static()
@@ -118,11 +115,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
         batch_size = 128
 
         if place is None:
-            place = (
-                base.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
+            place = get_device_place()
 
         paddle.disable_static(place)
         paddle.seed(seed)
@@ -195,11 +188,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 paddle.framework.random._manual_program_seed(seed)
 
             if place is None:
-                place = (
-                    base.CPUPlace()
-                    if not core.is_compiled_with_cuda()
-                    else base.CUDAPlace(0)
-                )
+                place = get_device_place()
 
             exe = base.Executor(place)
 

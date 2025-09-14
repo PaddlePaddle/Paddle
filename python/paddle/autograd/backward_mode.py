@@ -102,21 +102,21 @@ def backward(
         if isinstance(in_out_list, (list, tuple)):
             assert len(in_out_list) > 0, f"{name} cannot be empty"
             for each_var in in_out_list:
-                assert isinstance(
-                    each_var, paddle.Tensor
-                ), f"Elements of {name} must be paddle.Tensor"
+                assert isinstance(each_var, paddle.Tensor), (
+                    f"Elements of {name} must be paddle.Tensor"
+                )
             return in_out_list
         else:
-            assert isinstance(
-                in_out_list, paddle.Tensor
-            ), f"{name} must be Tensor or list of Tensor"
+            assert isinstance(in_out_list, paddle.Tensor), (
+                f"{name} must be Tensor or list of Tensor"
+            )
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")
 
-    assert len(tensors) == len(
-        set(tensors)
-    ), "The argument 'tensors' of paddle.autograd.backward contains duplicate paddle.Tensor object."
+    assert len(tensors) == len(set(tensors)), (
+        "The argument 'tensors' of paddle.autograd.backward contains duplicate paddle.Tensor object."
+    )
 
     if grad_tensors is not None:
         if not isinstance(grad_tensors, (list, tuple)):
@@ -124,16 +124,16 @@ def backward(
 
         for each_tensor in grad_tensors:
             if each_tensor is not None:
-                assert isinstance(
-                    each_tensor, paddle.Tensor
-                ), "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
+                assert isinstance(each_tensor, paddle.Tensor), (
+                    "The argument 'grad_tensors' of paddle.autograd.backward is invalid, it can be 'None', 'paddle.Tensor' or 'list[None/paddle.Tensor]'."
+                )
     else:
         grad_tensors = []
 
     if len(grad_tensors) > 0:
-        assert len(tensors) == len(
-            grad_tensors
-        ), "The length of grad_tensors must be equal to tensors"
+        assert len(tensors) == len(grad_tensors), (
+            "The length of grad_tensors must be equal to tensors"
+        )
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
 

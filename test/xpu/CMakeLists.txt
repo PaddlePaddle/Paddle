@@ -9,6 +9,8 @@ file(
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 
+list(FILTER TEST_OPS EXCLUDE REGEX "^test_dist_")
+
 if(WITH_XPU_BKCL)
   list(REMOVE_ITEM TEST_OPS "test_gen_bkcl_id_op")
 endif()
@@ -20,6 +22,7 @@ file(
 if(WITH_XPU_BKCL)
   list(APPEND DIST_TEST_OPS test_gen_bkcl_id_op)
 endif()
+string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 foreach(TEST_OP ${TEST_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
@@ -31,6 +34,7 @@ endforeach()
 
 set_tests_properties(test_conv2d_op_xpu PROPERTIES TIMEOUT 120)
 set_tests_properties(test_mul_op_xpu PROPERTIES TIMEOUT 120)
+set_tests_properties(test_slice_op_xpu PROPERTIES TIMEOUT 40)
 set_tests_properties(test_matmul_v2_op_xpu PROPERTIES TIMEOUT 900)
 set_tests_properties(test_collective_identity_xpu
                      PROPERTIES LABELS "RUN_TYPE=DIST_KUNLUN")

@@ -17,7 +17,6 @@
 
 #include "paddle/phi/backends/onednn/onednn_context.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -48,11 +47,6 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
                     float beta,
                     DenseTensor* out,
                     dnnl::algorithm algorithm) {
-  PADDLE_ENFORCE_EQ(dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "Operator DNNL eletwise_forward must use ONEDNNPlace"));
-
   bool is_inplaced = x.IsSharedBufferWith(*out);
 
   funcs::ActivationOneDNNHandler<T> handler(
@@ -83,6 +77,10 @@ struct OneDNNActivationFunc : public funcs::BaseActivationFunctor<T> {
                   float alpha,
                   float beta,
                   DenseTensor* out) const {
+    if (out && out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     EltwiseForward<T>(dev_ctx, x, alpha, beta, out, algorithm);
   }
 };
@@ -220,8 +218,7 @@ void SwishKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(round, OneDNN, ONEDNN, phi::RoundKernel, float) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
-  PD_REGISTER_KERNEL(                             \
-      name, OneDNN, ONEDNN, phi::func, float, phi::dtype::bfloat16) {}
+  PD_REGISTER_KERNEL(name, OneDNN, ONEDNN, phi::func, float, phi::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)

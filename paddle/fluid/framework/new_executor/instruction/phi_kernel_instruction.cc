@@ -37,7 +37,7 @@
 PHI_DEFINE_EXPORTED_bool(print_kernel_run_info,
                          false,
                          "Whether print kernel run info.");
-
+COMMON_DECLARE_bool(check_cuda_error);
 namespace paddle::framework {
 
 PhiKernelInstruction::PhiKernelInstruction(
@@ -184,6 +184,10 @@ PhiKernelInstruction::PhiKernelInstruction(
 PhiKernelInstruction::~PhiKernelInstruction() { delete phi_kernel_; }
 
 void PhiKernelInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " begin");
+  }
+
   auto place =
       kernel_context_.GetDeviceContext<phi::DeviceContext>().GetPlace();
   if (FLAGS_print_kernel_run_info) {
@@ -230,6 +234,10 @@ void PhiKernelInstruction::Run() {
   }
 
   VLOG(6) << "End run op " << phi_op_name_ << " kernel.";
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("PhiKernelInstruction " + phi_op_name_ + " finish");
+  }
 }
 
 }  // namespace paddle::framework

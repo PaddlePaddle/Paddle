@@ -14,7 +14,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, tensor
@@ -82,8 +87,8 @@ class TrilTriuOpDefaultTestComplex_128(TrilTriuOpDefaultTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     'not supported bf16',
 )
 class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
@@ -102,11 +107,11 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
         self.X = np.arange(1, 101, dtype="float32").reshape([10, -1])
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
             numeric_grad_delta=0.05,
@@ -123,10 +128,6 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
     cls_name = (
         f"{expected}_{op_type}_shape_{Xshape}_diag_{diagonal}_dtype_{dtype}"
     )
-    errmsg = {
-        "diagonal: TypeError": f"diagonal in {op_type} must be a python Int",
-        "input: ValueError": f"x shape in {op_type} must be at least 2-D",
-    }
 
     class FailureCase(unittest.TestCase):
         def test_failure(self):
@@ -135,9 +136,7 @@ def case_generator(op_type, Xshape, diagonal, expected, dtype):
             data = paddle.static.data(
                 shape=Xshape, dtype='float64', name=cls_name
             )
-            with self.assertRaisesRegex(
-                eval(expected.split(':')[-1]), errmsg[expected]
-            ):
+            with self.assertRaises(TypeError):
                 getattr(tensor, op_type)(x=data, diagonal=diagonal)
 
     class SuccessCase(TrilTriuOpDefaultTest):
@@ -223,7 +222,7 @@ cases = {
             20.20,
         ],  # str, list, dict, tuple, float
     },
-    'input: ValueError': {
+    'input: TypeError': {
         (2020,): [None],
     },
 }
@@ -261,11 +260,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                     ).astype(dtype)
                 tril_out, triu_out = tensor.tril(x), tensor.triu(x)
 
-                place = (
-                    base.CUDAPlace(0)
-                    if base.core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 exe = base.Executor(place)
                 tril_out, triu_out = exe.run(
                     prog,
@@ -314,17 +309,285 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                     ).astype(dtype)
                 triu_out = paddle.triu(x)
 
-                place = (
-                    base.CUDAPlace(0)
-                    if base.core.is_compiled_with_cuda()
-                    else base.CPUPlace()
-                )
+                place = get_device_place()
                 exe = base.Executor(place)
                 triu_out = exe.run(
                     prog,
                     feed={"x": data},
                     fetch_list=[triu_out],
                 )
+
+
+class TestTrilZeroSizeShape(TrilTriuOpDefaultTest):
+    def initTestCase(self):
+        self.real_op_type = 'tril'
+        self.diagonal = 0
+        self.X = np.random.rand(0, 3, 9, 4).astype(np.float64)
+
+
+class TestTriuZeroSizeShape(TrilTriuOpDefaultTest):
+    def initTestCase(self):
+        self.real_op_type = 'triu'
+        self.diagonal = 0
+        self.X = np.random.rand(0, 3, 9, 4).astype(np.float64)
+
+
+class TestTrilTriu_ZeroDimGrad(OpTest):
+    def setUp(self):
+        self.op_type = 'tril_triu'
+        self.real_op_type = 'tril'
+        self.diagonal = 0
+        self.inputs = {'X': np.random.randn(0, 3, 9, 4).astype('float64')}
+        self.attrs = {
+            'diagonal': self.diagonal,
+            'lower': True if self.real_op_type == 'tril' else False,
+        }
+        self.outputs = {
+            'Out': getattr(np, self.real_op_type)(
+                self.inputs['X'], self.diagonal
+            )
+        }
+        self.python_api = (
+            paddle.tril if self.real_op_type == 'tril' else paddle.triu
+        )
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestTrilTriu_ZeroDimGrad_Triu(OpTest):
+    def setUp(self):
+        self.op_type = 'tril_triu'
+        self.real_op_type = 'triu'
+        self.diagonal = 0
+        self.inputs = {'X': np.random.randn(0, 3, 9, 4).astype('float64')}
+        self.attrs = {'diagonal': self.diagonal, 'lower': False}
+        self.outputs = {
+            'Out': getattr(np, self.real_op_type)(
+                self.inputs['X'], self.diagonal
+            )
+        }
+        self.python_api = paddle.triu
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestTrilTriuOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_np = np.random.random((8, 10, 5, 6)).astype("float64")
+        self.diagonal = 0
+        self.test_types = ["decorator", "out", "out_decorator"]
+
+    def do_tril_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        diagonal = self.diagonal
+        if test_type == 'raw':
+            result = paddle.tril(x, diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator':
+            result = paddle.tril(input=x, diagonal=diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.tril(x, diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.tril(input=x, diagonal=diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def do_triu_test(self, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        diagonal = self.diagonal
+        if test_type == 'raw':
+            result = paddle.triu(x, diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator':
+            result = paddle.triu(input=x, diagonal=diagonal)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.triu(x, diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            out = paddle.empty_like(x)
+            out.stop_gradient = False
+            paddle.triu(input=x, diagonal=diagonal, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_all(self):
+        for d in range(-4, 6):
+            self.diagonal = d
+            out_std, grad_x_std = self.do_tril_test('raw')
+            for test_type in self.test_types:
+                out, grad_x = self.do_tril_test(test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-7
+                )
+                np.testing.assert_allclose(
+                    grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
+                )
+
+            out_std, grad_x_std = self.do_triu_test('raw')
+            for test_type in self.test_types:
+                out, grad_x = self.do_triu_test(test_type)
+                np.testing.assert_allclose(
+                    out.numpy(), out_std.numpy(), rtol=1e-7
+                )
+                np.testing.assert_allclose(
+                    grad_x.numpy(), grad_x_std.numpy(), rtol=1e-7
+                )
+
+
+class TestTrilTriuAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [10, 8]
+        self.dtype = 'float64'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_tril_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.tril(x, 1)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.tril(x=x, diagonal=1)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.tril(input=x, diagonal=1)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.tril(x, diagonal=1)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.tril(1)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.tril(diagonal=1)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.tril(x, 1, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.tril(self.np_input, 1)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_triu_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.triu(x, -2)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.triu(x=x, diagonal=-2)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.triu(input=x, diagonal=-2)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.triu(x, diagonal=-2)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.triu(-2)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.triu(diagonal=-2)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.triu(x, -2, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = np.triu(self.np_input, -2)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_tril_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.tril(x, 1)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.tril(x=x, diagonal=1)
+            # Key words args for torch
+            out3 = paddle.tril(input=x, diagonal=1)
+            # Combined args and kwargs
+            out4 = paddle.tril(x, diagonal=1)
+            # Tensor method args
+            out5 = x.tril(1)
+            # Tensor method kwargs
+            out6 = x.tril(diagonal=1)
+            # Do not support out in static
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = np.tril(self.np_input, 1)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+    def test_triu_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.triu(x, -2)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.triu(x=x, diagonal=-2)
+            # Key words args for torch
+            out3 = paddle.triu(input=x, diagonal=-2)
+            # Combined args and kwargs
+            out4 = paddle.triu(x, diagonal=-2)
+            # Tensor method args
+            out5 = x.triu(-2)
+            # Tensor method kwargs
+            out6 = x.triu(diagonal=-2)
+            # Do not support out in static
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = np.triu(self.np_input, -2)
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 if __name__ == '__main__':

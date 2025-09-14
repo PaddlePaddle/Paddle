@@ -37,7 +37,7 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
             self.init_dtype()
             self.op_type = 'reduce_prod'
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.keep_dim = False
             self.reduce_all = False
             self.initTestCase()

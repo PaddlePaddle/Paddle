@@ -107,7 +107,6 @@ class TestAddmm(unittest.TestCase):
 
 
 class TestAddmmStatic(unittest.TestCase):
-
     def check_result(self, input_shape, x_shape, y_shape):
         '''Only support sparse_coo_tensor in static graph'''
         if len(x_shape) == 3:

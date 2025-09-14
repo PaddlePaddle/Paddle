@@ -122,7 +122,6 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config, run_pir=False
     ) -> tuple[paddle_infer.Config, list[int], float]:
-
         def generate_trt_nodes_num(attrs, dynamic_shape):
             return 1, 2
 
@@ -133,13 +132,17 @@ class TrtConvertLookupTableV2Test(TrtLayerAutoScanTest):
         # for dynamic_shape mode
         self.generate_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), (1e-3, 1e-3)
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            (1e-3, 1e-3),
+        )
 
     def test(self):
         self.run_test(run_pir=True)

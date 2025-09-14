@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/runtime/sycl/sycl_backend_api.h"
 #include <glog/logging.h>
+#include <hip/hip_runtime.h>
+#include <sycl/ext/oneapi/experimental/backend/hip.hpp>
 
 namespace cinn {
 namespace runtime {
@@ -89,9 +91,6 @@ void SYCLBackendAPI::set_device(int device_id) {
     // create context and queue
     this->contexts[device_id] =
         new ::sycl::context(this->devices[device_id], exception_handler);
-    // one device one queue
-    this->queues[device_id].push_back(new ::sycl::queue(
-        *this->contexts[device_id], this->devices[device_id], q_prop));
   }
   this->now_device_id = device_id;
 }
@@ -105,36 +104,36 @@ int SYCLBackendAPI::get_device_property(DeviceProperty device_property,
 
   switch (device_property) {
     case DeviceProperty::MaxBlockDimX: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[0];
       break;
     }
     case DeviceProperty::MaxBlockDimY: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[1];
       break;
     }
     case DeviceProperty::MaxBlockDimZ: {
-      ::sycl::_V1::id<3> max_work_item_sizes =
+      ::sycl::id<3> max_work_item_sizes =
           this->devices[index]
-              .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+              .get_info<::sycl::info::device::max_work_item_sizes>();
       rv = max_work_item_sizes[2];
       break;
     }
     case DeviceProperty::MaxGridDimX: {
-      rv = 2097151;
+      rv = 2147483647;
       break;
     }
     case DeviceProperty::MaxGridDimY: {
-      rv = 2097151;
+      rv = 2147483647;
       break;
     }
     case DeviceProperty::MaxGridDimZ: {
-      rv = 2097151;
+      rv = 2147483647;
       break;
     }
     case DeviceProperty::MaxSharedMemoryPerBlock: {
@@ -239,7 +238,27 @@ void SYCLBackendAPI::stream_sync(void* stream) {
   SYCL_CALL(static_cast<::sycl::queue*>(stream)->wait_and_throw());
 }
 
-::sycl::queue* SYCLBackendAPI::get_now_queue() {
+::sycl::queue* SYCLBackendAPI::get_now_queue(void* raw_stream) {
+  if (this->queues[now_device_id].size() == 0) {
+    int current_device_id;
+    hipGetDevice(&current_device_id);
+    hipSetDevice(current_device_id);
+    hipDeviceGet(&device_, current_device_id);
+    hipCtxGetCurrent(&context_);
+    hipDevicePrimaryCtxRetain(&context_, device_);
+
+    ::sycl::backend_input_t<::sycl::backend::ext_oneapi_hip, ::sycl::context>
+        InteropContextInput{context_};
+    ::sycl::context InteropContext =
+        ::sycl::make_context<::sycl::backend::ext_oneapi_hip>(
+            InteropContextInput);
+
+    hipStream_t hipStream = static_cast<hipStream_t>(raw_stream);
+    auto Q =
+        new ::sycl::queue(::sycl::make_queue<::sycl::backend::ext_oneapi_hip>(
+            hipStream, InteropContext));
+    this->queues[now_device_id].push_back(Q);
+  }
   return this->queues[now_device_id][0];
 }
 
@@ -276,9 +295,9 @@ std::array<int, 3> SYCLBackendAPI::get_max_block_dims(
     std::optional<int> device_id) {
   std::array<int, 3> kMaxBlockDims;
   int index = device_id.value_or(this->now_device_id);
-  ::sycl::_V1::id<3> max_work_item_sizes =
+  ::sycl::id<3> max_work_item_sizes =
       this->devices[index]
-          .get_info<::sycl::_V1::info::device::max_work_item_sizes<3>>();
+          .get_info<::sycl::info::device::max_work_item_sizes>();
   kMaxBlockDims = std::array<int, 3>{
       max_work_item_sizes[2], max_work_item_sizes[1], max_work_item_sizes[0]};
   return kMaxBlockDims;
@@ -287,7 +306,7 @@ std::array<int, 3> SYCLBackendAPI::get_max_block_dims(
 std::array<int, 3> SYCLBackendAPI::get_max_grid_dims(
     std::optional<int> device_id) {
   std::array<int, 3> kMaxGridDims;
-  kMaxGridDims = std::array<int, 3>{2097151, 2097151, 2097151};
+  kMaxGridDims = std::array<int, 3>{2147483647, 2147483647, 2147483647};
   return kMaxGridDims;
 }
 

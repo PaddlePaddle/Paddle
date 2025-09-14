@@ -41,7 +41,7 @@ static void CalcBoxLocationLossGrad(T* input_grad,
                                     Box<T> gt,
                                     std::vector<int> anchors,
                                     int an_idx,
-                                    int box_idx,
+                                    int64_t box_idx,
                                     int gi,
                                     int gj,
                                     int grid_size,
@@ -68,7 +68,7 @@ template <typename T>
 static inline void CalcLabelLossGrad(T* input_grad,
                                      const T loss,
                                      const T* input,
-                                     const int index,
+                                     const int64_t index,
                                      const int label,
                                      const int class_num,
                                      const int stride,
@@ -190,7 +190,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
         int gi = static_cast<int>(gt.x * w);
         int gj = static_cast<int>(gt.y * h);
 
-        int box_idx = GetEntryIndex(
+        int64_t box_idx = GetEntryIndex(
             i, mask_idx, gj * w + gi, mask_num, an_stride, stride, 0);
         CalcBoxLocationLossGrad<T>(input_grad_data,
                                    loss_grad_data[i],
@@ -207,7 +207,7 @@ void YoloLossGradKernel(const Context& dev_ctx,
                                    score);
 
         int label = gt_label_data[i * b + t];
-        int label_idx = GetEntryIndex(
+        int64_t label_idx = GetEntryIndex(
             i, mask_idx, gj * w + gi, mask_num, an_stride, stride, 5);
         CalcLabelLossGrad<T>(input_grad_data,
                              loss_grad_data[i],

@@ -35,7 +35,7 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
-class InferSpmdContext {
+class PADDLE_API InferSpmdContext {
  public:
   InferSpmdContext() = default;
   InferSpmdContext(
@@ -178,9 +178,11 @@ struct InferSpmdFnImpl<Return (*)(Args...), infer_spmd_fn> {
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(float);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_ATTRIBUTE(DataType);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::vector<int>);
   PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
       std::vector<int64_t>);
+  PD_SPECIALIZE_InferSpmdFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
 
   /* End case */
   template <typename T>
@@ -227,7 +229,7 @@ class SpmdRule {
 
 // SpmdRuleFactory manage the spmd rules and cache the propagate results
 // TODO(chenweihang): Add spmd caching impl later
-class SpmdRuleFactory {
+class PADDLE_API SpmdRuleFactory {
  public:
   static SpmdRuleFactory& Instance();
 

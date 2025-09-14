@@ -26,6 +26,7 @@
 
 #include "paddle/common/errors.h"
 #include "paddle/phi/common/reduce_type.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -70,6 +71,8 @@ class Shard : public Placement {
  public:
   explicit Shard(int dim) : dim_(dim) {}
 
+  Shard(int dim, int split_factor) : dim_(dim), split_factor_(split_factor) {}
+
   bool is_shard(std::optional<int> dim = std::nullopt) const override {
     if (dim && *dim == this->dim_) {
       return true;
@@ -80,7 +83,10 @@ class Shard : public Placement {
 
   bool operator==(const Placement& other) const override {
     const Shard* other_shard = dynamic_cast<const Shard*>(&other);
-    return other_shard && this->dim_ == other_shard->dim_;
+    if (!other_shard) return false;
+    if (other_shard->get_co_shard_order() != 0) return false;
+    return this->dim_ == other_shard->dim_ &&
+           this->split_factor_ == other_shard->split_factor_;
   }
 
   bool operator!=(const Placement& other) const override {
@@ -93,17 +99,102 @@ class Shard : public Placement {
 
   int get_dim() const { return dim_; }
 
+  virtual int get_co_shard_order() const { return 0; }
+
+  void set_split_factor(int64_t sf) { split_factor_ = sf; }
+
+  int get_split_factor() const { return split_factor_; }
+
   friend std::ostream& operator<<(std::ostream& os, const Shard& p) {
     os << p.to_string();
     return os;
   }
 
   std::string to_string() const override {
-    return "Shard(dim=" + std::to_string(dim_) + ")";
+    std::stringstream ss;
+    ss << "Shard(dim=" << std::to_string(dim_);
+    if (split_factor_ != 1) {
+      ss << ", split_factor=" << std::to_string(split_factor_);
+    }
+    ss << ")";
+
+    return ss.str();
+  }
+
+  virtual std::shared_ptr<Shard> copy() const {
+    return std::make_shared<Shard>(*this);
+  }
+
+  virtual std::shared_ptr<Shard> deepcopy() const {
+    return std::make_shared<Shard>(*this);
+  }
+
+ protected:
+  int dim_;
+  int split_factor_ = 1;
+};
+
+class CoShard : public Shard {
+ public:
+  CoShard(int64_t dim, int64_t co_shard_order)
+      : Shard(dim, 1), co_shard_order_(co_shard_order) {}
+
+  int get_co_shard_order() const override { return co_shard_order_; }
+
+  std::string to_string() const override {
+    std::stringstream ss;
+    ss << "Shard(dim=" << std::to_string(dim_);
+    ss << ", shard_order=" << std::to_string(co_shard_order_) << ")";
+
+    return ss.str();
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const CoShard& p) {
+    os << p.to_string();
+    return os;
+  }
+
+  std::shared_ptr<Shard> copy() const override {
+    return std::make_shared<CoShard>(*this);
+  }
+
+  std::shared_ptr<Shard> deepcopy() const override {
+    return std::make_shared<CoShard>(*this);
+  }
+
+  bool operator==(const Placement& other) const override {
+    if (const CoShard* other_coshard = dynamic_cast<const CoShard*>(&other)) {
+      return this->dim_ == other_coshard->dim_ &&
+             this->split_factor_ == other_coshard->split_factor_ &&
+             this->co_shard_order_ == other_coshard->co_shard_order_;
+    }
+    if (const Shard* other_shard = dynamic_cast<const Shard*>(&other)) {
+      return this->co_shard_order_ == 0 &&
+             this->dim_ == other_shard->get_dim() &&
+             this->split_factor_ == other_shard->get_split_factor();
+    }
+    return false;
+  }
+
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
+  }
+
+  std::size_t hash() const override {
+    std::stringstream ss;
+    ss << "Shard(dim=" << std::to_string(dim_);
+    if (split_factor_ != 1) {
+      ss << ", split_factor=" << std::to_string(split_factor_);
+    }
+    if (co_shard_order_ != 0) {
+      ss << ", shard_order=" << std::to_string(co_shard_order_);
+    }
+    ss << ")";
+    return std::hash<std::string>{}(ss.str());
   }
 
  private:
-  int dim_;
+  int64_t co_shard_order_ = 0;
 };
 
 class Replicate : public Placement {
@@ -193,9 +284,9 @@ class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
   std::shared_ptr<const DenseTensorMeta> tensor_meta_;
 };
 
-bool equal_placements(const Placements& a, const Placements& b);
+PADDLE_API bool equal_placements(const Placements& a, const Placements& b);
 
-phi::distributed::Placements cvt_dim_map_to_placements(
+PADDLE_API phi::distributed::Placements cvt_dim_map_to_placements(
     const ProcessMesh& process_mesh,
     const std::vector<int64_t>& dim_mapping,
     const paddle::flat_hash_map<int64_t, phi::ReduceType>& partial_status);

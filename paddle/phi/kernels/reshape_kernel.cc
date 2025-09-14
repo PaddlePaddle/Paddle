@@ -35,6 +35,8 @@ void ReshapeKernel(const Context& dev_ctx,
     return;
   }
   dev_ctx.Alloc(out, x.dtype());
+  if (out->numel() == 0) return;
+
   // TODO(chenweihang): the output dims are overwrite after copying,
   // here we need to use copy method that only copy data
   auto dims = out->dims();

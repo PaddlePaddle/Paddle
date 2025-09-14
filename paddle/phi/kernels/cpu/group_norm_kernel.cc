@@ -22,6 +22,7 @@
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
@@ -40,6 +41,19 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+  if (y && y->numel() == 0) {
+    dev_ctx.template Alloc<T>(y);
+    // mean, var are intermediate in ops yaml config.
+    if (mean) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(mean->dims())), 0, mean);
+    }
+    if (var) {
+      phi::Full<T, Context>(
+          dev_ctx, phi::IntArray(common::vectorize(var->dims())), 0, var);
+    }
+    return;
+  }
   const DataLayout data_layout = common::StringToDataLayout(data_layout_str);
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();

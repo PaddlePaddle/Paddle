@@ -44,9 +44,9 @@ class MultiHeadAttention(paddle.nn.Layer):
         self.attn_dropout = attn_dropout
 
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
 
         self.norm1 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)
         self.norm2 = paddle.nn.LayerNorm(embed_dim, epsilon=1e-5)

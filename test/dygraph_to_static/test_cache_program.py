@@ -46,21 +46,13 @@ class TestCacheProgram(Dy2StTestBase):
             # Check forward ops
             prev_ops = cur_ops
 
-            if paddle.framework.use_pir_api():
-                cur_ops = Counter(
-                    [
-                        op.name()
-                        for op in static_net.forward.concrete_program.main_program.global_block().ops
-                    ]
-                )
+            cur_ops = Counter(
+                [
+                    op.name()
+                    for op in static_net.forward.concrete_program.main_program.global_block().ops
+                ]
+            )
 
-            else:
-                cur_ops = Counter(
-                    [
-                        op.type
-                        for op in static_net.forward.concrete_program.main_program.global_block().ops
-                    ]
-                )
             if batch_id > 0:
                 prev_out_numpy = (
                     prev_out[0].numpy()

@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
 COMMON_DECLARE_string(trt_engine_serialized_path);
+COMMON_DECLARE_bool(check_cuda_error);
 
 namespace paddle {
 namespace framework {
@@ -847,6 +848,10 @@ void TensorRTEngineInstruction::RunTrt() {
 }
 
 void TensorRTEngineInstruction::Run() {
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " begin");
+  }
+
 #if IS_TRT_VERSION_LT(8500)
   PADDLE_THROW(
       common::errors::Unimplemented("PIR-TRT only support TensorRT "
@@ -856,6 +861,10 @@ void TensorRTEngineInstruction::Run() {
 #endif
   InputsCheck();
   RunTrt();
+
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    CUDAErrorCheck("TensorRTEngineInstruction " + op_name_ + " finish");
+  }
 }
 
 std::string TensorRTEngineInstruction::ReadBinaryFileToString(

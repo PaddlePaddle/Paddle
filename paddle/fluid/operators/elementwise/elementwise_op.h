@@ -113,7 +113,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       // Broadcasting of dims has to be done on Paddle shapes (NHWC)
       // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
-          ctx->IsRunMKLDNNKernel() &&
+          ctx->IsRunONEDNNKernel() &&
           (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
            phi::DataLayout::kNHWC) &&
           (x_dims.size() >= 3 || y_dims.size() >= 3);

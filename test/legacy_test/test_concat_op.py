@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    skip_check_grad_ci,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -669,7 +673,6 @@ class TestConcatOpError(unittest.TestCase):
 
 
 class TestConcatAPI(unittest.TestCase):
-
     def test_base_api(self):
         paddle.enable_static()
         with paddle.base.program_guard(paddle.base.Program()):
@@ -899,16 +902,7 @@ class TestConcatDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -948,16 +942,7 @@ class TestConcatTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -1028,7 +1013,6 @@ class TestConcatOpAutoParallel(OpTest):
 
 
 class TestConcatOpErrorWithPir(unittest.TestCase):
-
     def test_errors_with_pir(self):
         paddle.enable_static()
         with paddle.base.program_guard(
@@ -1056,11 +1040,176 @@ class TestConcatOpErrorWithPir(unittest.TestCase):
             paddle.concat([])
 
     def test_empty_inputs_static(self):
-        with IrGuard(), paddle.base.program_guard(
-            paddle.base.Program(), paddle.base.Program()
+        with (
+            IrGuard(),
+            paddle.base.program_guard(
+                paddle.base.Program(), paddle.base.Program()
+            ),
+            self.assertRaisesRegex(ValueError, "but got empty list"),
         ):
-            with self.assertRaisesRegex(ValueError, "but got empty list"):
-                paddle.concat([], axis=0)
+            paddle.concat([], axis=0)
+
+
+class TestConcatOpZeroSize1(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 3, 4, 5)).astype(self.dtype)
+        self.axis = 1
+
+
+class TestConcatOpZeroSize2(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((2, 0, 1, 5)).astype(self.dtype)
+        self.x1 = np.random.random((2, 0, 2, 5)).astype(self.dtype)
+        self.x2 = np.random.random((2, 0, 4, 5)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize3(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x1 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.x2 = np.random.random((0, 0, 0, 0)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize4(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOpZeroSize5(TestConcatOp):
+    def init_test_data(self):
+        self.x0 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x1 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.x2 = np.random.random((0, 1, 2, 3)).astype(self.dtype)
+        self.axis = 2
+
+
+class TestConcatOutAndParaDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.apis = [
+            paddle.concat,
+            paddle.cat,
+            paddle.concatenate,
+        ]
+        self.test_types = [
+            "decorator1",
+            "decorator2",
+            "out",
+            "out_decorator",
+        ]
+
+    def do_test(self, api, test_type):
+        single_shape = [2, 3, 4]
+        out_shape = [2, 3, 12]
+        x = paddle.arange(np.prod(single_shape), dtype="float32").reshape(
+            single_shape
+        )
+        y = paddle.arange(np.prod(single_shape), dtype="float32").reshape(
+            single_shape
+        )
+        z = paddle.arange(np.prod(single_shape), dtype="float32").reshape(
+            single_shape
+        )
+        x.stop_gradient = y.stop_gradient = z.stop_gradient = False
+        inputs = [x, y, z]
+        axis = -1
+        out = paddle.randn(out_shape, dtype="float32")
+        out.stop_gradient = False
+        if test_type == "raw":
+            res = api(inputs, axis)
+            loss = res.mean()
+            loss.backward()
+            x_grad, y_grad, z_grad = x.grad, y.grad, z.grad
+            return res, x_grad, y_grad, z_grad
+        elif test_type == "decorator1":
+            res = api(inputs, axis, out=out)
+            loss = res.mean()
+            loss.backward()
+            x_grad, y_grad, z_grad = x.grad, y.grad, z.grad
+            return res, x_grad, y_grad, z_grad
+        elif test_type == "decorator2":
+            res = api(inputs, dim=axis)
+            loss = res.mean()
+            loss.backward()
+            x_grad, y_grad, z_grad = x.grad, y.grad, z.grad
+            return res, x_grad, y_grad, z_grad
+        elif test_type == "out":
+            res = api(inputs, axis, out=out)
+            loss = out.mean()
+            loss.backward()
+            x_grad, y_grad, z_grad = x.grad, y.grad, z.grad
+            return out, x_grad, y_grad, z_grad
+        elif test_type == "out_decorator":
+            res = api(inputs, dim=axis, out=out)
+            loss = out.mean()
+            loss.backward()
+            x_grad, y_grad, z_grad = x.grad, y.grad, z.grad
+            return out, x_grad, y_grad, z_grad
+        else:
+            raise NotImplementedError(
+                f"Test type {test_type} is not implemented."
+            )
+
+    def test_concat_out_and_para_decorator(self):
+        res_std, x_grad_std, y_grad_std, z_grad_std = self.do_test(
+            paddle.concat, "raw"
+        )
+        for api in self.apis:
+            for test_type in self.test_types:
+                res, x_grad, y_grad, z_grad = self.do_test(api, test_type)
+                np.testing.assert_allclose(
+                    res_std.numpy(), res.numpy(), rtol=1e-20, atol=1e-20
+                )
+                np.testing.assert_allclose(
+                    x_grad_std.numpy(), x_grad.numpy(), rtol=1e-20, atol=1e-20
+                )
+                np.testing.assert_allclose(
+                    y_grad_std.numpy(), y_grad.numpy(), rtol=1e-20, atol=1e-20
+                )
+                np.testing.assert_allclose(
+                    z_grad_std.numpy(), z_grad.numpy(), rtol=1e-20, atol=1e-20
+                )
+
+
+class TestConcatOpAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_check_output(self):
+        """
+        Test the alias of concat function.
+        ``concat(tensors=x, dim=axis)`` is equivalent to ``concat(x=x, axis=axis)``
+        """
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        axis_cases = [0, -1]
+
+        for shape in shape_cases:
+            for axis in axis_cases:
+                x1 = paddle.rand(shape)
+                x2 = paddle.rand(shape)
+                combinations = [
+                    {"x": [x1, x2], "axis": axis},
+                    {"x": [x1, x2], "dim": axis},
+                    {"tensors": [x1, x2], "axis": axis},
+                    {"tensors": [x1, x2], "dim": axis},
+                ]
+                # Get baseline result
+                baseline = paddle.concat(x=[x1, x2], axis=axis)
+                expected = baseline.numpy()
+                for params in combinations:
+                    out = paddle.concat(**params)
+                    np.testing.assert_array_equal(out.numpy(), expected)
 
 
 if __name__ == '__main__':

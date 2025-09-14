@@ -105,9 +105,10 @@ def get_single_node_data():
 
 
 def mlp_forward(train_program, start_program, is_distributed=True):
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 256
         sequence_len = 128

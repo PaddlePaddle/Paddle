@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -222,7 +226,8 @@ class TestCase10(TestPad3dOp):
 
 def create_test_fp16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dFp16(parent):
         def get_dtype(self):
@@ -305,7 +310,8 @@ create_test_bf16(TestCase10)
 # ----------------Pad3d complex64----------------
 def create_test_complex64(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dComplex64(parent):
         def get_dtype(self):
@@ -345,7 +351,8 @@ create_test_complex64(TestCase10)
 
 def create_test_complex128(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestPad3dComplex128(parent):
         def get_dtype(self):
@@ -383,15 +390,7 @@ create_test_complex128(TestCase10)
 class TestPadAPI(unittest.TestCase):
     def setUp(self):
         self.init_dtype()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -786,15 +785,7 @@ class TestPad1dAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_dtype()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -899,15 +890,7 @@ class TestPad2dAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_dtype()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1014,15 +997,7 @@ class TestPad3dAPI(unittest.TestCase):
 
     def setUp(self):
         self.init_dtype()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1130,15 +1105,7 @@ class TestPad3dAPI_complex128(TestPad3dAPI):
 class TestPad3dOpError(unittest.TestCase):
     def setUp(self):
         self.init_dtype()
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(paddle.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        self.places = get_places()
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1232,13 +1199,30 @@ class TestPad3dOpError(unittest.TestCase):
             )
 
         paddle.disable_static()
-        for place in self.places:
-            self.assertRaises(ValueError, test_variable)
-            self.assertRaises(Exception, test_reflect_1)
-            self.assertRaises(Exception, test_reflect_2)
-            self.assertRaises(Exception, test_reflect_3)
-            self.assertRaises(Exception, test_circular_1)
-            self.assertRaises(Exception, test_replicate_1)
+        for _ in self.places:
+            self.assertRaisesRegex(
+                ValueError,
+                r"pad3d\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
+                test_variable,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"The width of Input\(X\)'s dimension should be greater than pad_left in reflect mode",
+                test_reflect_1,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"The height of Input\(X\)'s dimension should be greater than pad_top in reflect mode",
+                test_reflect_2,
+            )
+            self.assertRaisesRegex(
+                ValueError,
+                r"The depth of Input\(X\)'s dimension should be greater than pad_back in reflect mode",
+                test_reflect_3,
+            )
+            # comment out because pad3d support 0-size now.
+            # self.assertRaises(Exception, test_circular_1)
+            # self.assertRaises(Exception, test_replicate_1)
         paddle.enable_static()
 
 

@@ -60,5 +60,42 @@ class TestLogLossOp(OpTest):
         )
 
 
+class TestLogLossOp_ZeroSize(OpTest):
+    def init_shape(self):
+        self.x_shape = (0, 1)
+        self.label_shape = (0, 1)
+
+    def setUp(self):
+        self.init_shape()
+        self.op_type = 'log_loss'
+        self.python_api = F.log_loss
+        self.public_python_api = F.log_loss
+
+        x = np.random.random(self.x_shape).astype("float32")
+        predicted = sigmoid_array(x)
+        labels = np.random.randint(0, 2, self.label_shape).astype("float32")
+        epsilon = 1e-7
+        self.inputs = {
+            'Predicted': predicted,
+            'Labels': labels,
+        }
+
+        self.attrs = {'epsilon': epsilon}
+        loss = -labels * np.log(predicted + epsilon) - (1 - labels) * np.log(
+            1 - predicted + epsilon
+        )
+        self.outputs = {'Loss': loss}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Predicted'],
+            'Loss',
+            check_pir=True,
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

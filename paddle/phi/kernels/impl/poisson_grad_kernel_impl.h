@@ -20,12 +20,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PoissonGradKernel(const Context& ctx,
+void PoissonGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad UNUSED,
                        DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
-  functor(ctx, x_grad, static_cast<T>(0));
+  functor(dev_ctx, x_grad, static_cast<T>(0));
 }
 
 }  // namespace phi

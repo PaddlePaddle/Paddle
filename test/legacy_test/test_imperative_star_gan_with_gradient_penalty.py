@@ -579,37 +579,41 @@ class StaticGraphTrainModel:
         self.gen_program = base.Program()
         gen_startup_program = base.Program()
 
-        with base.program_guard(self.gen_program, gen_startup_program):
-            with base.unique_name.guard():
-                image_real, label_org, label_trg = create_data_layer()
-                generator = Generator(cfg)
-                discriminator = Discriminator(cfg)
-                g_loss = get_generator_loss(
-                    image_real,
-                    label_org,
-                    label_trg,
-                    generator,
-                    discriminator,
-                    cfg,
-                )
-                build_optimizer(generator, cfg, loss=g_loss)
+        with (
+            base.program_guard(self.gen_program, gen_startup_program),
+            base.unique_name.guard(),
+        ):
+            image_real, label_org, label_trg = create_data_layer()
+            generator = Generator(cfg)
+            discriminator = Discriminator(cfg)
+            g_loss = get_generator_loss(
+                image_real,
+                label_org,
+                label_trg,
+                generator,
+                discriminator,
+                cfg,
+            )
+            build_optimizer(generator, cfg, loss=g_loss)
 
         self.dis_program = base.Program()
         dis_startup_program = base.Program()
-        with base.program_guard(self.dis_program, dis_startup_program):
-            with base.unique_name.guard():
-                image_real, label_org, label_trg = create_data_layer()
-                generator = Generator(cfg)
-                discriminator = Discriminator(cfg)
-                d_loss = get_discriminator_loss(
-                    image_real,
-                    label_org,
-                    label_trg,
-                    generator,
-                    discriminator,
-                    cfg,
-                )
-                build_optimizer(discriminator, cfg, loss=d_loss)
+        with (
+            base.program_guard(self.dis_program, dis_startup_program),
+            base.unique_name.guard(),
+        ):
+            image_real, label_org, label_trg = create_data_layer()
+            generator = Generator(cfg)
+            discriminator = Discriminator(cfg)
+            d_loss = get_discriminator_loss(
+                image_real,
+                label_org,
+                label_trg,
+                generator,
+                discriminator,
+                cfg,
+            )
+            build_optimizer(discriminator, cfg, loss=d_loss)
 
         self.executor = base.Executor(cfg.place)
         self.scope = base.Scope()

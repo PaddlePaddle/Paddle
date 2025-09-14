@@ -22,7 +22,7 @@ void MergePrograms(ProgramDesc *dst,
                    const std::vector<ProgramDesc> &srcs,
                    bool append);
 
-class ProgramProcessor {
+class PADDLE_API ProgramProcessor {
  public:
   ProgramProcessor();
 

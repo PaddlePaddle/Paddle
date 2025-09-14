@@ -25,6 +25,10 @@ void LogLossGradXPUKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           float epsilon_in,
                           DenseTensor* in_grad) {
+  if (in_grad && in_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(in_grad);
+    return;
+  }
   auto* predict = &input;
   auto* labels = &label;
   auto* dloss = &out_grad;
@@ -34,7 +38,7 @@ void LogLossGradXPUKernel(const Context& dev_ctx,
   }
   auto epsilon = static_cast<T>(epsilon_in);
   dev_ctx.template Alloc<T>(dpred);
-  int n = predict->numel();
+  int64_t n = predict->numel();
   int r = xpu::log_loss_grad(dev_ctx.x_context(),
                              predict->data<T>(),
                              labels->data<T>(),

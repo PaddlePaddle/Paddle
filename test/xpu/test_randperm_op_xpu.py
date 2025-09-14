@@ -30,9 +30,9 @@ paddle.enable_static()
 
 
 def check_randperm_out(n, data_np):
-    assert isinstance(
-        data_np, np.ndarray
-    ), "The input data_np should be np.ndarray."
+    assert isinstance(data_np, np.ndarray), (
+        "The input data_np should be np.ndarray."
+    )
     gt_sorted = np.arange(n)
     out_sorted = np.sort(data_np)
     return list(gt_sorted == out_sorted)
@@ -73,7 +73,7 @@ class XPUTestRandpermOp(XPUOpTestWrapper):
             self.initTestCase()
             self.dtype = self.in_type
             self.use_xpu = True
-            self.use_mkldnn = False
+            self.use_onednn = False
             self.inputs = {}
             self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
             self.attrs = {
@@ -83,7 +83,7 @@ class XPUTestRandpermOp(XPUOpTestWrapper):
 
         def init_op_type(self):
             self.op_type = "randperm"
-            self.use_mkldnn = False
+            self.use_onednn = False
 
         def initTestCase(self):
             self.n = 200

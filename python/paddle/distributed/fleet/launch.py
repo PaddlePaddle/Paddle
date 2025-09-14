@@ -268,9 +268,9 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
         else:
             _, node_ip = get_host_name_ip()
 
-    assert (
-        node_ip in node_ips
-    ), f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    assert node_ip in node_ips, (
+        f"Can't find your local ip {{{node_ip}}} in node_ips: {{{node_ips}}}"
+    )
     node_rank = node_ips.index(node_ip)
 
     logger.debug(
@@ -308,9 +308,9 @@ def cpuonly_check(args):
             f"CPUONLY launch only support single trainer, that is len(ips)=1, but got {args.ips}."
         )
     if args.run_mode:
-        assert (
-            args.run_mode == 'cpuonly'
-        ), "CPUONLY launch only support run mode is CPUONLY"
+        assert args.run_mode == 'cpuonly', (
+            "CPUONLY launch only support run mode is CPUONLY"
+        )
     if args.servers:
         raise RuntimeError("CPUONLY launch can't have --servers as arguments.")
     return True
@@ -341,9 +341,9 @@ def get_cluster_info(args):
         start_port = os.environ.get('FLAGS_START_PORT')
     # auto mapping between processes and devices for auto-parallel
     if args.enable_auto_mapping:
-        assert (
-            args.cluster_topo_path is not None
-        ), "The cluster topology must be provided when enabling auto mapping."
+        assert args.cluster_topo_path is not None, (
+            "The cluster topology must be provided when enabling auto mapping."
+        )
         rank_mapping_path = args.rank_mapping_path or os.getenv(
             "PADDLE_RANK_MAPPING_PATH"
         )
@@ -742,9 +742,9 @@ def launch():
             args
         )  # which_distributed_mode must modify args.backend
     else:
-        assert (
-            args.run_mode == 'collective' or args.run_mode is None
-        ), "When backend is not 'auto', run mode must be collective"
+        assert args.run_mode == 'collective' or args.run_mode is None, (
+            "When backend is not 'auto', run mode must be collective"
+        )
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 

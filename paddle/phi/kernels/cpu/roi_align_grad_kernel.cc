@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -90,7 +91,11 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   if (!dx) {
     return;
   }
-
+  if (x.numel() == 0 || boxes.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+    return;
+  }
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});
   int* box_batch_id_data = roi_batch_id_list.data<int>();
 

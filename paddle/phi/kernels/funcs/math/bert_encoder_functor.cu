@@ -18,7 +18,6 @@
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
 namespace phi {

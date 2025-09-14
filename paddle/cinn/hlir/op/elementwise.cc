@@ -92,7 +92,7 @@ std::shared_ptr<OpStrategy> StrategyForElementwise(
     PADDLE_ENFORCE_EQ(
         pack_args.size(),
         2U,
-        ::common::errors::InvalidArgument("the size of pack_args should be"
+        ::common::errors::InvalidArgument("the size of pack_args should be "
                                           "equal to 2, but got %d.",
                                           pack_args.size()));
     PADDLE_ENFORCE_EQ(pack_args[1].is_string(),
@@ -326,10 +326,10 @@ std::shared_ptr<OpStrategy> StrategyForScaleSymbolic(
 
               Expr cast_scale = should_upscale_fp32
                                     ? Expr(scale)
-                                    : ir::Cast::Make(A->type(), Expr(scale));
+                                    : common::cast(Expr(scale), A->type());
               Expr cast_bias = should_upscale_fp32
                                    ? Expr(bias)
-                                   : ir::Cast::Make(A->type(), Expr(bias));
+                                   : common::cast(Expr(bias), A->type());
               Expr add_result;
               if (scale == 1.0f) {
                 if (bias == 0.0f) {
@@ -696,6 +696,7 @@ StrategyForUnary(sqrt, Sqrt);
 StrategyForUnary(log, Log);
 StrategyForUnary(floor, Floor);
 StrategyForUnary(ceil, Ceil);
+StrategyForUnary(rint, Rint);
 StrategyForUnary(round, Round);
 StrategyForUnary(tanh, Tanh);
 StrategyForUnary(log2, Log2);
@@ -1254,43 +1255,55 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<ir::Dim>> &output_shapes,
     const Target &target) {
+  bool all_static = true;
+  for (int i = 0; i < 3; i++) {
+    if (!inputs[i]->value().has_value()) continue;
+    auto input_val = inputs[i]->value().value();
+    if (input_val.empty()) continue;
+    if (input_val[0].is_constant()) continue;
+    all_static = false;
+    break;
+  }
   auto attr_store = attrs.attr_store;
-  PADDLE_ENFORCE_GT(attr_store.count("start"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No start attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("end"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No stop attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("step"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No step attribute in arange Op! Please check."));
-  PADDLE_ENFORCE_GT(attr_store.count("dtype"),
-                    0U,
-                    ::common::errors::InvalidArgument(
-                        "No dtype attribute in arange Op! Please check."));
-
-  auto GetArangeSize = [](auto start, auto end, auto step) -> int64_t {
-    using ElementType = std::decay_t<decltype(start)>;
-    PADDLE_ENFORCE_NE(step,
-                      0,
-                      ::common::errors::InvalidArgument(
-                          "The step of range op should not be 0."));
-
-    if ((start < end && step < 0) || (start > end && step > 0)) {
-      return 0;
-    } else {
-      return std::is_integral_v<ElementType>
-                 ? ((std::abs(end - start) + std::abs(step) - 1) /
-                    std::abs(step))
-                 : std::ceil(std::abs((end - start) / step));
-    }
-  };
-
   auto dtype =
       cinn::common::Str2Type(std::get<std::string>(attr_store.at("dtype")));
+
+  Expr start, step, arange_size;
+  if (all_static) {
+    PADDLE_ENFORCE_GT(attr_store.count("start"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No start attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("end"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No stop attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("step"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No step attribute in arange Op! Please check."));
+    PADDLE_ENFORCE_GT(attr_store.count("dtype"),
+                      0U,
+                      ::common::errors::InvalidArgument(
+                          "No dtype attribute in arange Op! Please check."));
+
+    auto GetArangeSize = [](auto start, auto end, auto step) -> Expr {
+      using ElementType = std::decay_t<decltype(start)>;
+      PADDLE_ENFORCE_NE(step,
+                        0,
+                        ::common::errors::InvalidArgument(
+                            "The step of range op should not be 0."));
+
+      if ((start < end && step < 0) || (start > end && step > 0)) {
+        return Expr(0);
+      } else {
+        int64_t res_size = std::is_integral_v<ElementType>
+                               ? ((std::abs(end - start) + std::abs(step) - 1) /
+                                  std::abs(step))
+                               : std::ceil(std::abs((end - start) / step));
+        return Expr(res_size);
+      }
+    };
 
 #define EXPR_FROM_ATTR(type)                            \
   type start_ = std::get<type>(attr_store.at("start")); \
@@ -1300,21 +1313,51 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
   start = Expr(start_);                                 \
   step = Expr(step_);
 
-  Expr start, step;
-  int64_t arange_size = 0;
-  if (dtype.is_float(32)) {
-    EXPR_FROM_ATTR(float)
-  } else if (dtype.is_float(64)) {
-    EXPR_FROM_ATTR(double)
-  } else if (dtype.is_int(32)) {
-    EXPR_FROM_ATTR(int)
-  } else if (dtype.is_int(64)) {
-    EXPR_FROM_ATTR(int64_t)
-  } else {
-    CINN_NOT_IMPLEMENTED
-  }
-
+    if (dtype.is_float(32)) {
+      EXPR_FROM_ATTR(float)
+    } else if (dtype.is_float(64)) {
+      EXPR_FROM_ATTR(double)
+    } else if (dtype.is_int(32)) {
+      EXPR_FROM_ATTR(int)
+    } else if (dtype.is_int(64)) {
+      EXPR_FROM_ATTR(int64_t)
+    } else if (dtype.is_bfloat16()) {
+      EXPR_FROM_ATTR(float)
+      start->set_type(cinn::common::BFloat16());
+      step->set_type(cinn::common::BFloat16());
+    } else if (dtype.is_float16()) {
+      EXPR_FROM_ATTR(float)
+      start->set_type(cinn::common::Float16());
+      step->set_type(cinn::common::Float16());
+    } else {
+      PADDLE_ENFORCE_NOT_NULL(
+          nullptr,
+          ::common::errors::InvalidArgument("The dtype of arange op should be "
+                                            "float32, float64, int32, int64, "
+                                            "bfloat16 or float16."));
+    }
 #undef EXPR_FROM_ATTR
+  } else {
+    for (int i = 0; i < 3; i++) {
+      PADDLE_ENFORCE_EQ(
+          inputs[i]->value().has_value(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The input tensor of dynamic arange should have valid values."));
+      PADDLE_ENFORCE_NE(
+          inputs[i]->value().value().empty(),
+          true,
+          ::common::errors::InvalidArgument(
+              "The tensor value of dynamic arange should not be empty."));
+    }
+    start = inputs[0]->value().value()[0];
+    step = inputs[2]->value().value()[0];
+    Expr end = inputs[1]->value().value()[0];
+    auto IrAbs = [=](Expr ir) -> Expr {
+      return ir::Call::Make(step.type(), "abs", {ir}, {}, ir::CallType::Extern);
+    };
+    arange_size = (IrAbs(end - start) + IrAbs(step) - Expr(1)) / IrAbs(step);
+  }
 
   framework::CINNCompute arange_compute([=](lang::Args args,
                                             lang::RetValue *ret) {
@@ -1331,7 +1374,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForArangeSymbolic(
                           "The number of input argument of arange should be 4"
                           "(start, end, step, result). Please check."));
     std::string tensor_name = pack_args[3].operator std::string();
-    auto out = pe::Arange(start, step, dtype, arange_size, tensor_name);
+    auto out = pe::Arange(start, step, arange_size, dtype, tensor_name);
     std::vector<cinn::common::CINNValue> res;
     res.push_back(cinn::common::CINNValue(out));
     *ret = CINNValuePack{res};
@@ -1623,6 +1666,7 @@ CINN_REGISTER_HELPER(elementwise_ops) {
   CINN_REGISTER_UNARY(log, Log);
   CINN_REGISTER_UNARY(floor, Floor);
   CINN_REGISTER_UNARY(ceil, Ceil);
+  CINN_REGISTER_UNARY(rint, Rint);
   CINN_REGISTER_UNARY(round, Round);
   CINN_REGISTER_UNARY(tanh, Tanh);
   CINN_REGISTER_UNARY(log2, Log2);

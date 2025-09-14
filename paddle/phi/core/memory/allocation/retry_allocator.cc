@@ -13,10 +13,19 @@
 // limitations under the License.
 
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
+#include "paddle/common/flags.h"
 
 #include "glog/logging.h"
 
+COMMON_DECLARE_int64(offload_retry_times);
+
 namespace paddle::memory::allocation {
+
+static std::function<size_t(phi::Place, size_t)> g_oom_callback;
+
+void RegisterOOMCallback(std::function<size_t(phi::Place, size_t)> callback) {
+  g_oom_callback = std::move(callback);
+}
 
 class WaitedAllocateSizeGuard {
  public:
@@ -57,7 +66,21 @@ phi::Allocation* RetryAllocator::AllocateImpl(size_t size) {
   // In fact, we can unify the code of allocation success and failure
   // But it would add lock even when allocation success at the first time
   try {
-    return alloc_func();
+    if (FLAGS_offload_retry_times <= 0 || g_oom_callback == nullptr) {
+      return alloc_func();
+    } else {
+      bool has_offloaded = true;
+      for (int64_t i = 0; i < FLAGS_offload_retry_times && has_offloaded; ++i) {
+        try {
+          return alloc_func();
+        } catch (BadAlloc&) {
+          VLOG(10) << "Allocation " << size << " on " << place_
+                   << " failed, try to run OOM callback " << i;
+          has_offloaded = (g_oom_callback(place_, size) > 0);
+        }
+      }
+      return alloc_func();
+    }
   } catch (BadAlloc&) {
     {
       WaitedAllocateSizeGuard guard(&waited_allocate_size_, size);

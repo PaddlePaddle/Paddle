@@ -15,31 +15,45 @@
 #include "paddle/phi/kernels/scatter_nd_add_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
-
 namespace phi {
 
 template <typename T, typename Context>
-void ScatterNdAddGradKernel(const Context &ctx,
+void ScatterNdAddGradKernel(const Context &dev_ctx,
                             const DenseTensor &index,
                             const DenseTensor &updates,
                             const DenseTensor &out_grad,
                             DenseTensor *x_grad,
                             DenseTensor *updates_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      dev_ctx.template Alloc<T>(x_grad);
+    }
+    if (updates_grad) {
+      phi::Full<T, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(updates_grad->dims())),
+          0,
+          updates_grad);
+    }
+    return;
+  }
   if (x_grad) {
-    Copy(ctx, out_grad, ctx.GetPlace(), false, x_grad);
+    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
   }
   if (updates_grad) {
-    ctx.template Alloc<T>(updates_grad);
+    dev_ctx.template Alloc<T>(updates_grad);
     // Gradient by Gather
     const auto &index_type = index.dtype();
     if (index_type == phi::DataType::INT32) {
-      phi::funcs::GPUGatherNd<T, int32_t>(ctx, out_grad, index, updates_grad);
+      phi::funcs::GPUGatherNd<T, int32_t>(
+          dev_ctx, out_grad, index, updates_grad);
     } else {
-      phi::funcs::GPUGatherNd<T, int64_t>(ctx, out_grad, index, updates_grad);
+      phi::funcs::GPUGatherNd<T, int64_t>(
+          dev_ctx, out_grad, index, updates_grad);
     }
   }
 }
@@ -54,5 +68,5 @@ PD_REGISTER_KERNEL(scatter_nd_add_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

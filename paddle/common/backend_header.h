@@ -18,7 +18,7 @@
 #include <cuda.h>
 #endif
 
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
+#if defined(__CUDACC__) && (CUDA_VERSION >= 11000 || defined(PADDLE_WITH_COREX))
 #define PADDLE_CUDA_BF16
 #include <cuda_bf16.h>
 #endif

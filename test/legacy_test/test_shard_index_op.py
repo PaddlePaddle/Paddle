@@ -78,5 +78,30 @@ class TestShardIndexNotEvenlyDividedOp(OpTest):
         self.check_output()
 
 
+class TestShardIndexOp_ZeroSize(OpTest):
+    def common_setup(self, index_num, nshards, shard_id, ignore_value):
+        paddle.disable_static()
+        self.op_type = 'shard_index'
+        self.python_api = paddle.tensor.shard_index
+        shape = [0, 2, 1]
+        x = np.random.random(shape).astype(np.int64)
+        out = np.zeros(shape=x.shape).astype(np.int64)
+
+        self.inputs = {'X': paddle.to_tensor(x)}
+        self.attrs = {
+            'index_num': index_num,
+            'nshards': nshards,
+            'shard_id': shard_id,
+            'ignore_value': ignore_value,
+        }
+        self.outputs = {'Out': paddle.to_tensor(out)}
+
+    def setUp(self):
+        self.common_setup(20, 2, 0, -1)
+
+    def test_check_output(self):
+        self.check_output()
+
+
 if __name__ == '__main__':
     unittest.main()

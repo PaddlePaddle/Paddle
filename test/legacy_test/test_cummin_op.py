@@ -77,7 +77,8 @@ class TestCumminOp(OpTest):
         self.dtype = np.float64
         self.axis = -1
         self.indices_type = paddle.int64
-        self.input_data = np.random.random((10, 10)).astype(self.dtype)
+        self.init_shape()
+        self.input_data = np.random.random(self.shape).astype(self.dtype)
         self.set_attrs()
 
         self.inputs = {'x': self.input_data}
@@ -87,6 +88,9 @@ class TestCumminOp(OpTest):
 
     def set_attrs(self):
         pass
+
+    def init_shape(self):
+        self.shape = (10, 10)
 
     def test_check_output(self):
         paddle.enable_static()
@@ -110,6 +114,11 @@ class TestCumminOpAxis2(TestCumminOp):
 class TestCumminOpIndexType(TestCumminOp):
     def set_attrs(self):
         self.indices_type = paddle.int32
+
+
+class TestCumminOp_ZeroSize(TestCumminOp):
+    def init_shape(self):
+        self.shape = (10, 0)
 
 
 class TestCumminAPI(unittest.TestCase):

@@ -33,6 +33,7 @@
 
 using egr::ConvertAllInputsToDistTensor;
 using egr::InputsContainDistTensor;
+COMMON_DECLARE_bool(check_cuda_error);
 
 COMMON_DECLARE_bool(check_nan_inf);
 
@@ -44,6 +45,9 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("MultiplyGradNode begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -258,6 +262,10 @@ MultiplyGradNode::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("MultiplyGradNode finish");
+  }
+
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
@@ -271,6 +279,9 @@ MultiplyDoubleGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_double_grad";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("MultiplyDoubleGradNode begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -473,8 +484,8 @@ MultiplyDoubleGradNode::operator()(
   if (need_skip) {
     if (trace_backward) {
       PADDLE_THROW(common::errors::Unavailable(
-          "The Op multiply_double_grad doesn't have any grad"
-          "op. If you don't intend calculating higher order"
+          "The Op multiply_double_grad doesn't have any grad "
+          "op. If you don't intend calculating higher order "
           "derivatives, please set `create_graph`to False."));
     }
   }
@@ -532,6 +543,10 @@ MultiplyDoubleGradNode::operator()(
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
 
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("MultiplyDoubleGradNode finish");
+  }
+
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
@@ -546,6 +561,9 @@ MultiplyGradNode::operator()(
     bool is_new_grad) {
   VLOG(3) << "Running AD API GRAD: "
           << "multiply_grad";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::MultiplyGradNode begin");
+  }
   // This 'Local_XXXGradNode' record event is different with
   // 'Global_XXXGradNode' event.
   // * 'Local_XXXGradNode' will only cover execution time of this function.
@@ -651,8 +669,8 @@ MultiplyGradNode::operator()(
   // Create Grad Node
   if (trace_backward) {
     PADDLE_THROW(common::errors::Unavailable(
-        "The Op multiply_grad doesn't have any grad"
-        "op. If you don't intend calculating higher order"
+        "The Op multiply_grad doesn't have any grad "
+        "op. If you don't intend calculating higher order "
         "derivatives, please set `create_graph`to False."));
   }
   VLOG(4) << "Finish AD API GRAD: multiply_grad";
@@ -692,7 +710,9 @@ MultiplyGradNode::operator()(
   if (HasNodePostHook()) {
     returns = ApplyNodePostHooks(returns, hooked_grads);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("sparse::MultiplyGradNode finish");
+  }
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;

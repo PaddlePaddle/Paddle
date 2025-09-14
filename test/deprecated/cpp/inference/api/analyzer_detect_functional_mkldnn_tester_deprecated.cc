@@ -86,8 +86,8 @@ int GetNumCachedObjects() {
 void validate_cache_onednn(int cache_capacity = 1) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.EnableMKLDNN();
-  cfg.SetMkldnnCacheCapacity(cache_capacity);
+  cfg.EnableONEDNN();
+  cfg.SetOnednnCacheCapacity(cache_capacity);
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   std::vector<std::vector<PaddleTensor>> ref_outputs;

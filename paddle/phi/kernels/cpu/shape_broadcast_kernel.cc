@@ -45,7 +45,7 @@ std::vector<T> ComputeBroadcastShape(const paddle::array_ref<T>& large_shape,
 }
 
 template <typename T, typename Context>
-void ShapeBroadcastKernel(const Context& ctx,
+void ShapeBroadcastKernel(const Context& dev_ctx,
                           const DenseTensor& x_shape,
                           const DenseTensor& y_shape,
                           DenseTensor* out) {
@@ -67,7 +67,7 @@ void ShapeBroadcastKernel(const Context& ctx,
       x_shape_data.size() > y_shape_data.size()
           ? ComputeBroadcastShape(x_shape_data, y_shape_data)
           : ComputeBroadcastShape(y_shape_data, x_shape_data);
-  T* out_data = ctx.template HostAlloc<T>(out);
+  T* out_data = dev_ctx.template HostAlloc<T>(out);
   int64_t out_numel = out->numel();
   for (int i = 0; i < out_numel; ++i) {
     out_data[i] = output_data[i];

@@ -45,7 +45,7 @@ TEST(SaveTest, uncompelteted_parameter) {
   program.block()->push_back(op);
 
   pir::WriteModule(
-      program, "./test_param", /*pir_version*/ 0, true, false, true);
+      program, "./test_param", true, false, true, /*pir_version*/ 0);
 
   pir::Program new_program(ctx);
   pir::ReadModule("./test_param", &new_program, /*pir_version*/ 0);

@@ -54,7 +54,7 @@ limitations under the License. */
 #include "paddle/fluid/distributed/collective/xpu_async_load.h"
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 #include "paddle/fluid/distributed/collective/process_group_flagcx.h"
 #endif
 
@@ -86,7 +86,7 @@ using GlooStore = paddle::distributed::ProcessGroupGloo::GlooStore;
 using GlooOptions = paddle::distributed::ProcessGroupGloo::GlooOptions;
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
 using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
@@ -149,6 +149,19 @@ void BindDistributed(py::module *m) {
           .def("eager_connect_ring_exchange",
                &distributed::ProcessGroup::EagerConnectRingExchange,
                py::call_guard<py::gil_scoped_release>())
+#ifdef PADDLE_WITH_NCCL
+          .def("erase_stream",
+               [](distributed::ProcessGroup &self,
+                  const paddle::Tensor &tensor) {
+                 auto *pg_with_stream =
+                     dynamic_cast<distributed::ProcessGroupWithStream *>(&self);
+                 auto *dense_tensor =
+                     dynamic_cast<phi::DenseTensor *>(tensor.impl().get());
+                 if (pg_with_stream && dense_tensor) {
+                   pg_with_stream->EraseStream(*dense_tensor);
+                 }
+               })
+#endif
           .def(
               "all_reduce",
               [](distributed::ProcessGroup &self,
@@ -1245,9 +1258,22 @@ void BindDistributed(py::module *m) {
                   py::arg("group_id") = 0,
                   py::arg("timeout") = 30 * 60 * 1000,
                   py::arg("nccl_comm_init_option") = 0,
+                  py::arg("nccl_config") = nullptr,
                   py::call_guard<py::gil_scoped_release>())
       .def_static("group_start", distributed::ProcessGroupNCCL::GroupStart)
-      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd);
+      .def_static("group_end", distributed::ProcessGroupNCCL::GroupEnd)
+      .def("get_stream", &distributed::ProcessGroupNCCL::GetStream)
+      .def("set_outer_wait", &distributed::ProcessGroupNCCL::SetOuterEventWait)
+      .def("shutdown", &distributed::ProcessGroupNCCL::Shutdown)
+      .def("restart", &distributed::ProcessGroupNCCL::Restart)
+      .def(
+          "eager_connect_ring_exchange",
+          [](distributed::ProcessGroupNCCL &self,
+             std::shared_ptr<phi::distributed::NCCLConfig> nccl_config) {
+            self.EagerConnectRingExchange(nccl_config);
+          },
+          py::arg("nccl_config"),
+          py::call_guard<py::gil_scoped_release>());
 
   py::class_<distributed::AsyncLoad::Task,
              std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
@@ -1513,7 +1539,7 @@ void BindDistributed(py::module *m) {
                   py::call_guard<py::gil_scoped_release>());
 #endif
 
-#if defined(PADDLE_WITH_FLAGCX)
+#if defined(PADDLE_WITH_FLAGCX) && !defined(PADDLE_WITH_XPU)
   py::class_<ProcessGroupFlagcx, std::shared_ptr<ProcessGroupFlagcx>>(
       *m, "ProcessGroupFlagcx", ProcessGroup)
       .def_static("create",

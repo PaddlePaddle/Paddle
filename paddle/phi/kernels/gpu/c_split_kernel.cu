@@ -50,13 +50,13 @@ __global__ void SplitFromRank(const T* input,
 }
 
 template <typename T, typename Context>
-void CSplitKernel(const Context& ctx,
+void CSplitKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int rank,
                   int nranks,
                   bool use_model_parallel,
                   DenseTensor* out) {
-  auto place = ctx.GetPlace();
+  auto place = dev_ctx.GetPlace();
 
   PADDLE_ENFORCE_GE(rank,
                     0,
@@ -93,9 +93,9 @@ void CSplitKernel(const Context& ctx,
 
   dims[dims_size - 1] /= nranks;
   out->Resize(dims);
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
 
-  SplitFromRank<T><<<blocks, threads, 0, ctx.stream()>>>(
+  SplitFromRank<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
       x.data<T>(), out->data<T>(), remain_numel, end_size, rank, nranks, limit);
 }
 
@@ -111,8 +111,8 @@ PD_REGISTER_KERNEL(c_split,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(c_split,
                    GPU,
@@ -122,5 +122,5 @@ PD_REGISTER_KERNEL(c_split,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

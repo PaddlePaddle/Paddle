@@ -94,9 +94,9 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         self.group_name = group_name
         self.moe_group = moe_group
         if moe_group is not None and moe_group.nranks > 1:
-            assert (
-                is_expert_param_func is not None
-            ), "When moe group size > 1, a function for selecting expert params must be specified."
+            assert is_expert_param_func is not None, (
+                "When moe group size > 1, a function for selecting expert params must be specified."
+            )
         self.is_expert_param_func = is_expert_param_func
 
     def __str__(self):

@@ -20,10 +20,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  ctx.template Alloc<T>(out);
+void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
-  int r = xpu::abs<XPUType>(ctx.x_context(),
+  int r = xpu::abs<XPUType>(dev_ctx.x_context(),
                             reinterpret_cast<const XPUType*>(x.data<T>()),
                             reinterpret_cast<XPUType*>(out->data<T>()),
                             x.numel());
@@ -36,8 +39,8 @@ PD_REGISTER_KERNEL(abs,
                    ALL_LAYOUT,
                    phi::AbsKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int8_t,
                    int32_t,
                    int64_t) {}

@@ -556,7 +556,7 @@ class TestSparseCoalesceStatic(unittest.TestCase):
         v = []
         for interval in zip(
             unique_indices_idx.tolist(),
-            unique_indices_idx.tolist()[1:] + [None],
+            [*unique_indices_idx.tolist()[1:], None],
         ):
             v.append(np.sum(values[interval[0] : interval[1]]))
         unique_values = np.array(v)

@@ -43,13 +43,13 @@ version_detail = sys.version_info
 version = str(version_detail[0]) + '.' + str(version_detail[1])
 env_version = os.getenv("PY_VERSION", None)
 
-if version_detail < (3, 8):
+if version_detail < (3, 9):
     raise RuntimeError(
-        f"Paddle only supports Python version >= 3.8 now,"
+        f"Paddle only supports Python version >= 3.9 now,"
         f"you are using Python {python_version}"
     )
 elif env_version is None:
-    print(f"export PY_VERSION = { version }")
+    print(f"export PY_VERSION = {version}")
     os.environ["PY_VERSION"] = python_version
 
 elif env_version != version:
@@ -62,9 +62,9 @@ elif env_version != version:
 
 # check cmake
 CMAKE = shutil.which('cmake3') or shutil.which('cmake')
-assert (
-    CMAKE
-), 'The "cmake" executable is not found. Please check if Cmake is installed.'
+assert CMAKE, (
+    'The "cmake" executable is not found. Please check if Cmake is installed.'
+)
 
 
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -111,8 +111,7 @@ def parse_input_command(input_parameters):
         dist.parse_command_line()
     except:
         print(
-            f"An error occurred while parsing"
-            f"the parameters, {dist.script_args}"
+            f"An error occurred while parsing the parameters, {dist.script_args}"
         )
         sys.exit(1)
 
@@ -273,7 +272,7 @@ class EggInfo(egg_info):
         egg_info.run(self)
 
 
-# class Installlib is rewritten to add header files to .egg/paddle
+# class InstallLib is rewritten to add header files to .egg/paddle
 class InstallLib(install_lib):
     def run(self):
         self.build()
@@ -313,10 +312,10 @@ def git_commit() -> str:
 
 
 def _get_version_detail(idx):
-    assert (
-        idx < 3
-    ), "version info consists of %(major)d.%(minor)d.%(patch)d, \
+    assert idx < 3, (
+        "version info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
+    )
     tag_version_regex = env_dict.get("TAG_VERSION_REGEX")
     paddle_version = env_dict.get("PADDLE_VERSION")
     if re.match(tag_version_regex, paddle_version):
@@ -451,7 +450,6 @@ def get_cuda_archs() -> list[int]:
 
 
 def get_tensorrt_version() -> str:
-
     def find_libnvinfer():
         """Search for libnvinfer.so file in LD_LIBRARY_PATH."""
 
@@ -617,8 +615,8 @@ def nccl() -> str:
     """
     return nccl_version
 
-def cuda() -> str:
-    """Get cuda version of paddle package.
+import inspect
+CUDA_FUNC_DOC = """Get cuda version of paddle package.
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
@@ -633,7 +631,30 @@ def cuda() -> str:
             '10.2'
 
     """
-    return cuda_version
+class CudaVersion(str):
+    def __new__(cls, version: str):
+        return super().__new__(cls, version)
+
+    def __call__(self) -> str:
+        # When users check for GPU devices using paddle.version.cuda is None, we cannot align this behavior with other frameworks .
+        # Note: This discrepancy arises because the is operator checks for object identity (memory address equality) rather than value equality.
+        return str(self)
+
+    def __repr__(self) -> str:
+        return f"CudaVersion('{self}')"
+
+    @property
+    def __doc__(self):
+        return CUDA_FUNC_DOC
+
+    @property
+    def __signature__(self):
+        return inspect.Signature(
+            parameters=[],
+            return_annotation=str
+        )
+
+cuda = CudaVersion(cuda_version)
 
 def cudnn() -> str:
     """Get cudnn version of paddle package.
@@ -851,16 +872,7 @@ def is_transpiler():
         if e.errno != errno.EEXIST:
             raise
     with open(filename, 'w') as f:
-        f.write(
-            cnt
-            % {
-                'mode': (
-                    'PSLIB'
-                    if env_dict.get("WITH_PSLIB") == 'ON'
-                    else 'TRANSPILER'
-                )
-            }
-        )
+        f.write(cnt % {'mode': 'TRANSPILER'})
 
 
 def find_files(pattern, root, recursive=False):
@@ -933,6 +945,7 @@ def cmake_run(build_path):
                 "MSVC_STATIC_CRT",
                 "NEW_RELEASE_ALL",
                 "GENERATOR",
+                "FA_JOB_POOLS_COMPILE",
             )
         }
     )
@@ -1041,7 +1054,7 @@ def get_setup_requires():
         setup_requires = (
             f.read().splitlines()
         )  # Specify the dependencies to install
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
             if (
@@ -1052,6 +1065,8 @@ def get_setup_requires():
                 or '<"3.7"' in setup_requires_i
                 or '<="3.7"' in setup_requires_i
                 or '<"3.8"' in setup_requires_i
+                or '<="3.8"' in setup_requires_i
+                or '<"3.9"' in setup_requires_i
                 or setup_requires_i.strip().endswith('[build]')
             ):
                 continue
@@ -1061,7 +1076,7 @@ def get_setup_requires():
         return setup_requires
     else:
         raise RuntimeError(
-            "please check your python version,Paddle only support Python version>=3.8 now"
+            "please check your python version, Paddle only support Python version>=3.9 now"
         )
 
 
@@ -1145,7 +1160,40 @@ def get_paddle_extra_install_requirements():
                     "nvidia-nvjitlink-cu12==12.8.61; platform_system == 'Linux' and platform_machine == 'x86_64' | "
                     "nvidia-cufile-cu12==1.13.0.11; platform_system == 'Linux' and platform_machine == 'x86_64'"
                 ),
+                "12.9": (
+                    "nvidia-cuda-nvrtc-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-runtime-cu12==12.9.37; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cuda-cupti-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cudnn-cu12==9.9.0.52; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cublas-cu12==12.9.0.13; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufft-cu12==11.4.0.6; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-curand-cu12==10.3.10.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusolver-cu12==11.7.4.40; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparse-cu12==12.5.9.5; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cusparselt-cu12==0.7.1; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nccl-cu12==2.27.3; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvtx-cu12==12.9.19; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-nvjitlink-cu12==12.9.41; platform_system == 'Linux' and platform_machine == 'x86_64' | "
+                    "nvidia-cufile-cu12==1.14.0.30; platform_system == 'Linux' and platform_machine == 'x86_64'"
+                ),
             }
+            if env_dict.get("WITH_CINN") == "ON":
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.3"] += (
+                    " | nvidia-cuda-cccl-cu12==12.3.52;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.4"] += (
+                    " | nvidia-cuda-cccl-cu12==12.4.99;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.6"] += (
+                    " | nvidia-cuda-cccl-cu12==12.6.77;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.8"] += (
+                    " | nvidia-cuda-cccl-cu12==12.8.90;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+                PADDLE_CUDA_INSTALL_REQUIREMENTS["12.9"] += (
+                    " | nvidia-cuda-cccl-cu12==12.9.27;platform_system == 'Linux' and platform_machine == 'x86_64' "
+                )
+
         elif platform.system() == 'Windows':
             PADDLE_CUDA_INSTALL_REQUIREMENTS = {
                 "11.8": (
@@ -1184,6 +1232,15 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusolver-cu12==11.7.2.55 | "
                     "nvidia-cusparse-cu12==12.5.7.53 "
                 ),
+                "12.9": (
+                    "nvidia-cuda-runtime-cu12==12.9.37 | "
+                    "nvidia-cudnn-cu12==9.9.0.52 | "
+                    "nvidia-cublas-cu12==12.9.0.13 | "
+                    "nvidia-cufft-cu12==11.4.0.6 | "
+                    "nvidia-curand-cu12==10.3.10.19 | "
+                    "nvidia-cusolver-cu12==11.7.4.40 | "
+                    "nvidia-cusparse-cu12==12.5.9.5 "
+                ),
             }
         try:
             output = subprocess.check_output(['nvcc', '--version']).decode(
@@ -1197,9 +1254,10 @@ def get_paddle_extra_install_requirements():
         except Exception as e:
             raise ValueError("CUDA not found")
 
-        paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
-            cuda_major_version
-        ].split("|")
+        if cuda_major_version in PADDLE_CUDA_INSTALL_REQUIREMENTS:
+            paddle_cuda_requires = PADDLE_CUDA_INSTALL_REQUIREMENTS[
+                cuda_major_version
+            ].split("|")
 
     if env_dict.get("WITH_PIP_TENSORRT") == "ON":
         version_str = get_tensorrt_version()
@@ -1207,7 +1265,6 @@ def get_paddle_extra_install_requirements():
         if platform.system() == 'Linux' or (
             platform.system() == 'Windows' and version_default >= 10
         ):
-
             PADDLE_TENSORRT_INSTALL_REQUIREMENTS = [
                 "tensorrt==8.5.3.1",
                 "tensorrt==8.6.0",
@@ -1245,6 +1302,41 @@ def get_paddle_extra_install_requirements():
     return paddle_cuda_requires, paddle_tensorrt_requires
 
 
+def build_cutlass3_src_code():
+    target_path = f"{paddle_binary_dir}/python/paddle/apy/matmul_pass/matmul/cutlass-3.7.0"
+    if not os.path.exists(target_path):
+        os.mkdir(target_path)
+    try:
+        cmd = ['git', 'rev-parse', 'HEAD']
+        git_commit = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=f"{paddle_source_dir}/third_party/cutlass",
+            )
+            .communicate()[0]
+            .strip()
+        )
+    except:
+        git_commit = 'Unknown'
+        raise Exception("obtain commit id of third_party cutlass failed")
+    commit_id = str(git_commit.decode())
+    command = (
+        'cd '
+        + f'{paddle_source_dir}/third_party/cutlass && '
+        + 'git checkout v3.7.0 && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/tools -r '
+        + f'{target_path} && '
+        + 'cp '
+        + f'{paddle_source_dir}/third_party/cutlass/include -r '
+        + f'{target_path} && '
+        + f'git checkout {commit_id}'
+    )
+    if os.system(command) != 0:
+        raise Exception(f"copy cutlass-3.7.0 failed, command: {command}")
+
+
 def get_cinn_config_jsons():
     from pathlib import Path
 
@@ -1262,10 +1354,23 @@ def get_cinn_config_jsons():
     return json_path_list
 
 
+def get_apy_files():
+    from pathlib import Path
+
+    apy_path = env_dict.get("PADDLE_BINARY_DIR") + '/python/paddle/apy/'
+    prefix_len = len(apy_path)
+    p = Path(apy_path)
+    file_list = []
+    for path in p.rglob('*'):
+        if path.is_file():
+            relative_path = str(path)[prefix_len:]
+            file_list.append(relative_path)
+    return file_list
+
+
 def get_typing_libs_packages(paddle_binary_dir):
     """get all libpaddle sub modules from 'python/paddle/_typing/libs/libpaddle'
     e.g.
-        'paddle._typing.libs.libpaddle.cinn'
         'paddle._typing.libs.libpaddle.pir'
         'paddle._typing.libs.libpaddle.eager'
         'paddle._typing.libs.libpaddle.eager.ops'
@@ -1333,6 +1438,14 @@ def get_package_data_and_package_dir():
     for json in json_path_list:
         package_data['paddle.cinn_config'] += [json]
 
+    # if env_dict.get("WITH_CINN") == 'ON':
+    #     build_cutlass3_src_code()
+
+    package_data['paddle.apy'] = []
+    file_path_list = get_apy_files()
+    for file in file_path_list:
+        package_data['paddle.apy'] += [file]
+
     if 'develop' in sys.argv:
         package_dir = {'': 'python'}
     else:
@@ -1358,18 +1471,20 @@ def get_package_data_and_package_dir():
             ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
         ]
         shutil.copy(env_dict.get("PHI_LIB"), libs_path)
-        package_data['paddle.libs'] += [
-            ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
-        ]
-        shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
-        if (
-            env_dict.get("WITH_GPU") == "ON"
-            or env_dict.get("WITH_ROCM") == "ON"
-        ):
+        if os.name != 'nt':
             package_data['paddle.libs'] += [
-                ('libphi_gpu' if os.name != 'nt' else 'phi_gpu') + ext_suffix
+                ('libphi_core' if os.name != 'nt' else 'phi_core') + ext_suffix
             ]
-            shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
+            shutil.copy(env_dict.get("PHI_CORE_LIB"), libs_path)
+            if (
+                env_dict.get("WITH_GPU") == "ON"
+                or env_dict.get("WITH_ROCM") == "ON"
+            ):
+                package_data['paddle.libs'] += [
+                    ('libphi_gpu' if os.name != 'nt' else 'phi_gpu')
+                    + ext_suffix
+                ]
+                shutil.copy(env_dict.get("PHI_GPU_LIB"), libs_path)
 
     if env_dict.get("WITH_SHARED_IR") == "ON":
         package_data['paddle.libs'] += [
@@ -1440,6 +1555,11 @@ def get_package_data_and_package_dir():
                 os.path.basename(env_dict.get("FLASHATTN_V3_LIBRARIES"))
             ]
             shutil.copy(env_dict.get("FLASHATTN_V3_LIBRARIES"), libs_path)
+        if len(env_dict.get("FLASHMASK_V2_LIBRARIES", "")) > 1:
+            package_data['paddle.libs'] += [
+                os.path.basename(env_dict.get("FLASHMASK_V2_LIBRARIES"))
+            ]
+            shutil.copy(env_dict.get("FLASHMASK_V2_LIBRARIES"), libs_path)
 
     if (
         env_dict.get("WITH_DISTRIBUTE") == 'ON'
@@ -1448,14 +1568,12 @@ def get_package_data_and_package_dir():
         if len(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB", "")) > 1:
             package_data['paddle.libs'] += [
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB")),
-                os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB")),
                 os.path.basename(env_dict.get("NVSHMEM_TRANSPORT_IBGDA_LIB")),
             ]
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_UID_LIB"), libs_path)
-            shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_MPI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_BOOTSTRAP_PMI2_LIB"), libs_path)
             shutil.copy(env_dict.get("NVSHMEM_TRANSPORT_IBRC_LIB"), libs_path)
@@ -1492,6 +1610,11 @@ def get_package_data_and_package_dir():
             env_dict.get("CINN_INCLUDE_DIR")
             + '/paddle/cinn/runtime/cuda/float16.h'
         )
+        if env_dict.get("WITH_ROCM") == 'ON':
+            cinn_fp16_file = (
+                env_dict.get("CINN_INCLUDE_DIR")
+                + '/paddle/cinn/runtime/hip/float16.h'
+            )
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
@@ -1502,6 +1625,13 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_bf16_file):
             shutil.copy(cinn_bf16_file, libs_path)
             package_data['paddle.libs'] += ['bfloat16.h']
+        cinn_fp8_file = (
+            env_dict.get("CINN_INCLUDE_DIR")
+            + '/paddle/cinn/runtime/cuda/float8e4m3.h'
+        )
+        if os.path.exists(cinn_fp8_file):
+            shutil.copy(cinn_fp8_file, libs_path)
+            package_data['paddle.libs'] += ['float8e4m3.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1517,17 +1647,6 @@ def get_package_data_and_package_dir():
                     + ' failed',
                     f'command: {command}',
                 )
-    if env_dict.get("WITH_PSLIB") == 'ON':
-        shutil.copy(env_dict.get("PSLIB_LIB"), libs_path)
-        shutil.copy(env_dict.get("JVM_LIB"), libs_path)
-        if os.path.exists(env_dict.get("PSLIB_VERSION_PY")):
-            shutil.copy(
-                env_dict.get("PSLIB_VERSION_PY"),
-                paddle_binary_dir
-                + '/python/paddle/incubate/distributed/fleet/parameter_server/pslib/',
-            )
-        package_data['paddle.libs'] += ['libps' + ext_suffix]
-        package_data['paddle.libs'] += ['libjvm' + ext_suffix]
     if env_dict.get("WITH_ONEDNN") == 'ON':
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
@@ -1614,6 +1733,10 @@ def get_package_data_and_package_dir():
             package_data['paddle.libs'] += [env_dict.get("XPU_XFA_LIB_NAME")]
             shutil.copy(env_dict.get("XPU_XPUDNN_LIB"), libs_path)
             package_data['paddle.libs'] += [env_dict.get("XPU_XPUDNN_LIB_NAME")]
+            shutil.copy(env_dict.get("XPU_XPUDNN_OMP_LIB"), libs_path)
+            package_data['paddle.libs'] += [
+                env_dict.get("XPU_XPUDNN_OMP_LIB_NAME")
+            ]
 
     if env_dict.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(env_dict.get("XPU_BKCL_LIB"), libs_path)
@@ -1776,6 +1899,14 @@ def get_headers():
         )
         + list(  # common api
             find_files('*.h', paddle_source_dir + '/paddle/common')
+        )
+        # torch compatible apis
+        + list(
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/include/compat',
+                recursive=True,
+            )
         )
         # phi level api headers (low level api, for training only)
         + list(  # phi extension header
@@ -2089,6 +2220,42 @@ def get_headers():
             )
         )  # xre headers with .hpp extension
 
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir + '/paddle/fluid/fp8/deep_gemm/include/cute/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.h',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.hpp',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/cutlass/',
+                recursive=True,
+            )
+        )
+        headers += list(
+            find_files(
+                '*.cuh',
+                paddle_source_dir
+                + '/paddle/fluid/fp8/deep_gemm/include/deep_gemm',
+                recursive=True,
+            )
+        )
     # pybind headers
     headers += list(find_files('*.h', env_dict.get("PYBIND_INCLUDE_DIR"), True))
     return headers
@@ -2121,13 +2288,18 @@ def get_setup_parameters():
         'paddle.dataset',
         'paddle.reader',
         'paddle.distributed',
-        'paddle.distributed.checkpoint',
+        'paddle.distributed.flex_checkpoint',
+        'paddle.distributed.flex_checkpoint.aoa',
+        'paddle.distributed.flex_checkpoint.dcp',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
         'paddle.distributed.metric',
         'paddle.distributed.ps',
         'paddle.distributed.ps.utils',
         'paddle.incubate',
+        'paddle.incubate.cc.ap',
+        'paddle.incubate.cc.tools',
+        'paddle.apy',
         'paddle.incubate.autograd',
         'paddle.incubate.optimizer',
         'paddle.incubate.checkpoint',
@@ -2171,6 +2343,7 @@ def get_setup_parameters():
         'paddle.distributed.fleet.meta_parallel.parallel_layers',
         'paddle.distributed.auto_parallel',
         'paddle.distributed.auto_parallel.intermediate',
+        'paddle.distributed.auto_parallel.pipelining',
         'paddle.distributed.auto_parallel.dygraph',
         'paddle.distributed.auto_parallel.static',
         'paddle.distributed.auto_parallel.static.operators',
@@ -2290,10 +2463,18 @@ def get_setup_parameters():
 
     if (
         env_dict.get("WITH_GPU") == 'ON'
-        and env_dict.get("CUDA_ARCH_BIN")
-        and env_dict.get("CUDA_ARCH_BIN").find("90") != -1
+        and env_dict.get("COMPILED_CUDA_ARCHS")
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (
+        env_dict.get("WITH_GPU") == 'ON'
+        and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)
+        and env_dict.get("COMPILED_CUDA_ARCHS").find("90") != -1
+    ):
+        packages.extend(['paddle.incubate.fp8.deep_gemm'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit'])
+        packages.extend(['paddle.incubate.fp8.deep_gemm.jit_kernels'])
 
     if env_dict.get("WITH_TENSORRT") == 'ON':
         packages.extend(
@@ -2470,6 +2651,8 @@ def generate_stub_files(paddle_binary_dir, paddle_source_dir):
             paddle_source_dir
             + "/paddle/phi/ops/yaml/strings_ops.yaml;paddle.base.libpaddle.pir.ops;strings",
         ],
+        python_api_info_yaml_path=paddle_source_dir
+        + "/paddle/phi/ops/yaml/python_api_info.yaml",
     )
 
     libpaddle_dst = paddle_source_dir + '/python/paddle/_typing/libs/libpaddle'
@@ -2618,7 +2801,6 @@ def main():
             'Intended Audience :: Science/Research',
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: C++',
-            'Programming Language :: Python :: 3.8',
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
             'Programming Language :: Python :: 3.11',

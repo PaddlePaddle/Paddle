@@ -58,10 +58,14 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "pp":
             auto.shard_tensor(
-                self.linear0.weight, PP_MESH_0, [None, None]  # noqa: F821
+                self.linear0.weight,
+                PP_MESH_0,  # noqa: F821
+                [None, None],
             )
             auto.shard_tensor(
-                self.linear1.weight, PP_MESH_1, [None, None]  # noqa: F821
+                self.linear1.weight,
+                PP_MESH_1,  # noqa: F821
+                [None, None],
             )
         else:
             auto.shard_tensor(
@@ -81,9 +85,10 @@ class MLPLayer(nn.Layer):
 
 def mlp_forward(train_program, start_program):
     print("mlp_forward outer", flush=True)
-    with static.program_guard(
-        train_program, start_program
-    ), utils.unique_name.guard():
+    with (
+        static.program_guard(train_program, start_program),
+        utils.unique_name.guard(),
+    ):
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512

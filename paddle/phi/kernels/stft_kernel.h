@@ -15,7 +15,7 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void StftKernel(const Context& ctx,
+void StftKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 const DenseTensor& window,
                 int n_fft,

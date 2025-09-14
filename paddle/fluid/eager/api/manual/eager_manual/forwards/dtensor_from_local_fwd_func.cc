@@ -20,13 +20,20 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
 
+COMMON_DECLARE_bool(check_cuda_error);
+
 paddle::Tensor dtensor_from_local_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::ProcessMesh& process_mesh,
-    const phi::distributed::Placements& placements) {
+    const phi::distributed::Placements& placements,
+    paddle::optional<paddle::Tensor*> predefined_out) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "dtensor_from_local dygraph";
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_from_local_ad_function begin");
+  }
+
   if (input.is_dist_tensor()) {
     VLOG(3) << "Input is a distributed tensor, no need to convert.";
     return input;
@@ -99,7 +106,9 @@ paddle::Tensor dtensor_from_local_ad_function(
     grad_node->SetGradInMeta(out, 0);
     grad_node->SetTensorWrapperNoNeedBuffer_Output(out);
   }
-
+  if (FLAGS_check_cuda_error) [[unlikely]] {
+    egr::CUDAErrorCheck("dtensor_from_local_ad_function finish");
+  }
   return out;
 #else
   PADDLE_THROW(common::errors::Unavailable(

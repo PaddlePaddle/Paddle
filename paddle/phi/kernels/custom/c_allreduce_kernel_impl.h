@@ -95,7 +95,7 @@ void CAllReduceKernel(const Context& dev_ctx,
                                    dtype,
                                    red_type,
                                    comm->GetXcclComm(),
-                                   *stream);
+                                   stream->raw_stream());
 }
 
 template <typename T, typename Context, phi::ccl::CCLReduceOp red_type>
@@ -123,7 +123,7 @@ void AllReduceKernel(const Context& dev_ctx,
                                    dtype,
                                    red_type,
                                    comm->GetXcclComm(),
-                                   *stream);
+                                   stream->raw_stream());
 }
 }  // namespace phi
 

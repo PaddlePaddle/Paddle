@@ -15,7 +15,7 @@
 #include "paddle/ap/include/paddle/pass/ap_registry_helper.h"
 #include "paddle/ap/include/registry/registry_mgr.h"
 
-namespace cinn::dialect::ir {
+namespace ap::paddle {
 
 namespace {
 
@@ -31,4 +31,4 @@ ap::adt::Result<Registry> ApRegistryHelper::SingletonRegistry() {
   return registry;
 }
 
-}  // namespace cinn::dialect::ir
+}  // namespace ap::paddle

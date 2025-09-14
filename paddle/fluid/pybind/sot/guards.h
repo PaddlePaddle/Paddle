@@ -156,13 +156,12 @@ class DtypeMatchGuard : public GuardBase {
 
 class ShapeMatchGuard : public GuardBase {
  public:
-  explicit ShapeMatchGuard(const std::vector<std::optional<int64_t>>& shape)
-      : expected_(shape) {}
-
-  explicit ShapeMatchGuard(const std::vector<py::object>& shape) {
+  explicit ShapeMatchGuard(const std::vector<py::object>& shape,
+                           int64_t min_non_specialized_number)
+      : min_non_specialized_number_(min_non_specialized_number) {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
-      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
+      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() >= 0) {
         expected_[i] = std::make_optional(shape[i].cast<int64_t>());
       }
     }
@@ -173,6 +172,7 @@ class ShapeMatchGuard : public GuardBase {
 
  private:
   std::vector<std::optional<int64_t>> expected_;
+  int64_t min_non_specialized_number_;
 };
 
 class AttributeMatchGuard : public GuardBase {
@@ -255,14 +255,12 @@ class NumPyArrayValueMatchGuard : public GuardBase {
 
 class NumPyArrayShapeMatchGuard : public GuardBase {
  public:
-  explicit NumPyArrayShapeMatchGuard(
-      const std::vector<std::optional<int64_t>>& shape)
-      : expected_(shape) {}
-
-  explicit NumPyArrayShapeMatchGuard(const std::vector<py::object>& shape) {
+  explicit NumPyArrayShapeMatchGuard(const std::vector<py::object>& shape,
+                                     int64_t min_non_specialized_number)
+      : min_non_specialized_number_(min_non_specialized_number) {
     expected_.resize(shape.size());
     for (size_t i = 0; i < shape.size(); ++i) {
-      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() > 0) {
+      if (py::isinstance<py::int_>(shape[i]) && shape[i].cast<int64_t>() >= 0) {
         expected_[i] = std::make_optional(shape[i].cast<int64_t>());
       }
     }
@@ -275,6 +273,7 @@ class NumPyArrayShapeMatchGuard : public GuardBase {
 
  private:
   std::vector<std::optional<int64_t>> expected_;
+  int64_t min_non_specialized_number_;
 };
 
 class WeakRefMatchGuard : public GuardBase {
@@ -290,6 +289,14 @@ class WeakRefMatchGuard : public GuardBase {
 
  private:
   PyObject* expected_;
+};
+
+class IsNotDenseTensorHoldAllocationMatchGuard : public GuardBase {
+ public:
+  bool check(PyObject* value) override;
+  std::string get_guard_name() const override {
+    return "IsNotDenseTensorHoldAllocationMatchGuard";
+  }
 };
 
 class GuardTreeNodeBase {

@@ -33,6 +33,7 @@ void OneHotKernel(const Context& dev_ctx,
   auto* p_in_data = x.data<T>();
   auto numel = x.numel();
   auto* p_out_data = dev_ctx.template Alloc<float>(out);
+  if (numel == 0) return;
   int r = xpu::one_hot<T>(
       dev_ctx.x_context(), p_in_data, p_out_data, numel, depth_v, 1.0, 0.0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "one_hot");

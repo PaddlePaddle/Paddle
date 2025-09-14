@@ -415,8 +415,8 @@ PD_REGISTER_KERNEL(fused_gate_attention_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedGateAttentionGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(fused_gate_attention_grad,
                    GPU,
@@ -424,6 +424,6 @@ PD_REGISTER_KERNEL(fused_gate_attention_grad,
                    phi::fusion::FusedGateAttentionGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

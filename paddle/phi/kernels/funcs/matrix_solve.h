@@ -87,7 +87,7 @@ static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
 }
 
 template <typename Context, typename T>
-void compute_solve_eigen(const Context& context,
+void compute_solve_eigen(const Context& dev_ctx,
                          const DenseTensor& a,
                          const DenseTensor& b,
                          DenseTensor* out) {
@@ -112,7 +112,7 @@ void compute_solve_eigen(const Context& context,
   const T* b_ptr = b.data<T>();
   out->Resize(b_mat_dims);  // make sure the out dims is right
 
-  T* out_ptr = context.template Alloc<T>(out);
+  T* out_ptr = dev_ctx.template Alloc<T>(out);
   if (a_batch_size == b_batch_size) {
     for (int i = 0; i < a_batch_size; ++i) {
       ConstEigenMatrixMap a_mat(a_ptr + i * n * n, n, n);
@@ -185,7 +185,7 @@ void SolveLinearSystem(T* matrix_data,
 template <typename Context, typename T>
 class MatrixSolveFunctor {
  public:
-  void operator()(const Context& context,
+  void operator()(const Context& dev_ctx,
                   const DenseTensor& a,
                   const DenseTensor& b,
                   DenseTensor* out);

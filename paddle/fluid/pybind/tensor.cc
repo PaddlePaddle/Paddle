@@ -13,10 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include <algorithm>
 #include <cctype>
@@ -174,6 +170,7 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 COMMON_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
@@ -795,7 +792,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              tensor.ResetHolderWithType(
                  shared_reader_holder,
                  static_cast<phi::DataType>(t[3].cast<int>()));
-             tensor.Resize(common::make_ddim(t[4].cast<std::vector<int>>()));
+             tensor.Resize(common::make_ddim(
+                 t[4].cast<std::vector<int64_t>>()));
 
              return tensor;
            },
@@ -906,7 +904,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              const auto &device_id =
                  paddle::platform::GetXPUCurrentDeviceId();
              auto stream = paddle::platform::get_current_stream(device_id);
-             xpu_wait(stream);
+             xpu_wait(stream->raw_stream());
              int type_idx = static_cast<int>(self.type());
              size_t data_size = self.numel() *
                  framework::SizeOfType(
@@ -1199,6 +1197,8 @@ void BindTensor(pybind11::module &m) {  // NOLINT
              self.unsafe_mutable_value()->ShareDataNoCheckWith(src.value());
              return self;
            })
+      .def("_numel",
+           [](DistTensor &self) -> int64_t { return self.value().numel(); })
       .def("_share_data_with",
            [](DistTensor &self, const DistTensor &src) {
              self.unsafe_set_dims(src.dims());

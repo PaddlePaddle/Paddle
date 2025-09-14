@@ -216,6 +216,10 @@ function(copy_part_of_third_party TARGET DST)
       ${TARGET}
       SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHATTN_V3_LIBRARIES}
       DSTS ${dst_dir} ${dst_dir}/lib)
+    copy(
+      ${TARGET}
+      SRCS ${FLASHATTN_INCLUDE_DIR} ${FLASHMASK_V2_LIBRARIES}
+      DSTS ${dst_dir} ${dst_dir}/lib)
   endif()
 
   if(NOT PROTOBUF_FOUND OR WIN32)
@@ -284,6 +288,11 @@ copy(
   DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
 
 if(WIN32)
+  set(paddle_phi_libs ${PADDLE_BINARY_DIR}/paddle/phi/phi*)
+  copy(
+    inference_lib_dist
+    SRCS ${paddle_phi_libs}
+    DSTS ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib)
   if(WITH_STATIC_LIB)
     set(paddle_inference_lib
         $<TARGET_FILE_DIR:paddle_inference>/libpaddle_inference.lib

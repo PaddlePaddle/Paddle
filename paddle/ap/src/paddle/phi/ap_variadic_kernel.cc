@@ -21,6 +21,7 @@
 #include "paddle/common/enforce.h"
 
 #include "paddle/ap/include/axpr/anf_expr_util.h"
+#include "paddle/ap/include/fs/builtin_functions.h"
 #include "paddle/ap/include/kernel_dispatch/builtin_frame_util.h"
 #include "paddle/ap/include/paddle/phi/kernel_define_helper.h"
 #include "paddle/ap/include/paddle/phi/kernel_dispatch_helper.h"

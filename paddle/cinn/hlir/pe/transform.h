@@ -20,7 +20,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {

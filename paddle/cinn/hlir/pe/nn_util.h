@@ -23,7 +23,6 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace hlir {

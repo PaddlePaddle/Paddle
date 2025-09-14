@@ -104,8 +104,11 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
       auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
                                   .dyn_cast<pir::StrAttribute>()
                                   .AsString();
+      auto onednn_data_type = op_attr.at("onednn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
       // Reduce repetitive match
-      if (mkldnn_data_type != "float32") {
+      if (mkldnn_data_type != "float32" && onednn_data_type != "float32") {
         return false;
       }
     }
@@ -205,6 +208,11 @@ class OneDNNBf16PlacementPattern : public pir::RewritePattern {
           attributes[attr.first] =
               pir::StrAttribute::get(pir::IrContext::Instance(), "bfloat16");
         }
+        if (attr.first == "onednn_data_type") {
+          VLOG(8) << "onednn_data_type set to bf16, op:" << target_op_name;
+          attributes[attr.first] =
+              pir::StrAttribute::get(pir::IrContext::Instance(), "bfloat16");
+        }
       }
 
       pir::Operation* op_item_inner = rewriter.Build(op->operands_source(),
@@ -273,7 +281,10 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
       auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
                                   .dyn_cast<pir::StrAttribute>()
                                   .AsString();
-      if (mkldnn_data_type != "bfloat16") {
+      auto onednn_data_type = op_attr.at("onednn_data_type")
+                                  .dyn_cast<pir::StrAttribute>()
+                                  .AsString();
+      if (mkldnn_data_type != "bfloat16" && onednn_data_type != "bfloat16") {
         return false;
       }
     }
@@ -326,8 +337,10 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         auto mkldnn_data_type = op_attr.at("mkldnn_data_type")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
-
-        if (mkldnn_data_type == "float32") {
+        auto onednn_data_type = op_attr.at("onednn_data_type")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+        if (mkldnn_data_type == "float32" || onednn_data_type == "float32") {
           prev_fp32 = true;
           break;
         }
@@ -360,7 +373,10 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
         auto mkldnn_data_type = op_next_attr.at("mkldnn_data_type")
                                     .dyn_cast<pir::StrAttribute>()
                                     .AsString();
-        if (mkldnn_data_type == "float32") {
+        auto onednn_data_type = op_next_attr.at("onednn_data_type")
+                                    .dyn_cast<pir::StrAttribute>()
+                                    .AsString();
+        if (mkldnn_data_type == "float32" || onednn_data_type == "float32") {
           VLOG(8) << "mkldnn_data_type is fp32:" << next_op->name();
           next_fp32 = true;
           break;
@@ -390,6 +406,10 @@ class RemoveOrphanedPattern : public pir::RewritePattern {
       if (attributes.find("mkldnn_data_type") != attributes.end()) {
         attributes["mkldnn_data_type"] =
             pir::StrAttribute::get(pir::IrContext::Instance(), "float32");
+      }
+      if (attributes.find("onednn_data_type") != attributes.end()) {
+        attributes["onednn_data_type"] =
+            pir::StrAttribute::get(pir::IrContext::Instance(), "");
       }
 
       pir::Operation* op_item_inner = rewriter.Build(op->operands_source(),

@@ -26,7 +26,7 @@ inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
                                     const phi::DenseTensor* seed,
                                     const bool is_fix_seed,
                                     const int seed_val,
-                                    const int offset,
+                                    const uint64_t offset,
                                     uint64_t* seed_data,
                                     uint64_t* increment,
                                     bool use_copy = true) {

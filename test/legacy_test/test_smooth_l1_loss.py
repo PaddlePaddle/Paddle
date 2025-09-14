@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places
 
 import paddle
 from paddle import base
@@ -30,7 +31,29 @@ def smooth_l1_loss_forward(val, delta):
 
 def smooth_l1_loss_np(input, label, reduction='mean', delta=1.0):
     diff = input - label
-    out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
+    if input.size == 0:
+        out = input
+    else:
+        out = np.vectorize(smooth_l1_loss_forward)(diff, delta)
+    if reduction == 'sum':
+        return np.sum(out)
+    elif reduction == 'mean':
+        return np.mean(out)
+    elif reduction == 'none':
+        return out
+
+
+def smooth_l1_loss_div_delta_forward(val, delta):
+    abs_val = abs(val)
+    if abs_val <= delta:
+        return 0.5 * val * val / delta
+    else:
+        return abs_val - 0.5 * delta
+
+
+def smooth_l1_loss_div_delta_np(input, label, reduction='mean', delta=1.0):
+    diff = input - label
+    out = np.vectorize(smooth_l1_loss_div_delta_forward)(diff, delta)
     if reduction == 'sum':
         return np.sum(out)
     elif reduction == 'mean':
@@ -47,11 +70,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
 
         expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
 
@@ -95,11 +114,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, reduction='sum')
 
         def test_static():
@@ -142,11 +157,7 @@ class SmoothL1Loss(unittest.TestCase):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, reduction='none')
 
         def test_static():
@@ -190,11 +201,7 @@ class SmoothL1Loss(unittest.TestCase):
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
 
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         expected = smooth_l1_loss_np(input_np, label_np, delta=delta)
 
         def test_static():
@@ -223,6 +230,233 @@ class SmoothL1Loss(unittest.TestCase):
 
         with base.dygraph.guard():
             smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
+            dy_ret = smooth_l1_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+
+        test_static()
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+
+class SmoothL1Loss_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+
+    def _test_smooth_l1_loss_mean(self, place):
+        input_np = np.random.random([0, 3, 2]).astype(np.float32)
+        label_np = np.random.random([0, 3, 2]).astype(np.float32)
+        expected = smooth_l1_loss_np(input_np, label_np, reduction='mean')
+
+        paddle.disable_static(place)
+        smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
+        input = paddle.to_tensor(input_np)
+        input.stop_gradient = False
+        label = paddle.to_tensor(label_np)
+        label.stop_gradient = False
+        dy_ret = smooth_l1_loss(
+            input,
+            label,
+        )
+        np.testing.assert_allclose(dy_ret.numpy(), expected, rtol=1e-05)
+
+        paddle.sum(dy_ret).backward()
+        np.testing.assert_allclose(input.grad.shape, input.shape)
+        paddle.enable_static()
+
+    def test_smooth_l1_loss_mean(self):
+        for p in get_places():
+            self._test_smooth_l1_loss_mean(p)
+
+
+class SmoothL1LossDivDelta(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+
+    def test_smooth_l1_loss_mean(self):
+        input_np = np.random.random([100, 200]).astype(np.float32)
+        label_np = np.random.random([100, 200]).astype(np.float32)
+
+        place = get_device_place()
+
+        expected = smooth_l1_loss_div_delta_np(
+            input_np, label_np, reduction='mean'
+        )
+
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(is_huber=False)
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        with base.dygraph.guard():
+            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(is_huber=False)
+            dy_ret = smooth_l1_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+
+        test_static()
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+    def test_smooth_l1_loss_sum(self):
+        input_np = np.random.random([100, 200]).astype(np.float32)
+        label_np = np.random.random([100, 200]).astype(np.float32)
+
+        place = get_device_place()
+        expected = smooth_l1_loss_div_delta_np(
+            input_np, label_np, reduction='sum'
+        )
+
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                    reduction='sum', is_huber=False
+                )
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        with base.dygraph.guard():
+            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                reduction='sum', is_huber=False
+            )
+            dy_ret = smooth_l1_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+
+        test_static()
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+    def test_smooth_l1_loss_none(self):
+        input_np = np.random.random([100, 200]).astype(np.float32)
+        label_np = np.random.random([100, 200]).astype(np.float32)
+
+        place = get_device_place()
+        expected = smooth_l1_loss_div_delta_np(
+            input_np, label_np, reduction='none'
+        )
+
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                    reduction='none', is_huber=False
+                )
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        with base.dygraph.guard():
+            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                reduction='none', is_huber=False
+            )
+            dy_ret = smooth_l1_loss(
+                paddle.to_tensor(input_np),
+                paddle.to_tensor(label_np),
+            )
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+
+        test_static()
+        np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
+
+    def test_smooth_l1_loss_delta(self):
+        input_np = np.random.random([100, 200]).astype(np.float32)
+        label_np = np.random.random([100, 200]).astype(np.float32)
+        delta = np.random.rand()
+
+        place = get_device_place()
+        expected = smooth_l1_loss_div_delta_np(input_np, label_np, delta=delta)
+
+        def test_static():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
+                input = paddle.static.data(
+                    name='input', shape=[100, 200], dtype='float32'
+                )
+                label = paddle.static.data(
+                    name='label', shape=[100, 200], dtype='float32'
+                )
+                smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                    delta=delta, is_huber=False
+                )
+                ret = smooth_l1_loss(input, label)
+
+                exe = paddle.static.Executor(place)
+                (static_ret,) = exe.run(
+                    feed={
+                        'input': input_np,
+                        'label': label_np,
+                    },
+                    fetch_list=[ret],
+                )
+                self.assertIsNotNone(static_ret)
+                np.testing.assert_allclose(static_ret, expected, rtol=1e-05)
+
+        with base.dygraph.guard():
+            smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(
+                delta=delta, is_huber=False
+            )
             dy_ret = smooth_l1_loss(
                 paddle.to_tensor(input_np),
                 paddle.to_tensor(label_np),

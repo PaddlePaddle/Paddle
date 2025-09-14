@@ -24,7 +24,7 @@ namespace auto_parallel {
 
 class DistributedMapperProto;
 
-class DistributedMapper {
+class PADDLE_API DistributedMapper {
  public:
   DistributedMapper() = default;
 
@@ -61,7 +61,8 @@ class DistributedMapper {
       process_id_to_device_ids_;
 };
 
-bool operator==(const DistributedMapper& lhs, const DistributedMapper& rhs);
+PADDLE_API bool operator==(const DistributedMapper& lhs,
+                           const DistributedMapper& rhs);
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const DistributedMapper& obj) {

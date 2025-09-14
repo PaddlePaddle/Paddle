@@ -58,7 +58,6 @@ class TestTriuIndicesOpCase2(TestTriuIndicesOp):
 
 
 class TestTriuIndicesAPICaseStatic(unittest.TestCase):
-
     def test_static(self):
         if base.core.is_compiled_with_cuda():
             place = paddle.base.CUDAPlace(0)
@@ -105,7 +104,6 @@ class TestTriuIndicesAPICaseError(unittest.TestCase):
 
 
 class TestTriuIndicesAPICaseDefault(unittest.TestCase):
-
     def test_default_CPU(self):
         paddle.enable_static()
         with paddle.static.program_guard(

@@ -228,6 +228,7 @@ else()
       ${DEPS}
       ${MATH_LIB}
       ${ONEDNN_LIB}
+      phi
       glog
       gflags_static
       libprotobuf
@@ -315,6 +316,18 @@ if(WIN32)
           ${TENSORRT_LIB_DIR}/myelin64_1${CMAKE_SHARED_LIBRARY_SUFFIX}
           ${LIB_PATH})
     endif()
+  endif()
+  if(WITH_SHARED_PHI)
+    add_custom_command(
+      TARGET ${DEMO_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB}/paddle/lib/common.dll
+              ${LIB_PATH})
+    add_custom_command(
+      TARGET ${DEMO_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy ${PADDLE_LIB}/paddle/lib/phi.dll
+              ${LIB_PATH})
   endif()
   if(WITH_MKL)
     add_custom_command(

@@ -144,6 +144,33 @@ class TestKronFP16Op(TestKronOp):
         return "float16"
 
 
+class TestKronOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "kron"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.kron
+        self.public_python_api = paddle.kron
+        self.dtype = self._init_dtype()
+        x = np.random.uniform(size=(10, 0, 2)).astype(self.dtype)
+        y = np.random.uniform(size=(2, 3, 4, 3, 2)).astype(self.dtype)
+        out_ref = np.kron(x, y)
+        self.inputs = {'X': x, 'Y': y}
+        self.outputs = {'Out': out_ref}
+
+    def _init_dtype(self):
+        return "float64"
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -219,11 +246,13 @@ class TestKronLayer(unittest.TestCase):
         out_np = np.kron(a, b)
         paddle.enable_static()
         prog = paddle.static.Program()
-        with base.unique_name.guard():
-            with paddle.static.program_guard(prog, prog):
-                a_var = paddle.static.data("a", [-1, -1], dtype="float64")
-                b_var = paddle.static.data("b", [-1, -1], dtype="float64")
-                out_var = paddle.kron(a_var, b_var)
+        with (
+            base.unique_name.guard(),
+            paddle.static.program_guard(prog, prog),
+        ):
+            a_var = paddle.static.data("a", [-1, -1], dtype="float64")
+            b_var = paddle.static.data("b", [-1, -1], dtype="float64")
+            out_var = paddle.kron(a_var, b_var)
         exe = paddle.static.Executor(place=place)
         (res,) = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(res, out_np)
@@ -243,7 +272,7 @@ class TestComplexKronOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

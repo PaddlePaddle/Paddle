@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TemporalShiftGradKernel(const Context& ctx,
+void TemporalShiftGradKernel(const Context& dev_ctx,
                              const DenseTensor& out_grad,
                              int seg_num,
                              float shift_ratio,

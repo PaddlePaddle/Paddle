@@ -102,7 +102,7 @@ __global__ void vol2col(int num_kernels,
 //  public:
 template <class DeviceContext, class T>
 void Vol2ColFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor& vol,
     const std::vector<int>& dilations,
     const std::vector<int>& strides,
@@ -179,13 +179,13 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
 
   int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-  phi::backends::gpu::ChangeThreadNum(context, &max_threads);
+  phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif
 
   const int threads = max_threads;
   const int blocks = (num_outputs + max_threads - 1) / max_threads;
 
-  vol2col<T><<<blocks, threads, 0, context.stream()>>>(num_outputs,
+  vol2col<T><<<blocks, threads, 0, dev_ctx.stream()>>>(num_outputs,
                                                        vol.data<T>(),
                                                        input_depth,
                                                        input_height,
@@ -308,7 +308,7 @@ __global__ void col2vol(int num_kernels,
 //  public:
 template <class DeviceContext, class T>
 void Col2VolFunctor<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& dev_ctx,
     const phi::DenseTensor& col,
     const std::vector<int>& dilations,
     const std::vector<int>& strides,
@@ -385,13 +385,13 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 
   int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-  phi::backends::gpu::ChangeThreadNum(context, &max_threads);
+  phi::backends::gpu::ChangeThreadNum(dev_ctx, &max_threads);
 #endif
 
   const int threads = max_threads;
   const int blocks = (num_kernels + max_threads - 1) / max_threads;
 
-  col2vol<T><<<blocks, threads, 0, context.stream()>>>(num_kernels,
+  col2vol<T><<<blocks, threads, 0, dev_ctx.stream()>>>(num_kernels,
                                                        col.data<T>(),
                                                        input_depth,
                                                        input_height,

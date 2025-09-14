@@ -25,7 +25,7 @@ namespace phi {
 #ifdef PADDLE_WITH_XPU_XRE5
 template <typename T, typename Context>
 void FlashAttnGradKernelBase(
-    const Context& ctx,
+    const Context& dev_ctx,
     const DenseTensor& q,
     const DenseTensor& k,
     const DenseTensor& v,
@@ -50,10 +50,10 @@ void FlashAttnGradKernelBase(
     DenseTensor* dq,
     DenseTensor* dk,
     DenseTensor* dv) {
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
+  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
   const XPUType* q_data = reinterpret_cast<const XPUType*>(q.data<T>());
   const XPUType* k_data = reinterpret_cast<const XPUType*>(k.data<T>());
   const XPUType* v_data = reinterpret_cast<const XPUType*>(v.data<T>());
@@ -87,27 +87,27 @@ void FlashAttnGradKernelBase(
                           "flashmask_attention startend_row_indices "
                           "mask_bounds must in [1,2,4]"));
     downstart_row_indices =
-        phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {0}, {1});
+        phi::Slice<int32_t>(dev_ctx, startend_row_indices.get(), {3}, {0}, {1});
     downstart_row_indices_data = downstart_row_indices.data();
     if (startend_row_indices->dims()[3] == 2) {
       if (!causal) {
-        upend_row_indices =
-            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        upend_row_indices = phi::Slice<int32_t>(
+            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         upend_row_indices_data = upend_row_indices.data();
       } else {
-        downend_row_indices =
-            phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+        downend_row_indices = phi::Slice<int32_t>(
+            dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
         downend_row_indices_data = downend_row_indices.data();
       }
     } else if (startend_row_indices->dims()[3] == 4) {
-      upend_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {3}, {4});
+      upend_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {3}, {4});
       upend_row_indices_data = upend_row_indices.data();
-      downend_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {1}, {2});
+      downend_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {1}, {2});
       downend_row_indices_data = downend_row_indices.data();
-      upstart_row_indices =
-          phi::Slice<int32_t>(ctx, startend_row_indices.get(), {3}, {2}, {3});
+      upstart_row_indices = phi::Slice<int32_t>(
+          dev_ctx, startend_row_indices.get(), {3}, {2}, {3});
       upstart_row_indices_data = upstart_row_indices.data();
     }
   } else if (attn_mask.get_ptr() != nullptr) {
@@ -127,7 +127,7 @@ void FlashAttnGradKernelBase(
                attn_mask->dtype() == phi::DataType::BFLOAT16) {
       float* bias_tmp = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask->numel());
       int r = xpu::cast<XPUType, float>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(attn_mask->data<T>()),
           bias_tmp,
           attn_mask->numel());
@@ -161,8 +161,8 @@ void FlashAttnGradKernelBase(
         baidu::xpu::xfa::mha_varlen_bwd<XPUType, float, XPUTypeFP16, int>;
   }
   // template<typename T, typename TACCUM, typename TGEMM, typename TID = int>
-  // int mha_varlen_bwd(xdnn::Context* ctx, const T* dout, const T* q, const T*
-  // k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
+  // int mha_varlen_bwd(xdnn::Context* xpu_ctx, const T* dout, const T* q, const
+  // T* k, const T* v, const T* out, const TACCUM* softmax_lse, T* dq, T* dk, T*
   // dv, const xdnn::VectorParam<TID>& lod_seqlens_q, const
   // xdnn::VectorParam<TID>& lod_seqlens_k, int64_t max_seqlen_q, int64_t
   // max_seqlen_k, int64_t head_num, int64_t head_num_k, int64_t head_dim, const
@@ -184,7 +184,7 @@ void FlashAttnGradKernelBase(
   // int* flashmask_maxmin = nullptr,
   // XPUStream side_stream = nullptr);
   int r = flash_attention_grad_kernel(
-      ctx.x_context(),
+      dev_ctx.x_context(),
       dout_data,                                  // dout
       q_data,                                     // q
       k_data,                                     // k
@@ -240,7 +240,7 @@ void FlashAttnGradKernelBase(
 #endif
 
 template <typename T, typename Context>
-void FlashAttnUnpaddedGradKernel(const Context& ctx,
+void FlashAttnUnpaddedGradKernel(const Context& dev_ctx,
                                  const DenseTensor& q,
                                  const DenseTensor& k,
                                  const DenseTensor& v,
@@ -260,9 +260,9 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                                  DenseTensor* dk,
                                  DenseTensor* dv) {
 #ifdef PADDLE_WITH_XPU_XRE5
-  ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
+  dev_ctx.template Alloc<T>(dq);
+  dev_ctx.template Alloc<T>(dk);
+  dev_ctx.template Alloc<T>(dv);
   auto dims = q.dims();
 
   const int64_t batch_size = cu_seqlens_q.numel() - 1;
@@ -278,7 +278,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
                               static_cast<int64_t>(cu_seqlens_k.numel()),
                               nullptr};
 
-  FlashAttnGradKernelBase<T>(ctx,
+  FlashAttnGradKernelBase<T>(dev_ctx,
                              q,
                              k,
                              v,
@@ -310,7 +310,7 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void FlashAttnGradKernel(const Context& ctx,
+void FlashAttnGradKernel(const Context& dev_ctx,
                          const DenseTensor& q,
                          const DenseTensor& k,
                          const DenseTensor& v,
@@ -325,9 +325,9 @@ void FlashAttnGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_XPU_XRE5
-  ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
+  dev_ctx.template Alloc<T>(dq);
+  dev_ctx.template Alloc<T>(dk);
+  dev_ctx.template Alloc<T>(dv);
 
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -359,7 +359,7 @@ void FlashAttnGradKernel(const Context& ctx,
   api::VectorParam<int> kvlod{
       kvlod_vec.data(), static_cast<int64_t>(kvlod_vec.size()), nullptr};
 
-  FlashAttnGradKernelBase<T>(ctx,
+  FlashAttnGradKernelBase<T>(dev_ctx,
                              q,
                              k,
                              v,
@@ -391,7 +391,7 @@ void FlashAttnGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void FlashMaskGradKernel(const Context& ctx,
+void FlashMaskGradKernel(const Context& dev_ctx,
                          const DenseTensor& q,
                          const DenseTensor& k,
                          const DenseTensor& v,
@@ -406,9 +406,9 @@ void FlashMaskGradKernel(const Context& ctx,
                          DenseTensor* dk,
                          DenseTensor* dv) {
 #ifdef PADDLE_WITH_XPU_XRE5
-  ctx.template Alloc<T>(dq);
-  ctx.template Alloc<T>(dk);
-  ctx.template Alloc<T>(dv);
+  dev_ctx.template Alloc<T>(dq);
+  dev_ctx.template Alloc<T>(dk);
+  dev_ctx.template Alloc<T>(dv);
 
   // q, k, v [batch_size, seq_len, num_heads, head_dim]
   const auto& dims = q.dims();
@@ -439,7 +439,7 @@ void FlashMaskGradKernel(const Context& ctx,
       qlod_vec.data(), static_cast<int64_t>(qlod_vec.size()), nullptr};
   api::VectorParam<int> kvlod{
       kvlod_vec.data(), static_cast<int64_t>(kvlod_vec.size()), nullptr};
-  FlashAttnGradKernelBase<T>(ctx,
+  FlashAttnGradKernelBase<T>(dev_ctx,
                              q,
                              k,
                              v,
@@ -476,8 +476,8 @@ PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedGradKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(3).SetBackend(phi::Backend::CPU);          // cu_seqlens_q
   kernel->InputAt(4).SetBackend(phi::Backend::CPU);          // cu_seqlens_k
   kernel->InputAt(7).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
@@ -487,9 +487,9 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashAttnGradKernel,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    float,
-                   phi::dtype::float16) {
+                   phi::float16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
 
@@ -497,8 +497,8 @@ PD_REGISTER_KERNEL(flashmask_attention_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::FlashMaskGradKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(6).SetBackend(
       phi::Backend::ALL_BACKEND);  // fixed_seed_offset
 }

@@ -677,8 +677,124 @@ std::optional<std::unordered_map<std::string, ir::IndexExpr>> MatchPattern(
   return std::nullopt;
 }
 
+/*!
+ * \brief Optimize linear division and modulo operations with constant
+ * denominators.
+ *
+ * This function handles linear expressions of the form
+ *   `(a * C1 + b) / C2` and `(a * C1 + b) % C2`
+ * where C1 and C2 are constants. It specifically targets:
+ * 1. Linear combinations in the numerator (sums of terms)
+ * 2. Constant denominators
+ *
+ * The optimization:
+ * 1. Separates terms divisible by the denominator (linear coefficients)
+ * 2. Groups remaining terms as a remainder expression
+ * 3. For division:
+ *    - Returns the sum of divisible terms if remainder < denominator
+ *    - Otherwise preserves the original division
+ * 4. For modulo:
+ *    - Returns the remainder if it's provably smaller than denominator
+ *    - Otherwise preserves the original modulo
+ *
+ * Example linear optimizations:
+ * 1. Linear division: (x * 8 + y * 4 + 3) / 4 → x*2 + y + 0 (when 3 < 4)
+ * 2. Linear modulo: (x * 8 + y * 4 + 3) % 4 → 0 + 0 + 3
+ * 3. Partial division: (x * 6 + 5) / 3 → x * 2 + 5 / 3 (when 5 >= 3)
+ *
+ * \param expr The linear division/modulo expression to optimize
+ * \param ana Symbolic analyzer for proving expression bounds
+ * \return Simplified expression if provably correct, original otherwise
+ */
+ir::IndexExpr HandleDivModWithConstants(
+    const ir::IndexExpr &expr, const common::SymbolicExprAnalyzer &ana) {
+  // Get numerator and denominator
+  auto numerator = expr.operand(0);
+  auto denominator = expr.operand(1);
+
+  // Check if denominator is a constant
+  if (!denominator.is_constant()) {
+    return expr;
+  }
+  int64_t denom_val = denominator.as_int64();
+
+  // Recursively expand addition chain and collect all terms
+  std::vector<ir::IndexExpr> terms = optim::GetFlattenExprs<ir::Add>(numerator);
+  if (terms.empty()) {
+    return expr;
+  }
+
+  // Separate terms that are multiples of denominator from other terms
+  std::vector<ir::IndexExpr> multiple_terms;
+  std::vector<ir::IndexExpr> remainder_terms;
+
+  for (auto &term : terms) {
+    if (term.node_type() == ir::IrNodeTy::Mul) {
+      auto rhs = term.operand(1);
+      if (rhs.is_constant() && rhs.as_int64() % denom_val == 0) {
+        // Extract terms divisible by denominator
+        multiple_terms.push_back(
+            term.operand(0) *
+            (rhs.as_int64() / denom_val));  // Extract multiplicand part
+        continue;
+      }
+    }
+    // Extract terms not divisible by denominator
+    auto remainder_upper = ana.UpperBound(term);
+    if (!ana.ProveLT(remainder_upper, denominator).value_or(false)) {
+      return expr;
+    }
+    remainder_terms.push_back(term);
+  }
+
+  // Build remainder expression
+  ir::IndexExpr remainder_expr;
+  if (remainder_terms.empty()) {
+    remainder_expr = ir::IndexExpr(0);
+  } else if (remainder_terms.size() == 1) {
+    remainder_expr = remainder_terms[0];
+  } else {
+    remainder_expr = ir::Add::Make(remainder_terms[0], remainder_terms[1]);
+    for (size_t i = 2; i < remainder_terms.size(); ++i) {
+      remainder_expr = ir::Add::Make(remainder_expr, remainder_terms[i]);
+    }
+  }
+
+  // Build multiplicand terms expression
+  ir::IndexExpr multiple_expr;
+  if (multiple_terms.empty()) {
+    multiple_expr = ir::IndexExpr(0);
+  } else if (multiple_terms.size() == 1) {
+    multiple_expr = multiple_terms[0];
+  } else {
+    multiple_expr = ir::Add::Make(multiple_terms[0], multiple_terms[1]);
+    for (size_t i = 2; i < multiple_terms.size(); ++i) {
+      multiple_expr = ir::Add::Make(multiple_expr, multiple_terms[i]);
+    }
+  }
+
+  // Verify if remainder range is less than denominator
+  auto remainder_upper = ana.UpperBound(remainder_expr);
+  if (!ana.ProveLT(remainder_upper, denominator).value_or(false)) {
+    // If remainder is greater than denominator, the division result is non-zero
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return ir::Add::Make(multiple_expr,
+                           ir::Div::Make(remainder_expr, denominator));
+    } else {  // Modulo operation
+      return ir::Mod::Make(remainder_expr, denominator);
+    }
+  } else {
+    // If remainder is less than denominator, the division result is zero
+    if (expr.node_type() == ir::IrNodeTy::Div) {
+      return multiple_expr;
+    } else {  // Modulo operation
+      return remainder_expr;
+    }
+  }
+}
+
 ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
-  // return expr if expr is not a division or modulo
+  // Return expr if expr is not a division or modulo
   if (expr.node_type() != ir::IrNodeTy::Div &&
       expr.node_type() != ir::IrNodeTy::Mod)
     return expr;
@@ -686,10 +802,10 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
   common::cas_intervals_t var_intervals =
       common::CollectVarIntervalsOfExprs({expr});
   common::SymbolicExprAnalyzer ana(var_intervals);
-  // Because the SymbolicExprAnalyzer bound result is [lower, upper), `ProveLE`
-  // is used here instead of `ProveLT`.
+  // Because the SymbolicExprAnalyzer bound result is [lower, upper],
+  // `ProveLT` is used here instead of `ProveLE`.
   auto canBeSimplified =
-      ana.ProveLE(ana.UpperBound(expr.operand(0)), expr.operand(1));
+      ana.ProveLT(ana.UpperBound(expr.operand(0)), expr.operand(1));
 
   if (canBeSimplified.value_or(false)) {
     if (expr.node_type() == ir::IrNodeTy::Div) {
@@ -698,7 +814,8 @@ ir::IndexExpr BoundSimplify(const ir::IndexExpr &expr) {
       return expr.operand(0);
     }
   }
-  return expr;
+
+  return HandleDivModWithConstants(expr, ana);
 }
 
 ir::IndexExpr BroadcastSimplify(const ir::IndexExpr &expr) {

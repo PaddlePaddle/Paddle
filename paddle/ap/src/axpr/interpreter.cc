@@ -14,6 +14,7 @@
 
 #include "paddle/ap/include/axpr/interpreter.h"
 #include "paddle/ap/include/axpr/cps_interpreter.h"
+#include "paddle/ap/include/fs/builtin_functions.h"
 
 namespace ap::axpr {
 

@@ -115,8 +115,42 @@ def check_recompute_necessary(inputs):
         )
 
 
+class CustomStatesManager:
+    """CustomStatesManager"""
+
+    def __init__(self):
+        """__init__"""
+        self.custom_get_state_func = None
+        self.custom_set_state_func = None
+
+    def set_custom_get_state_func(self, custom_get_state_func):
+        assert_msg = (
+            "The custom_state_manager does not support duplicate settings."
+        )
+        assert self.custom_get_state_func is None, assert_msg
+        self.custom_get_state_func = custom_get_state_func
+
+    def set_custom_set_state_func(self, custom_set_state_func):
+        assert_msg = (
+            "The custom_state_manager does not support duplicate settings."
+        )
+        assert self.custom_set_state_func is None, assert_msg
+        self.custom_set_state_func = custom_set_state_func
+
+
+custom_state_manager = CustomStatesManager()
+
+
 @contextlib.contextmanager
-def switch_rng_state_tracker(rng_state, tracker, numpy_state, random_state):
+def switch_rng_state_tracker(
+    rng_state,
+    tracker,
+    numpy_state,
+    random_state,
+    custom_state=None,
+    custom_get_state_func=None,
+    custom_set_state_func=None,
+):
     orig_rng_state = paddle.get_rng_state()
     orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
     paddle.set_rng_state(rng_state)
@@ -126,6 +160,12 @@ def switch_rng_state_tracker(rng_state, tracker, numpy_state, random_state):
     orig_random_state = random.getstate()
     np.random.set_state(numpy_state)
     random.setstate(random_state)
+
+    if custom_state is not None:
+        assert custom_get_state_func is not None
+        assert custom_set_state_func is not None
+        orig_custom_state = custom_get_state_func()
+        custom_set_state_func(custom_state)
     try:
         yield
     finally:
@@ -134,11 +174,21 @@ def switch_rng_state_tracker(rng_state, tracker, numpy_state, random_state):
         np.random.set_state(orig_numpy_state)
         random.setstate(orig_random_state)
 
+        if custom_state is not None:
+            custom_set_state_func(orig_custom_state)
+
 
 class RecomputeFunction(PyLayer):
     @staticmethod
     def forward(
-        ctx, run_function, preserve_rng_state, offload_indices, *args, **kwargs
+        ctx,
+        run_function,
+        preserve_rng_state,
+        offload_indices,
+        custom_get_state_func,
+        custom_set_state_func,
+        *args,
+        **kwargs,
     ):
         # store for recomputing
         ctx.run_function = run_function
@@ -159,6 +209,9 @@ class RecomputeFunction(PyLayer):
             )
             ctx.fwd_numpy_state = np.random.get_state()
             ctx.fwd_random_state = random.getstate()
+            ctx.fwd_custom_state = custom_get_state_func()
+            ctx.custom_get_state_func = custom_get_state_func
+            ctx.custom_set_state_func = custom_set_state_func
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -202,9 +255,9 @@ class RecomputeFunction(PyLayer):
                 ctx.tensor_indices.append(i)
                 ctx.inputs.append(None)
             elif type(arg) is tuple:
-                assert (
-                    i not in ctx.offload_indices
-                ), f"offload_indices should not contain tensor tuple in position{i}"
+                assert i not in ctx.offload_indices, (
+                    f"offload_indices should not contain tensor tuple in position{i}"
+                )
                 is_tensors = [paddle.is_tensor(a) for a in arg]
                 if all(is_tensors):
                     # the tuple is a tuple of tensors
@@ -263,23 +316,26 @@ class RecomputeFunction(PyLayer):
             # NOTE support AMP
             # need restore auto_cast state as well as w/b list
             if ctx.preserve_rng_state:
-                with switch_rng_state_tracker(
-                    ctx.fw_rng_state,
-                    ctx.fwd_rng_state_tracker,
-                    ctx.fwd_numpy_state,
-                    ctx.fwd_random_state,
-                ):
-                    with paddle.amp.auto_cast(
+                with (
+                    switch_rng_state_tracker(
+                        ctx.fw_rng_state,
+                        ctx.fwd_rng_state_tracker,
+                        ctx.fwd_numpy_state,
+                        ctx.fwd_random_state,
+                        ctx.fwd_custom_state,
+                        ctx.custom_get_state_func,
+                        ctx.custom_set_state_func,
+                    ),
+                    paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
                         level=ctx.amp_level,
                         dtype=ctx.amp_dtype,
-                    ):
-                        detached_inputs = detach_variable(tuple(inputs))
-                        outputs = ctx.run_function(
-                            *detached_inputs, **ctx.kwargs
-                        )
+                    ),
+                ):
+                    detached_inputs = detach_variable(tuple(inputs))
+                    outputs = ctx.run_function(*detached_inputs, **ctx.kwargs)
             else:
                 with paddle.amp.auto_cast(
                     enable=ctx.is_fw_autocast,
@@ -342,7 +398,12 @@ class RecomputeFunction(PyLayer):
 
 
 def _recompute_without_reentrant(
-    function, preserve_rng_state=True, *args, **kwargs
+    function,
+    custom_get_state_func,
+    custom_set_state_func,
+    preserve_rng_state=True,
+    *args,
+    **kwargs,
 ):
     """
     recompute without reentrant, that means use hook to implement the recompute function rather than re-entrant autograd.
@@ -370,6 +431,7 @@ def _recompute_without_reentrant(
         )
         fwd_numpy_state = np.random.get_state()
         fwd_random_state = random.getstate()
+        fwd_custom_state = custom_get_state_func()
 
     tracer = framework._dygraph_tracer()
     is_fw_autocast = False if tracer._amp_level == core.AmpLevel.O0 else True
@@ -409,21 +471,11 @@ def _recompute_without_reentrant(
                 if inner_x is None:
                     storage[holder_list[unpack_counter - 1]()] = None
                     return
-                if hasattr(inner_x, "main_grad"):
+                if hasattr(inner_x, "main_grad") or inner_x.grad is not None:
                     storage[holder_list[unpack_counter - 1]()] = inner_x
                 else:
                     if inner_x.is_dist():
-                        # TODO(jeff41404): it seems better to use `tmp_tensor = core.eager.Tensor(inner_x)`,
-                        # but other errors will be triggered during the current period, and can be modified after resolution
-                        tmp_tensor = core.eager.Tensor(
-                            inner_x.dtype,
-                            inner_x.shape,
-                            inner_x.name + "cpy",
-                            core.VarDesc.VarType.DENSE_TENSOR,
-                            inner_x.persistable,
-                            inner_x.process_mesh,
-                            inner_x.placements,
-                        )
+                        tmp_tensor = core.eager.Tensor(inner_x)
                     else:
                         tmp_tensor = core.eager.Tensor(
                             inner_x.dtype,
@@ -440,33 +492,42 @@ def _recompute_without_reentrant(
                 raise Exception("An unexpected backward called on a tensor!")
 
             if preserve_rng_state:
-                with switch_rng_state_tracker(
-                    fw_cuda_rng_state,
-                    fwd_cuda_rng_state_tracker,
-                    fwd_numpy_state,
-                    fwd_random_state,
+                with (
+                    switch_rng_state_tracker(
+                        fw_cuda_rng_state,
+                        fwd_cuda_rng_state_tracker,
+                        fwd_numpy_state,
+                        fwd_random_state,
+                        fwd_custom_state,
+                        custom_get_state_func,
+                        custom_set_state_func,
+                    ),
+                    paddle.set_grad_enabled(True),
+                    paddle.amp.auto_cast(
+                        enable=is_fw_autocast,
+                        custom_white_list=amp_white_list,
+                        custom_black_list=amp_black_list,
+                        level=amp_level,
+                        dtype=amp_dtype,
+                    ),
+                    paddle.autograd.saved_tensors_hooks(
+                        inner_pack, inner_unpack
+                    ),
                 ):
-                    with paddle.set_grad_enabled(True):
-                        with paddle.amp.auto_cast(
-                            enable=is_fw_autocast,
-                            custom_white_list=amp_white_list,
-                            custom_black_list=amp_black_list,
-                            level=amp_level,
-                            dtype=amp_dtype,
-                        ):
-                            with paddle.autograd.saved_tensors_hooks(
-                                inner_pack, inner_unpack
-                            ):
-                                function(*args, **kwargs)
+                    function(*args, **kwargs)
             else:
-                with paddle.set_grad_enabled(True), paddle.amp.auto_cast(
-                    enable=is_fw_autocast,
-                    custom_white_list=amp_white_list,
-                    custom_black_list=amp_black_list,
-                    level=amp_level,
-                    dtype=amp_dtype,
-                ), paddle.autograd.saved_tensors_hooks(
-                    inner_pack, inner_unpack
+                with (
+                    paddle.set_grad_enabled(True),
+                    paddle.amp.auto_cast(
+                        enable=is_fw_autocast,
+                        custom_white_list=amp_white_list,
+                        custom_black_list=amp_black_list,
+                        level=amp_level,
+                        dtype=amp_dtype,
+                    ),
+                    paddle.autograd.saved_tensors_hooks(
+                        inner_pack, inner_unpack
+                    ),
                 ):
                     function(*args, **kwargs)
 
@@ -600,6 +661,14 @@ def recompute(function, *args, **kwargs):
     # whether to use reentrant method to implement recompute
     use_reentrant = kwargs.pop('use_reentrant', True)
 
+    if custom_state_manager.custom_get_state_func is None:
+        assert custom_state_manager.custom_set_state_func is None
+        custom_get_state_func = lambda x=None: None
+        custom_set_state_func = lambda x=None: None
+    else:
+        custom_get_state_func = custom_state_manager.custom_get_state_func
+        custom_set_state_func = custom_state_manager.custom_set_state_func
+
     if not in_dynamic_mode():
         from paddle.distributed.auto_parallel.interface import (
             recompute as static_auto_recompute,
@@ -644,10 +713,22 @@ def recompute(function, *args, **kwargs):
                 raise ValueError("Unknown parameter kind.")
 
         return RecomputeFunction.apply(
-            function, preserve, offload_indices, *input_args
+            function,
+            preserve,
+            offload_indices,
+            custom_get_state_func,
+            custom_set_state_func,
+            *input_args,
         )
     else:
-        return _recompute_without_reentrant(function, preserve, *args, **kwargs)
+        return _recompute_without_reentrant(
+            function,
+            custom_get_state_func,
+            custom_set_state_func,
+            preserve,
+            *args,
+            **kwargs,
+        )
 
 
 def recompute_sequential(
@@ -708,4 +789,4 @@ def recompute_sequential(
             preserve_rng_state=preserve_rng_state,
             **kwargs,
         )
-    return _run_func(end + 1, len(functions) - 1, functions)(args)
+    return _run_func(end + 1, len(functions) - 1, functions)(*args)

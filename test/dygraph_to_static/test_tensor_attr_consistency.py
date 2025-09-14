@@ -70,6 +70,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         'rows',
         'set_string_list',
         'set_value',
+        'set_tensor',
         'set_vocab',
         'strides',
         'to_sparse_coo',
@@ -79,6 +80,7 @@ DYGRAPH_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(
         "__cuda_array_interface__",
         '__dlpack__',
         "__dlpack_device__",
+        "__tvm_ffi_env_stream__",
     ]
 )
 STATIC_ONLY_TENSOR_ATTRS_ALLOW_LIST = OrderedSet(

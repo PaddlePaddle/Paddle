@@ -142,12 +142,12 @@ class Partitioner:
         for op in serial_startup_program.global_block().ops:
             # TODO if var not belong to this rank, should be filtered
             output_vars = op.desc.output_arg_names()
-            assert (
-                len(output_vars) == 1
-            ), f"initializer should output only ONE variable, but got [{op.desc}]"
-            assert (
-                temp_varname_map[output_vars[0]] in var2shape
-            ), f"try to initialize [{output_vars[0]}] which is not a persistable var"
+            assert len(output_vars) == 1, (
+                f"initializer should output only ONE variable, but got [{op.desc}]"
+            )
+            assert temp_varname_map[output_vars[0]] in var2shape, (
+                f"try to initialize [{output_vars[0]}] which is not a persistable var"
+            )
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(
@@ -398,17 +398,17 @@ def _get_dist_shape(var, dist_attr):
     if mapping == []:
         return var_shape
 
-    assert len(var_shape) == len(
-        mapping
-    ), f"variable shape [{var_shape}] and dim_mapping [{mapping}] is NOT match !"
+    assert len(var_shape) == len(mapping), (
+        f"variable shape [{var_shape}] and dim_mapping [{mapping}] is NOT match !"
+    )
     new_shape = []
     for idx in range(len(var_shape)):
         if var_shape[idx] == -1 or mapping[idx] == -1:
             new_shape.append(var_shape[idx])
         else:
-            assert (
-                var_shape[idx] % mesh[mapping[idx]] == 0
-            ), f"un-event partition: var_shape[idx]=[{var_shape[idx]}], mesh[{mesh[mapping[idx]]}], {var.name}, {var_shape}, {mesh}, {mapping}"
+            assert var_shape[idx] % mesh[mapping[idx]] == 0, (
+                f"un-event partition: var_shape[idx]=[{var_shape[idx]}], mesh[{mesh[mapping[idx]]}], {var.name}, {var_shape}, {mesh}, {mapping}"
+            )
             new_shape.append(var_shape[idx] // mesh[mapping[idx]])
 
     return new_shape

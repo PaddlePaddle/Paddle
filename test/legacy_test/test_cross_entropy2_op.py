@@ -54,7 +54,7 @@ class CrossEntropy2OpTestBase(OpTest):
         batch_size = int(np.prod(self.shape) / feature_size)
         logits = (np.random.random(size=self.shape) + 1).astype(self.dtype)
         label_shape = (
-            self.shape[0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
+            self.shape[0:-1] if self.drop_last_dim else [*self.shape[0:-1], 1]
         )
         label = np.random.random_integers(
             low=0, high=feature_size - 1, size=label_shape
@@ -68,7 +68,7 @@ class CrossEntropy2OpTestBase(OpTest):
         out_shape = label_shape
         self.outputs = {
             'Y': np.reshape(outputs, out_shape),
-            'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
+            'MatchX': np.reshape(match_x, [*self.shape[:-1], 1]),
             'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype),
         }
         self.attrs = {'ignore_index': self.ignore_index}

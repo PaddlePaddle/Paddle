@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
 )
 from utils import dygraph_guard
 
@@ -223,7 +224,7 @@ class TestRpropMultiPrecision2_0(unittest.TestCase):
         paddle.enable_static()
         paddle.seed(10)
         np.random.seed(10)
-        exe = paddle.static.Executor('gpu')
+        exe = paddle.static.Executor(get_device_place())
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
 
@@ -345,7 +346,7 @@ class TestRpropSimple(unittest.TestCase):
             paddle.seed(10)
             np.random.seed(10)
 
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -403,7 +404,7 @@ class TestRpropOpBF16(OpTest):
     def setUp(self):
         self.op_type = "rprop"
         self.dtype = np.uint16
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.conf()
         params = np.random.random((self.h, self.w)).astype("float32")
         grads = np.random.random((self.h, self.w)).astype("float32")

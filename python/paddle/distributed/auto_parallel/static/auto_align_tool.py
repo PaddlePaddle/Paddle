@@ -117,9 +117,9 @@ class AutoAlignTool:
         for block in self._blocks:
             for op in block.ops:
                 if is_loss_op(op):
-                    assert (
-                        len(op.desc.output_arg_names()) == 1
-                    ), "loss op should only output loss var"
+                    assert len(op.desc.output_arg_names()) == 1, (
+                        "loss op should only output loss var"
+                    )
                     loss_ops.append(op)
 
         for block in self._blocks:

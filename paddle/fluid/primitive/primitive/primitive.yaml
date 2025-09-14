@@ -72,6 +72,7 @@
 - gather_nd
 - scatter
 - scatter_nd
+- index_put
 - scatter_nd_add
 - put_along_axis
 - take_along_axis

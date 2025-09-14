@@ -973,7 +973,7 @@ void InferNMS(gpuStream_t stream,
 }
 
 template <typename T, typename Context>
-void MultiClassNMSGPUKernel(const Context& ctx,
+void MultiClassNMSGPUKernel(const Context& dev_ctx,
                             const DenseTensor& bboxes,
                             const DenseTensor& scores,
                             const paddle::optional<DenseTensor>& rois_num,
@@ -1010,17 +1010,17 @@ void MultiClassNMSGPUKernel(const Context& ctx,
     DenseTensor out_cpu, index_cpu, nms_rois_num_cpu;
     paddle::optional<DenseTensor> rois_num_cpu(paddle::none);
     auto cpu_place = phi::CPUPlace();
-    auto gpu_place = ctx.GetPlace();
+    auto gpu_place = dev_ctx.GetPlace();
 
     // copy from GPU to CPU
-    phi::Copy(ctx, bboxes, cpu_place, false, &bboxes_cpu);
-    phi::Copy(ctx, scores, cpu_place, false, &scores_cpu);
+    phi::Copy(dev_ctx, bboxes, cpu_place, false, &bboxes_cpu);
+    phi::Copy(dev_ctx, scores, cpu_place, false, &scores_cpu);
     if (has_roisnum) {
       phi::Copy(
-          ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
+          dev_ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
       rois_num_cpu = paddle::optional<DenseTensor>(rois_num_cpu_tenor);
     }
-    ctx.Wait();
+    dev_ctx.Wait();
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
     MultiClassNMSKernel<T, phi::CPUContext>(*cpu_ctx,
@@ -1038,9 +1038,9 @@ void MultiClassNMSGPUKernel(const Context& ctx,
                                             &index_cpu,
                                             &nms_rois_num_cpu);
     // copy back
-    phi::Copy(ctx, out_cpu, gpu_place, false, out);
-    phi::Copy(ctx, index_cpu, gpu_place, false, index);
-    phi::Copy(ctx, nms_rois_num_cpu, gpu_place, false, nms_rois_num);
+    phi::Copy(dev_ctx, out_cpu, gpu_place, false, out);
+    phi::Copy(dev_ctx, index_cpu, gpu_place, false, index);
+    phi::Copy(dev_ctx, nms_rois_num_cpu, gpu_place, false, nms_rois_num);
     return;
   }
 
@@ -1053,7 +1053,7 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   const int64_t num_priors = bboxes.dims()[1];   // M
   const int64_t num_classes = scores.dims()[1];  // C
   const bool share_location = true;
-  auto stream = reinterpret_cast<const Context&>(ctx).stream();
+  auto stream = reinterpret_cast<const Context&>(dev_ctx).stream();
   // Sanity check
   PADDLE_ENFORCE_LE(
       nms_top_k,
@@ -1084,19 +1084,19 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   keep_count.Resize({batch_size});
   if (nms_rois_num != nullptr) {
     nms_rois_num->Resize({batch_size});
-    ctx.template Alloc<int>(nms_rois_num);
+    dev_ctx.template Alloc<int>(nms_rois_num);
     keep_count.ShareDataWith(*nms_rois_num);
   } else {
-    ctx.template Alloc<int>(&keep_count);
+    dev_ctx.template Alloc<int>(&keep_count);
   }
 
   DenseTensor nmsed_indices(DataType::INT32);
   nmsed_indices.Resize({batch_size * keep_top_k, 1});
-  ctx.template Alloc<int>(&nmsed_indices);
+  dev_ctx.template Alloc<int>(&nmsed_indices);
 
   DenseTensor nmsed_valid_mask(DataType::INT32);
   nmsed_valid_mask.Resize({batch_size * keep_top_k});
-  ctx.template Alloc<int>(&nmsed_valid_mask);
+  dev_ctx.template Alloc<int>(&nmsed_valid_mask);
 
   DenseTensor nmsed_boxes(bboxes.dtype());
   DenseTensor nmsed_scores(scores.dtype());
@@ -1104,9 +1104,9 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   nmsed_boxes.Resize({batch_size * keep_top_k, 4});
   nmsed_scores.Resize({batch_size * keep_top_k, 1});
   nmsed_classes.Resize({batch_size * keep_top_k, 1});
-  ctx.template Alloc<T>(&nmsed_boxes);
-  ctx.template Alloc<T>(&nmsed_scores);
-  ctx.template Alloc<T>(&nmsed_classes);
+  dev_ctx.template Alloc<T>(&nmsed_boxes);
+  dev_ctx.template Alloc<T>(&nmsed_scores);
+  dev_ctx.template Alloc<T>(&nmsed_classes);
 
   auto workspace_size =
       CalcDetectionInferenceWorkspaceSize<T>(share_location,
@@ -1119,7 +1119,7 @@ void MultiClassNMSGPUKernel(const Context& ctx,
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({static_cast<int64_t>(workspace_size)});
-  T* workspace_ptr = ctx.template Alloc<T>(&workspace);
+  T* workspace_ptr = dev_ctx.template Alloc<T>(&workspace);
 
   // Launch the NMS kernel
   InferNMS<T>(stream,
@@ -1154,9 +1154,9 @@ void MultiClassNMSGPUKernel(const Context& ctx,
   // into a [N * M, 6] tensor.
   DenseTensor raw_out;
   raw_out.Resize({batch_size * keep_top_k, 6});
-  ctx.template Alloc<T>(&raw_out);
+  dev_ctx.template Alloc<T>(&raw_out);
   phi::funcs::ConcatFunctor<Context, T> concat;
-  concat(ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
+  concat(dev_ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
 
   // Output of NMS kernel may include invalid entries, which is
   // marked by nmsed_valid_mask. Eliminate the invalid entries
@@ -1164,16 +1164,16 @@ void MultiClassNMSGPUKernel(const Context& ctx,
 
   // 1. Get valid indices
   DenseTensor valid_indices;
-  NonZeroKernel<int, Context>(ctx, nmsed_valid_mask, &valid_indices);
+  NonZeroKernel<int, Context>(dev_ctx, nmsed_valid_mask, &valid_indices);
   // 2. Perform gathering
   const int64_t valid_samples = valid_indices.dims()[0];
   out->Resize({valid_samples, 6});
-  ctx.template Alloc<T>(out);
-  phi::funcs::GPUGatherNd<T, int64_t>(ctx, raw_out, valid_indices, out);
+  dev_ctx.template Alloc<T>(out);
+  phi::funcs::GPUGatherNd<T, int64_t>(dev_ctx, raw_out, valid_indices, out);
   index->Resize({valid_samples, 1});
-  ctx.template Alloc<int>(index);
+  dev_ctx.template Alloc<int>(index);
   phi::funcs::GPUGatherNd<int, int64_t>(
-      ctx, nmsed_indices, valid_indices, index);
+      dev_ctx, nmsed_indices, valid_indices, index);
 }
 
 }  // namespace phi

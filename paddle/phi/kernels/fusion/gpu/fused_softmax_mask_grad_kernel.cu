@@ -15,6 +15,7 @@
 #include <algorithm>
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/fusion/gpu/fused_softmax_mask_utils.h"
 
 namespace phi {
@@ -24,7 +25,7 @@ template <typename T, int pow2_index>
 __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
                                              T* grad_output,
                                              const T* softmax_rst,
-                                             int batch_count,
+                                             int64_t batch_count,
                                              int key_seq_len) {
   constexpr int next_pow2 = 1 << pow2_index;
   constexpr int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
@@ -32,19 +33,21 @@ __global__ void SoftmaxMaskFuseGradGPUKernel(const T* grad_input,
   constexpr int kLocalBatchSize = (next_pow2 <= 128) ? 2 : 1;
   constexpr int kOneLoadingCounts = 4;
 
-  int data_first_idx =
-      (blockDim.y * blockIdx.x + threadIdx.y) * kLocalBatchSize;
+  int64_t data_first_idx =
+      (static_cast<int64_t>(blockDim.y) * static_cast<int64_t>(blockIdx.x) +
+       threadIdx.y) *
+      kLocalBatchSize;
 
   // batch_count might not be a multiple of kLocalBatchSize. Check how
   // many batches have to computed within this WARP.
-  int local_batches = batch_count - data_first_idx;
+  int64_t local_batches = batch_count - data_first_idx;
   if (local_batches > kLocalBatchSize) local_batches = kLocalBatchSize;
 
   // might be many batches per warp. compute the index within the batch
   int local_idx = threadIdx.x;
 
   // the first element to process by the current thread
-  int offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
+  int64_t offset = data_first_idx * key_seq_len + kOneLoadingCounts * local_idx;
   grad_input += offset;
   grad_output += offset;
   softmax_rst += offset;
@@ -121,6 +124,11 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
                                 const DenseTensor& out_grad,
                                 DenseTensor* x_grad) {
   auto* grad_x_data = dev_ctx.template Alloc<T>(x_grad);
+  if (out.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x_grad->dims())), 0, x_grad);
+    return;
+  }
   auto* grad_y_data = out_grad.data<T>();
   auto* softmax_rst_data = out.data<T>();
 
@@ -134,7 +142,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
 
   int pow2_index = get_pow2(key_seq_len);
   const int next_pow2 = 1 << pow2_index;
-  int batch_count = batches * attn_heads * query_seq_len;
+  int64_t batch_count = batches * attn_heads * query_seq_len;
   int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
   int batches_per_warp = (next_pow2 <= 128) ? 2 : 1;
   // use 128 threads per block to maximum gpu utilization
@@ -142,7 +150,7 @@ void FusedSoftmaxMaskGradKernel(const Context& dev_ctx,
 
   int warps_per_block = (threads_per_block / warp_size);
   int batches_per_block = warps_per_block * batches_per_warp;
-  int blocks = batch_count / batches_per_block;
+  int64_t blocks = batch_count / batches_per_block;
   dim3 threads(warp_size, warps_per_block, 1);
 
   // launch the kernel based on the pow2_index
@@ -196,4 +204,4 @@ PD_REGISTER_KERNEL(fused_softmax_mask_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedSoftmaxMaskGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

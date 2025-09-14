@@ -17,7 +17,7 @@ limitations under the License. */
 namespace phi::funcs {
 
 template <typename Context, typename T>
-void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
+void FindAbsMaxFunctor<Context, T>::operator()(const Context &dev_ctx,
                                                const T *in,
                                                const int num,
                                                T *out) {
@@ -25,7 +25,7 @@ void FindAbsMaxFunctor<Context, T>::operator()(const Context &ctx,
 }
 
 template <typename Context, typename T>
-void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
+void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &dev_ctx,
                                                      const DenseTensor &in,
                                                      const DenseTensor &scale,
                                                      const int qmax,
@@ -35,25 +35,25 @@ void ClipAndFakeQuantFunctor<Context, T>::operator()(const Context &ctx,
   T inv_s = inverse(s);
   phi::Transform<Context> trans;
   if (round_type == 0) {
-    trans(ctx,
+    trans(dev_ctx,
           in.data<T>(),
           in.data<T>() + in.numel(),
-          ctx.template Alloc<T>(out),
+          dev_ctx.template Alloc<T>(out),
           QuantTensorFunctor<T>(static_cast<T>(qmax), inv_s));
   } else {
-    trans(ctx,
+    trans(dev_ctx,
           in.data<T>(),
           in.data<T>() + in.numel(),
-          ctx.template Alloc<T>(out),
+          dev_ctx.template Alloc<T>(out),
           phi::ClipFunctor<T>(-s, s));
     auto out_e = EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (qmax * inv_s * out_e).round();
+    out_e.device(*dev_ctx.eigen_device()) = (qmax * inv_s * out_e).round();
   }
 }
 
 template <typename Context, typename T>
 void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &in_accum,
     const DenseTensor &in_state,
     const T *cur_scale,
@@ -69,9 +69,9 @@ void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
   accum = rate * accum + scale;
   scale = accum / state;
 
-  T *out_state_data = ctx.template Alloc<T>(out_state);
-  T *out_accum_data = ctx.template Alloc<T>(out_accum);
-  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+  T *out_state_data = dev_ctx.template Alloc<T>(out_state);
+  T *out_accum_data = dev_ctx.template Alloc<T>(out_accum);
+  T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
 
   out_state_data[0] = state;
   out_accum_data[0] = accum;
@@ -80,7 +80,7 @@ void FindMovingAverageAbsMaxFunctor<Context, T>::operator()(
 
 template <typename Context, typename T>
 void FindChannelAbsMaxFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &in_tensor,
     const int quant_axis,
     T *out_abs_max) {
@@ -121,7 +121,7 @@ void FindChannelAbsMaxFunctor<Context, T>::operator()(
 
 template <typename Context, typename T>
 void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
     const int qmax,
@@ -138,7 +138,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
                                       quant_axis));
   auto *scale_data = scale.data<T>();
   auto *in_data = in.data<T>();
-  auto *out_data = ctx.template Alloc<T>(out);
+  auto *out_data = dev_ctx.template Alloc<T>(out);
   auto in_dims = in.dims();
   const int64_t channel = in_dims[quant_axis];
   phi::Transform<Context> trans;
@@ -150,13 +150,13 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
       auto *end = in_data + (i + 1) * channel_size;
       T inv_s = inverse(s);
       if (round_type == 0) {
-        trans(ctx,
+        trans(dev_ctx,
               start,
               end,
               out_data + i * channel_size,
               QuantTensorFunctor<T>(static_cast<T>(qmax), inv_s));
       } else {
-        trans(ctx,
+        trans(dev_ctx,
               start,
               end,
               out_data + i * channel_size,
@@ -169,7 +169,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
         T inv_s = inverse(s);
         DenseTensor one_channel_out = out->Slice(i, i + 1);
         auto out_e = EigenVector<T>::Flatten(one_channel_out);
-        out_e.device(*ctx.eigen_device()) = (qmax * inv_s * out_e).round();
+        out_e.device(*dev_ctx.eigen_device()) = (qmax * inv_s * out_e).round();
       }
     }
   } else if (quant_axis == 1) {
@@ -183,13 +183,13 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
         auto *end = in_data + i * step_i + (j + 1) * step_j;
         auto *cur_out_data = out_data + i * step_i + j * step_j;
         if (round_type == 0) {
-          trans(ctx,
+          trans(dev_ctx,
                 start,
                 end,
                 cur_out_data,
                 QuantTensorFunctor<T>(static_cast<T>(qmax), inv_s));
         } else {
-          trans(ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
+          trans(dev_ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
           for (int k = 0; k < step_j; k++) {
             cur_out_data[k] = std::round(qmax * inv_s * cur_out_data[k]);
           }
@@ -201,7 +201,7 @@ void ChannelClipAndFakeQuantFunctor<Context, T>::operator()(
 
 template <typename Context, typename T>
 void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
     const int bin_cnt,
@@ -217,7 +217,7 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
 
   auto *scale_data = scale.data<T>();
   auto *in_data = in.data<T>();
-  auto *out_data = ctx.template Alloc<T>(out);
+  auto *out_data = dev_ctx.template Alloc<T>(out);
   auto in_dims = in.dims();
   const int64_t channel = in_dims[quant_axis];
   phi::Transform<Context> trans;
@@ -229,13 +229,13 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
       auto *end = in_data + (i + 1) * channel_size;
       if (round_type == 0) {
         T inv_s = inverse(s);
-        trans(ctx,
+        trans(dev_ctx,
               start,
               end,
               out_data + i * channel_size,
               QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
       } else {
-        trans(ctx,
+        trans(dev_ctx,
               start,
               end,
               out_data + i * channel_size,
@@ -247,10 +247,11 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
       DenseTensor one_channel_out = out->Slice(i, i + 1);
       auto out_e = EigenVector<T>::Flatten(one_channel_out);
       if (round_type == 0) {
-        out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
+        out_e.device(*dev_ctx.eigen_device()) =
+            out_e * s / static_cast<T>(bin_cnt);
       } else {
         T inv_s = inverse(s);
-        out_e.device(*ctx.eigen_device()) =
+        out_e.device(*dev_ctx.eigen_device()) =
             (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
       }
     }
@@ -265,13 +266,13 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
         auto *end = in_data + i * step_i + (j + 1) * step_j;
         auto *cur_out_data = out_data + i * step_i + j * step_j;
         if (round_type == 0) {
-          trans(ctx,
+          trans(dev_ctx,
                 start,
                 end,
                 cur_out_data,
                 QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
         } else {
-          trans(ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
+          trans(dev_ctx, start, end, cur_out_data, ClipFunctor<T>(-s, s));
         }
         for (int k = 0; k < step_j; k++) {
           if (round_type == 0) {
@@ -288,14 +289,14 @@ void ChannelClipFakeQuantDequantFunctor<Context, T>::operator()(
 
 template <typename Context, typename T>
 void FindRangeAbsMaxFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &cur_scale,
     const DenseTensor &last_scale,
     const DenseTensor &iter,
     const int window_size,
     DenseTensor *scales_arr,
     DenseTensor *out_scale) {
-  T *scale_arr_data = ctx.template Alloc<T>(scales_arr);
+  T *scale_arr_data = dev_ctx.template Alloc<T>(scales_arr);
   int64_t it = iter.data<int64_t>()[0];
   int idx = static_cast<int>(it % window_size);
   T removed = scale_arr_data[idx];
@@ -308,15 +309,15 @@ void FindRangeAbsMaxFunctor<Context, T>::operator()(
   } else if (fabs(removed - max) < 1e-6) {
     int size = static_cast<int>((it > window_size) ? window_size : it);
     phi::funcs::FindAbsMaxFunctor<Context, T>()(
-        ctx, scale_arr_data, size, &max);
+        dev_ctx, scale_arr_data, size, &max);
   }
-  T *out_scale_data = ctx.template Alloc<T>(out_scale);
+  T *out_scale_data = dev_ctx.template Alloc<T>(out_scale);
   out_scale_data[0] = max;
 }
 
 template <typename Context, typename T>
 void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
-    const Context &ctx,
+    const Context &dev_ctx,
     const DenseTensor &in,
     const DenseTensor &scale,
     const int bin_cnt,
@@ -327,21 +328,21 @@ void ClipAndFakeQuantDequantFunctor<Context, T>::operator()(
 
   phi::Transform<CPUContext> trans;
   if (round_type == 0) {
-    trans(ctx,
+    trans(dev_ctx,
           in.data<T>(),
           in.data<T>() + in.numel(),
-          ctx.template Alloc<T>(out),
+          dev_ctx.template Alloc<T>(out),
           phi::funcs::QuantTensorFunctor<T>(static_cast<T>(bin_cnt), inv_s));
     auto out_e = phi::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
+    out_e.device(*dev_ctx.eigen_device()) = out_e * s / static_cast<T>(bin_cnt);
   } else {
-    trans(ctx,
+    trans(dev_ctx,
           in.data<T>(),
           in.data<T>() + in.numel(),
-          ctx.template Alloc<T>(out),
+          dev_ctx.template Alloc<T>(out),
           phi::ClipFunctor<T>(-s, s));
     auto out_e = phi::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) =
+    out_e.device(*dev_ctx.eigen_device()) =
         (bin_cnt * inv_s * out_e).round() * s / static_cast<T>(bin_cnt);
   }
 }

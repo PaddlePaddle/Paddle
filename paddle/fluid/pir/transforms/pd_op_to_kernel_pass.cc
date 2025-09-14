@@ -69,6 +69,7 @@
 #include "paddle/fluid/pir/dialect/operator/trait/onednn.h"
 #include "paddle/phi/core/framework/framework.pb.h"
 COMMON_DECLARE_bool(use_mkldnn);
+COMMON_DECLARE_bool(use_onednn);
 #endif
 
 COMMON_DECLARE_bool(print_ir);
@@ -161,6 +162,7 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     IfOp::name(),
     WhileOp::name(),
     PyLayerOp::name(),
+    CudaGraphOp::name(),
     pir::StackCreateOp::name(),
     pir::TuplePushOp::name(),
     pir::TuplePopOp::name(),
@@ -1056,7 +1058,7 @@ std::string GetKernelName(const OpYamlInfoParser* op_info_parser,
 }
 
 #ifdef PADDLE_WITH_DNNL
-bool SupportsMKLDNN(const std::string& kernel_name,
+bool SupportsONEDNN(const std::string& kernel_name,
                     const phi::DataType data_type) {
   auto phi_kernels =
       phi::KernelFactory::Instance().SelectKernelMap(kernel_name);
@@ -1440,7 +1442,7 @@ phi::KernelKey GetKernelKey(
   elems.erase("");
 
   if (op->HasTrait<OneDNNTrait>() && res.backend() == phi::Backend::CPU &&
-      SupportsMKLDNN(kernel_fn_str, res.dtype()) &&
+      SupportsONEDNN(kernel_fn_str, res.dtype()) &&
       elems.count(op->name().substr(
           strlen(OneDNNOperatorDialect::name()) + 1,
           op->name().size() - strlen(OneDNNOperatorDialect::name()) - 1)) ==
@@ -1511,6 +1513,39 @@ void HandleForIfOp(
   (*map_op_pair)[op_item] = new_ifop;
   for (size_t i = 0; i < op_item->num_results(); ++i) {
     (*map_value_pair)[op_item->result(i)] = new_ifop->result(i);
+  }
+}
+
+void HandleForCudaGraphOp(
+    const phi::Place& place,
+    pir::Operation* op_item,
+    pir::Block* block,
+    pir::IrContext* ctx,
+    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
+    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
+  // Create CudaGraphOp and insert to kernel dialect program
+  pir::Builder builder(ctx, block);
+  auto cuda_graph_op = op_item->dyn_cast<CudaGraphOp>();
+  std::vector<pir::Type> new_outputs;
+  for (size_t i = 0; i < cuda_graph_op.num_results(); ++i) {
+    new_outputs.push_back(
+        ConvertOpTypeToKernelType(ctx, cuda_graph_op.result(i).type(), place));
+  }
+  auto new_cg_op = builder.Build<CudaGraphOp>(std::move(new_outputs));
+
+  // process block
+  ProcessBlock(place,
+               cuda_graph_op.block(),
+               new_cg_op.block(),
+               ctx,
+               map_op_pair,
+               map_value_pair,
+               true);
+
+  // update map
+  (*map_op_pair)[op_item] = new_cg_op;
+  for (size_t i = 0; i < op_item->num_results(); ++i) {
+    (*map_value_pair)[op_item->result(i)] = new_cg_op->result(i);
   }
 }
 
@@ -1829,6 +1864,14 @@ void HandleForSpecialOp(
     HandleForWhileOp(place, op_item, block, ctx, map_op_pair, map_value_pair);
     return;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op_item->isa<CudaGraphOp>()) {
+    HandleForCudaGraphOp(
+        place, op_item, block, ctx, map_op_pair, map_value_pair);
+    return;
+  }
+#endif
 
   std::vector<pir::Value> vec_inputs;
   std::vector<pir::Type> op_output_types;
@@ -2809,9 +2852,9 @@ std::vector<pir::Value> BuildInputs(
               PADDLE_THROW(common::errors::Unimplemented(
                   "builtin.combine Input type only support "
                   "VectorType<DenseTensorType> and "
-                  "VectorType<SelectedRowsType> and"
-                  "VectorType<DenseTensorArrayType> and"
-                  "VectorType<SparseCooTensorType> and"
+                  "VectorType<SelectedRowsType> and "
+                  "VectorType<DenseTensorArrayType> and "
+                  "VectorType<SparseCooTensorType> and "
                   "VectorType<SparseCsrTensorType>"));
             }
 
@@ -2870,9 +2913,9 @@ std::vector<pir::Value> BuildInputs(
                 PADDLE_THROW(common::errors::Unimplemented(
                     "builtin.combine Input type only support "
                     "VectorType<DenseTensorType> and "
-                    "VectorType<SelectedRowsType> and"
-                    "VectorType<DenseTensorArrayType> and"
-                    "VectorType<SparseCooTensorType> and"
+                    "VectorType<SelectedRowsType> and "
+                    "VectorType<DenseTensorArrayType> and "
+                    "VectorType<SparseCooTensorType> and "
                     "VectorType<SparseCsrTensorType>"));
               }
               in_i = AddPlaceTransferOp(
@@ -3571,7 +3614,7 @@ void ProcessBlock(
     if (kernel_key.dtype() == phi::DataType::BFLOAT16 &&
         kernel_key.backend() == phi::Backend::CPU &&
         !op_item->HasTrait<OneDNNTrait>() && !SupportsCPUBF16(kernel_name) &&
-        SupportsMKLDNN(kernel_name, phi::DataType::BFLOAT16)) {
+        SupportsONEDNN(kernel_name, phi::DataType::BFLOAT16)) {
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;
@@ -3579,10 +3622,11 @@ void ProcessBlock(
         kernel_key.set_backend(phi::Backend::ONEDNN);
         kernel_key.set_layout(phi::DataLayout::ONEDNN);
       }
-    } else if (FLAGS_use_mkldnn && kernel_key.backend() == phi::Backend::CPU &&
+    } else if ((FLAGS_use_mkldnn || FLAGS_use_onednn) &&
+               kernel_key.backend() == phi::Backend::CPU &&
                !op_item->HasTrait<OneDNNTrait>() &&
-               SupportsMKLDNN(kernel_name, kernel_key.dtype())) {
-      // Support FLAGS_use_mkldnn
+               SupportsONEDNN(kernel_name, kernel_key.dtype())) {
+      // Support FLAGS_use_mkldnn || FLAGS_use_onednn
       auto op_item_inner = PdOp2OneDNNOp(op_item, block, ctx);
       if (op_item_inner != op_item) {
         op_item = op_item_inner;

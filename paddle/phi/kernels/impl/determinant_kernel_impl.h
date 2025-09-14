@@ -33,10 +33,10 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::dtype::float16> {
+class EigenMatrix<phi::float16> {
  public:
   using MatrixType =
-      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>
@@ -136,6 +136,10 @@ template <typename T, typename Context>
 void DeterminantKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto input_dim = common::vectorize(x.dims());
   auto input_dim_size = input_dim.size();
 

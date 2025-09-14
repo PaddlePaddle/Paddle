@@ -1,14 +1,14 @@
-# DeepEP of 2025.03.07, commit: 1fc40d50f3b199758b57b775e85c1d01080482d9
-
+# DeepEP of 2025.05.19, commit: d5ca4495c0c068bc617102841b9322d378fac8ea
 if(WITH_NVSHMEM)
   set(CMAKE_CUDA_FLAGS
       "${CMAKE_CUDA_FLAGS} -rdc=true --ptxas-options=--register-usage-level=10,--warn-on-local-memory-usage"
   )
-  string(REPLACE "-gencode arch=compute_80,code=sm_80" "" CMAKE_CUDA_FLAGS
-                 "${CMAKE_CUDA_FLAGS}")
+  string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]" ""
+                       CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
-  set(DEEPEP_KERNEL_SRCS kernels/intranode.cu kernels/runtime.cu
-                         kernels/internode.cu kernels/internode_ll.cu)
+  set(DEEPEP_KERNEL_SRCS
+      kernels/intranode.cu kernels/runtime.cu kernels/internode.cu
+      kernels/internode_ll.cu kernels/internode_ll_two_stage.cu)
   cc_library(
     deepep_kernels
     SRCS ${DEEPEP_KERNEL_SRCS}

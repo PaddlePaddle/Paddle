@@ -80,7 +80,7 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
   if (srcTensor.dtype() == phi::DataType::FLOAT32)
     r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::FLOAT16)
-    r = CopyTensorByXPU<phi::dtype::float16>(srcTensor, dstTensor, flag, place);
+    r = CopyTensorByXPU<phi::float16>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::FLOAT64)
     r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag, place);
   else if (srcTensor.dtype() == phi::DataType::INT32)

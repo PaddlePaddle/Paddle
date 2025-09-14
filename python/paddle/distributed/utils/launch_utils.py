@@ -168,9 +168,9 @@ class Cluster:
         r = []
         for pod in self.pods:
             ep = f"{pod.addr}:{pod.port}"
-            assert (
-                pod.port is not None and pod.addr is not None
-            ), f"{ep} not a valid endpoint"
+            assert pod.port is not None and pod.addr is not None, (
+                f"{ep} not a valid endpoint"
+            )
             r.append(ep)
 
         return r
@@ -286,9 +286,9 @@ def get_cluster(node_ips, node_ip, trainer_endpoints, selected_gpus):
         pod.addr = ip
         cur_node_endpoints = trainer_endpoints[node_rank]
         # when use paddlecloud, endpoints may > selected_gpus(user_defined)
-        assert len(cur_node_endpoints) >= len(
-            selected_gpus
-        ), "current trainer_endpoints size should be greater equal than selected_gpus size."
+        assert len(cur_node_endpoints) >= len(selected_gpus), (
+            "current trainer_endpoints size should be greater equal than selected_gpus size."
+        )
         for i in range(len(selected_gpus)):
             trainer = Trainer()
             trainer.gpus.append(selected_gpus[i])

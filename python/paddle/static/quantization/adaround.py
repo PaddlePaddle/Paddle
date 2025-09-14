@@ -257,43 +257,45 @@ def run_adaround(
         # build adaround program
         startup_program = static.Program()
         train_program = static.Program()
-        with static.program_guard(train_program, startup_program):
-            with paddle.utils.unique_name.guard():
-                # initialize adaround
-                adaround = AdaRound(
-                    scale,
-                    weight_var_tensor,
-                    scope=scope,
-                    weight_var_name=weight_var_name,
-                    weight_op_type=weight_op_type,
-                    num_iterations=num_iterations,
-                )
-                orig_out_tensor = static.data(
-                    name='orig_out_tensor',
-                    shape=(-1, *fp32_fetch_list.shape),
-                    dtype='float32',
-                )
-                adaround_out_tensor = static.data(
-                    name='adaround_out_tensor',
-                    shape=(-1, *fp32_fetch_list.shape),
-                    dtype='float32',
-                )
-                beta_tensor = static.data(
-                    name='beta', shape=[-1, 1], dtype='float32'
-                )
-                warm_start_tensor = static.data(
-                    name='warm_start', shape=[-1, 1], dtype='bool'
-                )
+        with (
+            static.program_guard(train_program, startup_program),
+            paddle.utils.unique_name.guard(),
+        ):
+            # initialize adaround
+            adaround = AdaRound(
+                scale,
+                weight_var_tensor,
+                scope=scope,
+                weight_var_name=weight_var_name,
+                weight_op_type=weight_op_type,
+                num_iterations=num_iterations,
+            )
+            orig_out_tensor = static.data(
+                name='orig_out_tensor',
+                shape=(-1, *fp32_fetch_list.shape),
+                dtype='float32',
+            )
+            adaround_out_tensor = static.data(
+                name='adaround_out_tensor',
+                shape=(-1, *fp32_fetch_list.shape),
+                dtype='float32',
+            )
+            beta_tensor = static.data(
+                name='beta', shape=[-1, 1], dtype='float32'
+            )
+            warm_start_tensor = static.data(
+                name='warm_start', shape=[-1, 1], dtype='bool'
+            )
 
-                train_fetches_loss = adaround.get_loss(
-                    beta_tensor,
-                    warm_start_tensor,
-                    adaround_out_tensor,
-                    orig_out_tensor,
-                )
-                optimizer = paddle.optimizer.Adam(learning_rate=lr)
-                loss = train_fetches_loss['loss']
-                optimizer.minimize(loss)
+            train_fetches_loss = adaround.get_loss(
+                beta_tensor,
+                warm_start_tensor,
+                adaround_out_tensor,
+                orig_out_tensor,
+            )
+            optimizer = paddle.optimizer.Adam(learning_rate=lr)
+            loss = train_fetches_loss['loss']
+            optimizer.minimize(loss)
         exe.run(startup_program)
 
         start_time = time.time()

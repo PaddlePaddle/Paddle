@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -128,11 +128,7 @@ class TestEigvalshAPI(unittest.TestCase):
         self.UPLO = 'L'
         self.rtol = 1e-5  # test_eigvalsh_grad
         self.atol = 1e-5  # test_eigvalsh_grad
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()
@@ -226,7 +222,6 @@ class TestEigvalshBatchAPI(TestEigvalshAPI):
 
 
 class TestEigvalshAPIError(unittest.TestCase):
-
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -260,14 +255,12 @@ class TestEigvalshAPIError(unittest.TestCase):
 class TestEigvalshAPIZeroSize(unittest.TestCase):
     def setUp(self):
         self.dtype = "float32"
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
         np.random.seed(123)
         self.init_input_shape()
         self.init_input_data()
+        self.rtol = 1e-5  # for test_eigh_grad
+        self.atol = 1e-5  # for test_eigh_grad
 
     def init_input_shape(self):
         self.x_shape = [0, 0]
@@ -318,10 +311,38 @@ class TestEigvalshAPIZeroSize(unittest.TestCase):
             actual_w = paddle.linalg.eigvalsh(input_real_data)
             compare_shape_result(actual_w.numpy(), expected_w)
 
+    def test_eigvalsh_grad(self):
+        paddle.disable_static(self.place)
+        self.trans_dims = [
+            *range(len(self.x_shape) - 2),
+            len(self.x_shape) - 1,
+            len(self.x_shape) - 2,
+        ]
+        x = paddle.to_tensor(self.real_data, stop_gradient=False)
+        w = paddle.linalg.eigvalsh(x)
+        (w.sum()).backward()
 
-class TestEigvalshBatchAPIZeroSize(TestEigvalshAPIZeroSize):
+        # compare with eigh
+        y = paddle.to_tensor(self.real_data, stop_gradient=False)
+        y_v, y_w = paddle.linalg.eigh(y)
+        (y_v.sum()).backward()
+
+        np.testing.assert_allclose(
+            abs(x.grad.numpy()),
+            abs(y.grad.numpy()),
+            rtol=self.rtol,
+            atol=self.atol,
+        )
+
+
+class TestEigvalshBatchAPIZeroSize1(TestEigvalshAPIZeroSize):
     def init_input_shape(self):
         self.x_shape = [0, 5, 5]
+
+
+class TestEigvalshBatchAPIZeroSize2(TestEigvalshAPIZeroSize):
+    def init_input_shape(self):
+        self.x_shape = [5, 0, 0]
 
 
 if __name__ == "__main__":

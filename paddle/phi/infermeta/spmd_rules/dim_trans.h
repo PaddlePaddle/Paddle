@@ -154,11 +154,22 @@ std::shared_ptr<DimTrans> make_split(const std::shared_ptr<DimTrans> dim,
 // 4. For Split, i.e., the output axes is splited from a input axis, only the
 // leftmost output split axis can be sharded when its shape can be divisible
 // by the mesh dimension.
-std::vector<std::vector<int64_t>> InferFromDimTrans(
+std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
+InferFromDimTrans(const DistMetaTensor& input_spec,
+                  const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
+
+std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
+InferFromDimTransCoShard(
     const DistMetaTensor& input_spec,
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
 
-std::vector<std::vector<int64_t>> InferFromDimTrans(
+std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
+InferFromDimTrans(const DistMetaTensor& input_spec,
+                  const std::vector<int64_t>& input_shape,
+                  const std::vector<std::shared_ptr<DimTrans>>& dim_trans);
+
+std::tuple<std::vector<std::vector<int64_t>>, std::vector<std::vector<int64_t>>>
+InferFromDimTransCoShard(
     const DistMetaTensor& input_spec,
     const std::vector<int64_t>& input_shape,
     const std::vector<std::shared_ptr<DimTrans>>& dim_trans);

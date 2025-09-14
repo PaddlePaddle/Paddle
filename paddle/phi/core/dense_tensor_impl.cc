@@ -197,11 +197,11 @@ void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   }
 }
 
-#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                     \
-  template TEST_API dtype* DenseTensor::mutable_data(                    \
-      const DDim& dims, const Place& place, size_t requested_size);      \
-  template TEST_API dtype* DenseTensor::mutable_data(const Place& place, \
-                                                     size_t requested_size);
+#define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                       \
+  template PADDLE_API dtype* DenseTensor::mutable_data(                    \
+      const DDim& dims, const Place& place, size_t requested_size);        \
+  template PADDLE_API dtype* DenseTensor::mutable_data(const Place& place, \
+                                                       size_t requested_size);
 
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
@@ -308,17 +308,29 @@ DenseTensor DenseTensor::Slice(int64_t begin_idx, int64_t end_idx) const {
       end_idx,
       meta_.dims[0],
       common::errors::OutOfRange("The end row index is out of bound."));
-  PADDLE_ENFORCE_LT(
+  PADDLE_ENFORCE_LE(
       begin_idx,
       end_idx,
       common::errors::InvalidArgument(
-          "The start row index must be less than the end row index."
+          "The start row index must be equal or less than the end row index."
           "But received the start index = %d, the end index = %d.",
           begin_idx,
           end_idx));
 
   if (meta_.dims[0] == 1) {
     return *this;
+  } else if (begin_idx == end_idx) {
+    DenseTensor dst;
+    // create an holder
+    dst.holder_ =
+        std::make_shared<phi::Allocation>(nullptr, 0, holder_->place());
+    dst.set_layout(meta_.layout);
+    dst.meta_.dtype = meta_.dtype;
+    DDim dst_dims = meta_.dims;
+    dst_dims[0] = end_idx - begin_idx;
+    dst.Resize(dst_dims);
+    dst.meta_.offset = 0;
+    return dst;
   } else {
     size_t base = numel() / meta_.dims[0];
     DenseTensor dst;

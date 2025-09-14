@@ -208,12 +208,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         image_shape = [3, 224, 224]
         config = paddle.inference.Config(model_path)
         config.disable_gpu()
-        config.enable_mkldnn()
+        config.enable_onednn()
         config.switch_ir_optim()
         config.set_cpu_math_library_num_threads(1)
         config.disable_glog_info()
         if is_quantized_model:
-            config.enable_mkldnn_int8()
+            config.enable_onednn_int8()
         predictor = paddle.inference.create_predictor(config)
 
         input_names = predictor.get_input_names()
@@ -356,7 +356,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         self.assertLess(delta_value, diff_threshold)
 
 
-class TestMKLDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
+class TestONEDNNInt8ForResnet50AvgONNXFormat(TestPostTrainingQuantization):
     def test_onnx_format_avg_resnet50(self):
         model = "resnet50"
         algo = "avg"

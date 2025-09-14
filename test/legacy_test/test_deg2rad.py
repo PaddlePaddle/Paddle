@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 paddle.enable_static()
 
@@ -41,11 +41,7 @@ class TestDeg2radAPI(unittest.TestCase):
             )
             out = paddle.deg2rad(x)
 
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
+            place = get_device_place()
             exe = base.Executor(place)
             res = exe.run(
                 feed={'input': self.x_np},

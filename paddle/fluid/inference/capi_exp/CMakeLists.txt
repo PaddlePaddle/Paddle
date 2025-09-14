@@ -15,16 +15,30 @@
 
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc pd_utils.cc)
 
-cc_library(
-  paddle_inference_c
-  SRCS ${C_API_SRCS}
-  DEPS paddle_inference)
+if(WIN32)
+  cc_library(
+    paddle_inference_c
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference dynload_tensorrt)
+else()
+  cc_library(
+    paddle_inference_c
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference)
+endif()
 
 # Create inference capi shared library
-cc_library(
-  paddle_inference_c_shared SHARED
-  SRCS ${C_API_SRCS}
-  DEPS paddle_inference)
+if(WIN32)
+  cc_library(
+    paddle_inference_c_shared SHARED
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference dynload_common)
+else()
+  cc_library(
+    paddle_inference_c_shared SHARED
+    SRCS ${C_API_SRCS}
+    DEPS paddle_inference)
+endif()
 set_target_properties(paddle_inference_c_shared PROPERTIES OUTPUT_NAME
                                                            paddle_inference_c)
 

@@ -295,23 +295,6 @@ if(WIN32 OR APPLE)
         CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
   endif()
 
-  if(WITH_PSLIB)
-    message(WARNING "Windows or Mac is not supported with PSLIB in Paddle yet."
-                    "Force WITH_PSLIB=OFF")
-    set(WITH_PSLIB
-        OFF
-        CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
-  endif()
-
-  if(WITH_ARM_BRPC)
-    message(
-      WARNING "Windows or Mac is not supported with ARM_BRPC in Paddle yet."
-              "Force WITH_ARM_BRPC=OFF")
-    set(WITH_ARM_BRPC
-        OFF
-        CACHE STRING "Disable ARM_BRPC package in Windows and MacOS" FORCE)
-  endif()
-
   if(WITH_LIBMCT)
     message(WARNING "Windows or Mac is not supported with LIBMCT in Paddle yet."
                     "Force WITH_LIBMCT=OFF")
@@ -469,9 +452,17 @@ if(WITH_TESTING OR WITH_DISTRIBUTE)
   list(APPEND third_party_deps extern_gtest)
 endif()
 
+include(external/libuv)
+if(TARGET extern_libuv)
+  list(APPEND third_party_deps extern_libuv)
+endif()
+
 if(WITH_FLAGCX)
   include(external/flagcx)
   list(APPEND third_party_deps flagcx)
+  if(WITH_XPU)
+    add_dependencies(flagcx_ep extern_xpu)
+  endif()
 endif()
 
 if(WITH_ONNXRUNTIME)
@@ -482,7 +473,9 @@ if(WITH_ONNXRUNTIME)
 endif()
 
 if(WITH_GPU)
-  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0
+     OR (${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.7
+         AND ${CMAKE_CUDA_COMPILER_VERSION} LESS 11.9))
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
   elseif(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.0 AND WITH_SHARED_PHI)
@@ -519,29 +512,6 @@ if(WITH_XPU)
   list(APPEND third_party_deps extern_xpu)
 endif()
 
-if(WITH_PSLIB)
-  include(external/pslib) # download, build, install pslib
-  list(APPEND third_party_deps extern_pslib)
-  if(WITH_LIBMCT)
-    include(external/libmct) # download, build, install libmct
-    list(APPEND third_party_deps extern_libxsmm)
-  endif()
-  if(WITH_PSLIB_BRPC)
-    include(external/pslib_brpc) # download, build, install pslib_brpc
-    list(APPEND third_party_deps extern_pslib_brpc)
-  else()
-    include(external/snappy)
-    list(APPEND third_party_deps extern_snappy)
-
-    include(external/leveldb)
-    list(APPEND third_party_deps extern_leveldb)
-    if(NOT WITH_HETERPS)
-      include(external/brpc)
-      list(APPEND third_party_deps extern_brpc)
-    endif()
-  endif()
-endif()
-
 if(NOT WIN32 AND NOT APPLE)
   include(external/gloo)
   list(APPEND third_party_deps extern_gloo)
@@ -550,60 +520,6 @@ endif()
 if(WITH_BOX_PS)
   include(external/box_ps)
   list(APPEND third_party_deps extern_box_ps)
-endif()
-
-if(WITH_PSCORE)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-
-  if(WITH_ARM_BRPC)
-    include(external/arm_brpc)
-    list(APPEND third_party_deps extern_arm_brpc)
-  else()
-    include(external/brpc)
-    list(APPEND third_party_deps extern_brpc)
-  endif()
-
-  include(external/libmct) # download, build, install libmct
-  list(APPEND third_party_deps extern_libmct)
-
-  include(external/rocksdb) # download, build, install rocksdb
-  list(APPEND third_party_deps extern_rocksdb)
-
-  include(external/jemalloc) # download, build, install jemalloc
-  list(APPEND third_party_deps extern_jemalloc)
-
-  include(external/afs_api)
-  list(APPEND third_party_deps extern_afs_api)
-endif()
-
-if(WITH_RPC
-   AND NOT WITH_PSCORE
-   AND NOT WITH_PSLIB)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-
-  include(external/brpc)
-  list(APPEND third_party_deps extern_brpc)
-endif()
-
-if(WITH_DISTRIBUTE
-   AND NOT WITH_PSLIB
-   AND NOT WITH_PSCORE
-   AND NOT WITH_RPC)
-  include(external/snappy)
-  list(APPEND third_party_deps extern_snappy)
-
-  include(external/leveldb)
-  list(APPEND third_party_deps extern_leveldb)
-  include(external/brpc)
-  list(APPEND third_party_deps extern_brpc)
 endif()
 
 if(WITH_XBYAK)

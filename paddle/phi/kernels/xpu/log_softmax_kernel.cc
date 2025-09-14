@@ -37,7 +37,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
     return;
   }
   if (x.numel() != 0) {
-    auto x_shape = common::vectorize<int>(x.dims());
+    auto x_shape = common::vectorize<int64_t>(x.dims());
     dev_ctx.template Alloc<T>(out);
     if (axis < 0) axis += rank;
     int r =

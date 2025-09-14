@@ -29,8 +29,6 @@
 #include "paddle/cinn/ir/operation.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/poly/isl_utils.h"
-#include "paddle/cinn/poly/stage.h"
 #include "paddle/common/enforce.h"
 
 namespace cinn {
@@ -607,18 +605,6 @@ ir::Tensor _Tensor_::ReshapeCopied(const std::vector<Expr> &shape) const {
       Context::Global().NewName(this->name + "_copied"));
   auto res = copied->Reshape(shape);
   return res;
-}
-
-Shared<poly::Stage> CreateStage(Tensor tensor) {
-  isl::set isl_domain;
-  // We will remove isl, and the subsequent compilation process will no longer
-  // use it. But it has not been completely removed in the process. it cannot be
-  // supported here under dynamic shape. Therefore, we temporarily use fake
-  // domain.
-  poly::Domain fake_domain(Context::isl_ctx(), "fake_domain", {});
-  isl_domain = fake_domain.to_isl();
-
-  return poly::Stage::New(isl_domain, tensor->body(), tensor.self());
 }
 
 static constexpr char kReduceInitSuffix[] = "__reduce_init";

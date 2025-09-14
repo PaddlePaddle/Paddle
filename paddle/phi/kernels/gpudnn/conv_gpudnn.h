@@ -27,9 +27,6 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
-
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -41,7 +38,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ConvCudnnKernel(const Context& ctx,
+void ConvCudnnKernel(const Context& dev_ctx,
                      const DenseTensor& input,
                      const DenseTensor& filter,
                      const std::vector<int>& strides,
@@ -76,7 +73,7 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ConvCudnnGradKernel(const Context& ctx,
+void ConvCudnnGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& filter,
                          const DenseTensor& output_grad,

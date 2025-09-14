@@ -224,6 +224,15 @@ deserializeAttrFromJson<paddle::dialect::PlaceAttribute, int8_t>(
   return paddle::dialect::PlaceAttribute::get(ctx, place);
 }
 
+template <>
+paddle::dialect::DataLayoutAttribute
+deserializeAttrFromJson<paddle::dialect::DataLayoutAttribute, std::string>(
+    Json* attr_json, pir::IrContext* ctx) {
+  std::string data = attr_json->at(DATA).template get<std::string>();
+  phi::DataLayout data_type = common::StringToDataLayout(data);
+  return paddle::dialect::DataLayoutAttribute::get(ctx, data_type);
+}
+
 pir::Type parseType(Json* type_json) {
   auto type_name = type_json->at(ID).template get<std::string>();
 
@@ -439,6 +448,10 @@ pir::Attribute AttrTypeReader::ReadPaddleOperatorAttr(
     VLOG(8) << "Parse PlaceAttribute .";
     return pir::deserializeAttrFromJson<paddle::dialect::PlaceAttribute,
                                         int8_t>(attr_json, ctx);
+  } else if (attr_name == paddle::dialect::DataLayoutAttribute::name()) {
+    VLOG(8) << "Parse DataLayoutAttribute .";
+    return pir::deserializeAttrFromJson<paddle::dialect::DataLayoutAttribute,
+                                        std::string>(attr_json, ctx);
   } else {
     PADDLE_ENFORCE(false,
                    common::errors::InvalidArgument(

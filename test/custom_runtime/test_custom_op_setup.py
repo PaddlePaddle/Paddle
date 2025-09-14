@@ -16,9 +16,14 @@ import os
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
+
+from paddle.utils.cpp_extension.extension_utils import (
+    _get_all_paddle_includes_from_include_root,
+)
 
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
@@ -49,21 +54,23 @@ def custom_relu_static(func, device, dtype, np_x, use_func=True):
     paddle.enable_static()
     paddle.set_device(device)
 
-    with static.scope_guard(static.Scope()):
-        with static.program_guard(static.Program()):
-            x = static.data(name="X", shape=[None, 8], dtype=dtype)
-            x.stop_gradient = False
-            out = func(x) if use_func else paddle.nn.functional.relu(x)
-            static.append_backward(out)
+    with (
+        static.scope_guard(static.Scope()),
+        static.program_guard(static.Program()),
+    ):
+        x = static.data(name="X", shape=[None, 8], dtype=dtype)
+        x.stop_gradient = False
+        out = func(x) if use_func else paddle.nn.functional.relu(x)
+        static.append_backward(out)
 
-            exe = static.Executor()
-            exe.run(static.default_startup_program())
-            # in static mode, x data has been covered by out
-            out_v = exe.run(
-                static.default_main_program(),
-                feed={"X": np_x},
-                fetch_list=[out],
-            )
+        exe = static.Executor()
+        exe.run(static.default_startup_program())
+        # in static mode, x data has been covered by out
+        out_v = exe.run(
+            static.default_main_program(),
+            feed={"X": np_x},
+            fetch_list=[out],
+        )
 
     paddle.disable_static()
     return out_v
@@ -134,12 +141,10 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # please refer to the comments in `paddle/tests/custom_op/utils.py``
         paddle_includes = []
         for site_packages_path in getsitepackages():
-            paddle_includes.append(
-                os.path.join(site_packages_path, 'paddle', 'include')
-            )
-            paddle_includes.append(
-                os.path.join(
-                    site_packages_path, 'paddle', 'include', 'third_party'
+            paddle_include_dir = Path(site_packages_path) / "paddle/include"
+            paddle_includes.extend(
+                _get_all_paddle_includes_from_include_root(
+                    str(paddle_include_dir)
                 )
             )
 

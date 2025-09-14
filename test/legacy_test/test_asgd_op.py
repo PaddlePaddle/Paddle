@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
 )
 from utils import dygraph_guard
 
@@ -274,7 +275,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
         with paddle.pir_utils.OldIrGuard():
             paddle.seed(10)
             np.random.seed(10)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
             optimizer = paddle.optimizer.ASGD(batch_num=2, multi_precision=mp)
@@ -322,7 +323,7 @@ class TestASGDMultiPrecision(unittest.TestCase):
         with paddle.pir_utils.IrGuard():
             paddle.seed(10)
             np.random.seed(10)
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 
@@ -423,7 +424,7 @@ class TestASGDSimple(unittest.TestCase):
             paddle.seed(10)
             np.random.seed(10)
 
-            exe = paddle.static.Executor('gpu')
+            exe = paddle.static.Executor(get_device_place())
             train_program = paddle.static.Program()
             startup_program = paddle.static.Program()
 

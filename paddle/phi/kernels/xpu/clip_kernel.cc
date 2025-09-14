@@ -41,6 +41,7 @@ void ClipKernel(const Context& dev_ctx,
                               static_cast<float>(max_)));
 
   dev_ctx.template Alloc<T>(out);
+  if (out && out->numel() == 0) return;
   using XPUDataType = typename XPUTypeTrait<T>::Type;
   auto x_data = reinterpret_cast<const XPUDataType*>(x.data<T>());
   auto out_data = reinterpret_cast<XPUDataType*>(out->data<T>());
@@ -60,7 +61,7 @@ PD_REGISTER_KERNEL(clip,
                    ALL_LAYOUT,
                    phi::ClipKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    int64_t,
                    int) {}

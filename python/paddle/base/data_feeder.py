@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import struct
-from typing import TYPE_CHECKING, Any, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 import numpy as np
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from paddle._typing import DTypeLike, ShapeLike
     from paddle._typing.dtype_like import _DTypeLiteral
 
-    _ClassInfo: TypeAlias = Union[type[Any], Tuple["_ClassInfo", ...]]
+    _ClassInfo: TypeAlias = Union[type[Any], tuple["_ClassInfo", ...]]
 
 __all__ = []
 
@@ -62,21 +62,6 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
     core.VarDesc.VarType.STRING: 'pstring',
     core.VarDesc.VarType.RAW: 'raw',
-}
-
-_NUMPY_DTYPE_2_PADDLE_DTYPE = {
-    'bool': core.VarDesc.VarType.BOOL,
-    'float16': core.VarDesc.VarType.FP16,
-    'uint16': core.VarDesc.VarType.BF16,
-    'float32': core.VarDesc.VarType.FP32,
-    'float64': core.VarDesc.VarType.FP64,
-    'int8': core.VarDesc.VarType.INT8,
-    'int16': core.VarDesc.VarType.INT16,
-    'int32': core.VarDesc.VarType.INT32,
-    'int64': core.VarDesc.VarType.INT64,
-    'uint8': core.VarDesc.VarType.UINT8,
-    'complex64': core.VarDesc.VarType.COMPLEX64,
-    'complex128': core.VarDesc.VarType.COMPLEX128,
 }
 
 

@@ -21,7 +21,7 @@ from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
+class TestMatmulElementwiseAddActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         axis = draw(st.sampled_from([-1, 0, 1]))
         matmul_as_x = draw(st.booleans())
@@ -73,7 +73,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_onednn': True},
         )
 
         if activation_type == "relu6":
@@ -131,7 +131,7 @@ class TestMatmulElementwiseAddActivationMkldnnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True,
+            use_onednn=True,
             passes=[
                 'matmul_elementwise_add_onednn_fuse_pass',
                 'matmul_activation_onednn_fuse_pass',

@@ -21,7 +21,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PsroiPoolKernel(const Context& ctx,
+void PsroiPoolKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& rois,
                      const paddle::optional<DenseTensor>& rois_num,
@@ -51,7 +51,7 @@ void PsroiPoolKernel(const Context& ctx,
 
   DenseTensor rois_batch_id_list;
   rois_batch_id_list.Resize({rois_num_t});
-  int* rois_batch_id_data = ctx.template Alloc<int>(&rois_batch_id_list);
+  int* rois_batch_id_data = dev_ctx.template Alloc<int>(&rois_batch_id_list);
 
   int rois_batch_size = 0;
   if (rois_num.get_ptr()) {
@@ -102,7 +102,7 @@ void PsroiPoolKernel(const Context& ctx,
       }
     }
   }
-  T* output_data = ctx.template Alloc<T>(out);
+  T* output_data = dev_ctx.template Alloc<T>(out);
   const T* input_rois = rois.data<T>();
 
   // calculate psroipooling, parallel processing can be implemented per ROI

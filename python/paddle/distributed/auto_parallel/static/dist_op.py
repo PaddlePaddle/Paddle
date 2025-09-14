@@ -217,9 +217,9 @@ class DistributedOperatorHelper:
         tensor_to_dims_mapping = {}
         index = 0
         if self._in_dims_mappings:
-            assert len(args) + len(kwargs) == len(
-                self._in_dims_mappings
-            ), f"The length of dims_mapping {len(self._in_dims_mappings)} does not matching the length output {len(args) + len(kwargs)}."
+            assert len(args) + len(kwargs) == len(self._in_dims_mappings), (
+                f"The length of dims_mapping {len(self._in_dims_mappings)} does not matching the length output {len(args) + len(kwargs)}."
+            )
         for arg in args:
             if isinstance(arg, Variable) and self._in_dims_mappings:
                 tensor_to_dims_mapping[arg.name] = self._in_dims_mappings[index]
@@ -248,9 +248,9 @@ class DistributedOperatorHelper:
             raise ValueError("Unrecognized output.")
 
         if self._out_dims_mappings:
-            assert len(new_output) == len(
-                self._out_dims_mappings
-            ), f"The length of dims_mapping {len(self._out_dims_mappings)} does not matching the length output {len(new_output)}."
+            assert len(new_output) == len(self._out_dims_mappings), (
+                f"The length of dims_mapping {len(self._out_dims_mappings)} does not matching the length output {len(new_output)}."
+            )
         for i, item in enumerate(new_output):
             if isinstance(item, Variable) and self._out_dims_mappings:
                 tensor_to_dims_mapping[item.name] = self._out_dims_mappings[i]
@@ -282,7 +282,9 @@ class DistributedOperatorHelper:
                         )
                         assert verify_shard_spec(
                             shard_spec, tensor_shape, self._process_mesh
-                        ), f"For tensor {name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {self._process_mesh}."
+                        ), (
+                            f"For tensor {name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {self._process_mesh}."
+                        )
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             for name in dist_op.serial_op.output_arg_names:
@@ -306,7 +308,9 @@ class DistributedOperatorHelper:
                         )
                         assert verify_shard_spec(
                             shard_spec, tensor_shape, self._process_mesh
-                        ), f"For tensor {name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {self._process_mesh}."
+                        ), (
+                            f"For tensor {name}, shard_spec {shard_spec} is invalid with tensor_shape {tensor_shape} and process_mesh {self._process_mesh}."
+                        )
                         tensor_dist_attr.dims_mapping = dims_mapping
                         tensor_dist_attr.mark_annotated("dims_mapping")
             dist_op.dist_attr.process_mesh = self._process_mesh

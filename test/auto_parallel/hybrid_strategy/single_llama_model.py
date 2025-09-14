@@ -19,6 +19,32 @@ from paddle import nn
 from paddle.nn.functional.flash_attention import _math_attention
 
 
+class SDPALayer(paddle.nn.Layer):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def forward(self, query, key, value, **kwargs):
+        if (
+            self.config.context_parallel is True
+            or self.config.sep_parallel is True
+        ) and (
+            int(paddle.version.cuda().split(".")[0]) >= 11
+            and paddle.device.cuda.get_device_capability()[0] >= 8
+        ):
+            out = paddle.nn.functional.scaled_dot_product_attention(
+                query, key, value, **kwargs
+            )
+        else:
+            out, _ = _math_attention(
+                query,
+                key,
+                value,
+                causal=kwargs.get("is_causal", False),
+            )
+        return out
+
+
 class LlamaAttention(nn.Layer):
     def __init__(self, config):
         super().__init__()
@@ -27,6 +53,7 @@ class LlamaAttention(nn.Layer):
         self.hidden_size = self.config.hidden_size
         self.num_heads = self.config.num_attention_heads
         self.head_dim = self.hidden_size // self.config.num_attention_heads
+        self.sdpa = SDPALayer(config)
 
         self.q_proj = nn.Linear(
             self.hidden_size,
@@ -64,19 +91,16 @@ class LlamaAttention(nn.Layer):
         )
 
         bsz, q_len, _, _ = query_states.shape
-
-        outputs, _ = _math_attention(
+        outputs = self.sdpa(
             query_states,
             key_states,
             value_states,
-            causal=True,
+            is_causal=True,
         )
-
         attn_output = outputs.reshape(
-            [bsz, q_len, self.head_dim * self.num_heads]
+            [-1, q_len, self.head_dim * self.num_heads]
         )
         attn_output = self.o_proj(attn_output)
-
         return attn_output
 
 
@@ -148,7 +172,7 @@ class LlamaDecoderLayer(nn.Layer):
         hidden_states, _ = self.mlp(hidden_states, "ONLY_FOR_TEST")
         hidden_states = residual + hidden_states
 
-        return hidden_states
+        return (hidden_states,)
 
 
 class GlobalOutputNet(nn.Layer):
@@ -206,9 +230,10 @@ class LlamaModel(nn.Layer):
         global_tensor = self.global_layer(None)
 
         for idx, (decoder_layer) in enumerate(self.layers):
-            hidden_states = decoder_layer(
+            tuple_hidden_states = decoder_layer(
                 hidden_states=hidden_states, global_tensor=global_tensor
             )
+            hidden_states = tuple_hidden_states[0]
 
         hidden_states = self.norm(hidden_states)
 

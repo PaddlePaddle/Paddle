@@ -18,6 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import Model, base, jit, to_tensor
@@ -722,7 +723,7 @@ class TestModelFunction(unittest.TestCase):
             print(params_info)
 
             model.summary(input_size=(20))
-            model.summary(input_size=[(20)])
+            model.summary(input_size=[20])
             model.summary(input_size=(20), dtype='float32')
 
     def test_summary_non_tensor(self):
@@ -860,11 +861,7 @@ class TestModelFunction(unittest.TestCase):
             ori_results = model.predict_batch(tensor_img)
             base.disable_dygraph() if dynamic else None
 
-            place = (
-                base.CPUPlace()
-                if not base.is_compiled_with_cuda()
-                else base.CUDAPlace(0)
-            )
+            place = get_device_place()
             new_scope = base.Scope()
             with base.scope_guard(new_scope):
                 exe = base.Executor(place)

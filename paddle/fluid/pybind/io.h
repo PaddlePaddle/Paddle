@@ -20,10 +20,6 @@ typedef SSIZE_T ssize_t;
 #endif
 
 #include <Python.h>
-// Avoid a problem with copysign defined in pyconfig.h on Windows.
-#ifdef copysign
-#undef copysign
-#endif
 
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 

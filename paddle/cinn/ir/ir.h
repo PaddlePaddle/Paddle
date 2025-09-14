@@ -35,10 +35,6 @@
 
 namespace cinn {
 
-namespace poly {
-class Stage;
-}  // namespace poly
-
 namespace ir {
 class Buffer;
 class BufferRange;
@@ -425,6 +421,7 @@ struct _Var_ : public ExprNode<_Var_> {
 };
 
 //! A named variable.
+// i ∈ [lower_bound, upper_bound)
 struct Var : public IrNodeRef {
   Var() = default;
   explicit Var(IrNode* n) : IrNodeRef(n) {}
@@ -850,6 +847,7 @@ struct For : public ExprNode<For>, public ForBase {
   //! The minimum value of the iteration.
   Expr min;
   //! The extent of the iteration.
+  // loop_var ∈ [min, min + extent)
   Expr extent;
 
   Expr body;

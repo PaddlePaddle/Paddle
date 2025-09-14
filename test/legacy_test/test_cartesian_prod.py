@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 import random
 import unittest
 from itertools import product
 
 import numpy as np
+from op_test import get_devices
 
 import paddle
 from paddle.base import core
@@ -36,15 +36,7 @@ class TestCartesianProdAPIBase(unittest.TestCase):
         self.c_np = np.random.random(self.c_shape).astype(self.dtype_np)
         self.d_np = np.empty(0, self.dtype_np)
 
-        self.place = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.is_compiled_with_cuda()
-        ):
-            self.place.append('cpu')
-        if paddle.is_compiled_with_cuda():
-            self.place.append('gpu')
+        self.place = get_devices()
 
     def init_setting(self):
         self.dtype_np = 'float32'
@@ -117,6 +109,76 @@ class TestCartesianProdAPIBase(unittest.TestCase):
             pd_res3 = paddle.cartesian_prod([a])
             ref_res = np.array(list(product(self.a_np)))
             np.testing.assert_allclose(ref_res.flatten(), pd_res3)
+
+
+class TestCartesianProd_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.init_setting()
+        self.a_shape = [random.randint(1, 5)]
+        self.b_shape = [0]
+        self.a_np = np.random.random(self.a_shape).astype(self.dtype_np)
+        self.b_np = np.empty(0, self.dtype_np)
+
+        self.place = get_devices()
+
+    def init_setting(self):
+        self.dtype_np = 'float32'
+
+    def test_static_graph(self):
+        paddle.enable_static()
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        for place in self.place:
+            with paddle.static.program_guard(main_program, startup_program):
+                a = paddle.static.data(
+                    name="a", shape=self.a_shape, dtype=self.dtype_np
+                )
+                b = paddle.static.data(
+                    name="b", shape=self.b_shape, dtype=self.dtype_np
+                )
+                out1 = paddle.cartesian_prod([a, b])
+                exe = paddle.static.Executor(place=place)
+                feed_list = {
+                    "a": self.a_np,
+                    "b": self.b_np,
+                }
+                pd_res = exe.run(
+                    main_program,
+                    feed=feed_list,
+                    fetch_list=[out1],
+                )
+
+                ref_res = np.array(list(product(self.a_np, self.b_np))).reshape(
+                    [0, 2]
+                )
+                np.testing.assert_allclose(ref_res, pd_res[0])
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            a = paddle.to_tensor(self.a_np)
+            b = paddle.to_tensor(self.b_np)
+
+            pd_res = paddle.cartesian_prod([a, b])
+            ref_res = np.array(list(product(self.a_np, self.b_np))).reshape(
+                [0, 2]
+            )
+            np.testing.assert_allclose(ref_res, pd_res)
+
+    def test_grad(self):
+        paddle.disable_static()
+        for place in self.place:
+            paddle.device.set_device(place)
+            a = paddle.to_tensor(self.a_np)
+            a.stop_gradient = False
+            b = paddle.to_tensor(self.b_np)
+            b.stop_gradient = False
+
+            out = paddle.cartesian_prod([a, b])
+            loss = paddle.sum(out)
+            loss.backward()
+            np.testing.assert_allclose(a.grad.shape, a.shape)
 
 
 class TestCartesianProdErrors(unittest.TestCase):

@@ -18,6 +18,7 @@
 #include "paddle/ap/include/axpr/adt.h"
 #include "paddle/ap/include/axpr/environment.h"
 #include "paddle/ap/include/axpr/frame.h"
+#include "paddle/ap/include/axpr/method_class.h"
 #include "paddle/ap/include/axpr/serializable_value.h"
 #include "paddle/ap/include/axpr/serializable_value_helper.h"
 
@@ -73,7 +74,7 @@ class MutableGlobalEnvironment : public Environment<ValueT> {
   }
 
   bool IsTempVar(const std::string& var) const {
-    static std::string tmp_var_prefix("__");
+    static std::string tmp_var_prefix("___");
     return var.substr(0, tmp_var_prefix.size()) == tmp_var_prefix;
   }
 

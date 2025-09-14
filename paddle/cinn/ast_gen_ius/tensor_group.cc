@@ -21,7 +21,6 @@
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/tensor.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/poly/stage.h"
 
 namespace cinn {
 namespace ast_gen_ius {

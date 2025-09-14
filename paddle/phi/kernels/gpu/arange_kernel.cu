@@ -17,8 +17,6 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -28,7 +26,7 @@ namespace phi {
 
 template <typename T, typename OUT_TYPE>
 __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
-  CUDA_KERNEL_LOOP(index, size) {
+  CUDA_KERNEL_LOOP_TYPE(index, size, int64_t) {
     out[index] = static_cast<OUT_TYPE>(start + step * index);
   }
 }
@@ -112,8 +110,8 @@ PD_REGISTER_KERNEL(arange_tensor,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -127,5 +125,5 @@ PD_REGISTER_KERNEL(arange,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

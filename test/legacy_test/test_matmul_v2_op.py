@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_numeric_gradient,
+    get_places,
+)
 from testsuite import create_op
 
 import paddle
@@ -593,15 +597,7 @@ create_test_bf16_class(TestMatMulOp17)
 
 class TestMatMulV2API(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -717,7 +713,7 @@ class TestComplexMatMulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -770,7 +766,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -832,7 +828,7 @@ class TestInt32MatmulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -858,7 +854,7 @@ class TestInt32MatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -884,7 +880,7 @@ class TestInt64MatmulOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -910,7 +906,7 @@ class TestInt64MatMulOpBroadcast(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
@@ -941,6 +937,85 @@ class TestMatmulop(unittest.TestCase):
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()
+
+
+class TestMatMulOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.matmul
+        self.init_input_output()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.out = np.matmul(self.x, self.y)
+        self.attrs = {'axis': -1, 'use_onednn': False}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.random((1, 1, 2, 3))
+        self.y = np.random.random((1, 0, 3, 2))
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
+
+
+class TestMatMulOp_ZeroSize2(TestMatMulOp_ZeroSize):
+    def init_input_output(self):
+        self.x = np.random.random((0, 3, 2, 3))
+        self.y = np.random.random((1, 3, 3, 2))
+
+
+class TestMatMulOp_trans_y(TestMatMulV2Op):
+    # y is 1-D and trans_y is True
+    def config(self):
+        self.x_shape = (2, 100)
+        self.y_shape = (100,)
+        self.trans_x = False
+        self.trans_y = True
+
+    def init_kernel_type(self):
+        self.dtype = "float32" if core.is_compiled_with_rocm() else "float64"
+
+    def setUp(self):
+        self.init_kernel_type()
+        self.config()
+        self.op_type = "matmul_v2"
+        self.python_api = paddle.tensor.matmul
+        self.public_python_api = paddle.tensor.matmul
+        x = np.random.random(self.x_shape).astype(self.dtype)
+        y = np.random.random(self.y_shape).astype(self.dtype)
+        # -0.1 ~ 0.1
+        x = -0.1 + 0.2 * x
+        y = -0.1 + 0.2 * y
+        result = reference_matmul(x, y, self.trans_x, self.trans_y)
+        result = result.astype(self.dtype)
+        self.inputs = {
+            'X': x,
+            'Y': y,
+        }
+        self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output(
+            check_pir=True,
+        )
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_pir=True,
+        )
 
 
 if __name__ == "__main__":

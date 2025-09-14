@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, get_places
 
 import paddle
-from paddle import base
 from paddle.base import core
 
 
@@ -157,19 +155,10 @@ def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
 
 
 class TestBCELoss(unittest.TestCase):
-
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not base.core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if base.core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        places = get_places()
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -205,11 +194,7 @@ class TestBCELoss(unittest.TestCase):
             np.float64
         )
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
-        place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = get_device_place()
         for reduction in ['sum', 'mean', 'none']:
             static_result = test_static_layer(
                 place, input_np, label_np, reduction, weight_np=weight_np
@@ -312,7 +297,6 @@ class TestBceLossOpFP16(TestBceLossOp):
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
-
     def test_fp16(self):
         if not core.is_compiled_with_cuda():
             return
@@ -334,6 +318,16 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
                     feed={'x': x_data, 'y': y_data}, fetch_list=[out]
                 )[0]
         paddle.disable_static()
+
+
+class TestBceLossOp_ZeroSize(TestBceLossOp):
+    def init_test_cast(self):
+        self.shape = [0, 1, 2]
+
+
+class TestBceLossOp_ZeroSize2(TestBceLossOp):
+    def init_test_cast(self):
+        self.shape = [0]
 
 
 if __name__ == "__main__":

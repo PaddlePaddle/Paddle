@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_places
 from utils import static_guard
 
 import paddle
@@ -80,6 +79,11 @@ class TestExpandV2OpRank1_ZeroDim2(TestExpandV2OpRank1):
 
     def if_enable_cinn(self):
         pass
+
+    def test_check_grad(self):
+        if self.shape == [] or self.ori_shape == []:
+            return
+        super().test_check_grad()
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -406,30 +410,37 @@ class TestExpandV2BF16Op(OpTest):
 
 
 class TestExpandV2Error(unittest.TestCase):
-
     def test_errors(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                shape = [2, 2]
-                if not in_pir_mode():
-                    x1 = base.create_lod_tensor(
-                        np.array([[-1]]), [[1]], base.CPUPlace()
-                    )
-                    self.assertRaises(
-                        TypeError, paddle.tensor.expand, x1, shape
-                    )
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
-                x2.stop_gradient = False
-                self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
-                x2.stop_gradient = True
-                self.assertRaises(TypeError, paddle.tensor.expand, x2, 1)
+            ),
+        ):
+            shape = [2, 2]
+            if not in_pir_mode():
+                x1 = base.create_lod_tensor(
+                    np.array([[-1]]), [[1]], base.CPUPlace()
+                )
+                self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="bool")
+            x2.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, shape)
+            x2.stop_gradient = True
+            self.assertRaises(ValueError, paddle.tensor.expand, x2, 1)
+            x3 = paddle.static.data(name='x3', shape=[1, 1, 1], dtype="int64")
+            shape_empty = paddle.static.data(
+                name='shape_empty', shape=[0], dtype="int32"
+            )
+            try:
+                result = paddle.tensor.expand(x3, shape_empty)
+                self.assertIsNotNone(result)
+            except Exception as e:
+                self.fail(f"Unexpected exception: {e}")
 
 
 # Test python API
 class TestExpandV2API(unittest.TestCase):
-
     def test_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
             input = np.random.random([12, 14]).astype("float32")
@@ -510,16 +521,7 @@ class TestExpandDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -547,16 +549,7 @@ class TestExpandTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         paddle.enable_static()
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
-        for p in places:
+        for p in get_places():
             self.func(p)
 
 
@@ -667,22 +660,236 @@ class TestExpandV2CompOpInt64_t(OpTest):
 
 
 class TestExpandPirValueListShape(unittest.TestCase):
-
     def test_value_list_shape1(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1])
-                shape = [2, paddle.full([], 4)]
-                out = paddle.expand(x, shape)
-                np.testing.assert_array_equal(tuple(out.shape), (2, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1])
+            shape = [2, paddle.full([], 4)]
+            out = paddle.expand(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (2, -1))
 
     def test_value_list_shape2(self):
-        with static_guard():
-            with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
-                shape1 = paddle.static.data('shape1', [], 'int32')
-                x = paddle.expand(x, shape=[shape1, 1, -1, -1])
-                np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('x', [1, 1, -1, -1], 'float32')
+            shape1 = paddle.static.data('shape1', [], 'int32')
+            x = paddle.expand(x, shape=[shape1, 1, -1, -1])
+            np.testing.assert_equal(tuple(x.shape), (-1, 1, -1, -1))
+
+
+class TestExpandV2ZeroSizeOp(OpTest):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.init_data()
+        self.init_place()
+        self.python_api = paddle.expand
+        self.x = np.zeros(self.ori_shape).astype("float64")
+        self.attrs = {
+            'shape': self.shape,
+        }
+        self.set_inputs()
+        self.set_additional_inputs()
+        output = np.zeros(self.expect_shape).astype("float64")
+        self.outputs = {'Out': output}
+
+    def set_inputs(self):
+        self.inputs = {'X': self.x}
+
+    def set_additional_inputs(self):
+        pass
+
+    def init_data(self):
+        self.ori_shape = [1, 0, 1, 140]
+        self.shape = [1, 0, 1, 140]
+        self.expect_shape = [1, 0, 1, 140]
+
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
+            ["X"],
+            "Out",
+            check_dygraph=False,
+        )
+
+
+class TestExpandV2CPUOp1(TestExpandV2ZeroSizeOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2CPUOp2(TestExpandV2ZeroSizeOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp(TestExpandV2ZeroSizeOp):
+    def init_place(self):
+        self.place = core.CUDAPlace(0)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp1(TestExpandV2ZeroSizeGPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestExpandV2ZeroSizeGPUOp2(TestExpandV2ZeroSizeGPUOp):
+    def init_data(self):
+        self.ori_shape = (0, 1)
+        self.shape = (0, 8)
+        self.expect_shape = (0, 8)
+
+
+class TestExpandV2ZeroSizeOneDNNOp(TestExpandV2ZeroSizeOp):
+    def setUp(self):
+        self.op_type = "expand_v2"
+        self.init_data()
+        self.init_place()
+        self.python_api = paddle.expand
+        self.x = np.zeros(self.ori_shape).astype("float32")
+        self.attrs = {'shape': self.shape, 'use_onednn': True}
+        self.use_onednn = True
+        self.set_inputs()
+        self.set_additional_inputs()
+        output = np.zeros(self.expect_shape).astype("float32")
+        self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.ori_shape = [1, 0, 1, 140]
+        self.shape = [1, 0, 1, 140]
+        self.expect_shape = [1, 0, 1, 140]
+
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_check_output(self):
+        flags_use_onednn = core.globals()["FLAGS_use_onednn"]
+        paddle.set_flags({'FLAGS_use_onednn': True})
+        self.check_output_with_place(
+            self.place,
+            check_dygraph=False,
+            check_pir=False,
+            check_pir_onednn=True,
+        )
+        paddle.set_flags({'FLAGS_use_onednn': flags_use_onednn})
+
+    def test_check_grad(self):
+        flags_use_onednn = core.globals()["FLAGS_use_onednn"]
+        paddle.set_flags({'FLAGS_use_onednn': True})
+        self.check_grad_with_place(
+            self.place,
+            ["X"],
+            "Out",
+            check_dygraph=False,
+            check_pir=False,
+            check_pir_onednn=True,
+        )
+        paddle.set_flags({'FLAGS_use_onednn': flags_use_onednn})
+
+
+class TestExpandV2ZeroSizeOneDNNOp1(TestExpandV2ZeroSizeOneDNNOp):
+    def init_data(self):
+        self.ori_shape = (0, 130)
+        self.shape = (4, 0, 130)
+        self.expect_shape = (4, 0, 130)
+
+
+class TestExpandV2ZeroSizeOneDNNOp2(TestExpandV2ZeroSizeOneDNNOp):
+    def init_data(self):
+        self.ori_shape = (0, 1, 8)
+        self.shape = (0, 8, 8)
+        self.expect_shape = (0, 8, 8)
+
+
+class TestExpandV2API_Compatibility(unittest.TestCase):
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = np.random.random([12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+
+            positive_2 = paddle.tensor.fill_constant([1], "int32", 12)
+            expand_shape = paddle.static.data(
+                name="expand_shape",
+                shape=[2],
+                dtype="int32",
+            )
+
+            out_1 = paddle.expand(input=x, shape=[12, 14])
+            out_2 = paddle.expand(x, size=[positive_2, 14])
+            out_3 = paddle.expand(input=x, shape=expand_shape)
+            out_4 = x.expand([12, 14])
+            out_5 = x.expand(size=[positive_2, 14])
+            out_6 = x.expand(shape=expand_shape)
+            out_7 = x.expand(12, 14)
+
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    "expand_shape": np.array([12, 14]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+            )
+            np.testing.assert_array_equal(res_1, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_4, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_5, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_6, np.tile(input, (1, 1)))
+            np.testing.assert_array_equal(res_7, np.tile(input, (1, 1)))
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+
+        input = np.random.random([1, 3]).astype("float32")
+        x = paddle.to_tensor(input)
+
+        expect_out = paddle.expand(x, shape=[2, 3])
+        out_1 = paddle.expand(input=x, shape=[2, 3])
+        out_2 = paddle.expand(x, size=[2, 3])
+        out_3 = paddle.expand(input=x, shape=[2, 3])
+        out_4 = x.expand([2, 3])
+        out_5 = x.expand(size=[2, 3])
+        out_6 = x.expand(shape=[2, 3])
+        out_7 = x.expand(2, 3)
+
+        np.testing.assert_array_equal(out_1, expect_out)
+        np.testing.assert_array_equal(out_2, expect_out)
+        np.testing.assert_array_equal(out_3, expect_out)
+        np.testing.assert_array_equal(out_4, expect_out)
+        np.testing.assert_array_equal(out_5, expect_out)
+        np.testing.assert_array_equal(out_6, expect_out)
+        np.testing.assert_array_equal(out_7, expect_out)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

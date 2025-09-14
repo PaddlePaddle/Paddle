@@ -189,9 +189,9 @@ def fused_dot_product_attention(
         bias_type = "none"
 
     if attn_mask is not None:
-        assert (
-            attn_mask.dtype == query.dtype
-        ), "attn_mask dtype should be the same as qkv dtype"
+        assert attn_mask.dtype == query.dtype, (
+            "attn_mask dtype should be the same as qkv dtype"
+        )
 
     cu_seqlen_q = None
     cu_seqlen_k = None

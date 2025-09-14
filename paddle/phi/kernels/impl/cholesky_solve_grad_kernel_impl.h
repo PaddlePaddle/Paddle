@@ -20,6 +20,7 @@
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
@@ -27,7 +28,6 @@
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -39,6 +39,23 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
                              bool upper,
                              DenseTensor* dx,
                              DenseTensor* dy) {
+  if (dout.numel() == 0) {
+    if (dx) {
+      dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dx->dims())), 0, dx);
+      }
+    }
+    if (dy) {
+      dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        phi::Full<T, Context>(
+            dev_ctx, phi::IntArray(common::vectorize(dy->dims())), 0, dy);
+      }
+    }
+    return;
+  }
   // get broadcast dim
   std::vector<int64_t> x_bst_dims_vec;
   std::vector<int64_t> y_bst_dims_vec;

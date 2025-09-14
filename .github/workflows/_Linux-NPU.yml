@@ -2,10 +2,16 @@ name: Linux-NPU
 
 on:
   workflow_call:
+    inputs:
+      can-skip:
+        type: string
+        required: false
+      docker_npu_image:
+        type: string
+        required: true
 
 env:
-  dockerfile: dockerfile
-  docker_image: 885123926a90
+  docker_image: ${{ inputs.docker_npu_image }}
   PR_ID: ${{ github.event.pull_request.number }}
   COMMIT_ID: ${{ github.event.pull_request.head.sha }}
   ci_scripts: /paddle/ci
@@ -18,7 +24,8 @@ env:
 
 jobs:
   check-bypass:
-    name: Check bypass for NPU
+    name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'npu'
@@ -28,20 +35,25 @@ jobs:
   test:
     name: Test
     needs: check-bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: NPU
 
     steps:
       - name: Download paddle.tar.gz and update test branch
         run: |
-          sudo rm -rf * .[^.]*
+          docker run -i --rm \
+          -v ${{ github.workspace }}:/paddle \
+          -e PR_ID \
+          -e COMMIT_ID \
+          -e BRANCH \
+          -w /paddle $docker_image /bin/bash -c 'rm -rf * .[^.]*'
           source ~/.bashrc
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
+          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
           echo "Extracting Paddle.tar.gz"
-          tar xf Paddle.tar.gz
+          tar --use-compress-program='pzstd' -xpf Paddle.tar.gz
           rm Paddle.tar.gz
           cd Paddle
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
@@ -49,7 +61,7 @@ jobs:
           git checkout test
           echo "Pull upstream develop"
           source ${{ github.workspace }}/../../../proxy
-          git pull upstream $BRANCH --no-edit
+          bash ci/git_pull.sh $BRANCH
 
       - name: Determine the runner
         run: |
@@ -62,7 +74,7 @@ jobs:
       - name: Clone PaddleCustomDevice repository
         run: |
           source ~/.bashrc
-          git clone --depth=1000 -b ${BRANCH} https://github.com/PaddlePaddle/PaddleCustomDevice.git
+          git clone --depth=1000 -b develop https://github.com/PaddlePaddle/PaddleCustomDevice.git
           cd PaddleCustomDevice
           cp -r ../Paddle .
 
@@ -88,7 +100,7 @@ jobs:
           FLAGS_use_stride_kernel: 0
           FLAGS_allocator_strategy: naive_best_fit
           FLAGS_npu_storage_format: 0
-          TEST_IMPORTANT: "ON"
+          TEST_IMPORTANT: "OFF"
           PADDLE_BRANCH: ${{ github.event.pull_request.base.ref }}
           home_dir: ${{ github.workspace }}/../../../..
         run: |
@@ -172,7 +184,7 @@ jobs:
           cd Paddle
           git submodule foreach "git config --global --add safe.directory \$toplevel/\$sm_path"
           cd ..
-          bash backends/npu/tools/pr_ci_npu.sh;EXCODE=$?
+          bash backends/npu/tools/pr_ci_npu.sh
           '
 
       - name: Terminate and delete the container

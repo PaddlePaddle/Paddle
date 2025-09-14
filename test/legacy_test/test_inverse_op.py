@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 from paddle import base
-from paddle.base import core
 
 
 class TestInverseOp(OpTest):
@@ -135,15 +133,7 @@ class TestInverseOpComplex128(TestInverseOp):
 class TestInverseAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -202,15 +192,7 @@ class TestInverseAPIError(unittest.TestCase):
 
 class TestInverseSingularAPI(unittest.TestCase):
     def setUp(self):
-        self.places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not core.is_compiled_with_cuda()
-        ):
-            self.places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
+        self.places = get_places()
 
     def check_static_result(self, place):
         with paddle.static.program_guard(
@@ -250,6 +232,25 @@ class TestInverseSingularAPI(unittest.TestCase):
                     print("The mat is singular")
                 except ValueError as ex:
                     print("The mat is singular")
+
+
+class TestInverseAPI_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                input_np = np.random.random([4, 0]).astype("float64")
+                input = paddle.to_tensor(input_np)
+                input.stop_gradient = False
+                result = paddle.linalg.inv(input)
+                np_out = np.random.random([4, 0]).astype("float64")
+                np.testing.assert_allclose(result.numpy(), np_out, rtol=1e-05)
+                loss = paddle.sum(result)
+                loss.backward()
+                np.testing.assert_allclose(input.grad.shape, input.shape)
 
 
 if __name__ == "__main__":

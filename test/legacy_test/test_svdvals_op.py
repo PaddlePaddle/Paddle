@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -94,11 +94,7 @@ class TestSvdvalsAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-3, 3, [10, 12]).astype('float32')
-        self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_dygraph_api(self):
         with dygraph_guard():
@@ -121,14 +117,16 @@ class TestSvdvalsAPI(unittest.TestCase):
             )
 
     def test_static_api(self):
-        with static_guard():
-            with paddle.static.program_guard(
+        with (
+            static_guard(),
+            paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
-            ):
-                x = paddle.static.data('x', [10, 12], dtype='float32')
-                s = paddle.linalg.svdvals(x)
-                exe = paddle.static.Executor(self.place)
-                res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
+            ),
+        ):
+            x = paddle.static.data('x', [10, 12], dtype='float32')
+            s = paddle.linalg.svdvals(x)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'x': self.x_np}, fetch_list=[s])
 
         np_s = np.linalg.svd(self.x_np, compute_uv=False, hermitian=False)
         for r in res:
@@ -146,14 +144,32 @@ class TestSvdvalsAPI(unittest.TestCase):
                 x_invalid_shape = paddle.to_tensor(x_np_invalid_shape)
                 paddle.linalg.svdvals(x_invalid_shape)
 
-            def test_empty_tensor():
-                """Test empty tensor"""
-                x_np_empty = np.empty([0, 10], dtype='float32')
-                x_empty = paddle.to_tensor(x_np_empty)
-                paddle.linalg.svdvals(x_empty)
-
             self.assertRaises(ValueError, test_invalid_shape)
-            self.assertRaises(ValueError, test_empty_tensor)
+
+
+class TestSvdvalsOp_ZeroSize(OpTest):
+    def setUp(self):
+        self.op_type = "svdvals"
+        self.python_api = paddle.linalg.svdvals
+        self.init_data()
+
+    def init_shape(self):
+        self._input_shape = (1, 0)
+
+    def init_data(self):
+        self.init_shape()
+        self._input_data = np.random.random(self._input_shape).astype("float64")
+        self._output_data = np.linalg.svd(
+            self._input_data, compute_uv=False, hermitian=False
+        )
+        self.inputs = {'x': self._input_data}
+        self.outputs = {'s': self._output_data}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['x'], ['s'], numeric_grad_delta=0.001, check_pir=True)
 
 
 if __name__ == "__main__":

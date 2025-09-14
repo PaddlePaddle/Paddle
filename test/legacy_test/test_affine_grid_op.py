@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_places
 
 import paddle
 
@@ -222,6 +222,33 @@ class TestAffineGridOp5DCase4(TestAffineGridOp):
         self.dynamic_shape = False
         self.use_cudnn = False
         self.align_corners = False
+
+
+class TestAffineGridAPI_ZeroSize(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float32'
+
+    def setUp(self):
+        self.init_dtype()
+        self.place = get_places()
+        self.theta_shape = (17, 2, 3)
+        self.output_shape = np.random.random([0]).astype("int32")
+
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            theta_np = np.random.randint(1, 3, self.theta_shape).astype(
+                self.dtype
+            )
+            theta = paddle.to_tensor(theta_np)
+            with self.assertRaises(ValueError):
+                paddle.nn.functional.vision.affine_grid(
+                    theta, paddle.to_tensor(self.output_shape)
+                )
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
 
 
 if __name__ == '__main__':

@@ -116,6 +116,10 @@ void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& value,
                     bool accumulate,
                     DenseTensor* out) {
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   PADDLE_ENFORCE_EQ(
       x.dtype(),
       value.dtype(),
@@ -185,7 +189,7 @@ PD_REGISTER_KERNEL(index_put,
                    int16_t,
                    uint8_t,
                    int8_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

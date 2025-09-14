@@ -19,30 +19,29 @@
 
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 #define MAX_RANK_SUPPORTED 8
 
 namespace phi {
 
 template <typename Context, typename T, int Rank>
-void ExpandAs(const Context& context,
+void ExpandAs(const Context& dev_ctx,
               const DenseTensor& x,
-              const std::vector<int>& target_shape,
+              const std::vector<int64_t>& target_shape,
               DenseTensor* out) {
   auto in_dims = x.dims();
   auto vec_in_dims = common::vectorize<int>(in_dims);
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
-  std::vector<int> repeat_times(vec_in_dims.size());
+  std::vector<int64_t> repeat_times(vec_in_dims.size());
   if (Rank == 0) {
-    phi::Copy<Context>(context, x, context.GetPlace(), false, out);
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
-    PADDLE_ENFORCE_NE(
-        target_shape[i],
-        0,
-        errors::InvalidArgument("The value of target shape cannot be zero."));
+    if (target_shape[i] == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
     if (i < diff) {
       PADDLE_ENFORCE_GT(
           target_shape[i],
@@ -86,20 +85,24 @@ void ExpandAs(const Context& context,
   phi::DDim out_dims = common::make_ddim(target_shape);
 
   out->Resize(out_dims);
-  context.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   auto x0 = EigenTensor<T, Rank>::From(x, new_in_dims);
   auto y = EigenTensor<T, Rank>::From(*out, out_dims);
-  auto& place = *context.eigen_device();
+  auto& place = *dev_ctx.eigen_device();
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, Rank>::Eval(
       place, y, x0, bcast_dims);
 }
 
 template <typename T, typename Context>
-void ExpandAsKernel(const Context& ctx,
+void ExpandAsKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const paddle::optional<DenseTensor>& y,
-                    const std::vector<int>& target_shape,
+                    const std::vector<int64_t>& target_shape,
                     DenseTensor* out) {
+  if (x.numel() == 0 || (y.get_ptr() && y.get_ptr()->numel() == 0)) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
@@ -124,45 +127,38 @@ void ExpandAsKernel(const Context& ctx,
                         target_rank,
                         MAX_RANK_SUPPORTED));
 
-  std::vector<int> real_target_shape = target_shape;
-  for (size_t i = 0; i < target_shape.size(); ++i) {
-    if (target_shape[i] == -1) {
-      if (y) {
-        if (y->IsInitialized()) {
-          real_target_shape = common::vectorize<int>(y->dims());
-        }
-      }
-      break;
-    }
+  std::vector<int64_t> real_target_shape = target_shape;
+  if (y.get_ptr()) {
+    real_target_shape = phi::vectorize<int64_t>(y.get_ptr()->dims());
   }
 
   switch (target_rank) {
     case 0:
-      ExpandAs<Context, T, 0>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 0>(dev_ctx, x, real_target_shape, out);
       break;
     case 1:
-      ExpandAs<Context, T, 1>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 1>(dev_ctx, x, real_target_shape, out);
       break;
     case 2:
-      ExpandAs<Context, T, 2>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 2>(dev_ctx, x, real_target_shape, out);
       break;
     case 3:
-      ExpandAs<Context, T, 3>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 3>(dev_ctx, x, real_target_shape, out);
       break;
     case 4:
-      ExpandAs<Context, T, 4>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 4>(dev_ctx, x, real_target_shape, out);
       break;
     case 5:
-      ExpandAs<Context, T, 5>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 5>(dev_ctx, x, real_target_shape, out);
       break;
     case 6:
-      ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 6>(dev_ctx, x, real_target_shape, out);
       break;
     case 7:
-      ExpandAs<Context, T, 7>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 7>(dev_ctx, x, real_target_shape, out);
       break;
     case 8:
-      ExpandAs<Context, T, 8>(ctx, x, real_target_shape, out);
+      ExpandAs<Context, T, 8>(dev_ctx, x, real_target_shape, out);
       break;
   }
 }

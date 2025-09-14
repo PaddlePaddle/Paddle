@@ -48,9 +48,9 @@ class DistributedReshape2(DistributedOperatorImplContainer):
     def update_dims_mapping(dist_op):
         # step1: prepare inputs need for rule (order args as PHI definition and filter out unnecessary args)
         op_desc = dist_op.serial_op.desc
-        assert (
-            dist_op.serial_op.type == "reshape2"
-        ), f"{dist_op.serial_op.type} is not supported by dist reshape yet."
+        assert dist_op.serial_op.type == "reshape2", (
+            f"{dist_op.serial_op.type} is not supported by dist reshape yet."
+        )
 
         x_name = op_desc.input('X')[0]
         out_name = op_desc.output('Out')[0]
@@ -293,9 +293,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        assert (
-            op_dist_attr is not None
-        ), f"backward op [{src_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"backward op [{src_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -549,9 +549,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         src_op = dist_op_context.cur_src_op
         rank_id = dist_op_context.rank_id
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        assert (
-            op_dist_attr is not None
-        ), f"backward op [{src_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"backward op [{src_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -798,9 +798,9 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         main_block = dist_op_context.work_block
         src_op = dist_op_context.cur_src_op
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
-        assert (
-            op_dist_attr is not None
-        ), f"backward op [{src_op}] don't have dist attribute !"
+        assert op_dist_attr is not None, (
+            f"backward op [{src_op}] don't have dist attribute !"
+        )
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():

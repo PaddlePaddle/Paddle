@@ -31,6 +31,10 @@ void ReduceMinGradKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
 
@@ -50,7 +54,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   }
   std::vector<int64_t> ydims(input_dim_size);
   std::vector<int64_t> xdims((input_dim_size));
-  std::set<int> dims_set(true_dims.begin(), true_dims.end());
+  std::set<int64_t> dims_set(true_dims.begin(), true_dims.end());
   for (auto i = 0; i < input_dim_size; i++) {
     xdims[i] = x.dims()[i];
     if (dims_set.find(i) != dims_set.end() || reduce_all) {
@@ -101,14 +105,14 @@ void ReduceMinGradKernel(const Context& dev_ctx,
   // step 3. get x_grad
   r = xpu::constant<T>(dev_ctx.x_context(), broadcast1, x.numel(), 0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  r = xpu::select<T>(dev_ctx.x_context(),
-                     equal,
-                     broadcast2,
-                     broadcast1,
-                     x_grad_data,
-                     xdims,
-                     xdims);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "select");
+  r = xpu::where<T>(dev_ctx.x_context(),
+                    equal,
+                    broadcast2,
+                    broadcast1,
+                    x_grad_data,
+                    xdims,
+                    xdims);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "where");
 }
 
 }  // namespace phi

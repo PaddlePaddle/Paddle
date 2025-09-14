@@ -169,7 +169,7 @@ std::shared_ptr<pir::Program> Deserializer::LoadPirProgram(
   VLOG(3) << "LoadPirProgram from: " << file_name;
   auto pir_program_ =
       std::make_shared<pir::Program>(pir::IrContext::Instance());
-  pir::ReadModule(file_name, pir_program_.get(), 1);
+  pir::ReadModule(file_name, pir_program_.get());
   return pir_program_;
 }
 

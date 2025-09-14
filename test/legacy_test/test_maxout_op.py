@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -83,17 +83,18 @@ class TestMaxOutOpGroups(TestMaxOutOp):
         self.groups = 3
 
 
+class TestMaxOutOp_ZeroSize(TestMaxOutOp):
+    def set_attrs(self):
+        self.shape = [3, 0, 2, 4]
+
+
 class TestMaxoutAPI(unittest.TestCase):
     # test paddle.nn.Maxout, paddle.nn.functional.maxout
     def setUp(self):
         self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float64)
         self.groups = 2
         self.axis = 1
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):

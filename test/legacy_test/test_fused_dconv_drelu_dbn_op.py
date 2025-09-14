@@ -423,7 +423,7 @@ class TestFusedDconvDreluDbnOp(OpTest):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpShortcut(TestFusedDconvDreluDbnOp):
     def init_attr(self):
@@ -433,7 +433,7 @@ class TestFusedDconvDreluDbnOpShortcut(TestFusedDconvDreluDbnOp):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpDual(TestFusedDconvDreluDbnOp):
     def init_attr(self):
@@ -443,7 +443,7 @@ class TestFusedDconvDreluDbnOpDual(TestFusedDconvDreluDbnOp):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpShortcutAdd(TestFusedDconvDreluDbnOp):
     def init_attr(self):
@@ -453,7 +453,7 @@ class TestFusedDconvDreluDbnOpShortcutAdd(TestFusedDconvDreluDbnOp):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpDualAdd(TestFusedDconvDreluDbnOp):
     def init_attr(self):
@@ -463,7 +463,7 @@ class TestFusedDconvDreluDbnOpDualAdd(TestFusedDconvDreluDbnOp):
         self.exhaustive_search = False
 
 
-@skip_check_grad_ci(reason="no grap op")
+@skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDconvDreluDbnOpExhaustive(TestFusedDconvDreluDbnOp):
     def init_attr(self):

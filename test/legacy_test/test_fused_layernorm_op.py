@@ -1204,5 +1204,66 @@ class TestlayernormStaticOpCPU(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
+)
+class TestlayernormOp_ZeroSize(TestlayernormOp):
+    def setUp(self):
+        np.random.seed(20)
+        # 0-size
+        batch = 0
+        cols = 256
+
+        self.x_np = np.random.uniform(-0.05, 0.05, [batch, cols])
+        self.residual_np = np.random.uniform(-0.05, 0.05, [batch, cols])
+        self.bias_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.norm_weight_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.norm_bias_np = np.random.uniform(-0.05, 0.05, [cols])
+        self.epsilon = 1e-5
+        self.residual_alpha = np.random.uniform(low=0.1, high=1.1, size=[1])
+
+        self.quant_scale = 0.15
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm(),
+    "core is not compiled with CUDA or ROCM",
+)
+class TestFusedLayerNorm_ZeroSize_Error(unittest.TestCase):
+    def test_bias_error(self):
+        with paddle.base.dygraph.guard():
+            x = paddle.randn([16, 256], dtype="float32")
+            bias = paddle.randn([0], dtype="float32")
+            residual = paddle.rand([16, 256], "float32")
+            self.assertRaises(
+                ValueError,
+                paddle.incubate.nn.functional.fused_layer_norm,
+                x=x,
+                norm_weight=paddle.randn([256], dtype="float32"),
+                norm_bias=paddle.randn([256], dtype="float32"),
+                epsilon=1e-06,
+                begin_norm_axis=1,
+                bias=bias,
+                residual=residual,
+            )
+
+            bias = paddle.randn([256], dtype="float32")
+            self.assertRaises(
+                ValueError,
+                paddle.incubate.nn.functional.fused_layer_norm,
+                x=x,
+                norm_weight=paddle.randn([256], dtype="float32"),
+                norm_bias=paddle.randn([0], dtype="float32"),
+                epsilon=1e-06,
+                begin_norm_axis=1,
+                bias=bias,
+                residual=residual,
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

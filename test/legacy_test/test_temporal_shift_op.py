@@ -109,6 +109,14 @@ class TestTemporalShift4(TestTemporalShift):
         self.data_format = 'NHWC'
 
 
+class TestTemporalShift_ZeroSize(TestTemporalShift):
+    def initTestCase(self):
+        self.x_shape = (0, 9, 7, 7)
+        self.seg_num = 2
+        self.shift_ratio = 0.2
+        self.data_format = 'NCHW'
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )

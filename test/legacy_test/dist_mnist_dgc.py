@@ -106,9 +106,9 @@ class TestDistMnistDGC(TestDistRunnerBase):
                 ),
             )
         if use_dgc:
-            assert (
-                build_strategy is not None
-            ), "build_strategy can be None with dgc"
+            assert build_strategy is not None, (
+                "build_strategy can be None with dgc"
+            )
             paddle.distributed.collective._init_parallel_env("nccl")
             _insert_comm_op(opt, avg_cost, build_strategy)
         else:

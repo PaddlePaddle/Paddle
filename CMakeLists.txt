@@ -56,7 +56,7 @@ option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
-option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" OFF)
+option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" ${WITH_XPU})
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
@@ -66,7 +66,7 @@ option(WITH_SETUP_INSTALL "Compile PaddlePaddle with setup.py" OFF)
 option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
-       "Paddle uses the CUDA library provided by NVIDIA" OFF)
+       "Paddle uses the CUDA library provided by NVIDIA" ON)
 option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)
@@ -156,9 +156,12 @@ if(WIN32)
   # re-runs CMake to regenerate the build system when the target specification source changes.
   set(CMAKE_SUPPRESS_REGENERATION OFF)
   set(CMAKE_STATIC_LIBRARY_PREFIX lib)
-  set(WITH_SHARED_PHI
-      OFF
-      CACHE BOOL "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32" FORCE)
+  # set(WITH_SHARED_PHI
+  #     ON
+  #     CACHE
+  #       BOOL
+  #       "Disable WITH_SHARED_PHI when compiling PADDLE ON WIN32 with static library"
+  #       FORCE)
 
   set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /bigobj")
@@ -301,11 +304,8 @@ option(WITH_INCREMENTAL_COVERAGE
        "Generate coverage reports only for incremental code" OFF)
 option(WITH_LIBXSMM "Compile with libxsmm" OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls" OFF)
-option(WITH_PSLIB "Compile with pslib support" OFF)
 option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
-option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_NVTX "Paddle with nvtx for profiler" OFF)
@@ -318,6 +318,9 @@ option(
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_FLAGCX "Compile PaddlePaddle with FLAGCX support" OFF)
+option(KERNEL_WITH_FLAGCX
+       "Use FlagCX as communication backend in kernels involving communication"
+       OFF)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
@@ -325,7 +328,7 @@ option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
 option(WITH_MIPS "Compile PaddlePaddle with mips support" OFF)
 option(WITH_LOONGARCH "Compile PaddlePaddle with loongarch support" OFF)
-option(WITH_MUSL "Compile with musl libc instead of gblic" OFF)
+option(WITH_MUSL "Compile with musl libc instead of glibc" OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode" OFF)
 option(WITH_STRIP "Strip so files of Whl packages" OFF)
 option(NEW_RELEASE_PYPI
@@ -339,9 +342,7 @@ option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
 option(WITH_CUSTOM_DEVICE "Compile with custom device support" OFF)
-option(WITH_ARM_BRPC "Support Brpc in Arm" OFF)
 option(WITH_FLPS "FL PS mode" OFF)
-option(WITH_RPC "Compile with rpc support" ${WITH_DISTRIBUTE})
 option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
@@ -553,10 +554,9 @@ endif()
 
 if(WITH_FLAGCX)
   add_definitions("-DPADDLE_WITH_FLAGCX")
-endif()
-
-if(WITH_HETERPS AND WITH_PSLIB)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+  if(KERNEL_WITH_FLAGCX)
+    add_definitions("-DPADDLE_KERNEL_WITH_FLAGCX")
+  endif()
 endif()
 
 if(WITH_DISTRIBUTE)
@@ -564,53 +564,6 @@ if(WITH_DISTRIBUTE)
     set(WITH_GLOO
         ON
         CACHE STRING "Enable GLOO when compiling WITH_DISTRIBUTE=ON." FORCE)
-  endif()
-  if(WITH_ROCM AND HIP_VERSION LESS_EQUAL 40020496)
-    # TODO(qili93): third-party rocksdb throw Illegal instruction with HIP version 40020496
-    message(
-      WARNING
-        "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496. Force WITH_PSCORE=OFF."
-    )
-    set(WITH_PSCORE
-        OFF
-        CACHE
-          BOOL
-          "Disable WITH_PSCORE when HIP_VERSION is less than or equal 40020496"
-          FORCE)
-  endif()
-endif()
-
-if(WITH_RPC)
-  if(NOT LINUX)
-    message(
-      WARNING "Disable WITH_RPC when not compiled on Linux. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled on Linux" FORCE)
-  endif()
-  if(NOT WITH_DISTRIBUTE AND WITH_RPC)
-    message(
-      WARNING
-        "Disable WITH_RPC when not compiled with distribute. Force WITH_RPC=OFF."
-    )
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when not compiled with distribute" FORCE)
-  endif()
-  if(WITH_ROCM AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with ROCM. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with ROCM" FORCE)
-  endif()
-  if(WITH_XPU AND WITH_RPC)
-    message(
-      WARNING "Disable WITH_RPC when compiling with XPU. Force WITH_RPC=OFF.")
-    set(WITH_RPC
-        OFF
-        CACHE BOOL "Disable WITH_RPC when compiling with XPU" FORCE)
   endif()
 endif()
 
@@ -655,6 +608,9 @@ if(WITH_PROFILER)
 endif()
 
 include_directories("${PADDLE_SOURCE_DIR}")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/")
+include_directories(
+  "${PADDLE_SOURCE_DIR}/paddle/phi/api/include/compat/torch/csrc/api/include/")
 
 if(WITH_NV_JETSON)
   set(WITH_ARM
@@ -715,11 +671,6 @@ if(WITH_ONEMKL)
   add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
 
-if(WITH_HETERPS)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -faligned-new")
-  endif()
-endif()
 set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")

@@ -186,6 +186,11 @@ class TestSetitemDygraphAdvancedIndex(unittest.TestCase):
         # case 1:
         x[np.array([1])] = 0
         y[paddle.to_tensor([1])] = 0
+        self.accuracy_check(x, y)
+        # case 2:
+        x[np.ones([], dtype=np.int64)] = 1
+        y[paddle.to_tensor(1)] = 1
+        self.accuracy_check(x, y)
         # case 3:
         x[np.array([0, 1]), np.array([3, 2])] = np.array([30, 70])
         y[paddle.to_tensor([0, 1]), paddle.to_tensor([3, 2])] = (

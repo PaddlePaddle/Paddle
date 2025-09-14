@@ -529,9 +529,9 @@ void StridedSliceGradCompute(const Context& dev_ctx,
                              const std::vector<int>& infer_flags,
                              const std::vector<int>& decrease_axis,
                              TensorArray* x_grad) {
-  // Note(weixin):Since the shape of `framework::GradVarName("Input")` of
+  // Note(weixin):Since the shape of `x_grad` of
   // StridedSliceGrad cannot be calculated by
-  // `framework::GradVarName("Output")`, the dim of "Input" is used to
+  // `out_grad`, the dim of "x" is used to
   // calculate the output shape. when set it to inplace OP, there may be
   // some problems.
   const int64_t size = x.size();

@@ -118,10 +118,10 @@ namespace common {
 #endif  // PADDLE_WITH_MUSL
 
 #define REGISTER_FILE_SYMBOLS(name) \
-  int RegisterSymbolsFor##name() { return 0; }
+  PADDLE_API int RegisterSymbolsFor##name() { return 0; }
 
-#define DECLARE_FILE_SYMBOLS(name)       \
-  extern int RegisterSymbolsFor##name(); \
+#define DECLARE_FILE_SYMBOLS(name)                  \
+  PADDLE_API extern int RegisterSymbolsFor##name(); \
   UNUSED static int use_file_##name = RegisterSymbolsFor##name()
 
 }  // namespace common

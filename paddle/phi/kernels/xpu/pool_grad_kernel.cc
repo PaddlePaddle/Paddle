@@ -20,13 +20,13 @@
 
 namespace phi {
 template <typename T, typename Context>
-void Pool2dGradKernel(const Context& ctx,
+void Pool2dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
                       const IntArray& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -36,16 +36,19 @@ void Pool2dGradKernel(const Context& ctx,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-
-  std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t.GetData().begin(),
-                               kernel_size_t.GetData().end());
-  std::vector<int> strides(strides_t);
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
+  std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
+  std::vector<int64_t> kernel_size(kernel_size_t.GetData().begin(),
+                                   kernel_size_t.GetData().end());
+  std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCHW",
-      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support "
                                       "data_format is 'NCHW', but received %s",
                                       data_format));
 
@@ -59,19 +62,19 @@ void Pool2dGradKernel(const Context& ctx,
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
       paddings[i] = 0;
-      kernel_size[i] = static_cast<int>(x.dims()[i + 2]);
+      kernel_size[i] = x.dims()[i + 2];
     }
   }
   if (!dx) {
     return;
   }
-  const int n = x.dims()[0];
-  const int c = x.dims()[1];
-  const int in_h = x.dims()[2];
-  const int in_w = x.dims()[3];
+  const int64_t n = x.dims()[0];
+  const int64_t c = x.dims()[1];
+  const int64_t in_h = x.dims()[2];
+  const int64_t in_w = x.dims()[3];
 
-  const int out_h = out.dims()[2];
-  const int out_w = out.dims()[3];
+  const int64_t out_h = out.dims()[2];
+  const int64_t out_w = out.dims()[3];
 
   DDim data_dims;
 
@@ -84,20 +87,22 @@ void Pool2dGradKernel(const Context& ctx,
                        strides,
                        kernel_size);
   if (ceil_mode) {
-    int in_h_ceil = (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
-    int in_w_ceil = (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
+    int64_t in_h_ceil =
+        (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
+    int64_t in_w_ceil =
+        (out_w - 1) * strides[1] + kernel_size[1] - 2 * paddings[2];
 
     paddings[1] += (in_h_ceil - in_h);
     paddings[3] += (in_w_ceil - in_w);
   }
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   const int* index_data = nullptr;
-  int r = xpu::Error_t::SUCCESS;
+  int r = 0;
   if (adaptive) {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -113,7 +118,7 @@ void Pool2dGradKernel(const Context& ctx,
 
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -139,7 +144,7 @@ void Pool2dGradKernel(const Context& ctx,
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -155,7 +160,7 @@ void Pool2dGradKernel(const Context& ctx,
           true);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
@@ -178,13 +183,13 @@ void Pool2dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void Pool3dGradKernel(const Context& ctx,
+void Pool3dGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out,
                       const DenseTensor& dout,
-                      const std::vector<int>& kernel_size_t,
-                      const std::vector<int>& strides_t,
-                      const std::vector<int>& paddings_t,
+                      const std::vector<int64_t>& kernel_size_t,
+                      const std::vector<int64_t>& strides_t,
+                      const std::vector<int64_t>& paddings_t,
                       bool ceil_mode,
                       bool exclusive,
                       const std::string& data_format,
@@ -194,31 +199,35 @@ void Pool3dGradKernel(const Context& ctx,
                       const std::string& padding_algorithm,
                       DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    return;
+  }
   auto x_dims = x.dims();
   const bool channel_last = data_format == "NDHWC";
 
-  std::vector<int> paddings(paddings_t);
-  std::vector<int> kernel_size(kernel_size_t);
-  std::vector<int> strides(strides_t);
+  std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
+  std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
+  std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
       data_format,
       "NCDHW",
-      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support"
+      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support "
                                       "data_format is 'NCDHW', but received %s",
                                       data_format));
   if (!dx) {
     return;
   }
-  int n = x.dims()[0];
-  int c = x.dims()[1];
-  int in_d = x.dims()[2];
-  int in_h = x.dims()[3];
-  int in_w = x.dims()[4];
+  int64_t n = x.dims()[0];
+  int64_t c = x.dims()[1];
+  int64_t in_d = x.dims()[2];
+  int64_t in_h = x.dims()[3];
+  int64_t in_w = x.dims()[4];
 
-  int out_d = out.dims()[2];
-  int out_h = out.dims()[3];
-  int out_w = out.dims()[4];
+  int64_t out_d = out.dims()[2];
+  int64_t out_h = out.dims()[3];
+  int64_t out_w = out.dims()[4];
 
   if (channel_last) {
     c = x.dims()[4];
@@ -249,14 +258,14 @@ void Pool3dGradKernel(const Context& ctx,
     funcs::UpdateKernelSize(&kernel_size, data_dims);
   }
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
   const int* index_data = nullptr;
-  int r = xpu::Error_t::SUCCESS;
+  int r = 0;
 
   if (adaptive) {
     if (pooling_type == "max") {
       r = xpu::adaptive_max_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
           reinterpret_cast<const XPUType*>(out.data<T>()),
           index_data,
@@ -275,10 +284,10 @@ void Pool3dGradKernel(const Context& ctx,
     } else if (pooling_type == "avg") {
       if (out_d == 1 && out_h == 1 && out_w == 1 &&
           std::is_same<T, float>::value) {
-        xpu::ctx_guard RAII_GUARD(ctx.x_context());
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         float scale = 1.0 / (in_d * in_h * in_w);
         float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
-        r = xpu::scale(ctx.x_context(),
+        r = xpu::scale(dev_ctx.x_context(),
                        dout.data<float>(),
                        scaled_dy,
                        n * c,
@@ -287,7 +296,7 @@ void Pool3dGradKernel(const Context& ctx,
                        0.0f);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 
-        r = xpu::broadcast(ctx.x_context(),
+        r = xpu::broadcast(dev_ctx.x_context(),
                            scaled_dy,
                            dx->data<float>(),
                            {n, c, 1LL, 1LL, 1LL},
@@ -298,7 +307,7 @@ void Pool3dGradKernel(const Context& ctx,
       }
 
       r = xpu::adaptive_avg_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -321,7 +330,7 @@ void Pool3dGradKernel(const Context& ctx,
       if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
           strides.size() == 3 && paddings.size() == 6) {
         r = xpu::max_pool2d_grad<XPUType>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(out.data<T>()),
             index_data,
@@ -337,7 +346,7 @@ void Pool3dGradKernel(const Context& ctx,
             !channel_last);
       } else {
         r = xpu::max_pool3d_grad<XPUType>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(out.data<T>()),
             index_data,
@@ -355,7 +364,7 @@ void Pool3dGradKernel(const Context& ctx,
       }
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d_grad<XPUType>(
-          ctx.x_context(),
+          dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
           reinterpret_cast<XPUType*>(dx->data<T>()),
           n,
@@ -377,11 +386,11 @@ void Pool3dGradKernel(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void MaxPool2dWithIndexGradKernel(const Context& ctx,
+void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                   const DenseTensor& x,
                                   const DenseTensor& mask,
                                   const DenseTensor& dout,
-                                  const std::vector<int>& kernel_size,
+                                  const std::vector<int>& kernel_size_t,
                                   const std::vector<int>& strides_t,
                                   const std::vector<int>& paddings_t,
                                   bool global_pooling,
@@ -390,38 +399,42 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   DenseTensor* dx) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
-  ctx.template Alloc<T>(dx);
+  dev_ctx.template Alloc<T>(dx);
+  if (dx && dx->numel() == 0) {
+    return;
+  }
   auto input_grad = reinterpret_cast<XPUType*>(dx->data<T>());
-  std::vector<int> ksize(kernel_size);
-  std::vector<int> strides(strides_t);
-  std::vector<int> paddings(paddings_t);
+  std::vector<int64_t> kernel_size(kernel_size_t.begin(), kernel_size_t.end());
+  std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
+  std::vector<int64_t> paddings(paddings_t.begin(), paddings_t.end());
   const auto* index_data = mask.data<int>();
 
   PADDLE_ENFORCE_NOT_NULL(index_data,
                           errors::NotFound("index data should not be nullptr"));
   PADDLE_ENFORCE_EQ(
-      ksize.size(),
+      kernel_size.size(),
       2,
       common::errors::InvalidArgument("The Pool2d XPU OP only support 2 "
                                       "dimension pooling!, but received "
                                       "%d-dimension pool kernel size",
-                                      ksize.size()));
-  global_pooling = global_pooling || (adaptive && (ksize[0] * ksize[1] == 1));
+                                      kernel_size.size()));
+  global_pooling =
+      global_pooling || (adaptive && (kernel_size[0] * kernel_size[1] == 1));
   if (global_pooling) {
-    for (size_t i = 0; i < ksize.size(); ++i) {
+    for (size_t i = 0; i < kernel_size.size(); ++i) {
       paddings[i] = 0;
-      ksize[i] = static_cast<int>(dx->dims()[i + 2]);
+      kernel_size[i] = dx->dims()[i + 2];
     }
   }
-  const int n = dx->dims()[0];
-  const int c = dx->dims()[1];
-  const int in_h = dx->dims()[2];
-  const int in_w = dx->dims()[3];
+  const int64_t n = dx->dims()[0];
+  const int64_t c = dx->dims()[1];
+  const int64_t in_h = dx->dims()[2];
+  const int64_t in_w = dx->dims()[3];
   auto output_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
 
-  int r = xpu::Error_t::SUCCESS;
+  int r = 0;
   // pass a nullptr as input to XDNN is fine as long as index_data exists
-  r = xpu::max_pool2d_grad<XPUType>(ctx.x_context(),
+  r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
                                     /*input*/ nullptr,
                                     /*output*/ nullptr,
                                     index_data,
@@ -431,7 +444,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                     c,
                                     in_h,
                                     in_w,
-                                    ksize,
+                                    kernel_size,
                                     strides,
                                     paddings,
                                     true);
@@ -439,21 +452,13 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pool2d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool2dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
-PD_REGISTER_KERNEL(pool3d_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::Pool3dGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    pool2d_grad, XPU, ALL_LAYOUT, phi::Pool2dGradKernel, float, phi::float16) {}
+PD_REGISTER_KERNEL(
+    pool3d_grad, XPU, ALL_LAYOUT, phi::Pool3dGradKernel, float, phi::float16) {}
 PD_REGISTER_KERNEL(max_pool2d_with_index_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::MaxPool2dWithIndexGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <map>
 #include "paddle/ap/include/axpr/builtin_func_type.h"
 #include "paddle/ap/include/axpr/constants.h"
 #include "paddle/ap/include/axpr/data_value.h"

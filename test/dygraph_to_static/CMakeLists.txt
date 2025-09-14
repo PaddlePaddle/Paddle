@@ -6,6 +6,11 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(SOT_ENVS SOT_LOG_LEVEL=0 MIN_GRAPH_SIZE=0 STRICT_MODE=False
              SOT_ENABLE_STRICT_GUARD_CHECK=True)
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_for_enumerate)
+endif()
+
 if(WIN32 AND NOT WITH_GPU)
   # disable on Windows CPU CI for timeout
   list(REMOVE_ITEM TEST_OPS test_resnet_amp)
@@ -14,10 +19,6 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_build_strategy)
 
 if(NOT WITH_GPU)
-  # TODO(SigureMo): Temporarily disable train step on Windows CPU CI.
-  # We should remove this after fix the performance issue.
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_adam)
-  list(REMOVE_ITEM TEST_OPS test_train_step_resnet18_sgd)
   # disable some model test on CPU to avoid timeout
   list(REMOVE_ITEM TEST_OPS test_resnet)
   list(REMOVE_ITEM TEST_OPS test_bert)
@@ -56,8 +57,6 @@ if(APPLE)
 endif()
 
 if(WITH_GPU)
-  set_tests_properties(test_train_step_resnet18_sgd PROPERTIES TIMEOUT 240)
-  set_tests_properties(test_train_step_resnet18_adam PROPERTIES TIMEOUT 240)
   set_tests_properties(test_bert PROPERTIES TIMEOUT 240)
   set_tests_properties(test_transformer PROPERTIES TIMEOUT 240)
   set_tests_properties(test_mobile_net PROPERTIES TIMEOUT 240)

@@ -60,7 +60,6 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
                 np.float32,
                 np.int64,
             ]:
-                # breakpoint()
                 self.has_bool_dtype = dtype == np.bool_
                 ops_config = [
                     {
@@ -129,27 +128,35 @@ class TrtConvertAssignTest(TrtLayerAutoScanTest):
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
             program_config.set_input_type(np.float32)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-5
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-5,
+            )
             self.trt_param.precision = paddle_infer.PrecisionType.Half
             program_config.set_input_type(np.float16)
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False
-            ), 1e-2
+            yield (
+                self.create_inference_config(),
+                generate_trt_nodes_num(attrs, False),
+                1e-2,
+            )
 
         # for dynamic_shape
         self.generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         program_config.set_input_type(np.float32)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-5
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-5,
+        )
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         program_config.set_input_type(np.float16)
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True
-        ), 1e-2
+        yield (
+            self.create_inference_config(),
+            generate_trt_nodes_num(attrs, True),
+            1e-2,
+        )
 
     def test(self):
         # test for old ir

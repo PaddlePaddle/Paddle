@@ -19,7 +19,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void HSigmoidLossKernel(const Context& ctx,
+void HSigmoidLossKernel(const Context& dev_ctx,
                         const DenseTensor& x,
                         const DenseTensor& label,
                         const DenseTensor& w,

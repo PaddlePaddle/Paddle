@@ -59,6 +59,11 @@ void TopkGradKernel(const Context& dev_ctx,
                     bool largest UNUSED,
                     bool sorted UNUSED,
                     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
+
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();
   int k = k_scalar.to<int>();

@@ -168,8 +168,8 @@ class TestIRPassBase(unittest.TestCase):
         )
         self.check_after_applied(main2, startup2)
 
-        image_shape = [batch_size] + list(image.shape)[1:]
-        label_shape = [batch_size] + list(label.shape)[1:]
+        image_shape = [batch_size, *list(image.shape)[1:]]
+        label_shape = [batch_size, *list(label.shape)[1:]]
 
         paddle.seed(self.seed)
         scope1 = paddle.static.Scope()

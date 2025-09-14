@@ -89,6 +89,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/bin/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/bin/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   else()
     set(FLASHATTN_LIBRARIES
@@ -98,6 +101,9 @@ else()
       set(FLASHATTN_V3_LIBRARIES
           "${FLASHATTN_INSTALL_DIR}/lib/libflashattnv3${CMAKE_SHARED_LIBRARY_SUFFIX}"
           CACHE FILEPATH "flash-attn Library" FORCE)
+      set(FLASHMASK_V2_LIBRARIES
+          "${FLASHATTN_INSTALL_DIR}/lib/libflashmaskv2${CMAKE_SHARED_LIBRARY_SUFFIX}"
+          CACHE FILEPATH "flash-attn Library" FORCE)
     endif()
   endif()
 
@@ -105,6 +111,7 @@ else()
   if(WITH_FLASHATTN_V3)
     add_definitions(-DPADDLE_WITH_FLASHATTN_V3)
     list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHATTN_V3_LIBRARIES})
+    list(APPEND BUILD_BYPRODUCTS_LIST ${FLASHMASK_V2_LIBRARIES})
   endif()
 
   if(NOT DEFINED FA_JOB_POOLS_COMPILE)
@@ -139,6 +146,7 @@ else()
     set(FLASHATTN_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
   endif()
 
+  set(FLASHATTN_CMAKE_CUDA_FLAGS "-Xfatbin -compress-all")
   set(FA_NVCC_ARCH_BIN "")
   foreach(arch ${NVCC_ARCH_BIN})
     string(STRIP ${arch} arch)
@@ -163,7 +171,7 @@ else()
   set(CACHE_TAR_DIR "${FA_BUILD_DIR}/flashattn_libs_${FLASHATTN_TAG}")
 
   set(SKIP_BUILD_FA OFF)
-  if(FA_BUILD_WITH_CACHE)
+  if(WITH_FA_BUILD_WITH_CACHE)
 
     message(STATUS "Downloading ${TAR_FILE_URL} to ${CACHE_TAR_PATH}")
     file(
@@ -267,6 +275,7 @@ else()
                -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
                -DWITH_GPU=${WITH_GPU}
                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+               -DCMAKE_CUDA_FLAGS=${FLASHATTN_CMAKE_CUDA_FLAGS}
                -DWITH_ROCM=${WITH_ROCM}
                -DWITH_OMP=${USE_OMP}
                -DBUILD_SHARED=ON
@@ -291,6 +300,7 @@ endif()
 message(STATUS "flash-attn library: ${FLASHATTN_LIBRARIES}")
 if(WITH_FLASHATTN_V3)
   message(STATUS "flash-attn-v3 library: ${FLASHATTN_V3_LIBRARIES}")
+  message(STATUS "flash-mask-v2 library: ${FLASHMASK_V2_LIBRARIES}")
 endif()
 get_filename_component(FLASHATTN_LIBRARY_PATH ${FLASHATTN_LIBRARIES} DIRECTORY)
 include_directories(${FLASHATTN_INCLUDE_DIR})

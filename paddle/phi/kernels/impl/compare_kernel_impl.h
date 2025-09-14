@@ -24,7 +24,7 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void CompareKernelImpl(const Context& ctx,
+inline void CompareKernelImpl(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               int axis,
@@ -34,30 +34,30 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void InplaceCompareKernelImpl(const Context& ctx,
+inline void InplaceCompareKernelImpl(const Context& dev_ctx,
                                      const DenseTensor& x,
                                      const DenseTensor& y,
                                      int axis,
                                      DenseTensor* out);
 
 template <typename T, typename Context, typename Functor>
-inline void CompareAllKernelImpl(const Context& ctx,
+inline void CompareAllKernelImpl(const Context& dev_ctx,
                                  const DenseTensor& x,
                                  const DenseTensor& y,
                                  DenseTensor* out);
 
 #define DEFINE_COMPARE_KERNEL(name, functor, inverse_functor)               \
   template <typename T, typename Context>                                   \
-  void name##Kernel(const Context& ctx,                                     \
+  void name##Kernel(const Context& dev_ctx,                                 \
                     const DenseTensor& x,                                   \
                     const DenseTensor& y,                                   \
                     DenseTensor* out) {                                     \
     if (out->IsSharedWith(x)) {                                             \
       InplaceCompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
-          ctx, x, y, -1, out);                                              \
+          dev_ctx, x, y, -1, out);                                          \
     } else {                                                                \
       CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>(        \
-          ctx, x, y, -1, out);                                              \
+          dev_ctx, x, y, -1, out);                                          \
     }                                                                       \
   }
 
@@ -77,13 +77,13 @@ DEFINE_COMPARE_KERNEL(Equal, funcs::EqualFunctor, funcs::EqualFunctor)
 DEFINE_COMPARE_KERNEL(NotEqual, funcs::NotEqualFunctor, funcs::NotEqualFunctor)
 #undef DEFINE_COMPARE_KERNEL
 
-#define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)    \
-  template <typename T, typename Context>                         \
-  void compare_all_kernel(const Context& ctx,                     \
-                          const DenseTensor& x,                   \
-                          const DenseTensor& y,                   \
-                          DenseTensor* out) {                     \
-    CompareAllKernelImpl<T, Context, functor<T>>(ctx, x, y, out); \
+#define DEFINE_COMPARE_ALL_KERNEL(compare_all_kernel, functor)        \
+  template <typename T, typename Context>                             \
+  void compare_all_kernel(const Context& dev_ctx,                     \
+                          const DenseTensor& x,                       \
+                          const DenseTensor& y,                       \
+                          DenseTensor* out) {                         \
+    CompareAllKernelImpl<T, Context, functor<T>>(dev_ctx, x, y, out); \
   }
 
 DEFINE_COMPARE_ALL_KERNEL(EqualAllKernel, funcs::EqualFunctor)

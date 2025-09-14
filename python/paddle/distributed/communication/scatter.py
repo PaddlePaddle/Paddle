@@ -127,9 +127,9 @@ def scatter_object_list(
             >>> # [{'bar': [1, 2, 3]}] (2 GPUs, out for rank 0)
             >>> # [{'bar': [4, 5, 6]}] (2 GPUs, out for rank 1)
     """
-    assert (
-        framework.in_dynamic_mode()
-    ), "scatter_object_list doesn't support static graph mode."
+    assert framework.in_dynamic_mode(), (
+        "scatter_object_list doesn't support static graph mode."
+    )
 
     rank = dist.get_rank()
     in_obj_tensors = []

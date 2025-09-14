@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, get_device_place
 
 import paddle
 import paddle.nn.functional as F
@@ -42,7 +42,6 @@ class SeluTest(OpTest):
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
-        self.x_shape = [3, 5, 5, 10]
         self.init_x_shape()
         self.init_dtype()
 
@@ -73,7 +72,7 @@ class SeluTest(OpTest):
         }
 
     def init_x_shape(self):
-        pass
+        self.x_shape = [3, 5, 5, 10]
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -108,6 +107,21 @@ class SeluTestBF16OP(SeluTest):
         )
 
 
+class SeluTestZeroSize1(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [9, 0]
+
+
+class SeluTestZeroSize2(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [0, 0]
+
+
+class SeluTestZeroSize3(SeluTest):
+    def init_x_shape(self):
+        self.x_shape = [5, 0, 8]
+
+
 class TestSeluAPI(unittest.TestCase):
     # test paddle.nn.SELU, paddle.nn.functional.selu
     def setUp(self):
@@ -117,11 +131,7 @@ class TestSeluAPI(unittest.TestCase):
         # Since zero point in selu is not differentiable, avoid randomize
         # zero.
         self.x_np[np.abs(self.x_np) < 0.005] = 0.02
-        self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
+        self.place = get_device_place()
 
     def test_static_api(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -180,4 +190,5 @@ class TestSeluAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

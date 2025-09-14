@@ -45,31 +45,31 @@ struct ThreadId {
 };
 
 // Better performance than GetCurrentThreadId
-uint64_t GetCurrentThreadStdId();
+PADDLE_API uint64_t GetCurrentThreadStdId();
 
 // Better performance than GetCurrentThreadId
-uint64_t GetCurrentThreadSysId();
+PADDLE_API uint64_t GetCurrentThreadSysId();
 
-ThreadId GetCurrentThreadId();
+PADDLE_API ThreadId GetCurrentThreadId();
 
 // Return the map from StdTid to ThreadId
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destroy when using it.
-std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
+PADDLE_API std::unordered_map<uint64_t, ThreadId> GetAllThreadIds();
 
 static constexpr const char* kDefaultThreadName = "unnamed";
 // Returns kDefaultThreadName if SetCurrentThreadName is never called.
-std::string GetCurrentThreadName();
+PADDLE_API std::string GetCurrentThreadName();
 
 // Return the map from StdTid to ThreadName
 // Returns current snapshot of all threads. Make sure there is no thread
 // create/destroy when using it.
-std::unordered_map<uint64_t, std::string> GetAllThreadNames();
+PADDLE_API std::unordered_map<uint64_t, std::string> GetAllThreadNames();
 
 // Thread name is immutable, only the first call will succeed.
 // Returns false on failure.
-bool SetCurrentThreadName(const std::string& name);
+PADDLE_API bool SetCurrentThreadName(const std::string& name);
 
-uint32_t GetProcessId();
+PADDLE_API uint32_t GetProcessId();
 
 }  // namespace phi

@@ -17,11 +17,15 @@ from __future__ import annotations
 import inspect
 import operator
 from contextlib import contextmanager
+from dataclasses import fields
 from functools import cached_property
 from queue import Queue
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import paddle
+from paddle.jit.dy2static.utils import (
+    dataclass_from_dict,
+)
 
 from ....profiler import event_register
 from ....utils import (
@@ -120,7 +124,7 @@ def map_variables(
     Returns:
         tuple: The result of applying the map_func to the variables.
     """
-    from .basic import SliceVariable
+    from .basic import DataClassInstanceVariable, SliceVariable
     from .container import ContainerVariable
 
     def _map_container_variable(variable: VariableBase | object):
@@ -153,9 +157,33 @@ def map_variables(
             DummyTracker([new_slice.start, new_slice.stop, new_slice.step]),
         )
 
+    def _map_dataclass_variable(variable: VariableBase | object):
+        if not isinstance(variable, DataClassInstanceVariable):
+            return variable
+        new_dataclass = dataclass_from_dict(
+            variable.get_py_type(),
+            {
+                fd.name: map_func(variable.getattr(fd.name))
+                for fd in fields(variable.get_py_type())
+            },
+        )
+        if not restore_variable:
+            return new_dataclass
+        return VariableFactory.from_value(
+            new_dataclass,
+            variable.graph,
+            DummyTracker(
+                [
+                    variable.getattr(fd.name)
+                    for fd in fields(variable.get_py_type())
+                ]
+            ),
+        )
+
     def _map_variable(variable: VariableBase | object):
         variable = _map_container_variable(variable)
         variable = _map_slice_variable(variable)
+        variable = _map_dataclass_variable(variable)
         return map_func(variable)
 
     return paddle.utils.map_structure(_map_variable, variables)
@@ -315,7 +343,6 @@ class VariableBase:
     mutable_attrs = []
 
     def __init__(self, graph: FunctionGraph, tracker: Tracker):
-
         self.graph = graph
         self.tracker = tracker
         self.id = VariableBase.name_generator.next()
@@ -541,7 +568,7 @@ class VariableBase:
         raise FallbackError(f"{self} is not support setitem.")
 
     def __repr__(self):
-        info = {**self.main_info, **self.debug_info}
+        info = self.main_info | self.debug_info
         info_str = ", ".join([f"{value}" for value in info.values()])
         return f"{self.__class__.__name__}({info_str})"
 
@@ -675,8 +702,9 @@ def fn_bind_inputs(
     **kwargs: Any,
 ):
     # temparay clear the fn.__signature__ to avoid signature check error
-    with signature_clear_guard(fn, "__signature__"), signature_clear_guard(
-        fn, "__wrapped__"
+    with (
+        signature_clear_guard(fn, "__signature__"),
+        signature_clear_guard(fn, "__wrapped__"),
     ):
         sig = inspect.signature(fn)
         bound_args = sig.bind(*args, **kwargs)

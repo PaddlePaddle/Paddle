@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, get_places
 
 import paddle
-from paddle import base
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
@@ -48,11 +47,7 @@ def test_static(
 ):
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
-    place = (
-        base.CUDAPlace(0)
-        if paddle.base.core.is_compiled_with_cuda()
-        else base.CPUPlace()
-    )
+    place = get_device_place()
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
@@ -100,15 +95,7 @@ class TestPairwiseDistance(unittest.TestCase):
         all_shape = [[5], [100, 100]]
         dtypes = ['float32', 'float64']
         p_list = [-1, 0, 1, 2, np.inf, -np.inf]
-        places = []
-        if (
-            os.environ.get('FLAGS_CI_both_cpu_and_gpu', 'False').lower()
-            in ['1', 'true', 'on']
-            or not paddle.device.is_compiled_with_cuda()
-        ):
-            places.append(paddle.CPUPlace())
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        places = get_places()
         keeps = [False, True]
         for place in places:
             for shape in all_shape:
@@ -335,6 +322,40 @@ class TestPairwiseDistance(unittest.TestCase):
         x_np = np.random.random(shape).astype('float16')
         y_np = np.random.random(shape).astype('float16')
         static_ret = test_static(place, x_np, y_np)
+
+
+class TestPairwiseDistance_ZeroSize(unittest.TestCase):
+    def test_pairwise_distance(self):
+        epsilon = 1e-6
+        all_shape = [[0], [100, 0]]
+        dtype = 'float32'
+        p = 0
+        places = get_places()
+        keeps = [False, True]
+        for place in places:
+            for shape in all_shape:
+                for keepdim in keeps:
+                    x_np = np.random.random(shape).astype(dtype)
+                    y_np = np.random.random(shape).astype(dtype)
+
+                    excepted_value = np_pairwise_distance(
+                        x_np, y_np, p, epsilon=epsilon, keepdim=keepdim
+                    )
+                    paddle.disable_static(place)
+                    x = paddle.to_tensor(x_np)
+                    x.stop_gradient = False
+                    y = paddle.to_tensor(y_np)
+                    ret = call_pairwise_distance_functional(
+                        x=x, y=y, p=p, epsilon=epsilon, keepdim=keepdim
+                    )
+                    np.testing.assert_allclose(
+                        ret.numpy(),
+                        excepted_value,
+                        rtol=1e-05,
+                    )
+                    loss = paddle.sum(ret)
+                    loss.backward()
+                    np.testing.assert_allclose(x.grad.shape, x.shape)
 
 
 if __name__ == "__main__":

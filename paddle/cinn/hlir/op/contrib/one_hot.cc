@@ -167,7 +167,7 @@ std::shared_ptr<framework::OpStrategy> StrategyForOneHot(
     PADDLE_ENFORCE_NOT_NULL(
         indices_expr.as_tensor(),
         ::common::errors::InvalidArgument(
-            "Required indixes must be a tensor. Please check."));
+            "Required indices must be a tensor. Please check."));
     PADDLE_ENFORCE_NOT_NULL(
         on_value_expr.as_tensor(),
         ::common::errors::InvalidArgument(

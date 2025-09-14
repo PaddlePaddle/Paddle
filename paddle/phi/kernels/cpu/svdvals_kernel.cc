@@ -47,7 +47,7 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
                                                 nullptr,  // iwork is not needed
                                                 &info);
   if (info != 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "Error during LAPACK lwork query. Invalid matrix or arguments."));
   }
   lwork = static_cast<int>(work[0]);
@@ -68,20 +68,21 @@ void LapackSvdvals(const T* X, T* S, int rows, int cols) {
                                                 nullptr,  // iwork is not needed
                                                 &info);
   if (info < 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "This %s-th argument has an illegal value.", info));
   }
   if (info > 0) {
-    PADDLE_THROW(phi::errors::InvalidArgument(
+    PADDLE_THROW(common::errors::InvalidArgument(
         "SVD computation did not converge. Input matrix may be invalid."));
   }
 }
 
 template <typename T>
-void BatchSvdvals(const T* X, T* S, int rows, int cols, int batches) {
-  int stride = rows * cols;
-  int stride_s = std::min(rows, cols);
-  for (int i = 0; i < batches; i++) {
+void BatchSvdvals(
+    const T* X, T* S, int64_t rows, int64_t cols, int64_t batches) {
+  int64_t stride = rows * cols;
+  int64_t stride_s = std::min(rows, cols);
+  for (int64_t i = 0; i < batches; i++) {
     LapackSvdvals<T>(X + i * stride, S + i * stride_s, rows, cols);
   }
 }
@@ -90,24 +91,34 @@ template <typename T, typename Context>
 void SvdvalsKernel(const Context& dev_ctx,
                    const DenseTensor& X,
                    DenseTensor* S) {
+  if (S && S->numel() == 0) {
+    dev_ctx.template Alloc<phi::dtype::Real<T>>(S);
+    return;
+  }
   auto x_dims = X.dims();
-  int rows = static_cast<int>(x_dims[x_dims.size() - 2]);
-  int cols = static_cast<int>(x_dims[x_dims.size() - 1]);
+  int64_t rows = static_cast<int64_t>(x_dims[x_dims.size() - 2]);
+  int64_t cols = static_cast<int64_t>(x_dims[x_dims.size() - 1]);
+  PADDLE_ENFORCE_LT(rows * cols,
+                    std::numeric_limits<int32_t>::max(),
+                    common::errors::InvalidArgument(
+                        "The product of rows and columns must be less than %d.",
+                        std::numeric_limits<int32_t>::max()));
+
   // Validate dimensions
   PADDLE_ENFORCE_GT(
       rows,
       0,
-      phi::errors::InvalidArgument("The row of Input(X) must be > 0."));
+      common::errors::InvalidArgument("The row of Input(X) must be > 0."));
   PADDLE_ENFORCE_GT(
       cols,
       0,
-      phi::errors::InvalidArgument("The column of Input(X) must be > 0."));
-  int k = std::min(rows, cols);
-  int batches = static_cast<int>(X.numel() / (rows * cols));
-  PADDLE_ENFORCE_GT(
-      batches,
-      0,
-      phi::errors::InvalidArgument("The batch size of Input(X) must be > 0."));
+      common::errors::InvalidArgument("The column of Input(X) must be > 0."));
+  int64_t k = std::min(rows, cols);
+  int64_t batches = static_cast<int64_t>(X.numel() / (rows * cols));
+  PADDLE_ENFORCE_GT(batches,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The batch size of Input(X) must be > 0."));
   DDim s_dims;
   if (x_dims.size() <= 2) {
     s_dims = {k};

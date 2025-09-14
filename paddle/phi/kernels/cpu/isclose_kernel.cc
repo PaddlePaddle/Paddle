@@ -24,5 +24,5 @@ PD_REGISTER_KERNEL(isclose,
                    phi::IscloseKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

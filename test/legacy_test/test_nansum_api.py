@@ -21,7 +21,6 @@ from paddle import base
 
 
 class API_Test_Nansum(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -143,6 +142,26 @@ class API_Test_Nansum(unittest.TestCase):
                 (out.numpy() == out_ref).all(),
                 msg='nansum output is wrong, out =' + str(out.numpy()),
             )
+
+
+class API_Test_Nansum_ZeroSize(unittest.TestCase):
+    def test_dygraph(self):
+        x = np.random.random([2, 0, 3]).astype(np.float32)
+        with base.dygraph.guard():
+            inputs = paddle.to_tensor(x)
+            inputs.stop_gradient = False
+            out = paddle.nansum(inputs)
+            out_ref = np.nansum(x).astype(np.float32)
+
+            self.assertTrue(
+                (out.numpy() == out_ref).all(),
+                msg='nansum output is wrong, out =' + str(out.numpy()),
+            )
+
+            # check grad shape
+            loss = paddle.sum(out)
+            loss.backward()
+            np.testing.assert_allclose(inputs.grad.shape, inputs.shape)
 
 
 if __name__ == "__main__":

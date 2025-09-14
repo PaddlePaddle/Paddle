@@ -117,9 +117,9 @@ class Timers:
             timer = clazz(name)
             self.timers[name] = timer
         else:
-            assert (
-                type(timer) == clazz
-            ), f"Invalid timer type: {clazz} vs {type(timer)}"
+            assert type(timer) == clazz, (
+                f"Invalid timer type: {clazz} vs {type(timer)}"
+            )
         return timer
 
     def log(self, names, normalizer=1.0, reset=True):

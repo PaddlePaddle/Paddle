@@ -63,7 +63,7 @@ class MemoryMapAllocation : public Allocation {
         map_size_(size) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline const int shared_fd() const { return fd_; }
+  inline int shared_fd() const { return fd_; }
 
   virtual void close();
 
@@ -121,7 +121,7 @@ class MemoryMapWriterAllocation : public Allocation {
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline const int shared_fd() const { return fd_; }
+  inline int shared_fd() const { return fd_; }
 
   ~MemoryMapWriterAllocation() override;
 
@@ -139,7 +139,7 @@ class MemoryMapReaderAllocation : public Allocation {
         ipc_name_(std::move(ipc_name)) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline const int shared_fd() const { return fd_; }
+  inline int shared_fd() const { return fd_; }
 
   ~MemoryMapReaderAllocation() override;
 

@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void EyeKernel(const Context& ctx,
+void EyeKernel(const Context& dev_ctx,
                const Scalar& num_rows,
                const Scalar& num_columns,
                DataType dtype,

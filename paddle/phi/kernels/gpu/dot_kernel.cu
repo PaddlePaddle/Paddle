@@ -15,15 +15,11 @@
 #include "paddle/phi/kernels/dot_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/phi/common/complex.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
 namespace phi {
 
 template <typename T, typename Context>
@@ -31,6 +27,12 @@ void DotKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  if (x.numel() == 0 || y.numel() == 0) {
+    // x[2, 1], y[2, 0], out[2]
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 0, out);
+    return;
+  }
   if (out->numel() <= 0) {
     return;
   }
@@ -54,8 +56,8 @@ void DotKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(dot,
                    GPU,
@@ -67,5 +69,5 @@ PD_REGISTER_KERNEL(dot,
                    int64_t,
                    complex64,
                    complex128,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

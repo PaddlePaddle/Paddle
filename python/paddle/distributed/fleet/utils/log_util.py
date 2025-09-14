@@ -95,7 +95,9 @@ def get_rotate_file_logger(log_level, name='root'):
 
     path = os.path.join(log_dir, f"worker_{device_id}.log")
     handler = RotatingFileHandler(
-        path, maxBytes=2 * 1024 * 1024 * 1024, backupCount=3  # 2GB
+        path,
+        maxBytes=2 * 1024 * 1024 * 1024,
+        backupCount=3,  # 2GB
     )
 
     log_format = logging.Formatter(

@@ -27,6 +27,10 @@ void RollGradKernel(const Context& dev_ctx,
                     const IntArray& shifts,
                     const std::vector<int64_t>& axis,
                     DenseTensor* x_grad) {
+  if (x_grad && x_grad->numel() == 0) {
+    dev_ctx.template Alloc<T>(x_grad);
+    return;
+  }
   std::vector<T> out_vec;
   phi::TensorToVector(out_grad, dev_ctx, &out_vec);
 
@@ -60,5 +64,5 @@ PD_REGISTER_KERNEL(roll_grad,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

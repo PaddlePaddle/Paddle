@@ -69,7 +69,7 @@ from paddle.utils.environments import (
 )
 
 from .dy2static import logging_utils
-from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
+from .dy2static.convert_call_func import add_ignore_module
 from .dy2static.program_translator import (
     ASTStaticFunction,
     ProgramTranslator,
@@ -156,13 +156,13 @@ def ignore_module(modules: list[ModuleType]) -> None:
         .. code-block:: python
 
             >>> import scipy
-            >>> import astor
+            >>> import networkx
 
             >>> import paddle
             >>> from paddle.jit import ignore_module
             >>> modules = [
             ...     scipy,
-            ...     astor,
+            ...     networkx,
             ... ]
             >>> ignore_module(modules)
 
@@ -284,11 +284,12 @@ def to_static(
             f"Required type(build_strategy) shall be `paddle.static.BuildStrategy`, but received {type(build_strategy).__name__}"
         )
     backend = Backend.from_arg(backend)
-    backend = (
-        Backend.CINN
-        if infer_use_cinn_backend(backend, build_strategy)
-        else Backend.PHI
-    )
+    if infer_use_cinn_backend(backend, build_strategy):
+        backend = Backend.CINN
+    elif backend.is_pcc():
+        pass
+    else:
+        backend = Backend.PHI
 
     def decorated(python_func):
         """
@@ -343,69 +344,6 @@ def to_static(
 
     # for usage: `@to_static`
     return decorated
-
-
-class _NotToStaticDecorator(Protocol):
-    @overload
-    def __call__(
-        self, func: Callable[_InputT, _RetT]
-    ) -> Callable[_InputT, _RetT]: ...
-
-    @overload
-    def __call__(self, func: None = ...) -> _NotToStaticDecorator: ...
-
-
-@overload
-def not_to_static(
-    func: Callable[_InputT, _RetT],
-) -> Callable[_InputT, _RetT]: ...
-
-
-@overload
-def not_to_static(func: None = ...) -> _NotToStaticDecorator: ...
-
-
-def not_to_static(func=None):
-    """
-    A Decorator to suppresses the convention of a function.
-
-    Args:
-        func(callable): The function to decorate.
-
-    Returns:
-        callable: A function which won't be converted in Dynamic-to-Static.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-            >>> import paddle
-
-            >>> @paddle.jit.not_to_static
-            ... def func_not_to_static(x):
-            ...     res = x - 1
-            ...     return res
-
-            >>> @paddle.jit.to_static
-            ... def func(x):
-            ...     if paddle.mean(x) < 0:
-            ...         out = func_not_to_static(x)
-            ...     else:
-            ...         out = x + 1
-            ...     return out
-            ...
-            >>> x = paddle.ones([1, 2], dtype='float32')
-            >>> out = func(x)
-            >>> print(out)
-            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[2., 2.]])
-    """
-    if func is None:
-        return not_to_static
-
-    options = ConversionOptions(not_convert=True)
-    options.attach(func)
-    return func
 
 
 class _SaveLoadConfig:

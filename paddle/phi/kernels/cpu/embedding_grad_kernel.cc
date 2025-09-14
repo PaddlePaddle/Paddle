@@ -101,14 +101,14 @@ struct EmbeddingGradCPUFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingGradKernel(const Context& ctx,
+void EmbeddingGradKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const DenseTensor& weight,
                          const DenseTensor& out_grad,
                          int64_t padding_idx,
                          DenseTensor* weight_grad) {
   EmbeddingGradCPUFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
@@ -182,14 +182,14 @@ struct EmbeddingSparseGradCPUFunctor {
 };
 
 template <typename T, typename Context>
-void EmbeddingSparseGradKernel(const Context& ctx,
+void EmbeddingSparseGradKernel(const Context& dev_ctx,
                                const DenseTensor& input,
                                const DenseTensor& weight,
                                const DenseTensor& out_grad,
                                int64_t padding_idx,
                                SelectedRows* weight_grad) {
   EmbeddingSparseGradCPUFunctor<T, Context> functor(
-      ctx, input, weight, out_grad, padding_idx, weight_grad);
+      dev_ctx, input, weight, out_grad, padding_idx, weight_grad);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
@@ -208,10 +208,10 @@ PD_REGISTER_KERNEL(embedding_grad,
                    phi::EmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    CPU,
@@ -219,6 +219,6 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    phi::EmbeddingSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}

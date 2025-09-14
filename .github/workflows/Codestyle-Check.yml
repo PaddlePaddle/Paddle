@@ -8,12 +8,17 @@ jobs:
   pre-commit:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: APPROVAL
     env:
       PR_ID: ${{ github.event.pull_request.number }}
       BRANCH: develop
 
     steps:
+      - name: Cleanup
+        run: |
+          rm -rf * .[^.]*
+
       - name: Checkout base repo
         uses: actions/checkout@v4
         with:

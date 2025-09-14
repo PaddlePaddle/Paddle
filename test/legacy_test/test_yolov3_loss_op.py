@@ -440,7 +440,6 @@ class TestYolov3LossDygraph(unittest.TestCase):
 
 
 class TestYolov3LossStatic(unittest.TestCase):
-
     def test_static(self):
         x = paddle.static.data('x', [2, 14, 8, 8], 'float32')
         gt_box = paddle.static.data('gt_box', [2, 10, 4], 'float32')

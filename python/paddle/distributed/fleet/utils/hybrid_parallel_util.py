@@ -51,9 +51,9 @@ def _apply_collective_grads(parameters, comm_group, bucket_size, scale=None):
     for param in parameters:
         if param.trainable and (param._grad_ivar() is not None):
             g_var = param._grad_ivar()
-            assert (
-                not g_var._is_sparse()
-            ), "Now, it doesn't support sparse parameters"
+            assert not g_var._is_sparse(), (
+                "Now, it doesn't support sparse parameters"
+            )
             grad_vars.append(g_var)
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
@@ -98,9 +98,9 @@ def _apply_collective_grads_eager(
             assert param._grad_ivar() is None, "param.grad is not None"
             g_var = param.main_grad
         if g_var is not None:
-            assert (
-                not g_var.is_sparse()
-            ), "Now, it doesn't support sparse parameters"
+            assert not g_var.is_sparse(), (
+                "Now, it doesn't support sparse parameters"
+            )
             grad_vars.append(g_var)
             assert g_var not in grad_var_set
             grad_var_set.add(g_var)
@@ -268,9 +268,9 @@ def fused_allreduce_gradients(parameter_list, hcg):
     if hcg is not None:
         dp_enabled = hcg.get_data_parallel_world_size() > 1
         sep_enabled = hcg.get_sep_parallel_world_size() > 1
-        assert (
-            dp_enabled or sep_enabled
-        ), f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
+        assert dp_enabled or sep_enabled, (
+            f"dp_enabled {dp_enabled}; sep_enabled {sep_enabled}"
+        )
         group = None
         # sep all reduce is not scaled
         scale = 1.0
@@ -315,6 +315,21 @@ def broadcast_sep_parameters(model, hcg, fuse_params=True):
         src_rank,
         is_model_parallel=False,
         fuse_params=fuse_params,
+    )
+
+
+def broadcast_moe_sharding_parameters(model, hcg, fuse_params=True):
+    # TODO TO save memory, use un-fused broadcast to avoid potential OOM
+    logger.debug("moe sharding start init parameters sync")
+    moe_sharding_group = hcg.get_moe_sharding_parallel_group()
+    src_rank = hcg.get_moe_sharding_parallel_group_src_rank()
+    sync_params_buffers(
+        model,
+        moe_sharding_group,
+        src_rank,
+        is_model_parallel=False,
+        fuse_params=fuse_params,
+        is_moe_sharding_parallel=True,
     )
 
 

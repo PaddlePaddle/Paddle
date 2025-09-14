@@ -35,7 +35,6 @@
 #include "paddle/cinn/optim/replace_call_with_expr.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 #include "paddle/cinn/optim/transform_polyfor_to_for.h"
-#include "paddle/cinn/poly/ast_gen.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace cinn {

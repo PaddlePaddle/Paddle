@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void IndexAddKernel(const Context& ctx,
+void IndexAddKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& index,
                     const DenseTensor& add_value,
@@ -38,17 +38,26 @@ void IndexAddKernel(const Context& ctx,
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
 
+  if (out && out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  if (index.numel() == 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dim = x.dims();
   int dim = axis >= 0 ? axis : axis + input_dim.size();
   auto input_vector = common::vectorize<int64_t>(input_dim);
   int64_t numel = add_value.numel();
   if (numel == 0) return;
-  ctx.template Alloc<T>(out);
+  dev_ctx.template Alloc<T>(out);
   int r = 0;
   if (index_type == phi::DataType::INT64) {
     r = xpu::index_add<XPUType, int64_t>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
@@ -60,7 +69,7 @@ void IndexAddKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_add");
   } else if (index_type == phi::DataType::INT32) {
     r = xpu::index_add<XPUType, int>(
-        ctx.x_context(),
+        dev_ctx.x_context(),
         reinterpret_cast<const XPUType*>(x.data<T>()),
         reinterpret_cast<const XPUType*>(add_value.data<T>()),
         reinterpret_cast<XPUType*>(out->data<T>()),
@@ -79,8 +88,8 @@ PD_REGISTER_KERNEL(index_add,
                    XPU,
                    ALL_LAYOUT,
                    phi::IndexAddKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float,
                    int64_t,
                    int32_t) {}

@@ -37,36 +37,36 @@ set(NVSHMEM_INCLUDE_DIR
 
 include_directories(${NVSHMEM_INCLUDE_DIR})
 
+set(NVSHMEM_TAR_NAME "nvshmem_src_3.2.5-1.txz")
+
 if(NVSHMEM_SRC_TAR_PATH)
   set(NVSHMEM_DOWNLOAD_COMMAND
-      rm -rf extern_nvshmem nvshmem_src_3.1.7-1.txz && cp
-      ${NVSHMEM_SRC_TAR_PATH} . && tar xf nvshmem_src_3.1.7-1.txz && mv
-      nvshmem_src extern_nvshmem)
+      rm -rf extern_nvshmem ${NVSHMEM_TAR_NAME} && cp ${NVSHMEM_SRC_TAR_PATH} .
+      && tar xf ${NVSHMEM_TAR_NAME} && mv nvshmem_src extern_nvshmem)
 else()
   set(NVSHMEM_URL
-      "https://developer.download.nvidia.com/compute/redist/nvshmem/3.1.7/source/nvshmem_src_3.1.7-1.txz"
+      "https://paddle-ci.gz.bcebos.com/${NVSHMEM_TAR_NAME}"
       CACHE STRING "" FORCE)
   set(NVSHMEM_DOWNLOAD_COMMAND
-      rm -rf extern_nvshmem nvshmem_src_3.1.7-1.txz && wget
-      --no-check-certificate -q ${NVSHMEM_URL} && tar xf
-      nvshmem_src_3.1.7-1.txz && mv nvshmem_src extern_nvshmem)
+      rm -rf extern_nvshmem ${NVSHMEM_TAR_NAME} && wget --no-check-certificate
+      -q ${NVSHMEM_URL} && tar xf ${NVSHMEM_TAR_NAME} && mv nvshmem_src
+      extern_nvshmem)
 endif()
 
 set(NVSHMEM_PATCH_PATH ${PADDLE_SOURCE_DIR}/patches/nvshmem/nvshmem.patch)
 set(NVSHMEM_PATCH_COMMAND
-    git init && git config user.name "PaddlePaddle" && git config user.email
-    "paddle@baidu.com" && git config --add safe.directory . && git add . && git
-    commit -m "init" && git apply ${NVSHMEM_PATCH_PATH})
+    git init && git config --global --add safe.directory ${NVSHMEM_SOURCE_DIR}
+    && git config user.name "PaddlePaddle" && git config user.email
+    "paddle@baidu.com" && git add . && git commit -m "init" && git apply
+    ${NVSHMEM_PATCH_PATH})
 
 set(NVSHMEM_LIB ${NVSHMEM_INSTALL_DIR}/lib/libnvshmem.a)
 set(NVSHMEM_BOOTSTRAP_UID_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_uid.so)
-set(NVSHMEM_BOOTSTRAP_MPI_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_mpi.so)
+    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_uid.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi.so)
+    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi.so.3)
 set(NVSHMEM_BOOTSTRAP_PMI2_LIB
-    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi2.so)
+    ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_bootstrap_pmi2.so.3)
 set(NVSHMEM_TRANSPORT_IBRC_LIB
     ${NVSHMEM_INSTALL_DIR}/lib/nvshmem_transport_ibrc.so.3)
 set(NVSHMEM_TRANSPORT_IBGDA_LIB
@@ -97,6 +97,8 @@ ExternalProject_Add(
              -DNVSHMEM_USE_GDRCOPY=1
              -DNVSHMEM_IBRC_SUPPORT=1
              -DNVSHMEM_BUILD_TESTS=0
+             -DNVSHMEM_BUILD_EXAMPLES=0
+             -DNVSHMEM_MPI_SUPPORT=0
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${NVSHMEM_INSTALL_DIR}
   BUILD_BYPRODUCTS ${NVSHMEM_LIB})
 

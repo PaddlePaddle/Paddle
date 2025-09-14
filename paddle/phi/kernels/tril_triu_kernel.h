@@ -20,33 +20,33 @@
 namespace phi {
 
 template <typename T, typename Context>
-void TrilTriuKernel(const Context& ctx,
+void TrilTriuKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     int diagonal,
                     bool lower,
                     DenseTensor* out);
 
 template <typename T, typename Context>
-void TrilKernel(const Context& ctx,
+void TrilKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-void TriuKernel(const Context& ctx,
+void TriuKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 int diagonal,
                 DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor TrilTriu(const Context& ctx,
+DenseTensor TrilTriu(const Context& dev_ctx,
                      const DenseTensor& x,
                      int diagonal,
                      bool lower) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
   TrilTriuInferMeta(x, diagonal, lower, &meta_out);
-  TrilTriuKernel<T, Context>(ctx, x, diagonal, lower, &dense_out);
+  TrilTriuKernel<T, Context>(dev_ctx, x, diagonal, lower, &dense_out);
   return dense_out;
 }
 

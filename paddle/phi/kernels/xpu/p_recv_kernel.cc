@@ -51,8 +51,9 @@ void PRecvKernel(const Context& dev_ctx,
   dev_ctx.Alloc(out, dtype);
   comm_ctx->Recv(out, out->numel(), peer, stream);
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_recv kernel."));
 #endif
 }
 
@@ -77,8 +78,9 @@ void PRecvArrayKernel(const Context& dev_ctx,
             << common::product(out_dims) << " from " << peer;
   }
 #else
-  PADDLE_THROW(
-      errors::PreconditionNotMet("PaddlePaddle should compile with XPU."));
+  PADDLE_THROW(common::errors::PreconditionNotMet(
+      "PaddlePaddle is not compiled with DWITH_XPU_BKCL, please recompile with "
+      "DWITH_XPU_BKCL for using p_recv_array kernel."));
 #endif
 }
 
@@ -93,8 +95,8 @@ PD_REGISTER_KERNEL(p_recv,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}
 
 PD_REGISTER_KERNEL(p_recv_array,
                    XPU,
@@ -105,5 +107,5 @@ PD_REGISTER_KERNEL(p_recv_array,
                    uint8_t,
                    int,
                    int64_t,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::bfloat16,
+                   phi::float16) {}

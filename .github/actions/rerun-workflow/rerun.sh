@@ -49,13 +49,13 @@ if [ -n "$run_ids" ]; then
 
       echo "Jobs Response for run_id $run_id: $jobs_response"
 
-      if [[ "$JOB_NAME" == *"bypass"* ]]; then
+      # if [[ "$JOB_NAME" == *"bypass"* ]]; then
         block_jobs=$(echo "$jobs_response" | jq -r --arg job_name "$JOB_NAME" \
         '.jobs[] | select(.name == $job_name) | .id')
-      else
-        block_jobs=$(echo "$jobs_response" | jq -r --arg job_name "$JOB_NAME" \
-        '.jobs[] | select(.name == $job_name and .conclusion != "success") | .id')
-      fi
+      # else
+      #   block_jobs=$(echo "$jobs_response" | jq -r --arg job_name "$JOB_NAME" \
+      #   '.jobs[] | select(.name == $job_name and .conclusion != "success") | .id')
+      # fi
 
       if [ -n "$block_jobs" ]; then
         echo "Found block jobs for run_id $run_id: $block_jobs"

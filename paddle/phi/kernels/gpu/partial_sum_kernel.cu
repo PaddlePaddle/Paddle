@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/partial_sum_kernel.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/partial_sum_kernel_impl.h"
@@ -75,7 +74,6 @@ void PartialSumOpCUDAKernel(const Context &dev_ctx,
                             int start_index,
                             int length,
                             DenseTensor *out) {
-  auto ctx = dev_ctx;
   auto in_vars = x;
 
   PADDLE_ENFORCE_EQ(

@@ -25,6 +25,8 @@ namespace phi {
  * @param  out     the output tensor of fetch
  */
 template <typename T, typename Context>
-void FetchKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out);
+void FetchKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out);
 
 }  // namespace phi

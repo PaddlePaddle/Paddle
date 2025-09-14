@@ -24,10 +24,10 @@ class Graph;
 /*
  * compute quantization scales for biases and weights
  */
-class Int8ScaleCalculationMkldnnPass : public FusePassBase {
+class Int8ScaleCalculationOnednnPass : public FusePassBase {
  public:
-  Int8ScaleCalculationMkldnnPass();
-  virtual ~Int8ScaleCalculationMkldnnPass() = default;
+  Int8ScaleCalculationOnednnPass();
+  virtual ~Int8ScaleCalculationOnednnPass() = default;
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

@@ -20,8 +20,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SwiGLUKernelImpl(
-    const Context &ctx, const T *x, const T *y, T *z, int64_t m, int64_t n) {
+void SwiGLUKernelImpl(const Context &dev_ctx,
+                      const T *x,
+                      const T *y,
+                      T *z,
+                      int64_t m,
+                      int64_t n) {
   funcs::SwiGLUFunctor<T> functor;
   int64_t stride;
   if (y) {

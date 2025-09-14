@@ -1,0 +1,112 @@
+name: CI-Build
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop, release/**, fleety_*]
+
+permissions: read-all
+
+concurrency:
+  group: ${{ github.event.pull_request.number }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+env:
+  PR_ID: ${{ github.event.pull_request.number }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  clone:
+    name: Clone-linux
+    uses: ./.github/workflows/_Clone-linux.yml
+    with:
+      clone_dir: Paddle-build
+      workflow-name: 'CI-build'
+
+  build-docker:
+    name: build docker images
+    needs: clone
+    uses: ./.github/workflows/docker.yml
+    with:
+      clone_dir: Paddle-build
+      task: build
+
+  inference:
+    name: PR-CI-Inference
+    uses: ./.github/workflows/_Inference.yml
+    needs: [clone, build-docker]
+    with:
+      docker_inference_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+
+  build:
+    name: Linux-build
+    uses: ./.github/workflows/_Linux-build.yml
+    needs: [clone, build-docker]
+    with:
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  static-check:
+    name: Static-Check
+    uses: ./.github/workflows/_Static-Check.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  ce-framework:
+    name: CE-Framework
+    uses: ./.github/workflows/_CE-Framework.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  ce-cinn-framework:
+    name: CE-CINN-Framework
+    uses: ./.github/workflows/_CE-CINN-Framework.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  api-benchmark:
+    name: Api-Benchmark
+    uses: ./.github/workflows/_Api-Benchmark.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  auto-parallel:
+    name: Auto-Parallel
+    uses: ./.github/workflows/_Auto-Parallel.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  model-benchmark:
+    name: Model-Benchmark
+    uses: ./.github/workflows/_Model-Benchmark.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+
+  doc-preview:
+    name: Doc-Preview
+    uses: ./.github/workflows/_Doc-Preview.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_doc_image: ${{ needs.build-docker.outputs.docker_doc_image }}
+
+  slice:
+    name: Slice
+    uses: ./.github/workflows/_Slice.yml
+    needs: [clone, build-docker, build]
+    with:
+      can-skip: ${{ needs.build.outputs.can-skip }}
+      docker_build_image: ${{ needs.build-docker.outputs.docker_build_image }}
+      slice-check: ${{ needs.clone.outputs.slice-check }}

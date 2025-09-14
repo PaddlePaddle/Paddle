@@ -15,11 +15,11 @@
 #include "paddle/phi/kernels/where_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/kernels/full_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
-void WhereGradKernel(const Context& ctx,
+void WhereGradKernel(const Context& dev_ctx,
                      const DenseTensor& condition,
                      const DenseTensor& x UNUSED,
                      const DenseTensor& y UNUSED,
@@ -29,15 +29,30 @@ void WhereGradKernel(const Context& ctx,
   const auto* cond_data = condition.data<bool>();
   auto numel = condition.numel();
   auto* dout = out_grad.data<T>();
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(x_grad->dims())),
+                            static_cast<T>(0),
+                            x_grad);
+    }
+    if (y_grad) {
+      phi::Full<T, Context>(dev_ctx,
+                            phi::IntArray(common::vectorize(y_grad->dims())),
+                            static_cast<T>(0),
+                            y_grad);
+    }
+    return;
+  }
 
   if (x_grad != nullptr) {
-    auto* dx = ctx.template Alloc<T>(x_grad);
+    auto* dx = dev_ctx.template Alloc<T>(x_grad);
     for (int i = 0; i < numel; i++) {
       dx[i] = cond_data[i] ? dout[i] : T{};
     }
   }
   if (y_grad != nullptr) {
-    auto* dy = ctx.template Alloc<T>(y_grad);
+    auto* dy = dev_ctx.template Alloc<T>(y_grad);
     for (int i = 0; i < numel; i++) {
       dy[i] = cond_data[i] ? T{} : dout[i];
     }
@@ -55,5 +70,5 @@ PD_REGISTER_KERNEL(where_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

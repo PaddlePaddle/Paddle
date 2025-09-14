@@ -17,7 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
+// #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {
 
@@ -31,6 +31,9 @@ void ActivationImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_NOT_NULL(Out,
                           errors::NotFound("Output Out should not be nullptr"));
   dev_ctx.template Alloc<U>(Out);
+  if (Out->numel() == 0) {
+    return;
+  }
   auto x = phi::EigenVector<T>::Flatten(
       GET_DATA_SAFELY(&X, "Input", "X", "Activation"));
   auto out = phi::EigenVector<U>::Flatten(

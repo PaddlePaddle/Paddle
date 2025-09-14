@@ -53,20 +53,22 @@ class TestRawProgramOptimizer(unittest.TestCase):
             sharding_startup_program = paddle.static.Program()
             strategy = fleet.DistributedStrategy()
             strategy.without_graph_optimization = True
-            with base.program_guard(sharding_program, sharding_startup_program):
-                with base.unique_name.guard():
-                    input_x = paddle.static.data(
-                        name="x", shape=[None, 32], dtype='float32'
-                    )
-                    input_y = paddle.static.data(
-                        name="y", shape=[None, 1], dtype='int64'
-                    )
-                    cost = self.mlp(input_x=input_x, input_y=input_y)
-                    output_name = cost.name
-                    optimizer = fleet.distributed_optimizer(
-                        paddle.optimizer.Adam(), strategy
-                    )
-                    optimizer.minimize(cost)
+            with (
+                base.program_guard(sharding_program, sharding_startup_program),
+                base.unique_name.guard(),
+            ):
+                input_x = paddle.static.data(
+                    name="x", shape=[None, 32], dtype='float32'
+                )
+                input_y = paddle.static.data(
+                    name="y", shape=[None, 1], dtype='int64'
+                )
+                cost = self.mlp(input_x=input_x, input_y=input_y)
+                output_name = cost.name
+                optimizer = fleet.distributed_optimizer(
+                    paddle.optimizer.Adam(), strategy
+                )
+                optimizer.minimize(cost)
 
             trainer_id = fleet.worker_index()
             exe = paddle.static.Executor(paddle.CUDAPlace(trainer_id))

@@ -18,7 +18,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include "paddle/phi/backends/dynload/cublasLt.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace dyl = phi::dynload;
@@ -61,7 +60,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmulDescCreate execution error"
+            "cublasLtMatmulDescCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
     cublasOperation_t op_transpose = CUBLAS_OP_T;
@@ -73,7 +72,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmulDescSetAttribute execution error"
+            "cublasLtMatmulDescSetAttribute execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -83,7 +82,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -92,7 +91,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -101,7 +100,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatrixLayoutCreate execution error"
+            "cublasLtMatrixLayoutCreate execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
 
@@ -204,7 +203,7 @@ class CublasLtHelper {
         status,
         CUBLAS_STATUS_SUCCESS,
         common::errors::External(
-            "cublasLtMatmul execution error"
+            "cublasLtMatmul execution error, "
             "refer https://docs.nvidia.com/cuda/cublas/index.html to get more "
             "information"));
   }
@@ -234,12 +233,12 @@ inline cudaDataType_t GetCublasLtDataType() {
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::float16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::float16>() {
   return CUDA_R_16F;
 }
 
 template <>
-inline cudaDataType_t GetCublasLtDataType<phi::dtype::bfloat16>() {
+inline cudaDataType_t GetCublasLtDataType<phi::bfloat16>() {
   return CUDA_R_16BF;
 }
 
@@ -312,9 +311,9 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
       dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
                           matmul_desc_,
                           &alpha_,
-                          mat_b.data<phi::dtype::float8_e4m3fn>(),
+                          mat_b.data<phi::float8_e4m3fn>(),
                           B_desc_,
-                          mat_a.data<phi::dtype::float8_e4m3fn>(),
+                          mat_a.data<phi::float8_e4m3fn>(),
                           A_desc_,
                           &beta_,
                           out->data<T>(),

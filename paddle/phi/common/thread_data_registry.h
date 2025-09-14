@@ -22,6 +22,8 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "glog/logging.h"
+
 namespace phi {
 
 #ifdef __cpp_lib_void_t

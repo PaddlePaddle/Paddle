@@ -38,9 +38,5 @@ void AtanGradKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(atan_grad,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::AtanGradKernel,
-                   float,
-                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    atan_grad, XPU, ALL_LAYOUT, phi::AtanGradKernel, float, phi::float16) {}

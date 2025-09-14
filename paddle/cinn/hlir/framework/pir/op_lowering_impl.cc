@@ -22,6 +22,7 @@
 #include "paddle/cinn/common/dim_expr_converter.h"
 #include "paddle/cinn/common/shape_constraint.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/generate_shape_util.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/group_merge/op_with_group_merge_util.h"
 #include "paddle/cinn/hlir/framework/compile_error.h"
@@ -319,10 +320,10 @@ std::vector<CondFuncPriorWrapper> OpLowererImpl::PostProcess(
     bool contain_unknown_dim = [&]() {
       bool check = op_result && op_result.type() &&
                    op_result.type().isa<paddle::dialect::DenseTensorType>();
-      PADDLE_ENFORCE_EQ(
-          check,
-          true,
-          phi::errors::PreconditionNotMet("cinn only support DenseTensorType"));
+      PADDLE_ENFORCE_EQ(check,
+                        true,
+                        ::common::errors::PreconditionNotMet(
+                            "cinn only support DenseTensorType"));
       const auto dims =
           op_result.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
       return ::common::contain_unknown_dim(dims);
@@ -847,7 +848,7 @@ ir::LoweredFunc OpLowererImpl::GenerateInferShapeFunc(
 }
 bool IsOpDeniedOnCpu(::pir::Operation* op) {
   // no op is denied after the support for composite reduce on cpu
-  static std::set<std::string> banned_ops = {};
+  static std::set<std::string> banned_ops = {"cinn_op.arange"};
   return banned_ops.count(op->name());
 }
 ir::Expr OpLowererImpl::LowerX86(const OpLoweringGroupPtr& group,

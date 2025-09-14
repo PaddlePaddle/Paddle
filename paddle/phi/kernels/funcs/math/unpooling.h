@@ -22,7 +22,7 @@ namespace math {
 template <typename DeviceContext, typename T>
 class Unpool2dMaxFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output);
@@ -30,7 +30,7 @@ class Unpool2dMaxFunctor {
 template <typename DeviceContext, class T>
 class Unpool2dMaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   const phi::DenseTensor& output,
@@ -41,7 +41,7 @@ class Unpool2dMaxGradFunctor {
 template <typename DeviceContext, typename T>
 class Unpool3dMaxFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   phi::DenseTensor* output);
@@ -49,7 +49,7 @@ class Unpool3dMaxFunctor {
 template <typename DeviceContext, class T>
 class Unpool3dMaxGradFunctor {
  public:
-  void operator()(const DeviceContext& context,
+  void operator()(const DeviceContext& dev_ctx,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& indices,
                   const phi::DenseTensor& output,

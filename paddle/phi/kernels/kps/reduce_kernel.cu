@@ -14,7 +14,7 @@
 
 #include <limits>
 #include <set>
-#include "paddle/phi/common/complex.h"
+
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -32,8 +32,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #endif
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 namespace phi {
 
@@ -44,6 +44,13 @@ void ProdKernel(const Context& dev_ctx,
                 bool keep_dim,
                 bool reduce_all,
                 DenseTensor* out) {
+  if (x.numel() == 0) {
+    // fill with 1.
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MulFunctor, kps::IdentityFunctor>(
@@ -108,6 +115,10 @@ void MaxKernel(const Context& dev_ctx,
                const IntArray& dims,
                bool keep_dim,
                DenseTensor* out) {
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
   bool reduce_all = recompute_reduce_all(x, dims);
   phi::MaxRawKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
@@ -206,57 +217,21 @@ void SumRawKernel(const Context& dev_ctx,
     out_dtype = out->dtype();
   }
   if (x.numel() == 0) {
-    auto x_dims = x.dims();
-    std::vector<int> out_dims;
-    if (reduce_all) {
-      if (keep_dim) {
-        out_dims.resize(x_dims.size(), 1);
-      } else {
-        out_dims = std::vector<int>();
-      }
-    } else {
-      std::set<int> reduce_dims;
-      auto dims_vec = dims.GetData();
-      for (auto dim : dims_vec) {
-        PADDLE_ENFORCE_GE(dim,
-                          -x_dims.size(),
-                          common::errors::InvalidArgument(
-                              "The dimension index is out of range, "
-                              "expected index >= %d, but received %d.",
-                              -x_dims.size(),
-                              dim));
-        PADDLE_ENFORCE_LT(dim,
-                          x_dims.size(),
-                          common::errors::InvalidArgument(
-                              "The dimension index is out of range, "
-                              "expected index < %d, but received %d.",
-                              x_dims.size(),
-                              dim));
-        if (dim < 0) {
-          dim += x_dims.size();
-        }
-        reduce_dims.insert(dim);
-      }
-      if (keep_dim) {
-        out_dims.resize(x_dims.size());
-        for (int i = 0; i < x_dims.size(); ++i) {
-          if (reduce_dims.count(i)) {
-            out_dims[i] = 1;
-          } else {
-            out_dims[i] = x_dims[i];
-          }
-        }
-      } else {
-        for (int i = 0; i < x_dims.size(); ++i) {
-          if (!reduce_dims.count(i)) {
-            out_dims.push_back(x_dims[i]);
-          }
-        }
-      }
-    }
-    out->Resize(phi::make_ddim(out_dims));
     dev_ctx.template Alloc<T>(out);
-    FullKernel<T, Context>(dev_ctx, out_dims, 0, out_dtype, out);
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
     return;
   }
 
@@ -265,14 +240,14 @@ void SumRawKernel(const Context& dev_ctx,
     std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
         dims.GetData(), x.dims().size(), reduce_all);
 
-    phi::funcs::ReduceKernel<phi::dtype::bfloat16,
+    phi::funcs::ReduceKernel<phi::bfloat16,
                              float,
                              kps::AddFunctor,
-                             kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
+                             kps::IdentityFunctor<phi::bfloat16, float>>(
         dev_ctx,
         x,
         out,
-        kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
+        kps::IdentityFunctor<phi::bfloat16, float>(),
         reduce_dims);
   } else {
     phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
@@ -304,10 +279,10 @@ PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(all_raw,
                    KPS,
@@ -363,10 +338,10 @@ PD_REGISTER_KERNEL(max,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}
 
 PD_REGISTER_KERNEL(mean_raw,
                    KPS,
@@ -375,12 +350,13 @@ PD_REGISTER_KERNEL(mean_raw,
                    float,
                    double,
                    bool,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
                    float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(min_raw,
                    KPS,
@@ -390,8 +366,8 @@ PD_REGISTER_KERNEL(min_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(sum_raw,
                    KPS,
@@ -420,8 +396,8 @@ PD_REGISTER_KERNEL(prod,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

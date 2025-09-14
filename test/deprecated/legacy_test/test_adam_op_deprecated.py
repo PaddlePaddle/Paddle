@@ -29,27 +29,29 @@ class TestAdamOpV2(unittest.TestCase):
         exe = base.Executor(place)
         train_prog = base.Program()
         startup = base.Program()
-        with base.program_guard(train_prog, startup):
-            with base.unique_name.guard():
-                data = paddle.static.data(name="data", shape=shape)
-                conv = paddle.static.nn.conv2d(data, 8, 3)
-                loss = paddle.mean(conv)
+        with (
+            base.program_guard(train_prog, startup),
+            base.unique_name.guard(),
+        ):
+            data = paddle.static.data(name="data", shape=shape)
+            conv = paddle.static.nn.conv2d(data, 8, 3)
+            loss = paddle.mean(conv)
 
-                beta1 = paddle.static.create_global_var(
-                    shape=[1], value=0.85, dtype='float32', persistable=True
-                )
-                beta2 = paddle.static.create_global_var(
-                    shape=[1], value=0.95, dtype='float32', persistable=True
-                )
-                betas = [beta1, beta2]
-                opt = paddle.optimizer.Adam(
-                    learning_rate=1e-5,
-                    beta1=beta1,
-                    beta2=beta2,
-                    weight_decay=0.01,
-                    epsilon=1e-8,
-                )
-                opt.minimize(loss)
+            beta1 = paddle.static.create_global_var(
+                shape=[1], value=0.85, dtype='float32', persistable=True
+            )
+            beta2 = paddle.static.create_global_var(
+                shape=[1], value=0.95, dtype='float32', persistable=True
+            )
+            betas = [beta1, beta2]
+            opt = paddle.optimizer.Adam(
+                learning_rate=1e-5,
+                beta1=beta1,
+                beta2=beta2,
+                weight_decay=0.01,
+                epsilon=1e-8,
+            )
+            opt.minimize(loss)
 
         exe.run(startup)
         data_np = np.random.random(shape).astype('float32')

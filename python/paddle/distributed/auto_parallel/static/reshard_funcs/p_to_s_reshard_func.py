@@ -47,9 +47,9 @@ class PToSReshardFunction(ReshardFunction):
     def reshard(self, src_dist_attr, dst_dist_attr, src_value, dst_type):
         src_mesh = src_dist_attr.process_mesh
         src_reduce_type = src_dist_attr.partial_status[0]
-        assert (
-            src_reduce_type == paddle.base.core.ReduceType.kRedSum
-        ), f"The p to s reshard func only support sum op, but received {src_reduce_type}"
+        assert src_reduce_type == paddle.base.core.ReduceType.kRedSum, (
+            f"The p to s reshard func only support sum op, but received {src_reduce_type}"
+        )
 
         chunk_id = -1
         if src_value.get_defining_op().dist_attr:

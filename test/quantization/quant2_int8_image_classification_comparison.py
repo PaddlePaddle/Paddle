@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle.base.framework import IrGraph
 from paddle.framework import core
-from paddle.static.quantization import Quant2Int8MkldnnPass
+from paddle.static.quantization import Quant2Int8OnednnPass
 
 paddle.enable_static()
 
@@ -211,7 +211,7 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
             if self._debug:
                 graph.draw('.', 'quant_orig', graph.all_op_nodes())
-            quant_transform_pass = Quant2Int8MkldnnPass(
+            quant_transform_pass = Quant2Int8OnednnPass(
                 self._quantized_ops,
                 _op_ids_to_skip=self._op_ids_to_skip,
                 _scope=inference_scope,
@@ -350,13 +350,13 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             return
 
         quant_model_path = test_case_args.quant_model
-        assert (
-            quant_model_path
-        ), 'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        assert quant_model_path, (
+            'The Quant model path cannot be empty. Please, use the --quant_model option.'
+        )
         data_path = test_case_args.infer_data
-        assert (
-            data_path
-        ), 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        assert data_path, (
+            'The dataset path cannot be empty. Please, use the --infer_data option.'
+        )
         fp32_model_path = test_case_args.fp32_model
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
@@ -377,9 +377,9 @@ class Quant2Int8ImageClassificationComparisonTest(unittest.TestCase):
             )
 
         self._targets = self._strings_from_csv(test_case_args.targets)
-        assert self._targets.intersection(
-            {'quant', 'int8', 'fp32'}
-        ), 'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
+        assert self._targets.intersection({'quant', 'int8', 'fp32'}), (
+            'The --targets option, if used, must contain at least one of the targets: "quant", "int8", "fp32".'
+        )
 
         _logger.info('Quant & INT8 prediction run.')
         _logger.info(f'Quant model: {quant_model_path}')

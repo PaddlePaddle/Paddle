@@ -29,15 +29,19 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
         # cpu
         config = self.create_inference_config(use_gpu=False)
-        yield config, [
-            "matmul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["matmul"],
+            (1e-5, 1e-5),
+        )
 
         # for gpu
         config = self.create_inference_config(use_gpu=True)
-        yield config, [
-            "matmul",
-        ], (1e-5, 1e-5)
+        yield (
+            config,
+            ["matmul"],
+            (1e-5, 1e-5),
+        )
 
         # TRT
         # config = self.create_trt_inference_config()

@@ -130,9 +130,9 @@ def matmul(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
                     [2., 2.],
                     [3., 3.]])
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_matmul(x, y)
 
 
@@ -198,9 +198,9 @@ def masked_matmul(
                    values=[0.98986477, 0.97800624, 1.14591956, 0.68561077, 0.94714981])
 
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_masked_matmul(x, y, mask)
 
 
@@ -258,9 +258,9 @@ def mv(x: Tensor, vec: Tensor, name: str | None = None) -> Tensor:
                    [-3.85499096, -2.42975140, -1.75087738])
 
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return _C_ops.sparse_mv(x, vec)
 
 
@@ -494,9 +494,9 @@ def is_same_shape(x: Tensor, y: Tensor) -> bool:
             False
 
     """
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "Currently, Sparse API only support dynamic mode or pir mode."
+    assert in_dynamic_or_pir_mode(), (
+        "Currently, Sparse API only support dynamic mode or pir mode."
+    )
     return x.is_same_shape(y)
 
 

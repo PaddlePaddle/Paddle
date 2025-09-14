@@ -17,16 +17,23 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void IndexSelectGradKernel(const Context& ctx,
+void IndexSelectGradKernel(const Context& dev_ctx,
                            const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            int dim,
                            DenseTensor* x_grad) {
+  // x [3, 4], index [5, 0], out [5, 0]
+  if (out_grad.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(x.dims())), 0, x_grad);
+    return;
+  }
   if (dim < 0) {
     dim += out_grad.dims().size();
   }
@@ -44,10 +51,11 @@ void IndexSelectGradKernel(const Context& ctx,
                         phi::DataType::INT64));
 
   if (index_type == phi::DataType::INT32) {
-    IndexSelectGradInner<Context, T, int>(ctx, out_grad, index, x_grad, dim);
+    IndexSelectGradInner<Context, T, int>(
+        dev_ctx, out_grad, index, x_grad, dim);
   } else if (index_type == phi::DataType::INT64) {
     IndexSelectGradInner<Context, T, int64_t>(
-        ctx, out_grad, index, x_grad, dim);
+        dev_ctx, out_grad, index, x_grad, dim);
   }
 }
 
@@ -59,9 +67,9 @@ PD_REGISTER_KERNEL(index_select_grad,
                    phi::IndexSelectGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128,
                    int,
                    int64_t,
                    bool) {}

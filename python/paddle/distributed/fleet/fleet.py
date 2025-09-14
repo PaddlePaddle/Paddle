@@ -39,7 +39,6 @@ from .meta_parallel import model_parallel_random_seed
 from .utils.log_util import logger, set_log_level
 
 if TYPE_CHECKING:
-
     from collections.abc import (
         Callable,
         Iterable,
@@ -63,7 +62,10 @@ if TYPE_CHECKING:
         Variable,
     )
 
-    from .base.topology import CommunicateTopology, HybridCommunicateGroup
+    from .base.topology import (
+        CommunicateTopology,
+        HybridCommunicateGroup,
+    )
 
     class _SaveConfigs(TypedDict, total=False):
         mode: int
@@ -111,7 +113,7 @@ def apply_ir_passes(
 
 
 def _inited_runtime_handler_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
@@ -125,7 +127,7 @@ def _inited_runtime_handler_(
 
 
 def _is_non_distributed_check_(
-    func: Callable[_InputT, _RetT]
+    func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
     def __impl__(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
         cls = args[0]
@@ -331,7 +333,12 @@ class Fleet:
                     os.environ["FLAGS_nccl_nrings"] = str(
                         self._user_defined_strategy.nccl_comm_num
                     )
-                paddle.distributed.init_parallel_env()
+
+                paddle.distributed.init_parallel_env(
+                    self._user_defined_strategy.hybrid_configs[
+                        "default_comm_group_configs"
+                    ].nccl_config
+                )
 
             # hybrid parallel not support for npu/xpu
             if not self._user_defined_strategy.heter_ccl_mode:
@@ -619,7 +626,6 @@ class Fleet:
                 x = paddle.zeros([nbytes // 4], dtype=dtype)
                 # warmup
                 self.allreduce_perf(10, x, None, nbytes, 1, warmup=True)
-
                 collective_perf_func_map[comm_type](
                     iteration=round,
                     x=x,
@@ -667,9 +673,26 @@ class Fleet:
                 "fleet.collective_perf is only for collective mode, will return with no test acted."
             )
             return
-        for size, time_threshold in size_and_time.items():
-            context = {comm_type: [size, time_threshold]}
-            self._collective_perf_impl(round=round, context=context)
+        # for size, time_threshold in size_and_time.items():
+        #     context = {comm_type: [size, time_threshold]}
+        #     self._collective_perf_impl(round=round, context=context)
+
+    def _create_hcg(self, hybrid_group_names, dims):
+        if (
+            "expert" in hybrid_group_names
+            and dims[hybrid_group_names.index("expert")] > 1
+        ):
+            # for expert parallel in MoE model
+            hcg = tp.EPHybridCommunicateGroup(
+                hybrid_group_names, dims, self.hybrid_configs
+            )
+            self._topology = hcg._dense_topo
+            return hcg
+        else:
+            self._topology = tp.CommunicateTopology(hybrid_group_names, dims)
+            return tp.HybridCommunicateGroup(
+                self._topology, self.hybrid_configs
+            )
 
     def _init_hybrid_parallel_env(self):
         """initialize the hybrid environment."""
@@ -678,20 +701,27 @@ class Fleet:
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
         self.sep_degree = self.hybrid_configs["sep_degree"]
+        self.cp_degree = self.hybrid_configs["cp_degree"]
         self.sharding_degree = self.hybrid_configs["sharding_degree"]
+        self.ep_degree = self.hybrid_configs["ep_degree"]
+        self.moe_sharding_degree = self.hybrid_configs["moe_sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
-        assert (
-            self.sep_degree >= 0
-        ), "sep_degree should be greater or equal to 0"
-        assert (
-            self.sharding_degree >= 0
-        ), "sharding_degree should be greater or equal to 0"
+        assert self.sep_degree >= 0, (
+            "sep_degree should be greater or equal to 0"
+        )
+        assert self.cp_degree >= 0, "cp_degree should be greater or equal to 0"
+        assert self.sharding_degree >= 0, (
+            "sharding_degree should be greater or equal to 0"
+        )
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
         self.sep_degree = max(self.sep_degree, 1)
+        self.cp_degree = max(self.cp_degree, 1)
+        self.ep_degree = max(self.ep_degree, 1)
+        self.moe_sharding_degree = max(self.moe_sharding_degree, 1)
 
         if self.dp_degree < 0:
             nranks = paddle.distributed.get_world_size()
@@ -705,6 +735,9 @@ class Fleet:
             "sharding": ['sharding', self.sharding_degree],
             "mp": ['model', self.mp_degree],
             "sep": ["sep", self.sep_degree],
+            "cp": ["context", self.cp_degree],
+            "ep": ["expert", self.ep_degree],
+            "moe_sharding": ["moe_sharding", self.moe_sharding_degree],
         }
 
         order = self._user_defined_strategy.hybrid_parallel_order
@@ -720,11 +753,7 @@ class Fleet:
             hybrid_group_names.append(name)
             dims.append(degree)
 
-        self._topology = tp.CommunicateTopology(
-            hybrid_group_names=hybrid_group_names, dims=dims
-        )
-
-        self._hcg = tp.HybridCommunicateGroup(self._topology)
+        self._hcg = self._create_hcg(hybrid_group_names, dims)
 
         if self.mp_degree > 1:
             tensor_parallel_configs = (
@@ -1509,9 +1538,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'amp_init'):
                 amp_optimizer = self.user_defined_optimizer
 
-        assert (
-            amp_optimizer is not None
-        ), "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        assert amp_optimizer is not None, (
+            "amp_init can only be used when the amp(auto mixed precision) strategy is turned on."
+        )
         return amp_optimizer
 
     def get_loss_scaling(self) -> float:
@@ -1595,9 +1624,9 @@ class Fleet:
             if hasattr(self.user_defined_optimizer, 'qat_init'):
                 qat_optimizer = self.user_defined_optimizer
 
-        assert (
-            qat_optimizer is not None
-        ), "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        assert qat_optimizer is not None, (
+            "qat_init can only be used when the qat(quantization aware training) strategy is turned on."
+        )
         return qat_optimizer
 
     def qat_init(

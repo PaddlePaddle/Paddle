@@ -36,6 +36,7 @@ class XCCLCommContext final : public CommContext {
   ccl::CCLComm GetXcclComm() const { return xccl_comm_; }
 
   std::shared_ptr<phi::stream::Stream> GetStream() const { return stream_; }
+  phi::stream::stream_t stream() const { return stream_->raw_stream(); }
 
   std::string GetDeviceType() const { return place_.GetDeviceType(); }
 
@@ -48,37 +49,37 @@ class XCCLCommContext final : public CommContext {
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  int root,
-                 const phi::stream::Stream& stream) const;
+                 const phi::stream::stream_t& stream) const;
 
   void Send(const phi::DenseTensor& in_tensor,
             const int64_t& count,
             const int& peer,
-            const phi::stream::Stream& stream) const;
+            const phi::stream::stream_t& stream) const;
 
   void Recv(phi::DenseTensor* out_tensor,
             const int64_t& count,
             const int& peer,
-            const phi::stream::Stream& stream) const;
+            const phi::stream::stream_t& stream) const;
 
   void ReduceScatter(phi::DenseTensor* out_tensor,
                      const phi::DenseTensor& in_tensor,
                      phi::ccl::CCLReduceOp reduce_type,
-                     const phi::stream::Stream& stream) const;
+                     const phi::stream::stream_t& stream) const;
 
   void AllGather(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
-                 const phi::stream::Stream& stream) const;
+                 const phi::stream::stream_t& stream) const;
 
   void AllReduce(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  phi::ccl::CCLReduceOp reduce_type,
-                 const phi::stream::Stream& stream) const;
+                 const phi::stream::stream_t stream) const;
 
   void Reduce(phi::DenseTensor* out_tensor,
               const phi::DenseTensor& in_tensor,
               phi::ccl::CCLReduceOp reduce_type,
               int root,
-              const phi::stream::Stream& stream) const;
+              const phi::stream::stream_t& stream) const;
 
   void GroupStart() const;
 

@@ -39,7 +39,7 @@ from .translated_layer import (
 def _load_pir_program(model_file_path):
     program = paddle.static.Program()
     trainable = paddle.base.core.deserialize_pir_program(
-        model_file_path, program, 1
+        model_file_path, program
     )
 
     return program, trainable

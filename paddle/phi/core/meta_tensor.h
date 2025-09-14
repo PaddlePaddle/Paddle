@@ -25,16 +25,16 @@ namespace phi {
 
 struct TEST_API MetaConfig {
   bool is_runtime{true};
-  bool is_run_mkldnn_kernel{false};
+  bool is_run_onednn_kernel{false};
   MetaConfig() = default;
 
   // supporting implicit construction is easier to use
-  MetaConfig(bool is_runtime, bool is_run_mkldnn_kernel)
+  MetaConfig(bool is_runtime, bool is_run_onednn_kernel)
       : is_runtime(is_runtime),
-        is_run_mkldnn_kernel(is_run_mkldnn_kernel) {}  // NOLINT
+        is_run_onednn_kernel(is_run_onednn_kernel) {}  // NOLINT
 };
 
-class TEST_API MetaTensor {
+class PADDLE_API MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 

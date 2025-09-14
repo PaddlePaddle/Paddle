@@ -14,7 +14,6 @@
 
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
@@ -22,7 +21,7 @@ namespace phi {
 namespace fusion {
 
 template <typename T_X, typename T_QKV, typename T_GEMM, typename Context>
-void QKVAttentionXPUKernelImpl(const Context& ctx,
+void QKVAttentionXPUKernelImpl(const Context& dev_ctx,
                                const DenseTensor& q,
                                const DenseTensor& k,
                                const DenseTensor& v,
@@ -60,7 +59,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
           : const_cast<float*>(qkv_max.get_ptr()->data<float>());
 
   auto* qkv_data =
-      reinterpret_cast<XPUTypeOut*>(ctx.template Alloc<T_QKV>(qkv));
+      reinterpret_cast<XPUTypeOut*>(dev_ctx.template Alloc<T_QKV>(qkv));
   float* tmp_mask = nullptr;
   int batch = q.dims()[0];
   int max_seq_len = q.dims()[1];
@@ -101,29 +100,29 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
           x_fp16.Resize(common::make_ddim(out_dims));
         }
         auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
-            ctx.template Alloc<phi::dtype::float16>(&x_fp16));
+            dev_ctx.template Alloc<phi::float16>(&x_fp16));
         int r_cast_x;
         XPUTypeFP16* q_data_fp16 = nullptr;
         XPUTypeFP16* k_data_fp16 = nullptr;
         XPUTypeFP16* v_data_fp16 = nullptr;
         if (qkv_fc_fusion) {
           r_cast_x = xpu::cast<float, XPUTypeFP16>(
-              ctx.x_context(), q.data<float>(), x_fp16_data_t, q.numel());
+              dev_ctx.x_context(), q.data<float>(), x_fp16_data_t, q.numel());
           PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x, "cast");
           q_data_fp16 = x_fp16_data_t;
           k_data_fp16 = x_fp16_data_t + head_num * head_dim;
           v_data_fp16 = x_fp16_data_t + 2 * head_num * head_dim;
         } else {
           r_cast_x = xpu::cast<float, XPUTypeFP16>(
-              ctx.x_context(), q.data<float>(), x_fp16_data_t, q.numel());
+              dev_ctx.x_context(), q.data<float>(), x_fp16_data_t, q.numel());
           PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x, "cast");
-          r_cast_x = xpu::cast<float, XPUTypeFP16>(ctx.x_context(),
+          r_cast_x = xpu::cast<float, XPUTypeFP16>(dev_ctx.x_context(),
                                                    k.data<float>(),
                                                    x_fp16_data_t + q.numel(),
                                                    k.numel());
           PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x, "cast");
           r_cast_x = xpu::cast<float, XPUTypeFP16>(
-              ctx.x_context(),
+              dev_ctx.x_context(),
               v.data<float>(),
               x_fp16_data_t + q.numel() + k.numel(),
               v.numel());
@@ -135,7 +134,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
         PADDLE_ENFORCE_XDNN_SUCCESS(
             r_cast_x, "multi_encoder_xpu(cast x from fp32 to fp16)");
         auto* out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
-            ctx.template Alloc<phi::dtype::float16>(&out_fp16));
+            dev_ctx.template Alloc<phi::float16>(&out_fp16));
         int r = xpu::qkv_attention<XPUTypeFP16,
                                    XPUTypeFP16,
                                    XPUTypeFP16,
@@ -144,7 +143,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                    float,
                                    int,
                                    float,
-                                   int16_t>(ctx.x_context(),
+                                   int16_t>(dev_ctx.x_context(),
                                             q_data_fp16,
                                             k_data_fp16,
                                             v_data_fp16,
@@ -157,8 +156,10 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                             tmp_mask,
                                             qk_max_data);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "qkv_attention_xpu");
-        int r_cast_out = xpu::cast<XPUTypeFP16, float>(
-            ctx.x_context(), out_fp16_data, qkv->data<float>(), qkv->numel());
+        int r_cast_out = xpu::cast<XPUTypeFP16, float>(dev_ctx.x_context(),
+                                                       out_fp16_data,
+                                                       qkv->data<float>(),
+                                                       qkv->numel());
         PADDLE_ENFORCE_XDNN_SUCCESS(
             r_cast_out, "multi_encoder_xpu(cast out from fp16 to fp32)");
       } else if (std::is_same<T_X, float16>::value) {
@@ -171,7 +172,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                    int,
                                    float,
                                    int16_t>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             reinterpret_cast<const XPUTypeFP16*>(q_data),
             reinterpret_cast<const XPUTypeFP16*>(k_data),
             reinterpret_cast<const XPUTypeFP16*>(v_data),
@@ -194,7 +195,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                float,
                                int,
                                float,
-                               int8_t>(ctx.x_context(),
+                               int8_t>(dev_ctx.x_context(),
                                        reinterpret_cast<const int8_t*>(q_data),
                                        reinterpret_cast<const int8_t*>(k_data),
                                        reinterpret_cast<const int8_t*>(v_data),
@@ -221,7 +222,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
                                  float,
                                  int,
                                  float,
-                                 int16_t>(ctx.x_context(),
+                                 int16_t>(dev_ctx.x_context(),
                                           q_data,
                                           k_data,
                                           v_data,
@@ -239,7 +240,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
   } else {
     int r = xpu::
         qkv_attention<XPUTypeX, XPUTypeX, XPUTypeX, XPUTypeOut, XPUTypeGEMM>(
-            ctx.x_context(),
+            dev_ctx.x_context(),
             q_data,
             k_data,
             v_data,
@@ -257,7 +258,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
 
 #define QKV_ATTENTION_XPU_KERNEL_IMPL(x_dtype_, qkv_dtype_, gemm_dtype_) \
   QKVAttentionXPUKernelImpl<x_dtype_, qkv_dtype_, gemm_dtype_, Context>( \
-      ctx,                                                               \
+      dev_ctx,                                                           \
       q,                                                                 \
       k,                                                                 \
       v,                                                                 \
@@ -273,7 +274,7 @@ void QKVAttentionXPUKernelImpl(const Context& ctx,
       qkv);
 
 template <typename T, typename Context>
-void QKVAttentionXPUKernel(const Context& ctx,
+void QKVAttentionXPUKernel(const Context& dev_ctx,
                            const DenseTensor& q,
                            const DenseTensor& k,
                            const DenseTensor& v,
@@ -298,11 +299,9 @@ void QKVAttentionXPUKernel(const Context& ctx,
       v.dtype() == DataType::FLOAT16 && qkv_dtype == DataType::FLOAT16) {
     // float16 kernel
     if (use_int8) {
-      QKV_ATTENTION_XPU_KERNEL_IMPL(
-          phi::dtype::float16, phi::dtype::float16, int8_t);
+      QKV_ATTENTION_XPU_KERNEL_IMPL(phi::float16, phi::float16, int8_t);
     } else {
-      QKV_ATTENTION_XPU_KERNEL_IMPL(
-          phi::dtype::float16, phi::dtype::float16, int16_t);
+      QKV_ATTENTION_XPU_KERNEL_IMPL(phi::float16, phi::float16, int16_t);
     }
 
   } else if (q.dtype() == DataType::FLOAT32 && k.dtype() == DataType::FLOAT32 &&
@@ -319,7 +318,7 @@ void QKVAttentionXPUKernel(const Context& ctx,
 
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s"
+        "Not support q_dtype is %s, k_dtype is %s, k_dtype is %s "
         "and qkv_dtype is %s.",
         DataTypeToString(q.dtype()),
         DataTypeToString(k.dtype()),
@@ -337,5 +336,5 @@ PD_REGISTER_KERNEL(qkv_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::QKVAttentionXPUKernel,
                    float,
-                   phi::dtype::float16,
+                   phi::float16,
                    int8_t) {}

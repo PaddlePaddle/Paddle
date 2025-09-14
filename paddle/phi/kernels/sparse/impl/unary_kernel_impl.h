@@ -28,25 +28,30 @@
 namespace phi {
 namespace sparse {
 
-#define DEFINE_SPARSE_UNARY_KERNEL(prefix)                                 \
-  template <typename T, typename Context>                                  \
-  void prefix##CooKernel(const Context& dev_ctx,                           \
-                         const SparseCooTensor& x,                         \
-                         SparseCooTensor* out) {                           \
-    EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                       \
-    phi::prefix##Kernel<T, Context>(                                       \
-        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
-    out->SetIndicesDict(x.GetIndicesDict());                               \
-    out->SetKmaps(x.GetKmaps());                                           \
-  }                                                                        \
-                                                                           \
-  template <typename T, typename Context>                                  \
-  void prefix##CsrKernel(const Context& dev_ctx,                           \
-                         const SparseCsrTensor& x,                         \
-                         SparseCsrTensor* out) {                           \
-    EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);                       \
-    phi::prefix##Kernel<T, Context>(                                       \
-        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+#define DEFINE_SPARSE_UNARY_KERNEL(prefix)                                   \
+  template <typename T, typename Context>                                    \
+  void prefix##CooKernel(const Context& dev_ctx,                             \
+                         const SparseCooTensor& x,                           \
+                         SparseCooTensor* out) {                             \
+    EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                         \
+    if (out->mutable_non_zero_elements()->numel() != 0) {                    \
+      phi::prefix##Kernel<T, Context>(                                       \
+          dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+    }                                                                        \
+    out->SetIndicesDict(x.GetIndicesDict());                                 \
+    out->SetKmaps(x.GetKmaps());                                             \
+  }                                                                          \
+                                                                             \
+  template <typename T, typename Context>                                    \
+  void prefix##CsrKernel(const Context& dev_ctx,                             \
+                         const SparseCsrTensor& x,                           \
+                         SparseCsrTensor* out) {                             \
+    EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);                         \
+    if (out->mutable_non_zero_elements()->numel() == 0) {                    \
+      return;                                                                \
+    }                                                                        \
+    phi::prefix##Kernel<T, Context>(                                         \
+        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());   \
   }
 
 #define DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(prefix, attr)         \
@@ -56,6 +61,9 @@ namespace sparse {
                          float attr,                                   \
                          SparseCooTensor* out) {                       \
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                   \
+    if (out->mutable_non_zero_elements()->numel() == 0) {              \
+      return;                                                          \
+    }                                                                  \
     phi::prefix##Kernel<T, Context>(dev_ctx,                           \
                                     x.non_zero_elements(),             \
                                     attr,                              \
@@ -68,39 +76,51 @@ namespace sparse {
                          float attr,                                   \
                          SparseCsrTensor* out) {                       \
     EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);                   \
+    if (out->mutable_non_zero_elements()->numel() == 0) {              \
+      return;                                                          \
+    }                                                                  \
     phi::prefix##Kernel<T, Context>(dev_ctx,                           \
                                     x.non_zero_elements(),             \
                                     attr,                              \
                                     out->mutable_non_zero_elements()); \
   }
 
-#define DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(prefix)                    \
-  template <typename T, typename Context>                                  \
-  void prefix##CooKernel(const Context& dev_ctx,                           \
-                         const SparseCooTensor& x,                         \
-                         SparseCooTensor* out) {                           \
-    *(out->mutable_indices()) = x.indices();                               \
-    DenseTensor* out_values = out->mutable_values();                       \
-    const DenseTensor& x_values = x.values();                              \
-    out_values->Resize(x_values.dims());                                   \
-    dev_ctx.template Alloc<T>(out_values);                                 \
-    phi::prefix##Kernel<T, Context>(                                       \
-        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
-    out->SetIndicesDict(x.GetIndicesDict());                               \
-  }                                                                        \
-                                                                           \
-  template <typename T, typename Context>                                  \
-  void prefix##CsrKernel(const Context& dev_ctx,                           \
-                         const SparseCsrTensor& x,                         \
-                         SparseCsrTensor* out) {                           \
-    *(out->mutable_crows()) = x.crows();                                   \
-    *(out->mutable_cols()) = x.cols();                                     \
-    DenseTensor* out_values = out->mutable_values();                       \
-    const DenseTensor& x_values = x.values();                              \
-    out_values->Resize(x_values.dims());                                   \
-    dev_ctx.template Alloc<T>(out_values);                                 \
-    phi::prefix##Kernel<T, Context>(                                       \
-        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+#define DEFINE_SPARSE_UNARY_KERNEL_WITH_COMPLEX(prefix)                      \
+  template <typename T, typename Context>                                    \
+  void prefix##CooKernel(const Context& dev_ctx,                             \
+                         const SparseCooTensor& x,                           \
+                         SparseCooTensor* out) {                             \
+    *(out->mutable_indices()) = x.indices();                                 \
+    DenseTensor* out_values = out->mutable_values();                         \
+    const DenseTensor& x_values = x.values();                                \
+    out_values->Resize(x_values.dims());                                     \
+    dev_ctx.template Alloc<T>(out_values);                                   \
+    if (out->mutable_non_zero_elements()->numel() != 0) {                    \
+      phi::prefix##Kernel<T, Context>(                                       \
+          dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+    }                                                                        \
+    out->SetIndicesDict(x.GetIndicesDict());                                 \
+  }                                                                          \
+                                                                             \
+  template <typename T, typename Context>                                    \
+  void prefix##CsrKernel(const Context& dev_ctx,                             \
+                         const SparseCsrTensor& x,                           \
+                         SparseCsrTensor* out) {                             \
+    if (out && out->numel() == 0) {                                          \
+      dev_ctx.template Alloc<T>(out);                                        \
+      return;                                                                \
+    }                                                                        \
+    *(out->mutable_crows()) = x.crows();                                     \
+    *(out->mutable_cols()) = x.cols();                                       \
+    DenseTensor* out_values = out->mutable_values();                         \
+    const DenseTensor& x_values = x.values();                                \
+    out_values->Resize(x_values.dims());                                     \
+    dev_ctx.template Alloc<T>(out_values);                                   \
+    if (out->mutable_non_zero_elements()->numel() == 0) {                    \
+      return;                                                                \
+    }                                                                        \
+    phi::prefix##Kernel<T, Context>(                                         \
+        dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());   \
   }
 
 DEFINE_SPARSE_UNARY_KERNEL(Sqrt)

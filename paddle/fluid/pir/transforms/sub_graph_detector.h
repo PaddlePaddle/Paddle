@@ -35,7 +35,8 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 std::vector<GroupOpsVec> DetectSubGraphs(pir::Block* block,
                                          const OpClassifier& classifier);
 
-std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops);
+std::vector<pir::Value> AnalysisOutputs(const GroupOpsVec& group_ops,
+                                        bool at_least_one_output = true);
 void ReplaceWithGroupOp(pir::Block* block,
                         const GroupOpsVec& group_ops,
                         bool at_least_one_output = true);
