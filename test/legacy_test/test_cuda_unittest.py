@@ -46,6 +46,14 @@ class TestCurrentDevice(unittest.TestCase):
         else:
             gpu_index = int(device_str.split(':')[-1])
             self.assertEqual(current_device, gpu_index)
+        current_device = paddle.current_device()
+        device_str = paddle.device.get_device()
+        if device_str == 'cpu':
+            with self.assertRaises(RuntimeError):
+                paddle.cuda.current_device()
+        else:
+            gpu_index = int(device_str.split(':')[-1])
+            self.assertEqual(current_device, gpu_index)
 
 
 class TestCudaCompat(unittest.TestCase):

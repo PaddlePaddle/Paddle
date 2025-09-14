@@ -225,6 +225,9 @@ from .autograd import (
     no_grad,
     set_grad_enabled,
 )
+from .cuda import (
+    current_device as current_device,
+)
 from .device import (  # noqa: F401
     PaddleStream as Stream,
     device_guard,
