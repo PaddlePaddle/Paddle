@@ -1202,22 +1202,22 @@ class TestPad3dOpError(unittest.TestCase):
         for _ in self.places:
             self.assertRaisesRegex(
                 ValueError,
-                r"(.|)+pad3d\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
+                r"pad3d\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
                 test_variable,
             )
             self.assertRaisesRegex(
                 ValueError,
-                r"(.|)+The width of Input\(X\)'s dimension should be greater than pad_left in reflect mode",
+                r"The width of Input\(X\)'s dimension should be greater than pad_left in reflect mode",
                 test_reflect_1,
             )
             self.assertRaisesRegex(
                 ValueError,
-                r"(.|)+The height of Input\(X\)'s dimension should be greater than pad_top in reflect mode",
+                r"The height of Input\(X\)'s dimension should be greater than pad_top in reflect mode",
                 test_reflect_2,
             )
             self.assertRaisesRegex(
                 ValueError,
-                r"(.|)+The depth of Input\(X\)'s dimension should be greater than pad_back in reflect mode",
+                r"The depth of Input\(X\)'s dimension should be greater than pad_back in reflect mode",
                 test_reflect_3,
             )
             # comment out because pad3d support 0-size now.

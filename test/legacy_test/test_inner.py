@@ -145,7 +145,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+After performing an optional transpose",
+            "After performing an optional transpose",
             paddle.inner,
             x,
             y,
@@ -157,7 +157,7 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
         self.assertRaisesRegex(
-            Exception, r"(.|)+matmul\(\): argument", paddle.inner, x_data, y
+            Exception, r"matmul\(\): argument", paddle.inner, x_data, y
         )
 
     def test_errors_dynamic_case3(self):
@@ -166,7 +166,7 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
         self.assertRaisesRegex(
-            Exception, r"(.|)+matmul\(\): argument", paddle.inner, x, y_data
+            Exception, r"matmul\(\): argument", paddle.inner, x, y_data
         )
 
     def test_errors_dynamic_case4(self):
@@ -175,7 +175,7 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float32)
         self.assertRaisesRegex(
             Exception,
-            r"(.|)+matmul\(\): argument",
+            r"matmul\(\): argument",
             paddle.inner,
             x_data,
             y_data,
