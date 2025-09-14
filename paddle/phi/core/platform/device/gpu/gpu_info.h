@@ -130,9 +130,9 @@ PADDLE_API void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
 PADDLE_API gpuError_t RecordedGpuMalloc(void **ptr,
-                             size_t size,
-                             int dev_id,
-                             bool malloc_managed_memory = false);
+                                        size_t size,
+                                        int dev_id,
+                                        bool malloc_managed_memory = false);
 
 //! CudaFree with recorded info
 PADDLE_API void RecordedGpuFree(void *p, size_t size, int dev_id);
@@ -166,10 +166,10 @@ CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
 
 //! Get available and total gpu memory with considering limitation
 PADDLE_API bool RecordedGpuMemGetInfo(size_t *avail,
-                           size_t *total,
-                           size_t *actual_avail,
-                           size_t *actual_total,
-                           int dev_id);
+                                      size_t *total,
+                                      size_t *actual_avail,
+                                      size_t *actual_total,
+                                      int dev_id);
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
 PADDLE_API uint64_t RecordedGpuMallocSize(int dev_id);

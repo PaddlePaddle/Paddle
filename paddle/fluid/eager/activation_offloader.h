@@ -79,7 +79,8 @@ class ActivationOffloader {
  public:
   void SetSkipTensors(const std::vector<paddle::Tensor> &tensors);
 
-  PADDLE_API paddle::optional<ReloadFunctor> Add(const paddle::Tensor &activation);
+  PADDLE_API paddle::optional<ReloadFunctor> Add(
+      const paddle::Tensor &activation);
 
   size_t Offload(phi::Place place, size_t size);
 

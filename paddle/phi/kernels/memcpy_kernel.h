@@ -24,16 +24,16 @@ namespace phi {
 // used in new executor, for memory copy from host to device
 template <typename Context>
 PADDLE_API void MemcpyH2DKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out);
+                                const DenseTensor& x,
+                                int dst_place_type,
+                                DenseTensor* out);
 
 // used in new executor, for memory copy from device to host
 template <typename Context>
 PADDLE_API void MemcpyD2HKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     int dst_place_type,
-                     DenseTensor* out);
+                                const DenseTensor& x,
+                                int dst_place_type,
+                                DenseTensor* out);
 
 template <typename Context>
 void MemcpyD2HMultiIOKernel(const Context& dev_ctx,

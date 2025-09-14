@@ -552,7 +552,6 @@ function(cc_test TARGET_NAME)
           "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
       )
     endif()
-
     list(LENGTH cc_test_ARGS len_arg)
     if(len_arg GREATER_EQUAL 1)
       set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")

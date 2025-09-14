@@ -401,10 +401,10 @@ template void PADDLE_API Copy(const DeviceContext& dev_ctx,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template PADDLE_API void Copy(const GPUContext& dev_ctx,
-                   const DenseTensor& src,
-                   Place dst_place,
-                   bool blocking,
-                   DenseTensor* dst);
+                              const DenseTensor& src,
+                              Place dst_place,
+                              bool blocking,
+                              DenseTensor* dst);
 template void Copy(const GPUContext& dev_ctx,
                    const SelectedRows& src,
                    Place dst_place,

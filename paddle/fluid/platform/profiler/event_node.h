@@ -293,7 +293,8 @@ class NodeTrees {
       const {
     return thread_event_trees_map_;
   }
-  PADDLE_API std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(bool bfs) const;
+  PADDLE_API std::map<uint64_t, std::vector<HostTraceEventNode*>> Traverse(
+      bool bfs) const;
 
  private:
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map_;

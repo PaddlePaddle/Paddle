@@ -63,8 +63,7 @@ class CloneOptions {
   bool clone_successors_{true};
 };
 
-class alignas(8) Operation final
-    : public DoubleLevelContainer<Operation> {
+class alignas(8) Operation final : public DoubleLevelContainer<Operation> {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
@@ -72,20 +71,21 @@ class alignas(8) Operation final
   /// NOTE: Similar to new and delete, the destroy() and the create() need to be
   /// used in conjunction.
   ///
-  PADDLE_API static Operation *Create(const std::vector<pir::Value> &inputs,
-                           const AttributeMap &attributes,
-                           const std::vector<pir::Type> &output_types,
-                           pir::OpInfo op_info,
-                           size_t num_regions = 0,
-                           const std::vector<Block *> &successors = {},
-                           bool verify = true);
+  PADDLE_API static Operation *Create(
+      const std::vector<pir::Value> &inputs,
+      const AttributeMap &attributes,
+      const std::vector<pir::Type> &output_types,
+      pir::OpInfo op_info,
+      size_t num_regions = 0,
+      const std::vector<Block *> &successors = {},
+      bool verify = true);
   PADDLE_API static Operation *Create(OperationArgument &&op_argument);
 
   ///
   /// \brief Deep copy all information and create a new operation.
   ///
   PADDLE_API Operation *Clone(IrMapping &ir_mapping,
-                   CloneOptions options = CloneOptions()) const;
+                              CloneOptions options = CloneOptions()) const;
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///

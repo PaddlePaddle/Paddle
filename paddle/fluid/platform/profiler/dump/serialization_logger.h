@@ -14,10 +14,10 @@ limitations under the License. */
 #include <map>
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/profiler/output_logger.h"
-#include "paddle/common/macros.h"
 
 namespace paddle {
 namespace platform {

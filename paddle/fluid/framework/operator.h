@@ -750,9 +750,9 @@ class OperatorWithKernel : public OperatorBase {
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
   PADDLE_EXP_API OperatorWithKernel(const std::string& type,
-                                const VariableNameMap& inputs,
-                                const VariableNameMap& outputs,
-                                const AttributeMap& attrs);
+                                    const VariableNameMap& inputs,
+                                    const VariableNameMap& outputs,
+                                    const AttributeMap& attrs);
 
   PADDLE_API virtual ~OperatorWithKernel();
 

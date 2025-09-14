@@ -21,9 +21,9 @@ namespace phi {
 
 template <typename T, typename Context>
 PADDLE_API void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out);
+                               const DenseTensor& x,
+                               const DenseTensor& y,
+                               DenseTensor* out);
 
 template <typename T, typename Context>
 DenseTensor Subtract(const Context& dev_ctx,

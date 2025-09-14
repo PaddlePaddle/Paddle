@@ -48,7 +48,8 @@ class CipherFactory {
  public:
   CipherFactory() = default;
 #ifdef _WIN32
-  PADDLE_API static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
+  PADDLE_API static std::shared_ptr<Cipher> CreateCipher(
+      const std::string& config_file);
 #else
   static std::shared_ptr<Cipher> CreateCipher(const std::string& config_file);
 #endif

@@ -20,11 +20,11 @@ namespace phi {
 
 template <typename T, typename Context>
 PADDLE_API void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
+                             const DenseTensor& x,
+                             const IntArray& dims,
+                             bool keep_dim,
+                             bool reduce_all,
+                             DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
