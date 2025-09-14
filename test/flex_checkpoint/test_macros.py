@@ -45,6 +45,8 @@ class MacroContext:
             "layers.0.experts.1.weight",
             "layers.1.experts.0.weight",
             "layers.1.experts.1.weight",
+            "layers.1.self_attn.qkv_proj.bias",
+            "layers.0.mlp.gate_up_fused_proj.bias",
         }
 
     def get_all_dst_state_keys(self) -> Iterable[str]:
@@ -316,6 +318,40 @@ class TestFusedFfnMacro3(TestMacro):
             'layers.0.mlp.gate_up_fused_proj.weight  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1, axis=1',
             'fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1 -> layers.0.mlp.gate_proj.weight, axis=1',
             'fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1 -> layers.0.mlp.up_proj.weight, axis=1',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedQkvOldMacro5(TestMacro):
+    def macro_name(self):
+        return "fused_qkv_old_macro"
+
+    def source_code(self):
+        return "layers.1.self_attn.qkv_proj.bias -> layers.1.self_attn.qkv_proj.bias, fused_qkv_old, num_heads = 8, num_key_value_groups = 4, axis = 0"
+
+    def expected(self):
+        return [
+            'layers.1.self_attn.qkv_proj.bias -> fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.V_3, axis=0',
+            'fused_qkv_old_tmp.Q_0,fused_qkv_old_tmp.Q_1,fused_qkv_old_tmp.K_0,fused_qkv_old_tmp.V_0,fused_qkv_old_tmp.Q_2,fused_qkv_old_tmp.Q_3,fused_qkv_old_tmp.K_1,fused_qkv_old_tmp.V_1,fused_qkv_old_tmp.Q_4,fused_qkv_old_tmp.Q_5,fused_qkv_old_tmp.K_2,fused_qkv_old_tmp.V_2,fused_qkv_old_tmp.Q_6,fused_qkv_old_tmp.Q_7,fused_qkv_old_tmp.K_3,fused_qkv_old_tmp.V_3 -> layers.1.self_attn.qkv_proj.bias, axis=0',
+        ]
+
+    def test(self):
+        self.start_macro_test()
+
+
+class TestFusedFfnMacro4(TestMacro):
+    def macro_name(self):
+        return "fused_ffn_macro"
+
+    def source_code(self):
+        return "layers.1.mlp.gate_up_fused_proj.bias -> layers.1.mlp.gate_up_fused_proj.bias, fused_ffn, axis=0"
+
+    def expected(self):
+        return [
+            'layers.1.mlp.gate_up_fused_proj.bias  -> fused_ffn_tmp.GATE_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_0,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_2,fused_ffn_tmp.UP_3, axis=0',
+            'fused_ffn_tmp.GATE_0,fused_ffn_tmp.UP_0,fused_ffn_tmp.GATE_1,fused_ffn_tmp.UP_1,fused_ffn_tmp.GATE_2,fused_ffn_tmp.UP_2,fused_ffn_tmp.GATE_3,fused_ffn_tmp.UP_3 -> layers.1.mlp.gate_up_fused_proj.bias, axis=0',
         ]
 
     def test(self):
