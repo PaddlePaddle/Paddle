@@ -1,6 +1,3 @@
-# if(WIN32)
-#   add_definitions(-DPADDLE_DLL_EXPORT)
-# endif()
 add_subdirectory(fuse_optimizer_ops_pass)
 add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)

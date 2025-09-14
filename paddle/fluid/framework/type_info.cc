@@ -38,20 +38,6 @@ bool TypeInfoTraits<BaseT, DerivedT>::classof(const BaseT* obj) {
   return obj->type_info() == kType;
 }
 
-// template <>
-// PADDLE_API TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::TypeInfoTraits() {
-//   static_cast<phi::TensorBase*>(static_cast<egr::VariableCompatTensor*>(this))->type_info_ = kType;
-// }
-
-// template <>
-// const TypeInfo<phi::TensorBase> TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::kType =
-//     RegisterStaticType<phi::TensorBase>(egr::VariableCompatTensor::name());
-
-// template <>
-// bool TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::classof(const phi::TensorBase* obj) {
-//   return obj->type_info() == kType;
-// }
-
 template class TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>;
 template class TypeInfoTraits<phi::TensorBase, paddle::primitive::LazyTensor>;
