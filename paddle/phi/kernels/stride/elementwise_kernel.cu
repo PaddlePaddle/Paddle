@@ -179,12 +179,24 @@ void AddStrideKernel(const Context &dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void AMaxStrideKernel(const Context &dev_ctx,
+                      const DenseTensor &x,
+                      const std::vector<int64_t> &dims,
+                      bool keep_dim,
+                      DenseTensor *out) {
+  return;
+}
+
 }  // namespace phi
 
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
 using complex64 = ::phi::complex64;
 using complex128 = ::phi::complex128;
+
+PD_REGISTER_KERNEL(
+    amax, GPU, STRIDED, phi::AMaxStrideKernel, float, double, int, int64_t) {}
 
 PD_REGISTER_KERNEL(add,
                    GPU,
