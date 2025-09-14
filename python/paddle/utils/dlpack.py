@@ -130,6 +130,8 @@ def from_dlpack(
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
     the tensor from given dlpack.
 
+    .. trigger ci example code check.
+
     Args:
         dlpack (SupportDLPack | CapsuleType): A PyCapsule object with the dltensor,
             or that implements '__dlpack__' and '__dlpack_device__' methods.
