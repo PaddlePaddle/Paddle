@@ -53,7 +53,7 @@ inline HOSTDEVICE float fp8_fnuz_to_fp32_value(uint8_t x) {
   // subnormal input
   if (exponent == 0) {
     // guaranteed mantissa!=0 since cases 0x0 and 0x80 are handled above
-#if defined(__CUDA_ARCH__) || defined(PADDLE_WITH_HIP)
+#if defined(__CUDA_ARCH__)
     uint32_t renorm_shift = __clz(mantissa);
 #elif defined(_MSC_VER)
     unsigned long nonsign_bsr;                               // NOLINT
