@@ -116,9 +116,8 @@ def _check_input(
 
 
 class Compose(_Transform[_InputT, _RetT]):
-    """
-    Composes several transforms together use for composing list of transforms
-    together for a dataset transform.
+    """Composes several transforms together use for composing list of
+    transforms together for a dataset transform.
 
     Args:
         transforms (list|tuple): List/Tuple of transforms to compose.
@@ -177,8 +176,7 @@ class Compose(_Transform[_InputT, _RetT]):
 
 
 class BaseTransform(_Transform[_InputT, _RetT]):
-    """
-    Base class of all transforms used in computer vision.
+    """Base class of all transforms used in computer vision.
 
     calling logic:
 
@@ -280,7 +278,6 @@ class BaseTransform(_Transform[_InputT, _RetT]):
             >>> converted_boxes
             array([[300,   3, 498, 300],
                    [420,  60, 450, 100]])
-
     """
 
     keys: _TransformInputKeys
@@ -309,7 +306,7 @@ class BaseTransform(_Transform[_InputT, _RetT]):
     def __call__(self, inputs: tuple[_InputT, ...]) -> tuple[_RetT, ...]: ...
 
     def __call__(self, inputs) -> Any:
-        """Apply transform on single input data"""
+        """Apply transform on single input data."""
         if not isinstance(inputs, tuple):
             inputs = (inputs,)
 
@@ -487,10 +484,10 @@ class Resize(BaseTransform[_InputT, _RetT]):
 
 
 class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
-    """Crop the input data to random size and aspect ratio.
-    A crop of random size (default: of 0.08 to 1.0) of the original size and a random
-    aspect ratio (default: of 3/4 to 1.33) of the original aspect ratio is made.
-    After applying crop transform, the input data will be resized to given size.
+    """Crop the input data to random size and aspect ratio. A crop of random
+    size (default: of 0.08 to 1.0) of the original size and a random aspect
+    ratio (default: of 3/4 to 1.33) of the original aspect ratio is made. After
+    applying crop transform, the input data will be resized to given size.
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
@@ -533,7 +530,6 @@ class RandomResizedCrop(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
-
     """
 
     size: Size2
@@ -739,7 +735,6 @@ class CenterCrop(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
-
     """
 
     size: Size2
@@ -789,7 +784,6 @@ class RandomHorizontalFlip(BaseTransform[_InputT, _RetT]):
                    [[[1, 0, 0],
                      [1, 0, 0],
                      [1, 1, 1]]])
-
     """
 
     prob: float
@@ -852,7 +846,6 @@ class RandomVerticalFlip(BaseTransform[_InputT, _RetT]):
                    [[[1, 1, 1],
                      [0, 0, 1],
                      [0, 0, 1]]])
-
     """
 
     prob: float
@@ -958,10 +951,9 @@ class Normalize(BaseTransform[_InputT, _RetT]):
 
 
 class Transpose(BaseTransform[_InputT, _RetT]):
-    """Transpose input data to a target format.
-    For example, most transforms use HWC mode image,
-    while the Neural Network might use CHW mode input tensor.
-    output image will be an instance of numpy.ndarray.
+    """Transpose input data to a target format. For example, most transforms
+    use HWC mode image, while the Neural Network might use CHW mode input
+    tensor. output image will be an instance of numpy.ndarray.
 
     Args:
         order (list|tuple, optional): Target order of input data. Default: (2, 0, 1).
@@ -988,7 +980,6 @@ class Transpose(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.shape)
             (3, 300, 320)
-
     """
 
     order: Sequence[int]
@@ -1045,7 +1036,6 @@ class BrightnessTransform(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.load()[1,1])
             (68, 192, 38)
-
     """
 
     value: float
@@ -1092,7 +1082,6 @@ class ContrastTransform(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
-
     """
 
     value: float
@@ -1187,7 +1176,6 @@ class HueTransform(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
-
     """
 
     value: float
@@ -1209,7 +1197,8 @@ class HueTransform(BaseTransform[_InputT, _RetT]):
 
 
 class ColorJitter(BaseTransform[_InputT, _RetT]):
-    """Randomly change the brightness, contrast, saturation and hue of an image.
+    """Randomly change the brightness, contrast, saturation and hue of an
+    image.
 
     Args:
         brightness (float, optional): How much to jitter brightness.
@@ -1242,7 +1231,6 @@ class ColorJitter(BaseTransform[_InputT, _RetT]):
             >>> fake_img = transform(fake_img)
             >>> print(fake_img.size)
             (224, 224)
-
     """
 
     brightness: float
@@ -1680,7 +1668,7 @@ class RandomAffine(BaseTransform[_InputT, _RetT]):
     def _get_param(
         self, img_size, degrees, translate=None, scale_ranges=None, shears=None
     ):
-        """Get parameters for affine transformation
+        """Get parameters for affine transformation.
 
         Returns:
             params to be passed to the affine transformation
@@ -2079,7 +2067,6 @@ class RandomErasing(BaseTransform[_InputT, _RetT]):
               [-0.45704395, -0.87613666,  1.12195814, -0.87974882,  0.04902615],
               [-0.91549885, -0.15066874,  1.26381516,  0.        ,  0.        ],
               [ 0.87887472, -1.59914243, -0.73970413,  0.        ,  0.        ]]])
-
     """
 
     prob: float

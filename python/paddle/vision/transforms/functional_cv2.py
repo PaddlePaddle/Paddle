@@ -36,7 +36,6 @@ def to_tensor(pic, data_format='CHW'):
 
     Returns:
         Tensor: Converted image.
-
     """
 
     if data_format not in ['CHW', 'HWC']:
@@ -57,8 +56,7 @@ def to_tensor(pic, data_format='CHW'):
 
 
 def resize(img, size, interpolation='bilinear'):
-    """
-    Resizes the image to given size
+    """Resizes the image to given size.
 
     Args:
         input (np.ndarray): Image to be resized.
@@ -73,7 +71,6 @@ def resize(img, size, interpolation='bilinear'):
 
     Returns:
         np.array: Resized image.
-
     """
     cv2 = try_import('cv2')
     _cv2_interp_from_str = {
@@ -123,8 +120,8 @@ def resize(img, size, interpolation='bilinear'):
 
 
 def pad(img, padding, fill=0, padding_mode='constant'):
-    """
-    Pads the given numpy.array on all sides with specified padding mode and fill value.
+    """Pads the given numpy.array on all sides with specified padding mode and
+    fill value.
 
     Args:
         img (np.array): Image to be padded.
@@ -154,7 +151,6 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
     Returns:
         np.array: Padded image.
-
     """
     cv2 = try_import('cv2')
     _cv2_pad_from_str = {
@@ -232,7 +228,6 @@ def crop(img, top, left, height, width):
 
     Returns:
         np.array: Cropped image.
-
     """
 
     return img[top : top + height, left : left + width, :]
@@ -249,7 +244,6 @@ def center_crop(img, output_size):
 
     Returns:
         np.array: Cropped image.
-
     """
 
     if isinstance(output_size, numbers.Number):
@@ -270,7 +264,6 @@ def hflip(img):
 
     Returns:
         np.array:  Horizontally flipped image.
-
     """
     cv2 = try_import('cv2')
 
@@ -285,7 +278,6 @@ def vflip(img):
 
     Returns:
         np.array:  Vertically flipped image.
-
     """
     cv2 = try_import('cv2')
 
@@ -306,7 +298,6 @@ def adjust_brightness(img, brightness_factor):
 
     Returns:
         np.array: Brightness adjusted image.
-
     """
     cv2 = try_import('cv2')
 
@@ -333,7 +324,6 @@ def adjust_contrast(img, contrast_factor):
 
     Returns:
         np.array: Contrast adjusted image.
-
     """
     cv2 = try_import('cv2')
 
@@ -359,7 +349,6 @@ def adjust_saturation(img, saturation_factor):
 
     Returns:
         np.array: Saturation adjusted image.
-
     """
     cv2 = try_import('cv2')
 
@@ -394,7 +383,6 @@ def adjust_hue(img, hue_factor):
 
     Returns:
         np.array: Hue adjusted image.
-
     """
     cv2 = try_import('cv2')
 
@@ -446,7 +434,6 @@ def affine(
 
     Returns:
         np.array: Affined image.
-
     """
     cv2 = try_import('cv2')
     _cv2_interp_from_str = {
@@ -524,7 +511,6 @@ def rotate(
 
     Returns:
         np.array: Rotated image.
-
     """
     cv2 = try_import('cv2')
     _cv2_interp_from_str = {
@@ -617,7 +603,6 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
 
     Returns:
         np.array: Perspectived image.
-
     """
     cv2 = try_import('cv2')
     _cv2_interp_from_str = {
@@ -662,7 +647,6 @@ def to_grayscale(img, num_output_channels=1):
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
-
     """
     cv2 = try_import('cv2')
 
@@ -692,7 +676,6 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
 
     Returns:
         np.array: Normalized mage.
-
     """
 
     if data_format == 'CHW':
@@ -723,7 +706,6 @@ def erase(img, i, j, h, w, v, inplace=False):
 
      Returns:
          np.array: Erased image.
-
     """
     if not inplace:
         img = img.copy()

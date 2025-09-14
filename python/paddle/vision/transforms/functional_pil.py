@@ -56,7 +56,6 @@ def to_tensor(pic, data_format='CHW'):
 
     Returns:
         Tensor: Converted image.
-
     """
 
     if data_format not in ['CHW', 'HWC']:
@@ -95,8 +94,7 @@ def to_tensor(pic, data_format='CHW'):
 
 
 def resize(img, size, interpolation='bilinear'):
-    """
-    Resizes the image to given size
+    """Resizes the image to given size.
 
     Args:
         input (PIL.Image): Image to be resized.
@@ -112,7 +110,6 @@ def resize(img, size, interpolation='bilinear'):
 
     Returns:
         PIL.Image: Resized image.
-
     """
 
     if not (
@@ -137,8 +134,8 @@ def resize(img, size, interpolation='bilinear'):
 
 
 def pad(img, padding, fill=0, padding_mode='constant'):
-    """
-    Pads the given PIL.Image on all sides with specified padding mode and fill value.
+    """Pads the given PIL.Image on all sides with specified padding mode and
+    fill value.
 
     Args:
         img (PIL.Image): Image to be padded.
@@ -168,7 +165,6 @@ def pad(img, padding, fill=0, padding_mode='constant'):
 
     Returns:
         PIL.Image: Padded image.
-
     """
 
     if not isinstance(padding, (numbers.Number, list, tuple)):
@@ -257,7 +253,6 @@ def crop(img, top, left, height, width):
 
     Returns:
         PIL.Image: Cropped image.
-
     """
     return img.crop((left, top, left + width, top + height))
 
@@ -273,7 +268,6 @@ def center_crop(img, output_size):
 
     Returns:
         PIL.Image: Cropped image.
-
     """
 
     if isinstance(output_size, numbers.Number):
@@ -294,7 +288,6 @@ def hflip(img):
 
     Returns:
         PIL.Image:  Horizontally flipped image.
-
     """
 
     return img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -308,7 +301,6 @@ def vflip(img):
 
     Returns:
         PIL.Image:  Vertically flipped image.
-
     """
 
     return img.transpose(Image.FLIP_TOP_BOTTOM)
@@ -325,7 +317,6 @@ def adjust_brightness(img, brightness_factor):
 
     Returns:
         PIL.Image: Brightness adjusted image.
-
     """
 
     enhancer = ImageEnhance.Brightness(img)
@@ -344,7 +335,6 @@ def adjust_contrast(img, contrast_factor):
 
     Returns:
         PIL.Image: Contrast adjusted image.
-
     """
 
     enhancer = ImageEnhance.Contrast(img)
@@ -363,7 +353,6 @@ def adjust_saturation(img, saturation_factor):
 
     Returns:
         PIL.Image: Saturation adjusted image.
-
     """
 
     enhancer = ImageEnhance.Color(img)
@@ -391,7 +380,6 @@ def adjust_hue(img, hue_factor):
 
     Returns:
         PIL.Image: Hue adjusted image.
-
     """
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError(f'hue_factor:{hue_factor} is not in [-0.5, 0.5].')
@@ -428,7 +416,6 @@ def affine(img, matrix, interpolation="nearest", fill=0):
 
     Returns:
         PIL.Image: Affined image.
-
     """
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
@@ -468,7 +455,6 @@ def rotate(
 
     Returns:
         PIL.Image: Rotated image.
-
     """
 
     if isinstance(fill, int):
@@ -500,7 +486,6 @@ def perspective(img, coeffs, interpolation="nearest", fill=0):
 
     Returns:
         PIL.Image: Perspectived image.
-
     """
 
     if isinstance(fill, int):
@@ -528,7 +513,6 @@ def to_grayscale(img, num_output_channels=1):
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
-
     """
 
     if num_output_channels == 1:
@@ -545,8 +529,8 @@ def to_grayscale(img, num_output_channels=1):
 
 
 def erase(img, i, j, h, w, v, inplace=False):
-    """Erase the pixels of selected area in input image with given value. PIL format is
-     not support inplace.
+    """Erase the pixels of selected area in input image with given value. PIL
+    format is not support inplace.
 
     Args:
          img (PIL.Image): input image, which shape is (C, H, W).
@@ -559,7 +543,6 @@ def erase(img, i, j, h, w, v, inplace=False):
 
      Returns:
          PIL.Image: Erased image.
-
     """
     np_img = np.array(img, dtype=np.uint8)
     np_img[i : i + h, j : j + w, ...] = v

@@ -62,9 +62,8 @@ def _is_pil_image(img: _ImageDataType) -> TypeGuard[PILImage]:
 
 
 def _is_tensor_image(img: _ImageDataType) -> TypeGuard[Tensor]:
-    """
-    Return True if img is a Tensor for dynamic mode or Variable for static graph mode.
-    """
+    """Return True if img is a Tensor for dynamic mode or Variable for static
+    graph mode."""
     return isinstance(img, (paddle.Tensor, Variable, Value))
 
 
@@ -109,7 +108,6 @@ def to_tensor(
             >>> tensor = F.to_tensor(fake_img)
             >>> print(tensor.shape)
             [3, 256, 300]
-
     """
     if not (
         _is_pil_image(pic) or _is_numpy_image(pic) or _is_tensor_image(pic)
@@ -131,8 +129,7 @@ def resize(
     size: Size2,
     interpolation: _InterpolationPil | _InterpolationCv2 = 'bilinear',
 ) -> _ImageDataT:
-    """
-    Resizes the image to given size
+    """Resizes the image to given size.
 
     Args:
         input (PIL.Image|np.ndarray|paddle.Tensor): Image to be resized.
@@ -192,8 +189,8 @@ def pad(
     fill: Size3 = 0,
     padding_mode: _PaddingMode = 'constant',
 ) -> _ImageDataT:
-    """
-    Pads the given PIL.Image or numpy.array or paddle.Tensor on all sides with specified padding mode and fill value.
+    """Pads the given PIL.Image or numpy.array or paddle.Tensor on all sides
+    with specified padding mode and fill value.
 
     Args:
         img (PIL.Image|np.array|paddle.Tensor): Image to be padded.
@@ -282,7 +279,6 @@ def crop(
             >>> cropped_img = F.crop(fake_img, 56, 150, 200, 100)
             >>> print(cropped_img.size)
             (100, 200)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -357,7 +353,6 @@ def hflip(img: _ImageDataT) -> _ImageDataT:
             >>> flipped_img = F.hflip(fake_img)
             >>> print(flipped_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -394,7 +389,6 @@ def vflip(img: _ImageDataT) -> _ImageDataT:
             >>> flipped_img = F.vflip(fake_img)
             >>> print(flipped_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -524,7 +518,6 @@ def adjust_saturation(
             >>> converted_img = F.adjust_saturation(fake_img, 0.4)
             >>> print(converted_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -573,7 +566,6 @@ def adjust_hue(img: _ImageDataT, hue_factor: float) -> _ImageDataT:
             >>> converted_img = F.adjust_hue(fake_img, 0.4)
             >>> print(converted_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -767,7 +759,6 @@ def rotate(
 ) -> _ImageDataT:
     """Rotates the image by angle.
 
-
     Args:
         img (PIL.Image|np.array|paddle.Tensor): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
@@ -806,7 +797,6 @@ def rotate(
             >>> rotated_img = F.rotate(fake_img, 90)
             >>> print(rotated_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -829,8 +819,7 @@ def rotate(
 
 
 def _get_perspective_coeffs(startpoints, endpoints):
-    """
-    get coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
+    """Get coefficients (a, b, c, d, e, f, g, h) of the perspective transforms.
 
     In Perspective Transform each pixel (x, y) in the original image gets transformed as,
      (x, y) -> ( (ax + by + c) / (gx + hy + 1), (dx + ey + f) / (gx + hy + 1) )
@@ -916,7 +905,6 @@ def perspective(
             >>> perspectived_img = F.perspective(fake_img, startpoints, endpoints)
             >>> print(perspectived_img.shape)
             [3, 256, 300]
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -961,7 +949,6 @@ def to_grayscale(img: _ImageDataT, num_output_channels: int = 1) -> _ImageDataT:
             >>> gray_img = F.to_grayscale(fake_img)
             >>> print(gray_img.size)
             (300, 256)
-
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -1032,7 +1019,6 @@ def normalize(
             >>> normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
             >>> print(normalized_img.max(), normalized_img.min())
             0.99215686 -1.0
-
     """
 
     if _is_tensor_image(img):
@@ -1095,7 +1081,6 @@ def erase(
              [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
             [[ 0.67233968,  0.        ,  0.        , -0.06695852],
              [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
-
     """
     if _is_tensor_image(img):
         return F_t.erase(img, i, j, h, w, v, inplace=inplace)

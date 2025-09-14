@@ -92,7 +92,9 @@ def _get_image_size(img, data_format):
 
 
 def _rgb_to_hsv(img):
-    """Convert a image Tensor from RGB to HSV. This implementation is based on Pillow (
+    """Convert a image Tensor from RGB to HSV.
+
+    This implementation is based on Pillow (
     https://github.com/python-pillow/Pillow/blob/main/src/libImaging/Convert.c)
     """
     maxc = img.max(axis=-3)
@@ -167,7 +169,6 @@ def normalize(img, mean, std, data_format='CHW'):
 
     Returns:
         Tensor: Normalized mage.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -309,7 +310,6 @@ def affine(img, matrix, interpolation="nearest", fill=None, data_format='CHW'):
 
     Returns:
         paddle.Tensor: Affined image.
-
     """
     ndim = len(img.shape)
     if ndim == 3:
@@ -368,7 +368,6 @@ def rotate(
 
     Returns:
         paddle.Tensor: Rotated image.
-
     """
 
     angle = -angle % 360
@@ -535,7 +534,6 @@ def perspective(
 
     Returns:
         paddle.Tensor: Perspectived image.
-
     """
 
     ndim = len(img.shape)
@@ -566,7 +564,6 @@ def vflip(img, data_format='CHW'):
 
     Returns:
         paddle.Tensor:  Vertically flipped image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -585,7 +582,6 @@ def hflip(img, data_format='CHW'):
 
     Returns:
         paddle.Tensor:  Horizontally flipped image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -608,7 +604,6 @@ def crop(img, top, left, height, width, data_format='CHW'):
             'CHW'. Default: 'CHW'.
     Returns:
         paddle.Tensor: Cropped image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -619,7 +614,8 @@ def crop(img, top, left, height, width, data_format='CHW'):
 
 
 def erase(img, i, j, h, w, v, inplace=False):
-    """Erase the pixels of selected area in input Tensor image with given value.
+    """Erase the pixels of selected area in input Tensor image with given
+    value.
 
     Args:
          img (paddle.Tensor): input Tensor image.
@@ -632,7 +628,6 @@ def erase(img, i, j, h, w, v, inplace=False):
 
      Returns:
          paddle.Tensor: Erased image.
-
     """
     _assert_image_tensor(img, 'CHW')
     if not inplace:
@@ -658,7 +653,6 @@ def center_crop(img, output_size, data_format='CHW'):
             'CHW'. Default: 'CHW'.
     Returns:
         paddle.Tensor: Cropped image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -680,8 +674,8 @@ def center_crop(img, output_size, data_format='CHW'):
 
 
 def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
-    """
-    Pads the given paddle.Tensor on all sides with specified padding mode and fill value.
+    """Pads the given paddle.Tensor on all sides with specified padding mode
+    and fill value.
 
     Args:
         img (paddle.Tensor): Image to be padded.
@@ -711,7 +705,6 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
     Returns:
         paddle.Tensor: Padded image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -767,8 +760,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
 
 
 def resize(img, size, interpolation='bilinear', data_format='CHW'):
-    """
-    Resizes the image to given size
+    """Resizes the image to given size.
 
     Args:
         input (paddle.Tensor): Image to be resized.
@@ -786,7 +778,6 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
             - 'HWC'
     Returns:
         paddle.Tensor: Resized image.
-
     """
     _assert_image_tensor(img, data_format)
 
@@ -837,7 +828,6 @@ def adjust_brightness(img, brightness_factor):
 
     Returns:
         paddle.Tensor: Brightness adjusted image.
-
     """
     _assert_image_tensor(img, 'CHW')
     assert brightness_factor >= 0, "brightness_factor should be non-negative."
@@ -861,7 +851,6 @@ def adjust_contrast(img, contrast_factor):
 
     Returns:
         paddle.Tensor: Contrast adjusted image.
-
     """
     _assert_image_tensor(img, 'chw')
     assert contrast_factor >= 0, "contrast_factor should be non-negative."
@@ -893,7 +882,6 @@ def adjust_saturation(img, saturation_factor):
 
     Returns:
         paddle.Tensor: Saturation adjusted image.
-
     """
     _assert_image_tensor(img, 'CHW')
     assert saturation_factor >= 0, "saturation_factor should be non-negative."
@@ -928,7 +916,6 @@ def adjust_hue(img, hue_factor):
 
     Returns:
         paddle.Tensor: Hue adjusted image.
-
     """
     _assert_image_tensor(img, 'CHW')
     assert hue_factor >= -0.5 and hue_factor <= 0.5, (
