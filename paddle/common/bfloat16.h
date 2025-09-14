@@ -267,7 +267,7 @@ HOSTDEVICE inline bfloat16 operator-(const bfloat16& a, const bfloat16& b) {
 #if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
   return bfloat16(__hsub(a.to_nv_bfloat16(), b.to_nv_bfloat16()));
 #else
-  return bfloat16(static_cast<float>(a) + static_cast<float>(b));
+  return bfloat16(static_cast<float>(a) - static_cast<float>(b));
 #endif
 }
 
