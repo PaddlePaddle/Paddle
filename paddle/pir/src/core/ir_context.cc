@@ -168,7 +168,10 @@ class IrContextImpl {
   Complex64Type complex64_type;
   Complex128Type complex128_type;
   Float8E4M3FNType float8e4m3fn_type;
+  Float8E4M3FNUZType float8e4m3fnuz_type;
   Float8E5M2Type float8e5m2_type;
+  Float8E5M2FNUZType float8e5m2fnuz_type;
+  Float8E8M0FNUType float8e8m0fnu_type;
 
   // Cached AbstractAttribute instances.
   std::unordered_map<TypeId, AbstractAttribute *>
@@ -215,7 +218,10 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->complex64_type = TypeManager::get<Complex64Type>(this);
   impl_->complex128_type = TypeManager::get<Complex128Type>(this);
   impl_->float8e4m3fn_type = TypeManager::get<Float8E4M3FNType>(this);
+  impl_->float8e4m3fnuz_type = TypeManager::get<Float8E4M3FNUZType>(this);
   impl_->float8e5m2_type = TypeManager::get<Float8E5M2Type>(this);
+  impl_->float8e5m2fnuz_type = TypeManager::get<Float8E5M2FNUZType>(this);
+  impl_->float8e8m0fnu_type = TypeManager::get<Float8E8M0FNUType>(this);
 }
 
 StorageManager &IrContext::type_storage_manager() {
@@ -384,8 +390,19 @@ Float8E4M3FNType Float8E4M3FNType::get(IrContext *ctx) {
   return ctx->impl().float8e4m3fn_type;
 }
 
+Float8E4M3FNUZType Float8E4M3FNUZType::get(IrContext *ctx) {
+  return ctx->impl().float8e4m3fnuz_type;
+}
 Float8E5M2Type Float8E5M2Type::get(IrContext *ctx) {
   return ctx->impl().float8e5m2_type;
+}
+
+Float8E5M2FNUZType Float8E5M2FNUZType::get(IrContext *ctx) {
+  return ctx->impl().float8e5m2fnuz_type;
+}
+
+Float8E8M0FNUType Float8E8M0FNUType::get(IrContext *ctx) {
+  return ctx->impl().float8e8m0fnu_type;
 }
 
 }  // namespace pir

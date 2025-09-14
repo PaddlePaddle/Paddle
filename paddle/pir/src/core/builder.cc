@@ -78,8 +78,17 @@ Complex128Type Builder::complex128_type() {
 Float8E4M3FNType Builder::float8e4m3fn_type() {
   return Float8E4M3FNType::get(context_);
 }
+Float8E4M3FNUZType Builder::float8e4m3fnuz_type() {
+  return Float8E4M3FNUZType::get(context_);
+}
 Float8E5M2Type Builder::float8e5m2_type() {
   return Float8E5M2Type::get(context_);
+}
+Float8E5M2FNUZType Builder::float8e5m2fnuz_type() {
+  return Float8E5M2FNUZType::get(context_);
+}
+Float8E8M0FNUType Builder::float8e8m0fnu_type() {
+  return Float8E8M0FNUType::get(context_);
 }
 StrAttribute Builder::str_attr(const std::string &value) {
   return StrAttribute::get(context_, value);

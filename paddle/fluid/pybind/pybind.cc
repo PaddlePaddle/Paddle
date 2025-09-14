@@ -3999,7 +3999,10 @@ All parameter, weight, gradient are variables in Paddle.
       .value("FLOAT16", phi::DataType::FLOAT16)
       .value("BFLOAT16", phi::DataType::BFLOAT16)
       .value("FLOAT8_E4M3FN", phi::DataType::FLOAT8_E4M3FN)
+      .value("FLOAT8_E4M3FNUZ", phi::DataType::FLOAT8_E4M3FNUZ)
       .value("FLOAT8_E5M2", phi::DataType::FLOAT8_E5M2)
+      .value("FLOAT8_E5M2FNUZ", phi::DataType::FLOAT8_E5M2FNUZ)
+      .value("FLOAT8_E8M0FNU", phi::DataType::FLOAT8_E8M0FNU)
       .value("PSTRING", phi::DataType::PSTRING)
       .value("ALL_DTYPE", phi::DataType::ALL_DTYPE)
       .export_values();

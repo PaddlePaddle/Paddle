@@ -323,7 +323,10 @@ paddle_type_to_proto_type = {
     DataType.COMPLEX64: core.VarDesc.VarType.COMPLEX64,
     DataType.COMPLEX128: core.VarDesc.VarType.COMPLEX128,
     DataType.FLOAT8_E4M3FN: core.VarDesc.VarType.FP8_E4M3FN,
+    DataType.FLOAT8_E4M3FNUZ: core.VarDesc.VarType.FP8_E4M3FNUZ,
     DataType.FLOAT8_E5M2: core.VarDesc.VarType.FP8_E5M2,
+    DataType.FLOAT8_E5M2FNUZ: core.VarDesc.VarType.FP8_E5M2FNUZ,
+    DataType.FLOAT8_E8M0FNU: core.VarDesc.VarType.FP8_E8M0FNU,
 }
 
 
@@ -1437,7 +1440,10 @@ def convert_np_dtype_to_proto_type(
         'complex128': core.VarDesc.VarType.COMPLEX128,
         'bfloat16': core.VarDesc.VarType.BF16,
         'float8_e4m3fn': core.VarDesc.VarType.FP8_E4M3FN,
+        'float8_e4m3fnuz': core.VarDesc.VarType.FP8_E4M3FNUZ,
         'float8_e5m2': core.VarDesc.VarType.FP8_E5M2,
+        'float8_e5m2fnuz': core.VarDesc.VarType.FP8_E5M2FNUZ,
+        'float8_e8m0fnu': core.VarDesc.VarType.FP8_E8M0FNU,
     }
 
     np_dtype_to_var_type = {

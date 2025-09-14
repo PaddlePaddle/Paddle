@@ -1513,7 +1513,10 @@ class SavePartialSafetensors:
             "bfloat16": 2,
             "uint8": 1,
             "float8_e4m3fn": 1,
+            "float8_e4m3fnuz": 1,
             "float8_e5m2": 1,
+            "float8_e5m2fnuz": 1,
+            "float8_e8m0fnu": 1,
         }
         self.index = {"metadata": {"total_size": 0}, "weight_map": {}}
         self.safe_index_name = prefix + ".safetensors.index.json"

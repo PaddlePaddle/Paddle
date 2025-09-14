@@ -950,6 +950,9 @@ INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<float>, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::complex<double>, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e4m3fn, GPUContext)
 INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e5m2, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e4m3fnuz, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e5m2fnuz, GPUContext)
+INSTANTIATE_STRIDEDCOPY_KERNEL(dtype::float8_e8m0fnu, GPUContext)
 #endif
 }  // namespace phi
 
@@ -970,4 +973,7 @@ PD_REGISTER_KERNEL(strided_copy,
                    ::phi::complex64,
                    ::phi::complex128,
                    ::phi::dtype::float8_e4m3fn,
-                   ::phi::dtype::float8_e5m2) {}
+                   ::phi::dtype::float8_e5m2,
+                   ::phi::dtype::float8_e4m3fnuz,
+                   ::phi::dtype::float8_e5m2fnuz,
+                   ::phi::dtype::float8_e8m0fnu) {}

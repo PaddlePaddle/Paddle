@@ -37,7 +37,10 @@ class BoolType;
 class Complex64Type;
 class Complex128Type;
 class Float8E4M3FNType;
+class Float8E4M3FNUZType;
 class Float8E5M2Type;
+class Float8E5M2FNUZType;
+class Float8E8M0FNUType;
 class StrAttribute;
 class BoolAttribute;
 class FloatAttribute;
@@ -164,7 +167,10 @@ class Builder {
   IR_API Complex64Type complex64_type();
   IR_API Complex128Type complex128_type();
   IR_API Float8E4M3FNType float8e4m3fn_type();
+  IR_API Float8E4M3FNUZType float8e4m3fnuz_type();
   IR_API Float8E5M2Type float8e5m2_type();
+  IR_API Float8E5M2FNUZType float8e5m2fnuz_type();
+  IR_API Float8E8M0FNUType float8e8m0fnu_type();
 
   IR_API StrAttribute str_attr(const std::string &value);
   IR_API BoolAttribute bool_attr(bool value);

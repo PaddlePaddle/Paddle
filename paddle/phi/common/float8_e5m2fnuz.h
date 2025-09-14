@@ -1,4 +1,4 @@
-// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,16 +13,4 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/common/float8_e5m2.h"
-
-namespace c10 {
-using Float8_e5m2 = ::phi::dtype::float8_e5m2;
-}  // namespace c10
-
-namespace at {
-using c10::Float8_e5m2;
-}  // namespace at
-namespace torch {
-using c10::Float8_e5m2;
-}  // namespace torch
+#include "paddle/common/float8_e5m2fnuz.h"

@@ -143,9 +143,21 @@ struct ApiWrapperProjectMaker {
           return adt::errors::TypeError{
               "float8_e4m3fn are not allowed being used by so function"};
         },
+        [&](axpr::CppDataType<axpr::float8_e4m3fnuz>) -> RetT {
+          return adt::errors::TypeError{
+              "float8_e4m3fnuz are not allowed being used by so function"};
+        },
         [&](axpr::CppDataType<axpr::float8_e5m2>) -> RetT {
           return adt::errors::TypeError{
               "float8_e5m2 are not allowed being used by so function"};
+        },
+        [&](axpr::CppDataType<axpr::float8_e5m2fnuz>) -> RetT {
+          return adt::errors::TypeError{
+              "float8_e5m2fnuz are not allowed being used by so function"};
+        },
+        [&](axpr::CppDataType<axpr::float8_e8m0fnu>) -> RetT {
+          return adt::errors::TypeError{
+              "float8_e8m0fnu are not allowed being used by so function"};
         },
         [&](axpr::CppDataType<axpr::float16>) -> RetT {
           return adt::errors::TypeError{
@@ -185,7 +197,16 @@ struct ApiWrapperProjectMaker {
         [&](axpr::CppPointerType<axpr::float8_e4m3fn*>) -> RetT {
           return "void*";
         },
+        [&](axpr::CppPointerType<axpr::float8_e4m3fnuz*>) -> RetT {
+          return "void*";
+        },
         [&](axpr::CppPointerType<axpr::float8_e5m2*>) -> RetT {
+          return "void*";
+        },
+        [&](axpr::CppPointerType<axpr::float8_e5m2fnuz*>) -> RetT {
+          return "void*";
+        },
+        [&](axpr::CppPointerType<axpr::float8_e8m0fnu*>) -> RetT {
           return "void*";
         },
         [&](axpr::CppPointerType<axpr::float16*>) -> RetT { return "void*"; },
@@ -226,7 +247,16 @@ struct ApiWrapperProjectMaker {
         [&](axpr::CppPointerType<const axpr::float8_e4m3fn*>) -> RetT {
           return "void*";
         },
+        [&](axpr::CppPointerType<const axpr::float8_e4m3fnuz*>) -> RetT {
+          return "void*";
+        },
         [&](axpr::CppPointerType<const axpr::float8_e5m2*>) -> RetT {
+          return "void*";
+        },
+        [&](axpr::CppPointerType<const axpr::float8_e5m2fnuz*>) -> RetT {
+          return "void*";
+        },
+        [&](axpr::CppPointerType<const axpr::float8_e8m0fnu*>) -> RetT {
           return "void*";
         },
         [&](axpr::CppPointerType<const axpr::float16*>) -> RetT {

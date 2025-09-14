@@ -228,6 +228,15 @@ phi::DenseTensor CallToBigDtype(const phi::DenseTensor& tensor) {
     } else if (tensor.dtype() == phi::DataType::FLOAT8_E5M2) {
       out = phi::Cast<phi::dtype::float8_e5m2, phi::GPUContext>(
           *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::FLOAT8_E4M3FNUZ) {
+      out = phi::Cast<phi::dtype::float8_e4m3fnuz, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::FLOAT8_E5M2FNUZ) {
+      out = phi::Cast<phi::dtype::float8_e5m2fnuz, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
+    } else if (tensor.dtype() == phi::DataType::FLOAT8_E8M0FNU) {
+      out = phi::Cast<phi::dtype::float8_e8m0fnu, phi::GPUContext>(
+          *dev_ctx, tensor, phi::DataType::FLOAT32);
     } else {
       return tensor;
     }

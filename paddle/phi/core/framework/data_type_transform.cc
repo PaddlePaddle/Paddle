@@ -203,9 +203,21 @@ void TransDataType(const phi::DenseTensor& in,
       phi::VisitDataType(
           dst_type, CastDataType<::phi::dtype::float8_e4m3fn>(in, out, ctx));
       break;
+    case proto::VarType::FP8_E4M3FNUZ:
+      phi::VisitDataType(
+          dst_type, CastDataType<::phi::dtype::float8_e4m3fnuz>(in, out, ctx));
+      break;
     case proto::VarType::FP8_E5M2:
       phi::VisitDataType(dst_type,
                          CastDataType<::phi::dtype::float8_e5m2>(in, out, ctx));
+      break;
+    case proto::VarType::FP8_E5M2FNUZ:
+      phi::VisitDataType(
+          dst_type, CastDataType<::phi::dtype::float8_e5m2fnuz>(in, out, ctx));
+      break;
+    case proto::VarType::FP8_E8M0FNU:
+      phi::VisitDataType(
+          dst_type, CastDataType<::phi::dtype::float8_e8m0fnu>(in, out, ctx));
       break;
     case proto::VarType::FP32:
       phi::VisitDataType(dst_type, CastDataType<float>(in, out, ctx));

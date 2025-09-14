@@ -243,20 +243,48 @@ struct PADDLE_ALIGN(2) bfloat16 {
   }
 };
 
+struct PADDLE_ALIGN(16) bfloat168 {
+  bfloat16 x, y, z, w, v, u, t, s;
+};
+
+struct PADDLE_ALIGN(8) bfloat164 {
+  bfloat16 x, y, z, w;
+};
+
+struct PADDLE_ALIGN(4) bfloat162 {
+  bfloat16 x, y;
+};
+
 HOSTDEVICE inline bfloat16 operator+(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(__hadd(a.to_nv_bfloat16(), b.to_nv_bfloat16()));
+#else
   return bfloat16(static_cast<float>(a) + static_cast<float>(b));
+#endif
 }
 
 HOSTDEVICE inline bfloat16 operator-(const bfloat16& a, const bfloat16& b) {
-  return bfloat16(static_cast<float>(a) - static_cast<float>(b));
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(__hsub(a.to_nv_bfloat16(), b.to_nv_bfloat16()));
+#else
+  return bfloat16(static_cast<float>(a) + static_cast<float>(b));
+#endif
 }
 
 HOSTDEVICE inline bfloat16 operator*(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(__hmul(a.to_nv_bfloat16(), b.to_nv_bfloat16()));
+#else
   return bfloat16(static_cast<float>(a) * static_cast<float>(b));
+#endif
 }
 
 HOSTDEVICE inline bfloat16 operator/(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(__hdiv(a.to_nv_bfloat16(), b.to_nv_bfloat16()));
+#else
   return bfloat16(static_cast<float>(a) / static_cast<float>(b));
+#endif
 }
 
 HOSTDEVICE inline bfloat16 operator-(const bfloat16& a) {
@@ -267,25 +295,25 @@ HOSTDEVICE inline bfloat16 operator-(const bfloat16& a) {
 
 HOSTDEVICE inline bfloat16& operator+=(bfloat16& a,  // NOLINT
                                        const bfloat16& b) {
-  a = bfloat16(static_cast<float>(a) + static_cast<float>(b));
+  a = a + b;
   return a;
 }
 
 HOSTDEVICE inline bfloat16& operator-=(bfloat16& a,  // NOLINT
                                        const bfloat16& b) {
-  a = bfloat16(static_cast<float>(a) - static_cast<float>(b));
+  a = a - b;
   return a;
 }
 
 HOSTDEVICE inline bfloat16& operator*=(bfloat16& a,  // NOLINT
                                        const bfloat16& b) {
-  a = bfloat16(static_cast<float>(a) * static_cast<float>(b));
+  a = a * b;
   return a;
 }
 
 HOSTDEVICE inline bfloat16& operator/=(bfloat16& a,  // NOLINT
                                        const bfloat16& b) {
-  a = bfloat16(static_cast<float>(a) / static_cast<float>(b));
+  a = a / b;
   return a;
 }
 
@@ -297,43 +325,78 @@ HOSTDEVICE inline bfloat16 raw_uint16_to_bfloat16(uint16_t a) {
 
 // Comparison operators
 HOSTDEVICE inline bool operator==(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __heq(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) == static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator!=(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hne(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) != static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator<(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hlt(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) < static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator<=(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hle(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) <= static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator>(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hgt(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) > static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool operator>=(const bfloat16& a, const bfloat16& b) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hge(a.to_nv_bfloat16(), b.to_nv_bfloat16());
+#else
   return static_cast<float>(a) >= static_cast<float>(b);
+#endif
 }
 
 HOSTDEVICE inline bool(isnan)(const bfloat16& a) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hisnan(a.to_nv_bfloat16());
+#else
   return (a.x & 0x7FFF) > 0x7F80;
+#endif
 }
 
 HOSTDEVICE inline bool(isinf)(const bfloat16& a) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return __hisinf(a.to_nv_bfloat16());
+#else
   return (a.x & 0x7F80) == 0x7F80;
+#endif
 }
 
 HOSTDEVICE inline bool(isfinite)(const bfloat16& a) {
   return !((isnan)(a)) && !((isinf)(a));
 }
-
 HOSTDEVICE inline bfloat16(abs)(const bfloat16& a) {
+#if defined(PADDLE_CUDA_BF16) && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+  return bfloat16(__habs(a.to_nv_bfloat16()));
+#else
   return bfloat16(std::abs(static_cast<float>(a)));
+#endif
 }
 
 inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
@@ -343,6 +406,51 @@ inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
 
 }  // namespace dtype
 }  // namespace phi
+
+// for runtime calls
+#if defined(PADDLE_CUDA_BF16)
+__device__ inline phi::dtype::bfloat16 __shfl_sync(unsigned mask,
+                                                   phi::dtype::bfloat16 var,
+                                                   int srcLane,
+                                                   int width = warpSize) {
+  return phi::dtype::bfloat16(
+      __shfl_sync(mask, var.to_nv_bfloat16(), srcLane, width));
+}
+
+__device__ inline phi::dtype::bfloat16 __shfl_up_sync(unsigned mask,
+                                                      phi::dtype::bfloat16 var,
+                                                      unsigned int delta,
+                                                      int width = warpSize) {
+  return phi::dtype::bfloat16(
+      __shfl_up_sync(mask, var.to_nv_bfloat16(), delta, width));
+}
+
+__device__ inline phi::dtype::bfloat16 __shfl_down_sync(
+    unsigned mask,
+    phi::dtype::bfloat16 var,
+    unsigned int delta,
+    int width = warpSize) {
+  return phi::dtype::bfloat16(
+      __shfl_down_sync(mask, var.to_nv_bfloat16(), delta, width));
+}
+
+__device__ inline phi::dtype::bfloat16 __shfl_xor_sync(unsigned mask,
+                                                       phi::dtype::bfloat16 var,
+                                                       int laneMask,
+                                                       int width = warpSize) {
+  return phi::dtype::bfloat16(
+      __shfl_xor_sync(mask, var.to_nv_bfloat16(), laneMask, width));
+}
+
+__host__ __device__ inline phi::dtype::bfloat16 max(
+    const phi::dtype::bfloat16& a, const phi::dtype::bfloat16& b) {
+  return a > b ? a : b;
+}
+__host__ __device__ inline phi::dtype::bfloat16 min(
+    const phi::dtype::bfloat16& a, const phi::dtype::bfloat16& b) {
+  return a < b ? a : b;
+}
+#endif  // PADDLE_CUDA_BF16
 
 namespace cinn::common {
 using bfloat16 = ::phi::dtype::bfloat16;

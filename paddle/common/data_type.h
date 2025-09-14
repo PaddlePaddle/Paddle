@@ -19,7 +19,10 @@ limitations under the License. */
 #include "paddle/common/exception.h"
 #include "paddle/common/float16.h"
 #include "paddle/common/float8_e4m3fn.h"
+#include "paddle/common/float8_e4m3fnuz.h"
 #include "paddle/common/float8_e5m2.h"
+#include "paddle/common/float8_e5m2fnuz.h"
+#include "paddle/common/float8_e8m0fnu.h"
 #include "paddle/utils/test_macros.h"
 
 namespace phi {
@@ -35,7 +38,10 @@ using complex128 = ::phi::dtype::complex<double>;
 using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
+using float8_e4m3fnuz = ::phi::dtype::float8_e4m3fnuz;
 using float8_e5m2 = ::phi::dtype::float8_e5m2;
+using float8_e5m2fnuz = ::phi::dtype::float8_e5m2fnuz;
+using float8_e8m0fnu = ::phi::dtype::float8_e8m0fnu;
 using pstring = ::phi::dtype::pstring;
 
 // The enum value are consistent with jit/property.proto
@@ -76,8 +82,12 @@ enum class TEST_API DataType {
 
   // This format has 1 sign bit, 4 exponent bits, and 3 mantissa bits.
   FLOAT8_E4M3FN,
+  FLOAT8_E4M3FNUZ,
   // This format has 1 sign bit, 5 exponent bits, and 2 mantissa bits.
   FLOAT8_E5M2,
+  FLOAT8_E5M2FNUZ,
+
+  FLOAT8_E8M0FNU,
 
   NUM_DATA_TYPES,
   // See Note [ Why we need ALL in basic kernel key member? ]
@@ -90,7 +100,10 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::UINT8:
     case DataType::INT8:
     case DataType::FLOAT8_E4M3FN:
+    case DataType::FLOAT8_E4M3FNUZ:
     case DataType::FLOAT8_E5M2:
+    case DataType::FLOAT8_E5M2FNUZ:
+    case DataType::FLOAT8_E8M0FNU:
       return 1;
     case DataType::BFLOAT16:
     case DataType::FLOAT16:
@@ -120,24 +133,27 @@ inline size_t SizeOf(DataType data_type) {
   return 0;
 }
 
-#define PD_FOR_EACH_DATA_TYPE(_)            \
-  _(bool, DataType::BOOL)                   \
-  _(int8_t, DataType::INT8)                 \
-  _(uint8_t, DataType::UINT8)               \
-  _(int16_t, DataType::INT16)               \
-  _(uint16_t, DataType::UINT16)             \
-  _(int32_t, DataType::INT32)               \
-  _(uint32_t, DataType::UINT32)             \
-  _(int64_t, DataType::INT64)               \
-  _(uint64_t, DataType::UINT64)             \
-  _(bfloat16, DataType::BFLOAT16)           \
-  _(float8_e4m3fn, DataType::FLOAT8_E4M3FN) \
-  _(float8_e5m2, DataType::FLOAT8_E5M2)     \
-  _(float16, DataType::FLOAT16)             \
-  _(float, DataType::FLOAT32)               \
-  _(double, DataType::FLOAT64)              \
-  _(complex64, DataType::COMPLEX64)         \
-  _(complex128, DataType::COMPLEX128)       \
+#define PD_FOR_EACH_DATA_TYPE(_)                \
+  _(bool, DataType::BOOL)                       \
+  _(int8_t, DataType::INT8)                     \
+  _(uint8_t, DataType::UINT8)                   \
+  _(int16_t, DataType::INT16)                   \
+  _(uint16_t, DataType::UINT16)                 \
+  _(int32_t, DataType::INT32)                   \
+  _(uint32_t, DataType::UINT32)                 \
+  _(int64_t, DataType::INT64)                   \
+  _(uint64_t, DataType::UINT64)                 \
+  _(bfloat16, DataType::BFLOAT16)               \
+  _(float8_e4m3fn, DataType::FLOAT8_E4M3FN)     \
+  _(float8_e4m3fnuz, DataType::FLOAT8_E4M3FNUZ) \
+  _(float8_e5m2, DataType::FLOAT8_E5M2)         \
+  _(float8_e5m2fnuz, DataType::FLOAT8_E5M2FNUZ) \
+  _(float8_e8m0fnu, DataType::FLOAT8_E8M0FNU)   \
+  _(float16, DataType::FLOAT16)                 \
+  _(float, DataType::FLOAT32)                   \
+  _(double, DataType::FLOAT64)                  \
+  _(complex64, DataType::COMPLEX64)             \
+  _(complex128, DataType::COMPLEX128)           \
   _(pstring, DataType::PSTRING)
 
 template <DataType T>
@@ -201,8 +217,17 @@ inline std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::FLOAT8_E4M3FN:
       os << "float8_e4m3fn";
       break;
+    case DataType::FLOAT8_E4M3FNUZ:
+      os << "float8_e4m3fnuz";
+      break;
     case DataType::FLOAT8_E5M2:
       os << "float8_e5m2";
+      break;
+    case DataType::FLOAT8_E5M2FNUZ:
+      os << "float8_e5m2fnuz";
+      break;
+    case DataType::FLOAT8_E8M0FNU:
+      os << "float8_e8m0fnu";
       break;
     case DataType::BFLOAT16:
       os << "bfloat16";
@@ -255,8 +280,14 @@ inline std::string DataTypeToString(const DataType& dtype) {
       return "uint64";
     case DataType::FLOAT8_E4M3FN:
       return "float8_e4m3fn";
+    case DataType::FLOAT8_E4M3FNUZ:
+      return "float8_e4m3fnuz";
     case DataType::FLOAT8_E5M2:
       return "float8_e5m2";
+    case DataType::FLOAT8_E5M2FNUZ:
+      return "float8_e5m2fnuz";
+    case DataType::FLOAT8_E8M0FNU:
+      return "float8_e8m0fnu";
     case DataType::BFLOAT16:
       return "bfloat16";
     case DataType::FLOAT16:
@@ -285,6 +316,14 @@ inline DataType StringToDataType(const std::string& dtype) {
     return DataType::INT8;
   } else if (dtype == "float8_e4m3fn") {
     return DataType::FLOAT8_E4M3FN;
+  } else if (dtype == "float8_e4m3fnuz") {
+    return DataType::FLOAT8_E4M3FNUZ;
+  } else if (dtype == "float8_e5m2") {
+    return DataType::FLOAT8_E5M2;
+  } else if (dtype == "float8_e5m2fnuz") {
+    return DataType::FLOAT8_E5M2FNUZ;
+  } else if (dtype == "float8_e8m0fnu") {
+    return DataType::FLOAT8_E8M0FNU;
   } else if (dtype == "uint8") {
     return DataType::UINT8;
   } else if (dtype == "int16") {
@@ -317,6 +356,11 @@ inline DataType StringToDataType(const std::string& dtype) {
     PD_THROW("Invalid enum data type `", dtype, "`.");
   }
 }
+inline bool isFloat8Type(DataType t) {
+  return t == DataType::FLOAT8_E4M3FN || t == DataType::FLOAT8_E4M3FNUZ ||
+         t == DataType::FLOAT8_E5M2 || t == DataType::FLOAT8_E5M2FNUZ ||
+         t == DataType::FLOAT8_E8M0FNU;
+}
 
 }  // namespace phi
 
@@ -324,7 +368,11 @@ namespace paddle {
 // In order to be compatible with the original custom operator Tensor interface
 using DataType = phi::DataType;
 using float8_e4m3fn = phi::float8_e4m3fn;
+using float8_e4m3fnuz = phi::float8_e4m3fnuz;
 using float8_e5m2 = phi::float8_e5m2;
+using float8_e5m2fnuz = phi::float8_e5m2fnuz;
+using float8_e5m2fnuz = phi::float8_e5m2fnuz;
+using float8_e8m0fnu = phi::float8_e8m0fnu;
 using bfloat16 = phi::bfloat16;
 using complex64 = phi::complex64;
 using complex128 = phi::complex128;

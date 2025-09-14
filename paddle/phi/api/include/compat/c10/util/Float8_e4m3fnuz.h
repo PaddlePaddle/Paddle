@@ -14,15 +14,14 @@
 
 #pragma once
 
-#include "paddle/common/float8_e5m2.h"
+#include "paddle/common/float8_e4m3fnuz.h"
 
 namespace c10 {
-using Float8_e5m2 = ::phi::dtype::float8_e5m2;
+using Float8_e4m3fnuz = ::phi::dtype::float8_e4m3fnuz;
 }  // namespace c10
-
 namespace at {
-using c10::Float8_e5m2;
+using c10::Float8_e4m3fnuz;
 }  // namespace at
 namespace torch {
-using c10::Float8_e5m2;
+using c10::Float8_e4m3fnuz;
 }  // namespace torch

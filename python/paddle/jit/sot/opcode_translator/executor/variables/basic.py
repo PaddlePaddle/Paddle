@@ -157,7 +157,10 @@ FP_DTYPE_ABBRS = {
     core.DataType.FLOAT32: "float32",
     core.DataType.FLOAT16: "float16",
     core.DataType.FLOAT8_E4M3FN: "float8_e4m3fn",
+    core.DataType.FLOAT8_E4M3FNUZ: "float8_e4m3fnuz",
     core.DataType.FLOAT8_E5M2: "float8_e5m2",
+    core.DataType.FLOAT8_E5M2FNUZ: "float8_e5m2fnuz",
+    core.DataType.FLOAT8_E8M0FNU: "float8_e8m0fnu",
 }
 
 CP_DTYPE_ABBRS = {
@@ -954,7 +957,10 @@ def get_symbolic_from_meta(meta_or_null: MetaInfoOrNull) -> SymbolicValue:
         paddle.float32,
         paddle.float64,
         paddle.float8_e4m3fn,
+        paddle.float8_e4m3fnuz,
         paddle.float8_e5m2,
+        paddle.float8_e5m2fnuz,
+        paddle.float8_e8m0fnu,
     ]:
         value = SymbolicFloat()
     else:

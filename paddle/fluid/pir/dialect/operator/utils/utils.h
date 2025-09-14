@@ -61,8 +61,14 @@ static inline phi::DataType TransToPhiDataType(pir::Type dtype) {
     return phi::DataType::COMPLEX128;
   } else if (dtype.isa<pir::Float8E4M3FNType>()) {
     return phi::DataType::FLOAT8_E4M3FN;
+  } else if (dtype.isa<pir::Float8E4M3FNUZType>()) {
+    return phi::DataType::FLOAT8_E4M3FNUZ;
   } else if (dtype.isa<pir::Float8E5M2Type>()) {
     return phi::DataType::FLOAT8_E5M2;
+  } else if (dtype.isa<pir::Float8E5M2FNUZType>()) {
+    return phi::DataType::FLOAT8_E5M2FNUZ;
+  } else if (dtype.isa<pir::Float8E8M0FNUType>()) {
+    return phi::DataType::FLOAT8_E8M0FNU;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
         "Unsupported ir data type when casting it into "
@@ -106,8 +112,14 @@ static inline pir::Type TransToIrDataType(phi::DataType dtype,
       return pir::Complex128Type::get(ctx);
     case phi::DataType::FLOAT8_E4M3FN:
       return pir::Float8E4M3FNType::get(ctx);
+    case phi::DataType::FLOAT8_E4M3FNUZ:
+      return pir::Float8E4M3FNUZType::get(ctx);
     case phi::DataType::FLOAT8_E5M2:
       return pir::Float8E5M2Type::get(ctx);
+    case phi::DataType::FLOAT8_E5M2FNUZ:
+      return pir::Float8E5M2FNUZType::get(ctx);
+    case phi::DataType::FLOAT8_E8M0FNU:
+      return pir::Float8E8M0FNUType::get(ctx);
     default:
       PADDLE_THROW(common::errors::Unimplemented(
           "Unsupported phi data type `%s` when casting it into "

@@ -46,7 +46,10 @@ vartype_to_datatype = {
     VarDesc.VarType.COMPLEX64: DataType.COMPLEX64,
     VarDesc.VarType.COMPLEX128: DataType.COMPLEX128,
     VarDesc.VarType.FP8_E4M3FN: DataType.FLOAT8_E4M3FN,
+    VarDesc.VarType.FP8_E4M3FNUZ: DataType.FLOAT8_E4M3FNUZ,
     VarDesc.VarType.FP8_E5M2: DataType.FLOAT8_E5M2,
+    VarDesc.VarType.FP8_E5M2FNUZ: DataType.FLOAT8_E5M2FNUZ,
+    VarDesc.VarType.FP8_E8M0FNU: DataType.FLOAT8_E8M0FNU,
     VarDesc.VarType.STRING: DataType.PSTRING,
     VarDesc.VarType.RAW: DataType.ALL_DTYPE,
 }
@@ -79,7 +82,10 @@ np_type_to_paddle_type = {
     np.complex64: DataType.COMPLEX64,
     np.complex128: DataType.COMPLEX128,
     "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
+    "float8_e4m3fnuz": DataType.FLOAT8_E4M3FNUZ,
     "float8_e5m2": DataType.FLOAT8_E5M2,
+    "float8_e5m2fnuz": DataType.FLOAT8_E5M2FNUZ,
+    "float8_e8m0fnu": DataType.FLOAT8_E8M0FNU,
 }
 
 _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
@@ -96,7 +102,10 @@ _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     DataType.COMPLEX64: 'complex64',
     DataType.COMPLEX128: 'complex128',
     DataType.FLOAT8_E4M3FN: 'float8_e4m3fn',
+    DataType.FLOAT8_E4M3FNUZ: 'float8_e4m3fnuz',
     DataType.FLOAT8_E5M2: 'float8_e5m2',
+    DataType.FLOAT8_E5M2FNUZ: 'float8_e5m2fnuz',
+    DataType.FLOAT8_E8M0FNU: 'float8_e8m0fnu',
 }
 
 
@@ -116,7 +125,10 @@ str_to_paddle_type = {
     "complex128": DataType.COMPLEX128,
     "bfloat16": DataType.BFLOAT16,
     "float8_e4m3fn": DataType.FLOAT8_E4M3FN,
+    "float8_e4m3fnuz": DataType.FLOAT8_E4M3FNUZ,
     "float8_e5m2": DataType.FLOAT8_E5M2,
+    "float8_e5m2fnuz": DataType.FLOAT8_E5M2FNUZ,
+    "float8_e8m0fnu": DataType.FLOAT8_E8M0FNU,
 }
 
 

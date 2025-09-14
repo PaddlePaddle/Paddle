@@ -114,5 +114,8 @@ PD_REGISTER_KERNEL(expand,
                    phi::bfloat16,
                    phi::dtype::float8_e4m3fn,
                    phi::dtype::float8_e5m2,
+                   phi::dtype::float8_e4m3fnuz,
+                   phi::dtype::float8_e5m2fnuz,
+                   phi::dtype::float8_e8m0fnu,
                    phi::complex64,
                    phi::complex128) {}

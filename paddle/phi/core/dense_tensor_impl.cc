@@ -16,7 +16,10 @@ limitations under the License. */
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/float8_e4m3fn.h"
+#include "paddle/phi/common/float8_e4m3fnuz.h"
 #include "paddle/phi/common/float8_e5m2.h"
+#include "paddle/phi/common/float8_e5m2fnuz.h"
+#include "paddle/phi/common/float8_e8m0fnu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -215,7 +218,10 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e4m3fn)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e4m3fnuz)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e5m2)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e5m2fnuz)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float8_e8m0fnu)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)

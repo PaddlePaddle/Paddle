@@ -46,7 +46,10 @@ def bind_vartype():
     global float16
     global bfloat16
     global float8_e4m3fn
+    global float8_e4m3fnuz
     global float8_e5m2
+    global float8_e5m2fnuz
+    global float8_e8m0fnu
     global cfloat
     global complex64
     global cdouble
@@ -76,7 +79,10 @@ def bind_vartype():
     half = float16
     bfloat16 = VarDesc.VarType.BF16
     float8_e4m3fn = VarDesc.VarType.FP8_E4M3FN
+    float8_e4m3fnuz = VarDesc.VarType.FP8_E4M3FNUZ
     float8_e5m2 = VarDesc.VarType.FP8_E5M2
+    float8_e5m2fnuz = VarDesc.VarType.FP8_E5M2FNUZ
+    float8_e8m0fnu = VarDesc.VarType.FP8_E8M0FNU
 
     complex64 = VarDesc.VarType.COMPLEX64
     cfloat = complex64
@@ -105,7 +111,10 @@ def bind_vartype():
     paddle.half = half
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
+    paddle.float8_e4m3fnuz = float8_e4m3fnuz
     paddle.float8_e5m2 = float8_e5m2
+    paddle.float8_e5m2fnuz = float8_e5m2fnuz
+    paddle.float8_e8m0fnu = float8_e8m0fnu
 
     paddle.complex64 = complex64
     paddle.cfloat = cfloat
@@ -136,7 +145,10 @@ def bind_datatype():
     global float16
     global bfloat16
     global float8_e4m3fn
+    global float8_e4m3fnuz
     global float8_e5m2
+    global float8_e5m2fnuz
+    global float8_e8m0fnu
     global cfloat
     global complex64
     global cdouble
@@ -170,7 +182,10 @@ def bind_datatype():
     half = float16
     bfloat16 = DataType.BFLOAT16
     float8_e4m3fn = DataType.FLOAT8_E4M3FN
+    float8_e4m3fnuz = DataType.FLOAT8_E4M3FNUZ
     float8_e5m2 = DataType.FLOAT8_E5M2
+    float8_e5m2fnuz = DataType.FLOAT8_E5M2FNUZ
+    float8_e8m0fnu = DataType.FLOAT8_E8M0FNU
 
     complex64 = DataType.COMPLEX64
     cfloat = complex64
@@ -200,7 +215,10 @@ def bind_datatype():
     paddle.half = half
     paddle.bfloat16 = bfloat16
     paddle.float8_e4m3fn = float8_e4m3fn
+    paddle.float8_e4m3fnuz = float8_e4m3fnuz
     paddle.float8_e5m2 = float8_e5m2
+    paddle.float8_e5m2fnuz = float8_e5m2fnuz
+    paddle.float8_e8m0fnu = float8_e8m0fnu
 
     paddle.complex64 = complex64
     paddle.cfloat = cfloat

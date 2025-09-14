@@ -23,7 +23,10 @@ using complex128 = ::phi::dtype::complex<double>;
 using float16 = ::phi::dtype::float16;
 using bfloat16 = ::phi::dtype::bfloat16;
 using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
+using float8_e4m3fnuz = ::phi::dtype::float8_e4m3fnuz;
 using float8_e5m2 = ::phi::dtype::float8_e5m2;
+using float8_e5m2fnuz = ::phi::dtype::float8_e5m2fnuz;
+using float8_e8m0fnu = ::phi::dtype::float8_e8m0fnu;
 using pstring = ::phi::dtype::pstring;
 
 #define AP_FOR_EACH_INT_TYPE(_) \

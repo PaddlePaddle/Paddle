@@ -44,7 +44,10 @@ complex128: dtype
 bool: dtype
 
 float8_e4m3fn: dtype
+float8_e4m3fnuz: dtype
 float8_e5m2: dtype
+float8_e5m2fnuz: dtype
+float8_e8m0fnu: dtype
 
 def finfo(dtype: dtype | str) -> core_finfo: ...
 def iinfo(dtype: dtype | str) -> core_iinfo: ...

@@ -37,12 +37,20 @@ def fake_fp8_quant(input, scale, axis=-1, type='e4m3'):
         return paddle.cast(
             (inp * 448 / scale).clip(-448, 448), "float8_e4m3fn"
         ).astype(input.dtype)  # clip then cast
-    elif type == 'e5m2':
+    elif type == 'e4m3fnuz':
+        return paddle.cast(
+            (inp * 240 / scale).clip(-240, 240), "float8_e4m3fnuz"
+        ).astype(input.dtype)  # clip then cast
+    elif type == 'e5m2' or type == 'e5m2fnuz':
         return paddle.cast(
             (inp * 57344 / scale).clip(-57344, 57344), "float8_e5m2"
         ).astype(input.dtype)  # clip then cast
+    elif type == 'e5m2fnuz':
+        return paddle.cast(
+            (inp * 57344 / scale).clip(-57344, 57344), "float8_e5m2fnuz"
+        ).astype(input.dtype)  # clip then cast
     else:
-        raise NotImplementedError("only support e4m3 or e5m2 now")
+        raise NotImplementedError("only support e4m3(fnuz) or e5m2(fnuz) now")
 
 
 def fake_fp8_dequant(input, scale, axis=-1, type='e4m3'):
@@ -53,10 +61,12 @@ def fake_fp8_dequant(input, scale, axis=-1, type='e4m3'):
         scale = scale.reshape(shape)
     if type == 'e4m3':
         return (input.astype("float32") / 448 * scale).astype(input.dtype)
-    elif type == 'e5m2':
+    elif type == 'e4m3fnuz':
+        return (input.astype("float32") / 240 * scale).astype(input.dtype)
+    elif type == 'e5m2' or type == 'e5m2fnuz':
         return (input.astype("float32") / 57344 * scale).astype(input.dtype)
     else:
-        raise NotImplementedError("only support e4m3 or e5m2 now")
+        raise NotImplementedError("only support e4m3(fnuz) or e5m2(fnuz) now")
 
 
 class LinearQuanterDequanter(Layer):

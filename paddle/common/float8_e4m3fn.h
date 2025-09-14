@@ -92,6 +92,10 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
   HOSTDEVICE inline explicit float8_e4m3fn(const __nv_fp8_e4m3& val) {
     x = *reinterpret_cast<const uint8_t*>(&val);  // NOLINT
   }
+  HOSTDEVICE inline explicit float8_e4m3fn(const __nv_bfloat16& val) {
+    __nv_fp8_e4m3 tmp = __nv_fp8_e4m3(val);
+    x = *reinterpret_cast<uint8_t*>(&tmp);
+  }
 #endif
 
   template <class T>
@@ -252,6 +256,14 @@ struct PADDLE_ALIGN(1) float8_e4m3fn {
     uint32_t ui;
   };
 };
+// Vector types
+
+struct PADDLE_ALIGN(2) float8e4m3fn2 {
+  float8_e4m3fn x, y;
+};
+struct PADDLE_ALIGN(4) float8e4m3fn4 {
+  float8_e4m3fn x, y, z, w;
+};
 
 HOSTDEVICE inline float8_e4m3fn operator+(const float8_e4m3fn& a,
                                           const float8_e4m3fn& b) {
@@ -364,9 +376,11 @@ inline std::ostream& operator<<(std::ostream& os, const float8_e4m3fn& a) {
 
 }  // namespace dtype
 }  // namespace phi
+
 namespace cinn::common {
 using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
 }  // namespace cinn::common
+
 namespace std {
 
 template <>

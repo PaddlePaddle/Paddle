@@ -259,8 +259,14 @@ template PADDLE_API phi::dtype::complex<double>
     *Tensor::mutable_data<phi::dtype::complex<double>>();
 template PADDLE_API phi::dtype::float8_e4m3fn *
 Tensor::mutable_data<phi::dtype::float8_e4m3fn>();
+template PADDLE_API phi::dtype::float8_e4m3fnuz *
+Tensor::mutable_data<phi::dtype::float8_e4m3fnuz>();
 template PADDLE_API phi::dtype::float8_e5m2 *
 Tensor::mutable_data<phi::dtype::float8_e5m2>();
+template PADDLE_API phi::dtype::float8_e5m2fnuz *
+Tensor::mutable_data<phi::dtype::float8_e5m2fnuz>();
+template PADDLE_API phi::dtype::float8_e8m0fnu *
+Tensor::mutable_data<phi::dtype::float8_e8m0fnu>();
 
 template <typename T>
 T *Tensor::mutable_data(const Place &place) {
@@ -326,8 +332,14 @@ template PADDLE_API const phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>() const;
 template PADDLE_API const phi::dtype::float8_e4m3fn *
 Tensor::data<phi::dtype::float8_e4m3fn>() const;
+template PADDLE_API const phi::dtype::float8_e4m3fnuz *
+Tensor::data<phi::dtype::float8_e4m3fnuz>() const;
 template PADDLE_API const phi::dtype::float8_e5m2 *
 Tensor::data<phi::dtype::float8_e5m2>() const;
+template PADDLE_API const phi::dtype::float8_e5m2fnuz *
+Tensor::data<phi::dtype::float8_e5m2fnuz>() const;
+template PADDLE_API const phi::dtype::float8_e8m0fnu *
+Tensor::data<phi::dtype::float8_e8m0fnu>() const;
 
 template <typename T>
 T *Tensor::data() {
@@ -360,8 +372,14 @@ template PADDLE_API phi::dtype::complex<double>
     *Tensor::data<phi::dtype::complex<double>>();
 template PADDLE_API phi::dtype::float8_e4m3fn *
 Tensor::data<phi::dtype::float8_e4m3fn>();
+template PADDLE_API phi::dtype::float8_e4m3fnuz *
+Tensor::data<phi::dtype::float8_e4m3fnuz>();
 template PADDLE_API phi::dtype::float8_e5m2 *
 Tensor::data<phi::dtype::float8_e5m2>();
+template PADDLE_API phi::dtype::float8_e5m2fnuz *
+Tensor::data<phi::dtype::float8_e5m2fnuz>();
+template PADDLE_API phi::dtype::float8_e8m0fnu *
+Tensor::data<phi::dtype::float8_e8m0fnu>();
 
 const void *Tensor::data() const {
   if (is_dense_tensor()) {

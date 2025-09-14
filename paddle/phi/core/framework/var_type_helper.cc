@@ -65,8 +65,14 @@ static DataTypeMap* InitDataTypeMap() {
   RegType(pstring, paddle::framework::proto::VarType::PSTRING);
   RegType(::phi::dtype::float8_e5m2,
           paddle::framework::proto::VarType::FP8_E5M2);
+  RegType(::phi::dtype::float8_e5m2fnuz,
+          paddle::framework::proto::VarType::FP8_E5M2FNUZ);
   RegType(::phi::dtype::float8_e4m3fn,
           paddle::framework::proto::VarType::FP8_E4M3FN);
+  RegType(::phi::dtype::float8_e4m3fnuz,
+          paddle::framework::proto::VarType::FP8_E4M3FNUZ);
+  RegType(::phi::dtype::float8_e8m0fnu,
+          paddle::framework::proto::VarType::FP8_E8M0FNU);
 #undef RegType
   return retv;
 }

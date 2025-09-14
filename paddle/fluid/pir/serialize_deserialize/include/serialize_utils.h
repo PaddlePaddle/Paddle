@@ -611,10 +611,22 @@ Json AttrTypeWriter::WriteBuiltInType(const pir::Type& type) {
     VLOG(8) << "Write Float8E4M3FNType ... ";
     return pir::serializeTypeToJson<pir::Float8E4M3FNType>(
         type.dyn_cast<pir::Float8E4M3FNType>());
+  } else if (type.isa<pir::Float8E4M3FNUZType>()) {
+    VLOG(8) << "Write Float8E4M3FNUZType ... ";
+    return pir::serializeTypeToJson<pir::Float8E4M3FNUZType>(
+        type.dyn_cast<pir::Float8E4M3FNUZType>());
   } else if (type.isa<pir::Float8E5M2Type>()) {
     VLOG(8) << "Write Float8E5M2Type ... ";
     return pir::serializeTypeToJson<pir::Float8E5M2Type>(
         type.dyn_cast<pir::Float8E5M2Type>());
+  } else if (type.isa<pir::Float8E5M2FNUZType>()) {
+    VLOG(8) << "Write Float8E5M2FNUZType ... ";
+    return pir::serializeTypeToJson<pir::Float8E5M2FNUZType>(
+        type.dyn_cast<pir::Float8E5M2FNUZType>());
+  } else if (type.isa<pir::Float8E8M0FNUType>()) {
+    VLOG(8) << "Write Float8E8M0FNUType ... ";
+    return pir::serializeTypeToJson<pir::Float8E8M0FNUType>(
+        type.dyn_cast<pir::Float8E8M0FNUType>());
   } else if (type.isa<pir::Complex64Type>()) {
     VLOG(8) << "Write Complex64Type ... ";
     return pir::serializeTypeToJson<pir::Complex64Type>(

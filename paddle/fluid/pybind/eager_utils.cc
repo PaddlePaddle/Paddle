@@ -110,7 +110,13 @@ int TensorDtype2NumpyDtype(phi::DataType dtype) {
       return pybind11::detail::npy_api::NPY_UNICODE_;
     case phi::DataType::FLOAT8_E4M3FN:
       return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E4M3FNUZ:
+      return pybind11::detail::npy_api::NPY_BYTE_;
     case phi::DataType::FLOAT8_E5M2:
+      return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E5M2FNUZ:
+      return pybind11::detail::npy_api::NPY_BYTE_;
+    case phi::DataType::FLOAT8_E8M0FNU:
       return pybind11::detail::npy_api::NPY_BYTE_;
     default:
       PADDLE_THROW(common::errors::InvalidArgument(
@@ -182,8 +188,14 @@ phi::DataType StrDtype2TensorDtype(const std::string& np_dtype) {
     return phi::DataType::COMPLEX128;
   } else if (np_dtype == "float8_e4m3fn") {
     return phi::DataType::FLOAT8_E4M3FN;
+  } else if (np_dtype == "float8_e4m3fnuz") {
+    return phi::DataType::FLOAT8_E4M3FNUZ;
   } else if (np_dtype == "float8_e5m2") {
     return phi::DataType::FLOAT8_E5M2;
+  } else if (np_dtype == "float8_e5m2fnuz") {
+    return phi::DataType::FLOAT8_E5M2FNUZ;
+  } else if (np_dtype == "float8_e8m0fnu") {
+    return phi::DataType::FLOAT8_E8M0FNU;
   } else if (np_dtype == "unicode") {
     return phi::DataType::PSTRING;
   } else {

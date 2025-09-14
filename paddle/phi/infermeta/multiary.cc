@@ -2324,16 +2324,11 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
       2,
       errors::InvalidArgument("Input B should have 2 dimensions"));
 
-  const auto IsFp8Dtype = [](const paddle::DataType dtype) {
-    return dtype == phi::DataType::FLOAT8_E4M3FN ||
-           dtype == phi::DataType::FLOAT8_E5M2;
-  };
-
-  PADDLE_ENFORCE_EQ(IsFp8Dtype(A.dtype()),
+  PADDLE_ENFORCE_EQ(phi::isFloat8Type(A.dtype()),
                     true,
                     errors::InvalidArgument("A must be FP8 dtype"));
 
-  PADDLE_ENFORCE_EQ(IsFp8Dtype(B.dtype()),
+  PADDLE_ENFORCE_EQ(phi::isFloat8Type(B.dtype()),
                     true,
                     errors::InvalidArgument("B must be FP8 dtype"));
 

@@ -22,7 +22,10 @@
 #include <c10/util/BFloat16.h>
 #include <c10/util/Exception.h>
 #include <c10/util/Float8_e4m3fn.h>
+#include <c10/util/Float8_e4m3fnuz.h>
 #include <c10/util/Float8_e5m2.h>
+#include <c10/util/Float8_e5m2fnuz.h>
+#include <c10/util/Float8_e8m0fnu.h>
 #include <c10/util/Half.h>
 #include <c10/util/complex.h>
 
@@ -40,38 +43,41 @@ struct dummy_uint1_7_t {};
 template <unsigned int N>
 struct dummy_int1_7_t {};
 
-#define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(_)       \
-  _(uint8_t, UINT8, Byte)  /* 0 */                             \
-  _(int8_t, INT8, Char)    /* 1 */                             \
-  _(int16_t, INT16, Short) /* 2 */                             \
-  _(int, INT32, Int)       /* 3 */                             \
-  _(int64_t, INT64, Long)  /* 4 */                             \
-  _(at::Half, FLOAT16, Half)                                   \
-  _(float, FLOAT32, Float)                            /* 6 */  \
-  _(double, FLOAT64, Double)                          /* 7 */  \
-  _(c10::complex<float>, COMPLEX64, ComplexFloat)     /* 9 */  \
-  _(c10::complex<double>, COMPLEX128, ComplexDouble)  /* 10 */ \
-  _(bool, BOOL, Bool)                                 /* 11 */ \
-  _(at::BFloat16, BFLOAT16, BFloat16)                 /* 15 */ \
-  _(c10::Float8_e5m2, FLOAT8_E5M2, Float8_e5m2)       /* 23 */ \
-  _(c10::Float8_e4m3fn, FLOAT8_E4M3FN, Float8_e4m3fn) /* 24 */ \
-  _(uint16_t, UINT16, UInt16)                         /* 27 */ \
-  _(uint32_t, UINT32, UInt32)                         /* 28 */ \
-  _(uint64_t, UINT64, UInt64)                         /* 29 */ \
-  _(c10::dummy_uint1_7_t<1>, UInt1, UInt1)            /* 30 */ \
-  _(c10::dummy_uint1_7_t<2>, UInt2, UInt2)            /* 31 */ \
-  _(c10::dummy_uint1_7_t<3>, UInt3, UInt3)            /* 32 */ \
-  _(c10::dummy_uint1_7_t<4>, UInt4, UInt4)            /* 33 */ \
-  _(c10::dummy_uint1_7_t<5>, UInt5, UInt5)            /* 34 */ \
-  _(c10::dummy_uint1_7_t<6>, UInt6, UInt6)            /* 35 */ \
-  _(c10::dummy_uint1_7_t<7>, UInt7, UInt7)            /* 36 */ \
-  _(c10::dummy_int1_7_t<1>, Int1, Int1)               /* 37 */ \
-  _(c10::dummy_int1_7_t<2>, Int2, Int2)               /* 38 */ \
-  _(c10::dummy_int1_7_t<3>, Int3, Int3)               /* 39 */ \
-  _(c10::dummy_int1_7_t<4>, Int4, Int4)               /* 40 */ \
-  _(c10::dummy_int1_7_t<5>, Int5, Int5)               /* 41 */ \
-  _(c10::dummy_int1_7_t<6>, Int6, Int6)               /* 42 */ \
-  _(c10::dummy_int1_7_t<7>, Int7, Int7)               /* 43 */
+#define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_AND_QINTS(_)             \
+  _(uint8_t, UINT8, Byte)  /* 0 */                                   \
+  _(int8_t, INT8, Char)    /* 1 */                                   \
+  _(int16_t, INT16, Short) /* 2 */                                   \
+  _(int, INT32, Int)       /* 3 */                                   \
+  _(int64_t, INT64, Long)  /* 4 */                                   \
+  _(at::Half, FLOAT16, Half)                                         \
+  _(float, FLOAT32, Float)                                  /* 6 */  \
+  _(double, FLOAT64, Double)                                /* 7 */  \
+  _(c10::complex<float>, COMPLEX64, ComplexFloat)           /* 9 */  \
+  _(c10::complex<double>, COMPLEX128, ComplexDouble)        /* 10 */ \
+  _(bool, BOOL, Bool)                                       /* 11 */ \
+  _(at::BFloat16, BFLOAT16, BFloat16)                       /* 15 */ \
+  _(c10::Float8_e5m2, FLOAT8_E5M2, Float8_e5m2)             /* 23 */ \
+  _(c10::Float8_e4m3fn, FLOAT8_E4M3FN, Float8_e4m3fn)       /* 24 */ \
+  _(c10::Float8_e5m2fnuz, FLOAT8_E5M2FNUZ, Float8_e5m2fnuz) /* 25 */ \
+  _(c10::Float8_e4m3fnuz, FLOAT8_E4M3FNUZ, Float8_e4m3fnuz) /* 26 */ \
+  _(uint16_t, UINT16, UInt16)                               /* 27 */ \
+  _(uint32_t, UINT32, UInt32)                               /* 28 */ \
+  _(uint64_t, UINT64, UInt64)                               /* 29 */ \
+  _(c10::dummy_uint1_7_t<1>, UInt1, UInt1)                  /* 30 */ \
+  _(c10::dummy_uint1_7_t<2>, UInt2, UInt2)                  /* 31 */ \
+  _(c10::dummy_uint1_7_t<3>, UInt3, UInt3)                  /* 32 */ \
+  _(c10::dummy_uint1_7_t<4>, UInt4, UInt4)                  /* 33 */ \
+  _(c10::dummy_uint1_7_t<5>, UInt5, UInt5)                  /* 34 */ \
+  _(c10::dummy_uint1_7_t<6>, UInt6, UInt6)                  /* 35 */ \
+  _(c10::dummy_uint1_7_t<7>, UInt7, UInt7)                  /* 36 */ \
+  _(c10::dummy_int1_7_t<1>, Int1, Int1)                     /* 37 */ \
+  _(c10::dummy_int1_7_t<2>, Int2, Int2)                     /* 38 */ \
+  _(c10::dummy_int1_7_t<3>, Int3, Int3)                     /* 39 */ \
+  _(c10::dummy_int1_7_t<4>, Int4, Int4)                     /* 40 */ \
+  _(c10::dummy_int1_7_t<5>, Int5, Int5)                     /* 41 */ \
+  _(c10::dummy_int1_7_t<6>, Int6, Int6)                     /* 42 */ \
+  _(c10::dummy_int1_7_t<7>, Int7, Int7)                     /* 43 */ \
+  _(c10::Float8_e8m0fnu, FLOAT8_E8M0FNU, Float8_e8m0fnu)    /* 44 */
 
 #define AT_FORALL_SCALAR_TYPES_WITH_COMPLEX_EXCEPT_COMPLEX_HALF_F8NZ(_) \
   _(uint8_t, Byte)                                                      \
@@ -101,7 +107,10 @@ struct dummy_int1_7_t {};
   _(bool, Bool)                                \
   _(at::BFloat16, BFloat16)                    \
   _(c10::Float8_e5m2, Float8_e5m2)             \
-  _(c10::Float8_e4m3fn, Float8_e4m3fn)
+  _(c10::Float8_e4m3fn, Float8_e4m3fn)         \
+  _(at::Float8_e5m2fnuz, Float8_e5m2fnuz)      \
+  _(at::Float8_e4m3fnuz, Float8_e4m3fnuz)      \
+  _(at::Float8_e8m0fnu, Float8_e8m0fnu)
 
 #define AT_FORALL_QINT_TYPES(_) \
   _(c10::qint8, QInt8)          \
@@ -266,10 +275,9 @@ inline bool isIntegralType(ScalarType t, bool includeBool) {
 }
 
 inline bool isFloat8Type(ScalarType t) {
-  return t == ScalarType::Float8_e5m2 || t == ScalarType::Float8_e4m3fn;
-  //  ||  t == ScalarType::Float8_e5m2fnuz
-  //   ||  t == ScalarType::Float8_e4m3fnuz
-  //   || t == ScalarType::Float8_e8m0fnu
+  return t == ScalarType::Float8_e5m2 || t == ScalarType::Float8_e4m3fn ||
+         t == ScalarType::Float8_e5m2fnuz || t == ScalarType::Float8_e4m3fnuz ||
+         t == ScalarType::Float8_e8m0fnu;
 }
 
 inline bool isReducedFloatingType(ScalarType t) {
