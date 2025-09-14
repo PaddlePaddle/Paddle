@@ -67,6 +67,8 @@ if(WITH_DISTRIBUTE)
   paddle_test(reshape_co_shard_spmd_rule_test SRCS
               reshape_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 
+  paddle_test(argsort_co_shard_spmd_rule_test SRCS
+              argsort_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
   paddle_test(transpose_co_shard_spmd_rule_test SRCS
               transpose_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 

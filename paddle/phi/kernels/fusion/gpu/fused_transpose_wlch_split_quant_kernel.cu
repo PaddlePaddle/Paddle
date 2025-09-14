@@ -214,7 +214,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   // Allocate outs and scales
   for (size_t i = 0; i < num_experts; i++) {
     if (outs[i] != nullptr) {
-      dev_ctx.template Alloc<phi::dtype::float8_e4m3fn>(outs[i]);
+      dev_ctx.template Alloc<phi::float8_e4m3fn>(outs[i]);
     }
     if (scales[i] != nullptr) {
       dev_ctx.template Alloc<float>(scales[i]);
@@ -236,8 +236,7 @@ void FusedTransposeWLCHSplitQuantKernel(
   }
   for (size_t i = 0; i < num_experts; i++) {
     meta_ptr[num_experts + i] =
-        outs[i] ? reinterpret_cast<int64_t>(
-                      outs[i]->data<phi::dtype::float8_e4m3fn>())
+        outs[i] ? reinterpret_cast<int64_t>(outs[i]->data<phi::float8_e4m3fn>())
                 : 0;
   }
   for (size_t i = 0; i < num_experts; i++) {
