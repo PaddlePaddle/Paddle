@@ -169,7 +169,6 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
-    cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
     device as device,
@@ -224,9 +223,6 @@ from .autograd import (
     is_grad_enabled,
     no_grad,
     set_grad_enabled,
-)
-from .cuda import (
-    current_device as current_device,
 )
 from .device import (  # noqa: F401
     PaddleStream as Stream,
@@ -925,6 +921,10 @@ from .pir_utils import IrGuard
 
 ir_guard = IrGuard()
 ir_guard._switch_to_pir()
+
+from .cuda import (
+    current_device as current_device,
+)
 
 # Constants
 newaxis: None = None
