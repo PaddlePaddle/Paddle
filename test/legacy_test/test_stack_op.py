@@ -465,8 +465,8 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
         out.backward()
 
         np.testing.assert_equal(out.shape, [2, 1, 0])
-        # np.testing.assert_equal(x1.grad, None)
-        # np.testing.assert_equal(x2.grad, None)
+        np.testing.assert_equal(x1.grad.shape, [1, 0])
+        np.testing.assert_equal(x2.grad.shape, [1, 0])
         np.testing.assert_equal(out, np.ones([2, 1, 0]))
 
         paddle.enable_static()
@@ -485,8 +485,8 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
             out.backward()
 
             np.testing.assert_equal(out.shape, [2, 1, 0])
-            np.testing.assert_equal(x1.grad, None)
-            np.testing.assert_equal(x2.grad, None)
+            np.testing.assert_equal(x1.grad.shape, [1, 0])
+            np.testing.assert_equal(x2.grad.shape, [1, 0])
             np.testing.assert_equal(out, np.ones([2, 1, 0]))
 
             paddle.enable_static()
@@ -604,6 +604,7 @@ class TestStackOutAndParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
             for g, g_std in zip(grads, grads_std):
                 np.testing.assert_allclose(g.numpy(), g_std.numpy(), rtol=1e-20)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
