@@ -145,20 +145,23 @@ if "%WITH_GPU%"=="ON" (
 )
 
 cd /d %work_dir%
-python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
-if !ERRORLEVEL! EQU 0 (
-    echo Getting source code of third party : extracting ...
-    zstd -d %md5%.tar.zst && tar -xf %md5%.tar
-    del %md5%.tar.zst
-    if !errorlevel! EQU 0 (
-        echo Getting source code of third party : successful
-    )
-) else (
-    git submodule update --init --recursive
-    if !errorlevel! EQU 0 (
-        set UPLOAD_TP_CODE=ON
-    )
-)
+@REM python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
+@REM if !ERRORLEVEL! EQU 0 (
+@REM     echo Getting source code of third party : extracting ...
+@REM     zstd -d %md5%.tar.zst && tar -xf %md5%.tar
+@REM     del %md5%.tar.zst
+@REM     if !errorlevel! EQU 0 (
+@REM         echo Getting source code of third party : successful
+@REM     )
+@REM ) else (
+@REM     git submodule update --init --recursive
+@REM     if !errorlevel! EQU 0 (
+@REM         set UPLOAD_TP_CODE=ON
+@REM     )
+@REM )
+git config --global url."https://x-access-token:%GITHUB_TOKEN%@github.com/".insteadOf "https://github.com/"
+git submodule sync --recursive
+git submodule update --init --recursive
 if "%UPLOAD_TP_CODE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
