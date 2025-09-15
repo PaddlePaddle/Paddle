@@ -628,6 +628,14 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.synchronize('xpu:0')
         paddle.device.synchronize(0)
 
+    @unittest.skipIf(
+        not (
+            core.is_compiled_with_xpu()
+            or core.is_compiled_with_cuda()
+            or is_custom_device()
+        ),
+        "CUDA, XPU and Custom device not available",
+    )
     def test_error_handling(self):
         """Test error handling for invalid inputs."""
         # Test invalid device ID format

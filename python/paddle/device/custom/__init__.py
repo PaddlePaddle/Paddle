@@ -19,6 +19,8 @@ from typing_extensions import TypeAlias
 
 from paddle.base import core
 
+from .streams import Event, Stream
+
 if TYPE_CHECKING:
     from paddle import CustomPlace
 
@@ -47,6 +49,8 @@ if dev_type in ['metax_gpu', 'iluvatar_gpu']:
     from .gpgpu_backend import get_device_properties
 
 __all__ = [
+    'Stream',
+    'Event',
     'device_count',
     'get_device_properties',
     'empty_cache',
@@ -97,7 +101,7 @@ def empty_cache() -> None:
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.device.customdevice.empty_cache()
+            >>> paddle.device.empty_cache()
     '''
     core.device_empty_cache()
 
@@ -145,7 +149,7 @@ def max_memory_allocated(device: _CustomPlaceLike | None = None) -> int:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "max_memory_allocated only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -197,7 +201,7 @@ def max_memory_reserved(device: _CustomPlaceLike | None = None) -> int:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "max_memory_reserved only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -246,7 +250,7 @@ def reset_max_memory_allocated(device: _CustomPlaceLike | None = None) -> None:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "reset_max_memory_allocated only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -295,7 +299,7 @@ def reset_max_memory_reserved(device: _CustomPlaceLike | None = None) -> None:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "reset_max_memory_reserved only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -347,7 +351,7 @@ def memory_allocated(device: _CustomPlaceLike | None = None) -> int:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "memory_allocated only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -399,7 +403,7 @@ def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "memory_reserved only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
@@ -451,7 +455,7 @@ def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
 #         device_id = device.get_device_id()
 #     else:
 #         raise ValueError(
-#             f"The input: {device} is not expected. Because paddle.device.customdevice."
+#             f"The input: {device} is not expected. Because paddle.device."
 #             "current_stream only support str, int or CustomPlace. "
 #             "Please input appropriate device again! "
 #             "Example: 'npu:0'"
@@ -503,7 +507,7 @@ def synchronize(device: _CustomPlaceLike | None = None) -> None:
         device_id = device.get_device_id()
     else:
         raise ValueError(
-            f"The input: {device} is not expected. Because paddle.device.customdevice."
+            f"The input: {device} is not expected. Because paddle.device."
             "synchronize only support str, int or CustomPlace. "
             "Please input appropriate device again! "
             "Example: 'npu:0'"
