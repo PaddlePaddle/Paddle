@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -83,9 +83,8 @@ class TestFP8CastOp(unittest.TestCase):
         self.shape = (16, 16)
 
     def test_cast(self):
-        print("test cast")
-        if core.is_compiled_with_cuda():
-            for self.device in ["cpu", "gpu"]:
+        if core.is_compiled_with_cuda() or is_custom_device():
+            for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
                 for self.dtype in ["float8_e4m3fn", "float8_e5m2"]:
                     print(self.dtype)
@@ -157,8 +156,8 @@ class TestFP8FullOp(unittest.TestCase):
             }
 
     def test_ones(self):
-        if core.is_compiled_with_cuda():
-            for self.device in ["cpu", "gpu"]:
+        if core.is_compiled_with_cuda() or is_custom_device():
+            for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
                 for self.dtype in float8_types:
                     print(self.dtype)
@@ -178,8 +177,8 @@ class TestFP8FullOp(unittest.TestCase):
                 self.assertTrue(paddle.equal_all(expect, input_fp32))
 
     def test_zeros(self):
-        if core.is_compiled_with_cuda():
-            for self.device in ["cpu", "gpu"]:
+        if core.is_compiled_with_cuda() or is_custom_device():
+            for self.device in ["cpu", get_device()]:
                 paddle.device.set_device(self.device)
                 for self.dtype in float8_types:
                     input = paddle.zeros([1, 2], dtype=self.dtype)
@@ -199,7 +198,8 @@ class TestFP8FullOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not check_fp8_support(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not check_fp8_support(),
     "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
 )
 class TestFP8MatmulOp(unittest.TestCase):
@@ -217,7 +217,7 @@ class TestFP8MatmulOp(unittest.TestCase):
         }
 
     def test_matmul(self):
-        for self.device in ["gpu"]:
+        for self.device in [get_device()]:
             paddle.device.set_device(self.device)
             for self.dtype in ["float8_e4m3fn"]:
                 input1 = paddle.ones([4, 16, 32], dtype=self.dtype)

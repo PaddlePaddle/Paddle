@@ -621,7 +621,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_float16_static(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -692,7 +692,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_lp_dygraph_float16(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32, 32]).astype("float16")
                 input = paddle.to_tensor(input_np)

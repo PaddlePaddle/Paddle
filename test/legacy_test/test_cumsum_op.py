@@ -22,7 +22,12 @@ from paddle.framework import use_pir_api
 sys.path.append("../../legacy_test")
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.inference as paddle_infer
@@ -69,7 +74,7 @@ class TestCumsumOp(unittest.TestCase):
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -104,14 +109,14 @@ class TestCumsumOp(unittest.TestCase):
         self.run_static()
 
     def test_gpu_dygraph(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
-        paddle.disable_static(paddle.base.CUDAPlace(0))
+        paddle.disable_static(get_device_place())
         self.run_cases()
         paddle.enable_static()
 
     def test_gpu_static(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         self.run_static(use_gpu=True)
 
@@ -163,7 +168,7 @@ class TestCumsumOp_Compatibility(unittest.TestCase):
             y5 = paddle.cumsum(input=x, dtype=np.int32)
             y6 = paddle.cumsum(input=x, dim=-2)
 
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -191,14 +196,14 @@ class TestCumsumOp_Compatibility(unittest.TestCase):
             self.run_static()
 
         def test_gpu_dygraph(self):
-            if not base.core.is_compiled_with_cuda():
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
                 return
-            paddle.disable_static(paddle.base.CUDAPlace(0))
+            paddle.disable_static(get_device_place())
             self.run_cases()
             paddle.enable_static()
 
         def test_gpu_static(self):
-            if not base.core.is_compiled_with_cuda():
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
                 return
             self.run_static(use_gpu=True)
 
@@ -290,7 +295,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
             y5 = paddle.cumsum(x, axis=-1, dtype='int32')
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -323,7 +328,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
             y5 = paddle.cumsum(x, axis=-1, dtype='int16')
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -355,7 +360,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y2 = paddle.cumsum(x, axis=0)
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -384,7 +389,7 @@ class TestCumsumOp_INT(unittest.TestCase):
             y2 = paddle.cumsum(x, axis=0)
             y3 = paddle.cumsum(x, axis=-1)
             y4 = paddle.cumsum(x, axis=-2)
-            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            place = get_device_place() if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
             exe.run(paddle.static.default_startup_program())
             out = exe.run(
@@ -416,14 +421,14 @@ class TestCumsumOp_INT(unittest.TestCase):
             self.run_static_int16()
 
         def test_gpu_dygraph(self):
-            if not base.core.is_compiled_with_cuda():
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
                 return
-            paddle.disable_static(paddle.base.CUDAPlace(0))
+            paddle.disable_static(get_device_place())
             self.run_cases()
             paddle.enable_static()
 
         def test_gpu_static(self):
-            if not base.core.is_compiled_with_cuda():
+            if not (core.is_compiled_with_cuda() or is_custom_device()):
                 return
             self.run_static_uint8(use_gpu=True)
             self.run_static_int8(use_gpu=True)
@@ -625,7 +630,7 @@ class TestCumsumFP16(unittest.TestCase):
         return y_np, x_g_np
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         np.random.seed(20)
@@ -851,8 +856,8 @@ create_test_fp16_class(TestSumOpReverseExclusive)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA or not support bfloat16",
     )
     class TestCumsumBF16Op(parent):
@@ -864,11 +869,11 @@ def create_test_bf16_class(parent):
             self.enable_cinn = False
 
         def test_check_output(self):
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_prim=True, check_pir=True)
 
         def test_check_grad(self):
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ["X"],
@@ -949,7 +954,7 @@ class TestTensorAxis(unittest.TestCase):
                 config = paddle_infer.Config(
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()
@@ -1018,7 +1023,7 @@ class TestTensorAxis(unittest.TestCase):
 
 class TestCumSumOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             x_np = np.random.random((100, 100)).astype('float16')
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1029,7 +1034,7 @@ class TestCumSumOpFp16(unittest.TestCase):
                 y2 = paddle.cumsum(x, axis=0)
                 y3 = paddle.cumsum(x, axis=-1)
                 y4 = paddle.cumsum(x, axis=-2)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 out = exe.run(feed={'x': x_np}, fetch_list=[y1, y2, y3, y4])

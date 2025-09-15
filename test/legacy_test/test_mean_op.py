@@ -17,7 +17,14 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, OpTestTool, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from test_sum_op import TestReduceOPTensorAxisBase
 
 import paddle
@@ -278,8 +285,8 @@ class TestMeanOpError(unittest.TestCase):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.int32)
         self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 
@@ -290,7 +297,7 @@ class TestMeanOpError(unittest.TestCase):
             input1 = 12
             self.assertRaises(TypeError, paddle.mean, input1)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 input3 = paddle.static.data(
                     name='input3', shape=[-1, 4], dtype="float16"
                 )
@@ -300,7 +307,8 @@ class TestMeanOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16MeanOp(TestMeanOp):
     def init_dtype_type(self):
@@ -308,12 +316,12 @@ class TestFP16MeanOp(TestMeanOp):
         self.__class__.no_need_check_grad = True
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(place, check_pir=True)
 
     def test_checkout_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             with base.dygraph.guard():
                 x_np = np.random.random((10, 10)).astype(self.dtype)
@@ -350,8 +358,8 @@ def ref_reduce_mean(x, axis=None, keepdim=False, reduce_all=False):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA",
 )
 class TestReduceMeanOp(OpTest):
@@ -402,7 +410,7 @@ class TestReduceMeanOp(OpTest):
                 check_prim=True, check_prim_pir=True, check_pir=True
             )
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place=place,
                 check_prim=True,
@@ -420,7 +428,7 @@ class TestReduceMeanOp(OpTest):
                 check_pir=True,
             )
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -440,7 +448,7 @@ class TestReduceMeanOpPrim(TestReduceMeanOp):
         if self.dtype != 'float16':
             self.check_output(check_prim_pir=True, check_pir=True)
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place=place,
                 check_prim_pir=True,
@@ -456,7 +464,7 @@ class TestReduceMeanOpPrim(TestReduceMeanOp):
                 check_pir=True,
             )
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
@@ -474,8 +482,8 @@ class TestReduceMeanOp_ZeroDim(TestReduceMeanOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestReduceMeanBF16Op(OpTest):
@@ -512,11 +520,11 @@ class TestReduceMeanBF16Op(OpTest):
         pass
 
     def test_check_output(self):
-        place = paddle.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
-        place = paddle.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -727,8 +735,8 @@ class TestMeanAPI(unittest.TestCase):
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 
@@ -1031,7 +1039,7 @@ class TestMeanOp_ZeroSize2(OpTest):
                 check_prim=True, check_prim_pir=True, check_pir=True
             )
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place=place,
                 check_prim=True,
@@ -1049,7 +1057,7 @@ class TestMeanOp_ZeroSize2(OpTest):
                 check_pir=True,
             )
         else:
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],

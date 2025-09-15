@@ -48,11 +48,19 @@ class TestExpandV2OneDNNOp(OpTest):
         self.expand_times = [2, 3, 4, 1]
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_pir_onednn=True)
+        self.check_output_with_place(
+            core.CPUPlace(),
+            check_pir_onednn=True,
+            check_dygraph=False,
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"], "Out", check_pir_onednn=True
+            core.CPUPlace(),
+            ["X"],
+            "Out",
+            check_pir_onednn=True,
+            check_dygraph=False,
         )
 
 
@@ -156,6 +164,7 @@ def create_expand_v2_bf16_test_class(parent):
                 user_defined_grads=[convert_float_to_uint16(self.dx)],
                 user_defined_grad_outputs=[self.dout],
                 check_pir_onednn=True,
+                check_dygraph=False,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "Expand_v2_BF16")

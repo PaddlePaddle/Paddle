@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, is_custom_device
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -118,7 +123,7 @@ class TestCrossComplex128Op(TestCrossOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCrossBF16Op(OpTest):
@@ -150,13 +155,13 @@ class TestCrossBF16Op(OpTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place, ['X', 'Y'], 'Out', check_pir=True
