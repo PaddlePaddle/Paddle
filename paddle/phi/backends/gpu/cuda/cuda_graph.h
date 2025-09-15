@@ -39,13 +39,6 @@
 
 #ifdef PADDLE_WITH_CUDA
 
-#if CUDA_VERSION < 11000
-// For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
-using cudaFunction_t = void *;
-cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr);
-#endif
-
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -181,19 +174,7 @@ class CUDAGraphNodeLauncher {
       parameterSetters;
 };
 
-#if CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
-#else
-enum gpuStreamCaptureMode {
-  cudaStreamCaptureModeGlobal = 0,
-  cudaStreamCaptureModeThreadLocal = 1,
-  cudaStreamCaptureModeRelaxed = 2
-};
-static void ThrowErrorIfNotSupportCUDAGraph() {
-  PADDLE_THROW(common::errors::Unimplemented(
-      "CUDA Graph is only supported when CUDA version >= 10.1"));
-}
-#endif
 
 using CUDAGraphID = unsigned long long;  // NOLINT
 
@@ -305,12 +286,8 @@ class CUDAGraph {
   static bool IsValidCapturing();
 
   static bool IsThreadLocalCapturing() {
-#if CUDA_VERSION >= 10010
     return IsCapturing() &&
            capturing_graph_->capture_mode_ == cudaStreamCaptureModeThreadLocal;
-#else
-    return false;
-#endif
   }
 
   static bool IsThisThreadCapturing() {
@@ -335,11 +312,10 @@ class CUDAGraph {
   static CUDAGraphID UniqueID();
 
  private:
-#if CUDA_VERSION >= 10010
   std::vector<cudaGraph_t> graphs_;
   std::vector<cudaGraphExec_t> exec_graphs_;
   gpuStreamCaptureMode capture_mode_;
-#endif
+
   cudaStream_t stream_{nullptr};
   phi::GPUPlace place_;
   CUDAGraphID id_;
@@ -382,7 +358,6 @@ class CUDAGraph {
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
 
-#if CUDA_VERSION >= 10010
 class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
@@ -407,15 +382,6 @@ class CUDAGraphCaptureModeGuard {
  private:
   gpuStreamCaptureMode old_mode_;
 };
-#else
-class CUDAGraphCaptureModeGuard {
-  DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
-
- public:
-  explicit CUDAGraphCaptureModeGuard(
-      gpuStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
-};
-#endif
 
 }  // namespace gpu
 }  // namespace backends

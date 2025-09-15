@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import (
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 import paddle.nn.functional as F
@@ -196,7 +200,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_avg_static_results_fp16(self, place):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with paddle.static.program_guard(paddle.static.Program()):
                 input = paddle.static.data(
                     name="input", shape=[2, 3, 32], dtype="float16"
@@ -212,7 +216,7 @@ class TestPool1D_API(unittest.TestCase):
                     ceil_mode=False,
                 )
 
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
                     feed={"input": input_np},
@@ -396,7 +400,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def check_lp_static_results_fp16(self, place):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with paddle.static.program_guard(paddle.static.Program()):
                 input = paddle.static.data(
                     name="input", shape=[2, 3, 32], dtype="float16"
@@ -415,7 +419,7 @@ class TestPool1D_API(unittest.TestCase):
                     norm_type=3,
                 )
 
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
                     feed={"input": input_np},
@@ -426,7 +430,7 @@ class TestPool1D_API(unittest.TestCase):
                 )
 
     def check_lp_static_results_fp64(self, place):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             with paddle.static.program_guard(paddle.static.Program()):
                 input = paddle.static.data(
                     name="input", shape=[2, 3, 32], dtype="float64"
@@ -445,7 +449,7 @@ class TestPool1D_API(unittest.TestCase):
                     norm_type=3,
                 )
 
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
                     feed={"input": input_np},
@@ -478,7 +482,7 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_lp_dygraph_float16_results(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32]).astype("float16")
                 input = paddle.to_tensor(input_np)
@@ -503,7 +507,7 @@ class TestPool1D_API(unittest.TestCase):
                 )
 
     def check_lp_dygraph_float64_results(self, place):
-        if isinstance(place, base.CUDAPlace):
+        if isinstance(place, (base.CUDAPlace, base.CustomPlace)):
             with base.dygraph.guard(place):
                 input_np = np.random.random([2, 3, 32]).astype("float64")
                 input = paddle.to_tensor(input_np)

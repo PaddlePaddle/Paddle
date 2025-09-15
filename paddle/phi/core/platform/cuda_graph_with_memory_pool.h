@@ -55,21 +55,17 @@ class SkipCUDAGraphCaptureGuard {
  public:
   SkipCUDAGraphCaptureGuard() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::EndSegmentCapture();
     }
-#endif
 #endif
   }
 
   ~SkipCUDAGraphCaptureGuard() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::BeginSegmentCapture();
     }
-#endif
 #endif
   }
 };
