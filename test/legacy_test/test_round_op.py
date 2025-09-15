@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place
+from op_test import OpTest, get_device, get_device_place, is_custom_device
 from test_activation_op import TestActivation
 from utils import dygraph_guard, static_guard
 
@@ -23,7 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 
-devices = ['cpu', 'gpu']
+devices = ['cpu', get_device()]
 
 
 class TestRound(TestActivation):
@@ -45,8 +45,8 @@ class TestRound(TestActivation):
 
     def _get_places(self):
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def init_shape(self):
@@ -100,7 +100,8 @@ class TestRound_decimals1(TestRound):
         with dygraph_guard():
             for device in devices:
                 if device == 'cpu' or (
-                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                    device == get_device()
+                    and (paddle.is_compiled_with_cuda() or is_custom_device())
                 ):
                     x_np = (
                         np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -303,8 +304,8 @@ class TestRoundNaN(unittest.TestCase):
     def test_round_nan(self):
         with static_guard():
             places = [core.CPUPlace()]
-            if core.is_compiled_with_cuda():
-                places.append(core.CUDAPlace(0))
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 with paddle.static.program_guard(paddle.static.Program()):
                     input = paddle.static.data(

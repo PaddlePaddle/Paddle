@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -31,14 +32,14 @@ class TestPlace(unittest.TestCase):
         self.assertEqual(x.place, wrap_place(paddle.CPUPlace()))
 
     def test_ne(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
-        y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+        y = paddle.to_tensor([1, 2, 3], place=get_device_place())
         self.assertNotEqual(x.place, y.place)
-        self.assertNotEqual(x.place, wrap_place(paddle.CUDAPlace(0)))
+        self.assertNotEqual(x.place, wrap_place(get_device_place()))
         self.assertNotEqual(y.place, wrap_place(paddle.CPUPlace()))
-        self.assertEqual(y.place, wrap_place(paddle.CUDAPlace(0)))
+        self.assertEqual(y.place, wrap_place(get_device_place()))
 
 
 class TestGetDevice(unittest.TestCase):

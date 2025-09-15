@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 from paddle.incubate.nn.functional import int_bincount
@@ -22,7 +22,7 @@ from paddle.incubate.nn.functional import int_bincount
 
 class TestIntBincount(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
     def test_basic(self):
         x = paddle.to_tensor([1, 2, 3, 1, 2, 3], dtype=paddle.int32)

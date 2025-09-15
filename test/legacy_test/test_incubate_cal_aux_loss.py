@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 from paddle.incubate.nn.functional import cal_aux_loss
@@ -23,7 +23,7 @@ from paddle.incubate.nn.functional.cal_aux_loss import math_cal_aux_loss
 
 class TestCalAuxLoss(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
         self.num_tokens = 6
         self.num_experts = 4

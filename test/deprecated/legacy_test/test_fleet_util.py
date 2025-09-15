@@ -105,7 +105,7 @@ class TestFleetUtil(unittest.TestCase):
     def test_get_file_shard(self):
         from paddle.distributed import fleet
 
-        self.assertRaises(Exception, fleet.util.get_file_shard, "files")
+        self.assertRaises(Exception, fleet.util.get_file_shard, "files")  # noqa: B017
 
         role = role_maker.UserDefinedRoleMaker(
             is_collective=False,
@@ -174,7 +174,7 @@ class TestFleetUtil(unittest.TestCase):
             "pruned_main_program.save_var_shape_not_match"
         )
 
-        self.assertRaises(Exception, fleet.util._params_check)
+        self.assertRaises(Exception, fleet.util._params_check)  # noqa: B017
 
         # test program.proto without feed_op and fetch_op
         conf.dump_program_filename = "pruned_main_program.no_feed_fetch"
@@ -188,7 +188,7 @@ class TestFleetUtil(unittest.TestCase):
         conf.dump_program_filename = (
             "pruned_main_program.feed_var_shape_not_match"
         )
-        self.assertRaises(Exception, fleet.util._params_check)
+        self.assertRaises(Exception, fleet.util._params_check)  # noqa: B017
 
         # test correct case with feed_vars_filelist
         conf.dump_program_filename = "pruned_main_program.pbtxt"
@@ -202,7 +202,7 @@ class TestFleetUtil(unittest.TestCase):
         conf.feed_config.feeded_vars_filelist = None
         # test feed var with lod_level >= 2
         conf.dump_program_filename = "pruned_main_program.feed_lod2"
-        self.assertRaises(Exception, fleet.util._params_check)
+        self.assertRaises(Exception, fleet.util._params_check)  # noqa: B017
 
         conf.dump_program_filename = "pruned_main_program.pbtxt"
         results = fleet.util._params_check(conf)

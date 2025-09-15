@@ -82,17 +82,13 @@ class CublasHandleHolder {
   CublasHandleHolder(cudaStream_t stream, cublasMath_t math_type) {
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasCreate(&handle_));
     PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetStream(handle_, stream));
-#if CUDA_VERSION >= 9000
     if (math_type == CUBLAS_TENSOR_OP_MATH) {
       PADDLE_RETRY_CUDA_SUCCESS(
           phi::dynload::cublasSetMathMode(handle_, CUBLAS_TENSOR_OP_MATH));
-#if CUDA_VERSION >= 11000
     } else if (math_type == CUBLAS_TF32_TENSOR_OP_MATH) {
       PADDLE_RETRY_CUDA_SUCCESS(
           phi::dynload::cublasSetMathMode(handle_, CUBLAS_TF32_TENSOR_OP_MATH));
-#endif  // CUDA_VERSION >= 11000
     }
-#endif  // CUDA_VERSION >= 9000
   }
 
   const cublasHandle_t& GetCublasHandle() const { return handle_; }
