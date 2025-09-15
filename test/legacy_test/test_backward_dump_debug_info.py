@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
 import os
 import platform
 import shutil
+import subprocess
+import sys
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 import paddle
@@ -102,26 +102,42 @@ class TestDumpDebugInfo(unittest.TestCase):
 
     # Just execute vlog for the coverage ci
     def test_vlog(self):
-        stdout = io.StringIO()
-        stderr = io.StringIO()
-        with redirect_stdout(stdout), redirect_stderr(stderr):
-            os.environ['GLOG_v'] = '6'
-            import paddle
-
-            x = paddle.randn([5, 5], dtype='float32')
-            y = paddle.randn([5, 5], dtype='float32')
-            x.stop_gradient = False
-            y.stop_gradient = False
-            z = x + y
-            h = x * z
-            w = h + y
-            grads = paddle.autograd.backward(
-                [x, y],
-                [None, None],
-            )
-            del os.environ['GLOG_v']
-        stdout.close()
-        stderr.close()
+        code = """
+import os
+os.environ['GLOG_v'] = '{glog_level}'
+import paddle
+x = paddle.randn([5, 5], dtype='float32')
+y = paddle.randn([5, 5], dtype='float32')
+x.stop_gradient = False
+y.stop_gradient = False
+z = x + y
+h = x * z
+w = h + y
+grads = paddle.autograd.backward(
+    [x, y],
+    [None, None],
+)
+        """
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(glog_level=4)],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(glog_level=5)],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(glog_level=6)],
+            capture_output=True,
+            text=True,
+        )
+        process = subprocess.run(
+            [sys.executable, '-c', code.format(glog_level=11)],
+            capture_output=True,
+            text=True,
+        )
 
     # Test the input path is not valid
     @patch('os.path.exists')
