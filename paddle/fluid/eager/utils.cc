@@ -1184,7 +1184,7 @@ std::string CreateEdgeLabelInDot(const phi::DenseTensorMeta& tensor) {
 }
 void SaveStringToFile(const std::string& file_path,
                       const std::string& serialized_graph,
-                      const std::string& mode = "trunc") {
+                      const std::string& mode) {
   std::ios_base::openmode open_mode = std::ios::out;
   if (mode == "app") {
     open_mode |= std::ios::app;
