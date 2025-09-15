@@ -146,6 +146,7 @@ class TestFleetBase(unittest.TestCase):
     def test_exception(self):
         from paddle.distributed import fleet
 
+        fleet.init_worker()
         self.assertRaises(Exception, fleet.init_worker)  # noqa: B017
 
 
