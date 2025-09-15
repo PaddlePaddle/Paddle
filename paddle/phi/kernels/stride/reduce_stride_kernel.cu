@@ -1092,6 +1092,7 @@ void StrideImpl(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
+                T ident,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
@@ -1136,7 +1137,6 @@ void StrideImpl(const Context& dev_ctx,
   constexpr int VT0 = 4;
   constexpr int INPUT_VEC_SIZE = 4;
 
-  constexpr T ident = std::numeric_limits<T>::lowest();
   constexpr int base_idx = 0;
 
   NewReduceConfig reduce_config = setReduceConfig<T, T, VT0>(iter);
@@ -1214,7 +1214,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 || keep_dim) {
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
     if (!x.meta().is_contiguous() || x.offset() != 0) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -1223,7 +1223,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
   } else {
     x_ = x;
   }
-  if (x_.meta().is_contiguous() && (keep_dim || dims.size() > 0)) {
+  if (x_.meta().is_contiguous() && (keep_dim || out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1231,7 +1231,9 @@ void AMaxStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  StrideImpl<T, Context, kps::MaxFunctor>(dev_ctx, x_, dims, keep_dim, out);
+  T ident = std::numeric_limits<T>::lowest();
+  StrideImpl<T, Context, kps::MaxFunctor>(
+      dev_ctx, x_, dims, keep_dim, ident, out);
   return;
 }
 
