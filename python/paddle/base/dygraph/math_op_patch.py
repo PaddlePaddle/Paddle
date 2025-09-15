@@ -105,7 +105,7 @@ _supported_dtype_conversions = {
 
 def _rebuild_tensor(
     data: NDArray[Any],
-    dtype: DTypeLike,
+    dtype: str,
     device: str,
     requires_grad,
 ) -> Tensor:
