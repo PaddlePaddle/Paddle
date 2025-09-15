@@ -119,6 +119,7 @@ function summary_type_checking_problems() {
 }
 
 function exec_samplecode_checking() {
+    pip install numpy==2.2.6
     # check sample code with doctest
     example_info_gpu=""
     example_code_gpu=0
