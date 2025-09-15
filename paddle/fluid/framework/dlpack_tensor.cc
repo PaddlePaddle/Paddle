@@ -69,60 +69,6 @@ template <typename T>
   return dtype;
 }
 
-// get Tensor data dtype from given DLDataType
-phi::DataType GetDstPtrByDLDataType(DLDataType type) {
-  // vector types not currently supported
-  PADDLE_ENFORCE_LE(
-      type.lanes,
-      1,
-      common::errors::Unimplemented("Vector type is not supported currently."));
-
-  switch (type.bits) {
-    case 8:
-      if (type.code == kDLBool) return phi::DataType::BOOL;
-      if (type.code == kDLInt) return phi::DataType::INT8;
-      if (type.code == kDLUInt) return phi::DataType::UINT8;
-      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
-      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
-      PADDLE_THROW(common::errors::Unimplemented(
-          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
-          type.code,
-          type.bits));
-    case 16:
-      if (type.code == kDLInt) return phi::DataType::INT16;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
-      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
-      PADDLE_THROW(common::errors::Unimplemented(
-          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
-          type.code,
-          type.bits));
-    case 32:
-      if (type.code == kDLInt) return phi::DataType::INT32;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
-      PADDLE_THROW(common::errors::Unimplemented(
-          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
-          type.code,
-          type.bits));
-    case 64:
-      if (type.code == kDLInt) return phi::DataType::INT64;
-      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
-      PADDLE_THROW(common::errors::Unimplemented(
-          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
-          type.code,
-          type.bits));
-    case 128:
-      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
-      PADDLE_THROW(common::errors::Unimplemented(
-          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
-          type.code,
-          type.bits));
-    default:
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupported DLDataType.bits %d.", type.bits));
-  }
-}
-
 template <typename T>
 phi::DenseTensor from_blob(void *data,
                            T *src,
@@ -175,7 +121,7 @@ static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
   return result;
 }
 
-static DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
+static ::DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
   static auto type_to_dtype_map = CreateDLDataTypeMap();
   static auto type_to_dtype_map_end_it = type_to_dtype_map.end();
   auto it = type_to_dtype_map.find(static_cast<int>(type));
@@ -249,6 +195,64 @@ struct DLDeviceVisitor {
   }
 };
 }  // namespace internal
+
+phi::DataType DLDataTypeToPhiDataType(::DLDataType type) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(
+      type.lanes,
+      1,
+      common::errors::Unimplemented("Vector type is not supported currently."));
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLBool) return phi::DataType::BOOL;
+      if (type.code == kDLInt) return phi::DataType::INT8;
+      if (type.code == kDLUInt) return phi::DataType::UINT8;
+      if (type.code == kDLFloat8_e4m3fn) return phi::DataType::FLOAT8_E4M3FN;
+      if (type.code == kDLFloat8_e5m2) return phi::DataType::FLOAT8_E5M2;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 16:
+      if (type.code == kDLInt) return phi::DataType::INT16;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT16;
+      if (type.code == kDLBfloat) return phi::DataType::BFLOAT16;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 32:
+      if (type.code == kDLInt) return phi::DataType::INT32;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT32;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 64:
+      if (type.code == kDLInt) return phi::DataType::INT64;
+      if (type.code == kDLFloat) return phi::DataType::FLOAT64;
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX64;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    case 128:
+      if (type.code == kDLComplex) return phi::DataType::COMPLEX128;
+      PADDLE_THROW(common::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code,
+          type.bits));
+    default:
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Unsupported DLDataType.bits %d.", type.bits));
+  }
+}
+
+::DLDataType PhiDataTypeToDLDataType(phi::DataType dtype) {
+  return internal::GetDLDataTypeFromTypeIndex(
+      framework::TransToProtoVarType(dtype));
+}
 
 phi::Place DLDeviceToPlace(const DLDevice &dl_device) {
   phi::Place place;
@@ -326,13 +330,10 @@ T *ToDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
       strides[i] = 1;
     }
   }
-  pdDLMTensor->tensor.dl_tensor.strides = strides;
-
   pdDLMTensor->tensor.dl_tensor.data = const_cast<void *>(src.data());
-  auto place = src.place();
-  pdDLMTensor->tensor.dl_tensor.device = PlaceToDLDevice(place);
-  pdDLMTensor->tensor.dl_tensor.dtype = internal::GetDLDataTypeFromTypeIndex(
-      framework::TransToProtoVarType(src.dtype()));
+  pdDLMTensor->tensor.dl_tensor.strides = strides;
+  pdDLMTensor->tensor.dl_tensor.device = PlaceToDLDevice(src.place());
+  pdDLMTensor->tensor.dl_tensor.dtype = PhiDataTypeToDLDataType(src.dtype());
   pdDLMTensor->tensor.dl_tensor.byte_offset = 0;
   FillVersionInfo(&(pdDLMTensor->tensor), flags);
   return &(pdDLMTensor->tensor);
@@ -355,9 +356,8 @@ phi::DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
             std::back_inserter(shape_vec));
 
   phi::Place place = DLDeviceToPlace(src->dl_tensor.device);
+  phi::DataType dtype = DLDataTypeToPhiDataType(src->dl_tensor.dtype);
 
-  ::DLDataType type = src->dl_tensor.dtype;
-  auto dtype = internal::GetDstPtrByDLDataType(type);
   if (!src->dl_tensor.strides) {
     return internal::from_blob(
         src->dl_tensor.data,
