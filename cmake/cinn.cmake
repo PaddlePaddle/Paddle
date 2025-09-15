@@ -94,13 +94,6 @@ if(WITH_GPU)
   list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
   set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
-  message(
-    STATUS
-      "copy paddle/common/float16.h paddle/common/bfloat16.h paddle/common/float8_e4m3fn.h to $ENV{runtime_include_dir}"
-  )
-  file(COPY paddle/common/float16.h paddle/common/bfloat16.h
-            paddle/common/float8_e4m3fn.h DESTINATION $ENV{runtime_include_dir})
-
   find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
                                          REQUIRED)
   find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
@@ -282,6 +275,9 @@ if(PUBLISH_LIBS)
       "${core_includes};paddle/cinn/runtime/sycl/cinn_sycl_runtime_source.h")
   set(core_includes
       "${core_includes};paddle/common/flags.h;paddle/utils/test_macros.h")
+  set(core_includes
+      "${core_includes};paddle/common/float16.h;paddle/common/bfloat16.h;paddle/common/float8_e4m3fn.h"
+  )
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

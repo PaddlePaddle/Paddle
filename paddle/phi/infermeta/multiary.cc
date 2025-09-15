@@ -2326,23 +2326,25 @@ void Fp8GemmBlockwiseInferMeta(const MetaTensor& A,
 
   PADDLE_ENFORCE_EQ(phi::isFloat8Type(A.dtype()),
                     true,
-                    errors::InvalidArgument("A must be FP8 dtype"));
+                    errors::InvalidArgument("A must be FP8 dtype, but got %s",
+                                            DataTypeToString(A.dtype())));
 
   PADDLE_ENFORCE_EQ(phi::isFloat8Type(B.dtype()),
                     true,
-                    errors::InvalidArgument("B must be FP8 dtype"));
+                    errors::InvalidArgument("B must be FP8 dtype, but got %s",
+                                            DataTypeToString(A.dtype())));
 
-  PADDLE_ENFORCE_EQ(
-      A_scale.dtype(),
-      phi::DataType::FLOAT32,
-      errors::InvalidArgument(
-          "The dtype of A_scale must be float32, but got %d", A_scale.dtype()));
+  PADDLE_ENFORCE_EQ(A_scale.dtype(),
+                    phi::DataType::FLOAT32,
+                    errors::InvalidArgument(
+                        "The dtype of A_scale must be float32, but got %s",
+                        DataTypeToString(A_scale.dtype())));
 
-  PADDLE_ENFORCE_EQ(
-      B_scale.dtype(),
-      phi::DataType::FLOAT32,
-      errors::InvalidArgument(
-          "The dtype of B_scale must be float32, but got %d", B_scale.dtype()));
+  PADDLE_ENFORCE_EQ(B_scale.dtype(),
+                    phi::DataType::FLOAT32,
+                    errors::InvalidArgument(
+                        "The dtype of B_scale must be float32, but got %s",
+                        DataTypeToString(B_scale.dtype())));
 
   PADDLE_ENFORCE_EQ(input_result.dtype() == phi::DataType::FLOAT32 ||
                         input_result.dtype() == phi::DataType::BFLOAT16,
