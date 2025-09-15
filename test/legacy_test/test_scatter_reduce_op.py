@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -844,7 +844,7 @@ class TestScatterReduceAPIMaxNotIncludeSelf(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestScatterReduceAPILargeCase(unittest.TestCase):
@@ -857,7 +857,7 @@ class TestScatterReduceAPILargeCase(unittest.TestCase):
         self.axis = 1
         self.value_np = np.ones(self.index_shape).astype(np.float32)
         self.x_feed = copy.deepcopy(self.x_np)
-        self.place = [paddle.CUDAPlace(0)]
+        self.place = [get_device_place()]
 
     def test_api_dygraph(self):
         def run(place):

@@ -50,7 +50,7 @@ void InstanceNormKernel(const Context &dev_ctx,
                     5,
                     common::errors::InvalidArgument(
                         "The `shape` in InstanceNormOp is invalid: "
-                        "the size of X's dimensions must smaller than"
+                        "the size of X's dimensions must smaller than "
                         "or equal to 5. But received: "
                         "the size of X's dimensions is [%d]",
                         x_dims.size()));

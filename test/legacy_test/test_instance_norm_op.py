@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -290,10 +290,10 @@ class TestElasticNormOpCase2(unittest.TestCase):
     def init_test_case(self):
         self.epsilon = 1e-5
         self.places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu(
-            "instance_norm"
-        ):
-            self.places.append(core.CUDAPlace(0))
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and core.op_support_gpu("instance_norm"):
+            self.places.append(get_device_place())
 
     def test_norm(self):
         self.init_test_case()

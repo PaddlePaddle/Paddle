@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import os
 import subprocess
@@ -19,6 +18,7 @@ import sys
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.framework import in_pir_mode
@@ -118,7 +118,7 @@ class TestNanInf(TestNanInfBase):
         self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
         # Test on GPU.
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             cmd = f"{self._python_interp} {filepath} --use_cuda --check_nan_inf_level {self.check_nan_inf_level}"
             self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
 
@@ -237,7 +237,7 @@ class TestNanInfCheckResult(TestNanInfBase):
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 0}
         )
         _check_num_nan_inf(use_cuda=False)
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             _check_num_nan_inf(use_cuda=True)
 
     def run_check_nan_inf_level(self, use_cuda, dtype, level):
@@ -261,7 +261,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float32", level=level
             )
@@ -271,7 +271,7 @@ class TestNanInfCheckResult(TestNanInfBase):
         self.run_check_nan_inf_level(
             use_cuda=False, dtype="float32", level=level
         )
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             self.run_check_nan_inf_level(
                 use_cuda=True, dtype="float16", level=level
             )
@@ -283,7 +283,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
         x_np, y_np = self.generate_inputs(shape, "float32")
 
         device_list = ["cpu"]
-        if paddle.base.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
             device_list.append("gpu:0")
 
         for device in device_list:

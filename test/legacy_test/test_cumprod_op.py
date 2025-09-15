@@ -16,7 +16,13 @@ import random
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -206,8 +212,8 @@ class TestCumprodFP16Op(TestCumprod):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestCumprodBF16Op(TestCumprod):
@@ -220,7 +226,7 @@ class TestCumprodBF16Op(TestCumprod):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output_with_place(core.CUDAPlace(0))
+                self.check_output_with_place(get_device_place())
 
     # test backward.
     def test_check_grad(self):
@@ -229,7 +235,7 @@ class TestCumprodBF16Op(TestCumprod):
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
                 self.check_grad_with_place(
-                    core.CUDAPlace(0),
+                    get_device_place(),
                     ['X'],
                     'Out',
                     user_defined_grads=[self.grad_x],

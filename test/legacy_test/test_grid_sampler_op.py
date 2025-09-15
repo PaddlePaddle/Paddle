@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -380,8 +385,8 @@ class TestGridSamplerOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
         self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
@@ -393,9 +398,9 @@ class TestGridSamplerOp(OpTest):
             numeric_grad_delta=self.numeric_grad_delta,
             check_pir=True,
         )
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ['X', 'Grid'],
                 'Output',
                 max_relative_error=0.01,
@@ -481,8 +486,8 @@ class Case_ZeroSize(TestGridSamplerOp):
 class LargeInputCase(TestGridSamplerOp):
     def get_places(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def initTestCase(self):
@@ -576,8 +581,8 @@ class Case9(TestGridSamplerOp):
 class LargeInput3DCase(TestGridSamplerOp):
     def get_places(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def initTestCase(self):
