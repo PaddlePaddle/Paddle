@@ -277,6 +277,7 @@ struct PaddleDLMTensor {
 template <typename T>
 static void deleter(T *self) {
   if (self && self->manager_ctx) {
+    std::cout << "DLPack deleter is called." << std::endl;
     delete[] self->dl_tensor
         .shape;  // delete shape allocated in ToDLPack manually
     delete[] self->dl_tensor
@@ -383,12 +384,12 @@ phi::DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
 
 template <typename T>
 phi::DenseTensor FromDLPackImpl(T *src) {
-  auto deleter = [src](void *self [[maybe_unused]]) {
-    if (src->deleter) {
-      src->deleter(src);
-    }
-  };
-  return FromDLPackImpl<T>(src, std::move(deleter));
+  // NOTE: 不传递 deleter，让 DLPack 对象通过 capsule 自己管理生命周期
+  // 这样避免了双重删除的问题：
+  // 1. Capsule destructor 会调用 src->deleter(src)（如果 capsule 未被消费）
+  // 2. 如果传递了 deleter，DeleterBridge 也会调用 src->deleter(src)
+  // 导致同一个对象被删除两次
+  return FromDLPackImpl<T>(src, nullptr);
 }
 
 phi::DenseTensor FromDLPack(DLManagedTensor *src) {
