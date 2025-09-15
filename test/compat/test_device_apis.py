@@ -18,6 +18,15 @@ import paddle
 from paddle.base import core
 
 
+def is_custom_device():
+    custom_dev_types = paddle.device.get_all_custom_device_type()
+    if custom_dev_types and paddle.device.is_compiled_with_custom_device(
+        custom_dev_types[0]
+    ):
+        return True
+    return False
+
+
 class TestDeviceAPIs(unittest.TestCase):
     """Test paddle.device APIs across different hardware types."""
 
@@ -25,11 +34,7 @@ class TestDeviceAPIs(unittest.TestCase):
         """Set up test environment."""
         self.cuda_available = core.is_compiled_with_cuda()
         self.xpu_available = core.is_compiled_with_xpu()
-        self.custom_device_available = (
-            len(core.get_all_custom_device_type()) > 0
-            if hasattr(core, 'get_all_custom_device_type')
-            else False
-        )
+        self.custom_device_available = is_custom_device()
 
         # Get available custom device types
         if self.custom_device_available:
@@ -46,10 +51,6 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
 
-        # Test with specific device type
-        count_gpu = paddle.device.device_count()
-        self.assertEqual(count_gpu, count)
-
     @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
     def test_device_count_xpu(self):
         """Test device_count with XPU."""
@@ -57,17 +58,7 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
 
-        # Test with specific device type
-        count_xpu = paddle.device.device_count('xpu')
-        self.assertEqual(count_xpu, count)
-
-    @unittest.skipIf(
-        not (
-            hasattr(core, 'get_all_custom_device_type')
-            and len(core.get_all_custom_device_type()) > 0
-        ),
-        "Custom device not available",
-    )
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_device_count_customdevice(self):
         """Test device_count with custom device."""
         count = paddle.device.device_count()
@@ -94,13 +85,11 @@ class TestDeviceAPIs(unittest.TestCase):
         props_int = paddle.device.get_device_properties(0)
         self.assertIsNotNone(props_int)
 
-    @unittest.skipIf(
-        not (
-            hasattr(core, 'get_all_custom_device_type')
-            and len(core.get_all_custom_device_type()) > 0
-        ),
-        "Custom device not available",
-    )
+        # Test with CUDAPlace input
+        props_int = paddle.device.get_device_properties(paddle.CUDAPlace(0))
+        self.assertIsNotNone(props_int)
+
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_get_device_properties_customdevice(self):
         """Test get_device_properties with custom device."""
         # Test with default device
@@ -123,19 +112,19 @@ class TestDeviceAPIs(unittest.TestCase):
         props_int = paddle.device.get_device_properties(0)
         self.assertIsNotNone(props_int)
 
+        # Test with CustomPlace input
+        props_custom = paddle.device.get_device_properties(
+            paddle.CustomPlace(self.default_custom_device, 0)
+        )
+        self.assertIsNotNone(props_custom)
+
     @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_empty_cache_cuda(self):
         """Test empty_cache with CUDA."""
         # Should not raise any exception
         paddle.device.empty_cache()
 
-    @unittest.skipIf(
-        not (
-            hasattr(core, 'get_all_custom_device_type')
-            and len(core.get_all_custom_device_type()) > 0
-        ),
-        "Custom device not available",
-    )
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_empty_cache_customdevice(self):
         """Test empty_cache with custom device."""
         # Should not raise any exception
@@ -143,7 +132,10 @@ class TestDeviceAPIs(unittest.TestCase):
 
     @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_memory_apis_cuda(self):
-        """Test memory management APIs with CUDA."""
+        """Test memory management APIs with CUDA with actual tensor allocation."""
+        # Set device to GPU
+        paddle.device.set_device('gpu')
+
         # Test max_memory_allocated with different input types
         mem1 = paddle.device.max_memory_allocated()
         self.assertIsInstance(mem1, int)
@@ -157,30 +149,148 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(mem3, int)
         self.assertGreaterEqual(mem3, 0)
 
-        # Test max_memory_reserved
+        mem7 = paddle.device.max_memory_allocated(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem7, int)
+        self.assertGreaterEqual(mem7, 0)
+
+        # Test max_memory_reserved with different input types
         mem4 = paddle.device.max_memory_reserved()
         self.assertIsInstance(mem4, int)
         self.assertGreaterEqual(mem4, 0)
 
-        # Test memory_allocated
+        mem8 = paddle.device.max_memory_reserved('gpu:0')
+        self.assertIsInstance(mem8, int)
+        self.assertGreaterEqual(mem8, 0)
+
+        mem9 = paddle.device.max_memory_reserved(0)
+        self.assertIsInstance(mem9, int)
+        self.assertGreaterEqual(mem9, 0)
+
+        mem10 = paddle.device.max_memory_reserved(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem10, int)
+        self.assertGreaterEqual(mem10, 0)
+
+        # Test memory_allocated with different input types
         mem5 = paddle.device.memory_allocated()
         self.assertIsInstance(mem5, int)
         self.assertGreaterEqual(mem5, 0)
 
-        # Test memory_reserved
+        mem11 = paddle.device.memory_allocated('gpu:0')
+        self.assertIsInstance(mem11, int)
+        self.assertGreaterEqual(mem11, 0)
+
+        mem12 = paddle.device.memory_allocated(0)
+        self.assertIsInstance(mem12, int)
+        self.assertGreaterEqual(mem12, 0)
+
+        mem13 = paddle.device.memory_allocated(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem13, int)
+        self.assertGreaterEqual(mem13, 0)
+
+        # Test memory_reserved with different input types
         mem6 = paddle.device.memory_reserved()
         self.assertIsInstance(mem6, int)
         self.assertGreaterEqual(mem6, 0)
 
-    @unittest.skipIf(
-        not (
-            hasattr(core, 'get_all_custom_device_type')
-            and len(core.get_all_custom_device_type()) > 0
-        ),
-        "Custom device not available",
-    )
+        mem14 = paddle.device.memory_reserved('gpu:0')
+        self.assertIsInstance(mem14, int)
+        self.assertGreaterEqual(mem14, 0)
+
+        mem15 = paddle.device.memory_reserved(0)
+        self.assertIsInstance(mem15, int)
+        self.assertGreaterEqual(mem15, 0)
+
+        mem16 = paddle.device.memory_reserved(paddle.CUDAPlace(0))
+        self.assertIsInstance(mem16, int)
+        self.assertGreaterEqual(mem16, 0)
+
+        # Now test actual memory allocation and tracking
+        initial_allocated = paddle.device.memory_allocated()
+        initial_max_allocated = paddle.device.max_memory_allocated()
+        initial_reserved = paddle.device.memory_reserved()
+        initial_max_reserved = paddle.device.max_memory_reserved()
+
+        # Allocate first tensor (10MB)
+        tensor1 = paddle.randn([256, 256, 256], dtype='float32')  # ~67MB
+
+        # Check memory after first allocation
+        allocated_after_first = paddle.device.memory_allocated()
+        max_allocated_after_first = paddle.device.max_memory_allocated()
+        reserved_after_first = paddle.device.memory_reserved()
+        max_reserved_after_first = paddle.device.max_memory_reserved()
+
+        self.assertGreater(allocated_after_first, initial_allocated)
+        self.assertGreater(max_allocated_after_first, initial_max_allocated)
+        self.assertGreaterEqual(reserved_after_first, initial_reserved)
+        self.assertGreaterEqual(max_reserved_after_first, initial_max_reserved)
+
+        # Allocate second tensor (5MB)
+        tensor2 = paddle.randn([128, 128, 128], dtype='float32')  # ~8MB
+
+        # Check memory after second allocation
+        allocated_after_second = paddle.device.memory_allocated()
+        max_allocated_after_second = paddle.device.max_memory_allocated()
+        reserved_after_second = paddle.device.memory_reserved()
+        max_reserved_after_second = paddle.device.max_memory_reserved()
+
+        # Memory should have increased further
+        self.assertGreater(allocated_after_second, allocated_after_first)
+        self.assertGreater(
+            max_allocated_after_second, max_allocated_after_first
+        )
+        self.assertGreaterEqual(reserved_after_second, reserved_after_first)
+        self.assertGreaterEqual(
+            max_reserved_after_second, max_reserved_after_first
+        )
+
+        # Release first tensor
+        del tensor1
+
+        # Check memory after releasing first tensor
+        allocated_after_release = paddle.device.memory_allocated()
+        max_allocated_after_release = paddle.device.max_memory_allocated()
+        reserved_after_release = paddle.device.memory_reserved()
+        max_reserved_after_release = paddle.device.max_memory_reserved()
+
+        # Current allocated should decrease, but max should stay the same
+        self.assertLess(allocated_after_release, allocated_after_second)
+        self.assertEqual(
+            max_allocated_after_release, max_allocated_after_second
+        )
+        self.assertLessEqual(reserved_after_release, reserved_after_second)
+        self.assertEqual(max_reserved_after_release, max_reserved_after_second)
+
+        # Test reset functions
+        paddle.device.reset_max_memory_allocated()
+        paddle.device.reset_max_memory_reserved()
+        paddle.device.synchronize()
+
+        # Check memory after reset
+        allocated_after_reset = paddle.device.memory_allocated()
+        max_allocated_after_reset = paddle.device.max_memory_allocated()
+        reserved_after_reset = paddle.device.memory_reserved()
+        max_reserved_after_reset = paddle.device.max_memory_reserved()
+
+        # Current allocated should remain the same, but max should be reset to current level
+        self.assertEqual(allocated_after_reset, allocated_after_release)
+        self.assertLessEqual(
+            max_allocated_after_reset, max_allocated_after_release
+        )
+        self.assertEqual(reserved_after_reset, reserved_after_release)
+        self.assertLessEqual(
+            max_reserved_after_reset, max_reserved_after_release
+        )
+
+        # Clean up
+        del tensor2
+        paddle.device.empty_cache()
+
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_memory_apis_customdevice(self):
-        """Test memory management APIs with custom device."""
+        """Test memory management APIs with custom device with actual tensor allocation."""
+        # Set device to custom device
+        paddle.device.set_device(self.default_custom_device)
+
         # Test max_memory_allocated with different input types
         mem1 = paddle.device.max_memory_allocated()
         self.assertIsInstance(mem1, int)
@@ -200,52 +310,263 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(mem4, int)
         self.assertGreaterEqual(mem4, 0)
 
-        # Test max_memory_reserved
-        mem5 = paddle.device.max_memory_reserved()
+        # Test with CustomPlace
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        mem5 = paddle.device.max_memory_allocated(custom_place)
         self.assertIsInstance(mem5, int)
         self.assertGreaterEqual(mem5, 0)
 
-        mem6 = paddle.device.max_memory_reserved(self.default_custom_device)
+        # Test max_memory_reserved with different input types
+        mem6 = paddle.device.max_memory_reserved()
         self.assertIsInstance(mem6, int)
         self.assertGreaterEqual(mem6, 0)
 
-        # Test memory_allocated
-        mem7 = paddle.device.memory_allocated()
+        mem7 = paddle.device.max_memory_reserved(self.default_custom_device)
         self.assertIsInstance(mem7, int)
         self.assertGreaterEqual(mem7, 0)
 
-        mem8 = paddle.device.memory_allocated(self.default_custom_device)
+        mem8 = paddle.device.max_memory_reserved(
+            f'{self.default_custom_device}:0'
+        )
         self.assertIsInstance(mem8, int)
         self.assertGreaterEqual(mem8, 0)
 
-        # Test memory_reserved
-        mem9 = paddle.device.memory_reserved()
+        mem9 = paddle.device.max_memory_reserved(0)
         self.assertIsInstance(mem9, int)
         self.assertGreaterEqual(mem9, 0)
 
-        mem10 = paddle.device.memory_reserved(self.default_custom_device)
+        # Test with CustomPlace
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        mem10 = paddle.device.max_memory_reserved(custom_place)
         self.assertIsInstance(mem10, int)
         self.assertGreaterEqual(mem10, 0)
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
-    def test_reset_memory_apis_cuda(self):
-        """Test reset memory APIs with CUDA."""
-        # Should not raise any exception
+        # Test memory_allocated with different input types
+        mem11 = paddle.device.memory_allocated()
+        self.assertIsInstance(mem11, int)
+        self.assertGreaterEqual(mem11, 0)
+
+        mem12 = paddle.device.memory_allocated(self.default_custom_device)
+        self.assertIsInstance(mem12, int)
+        self.assertGreaterEqual(mem12, 0)
+
+        mem13 = paddle.device.memory_allocated(
+            f'{self.default_custom_device}:0'
+        )
+        self.assertIsInstance(mem13, int)
+        self.assertGreaterEqual(mem13, 0)
+
+        mem14 = paddle.device.memory_allocated(0)
+        self.assertIsInstance(mem14, int)
+        self.assertGreaterEqual(mem14, 0)
+
+        # Test with CustomPlace
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        mem15 = paddle.device.memory_allocated(custom_place)
+        self.assertIsInstance(mem15, int)
+        self.assertGreaterEqual(mem15, 0)
+
+        # Test memory_reserved with different input types
+        mem16 = paddle.device.memory_reserved()
+        self.assertIsInstance(mem16, int)
+        self.assertGreaterEqual(mem16, 0)
+
+        mem17 = paddle.device.memory_reserved(self.default_custom_device)
+        self.assertIsInstance(mem17, int)
+        self.assertGreaterEqual(mem17, 0)
+
+        mem18 = paddle.device.memory_reserved(f'{self.default_custom_device}:0')
+        self.assertIsInstance(mem18, int)
+        self.assertGreaterEqual(mem18, 0)
+
+        mem19 = paddle.device.memory_reserved(0)
+        self.assertIsInstance(mem19, int)
+        self.assertGreaterEqual(mem19, 0)
+
+        # Test with CustomPlace
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        mem20 = paddle.device.memory_reserved(custom_place)
+        self.assertIsInstance(mem20, int)
+        self.assertGreaterEqual(mem20, 0)
+
+        # Now test actual memory allocation and tracking
+        initial_allocated = paddle.device.memory_allocated()
+        initial_max_allocated = paddle.device.max_memory_allocated()
+        initial_reserved = paddle.device.memory_reserved()
+        initial_max_reserved = paddle.device.max_memory_reserved()
+
+        # Allocate first tensor
+        tensor1 = paddle.randn([128, 128, 128], dtype='float32')  # ~8MB
+
+        # Check memory after first allocation
+        allocated_after_first = paddle.device.memory_allocated()
+        max_allocated_after_first = paddle.device.max_memory_allocated()
+        reserved_after_first = paddle.device.memory_reserved()
+        max_reserved_after_first = paddle.device.max_memory_reserved()
+
+        # Memory should have increased
+        self.assertGreater(allocated_after_first, initial_allocated)
+        self.assertGreater(max_allocated_after_first, initial_max_allocated)
+        self.assertGreaterEqual(reserved_after_first, initial_reserved)
+        self.assertGreaterEqual(max_reserved_after_first, initial_max_reserved)
+
+        # Allocate second tensor
+        tensor2 = paddle.randn([64, 64, 64], dtype='float32')  # ~2MB
+
+        # Check memory after second allocation
+        allocated_after_second = paddle.device.memory_allocated()
+        max_allocated_after_second = paddle.device.max_memory_allocated()
+        reserved_after_second = paddle.device.memory_reserved()
+        max_reserved_after_second = paddle.device.max_memory_reserved()
+
+        # Memory should have increased further
+        self.assertGreater(allocated_after_second, allocated_after_first)
+        self.assertGreater(
+            max_allocated_after_second, max_allocated_after_first
+        )
+        self.assertGreaterEqual(reserved_after_second, reserved_after_first)
+        self.assertGreaterEqual(
+            max_reserved_after_second, max_reserved_after_first
+        )
+
+        # Release first tensor
+        del tensor1
+
+        # Check memory after releasing first tensor
+        allocated_after_release = paddle.device.memory_allocated()
+        max_allocated_after_release = paddle.device.max_memory_allocated()
+        reserved_after_release = paddle.device.memory_reserved()
+        max_reserved_after_release = paddle.device.max_memory_reserved()
+
+        # Current allocated should decrease, but max should stay the same
+        self.assertLess(allocated_after_release, allocated_after_second)
+        self.assertEqual(
+            max_allocated_after_release, max_allocated_after_second
+        )
+        self.assertLessEqual(reserved_after_release, reserved_after_second)
+        self.assertEqual(max_reserved_after_release, max_reserved_after_second)
+
+        # Test reset functions
         paddle.device.reset_max_memory_allocated()
         paddle.device.reset_max_memory_reserved()
 
-    @unittest.skipIf(
-        not (
-            hasattr(core, 'get_all_custom_device_type')
-            and len(core.get_all_custom_device_type()) > 0
-        ),
-        "Custom device not available",
-    )
-    def test_reset_memory_apis_customdevice(self):
-        """Test reset memory APIs with custom device."""
-        # Should not raise any exception
+        # Check memory after reset
+        allocated_after_reset = paddle.device.memory_allocated()
+        max_allocated_after_reset = paddle.device.max_memory_allocated()
+        reserved_after_reset = paddle.device.memory_reserved()
+        max_reserved_after_reset = paddle.device.max_memory_reserved()
+
+        # Current allocated should remain the same, but max should be reset to current level
+        self.assertEqual(allocated_after_reset, allocated_after_release)
+        self.assertLessEqual(
+            max_allocated_after_reset, max_allocated_after_release
+        )
+        self.assertEqual(reserved_after_reset, reserved_after_release)
+        self.assertLessEqual(
+            max_reserved_after_reset, max_reserved_after_release
+        )
+
+        # Clean up
+        del tensor2
+        paddle.device.empty_cache()
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
+    def test_reset_memory_apis_cuda(self):
+        """Test reset memory APIs with CUDA with actual tensor allocation."""
+        # Set device to GPU
+        paddle.device.set_device('gpu')
+
+        # Get initial memory values
+        initial_max_allocated = paddle.device.max_memory_allocated()
+        initial_max_reserved = paddle.device.max_memory_reserved()
+
+        # Allocate tensor to increase memory usage
+        tensor = paddle.randn([256, 256, 256], dtype='float32')  # ~67MB
+
+        # Check that max memory has increased
+        max_allocated_after_alloc = paddle.device.max_memory_allocated()
+        max_reserved_after_alloc = paddle.device.max_memory_reserved()
+        self.assertGreater(max_allocated_after_alloc, initial_max_allocated)
+        self.assertGreaterEqual(max_reserved_after_alloc, initial_max_reserved)
+
+        # Test reset functions with different input types
         paddle.device.reset_max_memory_allocated()
+        paddle.device.reset_max_memory_allocated('gpu:0')
+        paddle.device.reset_max_memory_allocated(0)
+        paddle.device.reset_max_memory_allocated(paddle.CUDAPlace(0))
+
         paddle.device.reset_max_memory_reserved()
+        paddle.device.reset_max_memory_reserved('gpu:0')
+        paddle.device.reset_max_memory_reserved(0)
+        paddle.device.reset_max_memory_reserved(paddle.CUDAPlace(0))
+
+        # Check that max memory has been reset
+        max_allocated_after_reset = paddle.device.max_memory_allocated()
+        max_reserved_after_reset = paddle.device.max_memory_reserved()
+
+        # Max memory should be reset to current level (which should be lower than after allocation)
+        self.assertLessEqual(
+            max_allocated_after_reset, max_allocated_after_alloc
+        )
+        self.assertLessEqual(max_reserved_after_reset, max_reserved_after_alloc)
+
+        # Clean up
+        del tensor
+        paddle.device.empty_cache()
+
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
+    def test_reset_memory_apis_customdevice(self):
+        """Test reset memory APIs with custom device with actual tensor allocation."""
+        # Set device to custom device
+        paddle.device.set_device(self.default_custom_device)
+
+        # Get initial memory values
+        initial_max_allocated = paddle.device.max_memory_allocated()
+        initial_max_reserved = paddle.device.max_memory_reserved()
+
+        # Allocate tensor to increase memory usage
+        tensor = paddle.randn([128, 128, 128], dtype='float32')  # ~8MB
+
+        # Check that max memory has increased
+        max_allocated_after_alloc = paddle.device.max_memory_allocated()
+        max_reserved_after_alloc = paddle.device.max_memory_reserved()
+        self.assertGreater(max_allocated_after_alloc, initial_max_allocated)
+        self.assertGreaterEqual(max_reserved_after_alloc, initial_max_reserved)
+
+        # Test reset functions with different input types
+        paddle.device.reset_max_memory_allocated()
+        paddle.device.reset_max_memory_allocated(self.default_custom_device)
+        paddle.device.reset_max_memory_allocated(
+            f'{self.default_custom_device}:0'
+        )
+        paddle.device.reset_max_memory_allocated(0)
+
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        paddle.device.reset_max_memory_allocated(custom_place)
+
+        paddle.device.reset_max_memory_reserved()
+        paddle.device.reset_max_memory_reserved(self.default_custom_device)
+        paddle.device.reset_max_memory_reserved(
+            f'{self.default_custom_device}:0'
+        )
+        paddle.device.reset_max_memory_reserved(0)
+
+        custom_place = core.CustomPlace(self.default_custom_device, 0)
+        paddle.device.reset_max_memory_reserved(custom_place)
+
+        # Check that max memory has been reset
+        max_allocated_after_reset = paddle.device.max_memory_allocated()
+        max_reserved_after_reset = paddle.device.max_memory_reserved()
+
+        # Max memory should be reset to current level (which should be lower than after allocation)
+        self.assertLessEqual(
+            max_allocated_after_reset, max_allocated_after_alloc
+        )
+        self.assertLessEqual(max_reserved_after_reset, max_reserved_after_alloc)
+
+        # Clean up
+        del tensor
+        paddle.device.empty_cache()
 
     @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_stream_apis_cuda(self):
@@ -265,27 +586,47 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.synchronize(paddle.CUDAPlace(0))
         paddle.device.synchronize(0)
 
-    # @unittest.skipIf(not (hasattr(core, 'get_all_custom_device_type') and len(core.get_all_custom_device_type()) > 0), "Custom device not available")
-    # def test_stream_apis_customdevice(self):
-    #     """Test stream APIs with custom device."""
-    #     # Test current_stream with different input types
-    #     stream1 = paddle.device.current_stream()
-    #     self.assertIsNotNone(stream1)
+    @unittest.skipIf(not is_custom_device(), "Custom device not available")
+    def test_stream_apis_customdevice(self):
+        """Test stream APIs with custom device."""
+        # Test current_stream with different input types
+        stream1 = paddle.device.current_stream()
+        self.assertIsNotNone(stream1)
 
-    #     stream2 = paddle.device.current_stream(self.default_custom_device)
-    #     self.assertIsNotNone(stream2)
+        stream2 = paddle.device.current_stream(self.default_custom_device)
+        self.assertIsNotNone(stream2)
 
-    #     stream3 = paddle.device.current_stream(f'{self.default_custom_device}:0')
-    #     self.assertIsNotNone(stream3)
+        stream3 = paddle.device.current_stream(
+            f'{self.default_custom_device}:0'
+        )
+        self.assertIsNotNone(stream3)
 
-    #     stream4 = paddle.device.current_stream(0)
-    #     self.assertIsNotNone(stream4)
+        stream4 = paddle.device.current_stream(0)
+        self.assertIsNotNone(stream4)
 
-    #     # Test synchronize
-    #     paddle.device.synchronize()
-    #     paddle.device.synchronize(self.default_custom_device)
-    #     paddle.device.synchronize(f'{self.default_custom_device}:0')
-    #     paddle.device.synchronize(0)
+        # Test synchronize
+        paddle.device.synchronize()
+        paddle.device.synchronize(self.default_custom_device)
+        paddle.device.synchronize(f'{self.default_custom_device}:0')
+        paddle.device.synchronize(0)
+
+    @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
+    def test_stream_apis_xpu(self):
+        """Test stream APIs with XPU."""
+        # Test current_stream with different input types
+        stream1 = paddle.device.current_stream()
+        self.assertIsNotNone(stream1)
+
+        stream2 = paddle.device.current_stream('xpu:0')
+        self.assertIsNotNone(stream2)
+
+        stream3 = paddle.device.current_stream(0)
+        self.assertIsNotNone(stream3)
+
+        # Test synchronize
+        paddle.device.synchronize()
+        paddle.device.synchronize('xpu:0')
+        paddle.device.synchronize(0)
 
     def test_error_handling(self):
         """Test error handling for invalid inputs."""
@@ -296,52 +637,6 @@ class TestDeviceAPIs(unittest.TestCase):
         # Test invalid input type
         with self.assertRaises(ValueError):
             paddle.device.max_memory_allocated([1, 2, 3])
-
-    def test_input_types_comprehensive(self):
-        """Test all APIs with comprehensive input types."""
-        input_types = [
-            None,
-            0,
-            'gpu:0' if self.cuda_available else 'cpu',
-            'custom_device:0' if self.custom_device_available else 'cpu',
-        ]
-
-        # Add CustomPlace if custom device is available
-        if self.custom_device_available:
-            custom_place = core.CustomPlace(self.default_custom_device, 0)
-            input_types.append(custom_place)
-
-        for input_type in input_types:
-            with self.subTest(input_type=input_type):
-                # Test memory APIs
-                try:
-                    result = paddle.device.max_memory_allocated(input_type)
-                    self.assertIsInstance(result, int)
-                    self.assertGreaterEqual(result, 0)
-                except Exception as e:
-                    # Some inputs might not be supported, which is okay
-                    pass
-
-                try:
-                    result = paddle.device.max_memory_reserved(input_type)
-                    self.assertIsInstance(result, int)
-                    self.assertGreaterEqual(result, 0)
-                except Exception as e:
-                    pass
-
-                try:
-                    result = paddle.device.memory_allocated(input_type)
-                    self.assertIsInstance(result, int)
-                    self.assertGreaterEqual(result, 0)
-                except Exception as e:
-                    pass
-
-                try:
-                    result = paddle.device.memory_reserved(input_type)
-                    self.assertIsInstance(result, int)
-                    self.assertGreaterEqual(result, 0)
-                except Exception as e:
-                    pass
 
 
 if __name__ == '__main__':

@@ -97,7 +97,7 @@ else:
         dev_types = []
     if dev_types and core.is_compiled_with_custom_device(dev_types[0]):
         from .customdevice import (
-            current_stream,
+            # current_stream,
             device_count,
             empty_cache,
             get_device_properties,
