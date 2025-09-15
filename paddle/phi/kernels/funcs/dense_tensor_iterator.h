@@ -73,10 +73,25 @@ struct DenseTensorIteratorBase {
   int64_t numel() const;
   int ntensors() const { return static_cast<int>(operands_.size()); }
   bool is_contiguous() const;
+  /// number of elements in the output operand. this is the same as numel() for
+  /// operations that are not reductions.
+  int64_t num_output_elements() const;
+  /// number of reduced dimensions in a reduction operation
+  int noutputs() const { return num_outputs_; }
+  int num_reduce_dims() const;
   const std::vector<int64_t>& strides(int64_t arg) const {
     return operands_[arg].stride_bytes;
   }
   const void* data_ptr(int64_t arg) const;
+
+  /// If the kernel should accumulate into the output. Only relevant for CUDA
+  /// reductions.
+  bool should_accumulate() const { return accumulate_; }
+
+  /// Whether this iterator produces the actual output,
+  /// as opposed to something that will be accumulated further. Only relevant
+  /// for CUDA reductions.
+  bool is_final_output() const { return final_output_; }
 
  protected:
   void populate_operands(DenseTensorIteratorConfig&);
@@ -105,6 +120,9 @@ struct DenseTensorIteratorBase {
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
   bool is_reduction_ = false;
+  /// Set by split(), see should_accumulate() and is_final_output()
+  bool accumulate_ = false;
+  bool final_output_ = true;
 };
 
 /**
@@ -174,6 +192,11 @@ struct DenseTensorIteratorConfig final {
 
   DenseTensorIteratorConfig& resize_outputs(bool resize_outputs) {
     resize_outputs_ = resize_outputs;
+    return *this;
+  }
+
+  DenseTensorIteratorConfig& is_reduction(const bool _is_reduction) {
+    is_reduction_ = _is_reduction;
     return *this;
   }
 
