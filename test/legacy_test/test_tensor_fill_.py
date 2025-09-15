@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device, get_places
 
 import paddle
 
@@ -31,7 +31,7 @@ class TensorFill_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             np_arr = np.reshape(
                 np.array(range(np.prod(self.shape))), self.shape
             )
@@ -51,7 +51,7 @@ class TensorFill_Test(unittest.TestCase):
             if idx == 0:
                 paddle.set_device('cpu')
             else:
-                paddle.set_device('gpu')
+                paddle.set_device(get_device())
             np_arr = np.reshape(
                 np.array(range(np.prod(self.shape))), self.shape
             )

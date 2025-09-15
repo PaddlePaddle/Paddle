@@ -1,3 +1,5 @@
+from op_test import is_custom_device
+
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +28,8 @@ from paddle.base import core
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Only test cuda Random Generator"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Only test cuda Random Generator",
 )
 class TestGeneratorSeed(unittest.TestCase):
     """
@@ -59,7 +62,7 @@ class TestGeneratorSeed(unittest.TestCase):
         y_np = y.numpy()
         y1_np = y1.numpy()
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             print(">>>>>>> dropout dygraph >>>>>>>")
             np.testing.assert_allclose(y_np, y1_np, rtol=1e-05)
 
@@ -78,7 +81,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             print(">>>>>>> gaussian random dygraph >>>>>>>")
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x2_np, x3_np, rtol=1e-05)
@@ -101,7 +104,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             print(">>>>>>> randint dygraph >>>>>>>")
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
@@ -150,7 +153,7 @@ class TestGeneratorSeed(unittest.TestCase):
         out2_res1 = np.array(out2[0])
         out2_res2 = np.array(out2[1])
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             print(">>>>>>> truncated normal static >>>>>>>")
             np.testing.assert_allclose(out1_res1, out2_res1, rtol=1e-05)
             np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)

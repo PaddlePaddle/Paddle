@@ -16,7 +16,13 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -698,8 +704,8 @@ class TestPutAlongAxisOpMaxNotIncludeSelf(TestPutAlongAxisOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisBF16Op(OpTest):
@@ -731,7 +737,7 @@ class TestPutAlongAxisBF16Op(OpTest):
         self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
         self.inputs['Value'] = convert_float_to_uint16(self.inputs['Value'])
         self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(
@@ -857,7 +863,7 @@ class TestPutAlongAxisAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPILargeCase(unittest.TestCase):
@@ -870,7 +876,7 @@ class TestPutAlongAxisAPILargeCase(unittest.TestCase):
         self.axis = 1
         self.value_np = np.ones(self.index_shape).astype(np.float32)
         self.x_feed = copy.deepcopy(self.x_np)
-        self.place = [paddle.CUDAPlace(0)]
+        self.place = [get_device_place()]
 
     def test_api_dygraph(self):
         def run(place):
@@ -1136,7 +1142,7 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
@@ -1183,12 +1189,12 @@ class TestPutAlongAxisAPIMulFloat32(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
@@ -1237,11 +1243,11 @@ class TestPutAlongAxisAPIMulBF16(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
@@ -1288,11 +1294,11 @@ class TestPutAlongAxisAPIMulInt32(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
@@ -1339,7 +1345,7 @@ class TestPutAlongAxisAPIMulInt64(unittest.TestCase):
             out_ref = self.target
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
-        run(paddle.CUDAPlace(0))
+        run(get_device_place())
 
 
 class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
@@ -1419,8 +1425,8 @@ class TestPutAlongAxisAPIReduceLowBits(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
 
         run(
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 

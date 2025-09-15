@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -132,7 +137,7 @@ class TestSegmentOps(OpTest):
         if self.dtype == np.uint16:
             self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
             self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-            self.place = core.CUDAPlace(0)
+            self.place = get_device_place()
 
 
 class TestSegmentSum2(TestSegmentOps):
@@ -221,9 +226,9 @@ class TestSegmentMean(TestSegmentOps):
         self.convert_bf16()
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             self.check_output_with_place(
-                core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+                get_device_place(), check_pir=True, check_symbol_infer=False
             )
         # due to CPU kernel not implement calculate 'SummedIds'
         # so cannot check 'SummedIds'
@@ -266,8 +271,8 @@ class TestSegmentMeanFP16Op(TestSegmentMean):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentSumBF16Op(TestSegmentOps):
@@ -286,8 +291,8 @@ class TestSegmentSumBF16Op(TestSegmentOps):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMaxBF16Op(TestSegmentMax):
@@ -312,8 +317,8 @@ class TestSegmentMaxBF16Op(TestSegmentMax):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMinBF16Op(TestSegmentMin):
@@ -338,8 +343,8 @@ class TestSegmentMinBF16Op(TestSegmentMin):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestSegmentMeanBF16Op(TestSegmentMean):
@@ -559,8 +564,8 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
             )
 
     def test_dygraph_cuda_float16(self):
-        if core.is_compiled_with_cuda():
-            device = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            device = get_device_place()
             with paddle.base.dygraph.guard(device):
                 x = paddle.to_tensor(
                     [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float16'
