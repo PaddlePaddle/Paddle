@@ -371,4 +371,9 @@ void SaveDebugInfo(std::string dir_path,
                    const std::string& serialized_forward_graph,
                    const std::string& call_stack,
                    const std::string& serialized_backward_graph);
+
+void SaveStringToFile(const std::string& file_path,
+                      const std::string& serialized_graph,
+                      const std::string& mode = "trunc");
+
 }  // namespace egr

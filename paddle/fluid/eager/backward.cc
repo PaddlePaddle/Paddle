@@ -639,13 +639,11 @@ std::vector<paddle::Tensor> RunBackward(
                   debug_call_stack,
                   dot.Build());
   }
-  // Dump the forward graph and call stack into
+  // Dump the all call stack into
   // FLAGS_dump_grad_node_forward_stack_path
   if (need_dump_forward_stack) {
-    SaveDebugInfo(FLAGS_dump_grad_node_forward_stack_path,
-                  forward_debug_dot_graph.Build(),
-                  debug_call_stack,
-                  "");
+    SaveStringToFile(
+        FLAGS_dump_grad_node_forward_stack_path, debug_call_stack, "app");
   }
   VLOG(6) << "Run Backward Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();
