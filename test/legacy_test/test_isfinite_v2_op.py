@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 from utils import static_guard
 
 import paddle
@@ -27,8 +27,10 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
         startup_program = paddle.static.Program()
         main_program = paddle.static.Program()
         place = paddle.CPUPlace()
-        if use_gpu and base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if use_gpu and (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        ):
+            place = get_device_place()
         exe = base.Executor(place)
         with static.program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
@@ -39,8 +41,8 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
 
 def run_dygraph(x_np, op_str, use_gpu=True):
     place = paddle.CPUPlace()
-    if use_gpu and base.core.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (base.core.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np)
     dygraph_result = getattr(paddle, op_str)(x)
@@ -50,8 +52,10 @@ def run_dygraph(x_np, op_str, use_gpu=True):
 def run_eager(x_np, op_str, use_gpu=True):
     with paddle.base.dygraph.guard():
         place = paddle.CPUPlace()
-        if use_gpu and base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if use_gpu and (
+            base.core.is_compiled_with_cuda() or is_custom_device()
+        ):
+            place = get_device_place()
 
         x = paddle.to_tensor(x_np)
         dygraph_result = getattr(paddle, op_str)(x)
@@ -242,7 +246,7 @@ def test_bf16(test_case, op_str):
     x_np = np.array([float('inf'), -float('inf'), 2.0, 3.0])
     result_np = getattr(np, op_str)(x_np)
 
-    place = paddle.CUDAPlace(0)
+    place = get_device_place()
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np, dtype='bfloat16')
     dygraph_result = getattr(paddle, op_str)(x).numpy()
@@ -291,8 +295,8 @@ class TestCUDANormal(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda()
-    or not base.core.is_float16_supported(base.core.CUDAPlace(0)),
+    not (base.core.is_compiled_with_cuda() or is_custom_device())
+    or not base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestCUDAFP16(unittest.TestCase):
@@ -304,8 +308,8 @@ class TestCUDAFP16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda()
-    or not base.core.is_bfloat16_supported(base.core.CUDAPlace(0)),
+    not (base.core.is_compiled_with_cuda() or is_custom_device())
+    or not base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestCUDABFP16(unittest.TestCase):

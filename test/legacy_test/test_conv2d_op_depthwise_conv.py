@@ -21,7 +21,7 @@ import paddle
 paddle.enable_static()
 import sys
 
-from op_test import get_numeric_gradient
+from op_test import get_device_place, get_numeric_gradient, is_custom_device
 
 sys.path.append("../../legacy_test")
 from test_conv2d_op import (
@@ -403,7 +403,8 @@ class TestDepthwiseConvWithDilation2andFuse_AsyPadding(TestConv2DOp_v2):
 
 def create_test_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestDepthwiseConvFP16(parent):
         def init_kernel_type(self):
@@ -411,20 +412,20 @@ def create_test_fp16_class(parent, grad_check=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=2e-2)
 
         def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Filter'], 'Output', no_grad_set={'Input'}
@@ -437,8 +438,8 @@ def create_test_fp16_class(parent, grad_check=True):
 
 def create_test_bf16_class(parent, atol=1e-2):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestDepthwiseConvBF16(parent):
@@ -458,11 +459,11 @@ def create_test_bf16_class(parent, atol=1e-2):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, atol=atol)
 
         def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'Input')
             self.check_grad_with_place(
                 place,
@@ -473,7 +474,7 @@ def create_test_bf16_class(parent, atol=1e-2):
             )
 
         def test_check_grad_no_input(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'Filter')
             self.check_grad_with_place(
                 place,
@@ -490,7 +491,8 @@ def create_test_bf16_class(parent, atol=1e-2):
 
 def create_test_channel_last_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestChannelLastFP16(parent):
         def init_kernel_type(self):
@@ -498,20 +500,20 @@ def create_test_channel_last_fp16_class(parent, grad_check=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=2e-2)
 
         def test_check_grad_no_filter(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Input'], 'Output', no_grad_set={'Filter'}
                 )
 
         def test_check_grad_no_input(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place) and grad_check:
                 self.check_grad_with_place(
                     place, ['Filter'], 'Output', no_grad_set={'Input'}

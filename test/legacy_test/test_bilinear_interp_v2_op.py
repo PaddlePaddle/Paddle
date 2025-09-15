@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -447,8 +452,8 @@ class TestBilinearInterpCase7FP16(TestBilinearInterpOpFP16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpOpBF16(OpTest):
@@ -537,8 +542,8 @@ class TestBilinearInterpOpBF16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
@@ -547,8 +552,8 @@ class TestBilinearInterpCase1BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
@@ -557,8 +562,8 @@ class TestBilinearInterpCase2BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
@@ -567,8 +572,8 @@ class TestBilinearInterpCase3BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
@@ -577,8 +582,8 @@ class TestBilinearInterpCase4BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
@@ -587,8 +592,8 @@ class TestBilinearInterpCase5BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
@@ -597,8 +602,8 @@ class TestBilinearInterpCase6BF16(TestBilinearInterpOpBF16):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBilinearInterpCase7BF16(TestBilinearInterpOpBF16):
@@ -902,8 +907,8 @@ class TestBilinearInterpOpAPI_dy(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -922,8 +927,8 @@ class TestBilinearInterpOpAPI_dy2(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -944,8 +949,8 @@ class TestBilinearInterpOpAPI_dy3(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -969,8 +974,8 @@ class TestBilinearInterpOpAPI_dy4(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -994,8 +999,8 @@ class TestBilinearInterpOpAPI_dy5(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1014,7 +1019,8 @@ class TestBilinearInterpOpAPI_dy5(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1057,7 +1063,8 @@ class TestBilinearInterpOpZoomOutForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBilinearInterpOpZoomInForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1103,8 +1110,8 @@ class TestBilinearInterpOpAPI_0DTensorScale(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1127,8 +1134,8 @@ class TestBilinearInterpOpAPI_0DTensorScale2(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -1151,8 +1158,8 @@ class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
     def test_case(self):
         import paddle
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):

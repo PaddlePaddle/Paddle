@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -402,8 +402,8 @@ class TestCompatMinMaxBase(unittest.TestCase):
             )
 
             place = (
-                paddle.CUDAPlace(0)
-                if paddle.is_compiled_with_cuda()
+                get_device_place()
+                if (paddle.is_compiled_with_cuda() or is_custom_device())
                 else paddle.CPUPlace()
             )
             paddle.static.Executor(place).run()
@@ -472,7 +472,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
                     gt_values = paddle.maximum(y, axis=axis_or_other)
                 gt_indices = paddle.to_tensor(0)
 
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             values_np, indices_np, gt_values_np, gt_indices_np = exe.run(
                 fetch_list=[values, indices, gt_values, gt_indices]
@@ -482,7 +482,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
         paddle.disable_static()
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(),
+        not (core.is_compiled_with_cuda() or is_custom_device()),
         "core is not compiled with CUDA, skipping",
     )
     def test_static_graph(self):
@@ -491,7 +491,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
         self._compare_with_origin_static([17], 0)
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(),
+        not (core.is_compiled_with_cuda() or is_custom_device()),
         "core is not compiled with CUDA, skipping",
     )
     def test_static_unary_shape_infer_1(self):
@@ -518,7 +518,7 @@ class TestCompatMinMaxBase(unittest.TestCase):
         self.assertEqual(ind2.shape, [2, 3, 1])
 
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(),
+        not (core.is_compiled_with_cuda() or is_custom_device()),
         "core is not compiled with CUDA, skipping",
     )
     def test_static_unary_shape_infer_2(self):

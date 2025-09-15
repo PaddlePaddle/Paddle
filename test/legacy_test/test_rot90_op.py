@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -35,8 +35,8 @@ class TestRot90_API(unittest.TestCase):
             output = paddle.rot90(output, k=1, axes=[0, 1])
             output = output.rot90(k=1, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -64,8 +64,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=0, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -93,8 +93,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=2, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -122,8 +122,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=3, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -151,8 +151,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=-1, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -180,8 +180,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=-2, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -209,8 +209,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=-3, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -238,8 +238,8 @@ class TestRot90_API(unittest.TestCase):
             )
             output = paddle.rot90(input, k=-4, axes=[0, 1])
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 

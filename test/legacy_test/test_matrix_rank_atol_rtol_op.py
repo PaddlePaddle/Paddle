@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -67,8 +67,8 @@ class TestMatrixRankAtolRtolOP(OpTest):
 
     def _get_places(self):
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def test_check_output(self):
@@ -263,8 +263,8 @@ class TestMatrixRankAtolRtolComplexOP7(TestMatrixRankAtolRtolOP):
 class TestMatrixRankAtolRtolAPI(unittest.TestCase):
     def test_dygraph(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             paddle.disable_static(place)
 
@@ -390,8 +390,8 @@ class TestMatrixRankAtolRtolAPI(unittest.TestCase):
     def test_static(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             # atol: float, rtol: None
             with static.program_guard(static.Program(), static.Program()):

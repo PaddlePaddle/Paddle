@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -298,7 +298,7 @@ class TestBceLossOpFP16(TestBceLossOp):
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
     def test_fp16(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.enable_static()
         shape = [2, 3, 20]
@@ -310,8 +310,8 @@ class TestBceLossOpStaticFP16(unittest.TestCase):
             out = paddle.nn.functional.binary_cross_entropy(
                 x, y, reduction="none"
             )
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 exe.run(paddle.static.default_startup_program())
                 output_pd = exe.run(

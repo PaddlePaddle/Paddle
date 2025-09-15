@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import nn
@@ -77,7 +77,8 @@ class FeedForward(nn.Layer):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFusedFeedforwardPass(unittest.TestCase):
     def setUp(self):
@@ -139,7 +140,7 @@ class TestFusedFeedforwardPass(unittest.TestCase):
             assert 'fused_feedforward' in [op.type for op in ops]
             assert 'fused_feedforward_grad' in [op.type for op in ops]
 
-        exe = paddle.static.Executor(paddle.CUDAPlace(0))
+        exe = paddle.static.Executor(get_device_place())
         exe.run(startup_prog)
 
         for i in range(2):

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -37,7 +37,7 @@ class TestAllcloseLayer(unittest.TestCase):
             a, b, rtol=0.01, atol=0.0, name="corner_case"
         )
 
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+        place = get_device_place() if use_cuda else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(base.default_startup_program())
 
@@ -97,7 +97,7 @@ class TestAllcloseLayer(unittest.TestCase):
             self.allclose_check(use_cuda=False, dtype='float64')
 
     def test_allclose_gpu_fp32(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             main = base.Program()
             startup = base.Program()
             with (
@@ -107,7 +107,7 @@ class TestAllcloseLayer(unittest.TestCase):
                 self.allclose_check(use_cuda=True, dtype='float32')
 
     def test_allclose_gpu_fp64(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             main = base.Program()
             startup = base.Program()
             with (

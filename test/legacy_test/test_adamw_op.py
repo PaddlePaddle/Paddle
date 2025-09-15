@@ -18,7 +18,13 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest, get_devices
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, nn
@@ -191,7 +197,10 @@ class TestAdamWAMSGrad(TestAdamW):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()),
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or core.is_compiled_with_xpu()
+    ),
     "core is not compiled with CUDA nor XPU",
 )
 class TestAdamW2(OpTest):
@@ -257,7 +266,7 @@ class TestAdamW2(OpTest):
         self.check_output_with_place(
             no_check_set=self.no_check_set,
             place=(
-                core.CUDAPlace(0)
+                get_device_place()
                 if not core.is_compiled_with_xpu()
                 else core.XPUPlace(0)
             ),
@@ -680,8 +689,8 @@ class TestAdamWOpMultiPrecisionWithMainGrad(unittest.TestCase):
 
     def _get_places(self):
         places = []
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places
@@ -737,11 +746,11 @@ class TestAdamWOpMultiPrecision(unittest.TestCase):
         )
 
         for idx in range(2):
-            if (place == 'gpu' or place == 'xpu') and use_amp:
+            if (place == get_device() or place == 'xpu') and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if (place == 'gpu' or place == 'xpu') and use_amp:
+            if (place == get_device() or place == 'xpu') and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -914,7 +923,10 @@ def simple_lr_setting(param, decay_rate, n_layers):
 
 
 @unittest.skipIf(
-    not (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()),
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or core.is_compiled_with_xpu()
+    ),
     "core is not compiled with CUDA nor XPU",
 )
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
@@ -1068,7 +1080,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         with paddle.pir_utils.OldIrGuard():
             paddle.enable_static()
             place = (
-                base.CUDAPlace(0)
+                get_device_place()
                 if not core.is_compiled_with_xpu()
                 else base.XPUPlace(0)
             )
@@ -1282,7 +1294,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         with paddle.pir_utils.IrGuard():
             paddle.enable_static()
             place = (
-                base.CUDAPlace(0)
+                get_device_place()
                 if not core.is_compiled_with_xpu()
                 else base.XPUPlace(0)
             )
@@ -1765,8 +1777,8 @@ class TestAdamwMomentBfloat16Amp(unittest.TestCase):
 
     def _get_places(self):
         places = []
-        if paddle.is_compiled_with_cuda():
-            places.append('gpu')
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device())
         if paddle.is_compiled_with_xpu():
             places.append('xpu')
         return places

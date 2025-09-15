@@ -840,7 +840,7 @@ def amp_decorate(
 @overload
 def amp_decorate(
     models: _ModelsT,
-    optimizers: Literal[None] = ...,
+    optimizers: None = ...,
     level: _AmpLevelLiteral = ...,
     dtype: _DTypeLiteral = ...,
     master_weight: bool | None = ...,
