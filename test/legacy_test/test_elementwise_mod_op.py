@@ -20,6 +20,7 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     is_custom_device,
 )
 from utils import dygraph_guard, static_guard
@@ -168,7 +169,7 @@ class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestElementwiseModBF16Op(OpTest):
@@ -199,7 +200,7 @@ class TestElementwiseModBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_pir=True, check_symbol_infer=False
         )
@@ -275,7 +276,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     shape = [1, 2, 3, 4, 5]
@@ -297,7 +298,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     x_shape = [2, 3, 4, 5]
@@ -319,7 +320,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     x_shape = [1, 1, 5]
@@ -341,7 +342,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     x_shape = [1, 3, 1, 5]
@@ -363,7 +364,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     shape = [1, 2, 0, 4, 5]
@@ -385,7 +386,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]  # only test in cpu
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             for dtype in dtypes:
                 for place in places:
                     x_shape = [2, 1, 4, 1]
@@ -433,7 +434,7 @@ class TestElementwiseDygraph(unittest.TestCase):
             dtypes = ['int32', 'int64', 'float32', 'float64']
             places = [paddle.CPUPlace()]  # only test in cpu
             if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+                places.append(get_device_place())
             shape_combinations = [
                 ([0], [0]),
                 ([2, 0, 4], [1]),
@@ -620,7 +621,7 @@ class TestElementwiseModOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

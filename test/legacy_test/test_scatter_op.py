@@ -16,7 +16,13 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -85,8 +91,8 @@ class TestScatterFP16Op(TestScatterOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op(TestScatterOp):
@@ -97,13 +103,13 @@ class TestScatterBF16Op(TestScatterOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -161,8 +167,8 @@ class TestScatterFP16Op0(TestScatterOp0):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op0(TestScatterOp0):
@@ -173,13 +179,13 @@ class TestScatterBF16Op0(TestScatterOp0):
         self.enable_cinn = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -262,15 +268,15 @@ class TestScatterNegativeAxis(OpTest):
 
     def test_check_output(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_output_with_place(place)
 
     def test_check_grad(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_grad_with_place(
                 place,
@@ -315,8 +321,8 @@ class TestScatterFP16Op1(TestScatterOp1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op1(TestScatterOp1):
@@ -327,13 +333,13 @@ class TestScatterBF16Op1(TestScatterOp1):
         self.enable_cinn = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -345,7 +351,8 @@ class TestScatterBF16Op1(TestScatterOp1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterOp2(OpTest):
     def setUp(self):
@@ -375,15 +382,15 @@ class TestScatterOp2(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, atol=1e-3, check_pir=True, check_symbol_infer=False
             )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -395,7 +402,8 @@ class TestScatterOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterFP16Op2(TestScatterOp2):
     def _set_dtype(self):
@@ -403,8 +411,8 @@ class TestScatterFP16Op2(TestScatterOp2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op2(TestScatterOp2):
@@ -416,7 +424,8 @@ class TestScatterBF16Op2(TestScatterOp2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterOp3(OpTest):
     def setUp(self):
@@ -450,15 +459,15 @@ class TestScatterOp3(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, atol=1e-3, check_pir=True, check_symbol_infer=False
             )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -470,7 +479,8 @@ class TestScatterOp3(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterFP16Op3(TestScatterOp3):
     def _set_dtype(self):
@@ -478,8 +488,8 @@ class TestScatterFP16Op3(TestScatterOp3):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op3(TestScatterOp3):
@@ -536,8 +546,8 @@ class TestScatterFP16Op4(TestScatterOp4):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op4(TestScatterOp4):
@@ -548,13 +558,13 @@ class TestScatterBF16Op4(TestScatterOp4):
         self.enable_cinn = False
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -566,7 +576,8 @@ class TestScatterBF16Op4(TestScatterOp4):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterOp5(OpTest):
     def setUp(self):
@@ -596,15 +607,15 @@ class TestScatterOp5(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, atol=1e-3, check_pir=True, check_symbol_infer=False
             )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -616,7 +627,8 @@ class TestScatterOp5(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterFP16Op5(TestScatterOp5):
     def _set_dtype(self):
@@ -624,8 +636,8 @@ class TestScatterFP16Op5(TestScatterOp5):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op5(TestScatterOp5):
@@ -682,8 +694,8 @@ class TestScatterFP16Op6(TestScatterOp6):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op6(TestScatterOp6):
@@ -694,13 +706,13 @@ class TestScatterBF16Op6(TestScatterOp6):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X', 'Updates'],
@@ -785,7 +797,9 @@ class TestScatterAPI(unittest.TestCase):
                 )
 
     def test_large_data(self):
-        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+        if os.name == "nt" or not (
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ):
             return
 
         x = np.random.rand(183826, 256).astype("float32")
@@ -824,7 +838,7 @@ class TestScatterAPI(unittest.TestCase):
                         updates_t.name: updates,
                     }
                     fetch = [out_t]
-                    gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                    gpu_exe = paddle.static.Executor(get_device_place())
                     gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                     scope._remove_from_pool()
                     return gpu_value
@@ -839,7 +853,8 @@ class TestScatterAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestScatterOpFp16(OpTest):
     def setUp(self):
@@ -867,7 +882,7 @@ class TestScatterOpFp16(OpTest):
         return ref_grad_updates
 
     def test_scatter_fp16(self):
-        paddle.disable_static(place=paddle.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         x_tensor = paddle.to_tensor(self.x_np, stop_gradient=False)
         index_tensor = paddle.to_tensor(self.index_np)
         updates_tensor = paddle.to_tensor(self.updates_np, stop_gradient=False)
@@ -893,7 +908,8 @@ class TestScatterInplaceAPI(TestScatterAPI):
 
 
 @unittest.skipIf(
-    core.is_compiled_with_cuda() or core.is_compiled_with_xpu(),
+    (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_xpu(),
     "CUDA and XPU will not throw exception",
 )
 class TestScatterError(unittest.TestCase):

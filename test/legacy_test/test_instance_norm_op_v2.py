@@ -16,7 +16,13 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import static_guard
 
 import paddle
@@ -305,8 +311,8 @@ class TestInstanceNormWithNC(TestInstanceNormFP32OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_float16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the float16",
 )
 class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
@@ -321,7 +327,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
         self.max_relative_error = 8e-3
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             atol=self.atol,
@@ -333,7 +339,7 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X', 'Scale', 'Bias'],
@@ -348,8 +354,8 @@ class TestInstanceNormFP16OP(TestInstanceNormFP32OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestInstanceNormBF16OP(OpTest):
@@ -402,7 +408,7 @@ class TestInstanceNormBF16OP(OpTest):
         self.shape = [4, 100, 4, 4]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_prim=self.check_prim,
@@ -413,7 +419,7 @@ class TestInstanceNormBF16OP(OpTest):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X', 'Scale', 'Bias'],

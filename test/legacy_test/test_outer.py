@@ -180,7 +180,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray ",
+            r"multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray ",
             paddle.outer,
             x_data,
             y,
@@ -192,7 +192,7 @@ class TestMultiplyError(unittest.TestCase):
         x = paddle.to_tensor(x_data)
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+multiply\(\): argument 'y' \(position 1\) must be Tensor, but got numpy.ndarray ",
+            r"multiply\(\): argument 'y' \(position 1\) must be Tensor, but got numpy.ndarray ",
             paddle.outer,
             x,
             y_data,
@@ -203,7 +203,7 @@ class TestMultiplyError(unittest.TestCase):
         y_data = np.random.randn(200).astype(np.float32)
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
+            r"multiply\(\): argument 'x' \(position 0\) must be Tensor, but got numpy.ndarray",
             paddle.outer,
             x_data,
             y_data,
