@@ -22,6 +22,21 @@
 
 namespace phi {
 
+template <typename T, typename StepT>
+__global__ void LinspaceKernelInner(
+    T start, T stop, StepT step, int64_t size, T* out) {
+  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  for (; index < size; index += blockDim.x * gridDim.x) {
+    if (index < size / 2) {
+      out[index] = static_cast<T>(static_cast<StepT>(start) + step * index);
+    } else {
+      out[index] =
+          static_cast<T>(static_cast<StepT>(stop) - step * (size - index - 1));
+    }
+  }
+}
+
 template <typename T>
 __global__ void LinspaceKernelInner(
     T start, T stop, T step, int64_t size, T* out) {
@@ -32,21 +47,6 @@ __global__ void LinspaceKernelInner(
       out[index] = start + step * static_cast<T>(index);
     } else {
       out[index] = stop - step * static_cast<T>(size - index - 1);
-    }
-  }
-}
-
-template <typename T, typename StepT>
-__global__ void LinspaceKernelInnerForInt(
-    T start, T stop, StepT step, int64_t size, T* out) {
-  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
-
-  for (; index < size; index += blockDim.x * gridDim.x) {
-    if (index < size / 2) {
-      out[index] = static_cast<T>(static_cast<StepT>(start) + step * index);
-    } else {
-      out[index] =
-          static_cast<T>(static_cast<StepT>(stop) - step * (size - index - 1));
     }
   }
 }
@@ -125,7 +125,7 @@ void LinspaceKernel(const Context& dev_ctx,
     float step =
         (static_cast<float>(stop_value) - static_cast<float>(start_value)) /
         (num - 1);
-    LinspaceKernelInnerForInt<T, float><<<grid, block, 0, stream>>>(
+    LinspaceKernelInner<T, float><<<grid, block, 0, stream>>>(
         start_value, stop_value, step, num, out_data);
   } else {
     int block = 512;
