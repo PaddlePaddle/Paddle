@@ -195,7 +195,6 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& no_grad_vars = {},
     std::string debug_info_path = "") {
   VLOG(3) << "Start Backward";
-  std::cout << FLAGS_dump_grad_node_forward_stack_path << std::endl;
   bool need_debug_backward_graph = !debug_info_path.empty();
   bool need_dump_forward_stack =
       !FLAGS_dump_grad_node_forward_stack_path.empty();

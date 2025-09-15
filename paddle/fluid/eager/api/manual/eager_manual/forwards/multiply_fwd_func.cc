@@ -27,7 +27,7 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
-
+#define SEPARATOR "=========================="
 bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
   // TODO(@gexiao): replace this function with api implemented at custom repo
   if (device_type == "npu") {
@@ -42,8 +42,8 @@ paddle::Tensor multiply_ad_func(
     const paddle::Tensor& y,
     paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << "Running AD API: "
-          << "multiply";
+  VLOG(3) << SEPARATOR << "Running_AD_API: "
+          << "multiply" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func begin");
   }
@@ -120,8 +120,6 @@ paddle::Tensor multiply_ad_func(
   egr::AutogradMeta* y_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(y);
 
-  VLOG(5) << "Running C++ API: "
-          << "multiply";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -139,11 +137,15 @@ paddle::Tensor multiply_ad_func(
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "multiply" << SEPARATOR;
   // Forward API Call
   auto api_result = paddle::experimental::multiply(x, y, predefined_out);
   // Check NaN and Inf if needed
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "abs" << SEPARATOR;
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("multiply", api_result);
   }
@@ -170,7 +172,7 @@ paddle::Tensor multiply_ad_func(
     auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
         new MultiplyGradNode(1, 2));
     // Set for forward trace
-    if (FLAGS_check_nan_inf) {
+    if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
     // SetAttributes if needed
