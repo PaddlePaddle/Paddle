@@ -15,6 +15,7 @@ import unittest
 
 import numpy as np
 from op_test import get_device_place, is_custom_device
+from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
@@ -733,6 +734,44 @@ class TestPaddleDivideTrunc(unittest.TestCase):
     )
     def test_gpu(self):
         self._run_all_tests(paddle.CUDAPlace(0))
+
+    def test_infer_symbolic_shape(self):
+        devices = [paddle.device.get_device()]
+        if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
+            devices.append("cpu")
+
+        for device in devices:
+            with paddle.device.device_guard(device), dygraph_guard():
+                x = paddle.randn([2, 2], dtype="float32")
+                y = paddle.randn([2, 2], dtype="float32")
+                x.stop_gradient = False
+                y.stop_gradient = False
+
+                def divide_trunc(x, y):
+                    return paddle.divide(x, y, rounding_mode='trunc')
+
+                def divide_floor(x, y):
+                    return paddle.divide(x, y, rounding_mode='floor')
+
+                st_f = paddle.jit.to_static(
+                    divide_trunc,
+                    full_graph=True,
+                    input_spec=[
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                        paddle.static.InputSpec(
+                            shape=[-1, -1], dtype="float32"
+                        ),
+                    ],
+                )
+
+                out = st_f(x, y)
+                self.assertEqual(
+                    out.shape,
+                    x.shape,
+                    msg=f"shape mismatch for 2D input, got {out.shape}, expected {x.shape}",
+                )
 
 
 if __name__ == "__main__":
