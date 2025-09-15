@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@ import unittest
 
 import numpy as np
 from op_test import get_devices
+from utils import dygraph_guard
 
 import paddle
 
@@ -93,6 +94,24 @@ class TestRandomFromToOp(unittest.TestCase):
                     test_random_from_to(dtype, place)
                     test_random_from(dtype, place)
                     test_random(dtype, place)
+
+    def test_pir_random_(self):
+        devices = [paddle.device.get_device()]
+        if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
+            devices.append("cpu")
+        for device in devices:
+            with paddle.device.device_guard(device), dygraph_guard():
+                st_x = paddle.ones(self.shape, dtype=paddle.float32)
+
+                def func(x):
+                    x.random_(self.from_val, self.to_val)
+                    return x
+
+                st_func = paddle.jit.to_static(func, full_graph=True)
+                st_func(st_x)
+                st_out = st_x.numpy()
+                self.assertTrue(np.all(st_out >= self.from_val))
+                self.assertTrue(np.all(st_out <= self.to_val - 1))
 
 
 class TestRandomGrad(unittest.TestCase):

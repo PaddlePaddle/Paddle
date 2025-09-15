@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,9 +31,9 @@ void RandomKernel(const Context& dev_ctx,
 
 template <typename scalar_t>
 int64_t update_from(int64_t from) {
-  static_assert(std::is_floating_point_v<scalar_t> ||
-                    std::is_same_v<scalar_t, paddle::float16> ||
-                    std::is_same_v<scalar_t, paddle::bfloat16>,
+  static_assert(std::is_floating_point<scalar_t>::value ||
+                    std::is_same<scalar_t, paddle::float16>::value ||
+                    std::is_same<scalar_t, paddle::bfloat16>::value,
                 "scalar_t must be floating-point type");
 
   const auto from_plus_1 =
@@ -50,9 +50,9 @@ int64_t update_from(int64_t from) {
 
 template <typename scalar_t>
 int64_t update_to(int64_t to) {
-  static_assert(std::is_floating_point_v<scalar_t> ||
-                    std::is_same_v<scalar_t, paddle::float16> ||
-                    std::is_same_v<scalar_t, paddle::bfloat16>,
+  static_assert(std::is_floating_point<scalar_t>::value ||
+                    std::is_same<scalar_t, paddle::float16>::value ||
+                    std::is_same<scalar_t, paddle::bfloat16>::value,
                 "scalar_t must be floating-point type");
 
   const auto to_minus_1 = static_cast<int64_t>(static_cast<scalar_t>(to - 1));

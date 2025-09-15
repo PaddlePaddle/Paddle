@@ -1850,7 +1850,7 @@ def random_(
     from_: int = 0,
     to: int | None = None,
     *,
-    generator=None,
+    generator: None = None,
 ) -> Tensor:
     """
     Fills self tensor with numbers sampled from the discrete uniform distribution over [from, to - 1].
