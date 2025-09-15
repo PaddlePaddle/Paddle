@@ -752,31 +752,12 @@ phi::DataType ConvertToPDDataType(const std::string& typestr) {
   return it->second;
 }
 
-phi::DenseTensor TensorFromDLPack(DLManagedTensor* src, Deleter deleter) {
-  return framework::fromDLPack(src, deleter);
-}
-
-phi::DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src,
-                                  Deleter deleter) {
-  return framework::fromDLPackVersioned(src, deleter);
-}
-
 phi::DenseTensor TensorFromDLPack(DLManagedTensor* src) {
-  auto deleter = [src](void* self [[maybe_unused]]) {
-    if (src->deleter) {
-      src->deleter(src);
-    }
-  };
-  return TensorFromDLPack(src, std::move(deleter));
+  return framework::FromDLPack(src);
 }
 
 phi::DenseTensor TensorFromDLPack(DLManagedTensorVersioned* src) {
-  auto deleter = [src](void* self [[maybe_unused]]) {
-    if (src->deleter) {
-      src->deleter(src);
-    }
-  };
-  return TensorFromDLPack(src, std::move(deleter));
+  return framework::FromDLPackVersioned(src);
 }
 
 template <typename T>

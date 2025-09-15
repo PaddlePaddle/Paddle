@@ -32,13 +32,12 @@ using Deleter = std::function<void(void*)>;
 phi::Place DLDeviceToPlace(const DLDevice& device);
 DLDevice PlaceToDLDevice(const phi::Place& place);
 
-TEST_API DLManagedTensor* toDLPack(const phi::DenseTensor& src,
+TEST_API DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
                                    uint64_t flags = 0);
-DLManagedTensorVersioned* toDLPackVersioned(const phi::DenseTensor& src,
+DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
                                             uint64_t flags = 0);
-phi::DenseTensor fromDLPack(DLManagedTensor* src, Deleter deleter);
-phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned* src,
-                                     Deleter deleter);
+TEST_API phi::DenseTensor FromDLPack(DLManagedTensor* src);
+phi::DenseTensor FromDLPackVersioned(DLManagedTensorVersioned* src);
 
 // A traits to support both DLManagedTensor and DLManagedTensorVersioned
 template <typename T>
@@ -48,14 +47,16 @@ template <>
 struct DLPackTraits<DLManagedTensor> {
   inline static const char* capsule = "dltensor";
   inline static const char* used = "used_dltensor";
-  inline static auto toDLPack = framework::toDLPack;
+  inline static auto ToDLPack = framework::ToDLPack;
+  inline static auto FromDLPack = framework::FromDLPack;
 };
 
 template <>
 struct DLPackTraits<DLManagedTensorVersioned> {
   inline static const char* capsule = "dltensor_versioned";
   inline static const char* used = "used_dltensor_versioned";
-  inline static auto toDLPack = framework::toDLPackVersioned;
+  inline static auto ToDLPack = framework::ToDLPackVersioned;
+  inline static auto FromDLPack = framework::FromDLPackVersioned;
 };
 
 }  // namespace framework

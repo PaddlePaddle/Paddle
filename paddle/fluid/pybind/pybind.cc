@@ -1770,14 +1770,15 @@ PYBIND11_MODULE(libpaddle, m) {
           dlMTensor->version.major,
           DLPACK_MAJOR_VERSION,
           common::errors::InvalidArgument(
-              "The major version of DLManagedTensor (%d) is greater than the "
-              "supported version (%d).",
+              "The major version of DLManagedTensorVersioned (%d) is "
+              "greater than the supported version (%d).",
               dlMTensor->version.major,
               DLPACK_MAJOR_VERSION));
 
       // NOTE: Might meet bugged numpy version, see:
       // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
-      auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
+      auto ptensor =
+          DLPackTraits<DLManagedTensorVersioned>::FromDLPack(dlMTensor);
 
       PyCapsule_SetName(data.ptr(),
                         DLPackTraits<DLManagedTensorVersioned>::used);
@@ -1794,7 +1795,7 @@ PYBIND11_MODULE(libpaddle, m) {
               "Note that DLTensor capsules can be consumed only once, "
               "so you might have already constructed a tensor from it once."));
 
-      auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
+      auto ptensor = DLPackTraits<DLManagedTensor>::FromDLPack(dlMTensor);
 
       PyCapsule_SetName(data.ptr(), DLPackTraits<DLManagedTensor>::used);
       return ptensor;

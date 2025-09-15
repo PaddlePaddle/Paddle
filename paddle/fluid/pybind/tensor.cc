@@ -245,7 +245,7 @@ pybind11::capsule TensorToDLPack(
   uint64_t flags =
       static_cast<uint64_t>(is_copied) * DLPACK_FLAG_BITMASK_IS_COPIED;
   T *dlMTensor =
-      framework::DLPackTraits<T>::toDLPack(maybe_copied_tensor, flags);
+      framework::DLPackTraits<T>::ToDLPack(maybe_copied_tensor, flags);
   auto capsule = pybind11::capsule(
       static_cast<void *>(dlMTensor),
       framework::DLPackTraits<T>::capsule,

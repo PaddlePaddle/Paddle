@@ -311,10 +311,9 @@ TEST(TensorFromDLPack, Tensor) {
     phi::CPUPlace cpu_place;
     phi::CPUContext cpu_ctx(cpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, cpu_ctx, &cpu_tensor);
-    ::DLManagedTensor* dlpack_tensor = paddle::framework::toDLPack(cpu_tensor);
+    ::DLManagedTensor* dlpack_tensor = paddle::framework::ToDLPack(cpu_tensor);
 
-    phi::DenseTensor dst_tensor =
-        paddle::framework::TensorFromDLPack(dlpack_tensor);
+    phi::DenseTensor dst_tensor = paddle::framework::FromDLPack(dlpack_tensor);
 
     auto cpu_ptr = cpu_tensor.data<int>();
     auto src_ptr = dst_tensor.data<int>();
@@ -346,7 +345,7 @@ TEST(TensorFromDLPack, Tensor) {
     gpu_ctx.Wait();
 
     ::DLManagedTensor* dl_managed_tensor =
-        paddle::framework::toDLPack(gpu_tensor);
+        paddle::framework::ToDLPack(gpu_tensor);
     gpu_tensor_from_dlpack =
         paddle::framework::TensorFromDLPack(dl_managed_tensor);
     gpu_ctx.Wait();

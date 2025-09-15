@@ -278,9 +278,9 @@ template <typename T>
 static void deleter(T *self) {
   if (self && self->manager_ctx) {
     delete[] self->dl_tensor
-        .shape;  // delete shape allocated in toDLPack manually
+        .shape;  // delete shape allocated in ToDLPack manually
     delete[] self->dl_tensor
-        .strides;  // delete strides allocated in toDLPack manually
+        .strides;  // delete strides allocated in ToDLPack manually
     delete static_cast<PaddleDLMTensor<T> *>(self->manager_ctx);
   }
 }
@@ -297,7 +297,7 @@ void FillVersionInfo<DLManagedTensorVersioned>(DLManagedTensorVersioned *tensor,
 }
 
 template <typename T>
-T *toDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
+T *ToDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
   PaddleDLMTensor<T> *pdDLMTensor(new PaddleDLMTensor<T>);
   pdDLMTensor->handle = const_cast<phi::DenseTensor &>(src);
   pdDLMTensor->tensor.manager_ctx = pdDLMTensor;
@@ -337,17 +337,17 @@ T *toDLPackImpl(const phi::DenseTensor &src, uint64_t flags) {
   return &(pdDLMTensor->tensor);
 }
 
-DLManagedTensor *toDLPack(const phi::DenseTensor &src, uint64_t flags) {
-  return toDLPackImpl<DLManagedTensor>(src, flags);
+DLManagedTensor *ToDLPack(const phi::DenseTensor &src, uint64_t flags) {
+  return ToDLPackImpl<DLManagedTensor>(src, flags);
 }
 
-DLManagedTensorVersioned *toDLPackVersioned(const phi::DenseTensor &src,
+DLManagedTensorVersioned *ToDLPackVersioned(const phi::DenseTensor &src,
                                             uint64_t flags) {
-  return toDLPackImpl<DLManagedTensorVersioned>(src, flags);
+  return ToDLPackImpl<DLManagedTensorVersioned>(src, flags);
 }
 
 template <typename T>
-phi::DenseTensor fromDLPackImpl(T *src, Deleter deleter) {
+phi::DenseTensor FromDLPackImpl(T *src, Deleter deleter) {
   std::vector<int64_t> shape_vec;
   std::copy(src->dl_tensor.shape,
             src->dl_tensor.shape + src->dl_tensor.ndim,
@@ -381,13 +381,22 @@ phi::DenseTensor fromDLPackImpl(T *src, Deleter deleter) {
   }
 }
 
-phi::DenseTensor fromDLPack(DLManagedTensor *src, Deleter deleter) {
-  return fromDLPackImpl<DLManagedTensor>(src, std::move(deleter));
+template <typename T>
+phi::DenseTensor FromDLPackImpl(T *src) {
+  auto deleter = [src](void *self [[maybe_unused]]) {
+    if (src->deleter) {
+      src->deleter(src);
+    }
+  };
+  return FromDLPackImpl<T>(src, std::move(deleter));
 }
 
-phi::DenseTensor fromDLPackVersioned(DLManagedTensorVersioned *src,
-                                     Deleter deleter) {
-  return fromDLPackImpl<DLManagedTensorVersioned>(src, std::move(deleter));
+phi::DenseTensor FromDLPack(DLManagedTensor *src) {
+  return FromDLPackImpl<DLManagedTensor>(src);
+}
+
+phi::DenseTensor FromDLPackVersioned(DLManagedTensorVersioned *src) {
+  return FromDLPackImpl<DLManagedTensorVersioned>(src);
 }
 
 }  // namespace framework

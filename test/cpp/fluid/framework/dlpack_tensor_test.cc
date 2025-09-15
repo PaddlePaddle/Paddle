@@ -31,7 +31,7 @@ void TestMain(const phi::Place &place) {
   tensor.Resize(dims);
   void *p = tensor.mutable_data<T>(place);
 
-  ::DLManagedTensor *dl_managed_tensor = paddle::framework::toDLPack(tensor);
+  ::DLManagedTensor *dl_managed_tensor = paddle::framework::ToDLPack(tensor);
   ::DLTensor &dl_tensor = dl_managed_tensor->dl_tensor;
 
   PADDLE_ENFORCE_EQ(
@@ -148,7 +148,7 @@ void TestToDLManagedTensor(const phi::Place &place) {
   tensor.Resize(dims);
   tensor.mutable_data<T>(place);
 
-  ::DLManagedTensor *dl_managed_tensor = paddle::framework::toDLPack(tensor);
+  ::DLManagedTensor *dl_managed_tensor = paddle::framework::ToDLPack(tensor);
 
   PADDLE_ENFORCE_NOT_NULL(
       dl_managed_tensor->manager_ctx,
