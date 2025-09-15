@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import static
@@ -29,8 +28,8 @@ class Test_Less_Than_Op_Fp16(unittest.TestCase):
             label = paddle.to_tensor([3, 3], dtype="float16")
             limit = paddle.to_tensor([3, 2], dtype="float16")
             out = paddle.less_than(x=label, y=limit)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([False, False])).all(), True)

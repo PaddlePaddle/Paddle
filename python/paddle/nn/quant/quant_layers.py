@@ -865,8 +865,8 @@ class QuantizedColumnParallelLinear(Layer):
         activation_quantize_type: _QuantType = 'abs_max',
         weight_pre_layer: Layer | None = None,
         act_pre_layer: Layer | None = None,
-        weight_quant_layer: Literal[None] = None,
-        act_quant_layer: Literal[None] = None,
+        weight_quant_layer: None = None,
+        act_quant_layer: None = None,
     ) -> None:
         super().__init__()
         '''
@@ -968,8 +968,8 @@ class QuantizedRowParallelLinear(Layer):
         activation_quantize_type: _QuantType = 'abs_max',
         weight_pre_layer: Layer | None = None,
         act_pre_layer: Layer | None = None,
-        weight_quant_layer: Literal[None] = None,
-        act_quant_layer: Literal[None] = None,
+        weight_quant_layer: None = None,
+        act_quant_layer: None = None,
     ) -> None:
         super().__init__()
         assert weight_quant_layer is None, (

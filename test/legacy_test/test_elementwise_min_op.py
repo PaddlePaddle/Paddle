@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -310,7 +315,7 @@ class TestElementwiseMinFP16Op_broadcast_4(TestElementwiseFP16Op):
 
 
 @unittest.skipIf(
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and (
         core.cudnn_version() < 8100
         or paddle.device.cuda.get_device_capability()[0] < 8
