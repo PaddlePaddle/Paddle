@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import collections
 import random
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import Model, base, nn, set_device
@@ -337,7 +337,11 @@ class ModuleApiTest(unittest.TestCase):
                 )
 
     def check_output(self):
-        devices = ["CPU", "GPU"] if base.is_compiled_with_cuda() else ["CPU"]
+        devices = (
+            ["CPU", "GPU"]
+            if (base.is_compiled_with_cuda() or is_custom_device())
+            else ["CPU"]
+        )
         for device in devices:
             place = set_device(device)
             self.check_output_with_place(place)

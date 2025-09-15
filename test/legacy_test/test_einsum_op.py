@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -61,7 +66,7 @@ class TestEinsumBinary(OpTest):
             ],
         }
         if self.dtype == np.uint16:
-            self.place = core.CUDAPlace(0)
+            self.place = get_device_place()
             self.outputs["Out"] = convert_float_to_uint16(self.outputs["Out"])
 
     def init_dtype(self):
@@ -289,8 +294,8 @@ class TestEinsumFP16Op(TestEinsumBinary):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestEinsumBF16Op(TestEinsumBinary):

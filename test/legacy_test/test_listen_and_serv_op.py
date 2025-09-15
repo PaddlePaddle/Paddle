@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 
 from dist_test_utils import remove_ps_flag, silentremove
+from op_test import get_device_place
 
 silentremove("test_handle_signal_in_serv_op.flag")
 silentremove("test_list_and_serv_run_empty_optimize_block.flag")
@@ -43,7 +43,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
-    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    place = get_device_place() if use_cuda else base.CPUPlace()
     exe = base.Executor(place)
 
     pserver_endpoints = ip + ":" + port
@@ -80,7 +80,7 @@ def run_pserver_with_empty_block(
     sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
-    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    place = get_device_place() if use_cuda else base.CPUPlace()
     exe = base.Executor(place)
 
     ps1 = ip + ":" + str(int(port) + 1)

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -34,8 +34,8 @@ class API_Test_Nansum(unittest.TestCase):
             out3 = paddle.nansum(input, axis=-1)
             out4 = paddle.nansum(input, axis=1, keepdim=True)
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             exe.run(startup_program)
 
@@ -77,7 +77,7 @@ class API_Test_Nansum(unittest.TestCase):
     # test nansum api with float16
 
     def test_static_graph_fp16(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.enable_static()
         startup_program = paddle.static.Program()
@@ -90,7 +90,7 @@ class API_Test_Nansum(unittest.TestCase):
             out2 = paddle.nansum(input, axis=0)
             out3 = paddle.nansum(input, axis=-1)
             out4 = paddle.nansum(input, axis=1, keepdim=True)
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
             exe = paddle.static.Executor(place)
             exe.run(startup_program)
 

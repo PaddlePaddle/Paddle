@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -385,8 +385,8 @@ class TestMeanNewParametersStatic(unittest.TestCase):
             result = paddle.mean(x, dtype='float64')
 
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
 
             exe.run(startup_prog)
@@ -407,8 +407,8 @@ class TestMeanNewParametersStatic(unittest.TestCase):
             result2 = paddle.mean(x=x, axis=1)
 
             place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
 
             exe.run(startup_prog)

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -214,7 +214,7 @@ class TestOrmqrAPICase5(TestOrmqrAPI):
 
 class TestOrmqrAPICase6(TestOrmqrAPI):
     def init_input(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.x = np.random.randn(4, 3).astype('float16')
             self.y = np.random.randn(3, 4).astype('float16')
         else:
