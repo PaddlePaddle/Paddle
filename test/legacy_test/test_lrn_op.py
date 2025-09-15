@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, get_places, paddle_static_guard
+from op_test import (
+    OpTest,
+    get_device_place,
+    get_places,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -341,8 +347,8 @@ class TestLocalResponseNormCAPI(unittest.TestCase):
                 np.testing.assert_allclose(res1.numpy(), res2_tran, rtol=1e-05)
 
     def test_static_fp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with (
                 paddle_static_guard(),
                 paddle.static.program_guard(

@@ -16,7 +16,14 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-from op_test import OpTest, get_device_place, get_devices, get_places
+from op_test import (
+    OpTest,
+    get_device,
+    get_device_place,
+    get_devices,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -190,12 +197,13 @@ class TestNAdamOpWithDefault(TestNAdamOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNAdamOpGPU(TestNAdamOp):
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, rtol=RTOL, atol=ATOL
+            get_device_place(), check_pir=True, rtol=RTOL, atol=ATOL
         )
 
 
@@ -440,11 +448,11 @@ class TestNAdamMultiPrecision(unittest.TestCase):
         optimizer._multi_precision = use_amp
 
         for _ in range(2):
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 model = paddle.amp.decorate(models=model, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
-            if place == 'gpu' and use_amp:
+            if place == get_device() and use_amp:
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -470,7 +478,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
     def dygraph_nadam_mp(self, mp, use_amp):
         paddle.disable_static()
         paddle.seed(100)
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         input = paddle.randn((2, 2))
         model = paddle.nn.Linear(2, 2)
         optimizer = paddle.optimizer.NAdam(0.1, parameters=model.parameters())
@@ -531,7 +539,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
             np.random.seed(2024)
             if use_amp:
                 optimizer.amp_init(
-                    place=paddle.CUDAPlace(0),
+                    place=get_device_place(),
                     scope=paddle.static.global_scope(),
                 )
                 x = np.random.random(size=(2, 2)).astype('float16')
@@ -641,7 +649,7 @@ class TestNdamaxMultiPrecision2_0(unittest.TestCase):
                 return out
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         "Test dygraph mode"
         output1_dy, params1_dy = self.dygraph_nadam_mp(use_amp=True, mp=True)

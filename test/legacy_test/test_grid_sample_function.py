@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
+
+paddle.enable_static()
 
 
 class GridSampleTestCase(unittest.TestCase):
@@ -90,8 +92,8 @@ class GridSampleTestCase(unittest.TestCase):
         place = base.CPUPlace()
         self._test_equivalence(place)
 
-        if base.core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self._test_equivalence(place)
 
 

@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from scipy.special import psi
 
 import paddle
@@ -70,8 +76,8 @@ class TestDigammaOp_ZeroSize(TestDigammaOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestDigammaBF16Op(OpTest):
@@ -96,12 +102,12 @@ class TestDigammaBF16Op(OpTest):
     def test_check_output(self):
         # bfloat16 needs to set the parameter place
         self.check_output_with_place(
-            core.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            get_device_place(), ['X'], 'Out', check_pir=True
         )
 
 

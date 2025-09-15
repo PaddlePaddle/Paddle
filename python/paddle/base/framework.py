@@ -2491,7 +2491,7 @@ class Variable(metaclass=VariableMetaClass):
                 LoD Level of current Var is: 0
         """
         if self.type == core.VarDesc.VarType.SELECTED_ROWS:
-            raise Exception("SelectedRows DO NOT support lod")
+            raise NotImplementedError("SelectedRows DO NOT support lod")
         if self.type == core.VarDesc.VarType.STRINGS:
             return None
         return self.desc.lod_level()

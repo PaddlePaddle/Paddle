@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -27,8 +27,8 @@ class TestPaddleDivide(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -223,8 +223,8 @@ class TestPaddleDiv(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -463,8 +463,8 @@ class TestPaddleTrueDivide(unittest.TestCase):
         self.y_np = np.array([2, 3, 4], dtype='float32')
         self.scalar = 2.0
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -522,8 +522,8 @@ class TestPaddleDivWithOut(unittest.TestCase):
         self.x_np = np.array([4.0, 9.0, 16.0], dtype='float32')
         self.y_np = np.array([2.0, 3.0, 4.0], dtype='float32')
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 
@@ -604,8 +604,8 @@ class TestPaddleDivideWithOut(unittest.TestCase):
         self.x_np = np.array([4.0, 9.0, 16.0], dtype='float32')
         self.y_np = np.array([2.0, 3.0, 4.0], dtype='float32')
         self.place = (
-            core.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
+            get_device_place()
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else core.CPUPlace()
         )
 

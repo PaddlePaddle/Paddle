@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -164,8 +164,8 @@ class TestGraphSendRecvMaxOp_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if paddle.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -175,9 +175,9 @@ class TestGraphSendRecvMaxOp_ZeroSize(OpTest):
             user_defined_grads=[self.gradient],
             check_pir=True,
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ['X'],
                 'Out',
                 user_defined_grads=[self.gradient],
@@ -208,8 +208,8 @@ class TestGraphSendRecvMinOp_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if paddle.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
@@ -219,9 +219,9 @@ class TestGraphSendRecvMinOp_ZeroSize(OpTest):
             user_defined_grads=[self.gradient],
             check_pir=True,
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0),
+                get_device_place(),
                 ['X'],
                 'Out',
                 user_defined_grads=[self.gradient],
@@ -250,16 +250,16 @@ class TestGraphSendRecvSumOp_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if paddle.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
             core.CPUPlace(), ['X'], 'Out', check_pir=True
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+                get_device_place(), ['X'], 'Out', check_pir=True
             )
 
 
@@ -286,16 +286,16 @@ class TestGraphSendRecvMeanOp_ZeroSize(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if paddle.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
             core.CPUPlace(), ['X'], 'Out', check_pir=True
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+                get_device_place(), ['X'], 'Out', check_pir=True
             )
 
 

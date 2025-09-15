@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -118,7 +123,8 @@ class TestTemporalShift_ZeroSize(TestTemporalShift):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestTemporalShiftFP16(TestTemporalShift):
     def initTestCase(self):
@@ -129,12 +135,12 @@ class TestTemporalShiftFP16(TestTemporalShift):
         self.data_format = 'NCHW'
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_ignore_uv(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
@@ -155,8 +161,8 @@ class TestTemporalShiftAPI(unittest.TestCase):
             )
 
     def test_static_fp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -195,8 +201,8 @@ class TestTemporalShiftFP16OP(TestTemporalShift):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestTemporalShiftBF16(OpTest):
@@ -231,11 +237,11 @@ class TestTemporalShiftBF16(OpTest):
         self.python_out_sig = ["Out"]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_ignore_uv(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
