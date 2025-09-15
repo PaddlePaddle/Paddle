@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -117,8 +122,8 @@ class TestMeshgridOp2Complex128(TestMeshgridOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestMeshgridOpBFP16OP(TestMeshgridOp):
@@ -155,12 +160,12 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=paddle.CUDAPlace(0), check_pir=True, check_prim_pir=True
+            place=get_device_place(), check_pir=True, check_prim_pir=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['x0'],
             ['out0', 'out1'],
             check_prim=True,
@@ -491,8 +496,8 @@ class TestMeshgridEager(unittest.TestCase):
 class TestMeshgridEmptyTensor(unittest.TestCase):
     def _get_places(self):
         places = [base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _generate_inputs(self, shapes):

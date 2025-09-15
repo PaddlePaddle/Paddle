@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy
 import numpy as np
 import op_test
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -69,7 +69,9 @@ for _type_name in {
 }:
     if _type_name == 'float64' and core.is_compiled_with_rocm():
         _type_name = 'float32'
-    if _type_name == 'float16' and (not core.is_compiled_with_cuda()):
+    if _type_name == 'float16' and (
+        not (core.is_compiled_with_cuda() or is_custom_device())
+    ):
         continue
 
     create_test_class('less_than', _type_name, lambda _a, _b: _a < _b, True)
@@ -90,8 +92,8 @@ def create_paddle_case(op_type, callback):
             self.input_y = np.array([1, 3, 2, 4]).astype(np.int64)
             self.real_result = callback(self.input_x, self.input_y)
             self.place = base.CPUPlace()
-            if core.is_compiled_with_cuda():
-                self.place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                self.place = get_device_place()
 
         def test_api(self):
             paddle.enable_static()
@@ -561,8 +563,8 @@ class API_TestElementwise_Equal(unittest.TestCase):
             label = paddle.to_tensor([3, 3], dtype="float16")
             limit = paddle.to_tensor([3, 2], dtype="float16")
             out = paddle.equal(x=label, y=limit)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = base.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([True, False])).all(), True)
@@ -577,8 +579,8 @@ class API_TestElementwise_Greater_Than(unittest.TestCase):
             label = paddle.to_tensor([3, 3], dtype="float16")
             limit = paddle.to_tensor([3, 2], dtype="float16")
             out = paddle.greater_than(x=label, y=limit)
-            if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 self.assertEqual((res == np.array([False, True])).all(), True)
@@ -588,8 +590,8 @@ class TestCompareOpPlace(unittest.TestCase):
     def test_place_1(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
-        if core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
@@ -603,8 +605,8 @@ class TestCompareOpPlace(unittest.TestCase):
     def test_place_2(self):
         place = paddle.CPUPlace()
         data_place = place
-        if core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             data_place = paddle.CUDAPinnedPlace()
         paddle.disable_static(place)
         data = np.array([9], dtype="int64")
