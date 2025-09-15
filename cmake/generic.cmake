@@ -457,6 +457,15 @@ function(cc_test_build TARGET_NAME)
   endif()
 endfunction()
 
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/libs" PADDLE_LIBS_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/base" PADDLE_BASE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/pybind"
+     PADDLE_PYBIND_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference"
+     PADDLE_INFERENCE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp"
+     PADDLE_INFERENCE_C_PATH)
+
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs DIR)
@@ -472,16 +481,6 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/libs"
-         PADDLE_LIBS_PATH)
-    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/base"
-         PADDLE_BASE_PATH)
-    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/pybind"
-         PADDLE_PYBIND_PATH)
-    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference"
-         PADDLE_INFERENCE_PATH)
-    file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp"
-         PADDLE_INFERENCE_C_PATH)
     string(
       REPLACE
         ";"
@@ -757,6 +756,18 @@ function(nv_test TARGET_NAME)
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
+    if(WIN32)
+      string(
+        REPLACE
+          ";"
+          "\;"
+          PATH
+          "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
+      )
+      set_property(
+        TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true
+                                     "PATH=${PATH}")
+    endif()
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))
