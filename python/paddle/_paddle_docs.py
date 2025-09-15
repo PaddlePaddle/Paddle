@@ -16,7 +16,11 @@ import inspect
 
 import paddle
 
-from .base.dygraph.generated_tensor_methods_patch import methods_map
+from .base.dygraph.generated_tensor_methods_patch import (
+    funcs_map,
+    methods_map,
+    nn_funcs_map,
+)
 
 # Add docstr for some C++ functions in paddle
 _add_docstr = paddle.base.core.eager._add_docstr
@@ -53,8 +57,11 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
     methods_dict = dict(methods_map)
-    if func_name in methods_dict.keys():
-        tensor_func = methods_dict[func_name]
+    funcs_dict = dict(funcs_map)
+    nn_funcs_dict = dict(nn_funcs_map)
+    all_funcs_dict = methods_dict | funcs_dict | nn_funcs_dict
+    if func_name in all_funcs_dict.keys():
+        tensor_func = all_funcs_dict[func_name]
         tensor_func.__signature__ = python_api_sig
 
 
