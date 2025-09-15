@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -181,7 +186,13 @@ class TestDotOpError(unittest.TestCase):
             # float16 only can be set on GPU place
             x1 = paddle.static.data(name='x1', shape=[-1, 120], dtype="uint8")
             y1 = paddle.static.data(name='y1', shape=[-1, 120], dtype="uint8")
-            self.assertRaises(Exception, paddle.dot, x1, y1)
+            self.assertRaisesRegex(
+                TypeError,
+                r"Check data type error for op: dot",
+                paddle.dot,
+                x1,
+                y1,
+            )
 
             x2 = paddle.static.data(
                 name='x2', shape=[-1, 2, 3], dtype="float32"
@@ -189,13 +200,25 @@ class TestDotOpError(unittest.TestCase):
             y2 = paddle.static.data(
                 name='y2', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y2)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input ",
+                paddle.dot,
+                x2,
+                y2,
+            )
 
             x3 = paddle.static.data(name='x3', shape=[-1, 3], dtype="float32")
             y3 = paddle.static.data(
                 name='y3', shape=[-1, 2, 3], dtype="float32"
             )
-            self.assertRaises(Exception, paddle.dot, x2, y3)
+            self.assertRaisesRegex(
+                RuntimeError,
+                r"ShapeError: The dimensions of input",
+                paddle.dot,
+                x2,
+                y3,
+            )
 
 
 class TestDygraph(unittest.TestCase):
@@ -247,7 +270,8 @@ class TestComplex128DotOp(TestComplex64DotOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestDotFP16Op(OpTest):
     def setUp(self):
@@ -267,30 +291,30 @@ class TestDotFP16Op(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_output_with_place(place, atol=0.125, check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['X', 'Y'], 'Out', check_pir=True
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, ['X'], 'Out', no_grad_set=set("Y"), check_pir=True
@@ -303,7 +327,8 @@ class TestDotFP16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class DotFP16OpBatch(TestDotFP16Op):
     def init_input_output(self):
@@ -319,8 +344,8 @@ class DotFP16OpBatch(TestDotFP16Op):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDotBF16Op(OpTest):
@@ -341,14 +366,14 @@ class TestDotBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place, atol=0.5, check_pir=True)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -359,8 +384,8 @@ class TestDotBF16Op(OpTest):
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -372,8 +397,8 @@ class TestDotBF16Op(OpTest):
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -391,8 +416,8 @@ class TestDotBF16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class DotBF16OpBatch(TestDotBF16Op):
@@ -408,8 +433,8 @@ class DotBF16OpBatch(TestDotBF16Op):
         self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -423,8 +448,8 @@ class DotBF16OpBatch(TestDotBF16Op):
                 )
 
     def test_check_grad_ignore_x(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -436,8 +461,8 @@ class DotBF16OpBatch(TestDotBF16Op):
                 )
 
     def test_check_grad_ignore_y(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
                     place,
@@ -486,8 +511,8 @@ class DotOp_ZeroSize(OpTest):
 
 def get_places():
     places = []
-    if base.is_compiled_with_cuda():
-        places.append(paddle.CUDAPlace(0))
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
     places.append(paddle.CPUPlace())
     return places
 

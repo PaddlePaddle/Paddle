@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -376,8 +376,8 @@ class TestLayerTo(unittest.TestCase):
         for p in self.linear.parameters():
             self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
-        if paddle.base.is_compiled_with_cuda():
-            self.linear.to(device=paddle.CUDAPlace(0))
+        if paddle.base.is_compiled_with_cuda() or is_custom_device():
+            self.linear.to(device=get_device_place())
             self.assertTrue(self.linear.weight.place.is_gpu_place())
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())

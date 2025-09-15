@@ -11,10 +11,10 @@
 # # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # # See the License for the specific language governing permissions and
 # # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 
@@ -36,8 +36,8 @@ class TestCdistAPI(unittest.TestCase):
         self.compute_mode = "use_mm_for_euclid_dist_if_necessary"
         self.init_input()
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
+            get_device_place()
+            if (paddle.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 
