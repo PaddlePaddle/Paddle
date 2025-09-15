@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -113,7 +119,8 @@ class TestNormOp6(TestNormOp):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNormOp7(TestNormOp):
     def init_dtype(self):
@@ -121,12 +128,12 @@ class TestNormOp7(TestNormOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            base.core.CUDAPlace(0), atol=5e-2, check_cinn=True
+            get_device_place(), atol=5e-2, check_cinn=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            base.core.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
             max_relative_error=0.05,
@@ -165,7 +172,7 @@ class TestNormTestOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestNormBF16Op(OpTest):
@@ -183,12 +190,12 @@ class TestNormBF16Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0), atol=1e-1, check_cinn=True
+            get_device_place(), atol=1e-1, check_cinn=True
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
             max_relative_error=1e-2,

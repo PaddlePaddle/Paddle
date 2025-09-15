@@ -2065,7 +2065,7 @@ CPU_PARALLEL_JOB = [
     'test_split_bf16_onednn_op',
     'test_scale_bf16_onednn_op',
     'test_ir_generate_pass',
-    'test_expand_v2_mkldnn_op',
+    'test_expand_v2_onednn_op',
     'test_elementwise_sub_mkldnn_op',
 ]
 

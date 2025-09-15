@@ -24,7 +24,12 @@ from contextlib import closing
 sys.path.append("../legacy_test")
 
 import numpy as np
-from op_test import convert_float_to_uint16, convert_uint16_to_float
+from op_test import (
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -131,7 +136,7 @@ class TestCollectiveAPIRunnerBase:
             paddle.distributed.init_parallel_env()
         if args['backend'] == 'nccl':
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-            place = base.CUDAPlace(
+            place = get_device_place(
                 device_id
             )  # if args.use_gpu else base.CPUPlace()
         elif args['backend'] == 'bkcl':
@@ -224,7 +229,7 @@ class TestDistBase(unittest.TestCase):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:",w0_ep," w1_ep:",w1_ep)
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             env0 = {
                 "FLAGS_selected_gpus": "0",
                 "PADDLE_TRAINER_ID": "0",

@@ -19,6 +19,8 @@ from op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
     skip_check_grad_ci,
 )
 
@@ -143,7 +145,8 @@ class TestReshapeOp_ZeroSize(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestReshapeBF16Op(OpTest):
@@ -509,7 +512,9 @@ class TestReshapeAPI(unittest.TestCase):
 
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
-            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+            [get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
+            else []
         )
 
         dtypes = [
@@ -529,9 +534,8 @@ class TestReshapeAPI(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 # core is not compiled with CUDA and not support the bfloat16
-                if (
-                    dtype == 'bfloat16'
-                    and not base.core.is_compiled_with_cuda()
+                if dtype == 'bfloat16' and not (
+                    base.core.is_compiled_with_cuda() or is_custom_device()
                 ):
                     continue
 
@@ -842,7 +846,9 @@ class TestReshapeAliasAPI(unittest.TestCase):
 
     def _test_static_dtype(self):
         places = [paddle.CPUPlace()] + (
-            [paddle.CUDAPlace(0)] if base.core.is_compiled_with_cuda() else []
+            [get_device_place()]
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
+            else []
         )
 
         dtypes = [
@@ -862,9 +868,8 @@ class TestReshapeAliasAPI(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 # core is not compiled with CUDA and not support the bfloat16
-                if (
-                    dtype == 'bfloat16'
-                    and not base.core.is_compiled_with_cuda()
+                if dtype == 'bfloat16' and not (
+                    base.core.is_compiled_with_cuda() or is_custom_device()
                 ):
                     continue
 
@@ -937,8 +942,8 @@ class TestReshapeAliasAPI(unittest.TestCase):
 
         with base.dygraph.guard():
             run_test_cases(paddle.CPUPlace())
-            if paddle.base.core.is_compiled_with_cuda():
-                run_test_cases(paddle.CUDAPlace(0))
+            if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+                run_test_cases(get_device_place())
 
 
 if __name__ == "__main__":

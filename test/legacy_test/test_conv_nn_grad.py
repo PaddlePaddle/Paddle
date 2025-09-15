@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -395,8 +395,8 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func_pir(p)
 
@@ -436,8 +436,8 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 
@@ -469,8 +469,8 @@ class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
 
     def test_grad(self):
         places = []
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for p in places:
             self.func(p)
 

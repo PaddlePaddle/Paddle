@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -75,8 +75,8 @@ class TestDLPack(unittest.TestCase):
                 "bool",
             ]
             places = [paddle.CPUPlace()]
-            if paddle.device.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.device.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
                 dtypes.append("bfloat16")
 
             data = np.ones((2, 3, 4))
@@ -125,8 +125,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 47171
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     a = paddle.rand(shape=[3, 5], dtype="float32").to(
@@ -143,8 +143,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -155,8 +155,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -175,8 +175,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -193,8 +193,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_strides_consistency(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([10, 10]).to(device=place)
@@ -214,8 +214,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_from_zero_dim(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.to_tensor(1.0, place=place)
@@ -237,8 +237,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_from_zero_size(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.zeros([0, 10]).to(device=place)
@@ -258,7 +258,7 @@ class TestDLPack(unittest.TestCase):
                     np.testing.assert_array_equal(x.numpy(), y2.numpy())
 
     def test_dlpack_with_custom_stream(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             self.skipTest("Test requires CUDA support.")
         with dygraph_guard():
             paddle.set_device('gpu:0')

@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle.base.framework import in_pir_mode
@@ -37,7 +37,8 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11000,
     "paddle is not compiled with CUDA and cuda version need to >= 11.0",
 )
 class TestCsrMv(unittest.TestCase):
@@ -77,7 +78,8 @@ class TestCsrMv(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11000,
     "paddle is not compiled with CUDA and cuda version need to >= 11.0",
 )
 class TestCooMv(unittest.TestCase):
@@ -117,7 +119,8 @@ class TestCooMv(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11000,
     "paddle is not compiled with CUDA and cuda version need to >= 11.0",
 )
 class TestCooMvStatic(unittest.TestCase):

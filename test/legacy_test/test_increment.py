@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -62,13 +62,13 @@ class TestIncrement(unittest.TestCase):
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             with paddle.base.device_guard("gpu:0"):
                 x = paddle.tensor.fill_constant([1], "float32", 0)
             with paddle.base.device_guard("cpu"):
                 x = paddle.increment(x)
-            exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            exe = paddle.static.Executor(get_device_place())
             (a,) = exe.run(paddle.static.default_main_program(), fetch_list=[x])
             paddle.disable_static()
             self.assertEqual(a[0], 1)
