@@ -160,8 +160,8 @@ cd /d %work_dir%
 @REM     )
 @REM )
 git config --global url."https://x-access-token:%GITHUB_TOKEN%@github.com/".insteadOf "https://github.com/"
-git submodule sync --recursive
-git submodule update --init --recursive -- :!third_party/openvino
+git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
+git submodule update --init --recursive
 if "%UPLOAD_TP_CODE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
