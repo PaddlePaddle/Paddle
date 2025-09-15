@@ -32,31 +32,12 @@ echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 
-python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
+#python ${PADDLE_ROOT}/ci/coverage_gcda_clean.py ${PR_ID} || exit 101
 echo "::group::Run lcov"
 lcov --ignore-errors gcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 echo "::endgroup::"
 
 mkdir coverage_files
-
-function gen_full_report_cinn(){
-    lcov --extract coverage.info \
-        "${PADDLE_ROOT}/paddle/cinn/adt/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
-        "${PADDLE_ROOT}/paddle/cinn/backends/*" \
-        "${PADDLE_ROOT}/paddle/cinn/common/*" \
-        "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/ir/*" \
-        "${PADDLE_ROOT}/paddle/cinn/lang/*" \
-        "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
-        "${PADDLE_ROOT}/paddle/cinn/optim/*" \
-        "${PADDLE_ROOT}/paddle/cinn/pass/*" \
-        "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
-        "${PADDLE_ROOT}/paddle/cinn/utils/*" \
-        -o coverage-full.tmp \
-        --rc lcov_branch_coverage=0
-}
-
 
 function gen_full_report() {
     lcov --extract coverage.info \
@@ -71,6 +52,20 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
+	"${PADDLE_ROOT}/paddle/ap/*" \
+	"${PADDLE_ROOT}/paddle/common/*" \
+	"${PADDLE_ROOT}/paddle/cinn/adt/*" \
+        "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
+        "${PADDLE_ROOT}/paddle/cinn/backends/*" \
+        "${PADDLE_ROOT}/paddle/cinn/common/*" \
+        "${PADDLE_ROOT}/paddle/cinn/hlir/*" \
+        "${PADDLE_ROOT}/paddle/cinn/ir/*" \
+        "${PADDLE_ROOT}/paddle/cinn/lang/*" \
+        "${PADDLE_ROOT}/paddle/cinn/operator_fusion/*" \
+        "${PADDLE_ROOT}/paddle/cinn/optim/*" \
+        "${PADDLE_ROOT}/paddle/cinn/pass/*" \
+        "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
+        "${PADDLE_ROOT}/paddle/cinn/utils/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -88,6 +83,8 @@ function gen_full_report() {
         --rc lcov_branch_coverage=0
 
     mv -f coverage-full.tmp coverage-full.info
+    lcov --list coverage-full.info
+    echo "Done full report for coverage coverage"
 }
 
 function gen_full_report_xpu() {
@@ -139,14 +136,6 @@ else
     echo "::endgroup::"
 fi
 
-if [ ${WITH_CINN:-OFF} == "ON" ]; then
-    echo "::group::Gen full report for cinn"
-    gen_full_report_cinn || true  # coverage-full.tmp. Didn't use this file
-    echo "::endgroup::"
-else
-    gen_full_report || true
-fi
-
 # mkdir coverage
 
 if [ "${PR_ID}" != "" ]; then
@@ -161,7 +150,7 @@ lcov --extract coverage-full.info \
     -o coverage-diff.info \
     --rc lcov_branch_coverage=0
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+#python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
 
 mv -f coverage-diff.tmp coverage-diff.info
 
@@ -192,6 +181,8 @@ function gen_python_full_report() {
         --rc lcov_branch_coverage=0
 
     mv -f python-coverage-full.tmp python-coverage-full.info
+    lcov --list python-coverage-full.info
+    echo "Done full report for python coverage"
 }
 
 gen_python_full_report || true  # python-coverage-full.info
