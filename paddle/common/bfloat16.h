@@ -452,10 +452,11 @@ __host__ __device__ inline phi::dtype::bfloat16 min(
 }
 #endif  // PADDLE_CUDA_BF16
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 using bfloat16 = ::phi::dtype::bfloat16;
-
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn
 
 namespace std {
 

@@ -1083,9 +1083,11 @@ inline std::ostream& operator<<(std::ostream& os, const float16& a) {
 }  // namespace dtype
 }  // namespace phi
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 using float16 = ::phi::dtype::float16;
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn
 
 #if defined(PADDLE_CUDA_FP16)
 DEVICE inline phi::dtype::float16 __shfl_sync(unsigned mask,

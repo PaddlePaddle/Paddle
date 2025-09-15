@@ -155,7 +155,8 @@ namespace phi {
 namespace errors = ::common::errors;
 }  // namespace phi
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 namespace errors = ::common::errors;
-
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn

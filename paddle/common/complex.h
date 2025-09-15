@@ -594,10 +594,12 @@ inline std::ostream& operator<<(std::ostream& os, const complex<T>& a) {
 }  // namespace dtype
 }  // namespace phi
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 template <typename T>
 using complex = ::phi::dtype::complex<T>;
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn
 
 namespace std {
 

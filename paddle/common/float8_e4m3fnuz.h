@@ -251,9 +251,11 @@ inline std::ostream& operator<<(std::ostream& os, const float8_e4m3fnuz& a) {
 }  // namespace dtype
 }  // namespace phi
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 using float8_e4m3fnuz = ::phi::dtype::float8_e4m3fnuz;
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn
 
 namespace std {
 

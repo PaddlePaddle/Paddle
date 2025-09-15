@@ -363,7 +363,8 @@ namespace pir {
 #define IR_THROW(...) PADDLE_THROW(common::errors::Fatal(__VA_ARGS__))
 }  // namespace pir
 
-namespace cinn::common {
+namespace cinn {
+namespace common {
 namespace enforce = ::common::enforce;
-
-}  // namespace cinn::common
+}  // namespace common
+}  // namespace cinn

@@ -16,7 +16,8 @@
 
 #include <cstdint>
 
-namespace phi::dtype {
+namespace phi {
+namespace dtype {
 
 union Bits {
   float f;
@@ -211,4 +212,5 @@ inline HOSTDEVICE uint8_t fp8e8m0fnu_from_fp32_value(float f) {
   return exponent;
 }
 
-}  // namespace phi::dtype
+}  // namespace dtype
+}  // namespace phi
