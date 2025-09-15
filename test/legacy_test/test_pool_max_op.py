@@ -19,7 +19,9 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     get_numeric_gradient,
+    is_custom_device,
 )
 from testsuite import create_op
 
@@ -258,20 +260,21 @@ class TestCastAdaptive3d(TestMaxPoolWithIndex_Op):
 # ----------------max_pool3d_with_index_fp16----------------
 def create_test_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestMaxPool3dFP16(parent):
         def init_dtype(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
@@ -290,8 +293,8 @@ create_test_fp16_class(TestCastAdaptive3d)
 # ----------------max_pool3d_with_index_bf16----------------
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestMaxPool3dBF16(parent):
@@ -309,12 +312,12 @@ def create_test_bf16_class(parent):
             )
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
@@ -396,20 +399,21 @@ class TestCastAdaptive2d(TestCase6):
 # ----------------max_pool2d_with_index_fp16----------------
 def create_test_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestMaxPool2dFP16(parent):
         def init_dtype(self):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(place, {'X'}, ['Out'])
 
@@ -428,8 +432,8 @@ create_test_fp16_class(TestCastAdaptive2d)
 # ----------------max_pool2d_with_index_bf16----------------
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestMaxPool2dBF16(parent):
@@ -447,12 +451,12 @@ def create_test_bf16_class(parent):
             )
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(place)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'X')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(
@@ -473,7 +477,7 @@ create_test_bf16_class(TestCastAdaptive2d)
 
 def skip_unit_test():
     return (
-        not core.is_compiled_with_cuda()
+        not (core.is_compiled_with_cuda() or is_custom_device())
         or not core.is_compiled_with_cudnn_frontend()
         or paddle.device.cuda.get_device_capability()[0] < 8
     )
@@ -555,15 +559,15 @@ class TestMaxPool2dV2Op(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_output_with_place(
                 place, no_check_set=['saved_idx'], check_dygraph=False
             )
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'x'},
@@ -592,8 +596,8 @@ class TestCase8(TestMaxPool2dV2Op):
         self.global_pool = False
 
     def test_check_grad(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 {'x'},
@@ -627,15 +631,15 @@ def create_test_fp16_class(parent):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(
                         place, no_check_set=['saved_idx'], check_dygraph=False
                     )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
                     place, {'x'}, ['out'], check_dygraph=False
@@ -654,7 +658,7 @@ create_test_fp16_class(TestCase10)
 
 def create_test_bf16_class(parent):
     @unittest.skipIf(
-        skip_unit_test() or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        skip_unit_test() or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestMaxPool2dV2BF16(parent):
@@ -678,14 +682,14 @@ def create_test_bf16_class(parent):
             )
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_bfloat16_supported(place):
                 self.check_output_with_place(
                     place, no_check_set=['saved_idx'], check_dygraph=False
                 )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             numeric_grads = self.get_numeric_grad(place, 'x')
             if core.is_bfloat16_supported(place):
                 self.check_grad_with_place(

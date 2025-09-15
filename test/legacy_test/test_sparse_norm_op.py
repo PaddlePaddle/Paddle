@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 from utils import compare_legacy_with_pt
 
 import paddle
@@ -137,7 +137,7 @@ class TestSyncBatchNorm(unittest.TestCase):
         x = paddle.to_tensor(x)
         sparse_x = x.to_sparse_coo(len(x.shape) - 1)
 
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             sparse_sync_bn = nn.SyncBatchNorm(2)
             sparse_hidden = sparse_sync_bn(sparse_x)
 

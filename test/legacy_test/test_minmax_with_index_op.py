@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -39,7 +39,7 @@ def min_with_index(x, dim=None, keepdim=False):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMaxWithIndexBasic(OpTest):
@@ -111,7 +111,7 @@ class TestMaxWithIndexBasic(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMinWithIndexBasic(TestMaxWithIndexBasic):
@@ -124,7 +124,7 @@ class TestMinWithIndexBasic(TestMaxWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMinWithIndexKeepDim(TestMinWithIndexBasic):
@@ -134,7 +134,7 @@ class TestMinWithIndexKeepDim(TestMinWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMaxWithIndexKeepDim(TestMaxWithIndexBasic):
@@ -144,7 +144,7 @@ class TestMaxWithIndexKeepDim(TestMaxWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMinWithIndexNegDim(TestMinWithIndexBasic):
@@ -154,7 +154,7 @@ class TestMinWithIndexNegDim(TestMinWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMaxWithIndexNegDim(TestMaxWithIndexBasic):
@@ -164,7 +164,7 @@ class TestMaxWithIndexNegDim(TestMaxWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMinWithIndexMoreTypeAndShape(TestMinWithIndexBasic):
@@ -181,7 +181,7 @@ class TestMinWithIndexMoreTypeAndShape(TestMinWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMinWithIndexFP16(TestMinWithIndexBasic):
@@ -191,7 +191,7 @@ class TestMinWithIndexFP16(TestMinWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMaxWithIndexU8(TestMaxWithIndexBasic):
@@ -208,7 +208,7 @@ class TestMaxWithIndexU8(TestMaxWithIndexBasic):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA, skipping",
 )
 class TestMaxWithIndexMoreTypeAndShape(TestMaxWithIndexBasic):
