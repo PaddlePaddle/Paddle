@@ -774,15 +774,18 @@ class TestFusedAttentionOp_ZeroSize_Batch(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
-            self.assertEqual(final_out_ref.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
+            self.assertEqual(list(final_out_ref.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
             self.assertEqual(final_out_ref.numel(), 0)
+
             if final_out.numel() > 0:
                 np.testing.assert_allclose(
                     final_out_ref,
@@ -794,7 +797,10 @@ class TestFusedAttentionOp_ZeroSize_Batch(TestFusedAttentionOp):
                     x_grad_ref, x_grad.numpy(), rtol=self.rtol, atol=self.atol
                 )
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 class TestFusedAttentionOp_ZeroSize_SeqLen(TestFusedAttentionOp):
@@ -811,16 +817,21 @@ class TestFusedAttentionOp_ZeroSize_SeqLen(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
-            self.assertEqual(final_out_ref.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
+            self.assertEqual(list(final_out_ref.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 class TestFusedAttentionOp_ZeroSize_BothDims(TestFusedAttentionOp):
@@ -837,15 +848,20 @@ class TestFusedAttentionOp_ZeroSize_BothDims(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 class TestFusedAttentionOp_ZeroSize_WithPreLayerNorm(TestFusedAttentionOp):
@@ -861,15 +877,20 @@ class TestFusedAttentionOp_ZeroSize_WithPreLayerNorm(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 class TestFusedAttentionOp_ZeroSize_WithBias(TestFusedAttentionOp):
@@ -885,15 +906,20 @@ class TestFusedAttentionOp_ZeroSize_WithBias(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 class TestFusedAttentionOp_ZeroSize_TransposeQKVWB(TestFusedAttentionOp):
@@ -909,15 +935,20 @@ class TestFusedAttentionOp_ZeroSize_TransposeQKVWB(TestFusedAttentionOp):
         try:
             final_out_ref, x_grad_ref = self.GetBaselineOut()
             final_out, x_grad = self.GetFusedAttentionOut()
-            expected_shape = (
+
+            expected_shape = [
                 self.batch_size,
                 self.query_length,
                 self.embed_dim,
-            )
-            self.assertEqual(final_out.shape, expected_shape)
+            ]
+
+            self.assertEqual(list(final_out.shape), expected_shape)
             self.assertEqual(final_out.numel(), 0)
         except Exception as e:
-            self.assertIsInstance(e, (RuntimeError, ValueError))
+            if not isinstance(e, AssertionError):
+                self.assertIsInstance(e, (RuntimeError, ValueError))
+            else:
+                raise
 
 
 if __name__ == "__main__":
