@@ -97,14 +97,14 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> # x is a tensor with shape [2, 4]
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]])
-            >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+            >>> dlpack = paddle.to_dlpack(x)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "dltensor" at 0x7f6103c681b0>
             >>> #doctest: -SKIP
 
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
-            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> y = paddle.from_dlpack(dlpack)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
@@ -118,7 +118,7 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> import torch
 
             >>> x = paddle.randn([2, 4]).to(device="cpu")
-            >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
+            >>> y = torch.from_dlpack(paddle.to_dlpack(x))
             >>> print(y.shape)
             torch.Size([2, 4])
             >>> # doctest: -SKIP
@@ -180,10 +180,10 @@ def from_dlpack(
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
             >>> print("[debug] code-paddle-from-paddle 333")
-            >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+            >>> dlpack = paddle.to_dlpack(x)
             >>> print("[debug] code-paddle-from-paddle 444")
 
-            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> y = paddle.from_dlpack(dlpack)
             >>> print("[debug] code-paddle-from-paddle 555")
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
             >>> print(dlpack)
@@ -219,7 +219,7 @@ def from_dlpack(
             >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
             ...              [0.1, 0.2, 0.6, 0.7]])
             >>> print("[debug] 444")
-            >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> y = paddle.from_dlpack(x)
             >>> print("[debug] code-paddle-from-numpy 555")
             >>> y[0, 0] = 10.0
             >>> print("[debug] code-paddle-from-numpy 666")
