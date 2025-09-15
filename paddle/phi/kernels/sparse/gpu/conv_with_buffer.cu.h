@@ -371,6 +371,23 @@ __global__ void GetOutIndexTable(int* indices,
   }
 }
 
+inline __global__ void GroupSortDesc(int* data,
+                                int group_size,
+                                int num_groups) {
+  int group_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (group_idx >= num_groups) return;
+  int start = group_idx * group_size;
+  for (int i = 1; i < group_size; ++i) {
+    int key = data[start + i];
+    int j = i - 1;
+    while (j >= 0 && data[start + j] < key) {
+        data[start + j + 1] = data[start + j];
+        j--;
+    }
+    data[start + j + 1] = key;
+  }
+}
+
 /**
  * @brief product rulebook
  * for input_i in x_indices:
@@ -659,17 +676,13 @@ int ProductRuleBookWithBuffer(const Context& dev_ctx,
                                     rulebook_ptr + rulebook_len,
                                     out_index_ptr,
                                     unique_value_ptr);
-  void *unique_value_temp_storage = nullptr;
-  size_t unique_value_storage_bytes = 0;
-  cub::DeviceRadixSort::SortKeysDescending(
-      unique_value_temp_storage, unique_value_storage_bytes,
-      unique_value_ptr, unique_value_ptr, out_nnz * kernel_size
-  );
-  cudaMalloc(&unique_value_temp_storage, unique_value_storage_bytes);
-  cub::DeviceRadixSort::SortKeysDescending(
-      unique_value_temp_storage, unique_value_storage_bytes,
-      unique_value_ptr, unique_value_ptr, out_nnz * kernel_size
-  );
+
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(
+      dev_ctx, out_nnz, 1);
+  GroupSortDesc<<<config.block_per_grid,
+              config.thread_per_block,
+              0,
+              dev_ctx.stream()>>>(unique_value_ptr, kernel_size, out_nnz);
 
   return rulebook_len;
 }
