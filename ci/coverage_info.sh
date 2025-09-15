@@ -85,6 +85,7 @@ function gen_full_report() {
 
     mv -f coverage-full.tmp coverage-full.info
     lcov --list coverage-full.info
+    echo "Done full report for coverage coverage"
 }
 
 function gen_full_report_xpu() {
@@ -181,7 +182,8 @@ function gen_python_full_report() {
         --rc lcov_branch_coverage=0
 
     mv -f python-coverage-full.tmp python-coverage-full.info
-    lcov --list coverage-full.info
+    lcov --list python-coverage-full.info
+    echo "Done full report for python coverage"
 }
 
 gen_python_full_report || true  # python-coverage-full.info
