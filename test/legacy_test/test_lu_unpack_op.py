@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from op_test import OpTest, get_places
+from op_test import OpTest, get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -144,8 +144,8 @@ class TestLU_UnpackOp(OpTest):
                 paddle.static.Program(), paddle.static.Program()
             ):
                 place = base.CPUPlace()
-                if core.is_compiled_with_cuda():
-                    place = base.CUDAPlace(0)
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
                 xv = paddle.static.data(
                     name="input", shape=self.x_shape, dtype=self.dtype
                 )

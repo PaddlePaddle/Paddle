@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -215,8 +220,8 @@ class TestStackAPIWithDenseTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
+            get_device_place()
+            if (base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
@@ -252,8 +257,8 @@ class TestTensorStackAPIWithDenseTensorArray(unittest.TestCase):
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
+            get_device_place()
+            if (base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
@@ -477,8 +482,8 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
         paddle.enable_static()
 
     def test_dygraph_gpu(self):
-        if base.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if base.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.disable_static(place)
 
             x1 = paddle.ones([1, 0])
@@ -518,9 +523,9 @@ class TestStackAPI_ZeroSizedTensor(unittest.TestCase):
             np.testing.assert_equal(expected_result, result)
 
     def test_static_gpu(self):
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             exe = base.Executor(place)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

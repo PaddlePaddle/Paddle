@@ -22,6 +22,7 @@ from op_test import (
     convert_float_to_uint16,
     get_device_place,
     get_places,
+    is_custom_device,
     paddle_static_guard,
 )
 
@@ -535,7 +536,8 @@ class TestSliceOp_ZeroDim(OpTest):
 
 # Test CUDA float16
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16(OpTest):
     def setUp(self):
@@ -563,14 +565,14 @@ class TestFP16(OpTest):
         self.infer_flags = [1, 1, 1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         print("core:", core.is_float16_supported(place))
         if core.is_float16_supported(place):
             self.check_grad_with_place(
@@ -584,7 +586,8 @@ class TestFP16(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16_2(OpTest):
     def setUp(self):
@@ -612,14 +615,14 @@ class TestFP16_2(OpTest):
         self.infer_flags = [1]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place, check_prim=True, check_pir=True, check_prim_pir=True
             )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -1179,7 +1182,8 @@ class TestSliceOpError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestImperativeCUDAPinnedInput(unittest.TestCase):
     def test_input_cuda_pinned_var(self):

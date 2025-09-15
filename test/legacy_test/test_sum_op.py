@@ -25,7 +25,9 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     get_places,
+    is_custom_device,
 )
 from utils import dygraph_guard, static_guard
 
@@ -300,14 +302,15 @@ class TestDenseTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 
 # ----------- test fp16 -----------
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAFP16SumOp(TestSumOp):
     def init_kernel_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place,
@@ -320,7 +323,7 @@ class TestAFP16SumOp(TestSumOp):
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad(
                 ['x0'],
@@ -334,14 +337,15 @@ class TestAFP16SumOp(TestSumOp):
 
 def create_test_sum_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestSumFp16Case(parent):
         def init_kernel_type(self):
             self.dtype = np.float16
 
         def test_w_is_selected_rows(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 for inplace in [True, False]:
                     self.check_with_place(place, inplace)
@@ -626,8 +630,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
+            get_device_place()
+            if (paddle.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
         self.keepdim = False
@@ -695,7 +699,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                 config = paddle_infer.Config(
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()

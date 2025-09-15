@@ -21,6 +21,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device,
     get_device_place,
     get_places,
     is_custom_device,
@@ -34,7 +35,7 @@ from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
 
-devices = ['cpu', 'gpu']
+devices = ['cpu', get_device()]
 
 
 @contextmanager
@@ -239,7 +240,7 @@ class Test_Exp_Op_Fp16(unittest.TestCase):
             x = paddle.to_tensor(np_x, dtype='float16')
             out = paddle.exp(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
                 x_expect = np.exp(np_x.astype('float16'))
@@ -528,7 +529,7 @@ class TestSigmoidBF16(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_prim=False,
@@ -539,7 +540,7 @@ class TestSigmoidBF16(OpTest):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -1166,7 +1167,7 @@ class TestSinhOpError(unittest.TestCase):
             )
             self.assertRaises(TypeError, paddle.sinh, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -1388,7 +1389,7 @@ class TestTanhshrinkAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.tanhshrink, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -1827,7 +1828,7 @@ class TestSqrtBF16(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_pir=True,
@@ -1837,7 +1838,7 @@ class TestSqrtBF16(OpTest):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -2091,7 +2092,7 @@ class TestCeil(TestActivation):
         # so, we use only_prim flag to express we only test prim.
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
-                paddle.CUDAPlace(0),
+                get_device_place(),
                 ['X'],
                 'Out',
                 check_pir=True,
@@ -2175,7 +2176,7 @@ class TestFloor(TestActivation):
         # so, we use only_prim flag to express we only test prim.
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
-                paddle.CUDAPlace(0),
+                get_device_place(),
                 ['X'],
                 'Out',
                 check_prim=False,
@@ -2803,7 +2804,8 @@ class TestRound_decimals1(TestRound):
         with dynamic_guard():
             for device in devices:
                 if device == 'cpu' or (
-                    device == 'gpu' and paddle.is_compiled_with_cuda()
+                    device == get_device()
+                    and (paddle.is_compiled_with_cuda() or is_custom_device())
                 ):
                     x_np = (
                         np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -3423,7 +3425,7 @@ class TestRelu6API(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.relu6, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -4051,7 +4053,8 @@ class TestLog_Complex64(TestLog):
         paddle.disable_static()
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                 x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
@@ -4095,7 +4098,7 @@ class Test_Log_Op_Fp16(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='float16')
             out = paddle.log(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4110,7 +4113,7 @@ class Test_Log_Op_Fp16(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='bfloat16')
             out = paddle.log(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4294,7 +4297,8 @@ class TestLog2_Complex64(TestLog2):
         paddle.disable_static()
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                 x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
@@ -4341,7 +4345,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='bfloat16')
             out = paddle.log2(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4388,7 +4392,8 @@ class TestLog10_Complex64(TestLog10):
         paddle.disable_static()
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                 x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
@@ -4433,7 +4438,7 @@ class TestLog10_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='bfloat16')
             out = paddle.log10(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4513,7 +4518,8 @@ class TestLog1p_Complex64(TestLog1p):
         paddle.disable_static()
         for device in devices:
             if device == 'cpu' or (
-                device == 'gpu' and paddle.is_compiled_with_cuda()
+                device == get_device()
+                and (paddle.is_compiled_with_cuda() or is_custom_device())
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=self.dtype)
                 x = paddle.to_tensor(np_x, dtype=self.dtype, place=device)
@@ -4540,7 +4546,7 @@ class Test_Log1p_Op_Fp16(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='float16')
             out = paddle.log1p(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4567,7 +4573,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             x = paddle.to_tensor(x, dtype='bfloat16')
             out = paddle.log1p(x)
             if core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 (res,) = exe.run(fetch_list=[out])
 
@@ -4728,7 +4734,7 @@ class TestSquareBF16(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_pir=True,
@@ -4738,7 +4744,7 @@ class TestSquareBF16(OpTest):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -5082,7 +5088,7 @@ class TestSoftplusBF16(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_pir=True,
@@ -5091,7 +5097,7 @@ class TestSoftplusBF16(OpTest):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X'], 'Out', numeric_grad_delta=0.05, check_pir=True
         )
@@ -5142,7 +5148,7 @@ class TestSoftplusAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.softplus, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -5382,7 +5388,7 @@ class TestThresholdedReluAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.thresholded_relu, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -5621,7 +5627,7 @@ class TestSwishAPI(unittest.TestCase):
             )
             self.assertRaises(TypeError, F.swish, x_int32)
             # support the input dtype is float16
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
                     name='x_fp16', shape=[12, 10], dtype='float16'
                 )
@@ -5843,7 +5849,8 @@ def create_test_act_fp16_class(
     **kwargs,
 ):
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestActFp16(parent):
         def setUp(self):
@@ -5858,7 +5865,7 @@ def create_test_act_fp16_class(
             self.enable_cinn = enable_cinn
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             support_fp16 = core.is_float16_supported(place)
             if support_fp16:
                 self.check_output_with_place(
@@ -5872,7 +5879,7 @@ def create_test_act_fp16_class(
                 )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             support_fp16 = core.is_float16_supported(place)
             if support_fp16 and grad_check:
                 self.check_grad_with_place(
@@ -6043,7 +6050,7 @@ def create_test_act_bf16_class(
 ):
     @unittest.skipIf(
         not core.is_compiled_with_cuda()
-        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
     class TestActBF16(parent):
@@ -6064,7 +6071,7 @@ def create_test_act_bf16_class(
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(
                 place,
                 atol=atol,
@@ -6075,7 +6082,7 @@ def create_test_act_bf16_class(
             )
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if grad_check:
                 self.check_grad_with_place(
                     place,

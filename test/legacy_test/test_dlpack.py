@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -85,11 +85,11 @@ class TestDLPack(unittest.TestCase):
             )
 
             # when build with cuda
-            if core.is_compiled_with_cuda():
+            if core.is_compiled_with_cuda() or is_custom_device():
                 gtensor = base.create_lod_tensor(
                     np.array([[1], [2], [3], [4]]).astype("int"),
                     [[1, 3]],
-                    base.CUDAPlace(0),
+                    get_device_place(),
                 )
                 gdlpack_v1 = paddle.utils.dlpack.to_dlpack(gtensor)
                 gdlpack_v2 = paddle.to_dlpack(gtensor)
@@ -126,8 +126,8 @@ class TestDLPack(unittest.TestCase):
                 "bool",
             ]
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
                 places.append(base.CUDAPinnedPlace())
                 dtypes.append("bfloat16")
 
@@ -177,8 +177,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 47171
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     a = paddle.rand(shape=[3, 5], dtype="float32").to(
@@ -195,8 +195,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -207,8 +207,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -227,8 +227,8 @@ class TestDLPack(unittest.TestCase):
         # See Paddle issue 50120
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([3, 5]).to(device=place)
@@ -245,8 +245,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_strides_consistency(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.rand([10, 10]).to(device=place)
@@ -282,8 +282,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_from_zero_dim(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.to_tensor(1.0, place=place)
@@ -305,8 +305,8 @@ class TestDLPack(unittest.TestCase):
     def test_to_dlpack_from_zero_size(self):
         with dygraph_guard():
             places = [base.CPUPlace()]
-            if paddle.is_compiled_with_cuda():
-                places.append(base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device_place())
             for place in places:
                 for _ in range(4):
                     x = paddle.zeros([0, 10]).to(device=place)
@@ -337,15 +337,15 @@ class TestDLPackDevice(unittest.TestCase):
             self.assertEqual(device_type, DLDeviceType.kDLCPU)
             self.assertEqual(device_id, None)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 tensor_cuda = paddle.to_tensor(
-                    [1, 2, 3], place=base.CUDAPlace(0)
+                    [1, 2, 3], place=get_device_place()
                 )
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)
                 self.assertEqual(device_id, 0)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 tensor_pinned = paddle.to_tensor(
                     [1, 2, 3], place=base.CUDAPinnedPlace()
                 )
@@ -366,8 +366,8 @@ class TestDLPackDevice(unittest.TestCase):
             self.assertEqual(device_type, DLDeviceType.kDLCPU)
             self.assertEqual(device_id, None)
 
-            if paddle.is_compiled_with_cuda():
-                tensor_cuda = paddle.to_tensor(5.0, place=base.CUDAPlace(0))
+            if paddle.is_compiled_with_cuda() or is_custom_device():
+                tensor_cuda = paddle.to_tensor(5.0, place=get_device_place())
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)
                 self.assertEqual(device_id, 0)
@@ -387,9 +387,9 @@ class TestDLPackDevice(unittest.TestCase):
             self.assertEqual(device_type, DLDeviceType.kDLCPU)
             self.assertEqual(device_id, None)
 
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 tensor_cuda = paddle.to_tensor(
-                    paddle.zeros([0, 10]), place=base.CUDAPlace(0)
+                    paddle.zeros([0, 10]), place=get_device_place()
                 )
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -68,7 +68,7 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         result3 = F.normalize(x, name='aaa')
         result4 = F.normalize(x2, axis=0)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        place = get_device_place() if use_gpu else base.CPUPlace()
         exe = base.Executor(place)
         exe.run(paddle.static.default_startup_program())
         static_result = exe.run(
@@ -91,10 +91,10 @@ class TestNNFunctionalNormalize(unittest.TestCase):
             self.run_static()
 
     def test_gpu(self):
-        if not base.core.is_compiled_with_cuda():
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
             return
 
-        paddle.disable_static(place=paddle.base.CUDAPlace(0))
+        paddle.disable_static(place=get_device_place())
         self.run_imperative()
         paddle.enable_static()
 
