@@ -159,7 +159,6 @@ cd /d %work_dir%
 @REM         set UPLOAD_TP_CODE=ON
 @REM     )
 @REM )
-git config --global url."https://x-access-token:%GITHUB_TOKEN%@github.com/".insteadOf "https://github.com/"
 git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
 git submodule update --init --recursive
 if "%UPLOAD_TP_CODE%"=="ON" (
