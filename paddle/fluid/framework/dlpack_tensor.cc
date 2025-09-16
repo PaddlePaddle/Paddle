@@ -21,20 +21,35 @@
 namespace paddle {
 namespace framework {
 
-std::unordered_map<void *, std::function<void(phi::Allocation *)>>
-    ptr_to_deleter;
-std::mutex ptr_to_deleter_mutex;  // use mutex to keep thread safe
-
-void DeleterBridge(phi::Allocation *alloc) {
-  std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
-  auto it = ptr_to_deleter.find(static_cast<void *>(alloc->ptr()));
-  if (it != ptr_to_deleter.end()) {
-    it->second(alloc);         // call the deleter
-    ptr_to_deleter.erase(it);  // remove the entry from the map safely
-  }
-}
-
 namespace internal {
+class PaddleDeleterManager {
+ public:
+  static PaddleDeleterManager &Instance() {
+    static PaddleDeleterManager instance;
+    return instance;
+  }
+
+  void AddDeleter(void *ptr, std::function<void(phi::Allocation *)> deleter) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    ptr_to_deleter_[ptr] = deleter;
+  }
+
+  static void DeleterBridge(phi::Allocation *alloc) {
+    std::lock_guard<std::mutex> lock(PaddleDeleterManager::Instance().mutex_);
+    auto &ptr_to_deleter = PaddleDeleterManager::Instance().ptr_to_deleter_;
+    auto it = ptr_to_deleter.find(static_cast<void *>(alloc->ptr()));
+    if (it != ptr_to_deleter.end()) {
+      it->second(alloc);         // call the deleter
+      ptr_to_deleter.erase(it);  // remove the entry from the map safely
+    }
+  }
+
+ private:
+  std::unordered_map<void *, std::function<void(phi::Allocation *)>>
+      ptr_to_deleter_;
+  std::mutex mutex_;
+};
+
 template <typename T>
 ::DLDataType GetDLDataTypeCode() {
   ::DLDataType dtype;
@@ -87,12 +102,9 @@ phi::DenseTensor from_blob(void *data,
       }
     };
 
-    {
-      std::lock_guard<std::mutex> lock(ptr_to_deleter_mutex);
-      ptr_to_deleter[data] = g;
-    }
+    PaddleDeleterManager::Instance().AddDeleter(data, std::move(g));
 
-    f = DeleterBridge;
+    f = PaddleDeleterManager::DeleterBridge;
   }
 
   // Calculate the number of elements of underlying storage
