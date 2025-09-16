@@ -440,10 +440,12 @@ def get_stream_from_external(
             >>> import paddle
 
             >>> # Assume an external library provides a stream pointer
-            >>> external_stream_ptr = 12345678
+            >>> device_id = 0
+            >>> original_stream = paddle.cuda.Stream(device_id)
+            >>> original_raw_ptr = original_stream.stream_base.raw_stream
 
             >>> # Wrap it into a Paddle Stream
-            >>> stream = paddle.cuda.get_stream_from_external(external_stream_ptr, device=0)
+            >>> external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr, device_id)
     """
 
     device = _device_to_paddle(device)
