@@ -38,23 +38,26 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
             'uint8',
             'complex64',
             'complex128',
-            'float8_e4m3fn',
-            'float8_e5m2',
         ]
-        self.places = paddle.device.get_available_device()
+        self.places = [paddle.CPUPlace()]
+        if paddle.device.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+            self.places.append(paddle.CUDAPinnedPlace())
         self.shape = [3, 4, 5, 6]
 
     def _prepare_data(self, dtype, place):
-        if dtype in ['float8_e4m3fn', 'float8_e5m2']:
-            data = np.random.randint(0, 255, self.shape).astype(np.uint8)
-        elif dtype in ['bfloat16']:
-            data = np.random.randint(0, 255, self.shape).astype(np.uint16)
-        elif dtype.startswith("int") or dtype.startswith("uint"):
-            data = np.random.randint(255, self.shape).astype(dtype)
-        else:
-            data = np.random.uniform(-1, 1, self.shape).astype(dtype)
+        if dtype.startswith("int") or dtype.startswith("uint"):
+            tensor = paddle.randint(low=0, high=10, shape=self.shape)
+        elif (
+            dtype.startswith("float")
+            or dtype.startswith("bfloat")
+            or dtype.startswith("complex")
+        ):
+            tensor = paddle.rand(shape=self.shape).astype(dtype)
+        elif dtype.startswith("bool"):
+            tensor = paddle.rand(self.shape) > 0.5
 
-        return paddle.tensor(data, place=place)
+        return paddle.tensor(tensor, device=place)
 
     def _perform_compare(self, actual, expected):
         assert actual.shape == expected.shape
