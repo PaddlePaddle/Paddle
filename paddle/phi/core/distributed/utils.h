@@ -143,7 +143,7 @@ inline std::string CommTypeToString(CommType CommType) {
   return "Unknown";
 }
 
-// convert vector to string, concatenate continuous intervals with `~`,
+// Convert vector to string, concatenate continuous intervals with `~`,
 // concatenate discontinuous intervals with `#` eg: [1,2,3,4,5,7,8,9] =>
 // 1~3#4#5#7~9
 inline std::string VectorToString(const std::vector<int>& vec) {
