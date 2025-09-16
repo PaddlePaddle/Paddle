@@ -105,8 +105,8 @@ _supported_dtype_conversions = {
 
 def _rebuild_tensor(
     data: NDArray[Any],
-    dtype: str,
-    device: str,
+    dtype: DTypeLike,
+    device: PlaceLike,
     requires_grad,
 ) -> Tensor:
     return paddle.tensor(
