@@ -160,13 +160,6 @@ jobs:
           echo "Pull upstream $BRANCH"
           '
 
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
-
       - name: Build
         if: steps.check-bypass.outputs.can-skip != 'true'
         run: |
