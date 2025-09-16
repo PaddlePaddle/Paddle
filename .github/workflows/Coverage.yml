@@ -158,7 +158,6 @@ jobs:
           set -e
           git config pull.rebase false
           echo "Pull upstream $BRANCH"
-          bash ci/git_pull.sh $BRANCH
           '
 
       - name: Check bypass
