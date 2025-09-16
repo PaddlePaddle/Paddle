@@ -14,7 +14,6 @@
 import unittest
 
 import numpy as np
-from op_test import get_devices
 from utils import dygraph_guard
 
 import paddle
@@ -95,6 +94,25 @@ class TestRandomFromToOp(unittest.TestCase):
                     test_random_from(dtype, place)
                     test_random(dtype, place)
 
+    def test_random_value_error(self):
+        tensor = paddle.ones(self.shape, dtype=paddle.float32)
+        with self.assertRaises(ValueError) as context:
+            tensor.random_(from_=10, to=5)
+        self.assertIn(
+            "random_ expects 'from' to be less than 'to'",
+            str(context.exception),
+        )
+
+    def test_random_update_to(self):
+        dtype = paddle.float16
+        place = paddle.CPUPlace()
+        paddle.set_device(place)
+
+        from_val = 2048
+        to_val = 2148
+        tensor = paddle.ones([10], dtype=dtype)
+        tensor.random_(from_val, to_val)
+
     def test_pir_random_(self):
         devices = [paddle.device.get_device()]
         if "gpu:" in devices and not paddle.device.is_compiled_with_rocm():
@@ -120,7 +138,7 @@ class TestRandomGrad(unittest.TestCase):
         self.from_val = 0
         self.to_val = 10
 
-    def run_(self):
+    def run_(self, places):
         def test_random_from_to_grad():
             tensor_a = paddle.ones(self.shape)
             tensor_a.stop_gradient = False
@@ -143,13 +161,17 @@ class TestRandomGrad(unittest.TestCase):
             random_grad = tensor_b.grad.numpy()
             self.assertTrue((random_grad == 0).all())
 
-        for place in get_devices():
+        for place in places:
             paddle.set_device(place)
             test_random_from_to_grad()
             test_random_grad()
 
     def test_random_from_to_grad(self):
-        self.run_()
+        places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_cuda():
+            places.append(paddle.CUDAPlace(0))
+
+        self.run_(places)
 
 
 if __name__ == '__main__':
