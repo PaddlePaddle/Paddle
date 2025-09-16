@@ -63,9 +63,9 @@ class _Conv3D(Layer):
         backend: Literal['igemm'] | None = None,
     ) -> None:
         super().__init__()
-        assert (
-            weight_attr is not False
-        ), "weight_attr should not be False in Conv."
+        assert weight_attr is not False, (
+            "weight_attr should not be False in Conv."
+        )
         self._param_attr = weight_attr
         self._bias_attr = bias_attr
         self._groups = groups
@@ -76,9 +76,9 @@ class _Conv3D(Layer):
         self._key = key
         self._backend = backend
 
-        assert (
-            padding_mode == 'zeros'
-        ), "Currently, only support padding_mode='zeros'"
+        assert padding_mode == 'zeros', (
+            "Currently, only support padding_mode='zeros'"
+        )
         assert groups == 1, "Currently, only support groups=1"
         assert backend in [
             None,
@@ -195,9 +195,9 @@ class _Conv2D(Layer):
         backend: Literal['igemm'] | None = None,
     ) -> None:
         super().__init__()
-        assert (
-            weight_attr is not False
-        ), "weight_attr should not be False in Conv."
+        assert weight_attr is not False, (
+            "weight_attr should not be False in Conv."
+        )
         self._param_attr = weight_attr
         self._bias_attr = bias_attr
         self._groups = groups
@@ -208,9 +208,9 @@ class _Conv2D(Layer):
         self._key = key
         self._backend = backend
 
-        assert (
-            padding_mode == 'zeros'
-        ), "Currently, only support padding_mode='zeros'"
+        assert padding_mode == 'zeros', (
+            "Currently, only support padding_mode='zeros'"
+        )
         assert groups == 1, "Currently, only support groups=1"
         assert backend in [
             None,

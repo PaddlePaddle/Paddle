@@ -134,9 +134,9 @@ def _get_pp_mesh(pp_idx=0, pp_dim_names="pp"):
     Get the mesh of the {pp_idx}th PipelineStage.
     """
     mesh = fleet.auto.get_mesh()
-    assert (
-        mesh is not None
-    ), "the mesh is None, please call fleet.auto.set_mesh first."
+    assert mesh is not None, (
+        "the mesh is None, please call fleet.auto.set_mesh first."
+    )
     if "pp" in mesh.dim_names:
         mesh = mesh.get_mesh_with_dim("pp", pp_idx)
     else:
@@ -152,7 +152,6 @@ def _get_stage_mesh(stage_index, pp_group_size, style=None):
     if style is not None:
         raise ValueError(f"Unknown style: {style}, style can be None, v.")
     else:
-
         pp_idx = stage_index % pp_group_size
         return _get_pp_mesh(pp_idx)
 

@@ -122,7 +122,7 @@ class OverloadedFunc:
 
     def mismatched_debug_info(self, dtypes):
         valid_signatures = "; ".join(
-            f"[{idx+1}] {dtypes}"
+            f"[{idx + 1}] {dtypes}"
             for idx, pair in enumerate(
                 self.func_overload_ctx.dtypes2func.items()
             )
@@ -206,9 +206,9 @@ def _init_empty_input_spec_make_ctx(annotations, mut_ctx: InputSpecMakeCtx):
 def _init_input_spec_make_ctx_name2dtype_num_candidates(
     pct_type, mut_ctx: InputSpecMakeCtx
 ):
-    assert isinstance(
-        pct_type.dtype, pct.DTypeVar
-    ), f"pct_type.dtype should be a DTypeVar, but {type(pct_type.dtype)} were given."
+    assert isinstance(pct_type.dtype, pct.DTypeVar), (
+        f"pct_type.dtype should be a DTypeVar, but {type(pct_type.dtype)} were given."
+    )
     name = pct_type.dtype.name
     if name in mut_ctx.name2dtype_num_candidates:
         assert mut_ctx.name2dtype_num_candidates[name] == len(

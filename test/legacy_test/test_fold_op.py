@@ -201,7 +201,6 @@ class TestFoldAPI(TestFoldOp):
 
 
 class TestFoldOpError(unittest.TestCase):
-
     def test_errors(self):
         from paddle.base.framework import Program, program_guard
         from paddle.nn.functional import fold

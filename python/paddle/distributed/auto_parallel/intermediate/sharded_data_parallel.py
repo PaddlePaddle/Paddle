@@ -79,10 +79,10 @@ def sharded_data_parallel(model, optimizer=None, config=None):
 
     # check global_mesh
     mesh = fleet.auto.get_mesh()
-    assert (
-        mesh is not None
-    ), "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
-    assert (
-        "dp" in mesh.dim_names
-    ), "dp must in the mesh dim_names when use sharded_data_parallel"
+    assert mesh is not None, (
+        "global mesh must not be None, please call fleet.auto.set_mesh(global_mesh) firstly"
+    )
+    assert "dp" in mesh.dim_names, (
+        "dp must in the mesh dim_names when use sharded_data_parallel"
+    )
     return sdp_model, optimizer

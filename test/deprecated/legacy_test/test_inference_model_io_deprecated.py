@@ -161,7 +161,6 @@ class TestBook(unittest.TestCase):
 
 
 class TestSaveInferenceModel(unittest.TestCase):
-
     def test_save_inference_model(self):
         root_path = tempfile.TemporaryDirectory()
         MODEL_DIR = os.path.join(root_path.name, "inference_model2")

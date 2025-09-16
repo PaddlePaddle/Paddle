@@ -19,10 +19,10 @@ namespace inference {
 namespace analysis {
 namespace transformer_tester {
 
-void compare(bool use_mkldnn = false) {
+void compare(bool use_onednn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
-  if (!use_mkldnn) {
+  if (!use_onednn) {
     cfg.DisableONEDNN();
   }
 
@@ -34,7 +34,7 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_Transformer, compare) { compare(); }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
+TEST(Analyzer_Transformer, compare_onednn) { compare(true /* use_onednn */); }
 #endif
 
 }  // namespace transformer_tester

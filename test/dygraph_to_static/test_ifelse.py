@@ -16,14 +16,9 @@ import unittest
 
 import numpy as np
 from dygraph_to_static_utils import (
-    BackendMode,
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
-    disable_test_case,
     enable_to_static_guard,
     test_ast_only,
-    test_pir_only,
 )
 from ifelse_simple_func import (
     NetWithControlFlowIf,
@@ -105,10 +100,6 @@ class TestDygraphIfElse2(TestDygraphIfElse):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_with_if_else2
 
-    # TODO(dev): fix AST mode
-    @disable_test_case(
-        (ToStaticMode.AST, IrMode.PT, BackendMode.PHI | BackendMode.CINN)
-    )
     def test_ast_to_func(self):
         np.testing.assert_allclose(
             self._run_dygraph(), self._run_static(), atol=1e-7, rtol=1e-7
@@ -555,7 +546,6 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(Dy2StTestBase):
-    @test_pir_only
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -607,7 +597,6 @@ class TestIfElseMaybeUnbound(Dy2StTestBase):
         np.testing.assert_allclose(dygraph_out.numpy(), static_out.numpy())
 
     @test_ast_only
-    @test_pir_only
     def test_use_undefined_var(self):
         truethy = paddle.to_tensor(1)
         falsy = paddle.to_tensor(0)
@@ -630,7 +619,6 @@ def dynamic_shape_with_constant_promotion(x):
 
 class TestDynamicShapeWithConstantPromotion(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_dynamic_shape_with_constant_promotion(self):
         x = paddle.randn([5, 3])
         static_fn = paddle.jit.to_static(

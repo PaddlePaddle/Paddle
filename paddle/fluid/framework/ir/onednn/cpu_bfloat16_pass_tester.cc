@@ -28,36 +28,36 @@ void SetOp(ProgramDesc* prog,
            const std::string& onednn_data_type = "float32") {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetAttr("use_mkldnn", use_onednn);
+  op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
 
   if (type == "conv2d") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Output", {outputs[0]});
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
              type == "dropout") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-    if (type != "dropout") op->SetAttr("mkldnn_data_type", onednn_data_type);
+    if (type != "dropout") op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "concat" || type == "sum" || type == "split") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "matmul" || type == "elementwise_add" ||
              type == "elementwise_mul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "layer_norm") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Y", {outputs[0]});
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   }
 }
 

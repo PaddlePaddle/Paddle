@@ -368,13 +368,13 @@ class StaticPIRGraphAdapter:
         self.model.mode = value
 
     def train_batch(self, inputs, labels=None, update=True):
-        assert (
-            self.model._optimizer
-        ), "model not ready, please call `model.prepare()` first"
+        assert self.model._optimizer, (
+            "model not ready, please call `model.prepare()` first"
+        )
         self.mode = 'train'
-        assert (
-            update is True
-        ), "Does not support `update == False` in static graph mode by now."
+        assert update is True, (
+            "Does not support `update == False` in static graph mode by now."
+        )
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -500,16 +500,16 @@ class StaticPIRGraphAdapter:
                 # However, dygraph wouldn't save it.
                 if var.name not in state:
                     continue
-            assert (
-                var.name in converted_state
-            ), f"variable [{var.name}] is not in optimizer state file"
+            assert var.name in converted_state, (
+                f"variable [{var.name}] is not in optimizer state file"
+            )
             self._set_var(var.name, converted_state[var.name])
 
     def _run(self, inputs, labels=None):
         compiled_prog = self._compiled_progs.get(self.mode, None)
-        assert (
-            compiled_prog
-        ), "Model is not ready, please call `model.prepare()` first"
+        assert compiled_prog, (
+            "Model is not ready, please call `model.prepare()` first"
+        )
 
         inputs = to_list(inputs)
         if labels is not None:
@@ -689,9 +689,9 @@ class StaticPIRGraphAdapter:
         }
 
     def _initialize(self, prog, mode):
-        assert (
-            self.model._place is not None
-        ), "device is not set, please call `model.prepare()` first"
+        assert self.model._place is not None, (
+            "device is not set, please call `model.prepare()` first"
+        )
 
         place = self.model._place
 
@@ -756,13 +756,13 @@ class StaticGraphAdapter:
         self.model.mode = value
 
     def train_batch(self, inputs, labels=None, update=True):
-        assert (
-            self.model._optimizer
-        ), "model not ready, please call `model.prepare()` first"
+        assert self.model._optimizer, (
+            "model not ready, please call `model.prepare()` first"
+        )
         self.mode = 'train'
-        assert (
-            update is True
-        ), "Does not support `update == False` in static graph mode by now."
+        assert update is True, (
+            "Does not support `update == False` in static graph mode by now."
+        )
         return self._run(inputs, labels)
 
     def eval_batch(self, inputs, labels=None):
@@ -919,9 +919,9 @@ class StaticGraphAdapter:
                                 converted_state.pop(dy_state_name)
                             )
 
-            assert (
-                var.name in converted_state
-            ), f"variable [{var.name}] is not in optimizer state file"
+            assert var.name in converted_state, (
+                f"variable [{var.name}] is not in optimizer state file"
+            )
             self._set_var(var, converted_state[var.name])
 
     def _set_var(self, var, ndarray):
@@ -940,9 +940,9 @@ class StaticGraphAdapter:
 
     def _run(self, inputs, labels=None):
         compiled_prog = self._compiled_progs.get(self.mode, None)
-        assert (
-            compiled_prog
-        ), "Model is not ready, please call `model.prepare()` first"
+        assert compiled_prog, (
+            "Model is not ready, please call `model.prepare()` first"
+        )
 
         inputs = to_list(inputs)
         if labels is not None:
@@ -1141,9 +1141,9 @@ class StaticGraphAdapter:
         if compiled_prog is not None:
             return compiled_prog
 
-        assert (
-            self.model._place is not None
-        ), "device is not set, please call `model.prepare()` first"
+        assert self.model._place is not None, (
+            "device is not set, please call `model.prepare()` first"
+        )
 
         place = self.model._place
 
@@ -1234,9 +1234,9 @@ class DynamicGraphAdapter:
 
     # TODO multi device in dygraph mode not implemented at present time
     def train_batch(self, inputs, labels=None, update=True):
-        assert (
-            self.model._optimizer
-        ), "model not ready, please call `model.prepare()` first"
+        assert self.model._optimizer, (
+            "model not ready, please call `model.prepare()` first"
+        )
         self.model.network.train()
         self.mode = 'train'
         inputs = to_list(inputs)
@@ -2031,7 +2031,9 @@ class Model:
                 assert isinstance(
                     self._optimizer._grad_clip,
                     (paddle.nn.ClipGradByGlobalNorm, paddle.nn.ClipGradByNorm),
-                ), "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
+                ), (
+                    "Only ClipGradByNorm and ClipGradByGlobalNorm are supported in amp training with level=O2 currently."
+                )
 
         self._adapter._amp_custom_lists = {}
         self._adapter._amp_configs = {}
@@ -2188,9 +2190,9 @@ class Model:
 
         metrics = metrics or []
         for metric in to_list(metrics):
-            assert isinstance(
-                metric, Metric
-            ), f"{metric.__class__.__name__} is not sub class of Metric"
+            assert isinstance(metric, Metric), (
+                f"{metric.__class__.__name__} is not sub class of Metric"
+            )
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 
@@ -2353,9 +2355,9 @@ class Model:
         if isinstance(batch_size, (tuple, list)) and all(
             isinstance(x, int) for x in batch_size
         ):
-            assert (
-                len(batch_size) == 2
-            ), "batch_size length error, expected train_batch_size and eval_batch_size."
+            assert len(batch_size) == 2, (
+                "batch_size length error, expected train_batch_size and eval_batch_size."
+            )
             train_batch_size, eval_batch_size = batch_size
         elif isinstance(batch_size, int):
             train_batch_size, eval_batch_size = batch_size, batch_size
@@ -2748,9 +2750,9 @@ class Model:
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
             prog = self._adapter._progs.get('test', None)
-            assert (
-                prog
-            ), "Model is not ready, please call `model.prepare()` first"
+            assert prog, (
+                "Model is not ready, please call `model.prepare()` first"
+            )
 
             if in_pir_mode():
                 infer_prog = prog
@@ -2914,9 +2916,9 @@ class Model:
                 {'total_params': 61610, 'trainable_params': 61610}
 
         """
-        assert (
-            input_size is not None or self._inputs is not None
-        ), "'input_size' or 'self._input' must be set"
+        assert input_size is not None or self._inputs is not None, (
+            "'input_size' or 'self._input' must be set"
+        )
         if input_size is not None:
             _input_size = input_size
         else:

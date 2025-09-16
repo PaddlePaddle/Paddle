@@ -785,6 +785,46 @@ void DeviceManager::ProfilerCollectTraceData(
   dev_impl->ProfilerCollectTraceData(collector, start_ns, context);
 }
 
+void DeviceManager::InitBlasHandle(const Place& place,
+                                   void** blas_handle,
+                                   phi::stream::stream_t stream) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->InitBlasHandle(device_id, blas_handle, stream);
+}
+
+void DeviceManager::BlasSetMathMode(const Place& place,
+                                    void* blas_handle,
+                                    int math_mode) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->BlasSetMathMode(device_id, blas_handle, math_mode);
+}
+
+void DeviceManager::InitBlasLtHandle(const Place& place, void** blaslt_handle) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->InitBlasLtHandle(device_id, blaslt_handle);
+}
+
+void DeviceManager::DestroyBlasHandle(const Place& place, void* blas_handle) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->DestroyBlasHandle(device_id, blas_handle);
+}
+
+void DeviceManager::DestroyBlasLtHandle(const Place& place,
+                                        void* blaslt_handle) {
+  auto device_type = place.GetDeviceType();
+  auto device_id = place.GetDeviceId();
+  auto dev_impl = GetDeviceInterfaceWithType(device_type);
+  dev_impl->DestroyBlasLtHandle(device_id, blaslt_handle);
+}
+
 DeviceManager& DeviceManager::Instance() {
   static DeviceManager platform_manager;
   return platform_manager;

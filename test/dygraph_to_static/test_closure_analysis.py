@@ -38,9 +38,9 @@ class JudgeVisitor(gast.NodeVisitor):
         expected = self.ans.get(node.name, set())
         exp_mod = self.mod.get(node.name, set())
         assert scope.existed_vars() == expected, "Not Equals."
-        assert (
-            scope.modified_vars() == exp_mod
-        ), f"Not Equals in function:{node.name} . expect {exp_mod} , but get {scope.modified_vars()}"
+        assert scope.modified_vars() == exp_mod, (
+            f"Not Equals in function:{node.name} . expect {exp_mod} , but get {scope.modified_vars()}"
+        )
         self.generic_visit(node)
 
 
@@ -51,9 +51,9 @@ class JudgePushPopVisitor(gast.NodeVisitor):
     def visit_FunctionDef(self, node):
         scope = node.pd_scope
         expected = self.pp_var.get(node.name, set())
-        assert (
-            scope.push_pop_vars == expected
-        ), f"Not Equals in function:{node.name} . expect {expected} , but get {scope.push_pop_vars}"
+        assert scope.push_pop_vars == expected, (
+            f"Not Equals in function:{node.name} . expect {expected} , but get {scope.push_pop_vars}"
+        )
         self.generic_visit(node)
 
 

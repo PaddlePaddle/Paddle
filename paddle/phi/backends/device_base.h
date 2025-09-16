@@ -319,6 +319,18 @@ class DeviceInterface {  // Driver / Runtime
                                         uint64_t start_ns,
                                         void* user_data);
 
+  virtual void InitBlasHandle(size_t dev_id,
+                              void** blas_handle,
+                              phi::stream::stream_t stream);
+
+  virtual void BlasSetMathMode(size_t dev_id, void* blas_handle, int math_mode);
+
+  virtual void InitBlasLtHandle(size_t dev_id, void** blaslt_handle);
+
+  virtual void DestroyBlasHandle(size_t dev_id, void* blas_handle);
+
+  virtual void DestroyBlasLtHandle(size_t dev_id, void* blaslt_handle);
+
  private:
   const std::string type_;
   const uint8_t priority_;

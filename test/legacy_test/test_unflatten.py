@@ -325,7 +325,6 @@ class TestLayer(unittest.TestCase):
 
 
 class TestLayerName(unittest.TestCase):
-
     def test_name(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
         self.axis = 1

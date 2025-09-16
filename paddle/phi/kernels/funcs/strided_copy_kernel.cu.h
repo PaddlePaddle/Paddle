@@ -218,6 +218,8 @@ bool CheckStride(
     const phi::Array<int64_t, phi::DDim::kMaxRank + 1>& dims,
     int rank,
     int64_t output_numel) {
+  if (output_numel == 0) return true;
+
   int64_t stride = output_numel;
   int64_t last_stride = 1;
   for (size_t i = 0; i < rank; i++) {

@@ -54,10 +54,9 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
     case DataType::INT64:
       return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::dtype::float16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(
-          GetValue<phi::dtype::bfloat16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
@@ -115,8 +114,8 @@ PD_REGISTER_KERNEL(linspace,
                    int32_t,
                    int64_t,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

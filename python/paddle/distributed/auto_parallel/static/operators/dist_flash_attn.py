@@ -60,9 +60,9 @@ class DistributedFlashAttnImpl0(DistributedElementwiseImpl0):
             and not op_dist_attr.is_recompute
             and rank_id in op_dist_attr.process_mesh.process_ids
         ):
-            assert (
-                op_dist_attr is not None
-            ), f"forward op [{src_op}] don't have dist attribute !"
+            assert op_dist_attr is not None, (
+                f"forward op [{src_op}] don't have dist attribute !"
+            )
 
             if (
                 len(kwargs.get('fixed_seed_offset', [])) > 0

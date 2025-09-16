@@ -55,9 +55,9 @@ def get_placement_with_sharding(param, sharding_axis, param_placements=None):
         if isinstance(placement, dist.Shard):
             # the parameter can't be shard twice with sharding on different mesh now
             # for example, [Shard(0), Shard(1)], assert here in case
-            assert (
-                shard_axis == -1
-            ), "The parameter can't be shard twice with sharding strategy even in different mesh now."
+            assert shard_axis == -1, (
+                "The parameter can't be shard twice with sharding strategy even in different mesh now."
+            )
             shard_axis = placement.get_dim()
 
     placement_with_sharding = None
@@ -99,12 +99,14 @@ class ShardingOptimizerStage1(Optimizer):
     """
 
     def __init__(self, optimizer, shard_fn=None, strategy=None):
-        assert (
-            optimizer is not None
-        ), "The argument `optimizer` cannot be empty."
+        assert optimizer is not None, (
+            "The argument `optimizer` cannot be empty."
+        )
         assert isinstance(
             optimizer, (paddle.optimizer.AdamW, paddle.optimizer.SGD)
-        ), "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
+        ), (
+            "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
+        )
         self.__dict__["_inner_opt"] = optimizer
         self._shard_fn = shard_fn
         self._strategy = strategy or Strategy()
@@ -181,15 +183,17 @@ class ShardingOptimizerStage1(Optimizer):
                 continue
             param_dist_attr = param.dist_attr()
             grad_dist_attr = grad.dist_attr()
-            assert (
-                param_dist_attr is not None
-            ), f"parameter dist attribute must not None. but received {param.name} : {param}."
-            assert (
-                grad_dist_attr is not None
-            ), f"gradient dist attribute must not None. but received {param.name} grad : {grad}."
+            assert param_dist_attr is not None, (
+                f"parameter dist attribute must not None. but received {param.name} : {param}."
+            )
+            assert grad_dist_attr is not None, (
+                f"gradient dist attribute must not None. but received {param.name} grad : {grad}."
+            )
             assert (
                 param_dist_attr.process_mesh == grad_dist_attr.process_mesh
-            ), f"Parameter and grad should have same process_mesh. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            ), (
+                f"Parameter and grad should have same process_mesh. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            )
 
             if self._sharding_axis not in grad_dist_attr.partial_dims:
                 new_params_grads.append((param, grad))
@@ -204,9 +208,9 @@ class ShardingOptimizerStage1(Optimizer):
                 else:
                     param.optimize_attr["no_fusion"] = False
 
-            assert (
-                param_dist_attr.process_mesh in self.pp_meshes
-            ), f"parameter mesh mush be in pp_meshes. but received parameter name:{param.name}, mesh:{param_dist_attr.process_mesh}, pp_meshes: {self.pp_meshes}."
+            assert param_dist_attr.process_mesh in self.pp_meshes, (
+                f"parameter mesh mush be in pp_meshes. but received parameter name:{param.name}, mesh:{param_dist_attr.process_mesh}, pp_meshes: {self.pp_meshes}."
+            )
 
             if dist.get_rank() in param_dist_attr.process_mesh.process_ids:
                 sub_mesh = get_1D_sub_process_mesh(
@@ -214,20 +218,24 @@ class ShardingOptimizerStage1(Optimizer):
                 )
                 assert (
                     sorted(sub_mesh.process_ids) == self._sharding_group.ranks
-                ), f" all parameter must have the same sharding group. but received {param.name} sharding group is : {sub_mesh.process_ids}, global sharding group is: {self._sharding_group.ranks}"
+                ), (
+                    f" all parameter must have the same sharding group. but received {param.name} sharding group is : {sub_mesh.process_ids}, global sharding group is: {self._sharding_group.ranks}"
+                )
 
-            assert (
-                param_dist_attr.partial_dims == set()
-            ), f"Sharding fusion do not support partial parameter. but received {param.name} : {param}."
+            assert param_dist_attr.partial_dims == set(), (
+                f"Sharding fusion do not support partial parameter. but received {param.name} : {param}."
+            )
             assert (
                 param_dist_attr.dims_mapping == grad_dist_attr.dims_mapping
-            ), f"Parameter and grad should have same dims_mapping. but received name:{param.name}, parameter:{param}, grad: {grad}."
-            assert (
-                param.shape == grad.shape
-            ), f"Parameter and grad should have same global shape. but received name:{param.name}, parameter:{param}, grad: {grad}."
-            assert (
-                param._local_shape == grad._local_shape
-            ), f"Parameter and grad should have same local shape. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            ), (
+                f"Parameter and grad should have same dims_mapping. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            )
+            assert param.shape == grad.shape, (
+                f"Parameter and grad should have same global shape. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            )
+            assert param._local_shape == grad._local_shape, (
+                f"Parameter and grad should have same local shape. but received name:{param.name}, parameter:{param}, grad: {grad}."
+            )
 
             if (
                 self._mp_degree > 1
@@ -501,9 +509,9 @@ class ShardingOptimizerStage1(Optimizer):
             for index in indices:
                 param = parameters[index]
                 self._slice_param_group_info[group_idx][param.name] = {}
-                self._slice_param_group_info[group_idx][param.name][
-                    "shape"
-                ] = param.shape
+                self._slice_param_group_info[group_idx][param.name]["shape"] = (
+                    param.shape
+                )
                 self._slice_param_group_info[group_idx][param.name][
                     "param_start"
                 ] = -1
@@ -531,14 +539,14 @@ class ShardingOptimizerStage1(Optimizer):
             ] = param_end
 
         for name, padded_size in padded_size_dict.items():
-            self._slice_param_group_info[group_idx][name][
-                "padded_size"
-            ] = padded_size
+            self._slice_param_group_info[group_idx][name]["padded_size"] = (
+                padded_size
+            )
 
         for name, _ in self._slice_param_group_info[group_idx].items():
-            self._slice_param_group_info[group_idx][name][
-                "align_size"
-            ] = align_size
+            self._slice_param_group_info[group_idx][name]["align_size"] = (
+                align_size
+            )
 
     def _reduce_scatter_overlap(self, group_grad_list, target_block):
         '''

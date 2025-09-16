@@ -61,9 +61,9 @@ class DnnWorkspaceHandle {
    *  running the function. Currently this function is only used when cudnn
    *  exhaustive searching and callers have to guarantee that the input function
    *  is host blocking */
-  void RunFuncSync(const std::function<void(void*)>& cudnn_func,
-                   size_t required_workspace_bytes,
-                   bool use_cached_allocation = true);
+  PADDLE_API void RunFuncSync(const std::function<void(void*)>& cudnn_func,
+                              size_t required_workspace_bytes,
+                              bool use_cached_allocation = true);
 
   inline size_t WorkspaceSize() {
     if (allocation_ == nullptr) {
@@ -72,7 +72,7 @@ class DnnWorkspaceHandle {
     return allocation_->size();
   }
 
-  void ResetWorkspace();
+  PADDLE_API void ResetWorkspace();
 
   TEST_API void ReallocWorkspace(size_t required_workspace_bytes);
 
@@ -298,8 +298,8 @@ class GPUPinnedContext
     : public DeviceContext,
       public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
  public:
-  GPUPinnedContext();
-  explicit GPUPinnedContext(GPUPinnedPlace place);
+  PADDLE_API GPUPinnedContext();
+  PADDLE_API explicit GPUPinnedContext(GPUPinnedPlace place);
 
   const Place& GetPlace() const override;
 

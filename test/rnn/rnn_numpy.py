@@ -423,9 +423,9 @@ class BiRNN(LayerMixin):
         self, inputs, initial_states=None, sequence_length=None, **kwargs
     ):
         if isinstance(initial_states, (list, tuple)):
-            assert (
-                len(initial_states) == 2
-            ), "length of initial_states should be 2 when it is a list/tuple"
+            assert len(initial_states) == 2, (
+                "length of initial_states should be 2 when it is a list/tuple"
+            )
         else:
             initial_states = [initial_states, initial_states]
 

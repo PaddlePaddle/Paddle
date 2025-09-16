@@ -371,7 +371,6 @@ class TestWithDouble(TestModulatedDeformableConvOp):
 
 
 class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
-
     def test_error_api(self):
         def test_invalid_input():
             paddle.enable_static()
@@ -428,7 +427,6 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
-
     def test_api(self):
         def test_deform_conv2d_v1():
             paddle.enable_static()

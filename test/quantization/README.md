@@ -264,7 +264,7 @@ The following options are also accepted:
 
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/static/quantization/slim/tests/quant2_int8_image_classification_comparison.py --quant_model=/PATH/TO/DOWNLOADED/QUANT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_onednn=true python python/paddle/static/quantization/slim/tests/quant2_int8_image_classification_comparison.py --quant_model=/PATH/TO/DOWNLOADED/QUANT/MODEL --fp32_model=/PATH/TO/DOWNLOADED/FP32/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --ops_to_quantize="conv2d,pool2d"
 ```
 
 > Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark may last long. To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the maximum number of physical cores available on the server.

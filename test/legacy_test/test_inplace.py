@@ -16,7 +16,7 @@ import functools
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 
@@ -1529,6 +1529,22 @@ class TestDygraphInplacBitwiseOr(TestDygraphInplacBitwiseAnd):
         return paddle.bitwise_or(var, self.y)
 
 
+class TestDygraphInplacBitwiseOrAlias1(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(var, other=self.y)
+
+
+class TestDygraphInplacBitwiseOrAlias2(TestDygraphInplacBitwiseAnd):
+    def inplace_api_processing(self, var):
+        return paddle.bitwise_or_(input=var, other=self.y)
+
+    def non_inplace_api_processing(self, var):
+        return paddle.bitwise_or(input=var, other=self.y)
+
+
 class TestDygraphInplacBitwiseXor(TestDygraphInplacBitwiseAnd):
     def inplace_api_processing(self, var):
         return paddle.bitwise_xor_(var, self.y)
@@ -2265,8 +2281,8 @@ class TestDygraphInplaceSet(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_float16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
@@ -2295,8 +2311,8 @@ class TestDygraphInplaceSetFP16(TestDygraphInplaceSet):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDygraphInplaceSetBF16(TestDygraphInplaceSet):
@@ -2433,8 +2449,8 @@ class TestDygraphInplaceResize(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_float16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_float16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the float16",
 )
 class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
@@ -2461,8 +2477,8 @@ class TestDygraphInplaceResizeFP16(TestDygraphInplaceResize):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
-    or not paddle.base.core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+    or not paddle.base.core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestDygraphInplaceResizeBF16(TestDygraphInplaceResize):

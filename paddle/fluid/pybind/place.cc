@@ -342,9 +342,9 @@ void BindPlace(pybind11::module &m) {  // NOLINT
              }
 #else
              LOG(ERROR) << string::Sprintf(
-                 "Cannot use CustomDevice because you have installed CPU/GPU"
+                 "Cannot use CustomDevice because you have installed CPU/GPU "
                  "version PaddlePaddle.\n"
-                 "If you want to use CustomDevice, please try to install"
+                 "If you want to use CustomDevice, please try to install "
                  "CustomDevice version "
                  "PaddlePaddle by: pip install paddlepaddle\n"
                  "If you only have CPU, please change "

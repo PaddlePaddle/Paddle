@@ -86,5 +86,5 @@ PD_REGISTER_KERNEL(fill_diagonal,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
+                   phi::float16,
                    bool) {}

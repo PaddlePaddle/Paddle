@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import multiprocessing
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 from paddle import base
 from paddle.base import core
@@ -142,7 +142,8 @@ class TestDatasetRuntimeError(unittest.TestCase):
 # CI Coverage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestDataLoaderWorkerLoop(unittest.TestCase):
     def run_without_worker_done(self, use_shared_memory=True):
@@ -167,9 +168,9 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     places=place,
                     use_shared_memory=use_shared_memory,
                 )
-                assert (
-                    loader.num_workers > 0
-                ), "go to AssertionError and pass in Mac and Windows"
+                assert loader.num_workers > 0, (
+                    "go to AssertionError and pass in Mac and Windows"
+                )
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
@@ -224,9 +225,9 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     places=place,
                     use_shared_memory=use_shared_memory,
                 )
-                assert (
-                    loader.num_workers > 0
-                ), "go to AssertionError and pass in Mac and Windows"
+                assert loader.num_workers > 0, (
+                    "go to AssertionError and pass in Mac and Windows"
+                )
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()

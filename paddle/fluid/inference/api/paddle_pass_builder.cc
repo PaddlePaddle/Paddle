@@ -523,8 +523,8 @@ void CpuPassStrategy::DisableOnednnFcPasses() {
 }
 
 void CpuPassStrategy::EraseFcMkldnnPasses() {
-  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EraseFcMkldnnPasses);
-  EraseFcMkldnnPasses();
+  LOG(WARNING) << ONEDNN_UPDATE_WARNING(EraseFcOnednnPasses);
+  EraseFcOnednnPasses();
 }
 void CpuPassStrategy::EraseFcOnednnPasses() {
   std::vector<std::string> fc_passes_to_erase(

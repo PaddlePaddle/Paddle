@@ -19,7 +19,6 @@ from paddle.distributed.passes import PassContext, new_pass
 
 
 class TestPIR1F1BPlan(unittest.TestCase):
-
     def test_standalone_executor_1f1b_plan_stage0(self):
         base.set_flags({'FLAGS_enable_pir_api': 1})
         config = {"num_micro_batches": 8, "pp_stage": 0, "pp_degree": 4}

@@ -32,7 +32,6 @@ os.environ["FLAGS_embedding_deterministic"] = "1"
 
 
 class TestFused(unittest.TestCase):
-
     def test_moe_ops(self):
         """
         test `moe-ops` w/ bias
@@ -202,5 +201,4 @@ class TestDispatchPermute(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()

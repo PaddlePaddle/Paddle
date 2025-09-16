@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise/elementwise_op_impl.cu.h"
@@ -67,5 +66,5 @@ PD_REGISTER_KERNEL(soft_relu_grad,
                    phi::SoftReluGradCudaKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

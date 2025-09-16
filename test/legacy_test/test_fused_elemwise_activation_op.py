@@ -16,7 +16,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar
@@ -99,8 +99,10 @@ def create_test_class(
                 self.attrs[key] = attrs[key]
 
         def test_check_output(self):
-            if self.dtype == np.float16 and core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
+            if self.dtype == np.float16 and (
+                core.is_compiled_with_cuda() or is_custom_device()
+            ):
+                place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=1e-3)
             else:
@@ -306,30 +308,30 @@ def create_test_class(
     globals()[test_case + "_scalar"] = TestFusedElementwiseActivationOp_scalar
     globals()[test_case + "_scalar2"] = TestFusedElementwiseActivationOp_scalar2
     globals()[test_case + "_Vector"] = TestFusedElementwiseActivationOp_Vector
-    globals()[
-        test_case + "_broadcast_0"
-    ] = TestFusedElementwiseActivationOp_broadcast_0
-    globals()[
-        test_case + "_broadcast_1"
-    ] = TestFusedElementwiseActivationOp_broadcast_1
-    globals()[
-        test_case + "_broadcast_2"
-    ] = TestFusedElementwiseActivationOp_broadcast_2
-    globals()[
-        test_case + "_broadcast_3"
-    ] = TestFusedElementwiseActivationOp_broadcast_3
-    globals()[
-        test_case + "_broadcast_4"
-    ] = TestFusedElementwiseActivationOp_broadcast_4
-    globals()[
-        test_case + "_rowwise_add_0"
-    ] = TestFusedElementwiseActivationOp_rowwise_add_0
-    globals()[
-        test_case + "_rowwise_add_1"
-    ] = TestFusedElementwiseActivationOp_rowwise_add_1
-    globals()[
-        test_case + "_channelwise_add"
-    ] = TestFusedElementwiseActivationOp_channelwise_add
+    globals()[test_case + "_broadcast_0"] = (
+        TestFusedElementwiseActivationOp_broadcast_0
+    )
+    globals()[test_case + "_broadcast_1"] = (
+        TestFusedElementwiseActivationOp_broadcast_1
+    )
+    globals()[test_case + "_broadcast_2"] = (
+        TestFusedElementwiseActivationOp_broadcast_2
+    )
+    globals()[test_case + "_broadcast_3"] = (
+        TestFusedElementwiseActivationOp_broadcast_3
+    )
+    globals()[test_case + "_broadcast_4"] = (
+        TestFusedElementwiseActivationOp_broadcast_4
+    )
+    globals()[test_case + "_rowwise_add_0"] = (
+        TestFusedElementwiseActivationOp_rowwise_add_0
+    )
+    globals()[test_case + "_rowwise_add_1"] = (
+        TestFusedElementwiseActivationOp_rowwise_add_1
+    )
+    globals()[test_case + "_channelwise_add"] = (
+        TestFusedElementwiseActivationOp_channelwise_add
+    )
 
 
 def scale_add_func(x, y, x_bcast, y_bcast, scale, mode=0):
@@ -457,7 +459,7 @@ for mode in {0, 1}:
             },
         )
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             create_test_class(
                 'scale_add_fp16' + suffix,
                 scale_add_func,

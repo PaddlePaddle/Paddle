@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 import paddle.base.dygraph as dg
@@ -172,8 +177,8 @@ class TestKronOp_ZeroSize(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestKronBF16Op(TestKronOp):
@@ -193,7 +198,7 @@ class TestKronBF16Op(TestKronOp):
         }
         self.outputs = {'Out': convert_float_to_uint16(out_ref)}
         # bfloat16 requires using place
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_output(self):
         self.check_output_with_place(self.place, check_pir=True)
@@ -272,7 +277,7 @@ class TestComplexKronOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):

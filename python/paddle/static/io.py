@@ -768,9 +768,9 @@ def deserialize_persistables(
         load_var_map[var_copy.name] = var_copy
 
     if data is None:
-        assert (
-            len(origin_shape_map) == 0
-        ), "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        assert len(origin_shape_map) == 0, (
+            "Required 'data' shall be not None if program contains parameter, but received 'data' is None."
+        )
         return
 
     # append load_combine op to load parameters,
@@ -1537,9 +1537,9 @@ def save(
         return save_pir(program, model_path, protocol, **configs)
 
     base_name = os.path.basename(model_path)
-    assert (
-        base_name != ""
-    ), "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    assert base_name != "", (
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
+    )
     if 'pickle_protocol' in configs:
         protocol = configs['pickle_protocol']
         warnings.warn(
@@ -1790,9 +1790,9 @@ def load(
             load_dict = _safe_load_pickle(f, encoding='latin1')
         load_dict = _pack_loaded_dict(load_dict)
     for v in parameter_list:
-        assert (
-            v.name in load_dict
-        ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
+        assert v.name in load_dict, (
+            f"Can not find [{v.name}] in model file [{parameter_file_name}]"
+        )
         set_var(v, load_dict[v.name])
 
     optimizer_var_list = list(
@@ -1801,9 +1801,9 @@ def load(
 
     if len(optimizer_var_list) > 0:
         opt_file_name = model_prefix + ".pdopt"
-        assert os.path.exists(
-            opt_file_name
-        ), f"Optimizer file [{opt_file_name}] not exits"
+        assert os.path.exists(opt_file_name), (
+            f"Optimizer file [{opt_file_name}] not exits"
+        )
 
         if executor:
             paddle.base.core._create_loaded_parameter(
@@ -1813,9 +1813,9 @@ def load(
         with open(opt_file_name, 'rb') as f:
             load_dict = _safe_load_pickle(f, encoding='latin1')
         for v in optimizer_var_list:
-            assert (
-                v.name in load_dict
-            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
+            assert v.name in load_dict, (
+                f"Can not find [{v.name}] in model file [{opt_file_name}]"
+            )
             set_var(v, load_dict[v.name])
 
 
@@ -1869,9 +1869,9 @@ def set_program_state(
     used_para_list = {}
     for para in parameter_list:
         var_temp = paddle.base.global_scope().find_var(para.name)
-        assert (
-            var_temp is not None
-        ), f"Variable [ {para.name} ] Not found, Please make sure run startup program"
+        assert var_temp is not None, (
+            f"Variable [ {para.name} ] Not found, Please make sure run startup program"
+        )
         if para.name in state_dict:
             # set value from state dict
             orig_para_np = np.array(var_temp.get_tensor())
@@ -2101,9 +2101,9 @@ def load_program_state(
 
             return res_dict
 
-    assert os.path.exists(
-        parameter_file_name
-    ), f"Parameter file [{parameter_file_name}] not exits"
+    assert os.path.exists(parameter_file_name), (
+        f"Parameter file [{parameter_file_name}] not exits"
+    )
 
     with open(parameter_file_name, 'rb') as f:
         # When value of dict is lager than 4GB ,there is a Bug on 'MAC python3'

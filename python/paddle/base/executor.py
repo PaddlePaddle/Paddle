@@ -518,9 +518,9 @@ def _add_feed_fetch_ops(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
         for i, var in enumerate(fetch_list):
-            assert isinstance(
-                var, (Variable, str)
-            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
+            assert isinstance(var, (Variable, str)), (
+                f"Wrong type for fetch_list[{i}]: {type(var)}"
+            )
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -544,9 +544,9 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
     if need_fetch_info:
         with paddle.static.program_guard(program):
             for i, fetch_input in enumerate(need_fetch_info):
-                assert isinstance(
-                    fetch_input, Value
-                ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                assert isinstance(fetch_input, Value), (
+                    f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                )
                 if is_startup_program:
                     fetch_input = paddle._pir_ops.parameter(fetch_input.name)
                 out = paddle._pir_ops.fetch(
@@ -720,9 +720,9 @@ def _as_lodtensor(data, place, dtype=None):
     """
     # NOTE(zhiqiu): convert python builtin, like float, int, and list, to numpy ndarray
     if not isinstance(data, np.ndarray):
-        assert (
-            dtype is not None
-        ), 'The dtype should be given when feed data is not np.ndarray'
+        assert dtype is not None, (
+            'The dtype should be given when feed data is not np.ndarray'
+        )
         dtype = convert_dtype(dtype)
         if np.isscalar(data):
             data = np.array(data).astype(dtype)
@@ -2058,9 +2058,9 @@ class Executor:
             if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
-                assert isinstance(
-                    program.lr_scheduler, LRScheduler
-                ), "must be LRScheduler"
+                assert isinstance(program.lr_scheduler, LRScheduler), (
+                    "must be LRScheduler"
+                )
                 lr_scheduler = program.lr_scheduler
                 lr_value = lr_scheduler()
                 lr_var = program.global_block().vars[lr_scheduler._var_name]
@@ -2113,9 +2113,9 @@ class Executor:
         acp._auto_checkpoint(self, program)
 
         program._compile(scope, self.place)
-        assert (
-            program._is_inference
-        ), f"Program must have _is_inference = True, but get {program._is_inference}"
+        assert program._is_inference, (
+            f"Program must have _is_inference = True, but get {program._is_inference}"
+        )
         return self._run_inference(program._executor, feed)
 
     def _run_pir_impl(
@@ -2187,9 +2187,9 @@ class Executor:
         if hasattr(program, 'lr_scheduler'):
             from paddle.optimizer.lr import LRScheduler
 
-            assert isinstance(
-                program.lr_scheduler, LRScheduler
-            ), "must be LRScheduler"
+            assert isinstance(program.lr_scheduler, LRScheduler), (
+                "must be LRScheduler"
+            )
 
             lr_scheduler = program.lr_scheduler
             lr_value = lr_scheduler()
@@ -2822,9 +2822,9 @@ class Executor:
             global_block, fetch_list, fetch_var_name, fetch_op
         ):
             for i, var in enumerate(fetch_list):
-                assert isinstance(
-                    var, (Variable, str)
-                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
+                assert isinstance(var, (Variable, str)), (
+                    f"Wrong type for fetch_list[{i}]: {type(var)}"
+                )
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

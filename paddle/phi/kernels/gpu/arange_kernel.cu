@@ -17,8 +17,6 @@
 #include "paddle/common/errors.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -70,17 +68,6 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   MPType start_value_mpt = static_cast<MPType>(start_value);
   MPType end_value_mpt = static_cast<MPType>(end_value);
   MPType step_value_mpt = static_cast<MPType>(step_value);
-  if constexpr (std::is_same_v<T, float>) {
-    if (std::isnan(static_cast<float>(end_value))) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, double>) {
-    if (std::isnan(static_cast<double>(end_value))) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  }
   int64_t size = 0;
   phi::funcs::GetSize(start_value_mpt, end_value_mpt, step_value_mpt, &size);
   out->Resize(common::make_ddim({size}));
@@ -105,17 +92,6 @@ void ArangeKernel(const Context& dev_ctx,
   T start_value = start.to<T>();
   T end_value = end.to<T>();
   T step_value = step.to<T>();
-  if constexpr (std::is_same_v<T, float>) {
-    if (std::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  } else if constexpr (std::is_same_v<T, double>) {
-    if (std::isnan(end_value)) {
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "The end value of arange cannot be NaN. Please check your input."));
-    }
-  }
   ArangeNullaryKernel<T, Context>(
       dev_ctx, start_value, end_value, step_value, out);
 }
@@ -134,8 +110,8 @@ PD_REGISTER_KERNEL(arange_tensor,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
@@ -149,5 +125,5 @@ PD_REGISTER_KERNEL(arange,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

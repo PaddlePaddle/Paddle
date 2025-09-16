@@ -82,5 +82,45 @@ class TestZerosAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestZerosLikeAlias(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_check_output(self):
+        """
+        Test the alias of zeros_like function.
+        ``zeros_like(input=x)`` is equivalent to ``zeros_like(x=x)``
+        """
+        shape_cases = [
+            [2],
+            [2, 4],
+            [2, 4, 8],
+        ]
+        dtype_cases = [
+            None,
+            "float32",
+            "float64",
+            "int32",
+            "int64",
+            "bool",
+        ]
+
+        for shape in shape_cases:
+            for dtype in dtype_cases:
+                x = paddle.rand(shape)
+                for param_alias in ["x", "input"]:
+                    if dtype is None:
+                        out = paddle.zeros_like(**{param_alias: x})
+                        expected = np.zeros_like(x.numpy())
+                    else:
+                        out = paddle.zeros_like(**{param_alias: x}, dtype=dtype)
+                        expected = np.zeros_like(x.numpy(), dtype=dtype)
+
+                    if dtype == "bool":
+                        np.testing.assert_array_equal(out.numpy(), expected)
+                    else:
+                        np.testing.assert_allclose(out.numpy(), expected)
+
+
 if __name__ == '__main__':
     unittest.main()

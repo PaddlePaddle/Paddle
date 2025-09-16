@@ -59,4 +59,4 @@ void PReluKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    prelu, OneDNN, ONEDNN, phi::PReluKernel, float, phi::dtype::bfloat16) {}
+    prelu, OneDNN, ONEDNN, phi::PReluKernel, float, phi::bfloat16) {}

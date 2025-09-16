@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.utils.decorator_utils import ParamAliasDecorator
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import in_dynamic_or_pir_mode, use_pir_api
@@ -144,11 +145,18 @@ def shape(input: Tensor) -> Tensor:
         return out
 
 
+@ParamAliasDecorator({"x": ["input"]})
 def is_complex(x: Tensor) -> bool:
     """Return whether x is a tensor of complex data type(complex64 or complex128).
 
+
+    .. note::
+    Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+    For example, ``input=tensor_x`` is equivalent to ``x=tensor_x``.
+
     Args:
         x (Tensor): The input tensor.
+        input: An alias for ``x`` , with identical behavior.
 
     Returns:
         bool: True if the data type of the input is complex data type, otherwise false.

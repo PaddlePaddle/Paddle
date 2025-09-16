@@ -35,9 +35,7 @@
 #include <cmath>
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/datatype_traits.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -202,5 +200,5 @@ PD_REGISTER_KERNEL(apply_per_channel_scale,
                    GPU,
                    ALL_LAYOUT,
                    phi::ApplyPerChannelScaleKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

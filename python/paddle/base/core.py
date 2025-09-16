@@ -304,6 +304,7 @@ try:
         _get_eager_deletion_vars,
         _get_phi_kernel_name,
         _get_registered_phi_kernels,
+        _get_stream_from_external,
         _get_use_default_grad_op_desc_maker_ops,
         _has_grad,
         _is_compiled_with_heterps,
@@ -403,11 +404,7 @@ def set_paddle_custom_device_lib_path(lib_path):
 
 # set paddle lib path
 def set_paddle_lib_path():
-    site_dirs = (
-        site.getsitepackages()
-        if hasattr(site, 'getsitepackages')
-        else [x for x in sys.path if 'site-packages' in x]
-    )
+    site_dirs = site.getsitepackages()
     for site_dir in site_dirs:
         lib_dir = os.path.sep.join([site_dir, 'paddle', 'libs'])
         if os.path.exists(lib_dir):
@@ -552,36 +549,36 @@ def _set_prim_backward_blacklist(*args):
 
 
 def _set_prim_backward_enabled(value: bool, print_flag: bool = False):
-    assert isinstance(
-        value, bool
-    ), f"value should be bool, but got {type(value)}"
+    assert isinstance(value, bool), (
+        f"value should be bool, but got {type(value)}"
+    )
     __set_bwd_prim_enabled(value)
     if _prim_return_log() or print_flag:
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
 
 
 def _set_prim_forward_enabled(value: bool, print_flag: bool = False):
-    assert isinstance(
-        value, bool
-    ), f"value should be bool, but got {type(value)}"
+    assert isinstance(value, bool), (
+        f"value should be bool, but got {type(value)}"
+    )
     __set_fwd_prim_enabled(value)
     if _prim_return_log() or print_flag:
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
 
 
 def set_prim_eager_enabled(value: bool, print_flag: bool = False):
-    assert isinstance(
-        value, bool
-    ), f"value should be bool, but got {type(value)}"
+    assert isinstance(value, bool), (
+        f"value should be bool, but got {type(value)}"
+    )
     __set_eager_prim_enabled(value)
     if _prim_return_log() or print_flag:
         print("eager prim enabled: ", bool(_is_eager_prim_enabled()))
 
 
 def _set_prim_all_enabled(value: bool, print_flag: bool = False):
-    assert isinstance(
-        value, bool
-    ), f"value should be bool, but got {type(value)}"
+    assert isinstance(value, bool), (
+        f"value should be bool, but got {type(value)}"
+    )
     __set_all_prim_enabled(value)
     if _prim_return_log() or print_flag:
         print(

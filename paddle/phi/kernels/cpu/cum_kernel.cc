@@ -273,11 +273,13 @@ PD_REGISTER_KERNEL(cumsum,
                    phi::CumsumKernel,
                    float,
                    double,
+                   uint8_t,
+                   int8_t,
                    int16_t,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(
     logcumsumexp, CPU, ALL_LAYOUT, phi::LogcumsumexpKernel, float, double) {}

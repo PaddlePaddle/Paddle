@@ -147,7 +147,7 @@ void LambKernel(const Context& dev_ctx,
   const MT* grad_calc_ptr = nullptr;
   MT* param_outs_calc_ptr = nullptr;
 
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     MT* param_float = RAII_GUARD.alloc_l3_or_gm<MT>(param.numel());
     PADDLE_ENFORCE_XDNN_NOT_NULL(param_float);
     MT* grad_float = RAII_GUARD.alloc_l3_or_gm<MT>(grad.numel());
@@ -189,7 +189,7 @@ void LambKernel(const Context& dev_ctx,
       param.numel());
 
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "lamb");
-  if (std::is_same<T, phi::dtype::float16>::value && multi_precision == false) {
+  if (std::is_same<T, phi::float16>::value && multi_precision == false) {
     int r = xpu::cast<MT, XPUType>(
         xpu_ctx, param_outs_calc_ptr, param_outs_ptr, param_outs->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
@@ -215,7 +215,7 @@ void LambKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    lamb, XPU, ALL_LAYOUT, phi::LambKernel, float, phi::dtype::float16) {
+    lamb, XPU, ALL_LAYOUT, phi::LambKernel, float, phi::float16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);

@@ -91,12 +91,12 @@ class StatementIRBuilder:
         """
         Call a method of a api. The API here can be python or Paddle
         """
-        assert isinstance(
-            method_name, str
-        ), "call_METHOD must method api name. string."
-        assert isinstance(
-            inputs[0][0], Symbol
-        ), "call_METHOD first argument must be Symbol Variable."
+        assert isinstance(method_name, str), (
+            "call_METHOD must method api name. string."
+        )
+        assert isinstance(inputs[0][0], Symbol), (
+            "call_METHOD first argument must be Symbol Variable."
+        )
         stmt = MethodStatement(
             method_name,
             inputs,

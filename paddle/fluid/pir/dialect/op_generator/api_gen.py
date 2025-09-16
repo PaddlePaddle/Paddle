@@ -83,13 +83,11 @@ type_autocast_op_list = {
     "asinh": ["x"],
     "atan": ["x"],
     "atanh": ["x"],
-    "ceil": ["x"],
     "cos": ["x"],
     "cosh": ["x"],
     "digamma": ["x"],
     "erf": ["x"],
     "erfinv": ["x"],
-    "floor": ["x"],
     "i0": ["x"],
     "i0e": ["x"],
     "i1": ["x"],
@@ -112,10 +110,7 @@ type_autocast_op_list = {
 
 # ops support casting int tensor into float32 to do forward calculation,
 # and it is valid to cast float32 gradient back to int tensor.
-type_autocast_valid_grad_op_list = {
-    "ceil",
-    "floor",
-}
+type_autocast_valid_grad_op_list = {}
 
 PD_MANUAL_API_LIST = {
     'embedding_grad',

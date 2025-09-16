@@ -82,7 +82,7 @@ class ShardStatus final : public PlacementStatus {
   int64_t co_shard_order_{0};
 };
 
-class TEST_API TensorDistAttr {
+class PADDLE_API TensorDistAttr {
  public:
   TensorDistAttr() = default;
 
@@ -155,6 +155,8 @@ class TEST_API TensorDistAttr {
   void set_dynamic_dims(const std::vector<bool>& dynamic_dims);
 
   void set_default_dynamic_dims(const std::vector<int64_t>& tensor_shape);
+
+  void set_default_dynamic_dims(int64_t tensor_shape_size);
 
   const std::map<std::string, bool>& annotated() const { return annotated_; }
 
@@ -229,7 +231,7 @@ class TEST_API TensorDistAttr {
 
  private:
   // delete it after all 1d vector dims_mapping_ have been upgraded to 2d.
-  class DimMapProxy final {
+  class PADDLE_API DimMapProxy final {
    public:
     DimMapProxy(std::vector<std::vector<int64_t>>* dims_mapping_2d,
                 const ProcessMesh& process_mesh)
@@ -276,7 +278,8 @@ inline std::ostream& operator<<(std::ostream& os, const TensorDistAttr& obj) {
   return os;
 }
 
-bool operator==(const TensorDistAttr& lhs, const TensorDistAttr& rhs);
+PADDLE_API bool operator==(const TensorDistAttr& lhs,
+                           const TensorDistAttr& rhs);
 
 inline bool operator!=(const TensorDistAttr& lhs, const TensorDistAttr& rhs) {
   return !operator==(lhs, rhs);

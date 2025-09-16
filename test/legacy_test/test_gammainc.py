@@ -92,7 +92,6 @@ class TestGammaincOp_ZeroSize(OpTest):
 
 
 class TestGammaincOp_ZeroSize2(TestGammaincOp_ZeroSize):
-
     def init_shape(self):
         self.shape = (0,)
 

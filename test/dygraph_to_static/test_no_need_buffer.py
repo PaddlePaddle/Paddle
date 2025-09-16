@@ -18,7 +18,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     test_ast_only,
-    test_pir_only,
 )
 
 import paddle
@@ -33,7 +32,6 @@ def concat_net(x):
 
 class TestNoNeedBuffer(Dy2StTestBase):
     @test_ast_only
-    @test_pir_only
     def test_no_need_buffer(self):
         input = paddle.to_tensor([1, 2])
         input.stop_gradient = False

@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -98,8 +96,8 @@ void FusedElementwiseSubKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(fused_elementwise_add,
                    CPU,
@@ -136,7 +134,7 @@ PD_REGISTER_KERNEL(fused_elementwise_mul,
                    bool,
                    complex64,
                    complex128,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(fused_elementwise_sub,
                    CPU,
@@ -149,4 +147,4 @@ PD_REGISTER_KERNEL(fused_elementwise_sub,
                    int64_t,
                    complex64,
                    complex128,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

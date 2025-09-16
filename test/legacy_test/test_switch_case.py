@@ -26,7 +26,6 @@ paddle.enable_static()
 
 
 class TestAPISwitchCase(unittest.TestCase):
-
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -371,7 +370,6 @@ class TestAPISwitchCase(unittest.TestCase):
 
 
 class TestAPISwitchCase_Nested(unittest.TestCase):
-
     def test_nested_switch_case(self):
         def fn_1(x=1):
             out = paddle.static.nn.switch_case(
@@ -580,7 +578,6 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
 
 # test TypeError and ValueError of api switch_case
 class TestAPISwitchCase_Error(unittest.TestCase):
-
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(

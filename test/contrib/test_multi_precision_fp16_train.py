@@ -21,7 +21,6 @@ import paddle
 from paddle import base
 from paddle.io import Dataset
 from paddle.nn import Layer
-from paddle.static.amp.fp16_utils import cast_model_to_fp16
 
 paddle.enable_static()
 
@@ -311,48 +310,6 @@ class TestImageMultiPrecision(unittest.TestCase):
             base.program_guard(prog, startup_prog),
         ):
             yield
-
-
-class TestAmpWithNonIterableDataLoader(unittest.TestCase):
-    def decorate_with_data_loader(self):
-        main_prog = paddle.static.Program()
-        start_prog = paddle.static.Program()
-        with (
-            paddle.static.program_guard(main_prog, start_prog),
-            paddle.base.unique_name.guard(),
-        ):
-            image = paddle.static.data(
-                name='image', shape=[-1, 3, 224, 224], dtype='float32'
-            )
-            label = paddle.static.data(
-                name='label', shape=[-1, 1], dtype='int64'
-            )
-            zero_var = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=0
-            )
-            one_var = paddle.tensor.fill_constant(
-                shape=[1], dtype='int64', value=1
-            )
-            label_val = paddle.static.nn.cond(
-                label != zero_var, lambda: zero_var, lambda: one_var
-            )
-            paddle.assign(label_val, output=label)
-            net = resnet_cifar10(image)
-            logits = paddle.static.nn.fc(x=net, size=10, activation="softmax")
-
-        block = main_prog.global_block()
-        for op in block.ops:
-            if op.type == "mul":
-                op._set_attr('in_dtype', base.core.VarDesc.VarType.FP32)
-                op._set_attr('out_dtype', base.core.VarDesc.VarType.FP32)
-                op._set_attr('dtype', base.core.VarDesc.VarType.FP32)
-
-        cast_model_to_fp16(main_prog, use_fp16_guard=False)
-
-    def test_non_iterable_dataloader(self):
-        if base.core.is_compiled_with_cuda():
-            with paddle.pir_utils.OldIrGuard():
-                self.decorate_with_data_loader()
 
 
 if __name__ == '__main__':

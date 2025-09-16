@@ -15,9 +15,14 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import (
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
+from paddle import base
 from paddle.framework import in_dynamic_mode
 
 SUPPORTED_DTYPES = [
@@ -71,8 +76,8 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = paddle.static.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
@@ -91,8 +96,8 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
     x = paddle.to_tensor(x_np, dtype=x_np.dtype)
@@ -106,8 +111,8 @@ def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
     x = paddle.to_tensor(x_np, dtype=x_np.dtype)
@@ -143,9 +148,10 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                if not (paddle.is_compiled_with_cuda() and use_gpu) and (
-                    data_type in [np.float16, np.uint16]
-                ):
+                if not (
+                    (paddle.is_compiled_with_cuda() or is_custom_device())
+                    and use_gpu
+                ) and (data_type in [np.float16, np.uint16]):
                     continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
@@ -155,11 +161,17 @@ def test(unit_test, use_gpu=False, test_error=False):
                 )
                 if meta_data['binary_op'] and test_error:
                     # catch C++ Exception
-                    unit_test.assertRaises(
-                        BaseException, run_static, **meta_data
+                    unit_test.assertRaisesRegex(
+                        ValueError,
+                        r"\(InvalidArgument\) Broadcast dimension mismatch",
+                        run_static,
+                        **meta_data,
                     )
-                    unit_test.assertRaises(
-                        BaseException, run_dygraph, **meta_data
+                    unit_test.assertRaisesRegex(
+                        ValueError,
+                        r"\(InvalidArgument\) Broadcast dimension mismatch",
+                        run_dygraph,
+                        **meta_data,
                     )
                     continue
                 static_result = run_static(**meta_data)
@@ -186,11 +198,17 @@ def test(unit_test, use_gpu=False, test_error=False):
                         ).astype(complex_data_type)
                         if meta_data['binary_op'] and test_error:
                             # catch C++ Exception
-                            unit_test.assertRaises(
-                                BaseException, run_static, **meta_data
+                            unit_test.assertRaisesRegex(
+                                ValueError,
+                                r"\(InvalidArgument\) Broadcast dimension mismatch",
+                                run_static,
+                                **meta_data,
                             )
-                            unit_test.assertRaises(
-                                BaseException, run_dygraph, **meta_data
+                            unit_test.assertRaisesRegex(
+                                ValueError,
+                                r"\(InvalidArgument\) Broadcast dimension mismatch",
+                                run_dygraph,
+                                **meta_data,
                             )
                             continue
                         static_result = run_static(**meta_data)
@@ -233,11 +251,11 @@ def test_type_error(unit_test, use_gpu, type_str_map):
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     for op_data in TEST_META_OP_DATA:
         if (
-            paddle.is_compiled_with_cuda()
+            (paddle.is_compiled_with_cuda() or is_custom_device())
             and use_gpu
             and (
                 type_str_map['x'] in [np.float16, np.uint16]
@@ -299,6 +317,151 @@ class TestCUDA(unittest.TestCase):
         type_map_list = type_map_factory()
         for type_map in type_map_list:
             test_type_error(self, True, type_map)
+
+
+def get_places():
+    places = []
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
+    places.append(paddle.CPUPlace())
+    return places
+
+
+class TestLogicalOpsAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.places = get_places()
+        self.shape = [10, 20]
+        self.dtype = 'bool'
+
+    def test_dygraph_api_compatibility(self):
+        paddle.disable_static()
+        for op_info in TEST_META_OP_DATA:
+            op_str = op_info['op_str']
+            is_binary = op_info['binary_op']
+            with self.subTest(op=op_str):
+                np_input = np.random.choice([True, False], size=self.shape)
+                x = paddle.to_tensor(np_input)
+                paddle_op = getattr(paddle, op_str)
+                ref_op = getattr(np, op_str)
+
+                paddle_dygraph_out = []
+
+                if is_binary:
+                    np_other = np.random.choice([True, False], size=self.shape)
+                    y = paddle.to_tensor(np_other)
+                    # Position args (args)
+                    paddle_dygraph_out.append(paddle_op(x, y))
+                    # Key words args (kwargs) for paddle
+                    paddle_dygraph_out.append(paddle_op(x=x, y=y))
+                    # Key words args for torch
+                    paddle_dygraph_out.append(paddle_op(input=x, other=y))
+                    # Combined args and kwargs
+                    paddle_dygraph_out.append(paddle_op(x, other=y))
+                    # Tensor method args
+                    paddle_dygraph_out.append(x.__getattribute__(op_str)(y))
+                    # Tensor method kwargs
+                    paddle_dygraph_out.append(
+                        x.__getattribute__(op_str)(other=y)
+                    )
+
+                    # Test out
+                    out_tensor = paddle.empty(self.shape, dtype=self.dtype)
+                    paddle_op(x, y, out=out_tensor)
+                    paddle_dygraph_out.append(out_tensor)
+
+                    # Numpy reference out
+                    ref_out = ref_op(np_input, np_other)
+                else:  # Unary op (logical_not)
+                    # Position args (args)
+                    paddle_dygraph_out.append(paddle_op(x))
+                    # Key words args (kwargs) for paddle
+                    paddle_dygraph_out.append(paddle_op(x=x))
+                    # Key words args for torch
+                    paddle_dygraph_out.append(paddle_op(input=x))
+                    # Tensor method args
+                    paddle_dygraph_out.append(x.__getattribute__(op_str)())
+
+                    # Test out
+                    out_tensor = paddle.empty(self.shape, dtype=self.dtype)
+                    paddle_op(x, out=out_tensor)
+                    paddle_dygraph_out.append(out_tensor)
+
+                    # Numpy reference out
+                    ref_out = ref_op(np_input)
+
+                # Check
+                for out in paddle_dygraph_out:
+                    np.testing.assert_equal(ref_out, out.numpy())
+
+        paddle.enable_static()
+
+    def test_static_api_compatibility(self):
+        for op_info in TEST_META_OP_DATA:
+            op_str = op_info['op_str']
+            is_binary = op_info['binary_op']
+
+            with self.subTest(op=op_str):
+                np_input = np.random.choice([True, False], size=self.shape)
+                ref_op = getattr(np, op_str)
+
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    paddle_op = getattr(paddle, op_str)
+
+                    fetch_list = []
+                    feed_dict = {"x": np_input}
+
+                    if is_binary:
+                        np_other = np.random.choice(
+                            [True, False], size=self.shape
+                        )
+                        y = paddle.static.data(
+                            name="y", shape=self.shape, dtype=self.dtype
+                        )
+                        feed_dict["y"] = np_other
+
+                        # Position args (args)
+                        fetch_list.append(paddle_op(x, y))
+                        # Key words args (kwargs) for paddle
+                        fetch_list.append(paddle_op(x=x, y=y))
+                        # Key words args for torch
+                        fetch_list.append(paddle_op(input=x, other=y))
+                        # Combined args and kwargs
+                        fetch_list.append(paddle_op(x, other=y))
+                        # Tensor method args
+                        fetch_list.append(x.__getattribute__(op_str)(y))
+                        # Tensor method kwargs
+                        fetch_list.append(x.__getattribute__(op_str)(other=y))
+
+                        # Numpy reference out
+                        ref_out = ref_op(np_input, np_other)
+                    else:  # Unary op
+                        # Position args (args)
+                        fetch_list.append(paddle_op(x))
+                        # Key words args (kwargs) for paddle
+                        fetch_list.append(paddle_op(x=x))
+                        # Key words args for torch
+                        fetch_list.append(paddle_op(input=x))
+                        # Tensor method args
+                        fetch_list.append(x.__getattribute__(op_str)())
+
+                        # Numpy reference out
+                        ref_out = ref_op(np_input)
+
+                    for place in self.places:
+                        exe = base.Executor(place)
+                        outs = exe.run(
+                            main, feed=feed_dict, fetch_list=fetch_list
+                        )
+                        # Check
+                        for out in outs:
+                            np.testing.assert_equal(ref_out, out)
 
 
 if __name__ == '__main__':

@@ -519,9 +519,9 @@ class PaddleToTensorRTConverter:
                 config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
 
         trt_engine = builder.build_serialized_network(network, config)
-        assert (
-            trt_engine is not None
-        ), 'Failed to build engine. please see ERROR log from trt.Logger'
+        assert trt_engine is not None, (
+            'Failed to build engine. please see ERROR log from trt.Logger'
+        )
         trt_params = paddle.base.libpaddle.TRTEngineParams()
         trt_params.min_input_shape = min_shape_map
         trt_params.max_input_shape = max_shape_map

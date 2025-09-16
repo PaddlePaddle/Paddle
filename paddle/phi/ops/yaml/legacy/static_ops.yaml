@@ -756,6 +756,17 @@
     data_type : dtype
   traits : paddle::dialect::ForwardOnlyTrait
 
+- op : range_v2
+  args : (Tensor start, Tensor end, Tensor step)
+  output : Tensor(out)
+  infer_meta :
+    func : RangeTensorInferMeta
+  kernel :
+    func : range_tensor
+  data_transform :
+    skip_transform : start, end, step
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : remainder
   args : (Tensor x, Tensor y, int axis = -1)
   output : Tensor (out)

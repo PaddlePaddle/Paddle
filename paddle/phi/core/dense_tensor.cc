@@ -259,9 +259,9 @@ void DenseTensor::ResetLoD(const LegacyLoD& legacy_lod) {
   meta_.legacy_lod = legacy_lod;
 }
 
-#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)               \
-  template TEST_API const dtype* DenseTensor::data() const; \
-  template TEST_API dtype* DenseTensor::data();
+#define DATA_MEMBER_FUNC_INSTANTIATION(dtype)                 \
+  template PADDLE_API const dtype* DenseTensor::data() const; \
+  template PADDLE_API dtype* DenseTensor::data();
 
 DATA_MEMBER_FUNC_INSTANTIATION(bool);
 DATA_MEMBER_FUNC_INSTANTIATION(int8_t);

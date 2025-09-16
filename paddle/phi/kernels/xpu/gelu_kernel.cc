@@ -17,7 +17,6 @@
 #include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -46,5 +45,5 @@ PD_REGISTER_KERNEL(gelu,
                    ALL_LAYOUT,
                    phi::GeluKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

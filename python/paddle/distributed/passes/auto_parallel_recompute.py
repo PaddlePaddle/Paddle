@@ -94,9 +94,9 @@ class RecomputeState(ProgramStats):
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:
-                assert (
-                    self.seg_op_deps[seg_name][-1] + 1 == i
-                ), "The recompute segment's ops should be continuous"
+                assert self.seg_op_deps[seg_name][-1] + 1 == i, (
+                    "The recompute segment's ops should be continuous"
+                )
                 self.seg_op_deps[seg_name].extend([i])
 
     def get_recompute_segments(self, no_recompute_segments=[]):
@@ -108,9 +108,9 @@ class RecomputeState(ProgramStats):
             self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
 
         for i in sorted(no_recompute_segments, reverse=True):
-            assert i < len(
-                segments
-            ), f"the no_recompute_segments idx [{i}] should be lower the number of segment [{len(segments)}]"
+            assert i < len(segments), (
+                f"the no_recompute_segments idx [{i}] should be lower the number of segment [{len(segments)}]"
+            )
             segments.pop(i)
 
         return segments
@@ -324,9 +324,9 @@ class RecomputePass(PassBase):
                     pushed_ops_count += 1
                     ops_of_stages[id].append(op)
                     op_names_of_stages[id].append(op.type)
-        assert (
-            len(ops) == reset_ops_count + pushed_ops_count
-        ), f"The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {reset_ops_count + pushed_ops_count} while length of ops is {len(ops)}"
+        assert len(ops) == reset_ops_count + pushed_ops_count, (
+            f"The sum of pushed_ops_count and reset_ops_count must be the same as length of ops, but the sum is {reset_ops_count + pushed_ops_count} while length of ops is {len(ops)}"
+        )
         return ops_of_stages, op_names_of_stages
 
     def _apply_single_impl(self, main_program, startup_program, context):

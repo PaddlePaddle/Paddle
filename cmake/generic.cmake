@@ -513,45 +513,45 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    if(WIN32)
-      # NOTE(zhiqiu): on windows platform, the symbols should be exported
-      # explicitly by __declspec(dllexport), however, there are several
-      # symbols not exported, and link error occurs.
-      # so, the tests are not built against dynamic libraries now.
-      cc_test_old(
-        ${TARGET_NAME}
-        SRCS
-        ${cc_test_SRCS}
-        DEPS
-        ${cc_test_DEPS}
-        ARGS
-        ${cc_test_ARGS})
-    else()
-      list(LENGTH cc_test_SRCS len)
-      # message("cc_test_SRCS ${cc_test_SRCS}")
-      # message("cc_test_ARGS ${cc_test_ARGS}")
+    # if(WIN32)
+    #   # NOTE(zhiqiu): on windows platform, the symbols should be exported
+    #   # explicitly by __declspec(dllexport), however, there are several
+    #   # symbols not exported, and link error occurs.
+    #   # so, the tests are not built against dynamic libraries now.
+    #   cc_test_old(
+    #     ${TARGET_NAME}
+    #     SRCS
+    #     ${cc_test_SRCS}
+    #     DEPS
+    #     ${cc_test_DEPS}
+    #     ARGS
+    #     ${cc_test_ARGS})
+    # else()
+    list(LENGTH cc_test_SRCS len)
+    # message("cc_test_SRCS ${cc_test_SRCS}")
+    # message("cc_test_ARGS ${cc_test_ARGS}")
 
-      if(${len} GREATER 1)
-        message(
-          SEND_ERROR
-            "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
-        )
-      endif()
-
-      list(LENGTH cc_test_ARGS len_arg)
-      if(len_arg GREATER_EQUAL 1)
-        set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
-        #message("${TARGET_NAME}_ARGS arg ${arg}")
-      endif()
-
-      get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
-      set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
-      set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
-
-      get_property(test_names GLOBAL PROPERTY TEST_NAMES)
-      set(test_names ${test_names} ${TARGET_NAME})
-      set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+    if(${len} GREATER 1)
+      message(
+        SEND_ERROR
+          "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
+      )
     endif()
+
+    list(LENGTH cc_test_ARGS len_arg)
+    if(len_arg GREATER_EQUAL 1)
+      set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
+      #message("${TARGET_NAME}_ARGS arg ${arg}")
+    endif()
+
+    get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
+    set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
+    set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
+
+    get_property(test_names GLOBAL PROPERTY TEST_NAMES)
+    set(test_names ${test_names} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+    # endif()
   endif()
 endfunction()
 

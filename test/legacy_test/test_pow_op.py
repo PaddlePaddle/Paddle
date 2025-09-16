@@ -64,7 +64,9 @@ class TestPowOp_ZeroDim1(TestPowOp):
         self.inputs = {
             'X': np.random.uniform(1, 2, []).astype("float64"),
         }
-        self.attrs = {"factor": float(np.random.uniform(1, 2, []))}
+        self.attrs = {
+            "factor": float(np.random.uniform(1, 2, []).astype(np.float32))
+        }
 
 
 class TestPowOp_big_shape_1(TestPowOp):
@@ -72,7 +74,9 @@ class TestPowOp_big_shape_1(TestPowOp):
         self.inputs = {
             'X': np.random.uniform(1, 2, [10, 10]).astype("float64"),
         }
-        self.attrs = {"factor": float(np.random.uniform(0, 10, []))}
+        self.attrs = {
+            "factor": float(np.random.uniform(0, 10, []).astype(np.float32))
+        }
 
 
 class TestPowOp_big_shape_2(TestPowOp):
@@ -80,7 +84,9 @@ class TestPowOp_big_shape_2(TestPowOp):
         self.inputs = {
             'X': np.random.uniform(1, 2, [4, 6, 8]).astype("float64"),
         }
-        self.attrs = {"factor": float(np.random.uniform(0, 10, []))}
+        self.attrs = {
+            "factor": float(np.random.uniform(0, 10, []).astype(np.float32))
+        }
 
 
 class TestPowOpInt(TestPowOp):

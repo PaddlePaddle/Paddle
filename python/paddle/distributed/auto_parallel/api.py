@@ -81,6 +81,7 @@ from .moe_utils import (
     _dist_reshape,
     _dtensor_from_local,
     _NdMeshAlltoAll,
+    _only_reshard_mesh_shape,
     _reshard_mesh_shape,
     _specific_alltoall_dim,
 )
@@ -237,7 +238,7 @@ class DistAttr(core.TensorDistAttr):
 def shard_tensor(
     data: Tensor | TensorLike | NestedNumericSequence,
     mesh: ProcessMesh,
-    placements: list[Placement],
+    placements: Sequence[Placement],
     dtype: DTypeLike | None = None,
     place: PlaceLike | None = None,
     stop_gradient: bool | None = None,
@@ -297,18 +298,18 @@ def shard_tensor(
         stop_gradient = getattr(data, "stop_gradient", True)
 
     if paddle.framework.in_pir_mode():
-        assert isinstance(
-            data, (type(None), pir.Value)
-        ), "input tensor is not pir value."
-        assert (
-            data.is_dense_tensor_type()
-        ), "shard_tensor() input data only supported dense tensor type right."
+        assert isinstance(data, (type(None), pir.Value)), (
+            "input tensor is not pir value."
+        )
+        assert data.is_dense_tensor_type(), (
+            "shard_tensor() input data only supported dense tensor type right."
+        )
         tensor = data
     else:
         if isinstance(data, EagerParamBase) and not data._is_initialized():
-            assert (
-                data._init_func is not None
-            ), "Get an uninitialized param with an unregistered init_func."
+            assert data._init_func is not None, (
+                "Get an uninitialized param with an unregistered init_func."
+            )
             tensor = data
         elif isinstance(data, paddle.Tensor) and dtype is None:
             # if place is not equal, it is handled in paddle.Tensor()
@@ -619,7 +620,9 @@ class _moe_sub_mesh_tensors(PyLayer):
                     )
                 assert check_placements_equal(
                     global_placements, dist_tensor.placements
-                ), f"the global_placements ({global_placements}) is not equal to dist_tensor's placements ({dist_tensor.placements})."
+                ), (
+                    f"the global_placements ({global_placements}) is not equal to dist_tensor's placements ({dist_tensor.placements})."
+                )
                 local_shape = _cal_local_shape(
                     dist_tensor.shape, global_mesh, global_placements
                 )
@@ -779,7 +782,7 @@ def dtensor_to_local(dist_tensor, mesh, placements):
 def dtensor_from_fn(
     fn: Callable[..., Tensor],
     mesh: ProcessMesh,
-    placements: list[Placement],
+    placements: Sequence[Placement],
     *args: Any,
     **kwargs: Any,
 ) -> Tensor:
@@ -787,7 +790,7 @@ def dtensor_from_fn(
     Construct a Distributed Tensor from a function of arguments.
 
     Args:
-        fn (callable): A callable function that takes arguments of Distributed Tensor and returns tensor.
+        fn (callable): A callable function that creates and returns a tensor, such as paddle.ones, paddle.zeros, etc.
         mesh(paddle.distributed.ProcessMesh): The `ProcessMesh` object describes the Cartesian topology of the used processes.
         placements(list[paddle.distributed.Placement]): the placements describe how to place the tensor on ProcessMesh, it can
             be Shard, Replicate and Partial.
@@ -817,7 +820,7 @@ def dtensor_from_fn(
 
 
 def reshard(
-    dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
+    dist_tensor: Tensor, mesh: ProcessMesh, placements: Sequence[Placement]
 ) -> Tensor:
     """
     Reshard a distributed ``paddle.Tensor`` with given distributed attributes.
@@ -851,6 +854,8 @@ def reshard(
             >>> print(out_d_tensor)
 
     """
+    if _only_reshard_mesh_shape(dist_tensor, mesh, placements):
+        return _dist_reshape(dist_tensor, dist_tensor.shape, mesh, placements)
 
     if paddle.framework.in_dynamic_mode():
         # TODO(LiYuRio): static logic here, reshard should be changed for dygraph logic
@@ -887,9 +892,9 @@ def reshard(
     elif in_pir_mode():
         return paddle._C_ops.reshard(dist_tensor, mesh, placements)
     else:
-        assert isinstance(
-            dist_tensor, Variable
-        ), f"in dy2static mode, reshard's input should be Variable, but got [{dist_tensor}]"
+        assert isinstance(dist_tensor, Variable), (
+            f"in dy2static mode, reshard's input should be Variable, but got [{dist_tensor}]"
+        )
         sharding_specs = get_shard_spec(mesh, placements, dist_tensor.ndim)
         main_program = default_main_program()
         default_dist_ctx = get_default_distributed_context()
@@ -1110,12 +1115,14 @@ def is_dist_tensor(tensor) -> bool:
 
 class _ShardOptimizer(Optimizer):
     def __init__(self, optimizer, shard_fn=None, gradient_accumulation_steps=1):
-        assert (
-            optimizer is not None
-        ), "The argument `optimizer` cannot be empty."
+        assert optimizer is not None, (
+            "The argument `optimizer` cannot be empty."
+        )
         assert isinstance(
             optimizer, (paddle.optimizer.AdamW, paddle.optimizer.SGD)
-        ), "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
+        ), (
+            "`paddle.distributed.ShardOptimizer` only supports AdamW and SGD optimizer for now."
+        )
 
         # self.target_block = (
         #     paddle.base.framework.default_main_program().global_block()
@@ -1143,7 +1150,9 @@ class _ShardOptimizer(Optimizer):
         assert isinstance(
             self._shard_fn,
             (_ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3),
-        ), "shard_fn must be an instance of one of: _ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3"
+        ), (
+            "shard_fn must be an instance of one of: _ShardingStage0, ShardingStage1, ShardingStage2, ShardingStage3"
+        )
 
         if isinstance(
             self._shard_fn, (ShardingStage1, ShardingStage2, ShardingStage3)
@@ -1216,7 +1225,9 @@ class _ShardOptimizer(Optimizer):
             else:
                 assert (
                     mesh.dim_size(self._sharding_axis) == self._sharding_degree
-                ), "The sharding degree of all parameters must be equal currently."
+                ), (
+                    "The sharding degree of all parameters must be equal currently."
+                )
 
     def _shard_accumulator(self, param):
         # Note (luchang): Some models may have parameters whose first dimension is 1,
@@ -1985,9 +1996,9 @@ class _ShardingStageBase:
                 )
             if isinstance(master_weight, pir.Value):
                 data_op = master_weight.get_defining_op()
-                assert (
-                    data_op.name() == "pd_op.data"
-                ), "The master weight must be a result of data op."
+                assert data_op.name() == "pd_op.data", (
+                    "The master weight must be a result of data op."
+                )
                 dim_map, partial_status = to_dim_map(
                     placements, len(master_weight.shape)
                 )
@@ -3251,9 +3262,9 @@ class DistModel:
                             suffix = _get_suffix(param, fused_param)
                             if suffix is not None:
                                 value = dist_state_dict[param]
-                                assert (
-                                    value.is_dist()
-                                ), f"key {param} value:{value} is not a dist tensor."
+                                assert value.is_dist(), (
+                                    f"key {param} value:{value} is not a dist tensor."
+                                )
                                 mesh = value.process_mesh
                                 placements = value.placements
                                 if "_pow_acc" in suffix:
@@ -3325,12 +3336,12 @@ class DistModel:
             )
             if not isinstance(local_tensor, paddle.Tensor):
                 local_tensor = paddle.Tensor(local_tensor)
-            assert isinstance(
-                local_tensor, paddle.Tensor
-            ), f"local tensor:{local_tensor} type {type(local_tensor)} is not paddle.Tensor."
-            assert len(local_tensor.shape) == len(
-                dist_attr["dims_mapping"]
-            ), f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
+            assert isinstance(local_tensor, paddle.Tensor), (
+                f"local tensor:{local_tensor} type {type(local_tensor)} is not paddle.Tensor."
+            )
+            assert len(local_tensor.shape) == len(dist_attr["dims_mapping"]), (
+                f"local tensor shape {local_tensor.shape} not equal to dims_mapping shape {dist_attr['dims_mapping']}."
+            )
             global_shape = local_tensor.shape
             mesh = ProcessMesh(
                 np.array(dist_attr["process_group"]).reshape(
@@ -3340,18 +3351,18 @@ class DistModel:
             )
             placements = to_placements(dist_attr["dims_mapping"], mesh)
             dist_tensor = dtensor_from_local(local_tensor, mesh, placements)
-            assert (
-                dist_tensor._local_value().shape == local_tensor.shape
-            ), f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
+            assert dist_tensor._local_value().shape == local_tensor.shape, (
+                f"local tensor shape {dist_tensor._local_value().shape} not equal to local_tensor.shape:{local_tensor.shape}"
+            )
             paddle.assign(local_tensor, dist_tensor._local_value())
             return dist_tensor
 
         global_state_dict = {}
         with paddle.base.dygraph.guard():
             for var_name, tensor in local_state_dict.items():
-                assert (
-                    var_name in dist_attrs
-                ), f"var {var_name} not in dist attrs:{dist_attrs}."
+                assert var_name in dist_attrs, (
+                    f"var {var_name} not in dist attrs:{dist_attrs}."
+                )
                 global_state_dict[var_name] = build_distributed_tensor(
                     tensor, dist_attrs[var_name]
                 )
@@ -3383,7 +3394,9 @@ class DistModel:
                     k
                 ].process_mesh or check_placements_equal(
                     v.placements, cur_v.placements
-                ), f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
+                ), (
+                    f"process_mesh:{v.process_mesh} != {cur_v.process_mesh} or placements:{v.placements} != {cur_v.placements} not match"
+                )
             param_name = (
                 self._structured_to_parameter_name[k]
                 if k in self._structured_to_parameter_name
@@ -3469,9 +3482,9 @@ class DistModel:
         ):
             optimizer = optimizer._optimizer
 
-        assert isinstance(
-            optimizer, ShardingOptimizerStage1
-        ), "The optimizer should be ShardingOptimizerStage1 when stage1 tensor fusion is enabled."
+        assert isinstance(optimizer, ShardingOptimizerStage1), (
+            "The optimizer should be ShardingOptimizerStage1 when stage1 tensor fusion is enabled."
+        )
 
         return optimizer
 
@@ -3482,9 +3495,9 @@ class DistModel:
             else False
         )
 
-        assert (
-            enable_tensor_fusion
-        ), "Can only convert state_dict when tensor fusion is enabled."
+        assert enable_tensor_fusion, (
+            "Can only convert state_dict when tensor fusion is enabled."
+        )
         optimizer = self._get_shard_stage1_optimizer()
         assert optimizer is not None, "The optimizer should not be None."
 
@@ -3687,9 +3700,9 @@ def to_static(
             # Deduce sharding degree for static
             # Note: Because limitation of architecture, we need to ensure that
             # all parameters are sharded by the same mesh axis
-            assert (
-                sharding_degree is not None
-            ), "Sharding degree can not be None."
+            assert sharding_degree is not None, (
+                "Sharding degree can not be None."
+            )
 
             if isinstance(shard_fn, ShardingStage1):
                 strategy.sharding.enable = True

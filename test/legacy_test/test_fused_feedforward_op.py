@@ -426,7 +426,6 @@ class APITestStaticFusedFFN(unittest.TestCase):
 
 
 class TestFusedFFNOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

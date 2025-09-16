@@ -165,12 +165,8 @@ void BatchNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(batch_norm,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormKernel,
-                   float,
-                   phi::dtype::float16) {
+PD_REGISTER_KERNEL(
+    batch_norm, XPU, ALL_LAYOUT, phi::BatchNormKernel, float, phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);

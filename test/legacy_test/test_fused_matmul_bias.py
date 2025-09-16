@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 from paddle.base import core
@@ -67,7 +67,7 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 )
 class TestFusedMatmulBias(unittest.TestCase):
     def setUp(self):
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
 
     def rand_data(self, shape, dtype):
         return np.random.randint(low=-20, high=20, size=shape).astype(dtype)
@@ -153,7 +153,6 @@ class TestFusedLinear(unittest.TestCase):
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
 )
 class TestStaticGraph(unittest.TestCase):
-
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

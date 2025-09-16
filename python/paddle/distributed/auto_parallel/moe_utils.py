@@ -29,6 +29,7 @@ from paddle.autograd import PyLayer
 from .placement_type import check_placements_equal, to_dim_map
 from .static.reshard_funcs.base_reshard_func import choose_reshard_func
 from .static.reshard_funcs.nd_mesh_reshard_func import get_1D_sub_process_mesh
+from .static.utils import split_mesh
 
 if TYPE_CHECKING:
     from paddle.distributed import Placement
@@ -103,12 +104,12 @@ def _dtensor_from_local(
 
     # TODO Adopt Mix2Dist Pass to allow the program could be executed actually.
     elif paddle.framework.in_pir_mode():
-        assert isinstance(
-            local_tensor, (type(None), paddle.pir.Value)
-        ), "input tensor is not pir value."
-        assert (
-            local_tensor.is_dense_tensor_type()
-        ), "dtensor_from_local() are only supported dense tensor type right."
+        assert isinstance(local_tensor, (type(None), paddle.pir.Value)), (
+            "input tensor is not pir value."
+        )
+        assert local_tensor.is_dense_tensor_type(), (
+            "dtensor_from_local() are only supported dense tensor type right."
+        )
         sharding_specs = (
             paddle.distributed.auto_parallel.placement_type.get_shard_spec(
                 mesh, placements, local_tensor.ndim
@@ -245,9 +246,9 @@ def infer_positive_shape(src_shape, tgt_shape):
 
     minus_one_idx = np.where(ret_shape == -1)[0]
     if minus_one_idx.size > 0:
-        assert (
-            minus_one_idx.size <= 1
-        ), "At most one -1 is allowed in target shape."
+        assert minus_one_idx.size <= 1, (
+            "At most one -1 is allowed in target shape."
+        )
 
         nelem = np.prod(src_shape)
         ret_shape[minus_one_idx[0]] = 1
@@ -339,9 +340,9 @@ def _dist_reshape(
             "dist_reshape is only supported in dynamic and pir mode."
         )
 
-    assert np.prod(tgt_local_shape) == np.prod(
-        src_local_shape
-    ), f"The local shapes {src_local_shape} and {tgt_local_shape} are mismatched."
+    assert np.prod(tgt_local_shape) == np.prod(src_local_shape), (
+        f"The local shapes {src_local_shape} and {tgt_local_shape} are mismatched."
+    )
 
     if paddle.in_dynamic_mode():
         return _local_reshape.apply(
@@ -356,6 +357,96 @@ def _dist_reshape(
             mesh,
             placements,
         )
+
+
+def shard_submesh_and_slice(mesh, tensor_slice, tensor_dim, mesh_dim):
+    new_sub_meshes = split_mesh(mesh, mesh_dim)
+    num_shards = len(new_sub_meshes)
+
+    total_size = tensor_slice[tensor_dim][1] - tensor_slice[tensor_dim][0]
+    shard_size = (total_size + num_shards - 1) // num_shards
+    effective_size = shard_size * (num_shards - 1)
+    last_shard_size = total_size - effective_size
+
+    new_slices = []
+    for i in range(num_shards):
+        start = tensor_slice[tensor_dim][0] + i * shard_size
+        if i == num_shards - 1:
+            end = min(start + last_shard_size, tensor_slice[tensor_dim][1])
+        else:
+            end = min(start + shard_size, tensor_slice[tensor_dim][1])
+        new_slice = list(tensor_slice)
+        new_slice[tensor_dim] = (start, end)
+        new_slices.append(new_slice)
+    return new_sub_meshes, new_slices
+
+
+def get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info):
+    rank2tensor_indices = {}
+    for sub_mesh, slice_info in sub_mesh_indices_info.items():
+        for rank in sub_mesh.process_ids:
+            rank2tensor_indices[rank] = {
+                'slice': slice_info,
+                'partial': sub_mesh_partial_info,
+            }
+    return rank2tensor_indices
+
+
+def get_local_slices(tensor, mesh, placements):
+    # TODO(nieyuntao): Temporarily disable this check to bypass certain special cases (shard one tensor dim by many mesh dim)
+    # if len(mesh.shape) < len(placements):
+    #     raise ValueError(
+    #         f"placements length ({len(placements)}) must be smaller or equal to mesh_shape({len(mesh.shape)})"
+    #     )
+    if len(placements) < len(mesh.shape):
+        for _ in range(len(mesh.shape) - len(placements)):
+            placements.append(dist.Replicate())
+
+    sub_mesh_indices_info = {mesh: [(0, s) for s in tensor.shape]}
+    sub_mesh_partial_info = {}
+    for mesh_dim, placement in enumerate(placements):
+        if placement.is_shard():
+            tensor_dim = placement.get_dim()
+            tmp = {}
+            while sub_mesh_indices_info:
+                sub_mesh, slice_info = sub_mesh_indices_info.popitem()
+                new_sub_meshes, new_slices = shard_submesh_and_slice(
+                    sub_mesh, slice_info, tensor_dim, mesh_dim
+                )
+                tmp.update(dict(zip(new_sub_meshes, new_slices)))
+            sub_mesh_indices_info.update(tmp)
+
+        if hasattr(placement, 'is_partial') and placement.is_partial():
+            sub_mesh_partial_info[mesh_dim] = placement.reduce_type()
+
+    return get_rank2tensor_indices(sub_mesh_indices_info, sub_mesh_partial_info)
+
+
+def _only_reshard_mesh_shape(
+    dist_tensor: Tensor, mesh: ProcessMesh, placements: list[Placement]
+):
+    if not os.getenv("FLAGS_enable_moe_utils") == "true":
+        return False
+
+    if paddle.in_dynamic_mode():
+        src_placements = dist_tensor.placements
+        src_mesh = dist_tensor.process_mesh
+    elif paddle.framework.in_pir_mode():
+        src_placements = dist_tensor.dist_attr().placements_attr
+        src_mesh = dist_tensor.dist_attr().process_mesh
+    else:
+        raise NotImplementedError(
+            "_only_reshard_mesh_shape is only supported in dynamic and pir mode."
+        )
+    if src_mesh == mesh or src_mesh.process_ids != mesh.process_ids:
+        return False
+    src_rank2tensor_indices = get_local_slices(
+        dist_tensor, src_mesh, src_placements
+    )
+    dst_rank2tensor_indices = get_local_slices(dist_tensor, mesh, placements)
+    if src_rank2tensor_indices != dst_rank2tensor_indices:
+        return False
+    return True
 
 
 def _reshard_mesh_shape(

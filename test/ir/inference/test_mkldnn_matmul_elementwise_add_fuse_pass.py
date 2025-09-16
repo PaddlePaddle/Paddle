@@ -39,7 +39,7 @@ class TestMatmulElementwiseAddOnednnFusePass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
@@ -52,7 +52,7 @@ class TestMatmulElementwiseAddOnednnFusePass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_onednn': True},
         )
 
         model_net = [matmul_op, elt_add_op]
@@ -74,7 +74,7 @@ class TestMatmulElementwiseAddOnednnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
+            use_onednn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
         )
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
@@ -102,7 +102,7 @@ class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
@@ -115,7 +115,7 @@ class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'axis': axis, 'use_mkldnn': True},
+            attrs={'axis': axis, 'use_onednn': True},
         )
 
         model_net = [matmul_op, elt_add_op]
@@ -137,7 +137,7 @@ class TestMatmulElementwiseAddMkldnnFuse1CHWPass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
+            use_onednn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
         )
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 
@@ -168,7 +168,7 @@ class TestMatmulElementwiseAddExpendResidualPass(PassAutoScanTest):
             inputs={'X': ['matmul_x'], 'Y': ['matmul_y']},
             outputs={'Out': ['matmul_output']},
             attrs={
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
@@ -181,7 +181,7 @@ class TestMatmulElementwiseAddExpendResidualPass(PassAutoScanTest):
             type='elementwise_add',
             inputs=inputs,
             outputs={'Out': ['elementwise_add_output']},
-            attrs={'use_mkldnn': True},
+            attrs={'use_onednn': True},
         )
 
         model_net = [matmul_op, elt_add_op]
@@ -203,7 +203,7 @@ class TestMatmulElementwiseAddExpendResidualPass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         config = self.create_inference_config(
-            use_mkldnn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
+            use_onednn=True, passes=['matmul_elementwise_add_onednn_fuse_pass']
         )
         yield config, ['fused_matmul'], (1e-5, 1e-5)
 

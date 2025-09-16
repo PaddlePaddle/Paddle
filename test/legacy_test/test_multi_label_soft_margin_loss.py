@@ -140,7 +140,6 @@ def calc_multi_label_margin_loss(
 
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
-
     def test_MultiLabelSoftMarginLoss(self):
         input = np.random.uniform(0.1, 0.8, size=(5, 5)).astype(np.float64)
         label = np.random.randint(0, 2, size=(5, 5)).astype(np.float64)

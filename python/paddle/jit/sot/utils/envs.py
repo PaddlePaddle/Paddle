@@ -51,12 +51,12 @@ class PEP508LikeEnvironmentVariable(EnvironmentVariable[dict[str, list[str]]]):
 
     def convert_to_string(self, value: dict[str, list[str]]) -> str:
         assert isinstance(value, dict), "The input must be a dict"
-        assert all(
-            isinstance(x, str) for x in value.keys()
-        ), "Keys must be a string"
-        assert all(
-            isinstance(x, list) for x in value.values()
-        ), "Values must be a list"
+        assert all(isinstance(x, str) for x in value.keys()), (
+            "Keys must be a string"
+        )
+        assert all(isinstance(x, list) for x in value.values()), (
+            "Values must be a list"
+        )
 
         env_list = []
         for k, v in value.items():

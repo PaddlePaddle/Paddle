@@ -41,7 +41,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             [
                 t.mm_out,
                 *ap.map(
-                    lambda index: getattr(t, f"input{index+2}"),
+                    lambda index: getattr(t, f"input{index + 2}"),
                     range(in_num - 2),
                 ),
             ],
@@ -77,7 +77,9 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             lambda i: f"output{i}", range(self.number_of_outputs())
         )
         inputs_name_list = (
-            ap.map(lambda i: f"input{i+2}", range(self.number_of_inputs() - 2))
+            ap.map(
+                lambda i: f"input{i + 2}", range(self.number_of_inputs() - 2)
+            )
             if self.number_of_inputs() > 2
             else []
         )
@@ -296,13 +298,15 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             lambda i: f"output{i}", range(self.number_of_outputs())
         )
         other_outputs_name_list = ap.map(
-            lambda i: f"output{i+1}", range(self.number_of_outputs() - 1)
+            lambda i: f"output{i + 1}", range(self.number_of_outputs() - 1)
         )
         local_outputs_name_list = ap.map(
             lambda i: f"out{i}", range(self.number_of_outputs())
         )
         inputs_name_list = (
-            ap.map(lambda i: f"input{i+2}", range(self.number_of_inputs() - 2))
+            ap.map(
+                lambda i: f"input{i + 2}", range(self.number_of_inputs() - 2)
+            )
             if self.number_of_inputs() > 2
             else []
         )
@@ -660,7 +664,6 @@ def register_class(base_class, max_num_inputs, max_num_outputs):
         )(get_mixin_class(base_class, num_inputs, num_outputs))
 
     def register_num_inputs_drr_classes(num_inputs):
-
         def register_num_outputs_drr_classes(num_outputs):
             return register_drr_class(num_inputs + 2, num_outputs + 1)
 

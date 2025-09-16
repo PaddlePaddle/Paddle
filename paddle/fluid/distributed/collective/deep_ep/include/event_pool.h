@@ -22,7 +22,7 @@ namespace deep_ep::detail {
 
 class EventPool {
  public:
-  EventPool() = default;
+  EventPool();
   EventPool(const EventPool&) = delete;
   EventPool(EventPool&&) = delete;
   ~EventPool();

@@ -1,3 +1,6 @@
+if(WIN32)
+  add_definitions(-DPADDLE_DLL_EXPORT)
+endif()
 add_subdirectory(details)
 
 paddle_test(data_type_test SRCS data_type_test.cc)
@@ -187,10 +190,14 @@ cc_test(
   SRCS op_compatible_info_test.cc
   DEPS op_compatible_info proto_desc string_helper glog)
 
-cc_test(
-  infershape_utils_test
-  SRCS infershape_utils_test.cc
-  DEPS operator phi)
+if(WIN32)
+  paddle_test(infershape_utils_test SRCS infershape_utils_test.cc DEPS operator)
+else()
+  cc_test(
+    infershape_utils_test
+    SRCS infershape_utils_test.cc
+    DEPS operator phi)
+endif()
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)

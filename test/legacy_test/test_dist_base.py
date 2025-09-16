@@ -690,9 +690,9 @@ class TestParallelDyGraphRunnerBase:
             # the second rank will get [3,4,5].
             # this function is for test sparse_embedding_differ_length
             if hasattr(args, "diff_batch") and args.diff_batch:
-                assert (
-                    len(batch) > 2
-                ), "in differ_batch mode, len(batch) must > 2."
+                assert len(batch) > 2, (
+                    "in differ_batch mode, len(batch) must > 2."
+                )
                 if paddle.distributed.get_rank() == 0:
                     new_batch.append(batch[0])
                 elif paddle.distributed.get_rank() == 1:
@@ -1485,12 +1485,12 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster_gloo(
         self, model, envs, update_method, check_error_log, log_name
     ):
-        assert (
-            update_method == "gloo"
-        ), f"_run_cluster_gloo must have update_method: gloo, but get {update_method}"
-        assert (
-            not self._use_hallreduce
-        ), "_run_cluster_gloo must have _use_hallreduce = false"
+        assert update_method == "gloo", (
+            f"_run_cluster_gloo must have update_method: gloo, but get {update_method}"
+        )
+        assert not self._use_hallreduce, (
+            "_run_cluster_gloo must have _use_hallreduce = false"
+        )
 
         worker_endpoints = self._ps_endpoints.split(",")
 

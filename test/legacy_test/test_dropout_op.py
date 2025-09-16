@@ -19,7 +19,11 @@ import parameterized as param
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device,
+    get_device_class,
+    get_device_place,
     get_places,
+    is_custom_device,
     skip_check_grad_ci,
 )
 from utils import static_guard
@@ -377,7 +381,8 @@ class TestDropoutOpWithSeed(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.op_support_gpu("dropout"),
     "core is not compiled with CUDA or core is not support dropout",
 )
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -409,7 +414,7 @@ class TestFP16DropoutOp(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             atol=1e-3,
             check_prim=True,
             check_prim_pir=True,
@@ -421,7 +426,8 @@ class TestFP16DropoutOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.op_support_gpu("dropout"),
     "core is not compiled with CUDA or core is not support dropout",
 )
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -529,8 +535,8 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
                 outputs={'Out': x_out_var, 'Mask': mask_var},
             )
             place = base.CPUPlace()
-            if core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
             exe = base.Executor(place)
             x_out, mask_out = exe.run(
                 main_program,
@@ -542,7 +548,6 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
 
 
 class TestDropoutOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -795,7 +800,6 @@ class TestDropoutFAPI(unittest.TestCase):
 
 
 class TestDropoutFAPIError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -919,6 +923,121 @@ class TestDropoutCAPI(unittest.TestCase):
                 )
 
 
+class TestDropout1DFAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        self.places = get_places()
+
+    def check_static_result(
+        self, place, input_name, input_shape, training=False, p=0.0
+    ):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            input_var = paddle.static.data(
+                name=input_name, shape=input_shape, dtype="float32"
+            )
+            res = paddle.nn.functional.dropout1d(
+                input=input_var, p=p, training=training
+            )
+            in_np = np.random.random(input_shape).astype("float32")
+            exe = base.Executor(place)
+            fetches = exe.run(
+                main_prog,
+                feed={input_name: in_np},
+                fetch_list=[res],
+            )
+
+            np.testing.assert_allclose(fetches[0], in_np, rtol=1e-05)
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(
+                place=place,
+                input_name="input_2d",
+                input_shape=[3, 4],
+                training=False,
+                p=0.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_3d",
+                input_shape=[2, 3, 4],
+                training=False,
+                p=0.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_2d_1",
+                input_shape=[3, 4],
+                training=False,
+                p=1.0,
+            )
+
+            self.check_static_result(
+                place=place,
+                input_name="input_3d_1",
+                input_shape=[2, 3, 4],
+                training=False,
+                p=1.0,
+            )
+
+    def test_dygraph(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                # Test 2D input
+                in_np_2d = np.random.random([3, 4]).astype("float32")
+                input_2d = paddle.to_tensor(in_np_2d)
+                res1 = paddle.nn.functional.dropout1d(
+                    input=input_2d, p=0.0, training=False
+                )
+                np.testing.assert_allclose(res1.numpy(), in_np_2d, rtol=1e-05)
+
+                # Test 3D input
+                in_np_3d = np.random.random([2, 3, 4]).astype("float32")
+                input_3d = paddle.to_tensor(in_np_3d)
+                res2 = paddle.nn.functional.dropout1d(
+                    input=input_3d, p=0.0, training=False
+                )
+                np.testing.assert_allclose(res2.numpy(), in_np_3d, rtol=1e-05)
+
+
+class TestDropout1DFAPIError(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+
+            def test_xdim_1d():
+                # dimensions of x should be 2 or 3
+                x = paddle.static.data(name='x1', shape=[4], dtype="float32")
+                paddle.nn.functional.dropout1d(x)
+
+            self.assertRaises(RuntimeError, test_xdim_1d)
+
+            def test_xdim_4d():
+                # dimensions of x should be 2 or 3
+                x = paddle.static.data(
+                    name='x2', shape=[2, 3, 4, 5], dtype="float32"
+                )
+                paddle.nn.functional.dropout1d(x)
+
+            self.assertRaises(RuntimeError, test_xdim_4d)
+
+            def test_prob_range():
+                # p should be in [0, 1]
+                x = paddle.static.data(
+                    name='x3', shape=[2, 3, 4], dtype="float32"
+                )
+                paddle.nn.functional.dropout1d(x, p=1.5)
+
+            self.assertRaises(ValueError, test_prob_range)
+
+
 class TestDropout2DFAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
@@ -976,7 +1095,6 @@ class TestDropout2DFAPI(unittest.TestCase):
 
 
 class TestDropout2DFAPIError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1021,8 +1139,8 @@ class TestDropout2DCAPI(unittest.TestCase):
                 )
 
     def test_static_fp16_with_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.enable_static()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -1102,7 +1220,6 @@ class TestDropout3DFAPI(unittest.TestCase):
 
 
 class TestDropout3DFAPIError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         main_prog = paddle.static.Program()
@@ -1206,7 +1323,6 @@ class TestAlphaDropoutFAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFAPIError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -1274,8 +1390,8 @@ class TestAlphaDropoutCAPI(unittest.TestCase):
                 )
 
     def test_static_fp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -1363,8 +1479,8 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         self.init_info()
         self.input = np.random.random(self.shape).astype("float32")
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
+            get_device_place()
+            if (paddle.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
 
@@ -1404,6 +1520,12 @@ class TestDropOutWithProbTensor(unittest.TestCase):
         np.testing.assert_array_equal(static_res, dygraph_res)
 
 
+class TestDropOut1DWithProbTensor(TestDropOutWithProbTensor):
+    def init_info(self):
+        self.shape = [2, 3, 4]
+        self.api = paddle.nn.functional.dropout1d
+
+
 class TestDropOut2DWithProbTensor(TestDropOutWithProbTensor):
     def init_info(self):
         self.shape = [2, 3, 10, 10]
@@ -1419,7 +1541,7 @@ class TestDropOut3DWithProbTensor(TestDropOutWithProbTensor):
 class TestRandomValue(unittest.TestCase):
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         # Different GPU generate different random value. Only test V100 here.
@@ -1428,7 +1550,7 @@ class TestRandomValue(unittest.TestCase):
 
         print("Test Fixed Random number on V100 GPU------>")
         paddle.disable_static()
-        paddle.set_device('gpu')
+        paddle.set_device(get_device())
         paddle.seed(100)
 
         x = paddle.rand([32, 1024, 1024], dtype='float32')
@@ -1695,8 +1817,8 @@ class TestCompositeDropout(unittest.TestCase):
         paddle.seed(self.seed)
         if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, base.CUDAPlace):
-            paddle.set_device("gpu")
+        if isinstance(place, get_device_class()):
+            paddle.set_device(get_device())
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
             data=self.x,
@@ -1777,8 +1899,8 @@ class TestCompositeDropout(unittest.TestCase):
         for place in self.places:
             if isinstance(place, base.CPUPlace):
                 paddle.set_device("cpu")
-            if isinstance(place, base.CUDAPlace):
-                paddle.set_device("gpu")
+            if isinstance(place, get_device_class()):
+                paddle.set_device(get_device())
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
                 data=self.x,
@@ -1816,9 +1938,9 @@ class TestCompositeDropout(unittest.TestCase):
         rev_actual = []
         paddle.disable_static()
         for place in self.places:
-            if not isinstance(place, base.CUDAPlace):
+            if not isinstance(place, get_device_class()):
                 continue
-            paddle.set_device("gpu")
+            paddle.set_device(get_device())
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
                 data=self.x,
@@ -1839,7 +1961,7 @@ class TestCompositeDropout(unittest.TestCase):
             rev_actual.append(grad[0].numpy())
         i = 0
         for place in self.places:
-            if not isinstance(self.places[i], base.CUDAPlace):
+            if not isinstance(self.places[i], get_device_class()):
                 continue
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
@@ -2039,8 +2161,8 @@ class TestPirCompositeDropout(unittest.TestCase):
         paddle.seed(self.seed)
         if isinstance(place, base.CPUPlace):
             paddle.set_device("cpu")
-        if isinstance(place, base.CUDAPlace):
-            paddle.set_device("gpu")
+        if isinstance(place, get_device_class()):
+            paddle.set_device(get_device())
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
             data=self.x,

@@ -51,10 +51,8 @@ class NumpyScaler2Tensor(unittest.TestCase):
         paddle.enable_static()
         x = paddle.to_tensor(self.x_np)
         self.assertEqual(DTYPE_MAP[x.dtype], self.dtype)
-        if self.dtype in [
-            np.bool_,
-            np.float64,
-        ]:  # bool is not supported convert to 0D-Tensor and float64 not supported in static mode
+        if self.dtype in [np.bool_, np.float64]:
+            # bool is not supported convert to 0D-Tensor and float64 not supported in static mode
             return
         self.assertEqual(len(x.shape), 0)
 

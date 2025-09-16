@@ -19,7 +19,6 @@ import op_index_translator_util
 
 
 class IndexProgramTranslatorMap:
-
     def __init__(
         self,
         index_func_unique_id2index_program,
@@ -67,7 +66,6 @@ class IndexProgramTranslatorMap:
 
 
 class IndexProgramTranslator:
-
     def __init__(
         self,
         index_program,

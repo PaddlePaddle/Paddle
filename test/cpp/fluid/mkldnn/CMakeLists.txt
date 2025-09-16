@@ -4,7 +4,7 @@ paddle_test(test_onednn_cpu_quantize_pass SRCS test_onednn_cpu_quantize_pass.cc)
 
 paddle_test(test_conv_onednn_nhwc SRCS test_conv_onednn_nhwc.cc)
 
-set(TEST_MKLDNN_CACHING_DEPS
+set(TEST_ONEDNN_CACHING_DEPS
     op_registry
     elementwise_mul_op
     elementwise_add_op
@@ -16,7 +16,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     generated_static_op)
 
 if(WITH_GPU OR WITH_ROCM)
-  set(TEST_MKLDNN_CACHING_DEPS ${TEST_MKLDNN_CACHING_DEPS} depthwise_conv)
+  set(TEST_ONEDNN_CACHING_DEPS ${TEST_ONEDNN_CACHING_DEPS} depthwise_conv)
 endif()
 paddle_test(test_onednn_caching SRCS test_onednn_caching.cc)
 

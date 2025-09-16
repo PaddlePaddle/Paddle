@@ -27,7 +27,6 @@
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #endif
-#if CUDA_VERSION >= 10020
 
 namespace paddle::memory::allocation {
 
@@ -224,5 +223,3 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 }
 
 }  // namespace paddle::memory::allocation
-
-#endif

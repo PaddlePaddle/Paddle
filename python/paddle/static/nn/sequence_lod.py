@@ -137,12 +137,12 @@ def sequence_conv(
             >>> x_conved = paddle.static.nn.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
     """
 
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    assert (
-        not in_pir_mode()
-    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    assert not in_dygraph_mode(), (
+        "sequence layer is not supported in dygraph mode yet."
+    )
+    assert not in_pir_mode(), (
+        "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    )
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_conv'
     )
@@ -251,12 +251,12 @@ def sequence_softmax(input, use_cudnn=False, name=None):
             ...     dtype='float32', lod_level=1)
             >>> x_sequence_softmax_2 = paddle.static.nn.sequence_softmax(input=y)
     """
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    assert (
-        not in_pir_mode()
-    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    assert not in_dygraph_mode(), (
+        "sequence layer is not supported in dygraph mode yet."
+    )
+    assert not in_pir_mode(), (
+        "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    )
     helper = LayerHelper('sequence_softmax', **locals())
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_softmax'
@@ -368,12 +368,12 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             >>> last_x = paddle.static.nn.sequence_pool(input=x, pool_type='last')
             >>> first_x = paddle.static.nn.sequence_pool(input=x, pool_type='first')
     """
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    assert (
-        not in_pir_mode()
-    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    assert not in_dygraph_mode(), (
+        "sequence layer is not supported in dygraph mode yet."
+    )
+    assert not in_pir_mode(), (
+        "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    )
 
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64'], 'sequence_pool'
@@ -670,12 +670,12 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             - dtype: float32
             - data: [1 2 1 2 3 4 3 4]
     """
-    assert (
-        not in_dygraph_mode()
-    ), "sequence layer is not supported in dygraph mode yet."
-    assert (
-        not in_pir_mode()
-    ), "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    assert not in_dygraph_mode(), (
+        "sequence layer is not supported in dygraph mode yet."
+    )
+    assert not in_pir_mode(), (
+        "sequence layer is not supported in pir mode, please set the environment variable FLAGS_enable_pir_api=0 to switch old static mode."
+    )
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'int32', 'int64'], 'sequence_expand'
     )

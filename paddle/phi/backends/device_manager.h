@@ -29,7 +29,7 @@
 #include "paddle/phi/common/port.h"
 
 namespace phi {
-class Device final {
+class PADDLE_API Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
 
@@ -132,7 +132,7 @@ class Device final {
   bool initialized_{false};
 };
 
-class DeviceManager {
+class PADDLE_API DeviceManager {
  public:
   static bool Register(std::unique_ptr<DeviceInterface> device);
   static bool RegisterPinnedDevice(DeviceInterface* device);
@@ -307,6 +307,20 @@ class DeviceManager {
                                        void* context);
 
   static void Release();
+
+  static void InitBlasHandle(const Place& place,
+                             void** blas_handle,
+                             phi::stream::stream_t stream);
+
+  static void BlasSetMathMode(const Place& place,
+                              void* blas_handle,
+                              int math_mode);
+
+  static void InitBlasLtHandle(const Place& place, void** blaslt_handle);
+
+  static void DestroyBlasHandle(const Place& place, void* blas_handle);
+
+  static void DestroyBlasLtHandle(const Place& place, void* blaslt_handle);
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

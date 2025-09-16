@@ -34,7 +34,7 @@ set(XPU_FFT_LIB_NAME "libcufft.so")
 add_compile_definitions(XPUAPI_NOT_INCLUDE_DEPRECATED)
 
 if(NOT DEFINED XPU_XHPC_BASE_DATE)
-  set(XPU_XHPC_BASE_DATE "dev/20250722")
+  set(XPU_XHPC_BASE_DATE "dev/20250909")
 endif()
 set(XPU_XCCL_BASE_VERSION "3.0.3.1") # For XRE5
 if(NOT DEFINED XPU_XFT_BASE_VERSION)
@@ -253,9 +253,9 @@ if(WITH_XPU_XRE5)
     DOWNLOAD_COMMAND
       bash ${CMAKE_SOURCE_DIR}/tools/xpu/pack_paddle_dependence.sh
       ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XHPC_URL} ${XPU_XHPC_DIR_NAME}
-      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 ${WITH_MKL}
-      "${CMAKE_SOURCE_DIR}/build" && wget ${XPU_XFT_GET_DEPENCE_URL} && bash
-      ${XFT_COMMAND} ${XPU_XFT_URL} ${XPU_XFT_DIR_NAME} && bash
+      ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} 1 ${WITH_MKL} "${CMAKE_BINARY_DIR}"
+      && wget ${XPU_XFT_GET_DEPENCE_URL} && bash ${XFT_COMMAND} ${XPU_XFT_URL}
+      ${XPU_XFT_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpti_dependence.sh ${XPU_XPTI_URL}
       ${XPU_XPTI_DIR_NAME} && bash
       ${CMAKE_SOURCE_DIR}/tools/xpu/get_xpufft_dependence.sh ${XPU_FFT_URL}

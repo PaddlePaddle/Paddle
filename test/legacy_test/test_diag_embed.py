@@ -60,7 +60,6 @@ class TestDiagEmbedOp_ZeroSize(TestDiagEmbedOp):
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
-
     def test_case1(self):
         paddle.enable_static()
         main = paddle.static.Program()

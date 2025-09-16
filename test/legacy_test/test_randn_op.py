@@ -15,7 +15,8 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
+from utils import dygraph_guard
 
 import paddle
 from paddle.static import Program, program_guard
@@ -74,11 +75,41 @@ class TestRandnOpForDygraph(unittest.TestCase):
 class TestRandnOpError(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):
-            # The argument shape's type of randn_op should be list or tuple.
-            self.assertRaises(TypeError, paddle.randn, 1)
-
             # The argument dtype of randn_op should be float32 or float64.
             self.assertRaises(TypeError, paddle.randn, [1, 2], 'int32')
+
+
+class TestRandnOpCompatibility(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
+        self.expected_shape = [2, 3]
+        self.dtype = paddle.float32
+
+    def test_gather_with_param_aliases(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                for param_name in ['shape', 'size']:
+                    tensor = paddle.randn(
+                        **{param_name: self.expected_shape}, dtype=self.dtype
+                    )
+                    self.assertEqual(tensor.shape, self.expected_shape)
+                    self.assertEqual(tensor.dtype, self.dtype)
+
+                    shape_tensor = paddle.to_tensor(
+                        self.expected_shape, dtype='int32'
+                    )
+                    tensor = paddle.randn(
+                        **{param_name: shape_tensor}, dtype=self.dtype
+                    )
+                    self.assertEqual(tensor.shape, self.expected_shape)
+                    self.assertEqual(tensor.dtype, self.dtype)
+
+                tensor = paddle.randn(*self.expected_shape, dtype=self.dtype)
+                self.assertEqual(tensor.shape, self.expected_shape)
+                self.assertEqual(tensor.dtype, self.dtype)
 
 
 if __name__ == "__main__":

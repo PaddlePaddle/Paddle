@@ -65,6 +65,17 @@
   optional: x, intermediate_out
   no_need_buffer: x, y
 
+- backward_op : fused_partial_rope_grad
+  forward: fused_partial_rope (Tensor x, Tensor cos, Tensor sin) -> Tensor(out)
+  args : (Tensor cos, Tensor sin, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param: [out_grad]
+  kernel :
+    func : fused_partial_rope_grad
+  support_dygraph_mode : true
+
 - backward_op : fused_rotary_position_embedding_grad
   forward: fused_rotary_position_embedding (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style, bool time_major, float rotary_emb_base) -> Tensor(out_q), Tensor(out_k), Tensor(out_v)
   args : (Tensor sin, Tensor cos, Tensor position_ids, Tensor out_q_grad, Tensor out_k_grad,Tensor out_v_grad, bool use_neox_rotary_style, bool time_major, float rotary_emb_base)

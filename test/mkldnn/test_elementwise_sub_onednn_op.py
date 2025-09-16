@@ -44,7 +44,7 @@ class TestOneDNNElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
@@ -225,7 +225,7 @@ class TestBf16(TestOneDNNElementwiseSubOp):
         self.x_bf16 = convert_float_to_uint16(self.x)
         self.y_bf16 = convert_float_to_uint16(self.y)
         self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
-        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_onednn}
+        self.attrs = {'axis': self.axis, 'use_onednn': self.use_onednn}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def init_dtype(self):

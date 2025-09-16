@@ -48,7 +48,7 @@ def check_if_onednn_primitives_exist_in_bwd(
                     'X': block.var('x'),
                 },
                 outputs={'Out': block.var('out')},
-                attrs={'use_mkldnn': True},
+                attrs={'use_onednn': True},
             )
 
             # Generate backward op_desc
@@ -122,7 +122,7 @@ def check_if_onednn_batchnorm_primitives_exist_in_bwd(
                     "epsilon": test_case.epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
-                    "use_mkldnn": test_case.use_mkldnn,
+                    "use_onednn": test_case.use_onednn,
                     "fuse_with_relu": test_case.fuse_with_relu,
                     "use_global_stats": test_case.use_global_stats,
                 },

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+
+from op_test import get_device_place, is_custom_device
 
 os.environ['CPU_NUM'] = '2'
 
@@ -26,7 +27,7 @@ from paddle.base import core
 
 
 def train(network, use_cuda, batch_size=32, pass_num=2):
-    if use_cuda and not core.is_compiled_with_cuda():
+    if use_cuda and not (core.is_compiled_with_cuda() or is_custom_device()):
         print('Skip use_cuda=True because Paddle is not compiled with cuda')
         return
 
@@ -43,7 +44,7 @@ def train(network, use_cuda, batch_size=32, pass_num=2):
     optimizer = paddle.optimizer.Adagrad(learning_rate=0.2)
     optimizer.minimize(cost)
 
-    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    place = get_device_place() if use_cuda else base.CPUPlace()
     feeder = base.DataFeeder(feed_list=[data, label], place=place)
     reader = feeder.feed(train_reader())
 

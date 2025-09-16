@@ -6,6 +6,10 @@ on:
       docker_inference_image:
         type: string
         required: true
+      clone-can-skip:
+        type: string
+        required: false
+        default: "false"
 
 env:
   PR_ID: ${{ github.event.pull_request.number }}
@@ -25,6 +29,7 @@ defaults:
 jobs:
   check-bypass:
     name: Check bypass
+    if: ${{ inputs.can-skip != 'true' }}
     uses: ./.github/workflows/check-bypass.yml
     with:
       workflow-name: 'inference'
@@ -34,7 +39,7 @@ jobs:
   build:
     name: Build
     needs: check-bypass
-    if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-inference_build
     runs-on:

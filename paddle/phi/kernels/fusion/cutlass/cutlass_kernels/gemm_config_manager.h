@@ -36,6 +36,8 @@ enum GemmDataType {
   _NVBFLOAT16,
   _INT8,
   _INT4,
+  _FLOATE4M3,
+  _FLOATE5M2,
 };
 
 enum GemmType {
@@ -55,6 +57,10 @@ constexpr GemmDataType getGemmDataType() {
     return GemmDataType::_INT8;
   } else if constexpr (std::is_same<T, cutlass::uint4b_t>::value) {
     return GemmDataType::_INT4;
+  } else if constexpr (std::is_same<T, cutlass::float_e4m3_t>::value) {
+    return GemmDataType::_FLOATE4M3;
+  } else if constexpr (std::is_same<T, cutlass::float_e5m2_t>::value) {
+    return GemmDataType::_FLOATE5M2;
   } else {
     static_assert(!std::is_same<T, T>::value,
                   "Unsupported data type combination for GemmDataType.");

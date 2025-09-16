@@ -73,5 +73,5 @@ void NormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    norm, XPU, ALL_LAYOUT, phi::NormKernel, float, phi::dtype::float16) {}
+    norm, XPU, ALL_LAYOUT, phi::NormKernel, float, phi::float16) {}
 // TODO(zhangyikun02): add bfloat16 when xpu support it

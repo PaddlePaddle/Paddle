@@ -109,7 +109,9 @@ class TestRecomputeLlamaAuto:
             assert (
                 self.config.sep_parallel_degree
                 != self.config.context_parallel_degree
-            ), f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
+            ), (
+                f"only one of the context_parallel and sep_parallel can be True, but get context_parallel_degree = {self.config.context_parallel_degree} and sep_parallel_degree = {self.config.sep_parallel_degree}, please check your env"
+            )
 
         self.strategy = dist.Strategy()
 

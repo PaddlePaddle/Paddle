@@ -932,7 +932,6 @@ class WeightOnlyLinearBackwardAndWeightDequantizeTestCase(unittest.TestCase):
     "quantized_matmul requires CUDA >= 11.2 and CUDA_ARCH >= 8",
 )
 class WeightOnlyLinear_stream_k_TestCase(unittest.TestCase):
-
     def test_weightonly_linear_backward_int4(self):
         def test_weightonly_linear_backward(
             self, algo='weight_only_int4', weight_dtype='int4'

@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -27,10 +27,29 @@ class TestMsortOnCPU(unittest.TestCase):
 
     def test_api_0(self):
         with base.program_guard(base.Program()):
-            input = paddle.static.data(
+            x = paddle.static.data(
                 name="input", shape=[2, 3, 4], dtype="float32"
             )
-            output = paddle.msort(input=input)
+            output = paddle.msort(input=x)
+            exe = base.Executor(self.place)
+            data = np.array(
+                [
+                    [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                    [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]],
+                ],
+                dtype='float32',
+            )
+            (result,) = exe.run(feed={'input': data}, fetch_list=[output])
+            np_result = np.sort(result, axis=0)
+            self.assertEqual((result == np_result).all(), True)
+
+    def test_api_1(self):
+        with base.program_guard(base.Program()):
+            x = paddle.static.data(
+                name="input", shape=[2, 3, 4], dtype="float32"
+            )
+            output = paddle.empty_like(x)
+            paddle.msort(input=x, out=output)
             exe = base.Executor(self.place)
             data = np.array(
                 [
@@ -46,8 +65,8 @@ class TestMsortOnCPU(unittest.TestCase):
 
 class TestMsortOnGPU(TestMsortOnCPU):
     def init_place(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -55,8 +74,8 @@ class TestMsortOnGPU(TestMsortOnCPU):
 class TestMsortDygraph(unittest.TestCase):
     def setUp(self):
         self.input_data = np.random.rand(10, 10)
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -64,6 +83,16 @@ class TestMsortDygraph(unittest.TestCase):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.msort(input=var_x)
+        self.assertEqual(
+            (np.sort(self.input_data, axis=0) == out.numpy()).all(), True
+        )
+        paddle.enable_static()
+
+    def test_api_1(self):
+        paddle.disable_static(self.place)
+        var_x = paddle.to_tensor(self.input_data)
+        out = paddle.empty_like(var_x)
+        paddle.msort(input=var_x, out=out)
         self.assertEqual(
             (np.sort(self.input_data, axis=0) == out.numpy()).all(), True
         )

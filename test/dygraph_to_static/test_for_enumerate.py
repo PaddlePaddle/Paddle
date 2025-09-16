@@ -20,7 +20,6 @@ import numpy as np
 from dygraph_to_static_utils import (
     Dy2StTestBase,
     enable_to_static_guard,
-    test_legacy_and_pir,
 )
 
 import paddle
@@ -560,7 +559,6 @@ class TestForZip(Dy2StTestBase):
                 model_path,
             )
 
-    @test_legacy_and_pir
     def test_for_zip(self):
         model_path = os.path.join(self.temp_dir.name, 'for_zip')
         paddle.jit.save(

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -25,7 +25,6 @@ from paddle.base.executor import Executor
 
 
 class TestMseLoss(unittest.TestCase):
-
     def test_mse_loss(self):
         input_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
         label_val = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
@@ -47,9 +46,11 @@ class TestMseLoss(unittest.TestCase):
                 input=input_var, label=label_var
             )
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = Executor(place)
                 (result,) = exe.run(
                     main,
@@ -61,7 +62,6 @@ class TestMseLoss(unittest.TestCase):
 
 
 class TestMseInvalidInput(unittest.TestCase):
-
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]
@@ -91,7 +91,6 @@ class TestMseInvalidInput(unittest.TestCase):
 
 
 class TestNNMseLoss(unittest.TestCase):
-
     def test_NNMseLoss_mean(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -214,7 +213,6 @@ class TestNNMseLoss(unittest.TestCase):
 
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
-
     def test_NNFunctionalMseLoss_mean(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -331,7 +329,6 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
 
 
 class TestNNFunctionalMseLoss_ZeroSize(unittest.TestCase):
-
     def test_dygraph_and_grad(self):
         for dim in [[0, 0], [2, 0, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")

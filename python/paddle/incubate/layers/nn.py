@@ -758,9 +758,9 @@ def tdm_sampler(
                 f"in the layer {layer_idx}, But received negative nums {neg_samples_num_list[layer_idx]}, and num of node at layer {layer_idx} "
                 f"is {layer_node_num_list[layer_idx]}, please check your input."
             )
-    assert (
-        leaf_node_num < node_nums
-    ), "leaf_node_num must be less than total node nums."
+    assert leaf_node_num < node_nums, (
+        "leaf_node_num must be less than total node nums."
+    )
 
     travel_shape = [leaf_node_num, layer_nums]
     travel = helper.create_parameter(
@@ -1320,9 +1320,9 @@ def pow2_decay_with_linear_warmup(
     helper.set_variable_initializer(
         step, paddle.nn.initializer.Constant(value=0)
     )
-    assert (
-        warmup_steps <= total_steps
-    ), "warmup_steps cannot be larger than total_steps"
+    assert warmup_steps <= total_steps, (
+        "warmup_steps cannot be larger than total_steps"
+    )
 
     helper.append_op(
         type="pow2_decay_with_linear_warmup",

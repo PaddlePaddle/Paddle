@@ -96,5 +96,5 @@ PD_REGISTER_KERNEL(diagonal_grad,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

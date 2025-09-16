@@ -741,7 +741,7 @@ void BatchNormKernel(const Context &dev_ctx,
         C,
         common::errors::InvalidArgument(
             "The first dimension of mean must equal to the number of "
-            "Channels, which is [%d]. But received: the first dimension"
+            "Channels, which is [%d]. But received: the first dimension "
             "of mean is [%d], the dimensions of mean is [%s].",
             C,
             est_mean->dims()[0],
@@ -750,8 +750,8 @@ void BatchNormKernel(const Context &dev_ctx,
         est_var->dims()[0],
         C,
         common::errors::InvalidArgument(
-            "The first dimension of variance must equal to the number"
-            "of Channels, which is [%d]. But received: the first dimension of"
+            "The first dimension of variance must equal to the number "
+            "of Channels, which is [%d]. But received: the first dimension of "
             "variance is [%d], the dimensions of variance is [%s].",
             C,
             est_var->dims()[0],
@@ -1292,8 +1292,8 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
@@ -1311,8 +1311,8 @@ PD_REGISTER_KERNEL(batch_norm,
                    phi::BatchNormKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
       kernel_key.dtype() == phi::DataType::BFLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -1335,7 +1335,7 @@ PD_REGISTER_KERNEL(batch_norm,
                    phi::BatchNormKernel,
                    float,
                    double,
-                   phi::dtype::float16) {
+                   phi::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);

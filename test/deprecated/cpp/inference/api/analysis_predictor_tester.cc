@@ -317,7 +317,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
-  config.EnableMkldnnBfloat16();
+  config.EnableOnednnBfloat16();
 #ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.onednn_bfloat16_enabled(), true);
@@ -332,7 +332,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
 TEST(AnalysisPredictor, bf16_pass_strategy) {
   std::vector<std::string> passes;
   PassStrategy passStrategy(passes);
-  passStrategy.EnableMkldnnBfloat16();
+  passStrategy.EnableOnednnBfloat16();
 }
 
 TEST(AnalysisPredictor, onednn_fc_pass_strategy) {

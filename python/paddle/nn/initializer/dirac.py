@@ -91,9 +91,9 @@ class Dirac(Initializer):
     """
 
     def __init__(self, groups: int = 1, name: str | None = None) -> None:
-        assert groups > 0 and isinstance(
-            groups, int
-        ), " 'groups' must be a positive integer. "
+        assert groups > 0 and isinstance(groups, int), (
+            " 'groups' must be a positive integer. "
+        )
         super().__init__()
         self._groups = groups
 
@@ -114,7 +114,9 @@ class Dirac(Initializer):
             isinstance(var, framework.EagerParamBase) and var.is_dist()
         ), "Currently, dirac initializer not support lazy init for dist param."
         block = self._check_block(block)
-        assert isinstance(var, (framework.Variable, pir.core.ParameterMeta))
+        assert isinstance(
+            var, (framework.Variable, paddle.pir.Value, pir.core.ParameterMeta)
+        )
         assert isinstance(block, (framework.Block, pir.Block))
         check_variable_and_dtype(
             var, "Out", ['float16', 'bfloat16', 'float32', 'float64'], 'Dirac'
@@ -125,9 +127,9 @@ class Dirac(Initializer):
             4,
             5,
         ], "Only Tensor with 3/4/5 dimensions can be initialized by Dirac"
-        assert (
-            var.shape[0] % self._groups
-        ) == 0, "Tensor 0-dimension must be divisible by groups"
+        assert (var.shape[0] % self._groups) == 0, (
+            "Tensor 0-dimension must be divisible by groups"
+        )
 
         if framework.in_pir_mode():
             if var.dtype != core.DataType.FLOAT32:

@@ -94,9 +94,9 @@ class CheckpointSaver:
             if not local_fs.is_exist(cache_path):
                 local_fs.mkdirs(cache_path)
             else:
-                assert local_fs.is_dir(
-                    cache_path
-                ), f"cache path:{cache_path} must be a directory"
+                assert local_fs.is_dir(cache_path), (
+                    f"cache path:{cache_path} must be a directory"
+                )
 
             saved_path = cache_path
 

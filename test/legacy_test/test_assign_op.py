@@ -23,6 +23,7 @@ from op_test import (
     convert_uint16_to_float,
     get_device_place,
     get_places,
+    is_custom_device,
 )
 
 import paddle
@@ -64,7 +65,8 @@ class TestAssignOp_ZeroDim(TestAssignOp):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestAssignFP16Op(op_test.OpTest):
     def setUp(self):
@@ -90,7 +92,8 @@ class TestAssignFP16Op(op_test.OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestAssignBFP16Op(op_test.OpTest):
@@ -118,7 +121,6 @@ class TestAssignBFP16Op(op_test.OpTest):
 
 
 class TestAssignOpWithTensorArray(unittest.TestCase):
-
     def test_assign_tensor_array(self):
         paddle.enable_static()
         main_program = paddle.static.Program()
@@ -153,7 +155,6 @@ class TestAssignOpWithTensorArray(unittest.TestCase):
 
 
 class TestAssignOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -223,7 +224,8 @@ class TestAssignOpApi(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestAssignOpApiFP16(unittest.TestCase):
     def test_assign_fp16(self):
@@ -276,7 +278,6 @@ class TestAssignOut_(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(

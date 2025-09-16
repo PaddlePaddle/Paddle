@@ -1377,6 +1377,8 @@ PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
                          false,
                          "enable eager to create nccl comm");
 
+PHI_DEFINE_EXPORTED_bool(tcp_store_using_libuv, true, "enable libuv tcp store");
+
 PHI_DEFINE_EXPORTED_int64(
     tcp_max_syn_backlog,
     2048,
@@ -1799,6 +1801,15 @@ PHI_DEFINE_EXPORTED_string(
     "",
     "Remove some redundant information when printing the pir program");
 
+#ifdef _WIN32
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+#endif
+
 /**
  * ProcessGroupNCCL related FLAG
  * Name: enable_async_trace
@@ -2140,6 +2151,16 @@ PHI_DEFINE_EXPORTED_bool(
     false,
     "Enable add lock when call AutoGrowthBestFitAllocator::ReleaseImpl");
 
+PHI_DEFINE_EXPORTED_int64(offload_retry_times, -1, "Offload retry times.");
+
+PHI_DEFINE_EXPORTED_bool(offload_inplace_tensor,
+                         true,
+                         "Whether to allow offload inplace tensor.");
+
+PHI_DEFINE_EXPORTED_bool(print_offload_info,
+                         false,
+                         "Whether to print the offload information.");
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 /**
  * FlashAttention related FLAG
@@ -2180,3 +2201,27 @@ PHI_DEFINE_EXPORTED_bool(check_cuda_error,
 PHI_DEFINE_EXPORTED_bool(use_default_stream,
                          false,
                          "Whether use default stream.");
+
+/**
+ * Stride_Compute_Kernel related FLAG
+ * Name: FLAGS_use_stride_compute_kernel
+ * Since Version: 3.2
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Whether use Stride_Compute_Kernel.
+ */
+PHI_DEFINE_EXPORTED_bool(use_stride_compute_kernel,
+                         false,
+                         "Whether use Stride_Compute_Kernel.");
+
+/**
+ * Allocator related FLAG
+ * Name: FLAGS_deep_ep_comm_prealloc_in_mb
+ * Since Version: 3.2
+ * Value Range: int64, default=0
+ * Example:
+ * Note: Whether use prealloc for deepep communication.
+ */
+PHI_DEFINE_EXPORTED_int64(deep_ep_comm_prealloc_in_mb,
+                          0,
+                          "Whether use prealloc for deepep communication.");

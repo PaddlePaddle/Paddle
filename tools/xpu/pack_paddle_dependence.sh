@@ -94,10 +94,8 @@ function xhpc_prepare() {
     cp -r ${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
 
     if [[ "${WITH_MKL}" == "ON" ]]; then
-      cp -r ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/
-      pushd xpu/lib
-      ln -sf libiomp5.so libomp.so
-      popd
+      # Now xpu/lib/libomp.so is invalid. When we need libomp.so, libomp.so is valid.
+      ln -sf ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/libomp.so
     else
       cp -r ${XHPC_DIR_NAME}/xpudnn/so/libomp.so xpu/lib/
       pushd xpu/lib
@@ -160,10 +158,8 @@ function local_assemble() {
       cp -r ${LOCAL_PATH}/${XHPC_DIR_NAME}/xpudnn/so/libxpu_dnn.so xpu/lib/
 
       if [[ "${WITH_MKL}" == "ON" ]]; then
-        cp -r ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/
-        pushd xpu/lib
-        ln -sf libiomp5.so libomp.so
-        popd
+        # Now xpu/lib/libomp.so is invalid. When we need libomp.so, libomp.so is valid.
+        ln -sf ${BUILD_DIR}/third_party/install/mklml/lib/libiomp5.so xpu/lib/libomp.so
       else
         cp -r ${XHPC_DIR_NAME}/xpudnn/so/libomp.so xpu/lib/
         pushd xpu/lib

@@ -139,7 +139,6 @@ void cinn_call_sycl_memcpy(void *v_args,
 }
 
 #ifdef CINN_WITH_CNNL
-
 class CnnlHandle {
  public:
   CnnlHandle(const CnnlHandle &) = delete;

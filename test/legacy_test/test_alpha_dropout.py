@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -89,8 +89,8 @@ class TestAlphaDropoutFunctionAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_dygraph_bfp16(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with base.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("uint16")
                 res_np = in_np
@@ -118,7 +118,6 @@ class TestAlphaDropoutFunctionAPI(unittest.TestCase):
 
 
 class TestAlphaDropoutFunctionAPIError(unittest.TestCase):
-
     def test_input_type_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -195,8 +194,8 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_dygraph_bfp16(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("uint16")
                 result_np = input_np
@@ -219,8 +218,8 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
 
     def test_static_fp16_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -244,8 +243,8 @@ class TestAlphaDropoutClassAPI(unittest.TestCase):
 
     def test_static_bfp16_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -338,8 +337,8 @@ class TestFeatureAlphaDropoutFunctionAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_dygraph_bfp16(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with base.dygraph.guard(place):
                 in_np = np.random.random([40, 40]).astype("uint16")
                 res_np = in_np
@@ -466,8 +465,8 @@ class TestFeatureAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_dygraph_bfp16(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with base.dygraph.guard(place):
                 input_np = np.random.random([40, 40]).astype("uint16")
                 result_np = input_np
@@ -489,8 +488,8 @@ class TestFeatureAlphaDropoutClassAPI(unittest.TestCase):
                 self.assertTrue((grad == 1).all())
 
     def test_static_fp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -513,8 +512,8 @@ class TestFeatureAlphaDropoutClassAPI(unittest.TestCase):
                 np.testing.assert_allclose(res[0], input, rtol=1e-05)
 
     def test_static_bfp16_gpu(self):
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

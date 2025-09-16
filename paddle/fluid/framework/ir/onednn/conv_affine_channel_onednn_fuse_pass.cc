@@ -288,7 +288,9 @@ void ConvAffineChannelFusePass::FuseConvAffineChannel(
     desc.SetOutput("Out", std::vector<std::string>({ac_out->Name()}));
     desc.SetType("elementwise_add");
     desc.SetAttr("axis", 1);
-    desc.SetAttr("use_mkldnn", conv->Op()->GetAttrIfExists<bool>("use_mkldnn"));
+    desc.SetAttr("use_onednn",
+                 conv->Op()->GetAttrIfExists<bool>("use_mkldnn") ||
+                     conv->Op()->GetAttrIfExists<bool>("use_onednn"));
 
     auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 

@@ -16,8 +16,11 @@ import copy
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
+
+paddle.enable_static()
 
 np.random.seed(10)
 paddle.seed(10)
@@ -32,8 +35,11 @@ class TestNormalAPI(unittest.TestCase):
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (
+                (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+                or is_custom_device()
+            )
             else paddle.CPUPlace()
         )
 
@@ -186,7 +192,6 @@ class TestNormalAPI_mean_std_are_tensor_with_different_dtype(TestNormalAPI):
 
 
 class TestNormalAlias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         shape = [1, 2, 3]
@@ -197,7 +202,6 @@ class TestNormalAlias(unittest.TestCase):
 
 
 class TestNormalErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
@@ -230,8 +234,11 @@ class TestNormalAPIComplex(unittest.TestCase):
         self.set_attrs()
         self.dtype = self.get_dtype()
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (
+                (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
+                or is_custom_device()
+            )
             else paddle.CPUPlace()
         )
 
@@ -402,7 +409,6 @@ class TestNormalAPIComplex_mean_std_are_tensor_with_different_dtype(
 
 
 class TestNormalComplexErrors(unittest.TestCase):
-
     def test_errors(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):

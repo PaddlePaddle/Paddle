@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 from paddle.base.layer_helper_base import LayerHelperBase
 
@@ -151,8 +151,8 @@ class TestRnn(unittest.TestCase):
         LayerHelperBase.set_default_dtype("float64")
         dynamic_cell = paddle.nn.LSTMCell(self.input_size, self.hidden_size)
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         exe = Executor(place)

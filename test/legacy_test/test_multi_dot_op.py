@@ -16,7 +16,12 @@ import unittest
 
 import numpy as np
 from numpy.linalg import multi_dot
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -91,8 +96,8 @@ class TestMultiDotOp_ZeroSize2(TestMultiDotOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMultiDotBF16Op(OpTest):
@@ -101,7 +106,7 @@ class TestMultiDotBF16Op(OpTest):
         self.python_api = paddle.linalg.multi_dot
         self.dtype = self.get_dtype()
         self.get_inputs_and_outputs()
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def get_dtype(self):
         self.np_dtype = "float32"
@@ -294,7 +299,6 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 
 # python API test
 class TestMultiDotOpError(unittest.TestCase):
-
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -335,7 +339,6 @@ class TestMultiDotOpError(unittest.TestCase):
 
 
 class APITestMultiDot(unittest.TestCase):
-
     def test_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

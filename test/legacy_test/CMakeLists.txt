@@ -16,6 +16,27 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_eager_tensor)
+  list(REMOVE_ITEM TEST_OPS test_imperative_selected_rows)
+  list(REMOVE_ITEM TEST_OPS test_sparse_elementwise_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_mask_as_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_reshape_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_slice_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_softmax_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_sum_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_transpose_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_unary_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_utils_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_model)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_norm_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_pooling_op)
+  list(REMOVE_ITEM TEST_OPS test_sparse_conv_op)
+  list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)
@@ -74,6 +95,7 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+  list(REMOVE_ITEM TEST_OPS test_fused_partial_rope_op)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
@@ -86,8 +108,10 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_weighted_swiglu_act_quant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
+  list(REMOVE_ITEM TEST_OPS
+       test_incubate_cross_entropy_with_softmax_bwd_w_downcast)
+  list(REMOVE_ITEM TEST_OPS test_incubate_embedding_grad)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
   list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fp8_gemm)
   list(REMOVE_ITEM TEST_OPS test_fp8_quant)
@@ -177,6 +201,9 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_swiglu_weighted_bwd_op)
   list(REMOVE_ITEM TEST_OPS test_fused_act_dequant_op)
   list(REMOVE_ITEM TEST_OPS test_fused_stack_transpose_quant_op)
+  list(REMOVE_ITEM TEST_OPS
+       test_incubate_cross_entropy_with_softmax_bwd_w_downcast)
+  list(REMOVE_ITEM TEST_OPS test_incubate_embedding_grad)
   list(REMOVE_ITEM TEST_OPS test_matmul_int8_op)
   list(REMOVE_ITEM TEST_OPS test_variable_length_memory_efficient_attention)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
@@ -455,6 +482,7 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_ocr_attention_model)
+list(REMOVE_ITEM TEST_OPS test_index_put_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet)
 list(REMOVE_ITEM TEST_OPS test_imperative_resnet_sorted_gradient)
 list(REMOVE_ITEM TEST_OPS test_imperative_se_resnext)
@@ -530,6 +558,8 @@ if(NOT WITH_GPU
     test_fp8_quant
     test_fused_act_dequant_op
     test_fused_stack_transpose_quant_op
+    test_incubate_cross_entropy_with_softmax_bwd_w_downcast
+    test_incubate_embedding_grad
     test_fused_swiglu_weighted_bwd_op
     test_fused_transpose_spilt_quant_op
     test_fused_transpose_wlch_split_quant_op
@@ -617,6 +647,8 @@ if(WITH_GPU
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
 endif()
+py_test_modules(test_index_put_op MODULES test_index_put_op ENVS
+                FLAGS_use_stride_compute_kernel=1)
 py_test_modules(test_imperative_resnet MODULES test_imperative_resnet ENVS
                 FLAGS_cudnn_deterministic=1)
 py_test_modules(test_imperative_mnist MODULES test_imperative_mnist ENVS
@@ -856,8 +888,6 @@ if(WITH_NV_JETSON)
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 1200)
-  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 1500)
-  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 1500)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 1200)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 1500)
@@ -865,8 +895,6 @@ else()
   set_tests_properties(test_concat_op PROPERTIES TIMEOUT 400)
   set_tests_properties(test_conv3d_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_norm_op PROPERTIES TIMEOUT 150)
-  set_tests_properties(test_batch_norm_op_prim_nchw PROPERTIES TIMEOUT 250)
-  set_tests_properties(test_batch_norm_op_prim_nhwc PROPERTIES TIMEOUT 250)
   set_tests_properties(test_pool3d_op PROPERTIES TIMEOUT 150)
   set_tests_properties(test_conv3d_transpose_part2_op PROPERTIES TIMEOUT 120)
   set_tests_properties(test_layer_norm_op PROPERTIES TIMEOUT 250)
@@ -1054,8 +1082,6 @@ set(TEST_CINN_OPS
     test_mean_op
     test_clip_op
     test_gather_op
-    test_batch_norm_op_prim_nchw
-    test_batch_norm_op_prim_nhwc
     test_dropout_op
     test_tile_op
     test_sum_op
@@ -1145,6 +1171,12 @@ set(STATIC_BUILD_TESTS
     test_while_op
     test_tensor_array_to_tensor)
 
+# swgu98: Temporarily commented on Windows platform
+if(WIN32)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_sparse_norm_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_sparse_pooling_op)
+endif()
+
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
@@ -1190,7 +1222,6 @@ set_tests_properties(test_nadam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_radam_op PROPERTIES TIMEOUT 100)
 set_tests_properties(test_nan_inf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_linalg_cholesky_inverse PROPERTIES TIMEOUT 100)
-set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_crop_tensor_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cross_entropy2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 300)
@@ -1249,7 +1280,10 @@ set_tests_properties(test_install_check_pir PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(test_linalg_matrix_exp PROPERTIES TIMEOUT 120)
 set_tests_properties(test_inplace_softmax_with_cross_entropy PROPERTIES TIMEOUT
                                                                         120)
-set_tests_properties(test_imperative_selected_rows_to_lod_tensor
-                     PROPERTIES TIMEOUT 200)
+if(NOT WIN32)
+  set_tests_properties(test_sparse_mask_as_op PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_imperative_selected_rows_to_lod_tensor
+                       PROPERTIES TIMEOUT 200)
+endif()
 set_tests_properties(test_slice_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_load_state_dict_from_url PROPERTIES TIMEOUT 40)

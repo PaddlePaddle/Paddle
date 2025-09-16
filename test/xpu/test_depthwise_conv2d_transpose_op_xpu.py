@@ -168,7 +168,7 @@ class XPUTestDepthwiseConv2DTransposeOp(XPUOpTestWrapper):
                 'dilations': self.dilations,
                 'use_cudnn': self.use_cudnn,
                 'is_test': self.is_test,
-                'use_mkldnn': self.use_onednn,
+                'use_onednn': self.use_onednn,
                 'data_format': self.data_format,
             }
             if self.output_size is not None:

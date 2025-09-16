@@ -99,5 +99,5 @@ PD_REGISTER_KERNEL(fused_gemm_epilogue_grad,
                    phi::fusion::FusedGemmEpilogueGradKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

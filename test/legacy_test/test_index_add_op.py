@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_devices
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_devices,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -118,8 +124,8 @@ class TestIndexAddFP16Op(TestIndexAddOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestIndexAddBF16Op(OpTest):
@@ -155,7 +161,7 @@ class TestIndexAddBF16Op(OpTest):
             index_np,
         )
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype_type(self):
         self.axis = 0
@@ -300,7 +306,7 @@ class TestIndexAddAPI(unittest.TestCase):
         if device == "cpu":
             place = paddle.CPUPlace()
         elif device == "gpu":
-            place = paddle.CUDAPlace(0)
+            place = get_device_place()
         else:
             raise TypeError(
                 "paddle.index_add api only support cpu and gpu device now."
@@ -503,6 +509,41 @@ class TestIndexAddOp_ZeroSize(OpTest):
         self.x_shape = (101, 0)
         self.index_size = 3
         self.add_value_shape = (3, 0)
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2, check_pir=True)
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'AddValue'], 'Out', check_pir=True, check_prim_pir=True
+        )
+
+
+class TestIndexAdd_ZeroSize2(OpTest):
+    def setUp(self):
+        self.python_api = raw_index_add
+        self.op_type = "index_add"
+        self.prim_op_type = "prim"
+        self.public_python_api = raw_index_add
+        self.init_dtype_type()
+        index_np = np.array([], dtype=self.index_type)
+        x_np = np.random.random(self.x_shape).astype(self.x_type)
+        add_value_np = np.random.random(self.add_value_shape).astype(
+            self.x_type
+        )
+
+        self.inputs = {'X': x_np, 'Index': index_np, 'AddValue': add_value_np}
+        self.attrs = {'axis': self.axis}
+        out = x_np.copy()
+        self.outputs = {'Out': out}
+
+    def init_dtype_type(self):
+        self.x_type = np.float32
+        self.index_type = np.int32
+        self.x_shape = (10,)
+        self.index_size = 0
+        self.axis = 0
+        self.add_value_shape = (0,)
 
     def test_check_output(self):
         self.check_output(atol=1e-2, check_pir=True)

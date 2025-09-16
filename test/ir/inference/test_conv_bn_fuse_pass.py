@@ -108,7 +108,7 @@ class TestConvBnFusePass(PassAutoScanTest):
             groups=groups,
             paddings=paddings,
             strides=strides,
-            use_mkldnn=use_onednn,
+            use_onednn=use_onednn,
             has_bias=False,
             is_test=True,
         )
@@ -158,7 +158,7 @@ class TestConvBnFusePass(PassAutoScanTest):
 
     def sample_predictor_configs(self, program_config):
         # for onednn
-        if program_config.ops[0].attrs['use_mkldnn']:
+        if program_config.ops[0].attrs['use_onednn']:
             config = self.create_inference_config(use_onednn=True)
             yield config, ['fused_conv2d'], (1e-5, 1e-5)
         else:

@@ -42,10 +42,9 @@ struct is_other_float
 // check if complex type
 template <typename T>
 struct is_complex64_or_complex128
-    : std::integral_constant<
-          bool,
-          std::is_same<T, phi::dtype::complex<float>>::value ||
-              std::is_same<T, phi::dtype::complex<double>>::value> {};
+    : std::integral_constant<bool,
+                             std::is_same<T, phi::complex64>::value ||
+                                 std::is_same<T, phi::complex128>::value> {};
 
 namespace phi {
 using Tensor = DenseTensor;

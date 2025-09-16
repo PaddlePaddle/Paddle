@@ -176,6 +176,10 @@ void TensorDistAttr::set_default_dynamic_dims(
   dynamic_dims_ = std::vector<bool>(tensor_shape.size(), false);
 }
 
+void TensorDistAttr::set_default_dynamic_dims(int64_t tensor_shape_size) {
+  dynamic_dims_ = std::vector<bool>(tensor_shape_size, false);
+}
+
 void TensorDistAttr::mark_annotated(const std::string& name) {
   auto result = std::find(std::begin(fields_), std::end(fields_), name);
   if (result != std::end(fields_)) {

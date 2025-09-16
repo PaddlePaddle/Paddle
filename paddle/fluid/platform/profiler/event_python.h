@@ -147,7 +147,7 @@ class ProfilerResult {
   explicit ProfilerResult(std::unique_ptr<NodeTrees> tree,
                           const ExtraInfo& extra_info);
 
-  ~ProfilerResult();
+  PADDLE_API ~ProfilerResult();
   std::map<uint64_t, HostPythonNode*> GetData() {
     return thread_event_trees_map_;
   }

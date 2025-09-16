@@ -203,7 +203,6 @@ def calc_multi_label_margin_loss(
 
 
 class TestMultiLabelMarginLoss(unittest.TestCase):
-
     def test_MultiLabelMarginLoss(self):
         batch_size = 5
         num_classes = 4

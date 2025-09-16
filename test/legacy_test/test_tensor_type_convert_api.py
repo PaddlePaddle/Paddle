@@ -193,7 +193,6 @@ class TensorDtypeConversionsTest(unittest.TestCase):
                 method_name,
                 target_dtype,
             ) in self._supported_dtype_conversions.items():
-
                 if target_dtype == 'bfloat16':
                     continue
                 for init_dtype in self._total_init_dtype:
@@ -216,7 +215,6 @@ class TensorDtypeConversionsTest(unittest.TestCase):
     def _pir_single_dtype_conversion(
         self, method_name, init_dtype, target_dtype
     ):
-
         # Create static graph input
         x = paddle.static.data(name="x", shape=self.shape, dtype=init_dtype)
         # Check if the method exists

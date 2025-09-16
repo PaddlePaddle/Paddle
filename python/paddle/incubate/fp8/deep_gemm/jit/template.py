@@ -101,9 +101,9 @@ def generate(
     )
     preload_package_includes = [f'"{include_dirs}"']
 
-    assert isinstance(
-        includes, (list, tuple)
-    ), "includes must be a list or tuple"
+    assert isinstance(includes, (list, tuple)), (
+        "includes must be a list or tuple"
+    )
     sys_includes = sorted(
         set(
             preload_sys_includes

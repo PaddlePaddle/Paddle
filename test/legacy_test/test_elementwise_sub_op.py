@@ -17,7 +17,13 @@ import unittest
 import warnings
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle import base
@@ -124,8 +130,8 @@ class TestElementwiseSubOp_ZeroSize3(TestElementwiseSubOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP(TestElementwiseOp):
@@ -152,13 +158,13 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         self.enable_cinn = False
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', max_relative_error=0.1
         )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -171,7 +177,7 @@ class TestElementwiseBF16OP(TestElementwiseOp):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -209,8 +215,8 @@ class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseSubBF16OP_ZeroDim1(TestElementwiseBF16OP):
@@ -259,8 +265,8 @@ class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseSubBF16OP_ZeroDim2(TestElementwiseBF16OP):
@@ -309,8 +315,8 @@ class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
@@ -335,8 +341,8 @@ class TestElementwiseBF16OP_ZeroDim3(TestElementwiseBF16OP):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestBF16ElementwiseOp(OpTest):
@@ -457,8 +463,8 @@ class TestElementwiseSubFP16OP_broadcast_0(TestElementwiseSubOp_broadcast_0):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
@@ -481,19 +487,19 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         self.attrs = {'axis': 0}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -504,7 +510,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -537,8 +543,8 @@ class TestElementwiseSubFP16OP_broadcast_1(TestElementwiseSubOp_broadcast_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_1(TestElementwiseBF16OP_broadcast_0):
@@ -585,8 +591,8 @@ class TestElementwiseSubFP16OP_broadcast_2(TestElementwiseSubOp_broadcast_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
@@ -610,8 +616,8 @@ class TestElementwiseBF16OP_broadcast_2(TestElementwiseBF16OP_broadcast_0):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_3(TestElementwiseBF16OP_broadcast_0):
@@ -672,8 +678,8 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_broadcast_4(TestElementwiseBF16OP_broadcast_0):
@@ -720,8 +726,8 @@ class TestElementwiseSubFP16OP_commonuse_1(TestElementwiseSubOp_commonuse_1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_commonuse_1(TestElementwiseBF16OP):
@@ -766,8 +772,8 @@ class TestElementwiseSubFP16OP_commonuse_2(TestElementwiseSubOp_commonuse_2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_commonuse_2(TestElementwiseBF16OP):
@@ -819,8 +825,8 @@ class TestElementwiseSubFP16OP_xsize_lessthan_ysize(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and do not support bfloat16",
 )
 class TestElementwiseBF16OP_xsize_lessthan_ysize(TestElementwiseBF16OP):
@@ -859,7 +865,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'X': OpTest.np_dtype_to_base_dtype(self.x),
             'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
-        self.attrs = {'axis': -1, 'use_mkldnn': False}
+        self.attrs = {'axis': -1, 'use_onednn': False}
         self.outputs = {'Out': self.out}
         self.if_check_prim()
         self.if_enable_cinn()
@@ -1002,8 +1008,8 @@ class TestSubtractApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -1207,13 +1213,171 @@ class TestTensorSubAPIWarnings(unittest.TestCase):
                 type="elementwise_sub",
                 inputs={'X': data, 'Y': data},
                 outputs={'Out': out},
-                attrs={'axis': 1, 'use_mkldnn': False},
+                attrs={'axis': 1, 'use_onednn': False},
             )
             self.assertTrue(
                 "op elementwise_sub's attr axis = 1 is not the default value: -1"
                 in str(context[-1].message)
             )
             os.environ['FLAGS_print_extra_attrs'] = "0"
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestElementwiseSubOp_Stride(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.python_api = paddle.subtract
+        self.public_python_api = paddle.subtract
+        self.transpose_api = paddle.transpose
+        self.as_stride_api = paddle.as_strided
+        self.init_dtype()
+        self.init_input_output()
+
+        self.inputs_stride = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y_trans),
+        }
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+
+        self.outputs = {'Out': self.out}
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_strided_forward = True
+        self.check_output(
+            place,
+        )
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+    def test_check_grad_normal(self):
+        self.test_stride_backward = True
+        place = get_device_place()
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X', 'Y'],
+            'Out',
+        )
+
+    def test_check_grad_ignore_x(self):
+        self.test_stride_backward = True
+        place = get_device_place()
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.test_stride_backward = True
+        place = get_device_place()
+        if self.dtype == np.float16:
+            return
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+        )
+
+
+class TestElementwiseSubOp_Stride1(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride2(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 2, 1, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride3(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [20, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [0, 1, 3, 2]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride4(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, [1, 2, 13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [20, 2, 13, 1]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0, 2, 3]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride5(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "as_stride"
+        self.x = np.random.uniform(0.1, 1, [23, 10, 1, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [23, 2, 13, 20]).astype(self.dtype)
+        self.y_trans = self.y
+        self.y = self.y[:, 0:1, :, 0:1]
+        self.out = np.subtract(self.x, self.y)
+        self.shape_param = [23, 1, 13, 1]
+        self.stride_param = [520, 260, 20, 1]
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestElementwiseSubOp_Stride_ZeroDim1(TestElementwiseSubOp_Stride):
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseSubOp_Stride_ZeroSize1(TestElementwiseSubOp_Stride):
+    def init_data(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.rand(1, 0, 2).astype('float32')
+        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.out = np.subtract(self.x, self.y)
+        self.perm = [2, 1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
 
 
 if __name__ == '__main__':

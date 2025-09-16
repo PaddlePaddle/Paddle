@@ -27,7 +27,6 @@ paddle.enable_static()
 
 
 class TestAPICase(unittest.TestCase):
-
     def test_return_single_var(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -298,7 +297,6 @@ class TestAPICase(unittest.TestCase):
 
 
 class TestAPICase_Nested(unittest.TestCase):
-
     def test_nested_case(self):
         def fn_1(x=1):
             var_5 = paddle.tensor.fill_constant(
@@ -513,7 +511,6 @@ class TestAPICase_Nested(unittest.TestCase):
 
 
 class TestAPICase_Error(unittest.TestCase):
-
     def test_error(self):
         def fn_1():
             return paddle.tensor.fill_constant(
@@ -582,7 +579,6 @@ class TestAPICase_Error(unittest.TestCase):
 
 # when optimizer in case
 class TestMultiTask(unittest.TestCase):
-
     def test_optimizer_in_case(self):
         BATCH_SIZE = 1
         INPUT_SIZE = 784

@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -725,9 +725,9 @@ class DistForwardAPI(ForwardAPI):
         )
 
     def vector_output_size_assertion_check(self):
-        assert (
-            self.outputs['out_size_expr'] is not None
-        ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+        assert self.outputs['out_size_expr'] is not None, (
+            f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
+        )
 
     def generate_non_computation_rank_clip_code(self) -> str:
         if len(self.inputs['names']) > 0:
@@ -785,13 +785,15 @@ class DistForwardAPI(ForwardAPI):
         if self.kernel['backend'] is not None:
             if '>' in self.kernel['backend']:
                 vars_list = self.kernel['backend'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (vars_list[0].strip() in self.attrs['names']) and (
                     self.attrs['attr_info'][vars_list[0].strip()][0]
                     == 'const Place&'
-                ), f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                ), (
+                    f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                )
                 backend_select_code = f"""
     kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
 """
@@ -825,19 +827,19 @@ class DistForwardAPI(ForwardAPI):
         attr_data_type_count = 0
         for attr_name in attrs['names']:
             if attrs['attr_info'][attr_name][0] == 'const Place&':
-                assert (
-                    kernel['backend'] is not None
-                ), f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                assert kernel['backend'] is not None, (
+                    f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                )
                 attr_backend_count = attr_backend_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataLayout':
-                assert (
-                    kernel['layout'] is not None
-                ), f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                assert kernel['layout'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                )
                 attr_layout_count = attr_layout_count + 1
             if attrs['attr_info'][attr_name][0] == 'DataType':
-                assert (
-                    kernel['data_type'] is not None
-                ), f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                assert kernel['data_type'] is not None, (
+                    f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                )
                 attr_data_type_count = attr_data_type_count + 1
 
         # preprocess kernel configures
@@ -846,14 +848,16 @@ class DistForwardAPI(ForwardAPI):
         if kernel['layout'] is not None:
             if '>' in kernel['layout']:
                 vars_list = kernel['layout'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataLayout'
-                ), f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                ), (
+                    f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -863,9 +867,9 @@ class DistForwardAPI(ForwardAPI):
 
             else:
                 vars_list = kernel['layout'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -887,14 +891,16 @@ class DistForwardAPI(ForwardAPI):
 
             if '>' in kernel['data_type']:
                 vars_list = kernel['data_type'].split('>')
-                assert (
-                    len(vars_list) == 2
-                ), f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                assert len(vars_list) == 2, (
+                    f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                )
                 assert (
                     vars_list[0].strip() in attrs['names']
                     and attrs['attr_info'][vars_list[0].strip()][0]
                     == 'DataType'
-                ), f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                ), (
+                    f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -904,9 +910,9 @@ class DistForwardAPI(ForwardAPI):
 
             else:
                 vars_list = kernel['data_type'].split(',')
-                assert (
-                    len(vars_list) == 1
-                ), f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                assert len(vars_list) == 1, (
+                    f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                )
                 kernel_select_code = (
                     kernel_select_code
                     + f"""
@@ -915,9 +921,9 @@ class DistForwardAPI(ForwardAPI):
                 )
 
         if len(input_names) == 0:
-            assert (
-                attr_backend_count > 0 and attr_data_type_count > 0
-            ), f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            assert attr_backend_count > 0 and attr_data_type_count > 0, (
+                f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+            )
 
         kernel_select_args = ""
         for input_name in input_names:
@@ -1140,9 +1146,16 @@ class DistForwardAPI(ForwardAPI):
                     return_type, inplace_assign_code
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if (
+                    len(self.outputs['names']) == 1
+                    and self.outputs['types'][0] == "Tensor"
+                    and self.api != "empty_like"
+                ):
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
             # kernel output generate
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
@@ -1214,9 +1227,26 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_calls = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_creation_code += (
+                            f"std::tuple<{tuple_types}> out_tmp;"
+                            f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                            f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                            f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
@@ -2092,7 +2122,9 @@ class DistForwardAPI(ForwardAPI):
         return True
 
     # override BaseAPI's method
-    def gene_base_api_code(self, inplace_flag=False):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
         # init status
         self.inplace_flag = inplace_flag
         self.dist_output_args = []
@@ -2158,15 +2190,29 @@ class DistForwardAPI(ForwardAPI):
 
 
 class DistBackwardAPI(DistForwardAPI):
+    def gene_base_api_code(
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
+    ):
+        return BackwardAPI.gene_base_api_code(
+            self,
+            inplace_flag,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
-    def gene_base_api_code(self, inplace_flag=False):
-        return BackwardAPI.gene_base_api_code(self, inplace_flag)
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
+        return BackwardAPI.gene_api_code(
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
-    def gene_api_code(self):
-        return BackwardAPI.gene_api_code(self)
-
-    def gene_api_declaration(self):
-        return BackwardAPI.gene_api_declaration(self)
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
+        return BackwardAPI.gene_api_declaration(
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
+        )
 
 
 def generate_api(
@@ -2233,12 +2279,22 @@ def generate_api(
 
         if dist_forward_api.is_dygraph_api and is_fused_ops_yaml:
             dist_forward_api.is_dygraph_api = False
-            header_file.write(dist_forward_api.gene_api_declaration())
-            source_file.write(dist_forward_api.gene_api_code())
+            header_file.write(
+                dist_forward_api.gene_api_declaration(
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
+                )
+            )
+            source_file.write(
+                dist_forward_api.gene_api_code(grad_flag=grad_flag)
+            )
             dist_forward_api.is_dygraph_api = True
 
-        header_file.write(dist_forward_api.gene_api_declaration())
-        source_file.write(dist_forward_api.gene_api_code())
+        header_file.write(
+            dist_forward_api.gene_api_declaration(
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
+            )
+        )
+        source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])

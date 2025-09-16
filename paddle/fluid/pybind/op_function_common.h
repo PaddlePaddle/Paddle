@@ -67,19 +67,39 @@ bool PyObject_CheckString(PyObject* obj);
 bool CastPyArg2Boolean(PyObject* obj,
                        const std::string& op_type,
                        ssize_t arg_pos);
+bool CastPyArg2Boolean(PyObject* obj,
+                       const std::string& op_type,
+                       ssize_t arg_pos,
+                       bool default_value);
 int CastPyArg2Int(PyObject* obj, const std::string& op_type, ssize_t arg_pos);
+int CastPyArg2Int(PyObject* obj,
+                  const std::string& op_type,
+                  ssize_t arg_pos,
+                  int default_value);
 int64_t CastPyArg2Long(PyObject* obj,
                        const std::string& op_type,
                        ssize_t arg_pos);
+int64_t CastPyArg2Long(PyObject* obj,
+                       const std::string& op_type,
+                       ssize_t arg_pos,
+                       int64_t default_value);
 float16 CastPyArg2Float16(PyObject* obj,
                           const std::string& op_type,
                           ssize_t arg_pos);
 float CastPyArg2Float(PyObject* obj,
                       const std::string& op_type,
                       ssize_t arg_pos);
+float CastPyArg2Float(PyObject* obj,
+                      const std::string& op_type,
+                      ssize_t arg_pos,
+                      float default_value);
 double CastPyArg2Double(PyObject* obj,
                         const std::string& op_type,
                         ssize_t arg_pos);
+double CastPyArg2Double(PyObject* obj,
+                        const std::string& op_type,
+                        ssize_t arg_pos,
+                        double default_value);
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos);
@@ -89,24 +109,53 @@ phi::dtype::complex<double> CastPyArg2Complex128(PyObject* obj,
 std::string CastPyArg2String(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos);
+std::string CastPyArg2String(PyObject* obj,
+                             const std::string& op_type,
+                             ssize_t arg_pos,
+                             std::string default_value);
 std::vector<bool> CastPyArg2Booleans(PyObject* obj,
                                      const std::string& op_type,
                                      ssize_t arg_pos);
+std::vector<bool> CastPyArg2Booleans(PyObject* obj,
+                                     const std::string& op_type,
+                                     ssize_t arg_pos,
+                                     std::vector<bool> default_value);
 std::vector<int> CastPyArg2Ints(PyObject* obj,
                                 const std::string& op_type,
                                 ssize_t arg_pos);
+std::vector<int> CastPyArg2Ints(PyObject* obj,
+                                const std::string& op_type,
+                                ssize_t arg_pos,
+                                std::vector<int> default_value);
 std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
                                      const std::string& op_type,
                                      ssize_t arg_pos);
+std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
+                                     const std::string& op_type,
+                                     ssize_t arg_pos,
+                                     std::vector<int64_t> default_value);
 std::vector<float> CastPyArg2Floats(PyObject* obj,
                                     const std::string& op_type,
                                     ssize_t arg_pos);
+std::vector<float> CastPyArg2Floats(PyObject* obj,
+                                    const std::string& op_type,
+                                    ssize_t arg_pos,
+                                    std::vector<float> default_value);
 std::vector<double> CastPyArg2Float64s(PyObject* obj,
                                        const std::string& op_type,
                                        ssize_t arg_pos);
+std::vector<double> CastPyArg2Float64s(PyObject* obj,
+                                       const std::string& op_type,
+                                       ssize_t arg_pos,
+                                       std::vector<double> default_value);
 std::vector<std::string> CastPyArg2Strings(PyObject* obj,
                                            const std::string& op_type,
                                            ssize_t arg_pos);
+std::vector<std::string> CastPyArg2Strings(
+    PyObject* obj,
+    const std::string& op_type,
+    ssize_t arg_pos,
+    std::vector<std::string> default_value);
 
 std::vector<paddle::experimental::Scalar> CastPyArg2Scalars(
     PyObject* obj, const std::string& op_type, ssize_t arg_pos);
@@ -244,5 +293,28 @@ ssize_t GetIdxFromCoreOpsInfoMap(
     const std::string& name);
 
 void BindOpFunctionCommon(PyObject* module);
+PyObject* GetItemFromArgsOrKWArgs(PyObject* args,
+                                  int pos,
+                                  PyObject* kwargs,
+                                  const std::vector<std::string>& keywords,
+                                  int nargs,
+                                  int* remaining_kwargs,
+                                  bool dispensable = true);
+
+void CheckRemainingParamsValidity(PyObject* args,
+                                  PyObject* kwargs,
+                                  const int remaining_kwargs,
+                                  const int nargs);
+static inline void CheckParamsCount(const int nargs,
+                                    const int remaining_kwargs,
+                                    const int max_args) {
+  // To compatic the name and out parameter, we add 2 to max_args
+  if (nargs + remaining_kwargs > max_args + 2 || nargs > max_args + 1) {
+    PADDLE_THROW(common::errors::InvalidArgument(
+        "Has too many arguments,support max values: %d , but got: %d ",
+        max_args + 2,
+        nargs + remaining_kwargs));
+  }
+}
 }  // namespace pybind
 }  // namespace paddle

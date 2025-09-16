@@ -52,9 +52,9 @@ class MixPrecisionLayer(nn.Layer):
         # Hook used for back-prop and grad-merge.
         @paddle.autograd.no_grad()
         def param_hook(tmp_grad):
-            assert (
-                param.grad is None
-            ), f"In main_grad node, param.grad should be None, but find param[{param.name}] has grad."
+            assert param.grad is None, (
+                f"In main_grad node, param.grad should be None, but find param[{param.name}] has grad."
+            )
             if tmp_grad is not None and tmp_grad._is_initialized():
                 # Some previous pylayer may return None, should check grad validation.
                 if param.main_grad is None:

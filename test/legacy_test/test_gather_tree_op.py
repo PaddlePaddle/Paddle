@@ -55,7 +55,6 @@ class TestGatherTreeOp(OpTest):
 
 
 class TestGatherTreeOpAPI(unittest.TestCase):
-
     def test_case(self):
         paddle.enable_static()
         ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
@@ -78,7 +77,6 @@ class TestGatherTreeOpAPI(unittest.TestCase):
 
 
 class TestGatherTreeOpError(unittest.TestCase):
-
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):

@@ -27,11 +27,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-std::map<int, int> Prune(const proto::ProgramDesc& input,
-                         const std::set<std::string>& feed_var_names,
-                         proto::ProgramDesc* output);
+PADDLE_API std::map<int, int> Prune(const proto::ProgramDesc& input,
+                                    const std::set<std::string>& feed_var_names,
+                                    proto::ProgramDesc* output);
 
-std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
+PADDLE_API std::tuple<framework::ProgramDesc, std::map<int, int>> PruneBackward(
     const framework::ProgramDesc& origin);
 
 }  // namespace framework

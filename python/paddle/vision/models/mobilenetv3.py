@@ -448,9 +448,9 @@ def _mobilenet_v3(
         model = MobileNetV3Small(scale=scale, **kwargs)
     if pretrained:
         arch = f"{arch}_x{scale}"
-        assert (
-            arch in model_urls
-        ), f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        assert arch in model_urls, (
+            f"{arch} model do not have a pretrained model now, you should set pretrained=False"
+        )
         weight_path = get_weights_path_from_url(
             model_urls[arch][0], model_urls[arch][1]
         )

@@ -80,6 +80,10 @@ typedef struct C_Place_st* C_Place;
 
 typedef struct C_EigenDevice_st* C_EigenDevice;
 
+typedef struct C_BLASHandle_st* C_BLASHandle;
+
+typedef struct C_BLASLtHandle_st* C_BLASLtHandle;
+
 typedef void (*C_Callback)(C_Device device,
                            C_Stream stream,
                            void* user_data,
@@ -758,6 +762,27 @@ struct C_DeviceInterface {
                                           void* user_data);
 
   void* reserved_profiler_api[8];
+
+  //////////////////
+  // blas handle api //
+  /////////////////
+
+  C_Status (*init_blas_handle)(const C_Device device,
+                               C_BLASHandle* blas_handle,
+                               C_Stream stream);
+
+  C_Status (*blas_set_math_mode)(const C_Device device,
+                                 C_BLASHandle blas_handle,
+                                 int math_mode);
+
+  C_Status (*init_blaslt_handle)(const C_Device device,
+                                 C_BLASLtHandle* blaslt_handle);
+
+  C_Status (*destroy_blas_handle)(const C_Device device,
+                                  C_BLASHandle blas_handle);
+
+  C_Status (*destroy_blaslt_handle)(const C_Device device,
+                                    C_BLASLtHandle blaslt_handle);
 
   ///////////////
   // other api //

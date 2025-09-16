@@ -51,7 +51,7 @@ void SetNumThreads(int num_threads) {
   return;
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "This library (except OPENBLAS, MKLML) is not supported yet, so the"
+      "This library (except OPENBLAS, MKLML) is not supported yet, so the "
       "number of threads cannot be set."));
 #endif
 }

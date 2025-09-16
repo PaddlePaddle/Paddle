@@ -164,15 +164,17 @@ SpmdInfo ReplicatedInferDynamic(
 
   for (int64_t i = 0; i < ninputs; i++) {
     if (paddle::holds_alternative<const DistMetaTensor*>(inputs[i])) {
-      auto dist_meta_tensor_ptr = paddle::get<0>(inputs[i]);
-      auto& dist_meta_tensor = *dist_meta_tensor_ptr;
+      const auto* dist_meta_tensor_ptr =
+          PADDLE_GET_CONST(const DistMetaTensor*, inputs[i]);
+      const auto& dist_meta_tensor = *dist_meta_tensor_ptr;
       auto dist_attr_dst = build_tensor_dist_attr(dist_meta_tensor);
       VLOG(4) << "input " << i << ": dist attr: " << dist_attr_dst.to_string();
       spmd_info.first.emplace_back(dist_attr_dst);
     } else {
       std::vector<phi::distributed::TensorDistAttr> list_dist_attr;
-      auto dist_meta_tensors_ptr = paddle::get<1>(inputs[i]);
-      auto& dist_meta_tensors = *dist_meta_tensors_ptr;
+      const auto* dist_meta_tensors_ptr =
+          PADDLE_GET_CONST(const std::vector<DistMetaTensor>*, inputs[i]);
+      const auto& dist_meta_tensors = *dist_meta_tensors_ptr;
       for (const auto& dist_meta_tensor : dist_meta_tensors) {
         auto dist_attr_dst = build_tensor_dist_attr(dist_meta_tensor);
         VLOG(4) << "input " << i

@@ -770,7 +770,7 @@
 
 - op : bmm
   args : (Tensor x, Tensor y)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : BmmInferMeta
   kernel :
@@ -1269,6 +1269,15 @@
   backward : cross_entropy_with_softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : cross_entropy_with_softmax_bwd_w_downcast
+  args : (Tensor label, Tensor softmax, Tensor loss_grad)
+  output : Tensor(input_grad)
+  infer_meta :
+    func : CrossEntropyWithSoftmaxBwdWithDowncastInferMeta
+  kernel :
+    func : cross_entropy_with_softmax_bwd_w_downcast
+    data_type : softmax
+
 - op : ctc_align
   args: (Tensor input, Tensor input_length, int blank = 0, bool merge_repeated = true,
     int padding_value = 0)
@@ -1690,6 +1699,18 @@
   backward : elu_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
   traits: pir::UnaryElementWiseTrait
+
+- op : embedding_grad_add_to
+  args : (Tensor token_indices, Tensor main_grad_, Tensor out_grad)
+  output : Tensor(main_grad_out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [main_grad_]
+  kernel :
+    func : embedding_grad_add_to
+    param : [token_indices, main_grad_, out_grad]
+    data_type : main_grad_
+  inplace : (main_grad_ -> main_grad_out)
 
 - op : embedding_with_scaled_gradient
   args : (Tensor x, Tensor weight, int64_t padding_idx=-1)
@@ -2129,6 +2150,17 @@
     data_type : q
   backward : flashmask_attention_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : flashmask_attention_v2
+  args : (Tensor q, Tensor k, Tensor v, Tensor startend_row_indices, float softmax_scale, bool is_causal)
+  output : Tensor(out), Tensor(softmax_lse)
+  infer_meta :
+    func : FlashMaskV2InferMeta
+    param : [q, k, v]
+  kernel :
+    func : flashmask_attention_v2
+    data_type : q
+  backward : flashmask_attention_v2_grad
 
 - op : flatten
   args : (Tensor x, int start_axis = 1, int stop_axis = 1)
@@ -3319,7 +3351,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : logsumexp
-  args : (Tensor x, int[] axis={0},  bool keepdim=false,  bool reduce_all=false)
+  args : (Tensor x, int[] axis={},  bool keepdim=false,  bool reduce_all=false)
   output : Tensor(out)
   infer_meta :
     func : LogsumexpInferMeta
@@ -3553,6 +3585,17 @@
   backward : max_pool3d_with_index_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : max_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : max_with_index
+    data_type : x
+  backward : max_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)
@@ -3584,6 +3627,15 @@
     func : mean_all
   backward : mean_all_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : median
+  args : (Tensor x, IntArray axis = {}, bool keepdim = true, str mode="avg")
+  output : Tensor(out), Tensor(medians)
+  infer_meta :
+    func : MedianInferMeta
+  kernel :
+    func : median
+  backward : median_grad
 
 - op : memcpy_d2h
   args : (Tensor x, int dst_place_type)
@@ -3662,6 +3714,17 @@
   backward : meshgrid_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
+- op : min_with_index
+  args : (Tensor x, Scalar(int64_t) dim, bool keepdim = false, bool flatten = false)
+  output : Tensor(values), Tensor(indices)
+  infer_meta :
+    func : MinMaxWithIndexInferMeta
+  kernel :
+    func : min_with_index
+    data_type : x
+  backward : min_with_index_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
 - op : mish
   args : (Tensor x, float lambda)
   output : Tensor
@@ -3690,11 +3753,21 @@
   output : Tensor(y)
   infer_meta :
     func : MoeCombineInferMeta
-    spmd_rule : MoECombineInferSpmd
   kernel :
     func : moe_combine
     data_type : x
   backward : moe_combine_grad
+
+- op : moe_combine_auto
+  args : (Tensor x, Tensor combine_weights, Tensor scatter_index)
+  output : Tensor(y)
+  infer_meta :
+    func : MoeCombineInferMeta
+    spmd_rule : MoECombineInferSpmd
+  kernel :
+    func : moe_combine
+    data_type : x
+  backward : moe_combine_auto_grad
 
 - op : moe_combine_no_weight
   args : (Tensor x, Tensor combine_weight, Tensor scatter_index, float epsilon = 1.0e-15)
@@ -3711,7 +3784,6 @@
   output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
   infer_meta :
     func : MoeGateDispatchInferMeta
-    spmd_rule : MoEGateDispatchInferSpmd
   kernel :
     func : moe_gate_dispatch
     data_type : x
@@ -3727,6 +3799,18 @@
     func : moe_gate_dispatch_and_quant
     data_type : x
   optional : corr_bias
+
+- op : moe_gate_dispatch_auto
+  args : (Tensor x, Tensor gate_logits, Tensor corr_bias, int64_t k, int64_t capacity, bool use_pad)
+  output : Tensor(y), Tensor(combine_weights), Tensor(scatter_index), Tensor(expert_offset), Tensor(expert_id)
+  infer_meta :
+    func : MoeGateDispatchAutoInferMeta
+    spmd_rule : MoEGateDispatchInferSpmd
+  kernel :
+    func : moe_gate_dispatch
+    data_type : x
+  optional : corr_bias
+  backward : moe_gate_dispatch_auto_grad
 
 - op : moe_gate_dispatch_partial_nosoftmaxtopk
   args : (Tensor x, Tensor combine_weights, Tensor expert_id, int64_t k, int64_t capacity, int64_t num_experts, bool use_pad, int64_t expert_start_index, int64_t expert_end_index, bool reverse_token_drop)
@@ -3751,7 +3835,7 @@
   backward : moe_gate_dispatch_permute_grad
 
 - op : moe_permute
-  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment)
+  args : (Tensor hidden_states, Tensor scale, Tensor expert_routemap_topk, Tensor expert_prob_topk, int num_experts, int[] tokens_per_expert, int padding_alignment, bool do_gather)
   output : Tensor(hidden_states_unzipped), Tensor(zipped_expertwise_rowmap), Tensor(token_prob_unzipped), Tensor(scale_unzipped)
   infer_meta:
     func : MoePermuteInferMeta
@@ -4428,7 +4512,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave
-  args : (Tensor x, int repeats, int axis)
+  args : (Tensor x, int repeats, int axis, int64_t output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveInferMeta
@@ -4439,7 +4523,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : repeat_interleave_with_tensor_index
-  args : (Tensor x, Tensor repeats, int axis)
+  args : (Tensor x, Tensor repeats, int axis, int64_t output_size = -1)
   output : Tensor(out)
   infer_meta :
     func : RepeatInterleaveWithTensorIndexInferMeta
@@ -4921,12 +5005,13 @@
 
 - op : silu
   args : (Tensor x)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
     spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
+  inplace : (x -> out)
   backward : silu_grad
   interfaces : paddle::dialect::LayoutTransformationInterface, paddle::dialect::InferSymbolicShapeInterface
   traits: pir::UnaryElementWiseTrait
@@ -4976,6 +5061,16 @@
   kernel :
     func : slogdet
   backward : slogdet_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : slogdet_v2
+  args : (Tensor x)
+  output : Tensor(sign), Tensor(logdet)
+  infer_meta :
+    func : SlogdetV2InferMeta
+  kernel :
+    func : slogdet_v2
+  backward : slogdet_v2_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : softplus
@@ -5431,7 +5526,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : tril
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -5470,7 +5565,7 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : triu
-  args : (Tensor x, int diagonal)
+  args : (Tensor x, int diagonal=0)
   output : Tensor(out)
   infer_meta :
     func : TriuInferMeta

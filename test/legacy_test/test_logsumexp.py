@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -164,14 +169,15 @@ class TestLogsumexp_FP32(TestLogsumexp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLogsumexp_FP16(TestLogsumexp):
     def set_attrs(self):
         self.dtype = 'float16'
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_pir=True,
@@ -179,7 +185,7 @@ class TestLogsumexp_FP16(TestLogsumexp):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -193,8 +199,8 @@ class TestLogsumexp_FP16(TestLogsumexp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestLogsumexpBF16Op(TestLogsumexp):
@@ -221,7 +227,7 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         self.set_attrs_addition()
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             check_pir=True,
@@ -229,7 +235,7 @@ class TestLogsumexpBF16Op(TestLogsumexp):
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -338,6 +344,139 @@ class TestLogsumexp_ZeroSize2(TestLogsumexp_ZeroSize):
     def set_attrs(self):
         self.shape = [2, 3, 0]
         self.axis = [1]  # out return shape [2, 0]
+
+
+class TestLogsumexpOutAndParamDecorator(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.x_shape = [2, 3, 4]
+        self.axis = 1
+        self.x_np = np.random.rand(*self.x_shape).astype(np.float32)
+
+        self.apis = [
+            paddle.logsumexp,
+            paddle.special.logsumexp,
+        ]
+        self.test_types = [
+            # "decorator1",
+            # "decorator2",
+            "out",
+            # "out_decorator",
+        ]
+
+    def do_test(self, api, test_type):
+        x = paddle.to_tensor(self.x_np, stop_gradient=False)
+        out = paddle.empty((2, 3), dtype='float32')
+        out.stop_gradient = False
+
+        if test_type == 'raw':
+            result = api(x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator1':
+            result = api(x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'decorator2':
+            result = api(input=x, axis=self.axis)
+            result.mean().backward()
+            return result, x.grad
+        elif test_type == 'out':
+            api(x, axis=self.axis, out=out)
+            out.mean().backward()
+            return out, x.grad
+        elif test_type == 'out_decorator':
+            api(input=x, axis=self.axis, out=out)
+            out.mean().backward()
+            return out, x.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_logsumexp_out(self):
+        out_std, grad_std = self.do_test(paddle.logsumexp, 'raw')
+        for test_type in self.test_types:
+            out, grad = self.do_test(paddle.logsumexp, test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-20)
+            np.testing.assert_allclose(
+                grad.numpy(), grad_std.numpy(), rtol=1e-20
+            )
+
+
+class TestLogsumexpAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+        self.np_ref_out = ref_logsumexp(
+            self.np_input, axis=[0, 1], keepdim=True, reduce_all=True
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.logsumexp(x, [0, 1], True)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.logsumexp(x, dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.logsumexp([0, 1], True)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.logsumexp(dim=[0, 1], keepdim=True)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.logsumexp(x, [0, 1], True, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = self.np_ref_out
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.logsumexp(x, [0, 1], True)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.logsumexp(x=x, axis=[0, 1], keepdim=True)
+            # Key words args for torch
+            out3 = paddle.logsumexp(input=x, dim=[0, 1], keepdim=True)
+            # Combined args and kwargs
+            out4 = paddle.logsumexp(x, dim=[0, 1], keepdim=True)
+            # Tensor method args
+            out5 = x.logsumexp([0, 1], True)
+            # Tensor method kwargs
+            out6 = x.logsumexp(dim=[0, 1], keepdim=True)
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            exe = paddle.base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = self.np_ref_out
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
 
 
 if __name__ == '__main__':

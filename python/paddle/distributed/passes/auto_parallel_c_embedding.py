@@ -173,9 +173,9 @@ class AutoParallelCEmbeddingPass(PassBase):
                         results.append(dist_attr_new)
                         sub_name = op.name().split('.')[1]
                         if op.num_operands() > 0:
-                            assert (
-                                sub_name != "cast"
-                            ), "Need to add support for {sub_name}."
+                            assert sub_name != "cast", (
+                                "Need to add support for {sub_name}."
+                            )
                             operands.append(dist_attr_new)
                             next_op = op.operand(0).source().get_defining_op()
                             stack.append(next_op)

@@ -14,8 +14,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #ifndef PADDLE_WITH_XPU_KP
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
@@ -52,10 +50,10 @@ PD_REGISTER_KERNEL(
 }
 #else
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(add_raw,
                    KPS,

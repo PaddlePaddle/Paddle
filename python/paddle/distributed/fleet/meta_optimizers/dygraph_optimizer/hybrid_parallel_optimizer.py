@@ -534,9 +534,9 @@ class HybridParallelOptimizer:
         # syc param and master weight after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_param:
             for p in params:
-                assert (
-                    hasattr(p, 'color') and 'broadcast_group' in p.color
-                ), f"{p.name} has no color"
+                assert hasattr(p, 'color') and 'broadcast_group' in p.color, (
+                    f"{p.name} has no color"
+                )
                 broadcast_group = p.color["broadcast_group"]
                 src_rank = min(broadcast_group.ranks)
                 self.syc_param(
@@ -549,9 +549,9 @@ class HybridParallelOptimizer:
         # Moment sync after opt
         if pp_group.nranks > 1 and pp_configs and pp_configs.sync_moment:
             for p in params:
-                assert (
-                    hasattr(p, 'color') and 'broadcast_group' in p.color
-                ), f"{p.name} has no color"
+                assert hasattr(p, 'color') and 'broadcast_group' in p.color, (
+                    f"{p.name} has no color"
+                )
                 broadcast_group = p.color["broadcast_group"]
                 src_rank = min(broadcast_group.ranks)
                 self.syc_moment(

@@ -193,7 +193,6 @@ def calc_triplet_margin_distance_loss(
 
 
 class TestTripletMarginWithDistanceLossnew(unittest.TestCase):
-
     def test_TripletMarginDistanceLoss(self):
         shape = (5, 5)
         np.random.seed(1234)
@@ -286,7 +285,6 @@ class TestTripletMarginWithDistanceLossError(unittest.TestCase):
 
 
 class TestTripletMarginWithDistanceLossDF(unittest.TestCase):
-
     def test_TripletMarginDistanceLoss_distance_function(self):
         def distance_function_1(x1, x2):
             return 1.0 - paddle.nn.functional.cosine_similarity(x1, x2)
@@ -400,7 +398,6 @@ class TestTripletMarginWithDistanceLossDim(unittest.TestCase):
 
 
 class TestTripletMarginWithDistanceLossSwap(unittest.TestCase):
-
     def test_TripletMarginWithDistanceLoss_swap(self):
         reduction = 'mean'
         place = paddle.CPUPlace()

@@ -84,10 +84,10 @@ def resolute_tensor_parallel_ring_id(program):
             if ring_id is None:
                 ring_id = int(op.attr("ring_id"))
             else:
-                assert ring_id == int(
-                    op.attr("ring_id")
-                ), "Found two different ring_id for Tensor Parallel: ring_id={} and ring_id={}.".format(
-                    ring_id, int(op.attr("ring_id"))
+                assert ring_id == int(op.attr("ring_id")), (
+                    "Found two different ring_id for Tensor Parallel: ring_id={} and ring_id={}.".format(
+                        ring_id, int(op.attr("ring_id"))
+                    )
                 )
     assert ring_id is not None, "Could NOT found ring_id for Tensor Parallel."
 
@@ -113,9 +113,9 @@ def copy_parameters(block_, params):
             error_clip=param.error_clip,
             name=param.name,
         )
-        assert (
-            param.is_distributed is False
-        ), f"Try to sync Distributed Parameter: {param}"
+        assert param.is_distributed is False, (
+            f"Try to sync Distributed Parameter: {param}"
+        )
         new_p.is_distributed = False
 
     block_.vars[new_p.name] = new_p
@@ -269,9 +269,9 @@ def insert_synchronization(
                         op_role,
                     )
 
-    assert (
-        len(unsync_param_names) == 0
-    ), f"The following param is unsync by some error: {unsync_param_names}"
+    assert len(unsync_param_names) == 0, (
+        f"The following param is unsync by some error: {unsync_param_names}"
+    )
 
 
 def add_extra_synchronization(
@@ -314,9 +314,9 @@ def add_extra_synchronization(
 
     # adopt for pipeline opt
     if program._pipeline_opt is not None:
-        assert (
-            program._pipeline_opt['section_program'] is not None
-        ), "Pipeline is enable but section_program is None"
+        assert program._pipeline_opt['section_program'] is not None, (
+            "Pipeline is enable but section_program is None"
+        )
         program = program._pipeline_opt['section_program']
 
     # step1: collect the param that need to be sync

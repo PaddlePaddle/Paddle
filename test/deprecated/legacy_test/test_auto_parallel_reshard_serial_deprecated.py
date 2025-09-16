@@ -58,10 +58,14 @@ class MLPLayer(nn.Layer):
     def forward(self, input):
         if _global_parallel_strategy == "pp":
             auto.shard_tensor(
-                self.linear0.weight, PP_MESH_0, [None, None]  # noqa: F821
+                self.linear0.weight,
+                PP_MESH_0,  # noqa: F821
+                [None, None],
             )
             auto.shard_tensor(
-                self.linear1.weight, PP_MESH_1, [None, None]  # noqa: F821
+                self.linear1.weight,
+                PP_MESH_1,  # noqa: F821
+                [None, None],
             )
         else:
             auto.shard_tensor(

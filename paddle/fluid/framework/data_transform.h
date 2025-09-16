@@ -34,20 +34,20 @@ namespace framework {
 class OpKernelType;
 class Variable;
 
-void TransformData(const phi::KernelKey &expected_kernel_type,
-                   const phi::KernelKey &kernel_type_for_var,
-                   const phi::DenseTensor &input_tensor,
-                   phi::DenseTensor *out,
-                   const phi::Place &place);
+PADDLE_API void TransformData(const phi::KernelKey &expected_kernel_type,
+                              const phi::KernelKey &kernel_type_for_var,
+                              const phi::DenseTensor &input_tensor,
+                              phi::DenseTensor *out,
+                              const phi::Place &place);
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
-void SetTensorToVariable(const Variable &in_var,
-                         const phi::DenseTensor &tensor,
-                         Variable *out_var);
+PADDLE_API void SetTensorToVariable(const Variable &in_var,
+                                    const phi::DenseTensor &tensor,
+                                    Variable *out_var);
 
-phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
+PADDLE_API phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
     const phi::KernelKey &kernel_key,
     const AttributeMap &fluid_attrs,
     phi::AttributeMap *phi_attrs,

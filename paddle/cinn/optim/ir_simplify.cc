@@ -386,6 +386,296 @@ struct SimplifySelectMutator : public ir::IRMutator<> {
   }
 };
 
+/*
+Example 1:
+  Select(a <= b, b, a) → max(a, b)
+Example 2:
+  Select(a <= b, a, b) → min(a, b)
+Example 3:
+  Select(a <= MAX, max(a, MIN), MAX) → min(max(a, MIN), MAX)
+  Select(a <= MAX, max(MIN, a), MAX) → min(max(a, MIN), MAX)
+Example 4:
+  Select(MIN <= b, min(b, MAX), MIN) → max(min(b, MAX), MIN)
+                                     → min(max(b, MIN), MAX)
+  Select(MIN <= b, min(MAX, b), MIN) → max(min(b, MAX), MIN)
+                                     → min(max(b, MIN), MAX)
+*/
+struct SimplifySelect2MinMaxMutator : public ir::ExprMutator<> {
+  void operator()(Expr* x) { ir::ExprMutator<>::Visit(x, x); }
+
+  using ir::ExprMutator<>::Visit;
+
+  // Recursively optimize CompareOp operands
+  template <typename T>
+  void VisitCompare(T* op, Expr* expr) {
+    Expr a = op->a();
+    Expr b = op->b();
+    ir::ExprMutator<>::Visit(&a, &a);
+    ir::ExprMutator<>::Visit(&b, &b);
+
+    if (a.get() != op->a().get() || b.get() != op->b().get()) {
+      *expr = T::Make(a, b);
+    }
+  }
+
+  void Visit(const ir::GE* op, Expr* expr) override { VisitCompare(op, expr); }
+  void Visit(const ir::GT* op, Expr* expr) override { VisitCompare(op, expr); }
+  void Visit(const ir::LE* op, Expr* expr) override { VisitCompare(op, expr); }
+  void Visit(const ir::LT* op, Expr* expr) override { VisitCompare(op, expr); }
+
+  void Visit(const Select* op, Expr* expr) override {
+    auto* node = expr->As<ir::Select>();
+
+    // 1. Recursively optimize sub-expressions
+    Expr condition = node->condition;
+    Expr true_value = node->true_value;
+    Expr false_value = node->false_value;
+
+    ir::ExprMutator<>::Visit(&condition, &condition);
+    ir::ExprMutator<>::Visit(&true_value, &true_value);
+    ir::ExprMutator<>::Visit(&false_value, &false_value);
+
+    // 2. If sub-expressions are modified, rebuild the Select node
+    if (condition.get() != node->condition.get() ||
+        true_value.get() != node->true_value.get() ||
+        false_value.get() != node->false_value.get()) {
+      *expr = ir::Select::Make(condition, true_value, false_value);
+      node = expr->As<ir::Select>();
+    }
+
+    // 3. Function to optimize Select into Min/Max when possible
+    auto TryOptimizeSelect = [&](const Expr& a,
+                                 const Expr& b,
+                                 const Expr& x,
+                                 const Expr& y) -> Expr {
+      // Case 1: Select(a <= b, b, a) → max(a, b)
+      if (x == b && y == a) {
+        if (b.is_constant()) {
+          return ir::Max::Make(a, b);
+        } else {
+          return ir::Max::Make(b, a);
+        }
+      }
+      // Case 2: Select(a <= b, a, b) → min(a, b)
+      if (x == a && y == b) {
+        if (b.is_constant()) {
+          return ir::Min::Make(a, b);
+        } else {
+          return ir::Min::Make(b, a);
+        }
+      }
+      // Case 3: Select(a <= MAX, max(a, MIN), MAX) → min(max(a, MIN), MAX)
+      if (auto* max = x.As<ir::Max>()) {
+        if (max->a() == a) {
+          if (max->b().is_constant() && y.is_constant() && b.is_constant()) {
+            if (y.get_constant() == b.get_constant() &&
+                (max->b()).get_constant() <= y.get_constant()) {
+              return ir::Min::Make(ir::Max::Make(a, max->b()), b);
+            }
+          }
+        } else if (max->b() == a) {
+          // Select(a <= MAX, max(MIN, a), MAX) → min(max(a, MIN), MAX)
+          if (max->a().is_constant() && y.is_constant() && b.is_constant()) {
+            if (y.get_constant() == b.get_constant() &&
+                (max->a()).get_constant() <= y.get_constant()) {
+              return ir::Min::Make(ir::Max::Make(a, max->a()), b);
+            }
+          }
+        }
+      }
+      // Case 4: Select(MIN <= b, min(b, Max), MIN) → max(min(b, MAX), MIN)
+      //                                            → min(max(b, MIN), MAX)
+      if (auto* min = x.As<ir::Min>()) {
+        if (min->a() == b) {
+          if ((min->b()).is_constant() && y.is_constant() && a.is_constant()) {
+            if (y.get_constant() == a.get_constant() &&
+                y.get_constant() <= (min->b()).get_constant()) {
+              return ir::Min::Make(ir::Max::Make(b, a), min->b());
+            }
+          }
+        } else if (min->b() == b) {
+          // Select(MIN <= b, min(Max, b), MIN) → min(max(b, MIN), MAX)
+          if ((min->a()).is_constant() && y.is_constant() && a.is_constant()) {
+            if (y.get_constant() == a.get_constant() &&
+                y.get_constant() <= (min->a()).get_constant()) {
+              return ir::Min::Make(ir::Max::Make(b, a), min->a());
+            }
+          }
+        }
+      }
+      return Expr(nullptr);
+    };
+
+    // 4. Try to optimize different comparison conditions by converting them to
+    // <= logic
+    if (auto* ge = node->condition.As<ir::GE>()) {
+      // Select(a >= b, t, f) → Select(b <= a, t, f)
+      Expr optimized = TryOptimizeSelect(
+          ge->b(), ge->a(), node->true_value, node->false_value);
+      if (optimized.defined()) {
+        *expr = optimized;
+        return;
+      }
+    } else if (auto* gt = node->condition.As<ir::GT>()) {
+      // Select(a > b, t, f) → Select(a <= b, f, t)
+      Expr optimized = TryOptimizeSelect(
+          gt->a(), gt->b(), node->false_value, node->true_value);
+      if (optimized.defined()) {
+        *expr = optimized;
+        return;
+      }
+    } else if (auto* le = node->condition.As<ir::LE>()) {
+      // Select(a <= b, t, f) → Select(a <= b, t, f)
+      Expr optimized = TryOptimizeSelect(
+          le->a(), le->b(), node->true_value, node->false_value);
+      if (optimized.defined()) {
+        *expr = optimized;
+        return;
+      }
+    } else if (auto* lt = node->condition.As<ir::LT>()) {
+      // Select(a < b, t, f) → Select(b <= a, f, t)
+      Expr optimized = TryOptimizeSelect(
+          lt->b(), lt->a(), node->false_value, node->true_value);
+      if (optimized.defined()) {
+        *expr = optimized;
+        return;
+      }
+    }
+  }
+};
+
+// Optimizes pow(2.0f, ceil(log2(x))) pattern into more efficient bit
+// manipulation:
+// Original: pow(2.0f, ceil(log2(x)))
+// Optimized: ldexpf(1.0f, exponent) where exponent is calculated via:
+//   1. float_as_uint(x) - reinterpret float as uint32
+//   2. right_shift(bits, 23) - extract exponent field
+//   3. (exponent_raw & 0xFF) - 127 - adjust IEEE754 bias
+//   4. +1 if mantissa is non-zero (for ceil behavior)
+struct SimplifyPowerCeilLog2BitOpLdexpfMutator : public ir::ExprMutator<> {
+  void operator()(Expr* expr) { ir::ExprMutator<>::Visit(expr, expr); }
+
+  using ir::ExprMutator<>::Visit;
+  void Visit(const ir::Call* op, Expr* expr) override {
+    /// 1. First recursively process all sub-expressions
+    std::vector<Expr> new_args;
+    for (const auto& arg : op->read_args) {
+      Expr new_arg = arg;
+      Visit(&new_arg, &new_arg);
+      new_args.push_back(new_arg);
+    }
+
+    // 2. Match target pattern: pow(base, ceil(log2(x)))
+    if (op->name == "pow" && new_args.size() == 2) {
+      const Expr& base = new_args[0];
+      const Expr& exponent = new_args[1];
+
+      // Check if exponent is ceil(log2(x))
+      if (const ir::Call* ceil_call = exponent.As<ir::Call>()) {
+        if (ceil_call->name == "ceil" && ceil_call->read_args.size() == 1) {
+          if (const ir::Call* log2_call =
+                  ceil_call->read_args[0].As<ir::Call>()) {
+            if (log2_call->name == "log2" && log2_call->read_args.size() == 1 &&
+                log2_call->read_args[0].type().is_float(32)) {
+              /// Verify base is 2.0f for optimization
+              bool is_base_two = false;
+              if (base.is_constant()) {
+                if (base.get_constant() == 2.0f) {
+                  is_base_two = true;
+                }
+              }
+              if (is_base_two) {
+                // 3. Replace with bit operations + ldexpf
+                Expr x = log2_call->read_args[0];  // Extract log2's argument
+
+                // Create bit operations to compute ceil(log2(x))
+                // (1) Reinterpret float as 32-bit integer
+                Expr bits = ir::Call::Make(common::Int(32),
+                                           "__float_as_uint",
+                                           {x},
+                                           {},
+                                           ir::CallType::Extern,
+                                           ir::FunctionRef(),
+                                           0,
+                                           {});
+
+                std::vector<cinn::ir::Expr> shift_r_args = {bits, ir::Expr(23)};
+                Expr shift_r = ir::Call::Make(common::Int(32),
+                                              "right_shift",
+                                              shift_r_args,
+                                              {},
+                                              ir::CallType::Extern,
+                                              ir::FunctionRef(),
+                                              0,
+                                              {});
+                // (2) Extract exponent part: ((bits >> 23) & 0xFF) - 127
+                std::vector<cinn::ir::Expr> bitwise_and_exp_args = {
+                    shift_r, ir::Expr(0xFF)};
+                Expr bitwise_and_exp = ir::Call::Make(common::Int(32),
+                                                      "bitwise_and",
+                                                      bitwise_and_exp_args,
+                                                      {},
+                                                      ir::CallType::Extern,
+                                                      ir::FunctionRef(),
+                                                      0,
+                                                      {});
+                Expr exponent_raw =
+                    ir::Sub::Make(bitwise_and_exp, ir::Expr(127));
+                // 3. Check if mantissa is non-zero (i.e., if exponent+1 is
+                // needed)
+                std::vector<cinn::ir::Expr> bitwise_and_tail_args = {
+                    bits, ir::Expr(0x007FFFFF)};
+                Expr bitwise_and_tail = ir::Call::Make(common::Int(32),
+                                                       "bitwise_and",
+                                                       bitwise_and_tail_args,
+                                                       {},
+                                                       ir::CallType::Extern,
+                                                       ir::FunctionRef(),
+                                                       0,
+                                                       {});
+                Expr mantissa_non_zero =
+                    ir::NE::Make(bitwise_and_tail, ir::Expr(0));
+                // (4) Check if it's a normal number (exponent != -127)
+                Expr is_normal = ir::NE::Make(exponent_raw, ir::Expr(-127));
+                // (5) If needed, exponent += 1
+                Expr exponent_final = ir::Add::Make(
+                    exponent_raw,
+                    ir::Select::Make(
+                        ir::And::Make(is_normal, mantissa_non_zero),
+                        ir::Expr(1),
+                        ir::Expr(0)));
+                // (6) Create final expression: ldexpf(1.0f, exponent_final)
+                Expr new_expr = ir::Call::Make(op->type(),
+                                               "ldexpf",
+                                               {ir::Expr(1.0f), exponent_final},
+                                               {},
+                                               ir::CallType::Extern,
+                                               ir::FunctionRef(),
+                                               0,
+                                               {});
+                *expr = new_expr;
+                return;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // For non-target patterns, reconstruct as-is
+    if (new_args != op->read_args) {
+      *expr = ir::Call::Make(op->type(),
+                             op->name,
+                             new_args,
+                             op->write_args,
+                             op->call_type,
+                             op->func,
+                             op->value_index,
+                             op->attrs);
+    }
+  }
+};
+
 struct SimplifyUnitBlockMutator : public ir::ExprMutator<> {
   void operator()(Expr* x) { ir::ExprMutator<ir::Expr*>::Visit(x, x); }
 
@@ -498,6 +788,8 @@ void Simplify(Expr* expr) {
   SimplifyLogicalMutator()(expr);
   SimplifyIfThenElseMutator()(expr);
   SimplifySelectMutator()(expr);
+  SimplifySelect2MinMaxMutator()(expr);
+  SimplifyPowerCeilLog2BitOpLdexpfMutator()(expr);
   SimplifyNoPureMathMutator()(expr);
   VLOG(6) << "End Simplify " << *expr;
 }

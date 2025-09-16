@@ -21,9 +21,9 @@ _enable_auto_dp_mode = False
 
 def _fake_replicate_grad_to_partial(grad, partial_axis):
     new_placements = grad.placements
-    assert (
-        new_placements[partial_axis] == dist.Replicate()
-    ), "when reshard fake replicated grad to partial, the partial axis of grad should be Replicate"
+    assert new_placements[partial_axis] == dist.Replicate(), (
+        "when reshard fake replicated grad to partial, the partial axis of grad should be Replicate"
+    )
 
     new_placements[partial_axis] = dist.Partial(dist.ReduceType.kRedSum)
 

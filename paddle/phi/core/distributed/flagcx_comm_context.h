@@ -67,6 +67,10 @@ class FlagcxCommContext final : public CommContext {
               int root,
               flagcxStream_t stream);
 
+  void AllToAll(phi::DenseTensor* out_tensor,
+                const phi::DenseTensor& in_tensor,
+                flagcxStream_t stream);
+
   void GroupStart();
 
   void GroupEnd();

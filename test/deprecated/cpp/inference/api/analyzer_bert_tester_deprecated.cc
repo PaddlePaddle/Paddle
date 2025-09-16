@@ -69,7 +69,7 @@ TEST(Analyzer_bert, compare) {
   CompareNativeAndAnalysisWrapper();
 }
 #ifdef PADDLE_WITH_DNNL
-TEST(Analyzer_bert, compare_mkldnn) {
+TEST(Analyzer_bert, compare_onednn) {
   auto use_onednn = true;
   CompareNativeAndAnalysisWrapper(use_onednn);
 }
@@ -210,7 +210,7 @@ AnalysisConfig SetConfig(bool use_onednn, bool use_bfloat16) {
     config.EnableONEDNN();
   }
 
-  if (use_bfloat16) config.EnableMkldnnBfloat16();
+  if (use_bfloat16) config.EnableOnednnBfloat16();
 
   return config;
 }
