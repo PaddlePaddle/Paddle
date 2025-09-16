@@ -51,40 +51,6 @@ class PaddleDeleterManager {
 };
 
 template <typename T>
-::DLDataType GetDLDataTypeCode() {
-  ::DLDataType dtype;
-  if (std::is_same<T, phi::dtype::complex<float>>::value ||
-      std::is_same<T, phi::dtype::complex<double>>::value) {
-    dtype.code = kDLComplex;
-  } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value) {
-    dtype.code = kDLFloat8_e4m3fn;
-  } else if (std::is_same<T, phi::dtype::float8_e5m2>::value) {
-    dtype.code = kDLFloat8_e5m2;
-  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
-    dtype.code = kDLBfloat;
-  } else if (std::is_same<T, phi::dtype::float16>::value ||
-             std::is_floating_point<T>::value) {
-    dtype.code = kDLFloat;
-  } else if (std::is_same<T, bool>::value) {
-    // Since std::is_unsigned<bool>::value is True,
-    // it is necessary to evaluate bool before std::is_unsigned.
-    dtype.code = kDLBool;
-  } else if (std::is_unsigned<T>::value) {
-    dtype.code = kDLUInt;
-  } else if (std::is_integral<T>::value) {
-    dtype.code = kDLInt;
-  } else {
-    PADDLE_THROW(common::errors::Unavailable(
-        "Unsupported data type (%s), only supports float16, float, unsigned "
-        "int and int.",
-        common::demangle(typeid(T).name())));
-  }
-  dtype.bits = 8 * sizeof(T);
-  dtype.lanes = 1;
-  return dtype;
-}
-
-template <typename T>
 phi::DenseTensor from_blob(void *data,
                            T *src,
                            const phi::DDim &shape,
@@ -120,6 +86,40 @@ phi::DenseTensor from_blob(void *data,
   auto alloc =
       std::make_shared<phi::Allocation>(data, size * SizeOf(dtype), f, place);
   return phi::DenseTensor(alloc, meta);
+}
+
+template <typename T>
+::DLDataType GetDLDataTypeCode() {
+  ::DLDataType dtype;
+  if (std::is_same<T, phi::dtype::complex<float>>::value ||
+      std::is_same<T, phi::dtype::complex<double>>::value) {
+    dtype.code = kDLComplex;
+  } else if (std::is_same<T, phi::dtype::float8_e4m3fn>::value) {
+    dtype.code = kDLFloat8_e4m3fn;
+  } else if (std::is_same<T, phi::dtype::float8_e5m2>::value) {
+    dtype.code = kDLFloat8_e5m2;
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    dtype.code = kDLBfloat;
+  } else if (std::is_same<T, phi::dtype::float16>::value ||
+             std::is_floating_point<T>::value) {
+    dtype.code = kDLFloat;
+  } else if (std::is_same<T, bool>::value) {
+    // Since std::is_unsigned<bool>::value is True,
+    // it is necessary to evaluate bool before std::is_unsigned.
+    dtype.code = kDLBool;
+  } else if (std::is_unsigned<T>::value) {
+    dtype.code = kDLUInt;
+  } else if (std::is_integral<T>::value) {
+    dtype.code = kDLInt;
+  } else {
+    PADDLE_THROW(common::errors::Unavailable(
+        "Unsupported data type (%s), only supports float16, float, unsigned "
+        "int and int.",
+        common::demangle(typeid(T).name())));
+  }
+  dtype.bits = 8 * sizeof(T);
+  dtype.lanes = 1;
+  return dtype;
 }
 
 static std::unordered_map<int, ::DLDataType> CreateDLDataTypeMap() {
