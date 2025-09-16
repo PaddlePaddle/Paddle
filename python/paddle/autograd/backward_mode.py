@@ -35,7 +35,7 @@ def backward(
     tensors: Tensor | Sequence[Tensor],
     grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
-    debug_info_path: str | None = None,
+    dump_backward_graph_path: str | None = None,
 ) -> None:
     """
     Compute the backward gradients of given tensors.
@@ -52,7 +52,7 @@ def backward(
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
             :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
             Defaults to False.
-        debug_info_path(str, optional): Specifies the directory path for storing the debug file.
+        dump_backward_graph_path(str, optional): Specifies the directory path for storing the debug file.
             If this parameter is specified, the backward-related graph (in dot format)
             and the debugging call stack information will be generated in this directory.
     Returns:
@@ -140,7 +140,7 @@ def backward(
         )
 
     assert isinstance(retain_graph, bool), "retain_graph must be True or False"
-    check_and_create_dir(debug_info_path)
+    check_and_create_dir(dump_backward_graph_path)
     core.eager.run_backward(
-        tensors, grad_tensors, retain_graph, debug_info_path
+        tensors, grad_tensors, retain_graph, dump_backward_graph_path
     )

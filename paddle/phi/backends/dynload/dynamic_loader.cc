@@ -253,7 +253,7 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
   void* dso_handle = nullptr;
   if (!spec_path.empty() || !dso_name.empty()) {
     // search xxx.so from custom path
-    VLOG(3) << "Try to find library: " << dso_name
+    VLOG(6) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
 #if defined(_WIN32) || defined(_WIN64)

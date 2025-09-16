@@ -194,9 +194,9 @@ std::vector<paddle::Tensor> RunBackward(
     const std::vector<paddle::Tensor>& inputs = {},
     bool allow_unused = false,
     const std::vector<paddle::Tensor>& no_grad_vars = {},
-    std::string debug_info_path = "") {
+    std::string dump_backward_graph_path = "") {
   VLOG(3) << "=================RunBackward: Start Backward =================";
-  bool need_debug_backward_graph = !debug_info_path.empty();
+  bool need_debug_backward_graph = !dump_backward_graph_path.empty();
   bool need_dump_forward_stack =
       !FLAGS_dump_grad_node_forward_stack_path.empty();
   egr::EagerBackwardStateGuard guard;
@@ -594,9 +594,9 @@ std::vector<paddle::Tensor> RunBackward(
 
       LOG(WARNING) << "While running Node (" << node->name()
                    << ") raises an EnforceNotMet exception";
-      // Save Debug info to the debug_info_path
+      // Save Debug info to the dump_backward_graph_path
       if (need_debug_backward_graph) {
-        SaveDebugInfo(debug_info_path,
+        SaveDebugInfo(dump_backward_graph_path,
                       forward_debug_dot_graph.Build(),
                       debug_call_stack,
                       dot.Build());
@@ -611,9 +611,9 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
-      // Save Debug info to the debug_info_path
+      // Save Debug info to the dump_backward_graph_path
       if (need_debug_backward_graph) {
-        SaveDebugInfo(debug_info_path,
+        SaveDebugInfo(dump_backward_graph_path,
                       forward_debug_dot_graph.Build(),
                       debug_call_stack,
                       dot.Build());
@@ -627,9 +627,9 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
-      // Save Debug info to the debug_info_path
+      // Save Debug info to the dump_backward_graph_path
       if (need_debug_backward_graph) {
-        SaveDebugInfo(debug_info_path,
+        SaveDebugInfo(dump_backward_graph_path,
                       forward_debug_dot_graph.Build(),
                       debug_call_stack,
                       dot.Build());
@@ -638,9 +638,9 @@ std::vector<paddle::Tensor> RunBackward(
       std::rethrow_exception(std::current_exception());
     }
   }
-  // Save Debug info to the debug_info_path
+  // Save Debug info to the dump_backward_graph_path
   if (need_debug_backward_graph) {
-    SaveDebugInfo(debug_info_path,
+    SaveDebugInfo(dump_backward_graph_path,
                   forward_debug_dot_graph.Build(),
                   debug_call_stack,
                   dot.Build());
@@ -665,7 +665,7 @@ std::vector<paddle::Tensor> RunBackward(
 void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
               bool retain_graph,
-              std::string debug_info_path) {
+              std::string dump_backward_graph_path) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
       "backward", phi::TracerEventType::UserDefined, 1);
@@ -676,7 +676,7 @@ void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               {},
               false,
               {},
-              debug_info_path);
+              dump_backward_graph_path);
   egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
@@ -690,7 +690,7 @@ std::vector<paddle::Tensor> Grad(
     bool only_inputs,
     bool allow_unused,
     const std::vector<paddle::Tensor>& no_grad_vars,
-    const std::string debug_info_path) {
+    const std::string dump_backward_graph_path) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
@@ -703,6 +703,6 @@ std::vector<paddle::Tensor> Grad(
                      inputs,
                      allow_unused,
                      no_grad_vars,
-                     debug_info_path);
+                     dump_backward_graph_path);
 }
 }  // namespace egr

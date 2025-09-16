@@ -284,7 +284,7 @@ def monkey_patch_tensor():
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
-        debug_info_path: str | None = None,
+        dump_backward_graph_path: str | None = None,
     ) -> None:
         """
         Run backward of current Graph which starts from current Tensor.
@@ -302,7 +302,7 @@ def monkey_patch_tensor():
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
-            debug_info_path(str, optional): Specifies the directory path for storing the debug file.
+            dump_backward_graph_path(str, optional): Specifies the directory path for storing the debug file.
                 If this parameter is specified, the backward-related graph (in dot format)
                 and the debugging call stack information will be generated in this directory.
 
@@ -361,9 +361,9 @@ def monkey_patch_tensor():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            check_and_create_dir(debug_info_path)
+            check_and_create_dir(dump_backward_graph_path)
             core.eager.run_backward(
-                [self], grad_tensor, retain_graph, debug_info_path
+                [self], grad_tensor, retain_graph, dump_backward_graph_path
             )
 
             if in_profiler_mode():

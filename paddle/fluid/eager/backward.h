@@ -26,7 +26,7 @@ namespace egr {
 TEST_API void Backward(const std::vector<paddle::Tensor>& tensors,
                        const std::vector<paddle::Tensor>& grad_tensors,
                        bool retain_graph = false,
-                       std::string debug_info_path = "");
+                       std::string dump_backward_graph_path = "");
 
 TEST_API std::vector<paddle::Tensor> Grad(
     const std::vector<paddle::Tensor>& tensors,
@@ -37,7 +37,7 @@ TEST_API std::vector<paddle::Tensor> Grad(
     bool only_inputs = false,
     bool allow_unused = false,
     const std::vector<paddle::Tensor>& no_grad_vars = {},
-    const std::string debug_info_path = "");
+    const std::string dump_backward_graph_path = "");
 
 // Reserved for gradient()
 

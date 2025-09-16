@@ -23,7 +23,7 @@ from unittest.mock import patch
 import paddle
 
 
-# Test the debug_info_path params in backward
+# Test the dump_backward_graph_path params in backward
 # Just check whether the debug file is generated
 class TestDumpDebugInfo(unittest.TestCase):
     def test_dump_debug_info(self):
@@ -46,10 +46,10 @@ class TestDumpDebugInfo(unittest.TestCase):
         h = h * z
         w = h + y
         # test Tensor.backward
-        debug_info_path = "_Tensor_backward/"
-        w.backward(debug_info_path=debug_info_path)
-        self._check_files_in_directory(debug_info_path)
-        shutil.rmtree(debug_info_path)
+        dump_backward_graph_path = "_Tensor_backward/"
+        w.backward(dump_backward_graph_path=dump_backward_graph_path)
+        self._check_files_in_directory(dump_backward_graph_path)
+        shutil.rmtree(dump_backward_graph_path)
 
     def _test_paddle_grad(self):
         x = paddle.randn([5, 5], dtype='float32')
@@ -60,10 +60,12 @@ class TestDumpDebugInfo(unittest.TestCase):
         h = x * z
         w = h + y
         # test paddle.grad
-        debug_info_path = "_paddle_grad/"
-        grads = paddle.grad([w], [x, y], debug_info_path=debug_info_path)
-        self._check_files_in_directory(debug_info_path)
-        shutil.rmtree(debug_info_path)
+        dump_backward_graph_path = "_paddle_grad/"
+        grads = paddle.grad(
+            [w], [x, y], dump_backward_graph_path=dump_backward_graph_path
+        )
+        self._check_files_in_directory(dump_backward_graph_path)
+        shutil.rmtree(dump_backward_graph_path)
 
     def _test_autograd_backward(self):
         x = paddle.randn([5, 5], dtype='float32')
@@ -74,12 +76,14 @@ class TestDumpDebugInfo(unittest.TestCase):
         h = x * z
         w = h + y
         # test paddle.autograd.backward
-        debug_info_path = "_paddle_autograd_backward/"
+        dump_backward_graph_path = "_paddle_autograd_backward/"
         grads = paddle.autograd.backward(
-            [x, y], [None, None], debug_info_path=debug_info_path
+            [x, y],
+            [None, None],
+            dump_backward_graph_path=dump_backward_graph_path,
         )
-        self._check_files_in_directory(debug_info_path)
-        shutil.rmtree(debug_info_path)
+        self._check_files_in_directory(dump_backward_graph_path)
+        shutil.rmtree(dump_backward_graph_path)
 
     def _check_files_in_directory(self, directory):
         # Check whether the expected file exists in the directory
@@ -156,7 +160,7 @@ grads = paddle.autograd.backward(
             h = x * z
             w = h + y
             grads = paddle.autograd.backward(
-                [x, y], [None, None], debug_info_path="/path/to/check"
+                [x, y], [None, None], dump_backward_graph_path="/path/to/check"
             )
 
         self.assertTrue(
@@ -177,7 +181,7 @@ grads = paddle.autograd.backward(
             h = x * z
             w = h + y
             grads = paddle.autograd.backward(
-                [x, y], [None, None], debug_info_path='/path/to/create'
+                [x, y], [None, None], dump_backward_graph_path='/path/to/create'
             )
 
         self.assertTrue(

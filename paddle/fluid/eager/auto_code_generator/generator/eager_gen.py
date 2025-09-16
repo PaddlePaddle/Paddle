@@ -699,7 +699,7 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
 """
 
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
-    VLOG(5) << "Check and Prepare For AMP";
+    VLOG(5) << "Check and Prepare For AMP, AMP Level : "<<static_cast<int>(egr::Controller::Instance().GetAMPLevel());
     {}
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
     {}
@@ -714,11 +714,10 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """
     if (phi::NeedTypePromotion({op_func_name}, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape())) {{
-    VLOG(5) << "got different data type, run type promotion automatically.";
-    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    LOG_FIRST_N(WARNING, 1) << "Got different data type, run type promotion automatically, this may cause data type been changed.";
     {op_name}
     auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape());
-
+    VLOG(5) << "Got different data type, run type promotion automatically. The type after type promotion is " << promotion_type;
     {x_cast}
     auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);
 
@@ -2140,6 +2139,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_tensors_vector_optional_list
         )
         amp_get_dst_dtype_str = "auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str += (
+            'VLOG(5) << "AMP Get Dest Dtype : "<<amp_dst_dtype;\n'
+        )
         amp_autocast_list_str = (
             "    ".join(amp_autocast_list)
             + "    "
