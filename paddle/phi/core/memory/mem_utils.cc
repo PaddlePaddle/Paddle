@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/memory/mem_utils.h"
 
-#ifndef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
