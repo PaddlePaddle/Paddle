@@ -365,7 +365,8 @@ std::vector<paddle::Tensor> RunBackward(
   }
 
   VLOG(3) << "RunBackward: Start_up_ops's size is " << queue.size();
-
+  VLOG(5) << "RunBackward: Totoal GradNodes num is "
+          << node_in_degree_map.size();
   /* --- Topological Visit --- */
   // 1. Pop queue
   // 2. Run node
@@ -538,7 +539,11 @@ std::vector<paddle::Tensor> RunBackward(
 
           VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
                   << edge_rank.first << ", rank: " << edge_rank.second;
-
+          VLOG(6) << "RunBackward: Add grad_output_tensor to GradTensorHolder, "
+                     "grad_output_tensor info "
+                  << grad_output_tensor.place() << ","
+                  << grad_output_tensor.dtype() << ", ("
+                  << grad_output_tensor.dims() << ")";
           node_input_buffers_dict[next_node]->add(edge_rank.first,
                                                   edge_rank.second,
                                                   grad_output_tensor,

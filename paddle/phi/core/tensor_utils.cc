@@ -101,7 +101,7 @@ void Copy(const Context& dev_ctx,
             << dst_place;
     return;
   }
-  VLOG(5) << "TensorCopy: src:" << src_ptr << ", dst:" << dst_ptr;
+  VLOG(7) << "TensorCopy: src:" << src_ptr << ", dst:" << dst_ptr;
   PADDLE_ENFORCE_EQ(dst->layout(),
                     src.layout(),
                     common::errors::PreconditionNotMet(
