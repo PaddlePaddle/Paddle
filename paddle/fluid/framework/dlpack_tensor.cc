@@ -293,7 +293,6 @@ struct PaddleDLMTensor {
 template <typename T>
 static void deleter(T *self) {
   if (self && self->manager_ctx) {
-    std::cout << "DLPack deleter is called." << std::endl;
     delete[] self->dl_tensor
         .shape;  // delete shape allocated in ToDLPack manually
     delete[] self->dl_tensor
