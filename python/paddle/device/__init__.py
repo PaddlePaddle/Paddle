@@ -81,8 +81,8 @@ if core.is_compiled_with_cuda():
     )
 elif core.is_compiled_with_xpu():
     from .xpu import (
-        Event as EventBase,
-        Stream as StreamBase,
+        create_event as _create_event_base,
+        create_stream as _create_stream_base,
         current_stream as _current_stream_base,
         device_count,
         empty_cache,
@@ -101,8 +101,8 @@ else:
         dev_types = []
     if dev_types and core.is_compiled_with_custom_device(dev_types[0]):
         from .custom import (
-            Event as EventBase,
-            Stream as StreamBase,
+            create_event as _create_event_base,
+            create_stream as _create_stream_base,
             current_stream as _current_stream_base,
             device_count,
             empty_cache,
@@ -116,100 +116,7 @@ else:
             synchronize,
         )
     else:
-        # CPU-only environment, provide placeholder StreamBase and EventBase
-        class StreamBase:
-            """Placeholder StreamBase for CPU-only environments."""
-
-            def __init__(self, device=None, priority=2, stream_base=None):
-                if device is None:
-                    self.device = paddle.framework._current_expected_place_()
-                elif isinstance(device, str):
-                    self.device = paddle.device._convert_to_place(device)
-                else:
-                    self.device = device
-                self.stream_base = None
-
-            def wait_event(self, event):
-                """Placeholder implementation - does nothing in CPU environment."""
-                pass
-
-            def wait_stream(self, stream):
-                """Placeholder implementation - does nothing in CPU environment."""
-                pass
-
-            def record_event(self, event=None):
-                """Placeholder implementation - returns a dummy event."""
-                if event is None:
-                    return EventBase(self.device)
-                event.record(self)
-                return event
-
-            def query(self):
-                """Placeholder implementation - always returns True in CPU environment."""
-                return True
-
-            def synchronize(self):
-                """Placeholder implementation - does nothing in CPU environment."""
-                pass
-
-            @property
-            def _as_parameter_(self):
-                """Placeholder implementation - returns 0 in CPU environment."""
-                return 0
-
-            def __eq__(self, other):
-                """Placeholder implementation - compares device."""
-                if isinstance(other, StreamBase):
-                    return self.device == other.device
-                return False
-
-            def __hash__(self):
-                """Placeholder implementation - hashes device."""
-                return hash(self.device)
-
-            def __repr__(self):
-                """Placeholder implementation - returns CPU stream representation."""
-                return f'<paddle.device.Stream device={self.device} stream=0x0>'
-
-        class EventBase:
-            """Placeholder EventBase for CPU-only environments."""
-
-            def __init__(
-                self,
-                device=None,
-                enable_timing=False,
-                blocking=False,
-                interprocess=False,
-            ):
-                if device is None:
-                    self.device = paddle.framework._current_expected_place_()
-                elif isinstance(device, str):
-                    self.device = paddle.device._convert_to_place(device)
-                else:
-                    self.device = device
-                self.enable_timing = enable_timing
-                self.event_base = None
-
-            def record(self, stream=None):
-                """Placeholder implementation - does nothing in CPU environment."""
-                pass
-
-            def query(self):
-                """Placeholder implementation - always returns True in CPU environment."""
-                return True
-
-            def elapsed_time(self, end_event):
-                """Placeholder implementation - returns 0 in CPU environment."""
-                return 0
-
-            def synchronize(self):
-                """Placeholder implementation - does nothing in CPU environment."""
-                pass
-
-            def __repr__(self):
-                """Placeholder implementation - returns CPU event representation."""
-                return f'<paddle.device.Event device={self.device}>'
-
+        raise ImportError('No CUDA, XPU or CustomDevice found')
 
 __all__ = [
     'get_cudnn_version',
