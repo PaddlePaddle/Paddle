@@ -34,7 +34,6 @@ union Bits {
  */
 template <uint32_t we, uint32_t wm>
 inline HOSTDEVICE float fp8_fnuz_to_fp32_value(uint8_t x) {
-  static_assert((we == 4 && wm == 3) || (we == 5 && wm == 2));
   constexpr uint32_t weo = 8;
   constexpr uint32_t wmo = 23;
 

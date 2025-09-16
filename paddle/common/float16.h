@@ -48,6 +48,7 @@
 
 #ifdef __HIPCC__
 #define PADDLE_CUDA_FP16
+constexpr int warpSize = 64;
 #include <hip/hip_fp16.h>
 #endif
 
@@ -1089,7 +1090,7 @@ using float16 = ::phi::dtype::float16;
 }  // namespace common
 }  // namespace cinn
 
-#if defined(PADDLE_CUDA_FP16)
+#if defined(PADDLE_CUDA_FP16) && defined(__CUDACC__)
 DEVICE inline phi::dtype::float16 __shfl_sync(unsigned mask,
                                               phi::dtype::float16 var,
                                               int srcLane,
@@ -1131,7 +1132,7 @@ HOSTDEVICE inline phi::dtype::float16 min(const phi::dtype::float16& a,
 #endif  // PADDLE_CUDA_FP16
 
 // Note: HIP does not support half-float shuffles.
-#if defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP) && defined(__HIPCC__)
 __device__ inline phi::dtype::float16 __shfl(phi::dtype::float16 var,
                                              int srcLane,
                                              int width = warpSize) {
