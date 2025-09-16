@@ -1645,6 +1645,43 @@ void Buffer::clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
 #endif
 }
 
+void Buffer::clean_low_latency_two_stage_buffer(
+    int num_max_dispatch_tokens_per_rank,
+    int hidden,
+    int num_experts,
+    int num_topk) {
+#ifdef PADDLE_WITH_NVSHMEM
+  EP_HOST_ASSERT(low_latency_mode);
+
+  auto layout = LowLatencyTwoStageLayout(rdma_buffer_ptr,
+                                         num_max_dispatch_tokens_per_rank,
+                                         hidden,
+                                         num_ranks,
+                                         num_experts,
+                                         num_topk);
+  auto clean_meta_0 = layout.buffers[0].clean_meta();
+  auto clean_meta_1 = layout.buffers[1].clean_meta();
+
+  auto check_boundary = [=](void* ptr, size_t num_bytes) {
+    auto offset = reinterpret_cast<int64_t>(ptr) -
+                  reinterpret_cast<int64_t>(rdma_buffer_ptr);
+    EP_HOST_ASSERT(0 <= offset &&
+                   offset + static_cast<int64_t>(num_bytes) <= num_rdma_bytes);
+  };
+  check_boundary(clean_meta_0.first, clean_meta_0.second * sizeof(int));
+  check_boundary(clean_meta_1.first, clean_meta_1.second * sizeof(int));
+
+  internode_ll::clean_low_latency_buffer(clean_meta_0.first,
+                                         clean_meta_0.second,
+                                         clean_meta_1.first,
+                                         clean_meta_1.second,
+                                         calc_ctx->stream());
+#else
+  LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
+                "option WITH_NVSHMEM=ON.";
+#endif
+}
+
 void Buffer::barrier_all() {
 #ifdef PADDLE_WITH_NVSHMEM
   internode_ll::barrier_all(calc_ctx->stream());

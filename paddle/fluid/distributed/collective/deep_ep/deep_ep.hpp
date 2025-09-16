@@ -247,6 +247,10 @@ struct Buffer {
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
                                 int hidden,
                                 int num_experts);
+  void clean_low_latency_two_stage_buffer(int num_max_dispatch_tokens_per_rank,
+                                          int hidden,
+                                          int num_experts,
+                                          int num_topk);
   void barrier_all();
 
 #ifdef PADDLE_WITH_NVSHMEM
