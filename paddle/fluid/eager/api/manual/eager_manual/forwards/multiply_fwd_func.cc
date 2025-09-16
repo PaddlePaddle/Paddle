@@ -42,7 +42,8 @@ paddle::Tensor multiply_ad_func(
     const paddle::Tensor& y,
     paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << SEPARATOR << "Running_AD_API: "
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API: "
           << "multiply" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func begin");
@@ -145,7 +146,7 @@ paddle::Tensor multiply_ad_func(
   // Check NaN and Inf if needed
   VLOG(3) << "\n"
           << SEPARATOR << "Finish_C++_API: "
-          << "abs" << SEPARATOR;
+          << "multiply" << SEPARATOR;
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("multiply", api_result);
   }
@@ -214,7 +215,7 @@ paddle::Tensor multiply_ad_func(
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-  VLOG(4) << "Finish AD API: multiply";
+  VLOG(4) << "\n" << SEPARATOR << "Finish AD API: multiply" << SEPARATOR;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
