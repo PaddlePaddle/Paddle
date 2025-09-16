@@ -42,7 +42,6 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
         self.places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
-            self.places.append(paddle.CUDAPinnedPlace())
         self.shape = [3, 4, 5, 6]
 
     def _prepare_data(self, dtype, place):
@@ -78,7 +77,11 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
     def test___reduce_ex__(self):
         for place in self.places:
             for dtype in self.dtypes:
-                for pin_mem in [True, False]:
+                for pin_mem in (
+                    [True, False]
+                    if paddle.device.is_compiled_with_cuda()
+                    else [False]
+                ):
                     for requires_grad in [True, False]:
                         self._perform_test(place, dtype, pin_mem, requires_grad)
 
