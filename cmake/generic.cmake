@@ -276,18 +276,10 @@ function(merge_static_libs TARGET_NAME)
     set(mri_file
         ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.mri
         CACHE INTERNAL "phi_static.mri file")
-    get_property(
-      ABS_MERGE_LIB_PATH
-      TARGET ${TARGET_NAME}
-      PROPERTY LOCATION)
-    file(WRITE ${mri_file} "create ${ABS_MERGE_LIB_PATH}\n")
+    file(WRITE ${mri_file} "create $<TARGET_FILE:${TARGET_NAME}>\n")
 
     foreach(lib ${libs})
-      get_property(
-        ABS_LIB_PATH
-        TARGET ${lib}
-        PROPERTY LOCATION)
-      file(APPEND ${mri_file} "addlib ${ABS_LIB_PATH}\n")
+      file(APPEND ${mri_file} "addlib $<TARGET_FILE:${lib}>\n")
     endforeach()
     file(APPEND ${mri_file} "save\nend\n")
 
