@@ -276,19 +276,25 @@ function(merge_static_libs TARGET_NAME)
     set(mri_file
         ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.mri
         CACHE INTERNAL "phi_static.mri file")
-    file(WRITE ${mri_file} "create $<TARGET_FILE:${TARGET_NAME}>\n")
 
+    set(mri_content "create $<TARGET_FILE:${TARGET_NAME}>\n")
     foreach(lib ${libs})
-      file(APPEND ${mri_file} "addlib $<TARGET_FILE:${lib}>\n")
+      string(APPEND mri_content "addlib $<TARGET_FILE:${lib}>\n")
     endforeach()
-    file(APPEND ${mri_file} "save\nend\n")
+    string(APPEND mri_content "save\nend\n")
+    file(
+      GENERATE
+      OUTPUT ${mri_file}
+      CONTENT "${mri_content}")
 
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
       COMMENT "Merge and generate static lib: lib${TARGET_NAME}.a"
       COMMAND ${CMAKE_AR} -M < ${mri_file}
-      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>")
+      COMMAND ${CMAKE_RANLIB} "$<TARGET_FILE:${TARGET_NAME}>" DEPENDS
+              ${mri_file}
+      VERBATIM)
   endif()
 
   # Windows do not support gcc/nvcc combined compiling. Use msvc 'lib.exe' to merge libs.
