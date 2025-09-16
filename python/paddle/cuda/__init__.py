@@ -282,7 +282,7 @@ def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
             >>> data2 = paddle.ones(shape=[20])
             >>> data3 = data1 + data2
 
-            >>> with paddle.cuda.stream_guard(s):
+            >>> with paddle.cuda.stream(s):
             ...     s.wait_stream(paddle.cuda.current_stream())
             ...     data4 = data1 + data3
             >>> print(data4)
@@ -438,21 +438,12 @@ def get_stream_from_external(
         .. code-block:: python
 
             >>> import paddle
-            >>> import ctypes
-
-            >>> paddle.set_device("cuda:0")
 
             >>> # Assume an external library provides a stream pointer
-            >>> external_stream_ptr = ctypes.c_void_p(12345678).value
+            >>> external_stream_ptr = 12345678
 
             >>> # Wrap it into a Paddle Stream
             >>> stream = paddle.cuda.get_stream_from_external(external_stream_ptr, device=0)
-
-            >>> # Execute operations in the context of this stream
-            >>> with paddle.cuda.stream_guard(stream):
-            ...     x = paddle.ones([10], dtype='float32')
-            ...     y = x * 2
-            >>> print(y)
     """
 
     device = _device_to_paddle(device)
