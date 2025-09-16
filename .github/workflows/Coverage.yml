@@ -135,10 +135,13 @@ jobs:
       - name: Download paddle.tar.gz and update test branch
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
+          set -x
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
           source ${{ github.workspace }}/../../../proxy
+          ls
+          rm -rf Paddle
           git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git
           cd Paddle
           git fetch origin pull/75296/head:test
