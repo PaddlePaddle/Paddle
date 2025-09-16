@@ -26,7 +26,6 @@
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
-#endif
 
 namespace paddle::memory::allocation {
 
@@ -223,3 +222,4 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 }
 
 }  // namespace paddle::memory::allocation
+#endif
