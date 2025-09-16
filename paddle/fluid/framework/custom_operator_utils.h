@@ -480,6 +480,11 @@ static std::vector<std::vector<int64_t>> RunInferShape(
           }
           complete_result.push_back(input_shapes[index]);
         } else {
+          PADDLE_ENFORCE_LT(
+              infershape_result_index,
+              infershape_result.size(),
+              common::errors::Unavailable("The index must be less than the "
+                                          "size of infershape_result."));
           complete_result.push_back(infershape_result[infershape_result_index]);
           infershape_result_index++;
         }

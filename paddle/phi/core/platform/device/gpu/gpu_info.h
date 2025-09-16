@@ -149,7 +149,6 @@ void RecordedGpuFreeAsync(void *p, size_t size, int dev_id, gpuStream_t stream);
 PADDLE_API gpuError_t GpuGetLastError();
 
 #ifdef PADDLE_WITH_CUDA
-#if CUDA_VERSION >= 10020
 //! cuMemCreate with recorded info
 CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
                               size_t size,
@@ -161,7 +160,6 @@ CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
 CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
                                size_t size,
                                int dev_id);
-#endif
 #endif
 
 //! Get available and total gpu memory with considering limitation

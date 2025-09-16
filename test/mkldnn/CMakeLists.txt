@@ -7,8 +7,8 @@ string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 list(REMOVE_ITEM TEST_OPS "test_onnx_format_quantization_mobilenetv1")
 list(REMOVE_ITEM TEST_OPS "test_flags_onednn_ops_on_off")
 
-list(REMOVE_ITEM TEST_OPS "test_conv2d_mkldnn_op")
-list(REMOVE_ITEM TEST_OPS "test_conv3d_mkldnn_op")
+list(REMOVE_ITEM TEST_OPS "test_conv2d_onednn_op")
+list(REMOVE_ITEM TEST_OPS "test_conv3d_onednn_op")
 list(REMOVE_ITEM TEST_OPS "test_batch_norm_onednn_op")
 
 if(WITH_ONEDNN AND NOT WIN32)
@@ -22,10 +22,10 @@ endforeach()
 # NODE(Ruibiao): Remove it after static build is enabled by default.
 if(WITH_ONEDNN AND NOT WIN32)
   py_test_modules(
-    test_dequantize_mkldnn_op_static_build MODULES test_dequantize_mkldnn_op
+    test_dequantize_onednn_op_static_build MODULES test_dequantize_onednn_op
     ENVS FLAGS_new_executor_static_build=true)
   py_test_modules(
-    test_quantize_mkldnn_op_static_build MODULES test_quantize_mkldnn_op ENVS
+    test_quantize_onednn_op_static_build MODULES test_quantize_onednn_op ENVS
     FLAGS_new_executor_static_build=true)
 endif()
 

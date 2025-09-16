@@ -19,7 +19,6 @@
 #include "fft/cuComplex.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace xfft_internal::xpu {

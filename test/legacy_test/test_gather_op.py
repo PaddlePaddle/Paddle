@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard
 
 import paddle
@@ -96,7 +102,7 @@ class TestGatherOpFP16(TestGatherOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or core.cudnn_version() < 8100
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
@@ -121,12 +127,12 @@ class TestGatherOpBFP16(TestGatherOp):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=paddle.CUDAPlace(0), check_pir=True, check_symbol_infer=False
+            place=get_device_place(), check_pir=True, check_symbol_infer=False
         )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
             check_pir=True,
@@ -442,15 +448,15 @@ class TestGatherNegativeAxis(OpTest):
 
     def test_check_output(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_output_with_place(place)
 
     def test_check_grad(self):
         places = [paddle.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             self.check_grad_with_place(
                 place, ['X'], 'Out', numeric_grad_delta=0.5
@@ -778,7 +784,7 @@ class API_TestDygraphGather(unittest.TestCase):
         paddle.enable_static()
 
     def test_large_data(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         x = np.random.rand(226862, 256).astype("float32")
@@ -804,7 +810,7 @@ class API_TestDygraphGather(unittest.TestCase):
                 feed = {x_t.name: x, index_t.name: index}
                 fetch = [out_t]
 
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_exe = paddle.static.Executor(get_device_place())
                 gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return gpu_value
 

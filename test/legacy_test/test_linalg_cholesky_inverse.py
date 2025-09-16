@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_places, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -181,13 +181,13 @@ class TestErrorDimension(unittest.TestCase):
 
 class TestErrorDtype(unittest.TestCase):
     def test_float16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x = paddle.rand((3, 3), dtype='float16')
             with self.assertRaises((RuntimeError, ValueError, TypeError)):
                 paddle.linalg.cholesky_inverse(x)
 
     def test_bfloat16(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x = paddle.rand((3, 3), dtype='bfloat16')
             with self.assertRaises((RuntimeError, ValueError, TypeError)):
                 paddle.linalg.cholesky_inverse(x)

@@ -210,11 +210,15 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
             std::memcpy(dst_data + plw, src_data, copy_size);
           } else {
             for (int kow = 0; kow < output_width - plw - prw; ++kow) {
-              dst_data[plw + kow] =
-                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
-                           kow) *
-                              im_channels +
-                          ic];
+              int im_row = oh - plh + kh;
+              int im_col = kow;
+              if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
+                  im_col < im_width) {
+                dst_data[plw + kow] =
+                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+              } else {
+                dst_data[plw + kow] = static_cast<T>(0);
+              }
             }
           }
           dst_data = dst_data + col_matrix_width;
@@ -269,11 +273,15 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
                         sizeof(T) * (output_width - (plw - kw)));
           } else {
             for (int kow = 0; kow < output_width - (plw - kw); ++kow) {
-              dst_data[plw - kw + kow] =
-                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
-                           kow) *
-                              im_channels +
-                          ic];
+              int im_row = oh - plh + kh;
+              int im_col = kow;
+              if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
+                  im_col < im_width) {
+                dst_data[plw - kw + kow] =
+                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+              } else {
+                dst_data[plw - kw + kow] = static_cast<T>(0);
+              }
             }
           }
           dst_data = dst_data + col_matrix_width;
@@ -284,11 +292,15 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
                 dst_data, src_data + (kw - plw), sizeof(T) * output_width);
           } else {
             for (int kow = 0; kow < output_width; ++kow) {
-              dst_data[kow] =
-                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
-                           kw - plw + kow) *
-                              im_channels +
-                          ic];
+              int im_row = oh - plh + kh;
+              int im_col = kw - plw + kow;
+              if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
+                  im_col < im_width) {
+                dst_data[kow] =
+                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+              } else {
+                dst_data[kow] = static_cast<T>(0);
+              }
             }
           }
           dst_data = dst_data + col_matrix_width;
@@ -301,11 +313,15 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const phi::DenseTensor& im,
                         sizeof(T) * (output_width - i));
           } else {
             for (int kow = 0; kow < output_width - i; ++kow) {
-              dst_data[kow] =
-                  im_data[(((oh - plh > 0 ? oh - plh : 0) + kh) * im_width +
-                           kw - plw + kow) *
-                              im_channels +
-                          ic];
+              int im_row = oh - plh + kh;
+              int im_col = kw - plw + kow;
+              if (im_row >= 0 && im_row < im_height && im_col >= 0 &&
+                  im_col < im_width) {
+                dst_data[kow] =
+                    im_data[(im_row * im_width + im_col) * im_channels + ic];
+              } else {
+                dst_data[kow] = static_cast<T>(0);
+              }
             }
           }
           dst_data = dst_data + col_matrix_width;

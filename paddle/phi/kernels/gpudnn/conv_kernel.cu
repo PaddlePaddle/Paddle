@@ -29,8 +29,6 @@
 #endif
 
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/padding.h"
@@ -614,7 +612,7 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::ConvCudnnKernel,
                    float,
                    double,
-                   phi::dtype::float8_e4m3fn,
+                   phi::float8_e4m3fn,
                    phi::float16,
                    phi::bfloat16) {}
 #else

@@ -428,14 +428,33 @@ def get_devices():
     return devices
 
 
-def get_device_place():
+def get_device():
+    if paddle.is_compiled_with_cuda():
+        return 'gpu'
+    elif is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        return f'{dev_type}:0'
+    else:
+        return None
+
+
+def get_device_class():
+    if paddle.is_compiled_with_cuda():
+        return core.CUDAPlace
+    elif is_custom_device():
+        return core.CustomPlace
+    else:
+        return core.CPUPlace
+
+
+def get_device_place(device_id: int = 0):
     if core.is_compiled_with_cuda():
-        return base.CUDAPlace(0)
+        return base.CUDAPlace(device_id)
     custom_dev_types = paddle.device.get_all_custom_device_type()
     if custom_dev_types and core.is_compiled_with_custom_device(
         custom_dev_types[0]
     ):
-        return base.CustomPlace(custom_dev_types[0], 0)
+        return base.CustomPlace(custom_dev_types[0], device_id)
     return base.CPUPlace()
 
 
@@ -614,8 +633,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'bfloat16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "bfloat16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'bfloat16'
             )
         )
 
@@ -635,8 +655,9 @@ class OpTest(unittest.TestCase):
                 and self.attrs['mkldnn_data_type'] == 'float16'
             )
             or (
-                hasattr(self, 'onednn_data_type')
-                and self.onednn_data_type == "float16"
+                hasattr(self, 'attrs')
+                and 'onednn_data_type' in self.attrs
+                and self.attrs['onednn_data_type'] == 'float16'
             )
         )
 

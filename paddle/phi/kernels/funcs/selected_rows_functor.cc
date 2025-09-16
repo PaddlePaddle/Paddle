@@ -397,13 +397,13 @@ template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct PADDLE_API SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
 template struct PADDLE_API
-    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
+    SelectedRowsAddToTensor<phi::CPUContext, phi::float16>;
 template struct PADDLE_API
-    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
+    SelectedRowsAddToTensor<phi::CPUContext, phi::bfloat16>;
 template struct PADDLE_API
-    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::complex<float>>;
+    SelectedRowsAddToTensor<phi::CPUContext, phi::complex64>;
 template struct PADDLE_API
-    SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::complex<double>>;
+    SelectedRowsAddToTensor<phi::CPUContext, phi::complex128>;
 #ifdef PADDLE_WITH_XPU
 template struct SelectedRowsAddToTensor<phi::XPUContext, float>;
 #endif
@@ -437,7 +437,7 @@ typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
 }
 
 template <typename T, typename DeviceContext>
-typename std::enable_if<std::is_same<T, phi::dtype::bfloat16>::value>::type
+typename std::enable_if<std::is_same<T, phi::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
@@ -475,7 +475,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
 }
 
 template <typename T, typename DeviceContext>
-typename std::enable_if<!std::is_same<T, phi::dtype::bfloat16>::value>::type
+typename std::enable_if<!std::is_same<T, phi::bfloat16>::value>::type
 add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
@@ -646,9 +646,9 @@ TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(float)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(double)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int)
 TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(int64_t)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::bfloat16)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::complex<float>)
-TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::dtype::complex<double>)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::bfloat16)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::complex64)
+TEMPLATE_SPECIALIZED_FOR_MERGEADD_CPU(phi::complex128)
 
 #ifdef PADDLE_WITH_XPU
 template <typename T>

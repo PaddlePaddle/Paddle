@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
-#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 namespace phi {
 
@@ -50,13 +49,13 @@ INSTANCE_SCALAR_KERNEL(int, CPUContext)
 INSTANCE_SCALAR_KERNEL(int64_t, CPUContext)
 INSTANCE_SCALAR_KERNEL(float, CPUContext)
 INSTANCE_SCALAR_KERNEL(double, CPUContext)
-INSTANCE_SCALAR_KERNEL(phi::dtype::bfloat16, CPUContext)
-INSTANCE_SCALAR_KERNEL(phi::dtype::float16, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::bfloat16, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::float16, CPUContext)
 INSTANCE_SCALAR_KERNEL(uint8_t, CPUContext)
 INSTANCE_SCALAR_KERNEL(int8_t, CPUContext)
 INSTANCE_SCALAR_KERNEL(int16_t, CPUContext)
-INSTANCE_SCALAR_KERNEL(phi::dtype::complex<float>, CPUContext)
-INSTANCE_SCALAR_KERNEL(phi::dtype::complex<double>, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::complex64, CPUContext)
+INSTANCE_SCALAR_KERNEL(phi::complex128, CPUContext)
 #endif
 }  // namespace phi
 

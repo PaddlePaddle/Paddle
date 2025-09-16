@@ -99,6 +99,21 @@ _supported_dtype_conversions = {
 }
 
 
+class TensorSize(int):
+    as_shape: list[int]
+
+    def __new__(cls, shape):
+        instance = super().__new__(cls, int(np.prod(shape)))
+        instance.as_shape = shape
+        return instance
+
+    def __call__(self, dim=None):
+        shape = paddle.Size(self.as_shape)
+        if dim is None:
+            return shape
+        return shape[dim]
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
@@ -270,7 +285,7 @@ def monkey_patch_math_tensor():
 
     @property
     def _size_(var: Tensor) -> int:
-        return int(np.prod(var.shape))
+        return TensorSize(var.shape)
 
     @property
     def _T_(var: Tensor) -> Tensor:
@@ -389,7 +404,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.ones([2, 2])
-                >>> y = x.new_empty(3, 3)
+                >>> y = x.new_empty(3, 3)  # type: ignore
                 >>> y.shape
                 [3, 3]
         """
@@ -436,7 +451,7 @@ def monkey_patch_math_tensor():
 
                 >>> import paddle
                 >>> x = paddle.zeros([2, 2])
-                >>> y = x.new_ones(3, 3)
+                >>> y = x.new_ones(3, 3)  # type: ignore
                 >>> y.numpy()
                 array([[1., 1., 1.],
                        [1., 1., 1.],
@@ -486,7 +501,7 @@ def monkey_patch_math_tensor():
 
             >>> import paddle
             >>> x = paddle.ones([2, 2])
-            >>> y = x.new_zeros(3, 3)
+            >>> y = x.new_zeros(3, 3)  # type: ignore
             >>> y.numpy()
             array([[0., 0., 0.],
                    [0., 0., 0.],
@@ -541,6 +556,21 @@ def monkey_patch_math_tensor():
             )
         self.stop_gradient = not value
 
+    @property
+    def itemsize(self: Tensor) -> int:
+        """
+        Returns the number of bytes allocated on the machine for a single element of the Tensor.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.randn((2,3),dtype=paddle.float64)
+                >>> x.itemsize
+                8
+        """
+        return self.element_size()
+
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
@@ -567,6 +597,7 @@ def monkey_patch_math_tensor():
         ("requires_grad", requires_grad),
         # for logical compare
         ('__array_ufunc__', None),
+        ('itemsize', itemsize),
     ]
 
     dtype_conversion_methods = _create_dtype_conversion_methods()

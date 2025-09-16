@@ -20,17 +20,14 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
+#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/dynload/cublasLt.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#include "paddle/phi/common/float8_e4m3fn.h"
-#include "paddle/phi/common/float8_e5m2.h"
-#include "paddle/phi/common/memory_utils.h"
-#include "paddle/phi/core/dense_tensor.h"
-
-#include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_gemm_search.h"
 
 namespace dyl = phi::dynload;
@@ -205,8 +202,8 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
                               n,
                               k,
                               batch_count,
-                              mat_b.data<phi::dtype::float8_e4m3fn>(),
-                              mat_a.data<phi::dtype::float8_e4m3fn>(),
+                              mat_b.data<phi::float8_e4m3fn>(),
+                              mat_a.data<phi::float8_e4m3fn>(),
                               bias_ptr,
                               out->data<T>(),
                               &alpha_,
@@ -275,9 +272,9 @@ void CublasLtMatmulFP8(const phi::GPUContext& dev_ctx,
   status = dyl::cublasLtMatmul(dev_ctx.cublaslt_handle(),
                                matmul_desc_,
                                &alpha_,
-                               mat_b.data<phi::dtype::float8_e4m3fn>(),
+                               mat_b.data<phi::float8_e4m3fn>(),
                                B_desc_,
-                               mat_a.data<phi::dtype::float8_e4m3fn>(),
+                               mat_a.data<phi::float8_e4m3fn>(),
                                A_desc_,
                                &beta_,
                                bias_ptr,

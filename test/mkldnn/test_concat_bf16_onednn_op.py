@@ -36,7 +36,7 @@ class TestConcatBf16Op(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_onednn': True,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
         }
 
         self.sections = [self.x0.shape[self.axis]] * 2

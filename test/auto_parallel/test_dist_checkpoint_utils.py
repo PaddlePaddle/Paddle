@@ -192,5 +192,26 @@ class TestDistCheckpointUtils(test_base.CommunicationTestDistBase):
         ckpt_dir_tmp.cleanup()
 
 
+class TestMergeCheckpoint(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=1, timeout=120, nnode=1)
+        self._default_envs = {}
+        self._changeable_envs = {"backend": ["gpu"]}
+
+    def test_merge_skip(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            ckpt_path_tmp = tempfile.TemporaryDirectory()
+            ckpt_path = ckpt_path_tmp.name
+            envs["ckpt_path"] = ckpt_path
+            self.run_test_case(
+                "semi_merge_shard_state_dict.py",
+                user_defined_envs=envs,
+            )
+            ckpt_path_tmp.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()

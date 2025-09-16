@@ -27,6 +27,9 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
     def test_reshape_co_shard(self):
         self.run_test_case("reshape_co_shard.py")
 
+    def test_transpose_co_shard(self):
+        self.run_test_case("transpose_co_shard.py")
+
 
 if __name__ == "__main__":
     unittest.main()

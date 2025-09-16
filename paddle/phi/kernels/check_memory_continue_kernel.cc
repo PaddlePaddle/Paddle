@@ -93,7 +93,7 @@ PD_REGISTER_KERNEL(check_memory_continue,
                    GPU,
                    ALL_LAYOUT,
                    phi::CheckMemoryContinueKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    float,
                    double) {}

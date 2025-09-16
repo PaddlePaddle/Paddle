@@ -93,7 +93,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple minimum elements
             >>> # the axis is a int element
@@ -235,7 +234,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # data_x is a Tensor with shape [2, 4] with multiple maximum elements
             >>> # the axis is a int element
@@ -369,7 +367,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> # x is a bool Tensor with following elements:
             >>> #    [[True, False]
@@ -721,7 +718,11 @@ add_doc_and_signature(
               [2, 4, 6]]])
 
     """,
-    """def multiply(x: Tensor, y: Tensor, name: str | None = None) -> Tensor""",
+    """def multiply(x: Tensor,
+                    y: Tensor,
+                    name: str | None = None,
+                    *,
+                    out: Tensor | None = None) -> Tensor""",
 )
 add_doc_and_signature(
     "logsumexp",
@@ -838,7 +839,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isinf(x)
@@ -874,7 +874,6 @@ add_doc_and_signature(
     Examples:
         .. code-block:: python
 
-            >>> # type: ignore
             >>> import paddle
 
             >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
@@ -924,7 +923,6 @@ add_doc_and_signature(
 
     Examples:
         .. code-block:: python
-            >>> # type: ignore
 
             >>> import paddle
             >>> x = paddle.to_tensor([[1.0, 2.0, 3.0],
@@ -952,6 +950,46 @@ def roll(
     shifts: int | Sequence[int],
     axis: int | Sequence[int] | None = None,
     name: str | None = None,
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "ceil",
+    """
+    Ceil Operator. Computes ceil of x element-wise.
+
+    .. math::
+        out = \\left \\lceil x \\right \\rceil
+
+    Args:
+        x (Tensor): Input of Ceil operator, an N-D Tensor, with data type float32, float64, float16, bfloat16,
+            uint8, int8, int16, int32, int64.
+            alias: ``input``.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor. Output of Ceil operator, a Tensor with shape same as input
+            (integer types are autocasted into float32).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> out = paddle.ceil(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0., -0., 1. , 1. ])
+    """,
+    """
+def ceil(
+    x: Tensor,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None
 ) -> Tensor
 """,
 )
@@ -989,8 +1027,6 @@ add_doc_and_signature(
         .. code-block:: python
 
             >>> import paddle
-
-            >>> # type: ignore
 
             >>> x = paddle.to_tensor([[1, 0], [1, 1]], dtype='int32')
             >>> x = paddle.assign(x)

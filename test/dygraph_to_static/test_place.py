@@ -28,7 +28,7 @@ class TestPlace(Dy2StTestBase):
             warnings.simplefilter("always")
             self.assertIsNone(x.place)
             self.assertTrue(len(w) == 1)
-            self.assertIn("Value do not have 'place'", str(w[-1].message))
+            self.assertIn("Tensor do not have 'place'", str(w[-1].message))
 
 
 if __name__ == '__main__':

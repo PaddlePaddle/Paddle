@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import platform
 import unittest
+
+from op_test import is_custom_device
 
 import paddle
 from paddle.incubate.tensor.manipulation import enable_activation_offload
@@ -33,7 +34,9 @@ class MyPyLayer(paddle.autograd.PyLayer):
 
 class TestMain(unittest.TestCase):
     def prepare(self, need_inplace=True):
-        if paddle.is_compiled_with_rocm() or not paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_rocm() or not (
+            paddle.is_compiled_with_cuda() or is_custom_device()
+        ):
             return False
 
         if platform.system().lower() == "windows":

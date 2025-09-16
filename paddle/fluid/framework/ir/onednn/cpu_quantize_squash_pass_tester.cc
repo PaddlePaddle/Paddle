@@ -37,7 +37,7 @@ void SetOp(ProgramDesc* prog,
   op->SetAttr("use_onednn", use_onednn);
   op->SetAttr("name", name);
   if (type != "dropout" && type != "quantize" && type != "dequantize") {
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   }
   if (type == "pool2d") {  // NOLINT
     op->SetInput("X", {inputs[0]});
@@ -78,7 +78,7 @@ void SetOp(ProgramDesc* prog,
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
     PADDLE_ENFORCE_EQ(inputs.size(),
@@ -92,7 +92,7 @@ void SetOp(ProgramDesc* prog,
     if (!scale.empty()) op->SetAttr("Scale_in", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetAttr("force_fp32_output", false);
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   } else if (type == "scale") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
@@ -106,7 +106,7 @@ void SetOp(ProgramDesc* prog,
     if (!scale.empty()) op->SetAttr("Scale_x", scale[0]);
     if (scale.size() > 1) op->SetAttr("Scale_out", scale[1]);
     op->SetAttr("force_fp32_output", false);
-    op->SetAttr("mkldnn_data_type", onednn_data_type);
+    op->SetAttr("onednn_data_type", onednn_data_type);
   }
 }
 

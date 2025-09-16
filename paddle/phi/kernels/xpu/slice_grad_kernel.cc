@@ -90,7 +90,7 @@ void SliceGradKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <>
-void SliceGradKernel<phi::dtype::complex<float>, XPUContext>(
+void SliceGradKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
     const DenseTensor& input,
     const DenseTensor& out_grad,
@@ -100,7 +100,7 @@ void SliceGradKernel<phi::dtype::complex<float>, XPUContext>(
     const std::vector<int64_t>& infer_flags,
     const std::vector<int64_t>& decrease_axis,
     DenseTensor* input_grad) {
-  using T = phi::dtype::complex<float>;
+  using T = phi::complex64;
   dev_ctx.template Alloc<T>(input_grad);
   if (input_grad->numel() == 0) {
     return;
@@ -184,7 +184,7 @@ PD_REGISTER_KERNEL(slice_grad,
                    float,
                    int,
 #ifdef PADDLE_WITH_XPU_FFT
-                   phi::dtype::complex<float>,
+                   phi::complex64,
 #endif
                    phi::float16,
                    phi::bfloat16) {
