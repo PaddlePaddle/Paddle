@@ -538,7 +538,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv3d_layer_deprecated$|\
 ^test_conv3d_transpose_part2_op_deprecated$|\
 ^test_split_program_deprecated$|\
-^test_trt_convert_multihead_matmul_roformer$
+^test_trt_convert_multihead_matmul_roformer$|\
 ^test_cudnn_placement_pass$|\
 ^operator_test$|\
 ^new_profiler_test$|\
