@@ -1240,7 +1240,9 @@ def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
 
 @param_two_alias(["x", "input"], ["y", "other"])
-def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
+def remainder(
+    x: Tensor, y: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     Mod two tensors element-wise. The equation is:
 
@@ -1262,6 +1264,7 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         x (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         y (Tensor): the input tensor, it's data type should be bfloat16, float16, float32, float64, int32, int64.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. If set, the result will be stored in this tensor. Default is None.
 
     Returns:
         N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
@@ -1293,7 +1296,7 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     if in_dynamic_or_pir_mode():
         if isinstance(y, (int, float)):
             y = paddle.full([], y, dtype=x.dtype)
-        return _C_ops.remainder(x, y)
+        return _C_ops.remainder(x, y, out=out)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
