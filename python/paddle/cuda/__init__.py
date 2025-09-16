@@ -86,7 +86,7 @@ def synchronize(device: DeviceLike = None) -> None:
     paddle_device.synchronize(dev)
 
 
-def current_stream(device: DeviceLike = None) -> core.CUDAStream:
+def current_stream(device: DeviceLike = None) -> Stream:
     """
     Return the current stream for the given device.
 
