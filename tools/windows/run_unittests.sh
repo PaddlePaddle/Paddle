@@ -549,7 +549,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^trt_quant_int8_test$|\
 ^trt_dynamic_shape_test$|\
 ^paddle_infer_api_test$|\
-^device_context_test_cuda_graph$\
+^device_context_test_cuda_graph$|\
 ^cudnn_helper_test$|\
 ^test_cudnn_norm_conv$"
 
