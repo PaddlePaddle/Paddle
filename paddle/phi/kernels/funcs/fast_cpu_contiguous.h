@@ -70,11 +70,6 @@ void FastCPUCopy(const Context& dev_ctx,
                  DenseTensor* dst_tensor) {
   void* output_data;
 
-  auto meta_out = dst_tensor->meta();
-  meta_out.dims = src_tensor.dims();
-  meta_out.strides = src_tensor.strides();
-  dst_tensor->set_meta(meta_out);
-
   phi::DenseTensor dst_contig;
   phi::DenseTensor src_contig;
 
@@ -104,45 +99,66 @@ void FastCPUCopy(const Context& dev_ctx,
   config.add_const_input(input);
   phi::DenseTensorIterator iter = config.build();
 
+  std::vector<int64_t> output_stride = iter.strides(0);
+  std::vector<int64_t> input_stride = iter.strides(1);
+
   const int64_t& numel = iter.numel();
-
-  auto offset_calc = phi::funcs::CPUmake_offset_calculator<2>(iter);
-
-  int64_t end = numel;
-  int64_t begin = 0;
-  int64_t grain_size = 32768;
 
   omp_set_num_threads(std::thread::hardware_concurrency());
 
-#pragma omp parallel
-  {
-    int64_t num_threads = omp_get_num_threads();
-    if (grain_size > 0) {
-      num_threads = std::min(num_threads, divup((end - begin), grain_size));
-    }
+  Range range(0, numel);
+  auto counter = DimCounter(iter.shape(), range);
 
-    int64_t tid = omp_get_thread_num();
-    int64_t chunk_size = divup((end - begin), num_threads);
-    int64_t begin_tid = begin + tid * chunk_size;
-    if (begin_tid < end) {
-      const char* in_ptr = reinterpret_cast<const char*>(input_data);
-      char* out_ptr = reinterpret_cast<char*>(output_data);
-      for (int64_t idx = begin_tid; idx < chunk_size + begin_tid; idx++) {
-        if (idx >= end) break;
-        const auto offsets = offset_calc.cpu_get(idx);
-        char* const out_data = out_ptr + offsets[0];
-        const char* const in_data = in_ptr + offsets[1];
-        *reinterpret_cast<int16_t*>(out_data) =
-            *reinterpret_cast<const int16_t*>(in_data);
+  const char* in_ptr = reinterpret_cast<const char*>(input_data);
+  char* out_ptr = reinterpret_cast<char*>(output_data);
+
+  while (!counter.is_done()) {
+    auto step = counter.max_2d_step();
+    int step_all = step[0] * step[1];
+
+    int64_t end = step_all;
+    int64_t begin = 0;
+    int64_t grain_size = 32768;
+
+#pragma omp parallel
+    {
+      int64_t num_threads = omp_get_num_threads();
+
+      if (grain_size > 0) {
+        num_threads = std::min(num_threads, divup((end - begin), grain_size));
+      }
+
+      int64_t tid = omp_get_thread_num();
+      int64_t chunk_size = divup((end - begin), num_threads);
+      int64_t begin_tid = begin + tid * chunk_size;
+
+      if (begin_tid < end) {
+        for (int64_t idx = begin_tid; idx < chunk_size + begin_tid; idx++) {
+          if (idx >= end) break;
+          int outer_i = idx / step[1];
+          int inner_i = idx % step[1];
+          int base_offset = outer_i * iter.strides(1)[0];
+          int input_offset = base_offset + inner_i * iter.strides(1)[1];
+          int output_offset =
+              (outer_i * step[1] + inner_i) * iter.strides(1)[0];
+
+          char* const out_data = out_ptr + output_offset;
+          const char* const in_data = in_ptr + input_offset;
+
+          *reinterpret_cast<int32_t*>(out_data) =
+              *reinterpret_cast<const int32_t*>(in_data);
+        }
       }
     }
-  }
 
+    counter.increment(step);
+  }
   auto src_cpu_place = src_tensor.place();
   auto dst_gpu_place = target_place;
   auto stream = reinterpret_cast<const phi::GPUContext&>(dev_ctx).stream();
 
   auto* src_ptr = output_data;
+
   auto size = phi::SizeOf(src_tensor.dtype()) * src_contig.numel();
   void* dst_ptr =
       dev_ctx.Alloc(&dst_contig,
@@ -156,7 +172,6 @@ void FastCPUCopy(const Context& dev_ctx,
   free(output_data);
 
   if (dst_tensor != &dst_contig) {
-    dev_ctx.Alloc(dst_tensor, src_tensor.dtype());
     PD_VISIT_ALL_TYPES(dst_tensor->dtype(), "StridedCopyKernel", ([&] {
                          phi::StridedCopyKernel<data_t, phi::GPUContext>(
                              reinterpret_cast<const phi::GPUContext&>(dev_ctx),

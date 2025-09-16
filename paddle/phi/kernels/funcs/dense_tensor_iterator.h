@@ -21,6 +21,56 @@
 
 namespace phi {
 
+template <typename T, size_t N>
+class SmallBuffer {
+  static_assert(std::is_trivial_v<T>, "SmallBuffer is intended for POD types");
+
+  std::array<T, N> storage_;
+  size_t size_{};
+  T* data_{};
+
+ public:
+  explicit SmallBuffer(size_t size) : size_(size) {
+    if (size > N) {
+      data_ = new T[size];
+    } else {
+      data_ = &storage_[0];
+    }
+  }
+
+  SmallBuffer(const SmallBuffer&) = delete;
+  SmallBuffer& operator=(const SmallBuffer&) = delete;
+
+  // move constructor is needed in function return
+  SmallBuffer(SmallBuffer&& rhs) noexcept : size_{rhs.size_} {
+    rhs.size_ = 0;
+    if (size_ > N) {
+      data_ = rhs.data_;
+      rhs.data_ = nullptr;
+    } else {
+      storage_ = std::move(rhs.storage_);
+      data_ = &storage_[0];
+    }
+  }
+
+  SmallBuffer& operator=(SmallBuffer&&) = delete;
+
+  ~SmallBuffer() {
+    if (size_ > N) {
+      delete[] data_;
+    }
+  }
+  T& operator[](size_t idx) { return data()[idx]; }
+  const T& operator[](size_t idx) const { return data()[idx]; }
+  T* data() { return data_; }
+  const T* data() const { return data_; }
+  size_t size() const { return size_; }
+  T* begin() { return data_; }
+  const T* begin() const { return data_; }
+  T* end() { return data_ + size_; }
+  const T* end() const { return data_ + size_; }
+};
+
 struct DenseTensorIteratorConfig;
 struct DenseTensorIterator;
 
@@ -193,5 +243,48 @@ struct DenseTensorIteratorConfig final {
   bool is_reduction_ = false;
   bool resize_outputs_ = true;
 };
+
+struct Range {
+  Range(int64_t begin, int64_t end) : begin(begin), end(end) {}
+
+  int64_t size() const { return end - begin; }
+
+  Range operator/(int64_t divisor) {
+    return Range(begin / divisor, end / divisor);
+  }
+
+  int64_t begin;
+  int64_t end;
+};
+
+std::ostream& operator<<(std::ostream& out, const Range& range);
+
+struct DimCounter {
+  DimCounter(std::vector<int64_t> shape, Range range);
+
+  void increment(const std::array<int64_t, 2>& step);
+  bool is_done() const;
+  std::array<int64_t, 2> max_2d_step() const;
+
+  std::vector<int64_t> shape;
+  Range range;
+  SmallBuffer<int64_t, 4> values;
+  int64_t offset;
+};
+
+inline void get_data_ptrs(char** ptrs,
+                          std::vector<char*> base,
+                          std::vector<int64_t> strides,
+                          std::vector<int64_t> counter) {
+  const auto ntensors = base.size();
+  const auto ndim = counter.size();
+  std::copy(base.begin(), base.end(), ptrs);
+  for (int dim = 0; dim < ndim; dim++) {
+    int64_t value = counter[dim];
+    for (int arg = 0; arg < ntensors; arg++) {
+      ptrs[arg] += value * strides[dim * ntensors + arg];
+    }
+  }
+}
 
 }  // namespace phi
