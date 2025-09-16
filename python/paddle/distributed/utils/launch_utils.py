@@ -457,18 +457,14 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
-    if current_env.get('http_proxy', None) is not None:
-        warnings.warn(
-            "'http_proxy' is set in the environment. "
-            "This may cause NCCL connection failures during distributed training. ",
-            category=UserWarning,
-        )
-    if current_env.get('https_proxy', None) is not None:
-        warnings.warn(
-            "'https_proxy' is set in the environment. "
-            "This may cause NCCL connection failures during distributed training. ",
-            category=UserWarning,
-        )
+    for proxy_key in ("http_proxy", "https_proxy"):
+        if current_env.get(proxy_key) is not None:
+            current_env[f"{proxy_key}_original"] = current_env.pop(proxy_key)
+            warnings.warn(
+                f"Unset '{proxy_key}' to ensure stable NCCL communication in distributed training "
+                f"(backed up as '{proxy_key}_original').",
+                category=UserWarning,
+            )
 
     procs = []
     for idx, t in enumerate(pod.trainers):
