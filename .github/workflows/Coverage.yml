@@ -138,6 +138,7 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
+          source ${{ github.workspace }}/../../../proxy
           git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git
           cd Paddle
           git fetch origin pull/75296/head:test
@@ -152,7 +153,6 @@ jobs:
           set -e
           git config pull.rebase false
           echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
           '
 
