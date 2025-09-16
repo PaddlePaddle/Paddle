@@ -410,7 +410,7 @@ def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
     return core.device_memory_stat_current_value("Reserved", device_id)
 
 
-def current_stream(device: _CustomPlaceLike | None = None) -> Stream:
+def current_stream(device: _CustomPlaceLike | None = None) -> core.CustomStream:
     '''
     Return the current stream by the device.
 
@@ -459,9 +459,7 @@ def current_stream(device: _CustomPlaceLike | None = None) -> Stream:
             "Example: 'npu:0'"
         )
 
-    return Stream(
-        stream_base=core._get_current_custom_device_stream(dev_type, device_id)
-    )
+    return core._get_current_custom_device_stream(dev_type, device_id)
 
 
 def synchronize(device: _CustomPlaceLike | None = None) -> None:

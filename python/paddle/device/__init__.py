@@ -115,8 +115,6 @@ else:
             reset_max_memory_reserved,
             synchronize,
         )
-    else:
-        raise ImportError('No CUDA, XPU or CustomDevice found')
 
 __all__ = [
     'get_cudnn_version',
