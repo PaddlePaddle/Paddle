@@ -18,10 +18,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
-from paddle import base, core
-
-from .. import device as paddle_device
-from ..device import (
+from paddle import base, core, device as paddle_device
+from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
     stream_guard as _PaddleStreamGuard,
