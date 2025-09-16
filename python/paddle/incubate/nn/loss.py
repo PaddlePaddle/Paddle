@@ -72,7 +72,7 @@ def identity_loss(x: Tensor, reduction: _ReduceMode = "none") -> Tensor:
     if isinstance(reduction, str):
         reduction = {"sum": 0, "mean": 1, "none": 2}.get(reduction.lower())
         if reduction is None:
-            raise Exception("Unsupported reduction type.")
+            raise TypeError("Unsupported reduction type.")
 
     if in_dynamic_or_pir_mode():
         return _C_ops.identity_loss(x, reduction)

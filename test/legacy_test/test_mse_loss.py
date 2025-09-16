@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -46,9 +46,11 @@ class TestMseLoss(unittest.TestCase):
                 input=input_var, label=label_var
             )
             for use_cuda in (
-                [False, True] if core.is_compiled_with_cuda() else [False]
+                [False, True]
+                if (core.is_compiled_with_cuda() or is_custom_device())
+                else [False]
             ):
-                place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+                place = get_device_place() if use_cuda else base.CPUPlace()
                 exe = Executor(place)
                 (result,) = exe.run(
                     main,

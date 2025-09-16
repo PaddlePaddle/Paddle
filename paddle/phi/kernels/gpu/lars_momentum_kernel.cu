@@ -514,7 +514,7 @@ void LarsMomentumKernel(
         op_num,
         LARS_MAX_MERGED_OPS,
         errors::InvalidArgument(
-            "The maximum number of merged-ops supported is (%d), but"
+            "The maximum number of merged-ops supported is (%d), but "
             "lars op required for training this model is (%d)\n",
             LARS_MAX_MERGED_OPS,
             op_num));

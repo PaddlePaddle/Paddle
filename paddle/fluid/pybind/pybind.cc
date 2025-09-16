@@ -1471,6 +1471,24 @@ PYBIND11_MODULE(libpaddle, m) {
 
   BindException(&m);
 
+#define SET_STR_DEFINE(name) m.attr("_" #name) = std::string(name);
+
+#ifdef PYBIND11_COMPILER_TYPE
+  SET_STR_DEFINE(PYBIND11_COMPILER_TYPE);
+#endif
+#ifdef PYBIND11_STDLIB
+  SET_STR_DEFINE(PYBIND11_STDLIB);
+#endif
+#ifdef PYBIND11_BUILD_ABI
+  SET_STR_DEFINE(PYBIND11_BUILD_ABI);
+#endif
+
+#ifdef _GLIBCXX_USE_CXX11_ABI
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = true;
+#else
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = false;
+#endif
+
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const phi::DataType &>())
       .def_readonly("min", &iinfo::min)

@@ -1239,6 +1239,7 @@ def floor_divide_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     return _C_ops.floor_divide_(x, y)
 
 
+@param_two_alias(["x", "input"], ["y", "other"])
 def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     r"""
     Mod two tensors element-wise. The equation is:
@@ -1246,6 +1247,9 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
     .. math::
 
         out = x \% y
+
+    .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``, and ``other`` can be used as an alias for ``y``.
 
     Note:
         ``paddle.remainder`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
@@ -1287,6 +1291,8 @@ def remainder(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
+        if isinstance(y, (int, float)):
+            y = paddle.full([], y, dtype=x.dtype)
         return _C_ops.remainder(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_mod', **locals()))

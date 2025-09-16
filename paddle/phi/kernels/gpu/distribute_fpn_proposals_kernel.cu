@@ -105,7 +105,7 @@ void DistributeFpnProposalsKernel(
     PADDLE_ENFORCE_EQ(
         fpn_rois.lod().size(),
         1UL,
-        errors::InvalidArgument("DistributeFpnProposalsOp needs LoD"
+        errors::InvalidArgument("DistributeFpnProposalsOp needs LoD "
                                 "with one level"));
   } else {
     int64_t rois_num_numel = rois_num.get_ptr()->numel();
