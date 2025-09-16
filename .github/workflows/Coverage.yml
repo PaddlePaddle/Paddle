@@ -138,16 +138,19 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz"
-          wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/Paddle-coverage/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz --no-check-certificate
-          echo "Extracting Paddle.tar.gz"
-          tar -xf Paddle.tar.gz --strip-components=1
-          rm Paddle.tar.gz
+          git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git
+          cd Paddle
+          git fetch origin pull/75296/head:test
+          git checkout test
+          git reset --hard 066b3a0
+          git cherry-pick 4dba2fb8e64cdebbb59f21b3261b702899c70f9a
+          git checkout --theirs -- ci/coverage_info.sh
+          git commit -am "fix merge diff"
           git remote -v
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
           git config pull.rebase false
-          git checkout test
           echo "Pull upstream $BRANCH"
           source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
