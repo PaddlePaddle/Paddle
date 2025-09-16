@@ -20,11 +20,11 @@ if "%WITH_SCCACHE%"=="ON" (
     set "SCCACHE_ERROR_LOG=%SCCACHE_ROOT%\sccache_log.txt"
     set SCCACHE_LOG=quiet
 
-    @REM :: Distributed storage on windows
-    @REM set SCCACHE_ENDPOINT=s3.bj.bcebos.com
-    @REM set SCCACHE_BUCKET=paddle-github-action
-    @REM set SCCACHE_S3_KEY_PREFIX=sccache/
-    @REM set SCCACHE_S3_USE_SSL=true
+    :: Distributed storage on windows
+    set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+    set SCCACHE_BUCKET=paddle-github-action
+    set SCCACHE_S3_KEY_PREFIX=sccache/
+    set SCCACHE_S3_USE_SSL=true
 
     sccache --start-server
     sccache -z
@@ -145,22 +145,24 @@ if "%WITH_GPU%"=="ON" (
 )
 
 cd /d %work_dir%
-@REM python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
-@REM if !ERRORLEVEL! EQU 0 (
-@REM     echo Getting source code of third party : extracting ...
-@REM     zstd -d %md5%.tar.zst && tar -xf %md5%.tar
-@REM     del %md5%.tar.zst
-@REM     if !errorlevel! EQU 0 (
-@REM         echo Getting source code of third party : successful
-@REM     )
-@REM ) else (
-@REM     git submodule update --init --recursive
-@REM     if !errorlevel! EQU 0 (
-@REM         set UPLOAD_TP_CODE=ON
-@REM     )
-@REM )
+python -c "import wget;wget.download('https://paddle-github-action.bj.bcebos.com/windows/third_party_code/%sub_dir%/%md5%.tar.zst')"
+if !ERRORLEVEL! EQU 0 (
+    echo Getting source code of third party : extracting ...
+    zstd -d %md5%.tar.zst && tar -xf %md5%.tar
+    del %md5%.tar.zst
+    if !errorlevel! EQU 0 (
+        echo Getting source code of third party : successful
+    )
+) else (
+    git submodule update --init --recursive
+    if !errorlevel! EQU 0 (
+        set UPLOAD_TP_CODE=ON
+    )
+)
+
 git config -f .gitmodules submodule.third_party/openvino.update none && git submodule sync third_party/openvino
 git submodule update --init --recursive
+
 if "%UPLOAD_TP_CODE%"=="ON" (
     set BCE_FILE=%cache_dir%\bce-python-sdk-new\BosClient.py
     echo Uploading source code of third_party: checking bce ...
