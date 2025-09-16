@@ -20,8 +20,9 @@ else()
   cmake_minimum_required(VERSION 3.15)
   cmake_policy(VERSION 3.10)
 endif()
-# use to get_property location of static lib
-# https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
+# use modern CMake target handling, disable deprecated LOCATION property
+# use $<TARGET_FILE> generator expression instead of get_property LOCATION
+# https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
 cmake_policy(SET CMP0026 NEW)
 cmake_policy(SET CMP0079 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
