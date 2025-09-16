@@ -95,7 +95,6 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 def _rebuild_vmm_tensor(
     cls, fd_or_dup, offset_bytes, size, type_idx, dims, lod, device_idx
 ):
-    print("============== _rebuild_vmm_tensor ===========")
     # 与 CPU 共享文件的 rebuild 一样，DupFd 需要先 detach 成真正的 int FD
     if hasattr(fd_or_dup, "detach"):
         fd = fd_or_dup.detach()
@@ -115,7 +114,6 @@ def _rebuild_vmm_tensor(
 
 
 def _reduce_tensor(tensor):
-    print("========== debug _reduce_tensor")
     lodtensor = tensor.get_tensor()
 
     if not tensor.stop_gradient and not tensor.is_leaf:
@@ -195,7 +193,6 @@ def _rebuild_lodtensor_filedescriptor(
 def _rebuild_cuda_tensor(
     cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
 ):
-    print("=========== debug _rebuild_cuda_tensor ========")
     cache_tensor = _cuda_from_cache((handle, offset_bytes))
     if cache_tensor is None:
         lodtensor = cls._new_shared_cuda(
@@ -292,7 +289,6 @@ def _reduce_lodtensor(lodtensor):
             if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
                 'FLAGS_use_virtual_memory_auto_growth'
             ]:
-                # print("=========== vmm lodtensor: ", lodtensor)
                 fd, offset, size, type_idx, dims, lod, device = (
                     lodtensor._share_vmm()
                 )
@@ -304,7 +300,6 @@ def _reduce_lodtensor(lodtensor):
                 metadata = (fd, offset, size, type_idx, dims, lod, device)
                 rebuild = _rebuild_vmm_tensor
             else:
-                print("=========== cuda lodtensor: ", lodtensor)
                 metadata = lodtensor._share_cuda()
                 rebuild = _rebuild_cuda_tensor
         finally:

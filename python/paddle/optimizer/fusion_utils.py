@@ -139,15 +139,12 @@ class FusionStorage:
                 self.offset += src_len
 
         self.buffer = paddle.zeros((self.offset,), dtype=self.dtype)
-        print("=========== build_buffer =")
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
             # VMM: 返回 (fd, offset, size, dtype, dims, lod, device)
-            print(" ========== debug vmm_ipc ")
             self.buffer_ipc_meta = self.buffer.value().get_tensor()._share_vmm()
         else:
-            print(" ========== debug cuda_ipc ")
             self.buffer_ipc_meta = (
                 self.buffer.value().get_tensor()._share_cuda()
             )
@@ -242,7 +239,6 @@ class FusionStorageHelper:
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
-            print("==================== reset meta ==========")
             new_tensor = paddle.base.core.DenseTensor._new_shared_vmm(
                 self.buffer_ipc_meta
             )
@@ -256,7 +252,6 @@ class FusionStorageHelper:
         self.buffer_length = self.buffer._numel()
 
     def sync_param(self):
-        print("================= debug FusionStorageHelper sync_param")
         self.sync_partial_param(0, self.buffer_length)
 
     @imperative_base.no_grad()

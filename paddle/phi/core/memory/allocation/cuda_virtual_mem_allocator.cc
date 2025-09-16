@@ -44,7 +44,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;  // NOLINT
-  // ★ 允许导出可共享句柄（Linux：POSIX FD）
+  // Linux：POSIX FD
   prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
   prop_ = prop;
 
@@ -257,7 +257,7 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
 // --------- VMM IPC: export/import helpers ----------
 
-// —— 实现：区间命中 + 导出 FD
+// 区间命中 + 导出 FD
 bool CUDAVirtualMemAllocator::ExportShareHandleFromVA(CUdeviceptr va,
                                                       VmmShareInfo* out) {
   if (virtual_2_physical_map_.empty()) return false;
@@ -330,7 +330,6 @@ class CudaVmmImportedAllocation final : public Allocation {
 
   ~CudaVmmImportedAllocation() override {
 #if CUDA_VERSION >= 10020
-    // 尽量清理（忽略 DEINITIALIZED）
     auto unmap = phi::dynload::cuMemUnmap(va_, va_size_);
     if (unmap != CUDA_ERROR_DEINITIALIZED) PADDLE_ENFORCE_GPU_SUCCESS(unmap);
     auto rel = phi::dynload::cuMemRelease(handle_);

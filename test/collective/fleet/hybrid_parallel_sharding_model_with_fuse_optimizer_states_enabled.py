@@ -17,114 +17,18 @@ import copy
 import multiprocessing
 import os
 import random
+import sys
 import unittest
+from functools import wraps
 from multiprocessing.reduction import DupFd
 
 import numpy as np
-
-print(
-    "[BOOT] mp start_method=",
-    multiprocessing.get_start_method(allow_none=True),
-    flush=True,
-)
-# === BEGIN: Paddle CUDA-IPC trace hooks (paste this at the very top of your script) ===
-import hashlib
-import sys
-import time
-from functools import wraps
-
-
-def _now():
-    return time.strftime("%H:%M:%S")
-
-
-def _rank():
-    return (
-        os.environ.get("PADDLE_TRAINER_ID")
-        or os.environ.get("PADDLE_RANK")
-        or os.environ.get("RANK")
-        or "?"
-    )
-
-
-def _short(b):
-    try:
-        return hashlib.sha1(b).hexdigest()[:8]
-    except Exception:
-        return "NA"
-
-
-print(
-    f"[{_now()}][IPC-HOOK] installing hooks... pid={os.getpid()} rank={_rank()}",
-    flush=True,
-)
-
-# 1) Hook reductions: _reduce_lodtensor (TX) / _rebuild_cuda_tensor (RX)
-try:
-    from paddle.incubate.multiprocessing import reductions as red
-
-    _orig_reduce_lt = red._reduce_lodtensor
-    _orig_rebuild_cuda = red._rebuild_cuda_tensor
-
-    def _spy_reduce_lodtensor(lodtensor):
-        place = lodtensor._place()
-        print(
-            f"[{_now()}][IPC-TX] rank={_rank()} pid={os.getpid()} "
-            f"_reduce_lodtensor place={place}",
-            flush=True,
-        )
-        # traceback.print_stack(limit=12, file=sys.stdout)
-        rv = _orig_reduce_lt(lodtensor)
-        # rv = (rebuild_fn, (cls, handle, offset, size, dtype, dims, lod, dev))
-        try:
-            rebuild_fn, meta = rv
-            if rebuild_fn is _orig_rebuild_cuda and len(meta) >= 3:
-                handle_bytes = meta[1]
-                off = meta[2]
-                size = meta[3]
-                print(
-                    f"[{_now()}][IPC-TX] rank={_rank()} pid={os.getpid()} "
-                    f"cuda_handle_sha1={_short(handle_bytes)} off={off} size={size}B",
-                    flush=True,
-                )
-        except Exception as _e:
-            print(
-                f"[{_now()}][IPC-TX] decode reduce meta failed: {_e}",
-                file=sys.stderr,
-                flush=True,
-            )
-        return rv
-
-    def _spy_rebuild_cuda_tensor(
-        cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
-    ):
-        print(
-            f"[{_now()}][IPC-RX] rank={_rank()} pid={os.getpid()} "
-            f"_rebuild_cuda_tensor dev={device_idx} handle_sha1={_short(handle)} off={offset_bytes} size={size}B",
-            flush=True,
-        )
-        # # traceback.print_stack(limit=12, file=sys.stdout)
-        return _orig_rebuild_cuda(
-            cls, handle, offset_bytes, size, type_idx, dims, lod, device_idx
-        )
-
-    red._reduce_lodtensor = _spy_reduce_lodtensor
-    red._rebuild_cuda_tensor = _spy_rebuild_cuda_tensor
-    print(f"[{_now()}][IPC-HOOK] reductions hooks installed", flush=True)
-except Exception as e:
-    print(
-        f"[{_now()}][IPC-HOOK] reductions hook failed: {e}",
-        file=sys.stderr,
-        flush=True,
-    )
 
 # 2) Hook pybind: DenseTensor._share_cuda / _new_shared_cuda
 try:
     import paddle
     from paddle.base import core
 
-    _orig_share_cuda = core.DenseTensor._share_cuda
-    _orig_new_shared_cuda = core.DenseTensor._new_shared_cuda
     _orig_share_vmm = core.DenseTensor._share_vmm
     _orig_new_shared_vmm = core.DenseTensor._new_shared_vmm
 
@@ -136,10 +40,11 @@ try:
         meta = _orig_share_vmm(self)
         try:
             fd, off, size, dtype, dims, lod, dev = meta
+            fd_safely = fd
             fd_safely = DupFd(fd)  # ★★ 核心：包装 fd ★★
             meta = (fd_safely, off, size, dtype, dims, lod, dev)
             print(
-                f"[{_now()}][IPC-TX] rank={_rank()} pid={os.getpid()} "
+                f"[IPC-TX] pid={os.getpid()} "
                 f"_share_vmm dev={dev} fd(type)={type(fd_safely).__name__} off={off} size={size}B",
                 flush=True,
             )
@@ -147,11 +52,10 @@ try:
                 f"[TX] before put: type(fd)={type(fd).__name__}  off={off}  size={size}  dev={dev}",
                 flush=True,
             )
-            # 可选：打印调用栈
             # traceback.print_stack(limit=10, file=sys.stdout)
         except Exception as e:
             print(
-                f"[{_now()}][IPC-TX] _share_vmm meta decode failed: {e}",
+                f"[IPC-TX] _share_vmm meta decode failed: {e}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -179,11 +83,10 @@ try:
 
             _os.fstat(fd)
             print(
-                f"[{_now()}][IPC-RX] rank={_rank()} pid={os.getpid()} "
+                f"[IPC-RX] pid={os.getpid()} "
                 f"_new_shared_vmm dev={dev} fd(int)={fd} off={off} size={size}B",
                 flush=True,
             )
-            # 可选：打印调用栈
             # traceback.print_stack(limit=10, file=sys.stdout)
             meta = (
                 fd,
@@ -196,7 +99,7 @@ try:
             )  # 用 detch 后的 fd 覆盖
         except Exception as e:
             print(
-                f"[{_now()}][IPC-RX] _new_shared_vmm precheck failed: {e}",
+                f"[IPC-RX] _new_shared_vmm precheck failed: {e}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -205,176 +108,12 @@ try:
     # ★★ 正确绑定（你之前错绑到了 _share_cuda/_new_shared_cuda）★★
     core.DenseTensor._share_vmm = _spy_share_vmm
     core.DenseTensor._new_shared_vmm = _spy_new_shared_vmm
-
-    print(
-        f"[{_now()}][IPC-HOOK] VMM hooks installed (pid={os.getpid()} rank={_rank()})",
-        flush=True,
-    )
-
-    @wraps(_orig_share_cuda)
-    def _spy_share_cuda(self):
-        meta = _orig_share_cuda(self)
-        try:
-            handle, off, size, dtype, dims, lod, dev = meta
-            print(
-                f"[{_now()}][IPC-TX] rank={_rank()} pid={os.getpid()} "
-                f"_share_cuda dev={dev} handle_sha1={_short(handle)} off={off} size={size}B",
-                flush=True,
-            )
-            # traceback.print_stack(limit=12, file=sys.stdout)
-        except Exception as _e:
-            print(
-                f"[{_now()}][IPC-TX] _share_cuda meta decode failed: {_e}",
-                file=sys.stderr,
-                flush=True,
-            )
-        return meta
-
-    @wraps(_orig_new_shared_cuda)
-    def _spy_new_shared_cuda(meta):
-        try:
-            handle, off, size, dtype, dims, lod, dev = meta
-            print(
-                f"[{_now()}][IPC-RX] rank={_rank()} pid={os.getpid()} "
-                f"_new_shared_cuda dev={dev} handle_sha1={_short(handle)} off={off} size={size}B",
-                flush=True,
-            )
-            # traceback.print_stack(limit=12, file=sys.stdout)
-        except Exception as _e:
-            print(
-                f"[{_now()}][IPC-RX] _new_shared_cuda meta decode failed: {_e}",
-                file=sys.stderr,
-                flush=True,
-            )
-        return _orig_new_shared_cuda(meta)
-
-    core.DenseTensor._share_cuda = _spy_share_cuda
-    core.DenseTensor._new_shared_cuda = _spy_new_shared_cuda
-    print(
-        f"[{_now()}][IPC-HOOK] core DenseTensor CUDA-IPC hooks installed",
-        flush=True,
-    )
 except Exception as e:
     print(
-        f"[{_now()}][IPC-HOOK] core hook failed: {e}",
+        f"[IPC-HOOK] core hook failed: {e}",
         file=sys.stderr,
         flush=True,
     )
-
-# 3) Hook multiprocessing.Queue put/get (看到谁在跨进程传对象)
-try:
-    import multiprocessing.queues as mpq
-
-    _orig_put = mpq.Queue.put
-    _orig_get = mpq.Queue.get
-
-    @wraps(_orig_put)
-    def _spy_put(self, obj, *args, **kwargs):
-        print(
-            f"[{_now()}][MP-PUT] rank={_rank()} pid={os.getpid()} type={type(obj).__name__}",
-            flush=True,
-        )
-        # traceback.print_stack(limit=12, file=sys.stdout)
-        return _orig_put(self, obj, *args, **kwargs)
-
-    @wraps(_orig_get)
-    def _spy_get(self, *args, **kwargs):
-        obj = _orig_get(self, *args, **kwargs)
-        print(
-            f"[{_now()}][MP-GET] rank={_rank()} pid={os.getpid()} type={type(obj).__name__}",
-            flush=True,
-        )
-        # traceback.print_stack(limit=12, file=sys.stdout)
-        return obj
-
-    mpq.Queue.put = _spy_put
-    mpq.Queue.get = _spy_get
-    print(f"[{_now()}][IPC-HOOK] mp.Queue hooks installed", flush=True)
-except Exception as e:
-    print(
-        f"[{_now()}][IPC-HOOK] mp.Queue hook failed: {e}",
-        file=sys.stderr,
-        flush=True,
-    )
-
-# 4) （可选）Hook 分布式广播（对象/张量），若你的路径使用它们可以看到栈
-try:
-    import paddle.distributed as dist
-
-    if hasattr(dist, "broadcast"):
-        _orig_b = dist.broadcast
-
-        @wraps(_orig_b)
-        def _spy_b(*args, **kwargs):
-            tensor = args[0] if args else kwargs.get("tensor", None)
-            src = kwargs.get("src", args[1] if len(args) > 1 else None)
-            group = kwargs.get("group", None)
-            shape = (
-                tuple(getattr(tensor, "shape", []))
-                if tensor is not None
-                else None
-            )
-            dtype = (
-                getattr(tensor, "dtype", None) if tensor is not None else None
-            )
-            place = (
-                getattr(
-                    getattr(tensor, "place", None),
-                    "_typename",
-                    str(getattr(tensor, "place", None)),
-                )
-                if tensor is not None
-                else None
-            )
-            print(
-                f"[{_now()}][DIST] broadcast src={src} group={group} shape={shape} dtype={dtype} place={place}",
-                flush=True,
-            )
-            # traceback.print_stack(limit=12, file=sys.stdout)
-            return _orig_b(*args, **kwargs)
-
-        dist.broadcast = _spy_b
-
-    if hasattr(dist, "broadcast_object_list"):
-        _orig_bol = dist.broadcast_object_list
-
-        @wraps(_orig_bol)
-        def _spy_bol(*args, **kwargs):
-            object_list = args[0] if args else kwargs.get("object_list", None)
-            src = kwargs.get("src", args[1] if len(args) > 1 else None)
-            group = kwargs.get("group", None)
-
-            def _slen(o):
-                try:
-                    return len(o)
-                except Exception:
-                    return None
-
-            types = [type(o).__name__ for o in (object_list or [])]
-            sizes = [_slen(o) for o in (object_list or [])]
-            print(
-                f"[{_now()}][DIST] broadcast_object_list src={src} group={group} "
-                f"types={types} sizes={sizes}",
-                flush=True,
-            )
-            # traceback.print_stack(limit=12, file=sys.stdout)
-            return _orig_bol(*args, **kwargs)
-
-        dist.broadcast_object_list = _spy_bol
-    print(f"[{_now()}][IPC-HOOK] dist broadcast hooks installed", flush=True)
-except Exception as e:
-    print(
-        f"[{_now()}][IPC-HOOK] dist hook failed: {e}",
-        file=sys.stderr,
-        flush=True,
-    )
-
-print(
-    f"[{_now()}][IPC-HOOK] all hooks installed (pid={os.getpid()} rank={_rank()})",
-    flush=True,
-)
-# === END: Paddle CUDA-IPC trace hooks ===
-
 
 import sys
 from functools import wraps
@@ -392,59 +131,6 @@ from paddle.distributed.fleet.utils.mix_precision_utils import (
     MixPrecisionOptimizer,
 )
 from paddle.optimizer.fusion_utils import FusionStorageHelper
-
-"""
-if hasattr(dist, "broadcast"):
-    _orig_b = dist.broadcast
-
-    @wraps(_orig_b)
-    def _spy_b(*args, **kwargs):
-        # 尽力拿到几个关键字段做日志
-        tensor = args[0] if args else kwargs.get("tensor", None)
-        src    = kwargs.get("src", args[1] if len(args) > 1 else None)
-        group  = kwargs.get("group", None)
-        try:
-            shape = tuple(getattr(tensor, "shape", []))
-            dtype = getattr(tensor, "dtype", None)
-            place = getattr(getattr(tensor, "place", None), "_typename", str(getattr(tensor, "place", None)))
-        except Exception:
-            shape = dtype = place = None
-
-        print(f"[spy] dist.broadcast src={src} group={group} shape={shape} dtype={dtype} place={place}")
-        # traceback.print_stack(limit=5, file=sys.stdout)
-        return _orig_b(*args, **kwargs)
-
-    dist.broadcast = _spy_b
-
-if hasattr(dist, "broadcast_object_list"):
-    _orig_bol = dist.broadcast_object_list
-
-    @wraps(_orig_bol)
-    def _spy_bol(*args, **kwargs):
-        # object_list 可能是第一个位置参数或关键字
-        if args:
-            object_list = args[0]
-        else:
-            object_list = kwargs.get("object_list", None)
-        src   = kwargs.get("src", args[1] if len(args) > 1 else None)
-        group = kwargs.get("group", None)
-
-        # 打印每个对象的类型和可用长度
-        def _safe_len(o):
-            try:
-                return len(o)
-            except Exception:
-                return None
-
-        types = [type(o).__name__ for o in (object_list or [])]
-        sizes = [_safe_len(o) for o in (object_list or [])]
-        print(f"[spy] broadcast_object_list src={src} group={group} types={types} sizes={sizes}")
-        # traceback.print_stack(limit=5, file=sys.stdout)
-        return _orig_bol(*args, **kwargs)
-
-    dist.broadcast_object_list = _spy_bol
-"""
-
 
 g_shard_split_param = int(os.environ.get("FLAGS_shard_split_param", 0))
 g_shard_param_with_color = int(

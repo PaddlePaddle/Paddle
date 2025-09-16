@@ -367,23 +367,19 @@ def build_reduce_scatter_buffer(
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
     # TODO(@gexiao): Currently only support gpus
     if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
-        print("=========== build_reduce_scatter_buffer =")
         # param_buffer_ipc_meta = param_buffer.value().get_tensor()._share_cuda()
         # 优先 cuda IPC；失败（VMM 分配）则回退到 VMM IPC
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
             # VMM: 返回 (fd, offset, size, dtype, dims, lod, device)
-            print(" ========== debug vmm_ipc ")
             vmm_meta = param_buffer.value().get_tensor()._share_vmm()
-            print("========= VMM: ", vmm_meta)
             ipc_meta = ("vmm_ipc", vmm_meta)
         else:
             ipc_meta = (
                 "cuda_ipc",
                 param_buffer.value().get_tensor()._share_cuda(),
             )
-            print(" ========== debug cuda_ipc meta: ", ipc_meta)
 
         tag, meta = ipc_meta
         param_buffer_ipc_meta = ipc_meta
@@ -857,7 +853,6 @@ def obtain_storage(
     storage = []
     buffers = []
     for group_idx, parameters in var_groups.items():
-        print("============== debug obtain_storage FusedCommBuffer ========")
         comm_buffer = FusedCommBuffer(
             group_idx,
             parameters,
@@ -973,7 +968,6 @@ def _fused_parameters_impl(
 
         is_distributed = attr[1]
         need_clip = attr[2]
-        print("================= _fused_parameters_impl ========")
         decay, decay_buffers = obtain_storage(
             decay_params,
             use_main_grad=use_main_grad,
