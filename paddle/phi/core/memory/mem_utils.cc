@@ -27,7 +27,7 @@ bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
                                    void* end_ptr /*not used*/) {
 #ifndef PADDLE_WITH_CUDA
   return false;
-#endif
+#else
   void* new_ptr = start_ptr;
   size_t remaining_size = 0;
   std::list<Block> new_blocks;
@@ -59,6 +59,7 @@ bool TotalMemoryCompactor::compact(std::list<Block>& blocks,
 
   blocks = std::move(new_blocks);
   return true;
+#endif
 }
 
 }  // namespace allocation
