@@ -48,7 +48,6 @@
 
 #ifdef __HIPCC__
 #define PADDLE_CUDA_FP16
-constexpr int warpSize = 64;
 #include <hip/hip_fp16.h>
 #endif
 
