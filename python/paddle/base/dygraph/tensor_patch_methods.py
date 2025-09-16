@@ -318,37 +318,26 @@ def monkey_patch_tensor():
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                500.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1500.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2500.)
+                0: 500.0
+                1: 1000.0
+                2: 1500.0
+                3: 2000.0
+                4: 2500.0
 
                 >>> x.clear_grad()
                 >>> print("{}".format(x.grad))
-                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                0.)
+                0.0
 
                 >>> grad_tensor=paddle.to_tensor(2.)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                3000.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                4000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                5000.)
+                0: 1000.0
+                1: 2000.0
+                2: 3000.0
+                3: 4000.0
+                4: 5000.0
         """
         if framework.in_dygraph_mode():
             if in_profiler_mode():
