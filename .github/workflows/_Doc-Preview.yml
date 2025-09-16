@@ -88,6 +88,7 @@ jobs:
       - name: Doc build
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           rm -rf  * .[^.]*
           echo "Downloading build.tar.gz from cfs"
           cp ${CFS_DIR}/build_bos/${AGILE_PULL_ID}/${AGILE_REVISION}/build.tar.gz .
@@ -97,13 +98,12 @@ jobs:
           api_doc_spec_diff=$(python tools/diff_api.py  paddle/fluid/API_DEV.spec.doc paddle/fluid/API_PR.spec.doc)
           if [ "$api_doc_spec_diff" == "" ]; then
             echo "API documents no change."
-            exit 0
           fi
 
           curl -sS -o /tmp/entrypoint.sh https://paddle-dev-tools-open.bj.bcebos.com/fluiddoc-preview/entrypoint-paddle-docs-review.sh
           cd /
           source ${{ github.workspace }}/../../../proxy
-          bash "/tmp/entrypoint.sh"
+          bash -x "/tmp/entrypoint.sh"
           '
 
       - name: Terminate and delete the container
