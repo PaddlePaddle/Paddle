@@ -142,7 +142,6 @@ static ::DLDataType GetDLDataTypeFromTypeIndex(proto::VarType::Type type) {
                     common::errors::InvalidArgument(
                         "Unsupported data type (%s).", DataTypeToString(type)));
   return it->second;
-#undef REG_DL_DATA_TYPE
 }
 
 struct DLDeviceVisitor {
