@@ -937,11 +937,11 @@ void FlashAttnV3BaseKernel(
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::dtype::float8_e4m3fn> set_zero;
-      set_zero(dev_ctx,
-               out,
-               phi::dtype::float8_e4m3fn{
-                   0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      set_zero(
+          dev_ctx,
+          out,
+          phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
     phi::funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());
@@ -2214,11 +2214,11 @@ void FlashMaskV2BaseKernel(
                out,
                phi::float16{0});  // If varlen we'll manually do the zero-ing
     } else if (out->dtype() == phi::DataType::FLOAT8_E4M3FN) {
-      phi::funcs::SetConstant<Context, phi::dtype::float8_e4m3fn> set_zero;
-      set_zero(dev_ctx,
-               out,
-               phi::dtype::float8_e4m3fn{
-                   0});  // If varlen we'll manually do the zero-ing
+      phi::funcs::SetConstant<Context, phi::float8_e4m3fn> set_zero;
+      set_zero(
+          dev_ctx,
+          out,
+          phi::float8_e4m3fn{0});  // If varlen we'll manually do the zero-ing
     }
     phi::funcs::SetConstant<Context, float> set_infinity;
     set_infinity(dev_ctx, softmax_lse, std::numeric_limits<float>::infinity());

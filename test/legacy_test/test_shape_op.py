@@ -16,7 +16,13 @@ import unittest
 
 import numpy as np
 from op import Operator
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -103,7 +109,8 @@ class TestShapeWithSelectedRows(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.supports_bfloat16(),
     "core is not compiled with CUDA or place do not support bfloat16",
 )
 class TestShapeOpBf16(OpTest):
@@ -121,7 +128,7 @@ class TestShapeOpBf16(OpTest):
         self.shape = [2, 3]
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
 
