@@ -77,7 +77,6 @@ jobs:
       - name: Build paddle
         run: |
           python -m pip install bce-python-sdk==0.8.74
-          call %ACTION_DIR%\proxy.bat
           call %ci_scripts%\build.bat
 
       - name: Test whl package

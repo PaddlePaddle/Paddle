@@ -21,10 +21,10 @@ if "%WITH_SCCACHE%"=="ON" (
     set SCCACHE_LOG=quiet
 
     :: Distributed storage on windows
-    set SCCACHE_ENDPOINT=s3.bj.bcebos.com
-    set SCCACHE_BUCKET=paddle-github-action
-    set SCCACHE_S3_KEY_PREFIX=sccache/
-    set SCCACHE_S3_USE_SSL=true
+    @REM set SCCACHE_ENDPOINT=s3.bj.bcebos.com
+    @REM set SCCACHE_BUCKET=paddle-github-action
+    @REM set SCCACHE_S3_KEY_PREFIX=sccache/
+    @REM set SCCACHE_S3_USE_SSL=true
 
     sccache --start-server
     sccache -z
