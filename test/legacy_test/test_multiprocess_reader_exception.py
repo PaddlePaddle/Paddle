@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_class, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -31,8 +31,8 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
         self.raise_exception = False
 
     def places(self):
-        if base.is_compiled_with_cuda():
-            return [base.CPUPlace(), base.CUDAPlace(0)]
+        if base.is_compiled_with_cuda() or is_custom_device():
+            return [base.CPUPlace(), get_device_place()]
         else:
             return [base.CPUPlace()]
 
@@ -66,7 +66,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
                 [fake_reader(), fake_reader()], use_pipe=self.use_pipe
             )
 
-            if isinstance(place, base.CUDAPlace):
+            if isinstance(place, get_device_class()):
                 reader.set_sample_generator(
                     decorated_reader,
                     batch_size=batch_size,

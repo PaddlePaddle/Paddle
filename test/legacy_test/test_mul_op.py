@@ -23,7 +23,12 @@ from test_sparse_attention_op import get_cuda_version
 from paddle.base import core
 
 sys.path.append("..")
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 
 class TestMulOp(OpTest):
@@ -115,19 +120,20 @@ class TestMulOp2(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMulFP16Op1(TestMulOp):
     def init_dtype_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -137,7 +143,7 @@ class TestMulFP16Op1(TestMulOp):
             )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -148,7 +154,7 @@ class TestMulFP16Op1(TestMulOp):
             )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -160,19 +166,20 @@ class TestMulFP16Op1(TestMulOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMulFP16Op2(TestMulOp2):
     def init_dtype_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -182,7 +189,7 @@ class TestMulFP16Op2(TestMulOp2):
             )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -193,7 +200,7 @@ class TestMulFP16Op2(TestMulOp2):
             )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad_with_place(
                 place,
@@ -205,8 +212,8 @@ class TestMulFP16Op2(TestMulOp2):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMulBF16Op1(OpTest):
@@ -222,7 +229,7 @@ class TestMulBF16Op1(OpTest):
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype_type(self):
         self.dtype = np.uint16
@@ -256,8 +263,8 @@ class TestMulBF16Op1(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestMulBF16Op2(TestMulBF16Op1):
@@ -282,7 +289,7 @@ class TestMulBF16Op2(TestMulBF16Op1):
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
@@ -316,7 +323,8 @@ class TestMulBF16Op2(TestMulBF16Op1):
 
 # TODO: verify the requirements of CUDA ARCH
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11060,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11060,
     "MatmulInt8 requires CUDA >= 11.6",
 )
 class TestMulInt8Op(OpTest):
@@ -337,7 +345,7 @@ class TestMulInt8Op(OpTest):
         pass
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
@@ -374,7 +382,7 @@ class TestMulInt8Op2(TestMulInt8Op):
         self.inputs['Y'] = self.inputs['Y'].astype(self.dtype)
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):

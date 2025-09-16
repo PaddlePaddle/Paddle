@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -23,8 +23,8 @@ from paddle.base import core
 
 class ApiMinimumTest(unittest.TestCase):
     def setUp(self):
-        if core.is_compiled_with_cuda():
-            self.place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = core.CPUPlace()
 
@@ -301,13 +301,14 @@ class ApiMinimumTest(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseMinimumOp_Stride(unittest.TestCase):
     def setUp(self):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_dtype(self):
         self.dtype = np.float64

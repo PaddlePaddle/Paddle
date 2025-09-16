@@ -42,6 +42,9 @@ void AsStridedGradKernel(const Context& dev_ctx,
                        phi::StridedTensorFill<data_t>(
                            *input_grad, 0, input_grad);
                      }));
+  if (out_grad.numel() == 0) {
+    return;
+  }
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
   AsStridedKernel<Context>(dev_ctx, *input_grad, dims, stride, offset, &tmp);
