@@ -4124,12 +4124,7 @@ class ShardDataloader:
     def __next__(self):
         if self.iter is None:
             self.iter = self._dataloader.__iter__()
-        try:
-            batch_data = next(self.iter)
-        except StopIteration:
-            self.iter = iter(self._dataloader)
-            batch_data = next(self.iter)
-
+        batch_data = next(self.iter)
         return self._get_batch(batch_data)
 
     def __call__(self):
