@@ -142,9 +142,7 @@ jobs:
           source ${{ github.workspace }}/../../../proxy
           ls
           rm -rf Paddle
-          git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git
-          mv Paddle/* ./
-          rm -rf Paddle
+          git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git .
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git fetch origin pull/75296/head:test
