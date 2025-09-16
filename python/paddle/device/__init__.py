@@ -65,9 +65,9 @@ if TYPE_CHECKING:
 # Dynamically import device functions based on available devices
 if core.is_compiled_with_cuda():
     from .cuda import (
-        Event as EventBase,
-        Stream as StreamBase,
-        current_stream,
+        create_event as _create_event_base,
+        create_stream as _create_stream_base,
+        current_stream as _current_stream_base,
         device_count,
         empty_cache,
         get_device_properties,
@@ -83,7 +83,7 @@ elif core.is_compiled_with_xpu():
     from .xpu import (
         Event as EventBase,
         Stream as StreamBase,
-        current_stream,
+        current_stream as _current_stream_base,
         device_count,
         empty_cache,
         max_memory_allocated,
@@ -103,7 +103,7 @@ else:
         from .custom import (
             Event as EventBase,
             Stream as StreamBase,
-            current_stream,
+            current_stream as _current_stream_base,
             device_count,
             empty_cache,
             get_device_properties,
@@ -721,12 +721,185 @@ def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
     return device_id
 
 
-class Stream:
-    """
-    A device stream wrapper around StreamBase.
+class Event:
+    '''
 
-    This class wraps the hardware-specific StreamBase implementation,
-    providing a unified interface for all device types.
+    A device event wrapper around StreamBase.
+
+    Args:
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+        enable_timing (bool, optional): indicates if the event should measure time, default is False
+        blocking (bool, optional): if True, ``wait`` will be blocking, default is False
+        interprocess (bool): if True, the event can be shared between processes, default is False
+
+    Returns:
+        Event: The event.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('custom_cpu')
+            >>> e1 = paddle.device.Event()
+            >>> e2 = paddle.device.Event('custom_cpu')
+            >>> e3 = paddle.device.Event('custom_cpu:0')
+            >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+
+    '''
+
+    device: PlaceLike | None
+    enable_timing: bool
+    event_base: _InitEventBase
+
+    def __init__(
+        self,
+        device: PlaceLike | None = None,
+        enable_timing: bool = False,
+        blocking: bool = False,
+        interprocess: bool = False,
+    ) -> None:
+        if device is None:
+            self.device = paddle.framework._current_expected_place_()
+        elif isinstance(device, str):
+            self.device = paddle.device._convert_to_place(device)
+        else:
+            self.device = device
+
+        device_id = (
+            self.device.get_device_id()
+            if hasattr(self.device, 'get_device_id')
+            else None
+        )
+        device_type = (
+            self.device.get_device_type()
+            if hasattr(self.device, 'get_device_type')
+            else None
+        )
+
+        self.event_base = _create_event_base(
+            enable_timing=enable_timing,
+            blocking=blocking,
+            interprocess=interprocess,
+            device_type=device_type,
+            device_id=device_id,
+        )
+
+    def record(self, stream: Stream | None = None) -> None:
+        '''
+
+        Records the event in a given stream.
+
+        Args:
+            stream(Stream, optional): The given stream. By default, stream is None,
+            event will be recorded in current_stream.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+                >>> import paddle
+
+                >>> paddle.set_device('custom_cpu')
+                >>> e = paddle.device.Event()
+                >>> e.record()
+
+                >>> s = paddle.device.Stream()
+                >>> e.record(s)
+
+        '''
+        if stream is None:
+            stream_base = current_stream(self.device)
+            self.event_base.record(stream_base)
+
+        self.event_base.record(stream.stream_base)
+
+    def query(self) -> bool:
+        '''
+
+        Checks if all work currently captured by event has completed.
+
+        Returns:
+            bool: Whether all work currently captured by event has completed.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+                >>> import paddle
+
+                >>> paddle.set_device('custom_cpu')
+                >>> e = paddle.device.Event()
+                >>> e.record()
+                >>> e.query()
+
+        '''
+        return self.event_base.query()
+
+    def elapsed_time(self, end_event: Event) -> int:
+        '''
+
+        Returns the time elapsed in milliseconds after the event was
+        recorded and before the end_event was recorded.
+
+        Returns:
+            int: The time.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+                >>> import paddle
+
+                >>> paddle.set_device('custom_cpu')
+                >>> e1 = paddle.device.Event()
+                >>> e1.record()
+
+                >>> e2 = paddle.device.Event()
+                >>> e2.record()
+                >>> e1.elapsed_time(e2)
+
+        '''
+        return self.event_base.elapsed_time(end_event.event_base)
+
+    def synchronize(self) -> None:
+        '''
+
+        Waits for the event to complete.
+        Waits until the completion of all work currently captured in this event.
+        This prevents the CPU thread from proceeding until the event completes.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+                >>> import paddle
+
+                >>> paddle.set_device('custom_cpu')
+                >>> e = paddle.device.Event()
+                >>> e.record()
+                >>> e.synchronize()
+
+        '''
+        self.event_base.synchronize()
+
+    def __repr__(self) -> core.CUDAEvent | core.CustomDeviceEvent:
+        return self.event_base
+
+
+class Stream:
+    '''
+
+    A device stream wrapper around StreamBase.
 
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
@@ -751,7 +924,10 @@ class Stream:
             >>> s3 = paddle.device.Stream('custom_cpu:0')
             >>> s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
 
-    """
+    '''
+
+    stream_base: _InitStreamBase
+    device: PlaceLike
 
     def __init__(
         self,
@@ -759,11 +935,10 @@ class Stream:
         priority: int = 2,
         stream_base: _InitStreamBase | None = None,
     ) -> None:
-        """Initialize stream using the hardware-specific StreamBase."""
         if stream_base is not None:
             if isinstance(
                 stream_base,
-                StreamBase,
+                (core.CUDAStream, core.CustomDeviceStream, core.XPUStream),
             ):
                 self.stream_base = stream_base
                 self.device = stream_base.place
@@ -780,11 +955,22 @@ class Stream:
         else:
             self.device = device
 
-        self.stream_base = StreamBase(
-            self.device.get_device_type(),
-            self.device.get_device_id(),
-            priority,
+        device_id = (
+            self.device.get_device_id()
+            if hasattr(self.device, 'get_device_id')
+            else None
+        )
+        device_type = (
+            self.device.get_device_type()
+            if hasattr(self.device, 'get_device_type')
+            else None
+        )
+
+        self.stream_base = _create_stream_base(
+            device_id=device_id,
+            priority=priority,
             blocking=False,
+            device_type=device_type,
         )
 
     def wait_event(self, event: Event) -> None:
@@ -915,11 +1101,6 @@ class Stream:
         self.stream_base.synchronize()
 
     @property
-    def stream_base(self):
-        """Access to the underlying StreamBase for compatibility."""
-        return self._stream_base
-
-    @property
     def _as_parameter_(self):
         if isinstance(self.stream_base, core.CUDAStream):
             return ctypes.c_void_p(self.stream_base.cuda_stream)
@@ -938,498 +1119,6 @@ class Stream:
 
     def __repr__(self) -> str:
         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
-
-
-class Event:
-    """
-    A device event wrapper around EventBase.
-
-    This class wraps the hardware-specific EventBase implementation,
-    providing a unified interface for all device types.
-
-    Args:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
-        enable_timing (bool, optional): indicates if the event should measure time, default is False
-        blocking (bool, optional): if True, ``wait`` will be blocking, default is False
-        interprocess (bool): if True, the event can be shared between processes, default is False
-
-    Returns:
-        Event: The event.
-
-    Examples:
-        .. code-block:: python
-
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-            >>> import paddle
-
-            >>> paddle.set_device('custom_cpu')
-            >>> e1 = paddle.device.Event()
-            >>> e2 = paddle.device.Event('custom_cpu')
-            >>> e3 = paddle.device.Event('custom_cpu:0')
-            >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
-
-    """
-
-    def __init__(
-        self,
-        device=None,
-        enable_timing=False,
-        blocking=False,
-        interprocess=False,
-    ):
-        """Initialize event using the hardware-specific EventBase."""
-        self._event_base = EventBase(
-            device, enable_timing, blocking, interprocess
-        )
-
-        # 保存属性以保持兼容性
-        if device is None:
-            self.device = paddle.framework._current_expected_place_()
-        elif isinstance(device, str):
-            self.device = paddle.device._convert_to_place(device)
-        else:
-            self.device = device
-
-        self.enable_timing = enable_timing
-
-    def record(self, stream=None):
-        """Delegate to EventBase implementation."""
-        return self._event_base.record(stream)
-
-    def query(self):
-        """Delegate to EventBase implementation."""
-        return self._event_base.query()
-
-    def elapsed_time(self, end_event):
-        """Delegate to EventBase implementation."""
-        return self._event_base.elapsed_time(end_event)
-
-    def synchronize(self):
-        """Delegate to EventBase implementation."""
-        return self._event_base.synchronize()
-
-    @property
-    def event_base(self):
-        """Access to the underlying EventBase for compatibility."""
-        return self._event_base
-
-    def __repr__(self):
-        """String representation."""
-        return repr(self._event_base)
-
-
-# class Event:
-#     '''
-
-#     A device event wrapper around StreamBase.
-
-#     Args:
-#         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
-#             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-#             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
-#         enable_timing (bool, optional): indicates if the event should measure time, default is False
-#         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
-#         interprocess (bool): if True, the event can be shared between processes, default is False
-
-#     Returns:
-#         Event: The event.
-
-#     Examples:
-#         .. code-block:: python
-
-#             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#             >>> import paddle
-
-#             >>> paddle.set_device('custom_cpu')
-#             >>> e1 = paddle.device.Event()
-#             >>> e2 = paddle.device.Event('custom_cpu')
-#             >>> e3 = paddle.device.Event('custom_cpu:0')
-#             >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
-
-#     '''
-
-#     device: PlaceLike | None
-#     enable_timing: bool
-#     event_base: _InitEventBase
-
-#     def __init__(
-#         self,
-#         device: PlaceLike | None = None,
-#         enable_timing: bool = False,
-#         blocking: bool = False,
-#         interprocess: bool = False,
-#     ) -> None:
-#         if device is None:
-#             self.device = paddle.framework._current_expected_place_()
-#         elif isinstance(device, str):
-#             self.device = paddle.device._convert_to_place(device)
-#         else:
-#             self.device = device
-
-#         if paddle.is_compiled_with_cuda() and isinstance(
-#             self.device, paddle.CUDAPlace
-#         ):
-#             self.event_base = core.CUDAEvent(
-#                 enable_timing, blocking, interprocess
-#             )
-#         elif paddle.is_compiled_with_xpu() and isinstance(
-#             self.device, paddle.XPUPlace
-#         ):
-#             self.event_base = core.XPUEvent()
-
-#         elif isinstance(self.device, paddle.CustomPlace):
-#             self.event_base = core.CustomDeviceEvent(
-#                 self.device.get_device_type(),
-#                 self.device.get_device_id(),
-#                 enable_timing,
-#                 blocking,
-#                 interprocess,
-#             )
-#         else:
-#             raise TypeError(
-#                 "device should be gpu, xpu, {}".format(
-#                     ",".join(paddle.device.get_all_custom_device_type())
-#                 )
-#             )
-
-#     def record(self, stream: Stream | None = None) -> None:
-#         '''
-
-#         Records the event in a given stream.
-
-#         Args:
-#             stream(Stream, optional): The given stream. By default, stream is None,
-#             event will be recorded in current_stream.
-
-#         Returns:
-#             None.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> e = paddle.device.Event()
-#                 >>> e.record()
-
-#                 >>> s = paddle.device.Stream()
-#                 >>> e.record(s)
-
-#         '''
-#         if stream is None:
-#             stream = current_stream(self.device)
-
-#         self.event_base.record(stream.stream_base)
-
-#     def query(self) -> bool:
-#         '''
-
-#         Checks if all work currently captured by event has completed.
-
-#         Returns:
-#             bool: Whether all work currently captured by event has completed.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> e = paddle.device.Event()
-#                 >>> e.record()
-#                 >>> e.query()
-
-#         '''
-#         return self.event_base.query()
-
-#     def elapsed_time(self, end_event: Event) -> int:
-#         '''
-
-#         Returns the time elapsed in milliseconds after the event was
-#         recorded and before the end_event was recorded.
-
-#         Returns:
-#             int: The time.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> e1 = paddle.device.Event()
-#                 >>> e1.record()
-
-#                 >>> e2 = paddle.device.Event()
-#                 >>> e2.record()
-#                 >>> e1.elapsed_time(e2)
-
-#         '''
-#         return self.event_base.elapsed_time(end_event.event_base)
-
-#     def synchronize(self) -> None:
-#         '''
-
-#         Waits for the event to complete.
-#         Waits until the completion of all work currently captured in this event.
-#         This prevents the CPU thread from proceeding until the event completes.
-
-#         Returns:
-#             None.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> e = paddle.device.Event()
-#                 >>> e.record()
-#                 >>> e.synchronize()
-
-#         '''
-#         self.event_base.synchronize()
-
-#     def __repr__(self) -> core.CUDAEvent | core.CustomDeviceEvent:
-#         return self.event_base
-
-
-# class Stream:
-#     '''
-
-#     A device stream wrapper around StreamBase.
-
-#     Args:
-#         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)|None): Which device the stream run on. If device is None, the device is the current device. Default: None.
-#             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
-#             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
-#         priority(int, optional): priority of the CUDA stream. Can be either
-#             1 (high priority) or 2 (low priority). By default, streams have
-#             priority 2.
-
-#     Returns:
-#         Stream: The stream.
-
-#     Examples:
-#         .. code-block:: python
-
-#             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#             >>> import paddle
-
-#             >>> paddle.set_device('custom_cpu')
-#             >>> s1 = paddle.device.Stream()
-#             >>> s2 = paddle.device.Stream('custom_cpu')
-#             >>> s3 = paddle.device.Stream('custom_cpu:0')
-#             >>> s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
-
-#     '''
-
-#     stream_base: _InitStreamBase
-#     device: PlaceLike
-
-#     def __init__(
-#         self,
-#         device: PlaceLike | None = None,
-#         priority: int = 2,
-#         stream_base: _InitStreamBase | None = None,
-#     ) -> None:
-#         if stream_base is not None:
-#             if isinstance(
-#                 stream_base,
-#                 (core.CUDAStream, core.CustomDeviceStream, core.XPUStream),
-#             ):
-#                 self.stream_base = stream_base
-#                 self.device = stream_base.place
-#             else:
-#                 raise TypeError(
-#                     "stream_base should be CUDAStream, XPUStream, CustomDeviceStream"
-#                 )
-#             return
-
-#         if device is None:
-#             self.device = paddle.framework._current_expected_place_()
-#         elif isinstance(device, str):
-#             self.device = paddle.device._convert_to_place(device)
-#         else:
-#             self.device = device
-
-#         if paddle.is_compiled_with_cuda() and isinstance(
-#             self.device, paddle.CUDAPlace
-#         ):
-#             self.stream_base = core.CUDAStream(
-#                 self.device.get_device_id(), priority
-#             )
-#         elif paddle.is_compiled_with_xpu() and isinstance(
-#             self.device, paddle.XPUPlace
-#         ):
-#             self.stream_base = core.XPUStream(self.device.get_device_id())
-#         elif isinstance(self.device, paddle.CustomPlace):
-#             self.stream_base = core.CustomDeviceStream(
-#                 self.device.get_device_type(),
-#                 self.device.get_device_id(),
-#                 priority,
-#                 blocking=False,
-#             )
-#         else:
-#             raise TypeError(
-#                 "device should be gpu, xpu, {}".format(
-#                     ",".join(paddle.device.get_all_custom_device_type())
-#                 )
-#             )
-
-#     def wait_event(self, event: Event) -> None:
-#         '''
-
-#         Makes all future work submitted to the stream wait for an event.
-
-#         Args:
-#             event (Event): an event to wait for.
-
-#         Returns:
-#             None.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> s1 = paddle.device.Stream()
-#                 >>> s2 = paddle.device.Stream()
-#                 >>> e = paddle.device.Event()
-#                 >>> e.record(s1)
-#                 >>> s2.wait_event(e)
-
-#         '''
-#         self.stream_base.wait_event(event.event_base)
-
-#     def wait_stream(self, stream: Stream) -> None:
-#         '''
-
-#         Synchronizes with another stream.
-#         All future work submitted to this stream will wait until all kernels
-#         submitted to a given stream at the time of call complete.
-
-#         Args:
-#             stream (Stream): a stream to synchronize.
-
-#         Returns:
-#             None.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> s1 = paddle.device.Stream()
-#                 >>> s2 = paddle.device.Stream()
-#                 >>> s1.wait_stream(s2)
-
-#         '''
-#         self.stream_base.wait_stream(stream.stream_base)
-
-#     def record_event(self, event: Event | None = None) -> Event:
-#         '''
-
-#         Records an event.
-
-#         Args:
-#             event (Event, optional): event to record. If not given, a new one
-#             will be allocated.
-
-#         Returns:
-#             Event: Recorded event.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> s = paddle.device.Stream()
-#                 >>> e1 = s.record_event()
-
-#                 >>> e2 = paddle.device.Event()
-#                 >>> s.record_event(e2)
-
-#         '''
-#         if event is None:
-#             event = Event(self.device)
-#         event.record(self)
-#         return event
-
-#     def query(self) -> bool:
-#         '''
-
-#         Checks if all the work submitted has been completed.
-
-#         Returns:
-#             bool: Whether all kernels in this stream are completed.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> s = paddle.device.Stream()
-#                 >>> s.query()
-
-#         '''
-#         return self.stream_base.query()
-
-#     def synchronize(self) -> None:
-#         '''
-
-#         Wait for all the kernels in this stream to complete.
-
-#         Returns:
-#             None.
-
-#         Examples:
-#             .. code-block:: python
-
-#                 >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
-#                 >>> import paddle
-
-#                 >>> paddle.set_device('custom_cpu')
-#                 >>> s = paddle.device.Stream()
-#                 >>> s.synchronize()
-
-#         '''
-#         self.stream_base.synchronize()
-
-#     @property
-#     def _as_parameter_(self):
-#         if isinstance(self.stream_base, core.CUDAStream):
-#             return ctypes.c_void_p(self.stream_base.cuda_stream)
-#         elif isinstance(self.stream_base, core.XPUStream):
-#             return ctypes.c_void_p(self.stream_base.xpu_stream)
-#         else:
-#             return ctypes.c_void_p(self.stream_base.raw_stream)
-
-#     def __eq__(self, o: Stream | None) -> bool:
-#         if isinstance(o, Stream):
-#             return super().__eq__(o)
-#         return False
-
-#     def __hash__(self) -> int:
-#         return hash((self.stream_base, self.device))
-
-#     def __repr__(self) -> str:
-#         return f'<paddle.device.Stream device={self.device} stream={self._as_parameter_.value:#x}>'
 
 
 def _device_to_paddle(
@@ -1489,6 +1178,35 @@ class PaddleStream(Stream):
             *args,
             **kwargs,
         )
+
+
+def current_stream(device: PlaceLike | None = None) -> Stream:
+    '''
+
+    Return the current stream by the device.
+
+    Args:
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
+            where ``x`` is the index of the GPUs, CustomDevices. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+
+    Returns:
+        Stream: The stream to the device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('custom_cpu')
+            >>> s1 = paddle.device.current_stream()
+            >>> s2 = paddle.device.current_stream("custom_cpu:0")
+            >>> place = paddle.CustomPlace('custom_cpu', 0)
+            >>> s3 = paddle.device.current_stream(place)
+
+    '''
+    return Stream(stream_base=_current_stream_base(device))
 
 
 def set_stream(stream: Stream) -> Stream:

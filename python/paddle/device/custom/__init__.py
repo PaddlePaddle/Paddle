@@ -19,7 +19,7 @@ from typing_extensions import TypeAlias
 
 from paddle.base import core
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import CustomPlace
@@ -29,8 +29,6 @@ if TYPE_CHECKING:
         str,  # some string like "iluvatar_gpu" "metax_gpu:0", etc.
         int,  # some int like 0, 1, etc.
     ]
-
-# from .. import Stream
 
 dev_types = core.get_all_custom_device_type()
 if not dev_types:
@@ -60,7 +58,7 @@ __all__ = [
     'reset_max_memory_reserved',
     'memory_allocated',
     'memory_reserved',
-    # 'current_stream',
+    'current_stream',
     'synchronize',
 ]
 
@@ -412,59 +410,58 @@ def memory_reserved(device: _CustomPlaceLike | None = None) -> int:
     return core.device_memory_stat_current_value("Reserved", device_id)
 
 
-# def current_stream(device: _CustomPlaceLike | None = None) -> Stream:
-#     '''
-#     Return the current stream by the device.
+def current_stream(device: _CustomPlaceLike | None = None) -> Stream:
+    '''
+    Return the current stream by the device.
 
-#     Args:
-#         device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
-#             If None, the device is the first available custom device with index 0.
+    Args:
+        device(_CustomPlaceLike, optional): Support input like 'npu:0', 'mlu', int, or CustomPlace.
+            If None, the device is the first available custom device with index 0.
 
-#     Returns:
-#         Stream: The stream to the device.
+    Returns:
+        Stream: The stream to the device.
 
-#     Examples:
-#         .. code-block:: python
+    Examples:
+        .. code-block:: python
 
-#             >>> import paddle
-#             >>> paddle.device.current_stream('npu:0')
-#             >>> paddle.device.current_stream('npu')
-#             >>> paddle.device.current_stream(0)
-#             >>> paddle.device.current_stream(Paddle.CustomPlace('npu',0))
-#     '''
-#     device_id = 0
+            >>> import paddle
+            >>> paddle.device.current_stream('npu:0')
+            >>> paddle.device.current_stream('npu')
+            >>> paddle.device.current_stream(0)
+            >>> paddle.device.current_stream(Paddle.CustomPlace('npu',0))
+    '''
+    device_id = 0
 
-#     if device is None:
-#         device_id = 0
-#     elif isinstance(device, str):
-#         colon_idx = device.rfind(':')
-#         if colon_idx == -1:
-#             device_id = 0
-#         else:
-#             device_id_str = device[colon_idx + 1:]
-#             if not device_id_str.isdigit():
-#                 raise ValueError(
-#                     f"Invalid device ID '{device_id_str}'. "
-#                     f"After colon must be digits only. "
-#                     "Example: 'npu:0'"
-#                 )
-#             device_id = int(device_id_str)
-#     elif isinstance(device, int):
-#         device_id = device
-#     elif isinstance(device, core.CustomPlace):
-#         device_id = device.get_device_id()
-#     else:
-#         raise ValueError(
-#             f"The input: {device} is not expected. Because paddle.device."
-#             "current_stream only support str, int or CustomPlace. "
-#             "Please input appropriate device again! "
-#             "Example: 'npu:0'"
-#         )
+    if device is None:
+        device_id = 0
+    elif isinstance(device, str):
+        colon_idx = device.rfind(':')
+        if colon_idx == -1:
+            device_id = 0
+        else:
+            device_id_str = device[colon_idx + 1 :]
+            if not device_id_str.isdigit():
+                raise ValueError(
+                    f"Invalid device ID '{device_id_str}'. "
+                    f"After colon must be digits only. "
+                    "Example: 'npu:0'"
+                )
+            device_id = int(device_id_str)
+    elif isinstance(device, int):
+        device_id = device
+    elif isinstance(device, core.CustomPlace):
+        device_id = device.get_device_id()
+    else:
+        raise ValueError(
+            f"The input: {device} is not expected. Because paddle.device."
+            "current_stream only support str, int or CustomPlace. "
+            "Please input appropriate device again! "
+            "Example: 'npu:0'"
+        )
 
-
-#     return Stream(
-#         stream_base=core._get_current_custom_device_stream(dev_type, device_id)
-#     )
+    return Stream(
+        stream_base=core._get_current_custom_device_stream(dev_type, device_id)
+    )
 
 
 def synchronize(device: _CustomPlaceLike | None = None) -> None:

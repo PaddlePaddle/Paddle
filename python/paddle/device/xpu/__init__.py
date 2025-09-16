@@ -20,7 +20,7 @@ from typing_extensions import TypeAlias
 from paddle.base import core
 from paddle.utils import deprecated
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import XPUPlace

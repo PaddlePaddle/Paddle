@@ -22,7 +22,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import CUDAPlace, CustomPlace
