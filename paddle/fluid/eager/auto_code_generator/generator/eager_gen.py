@@ -1283,22 +1283,22 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                     assert name in forward_outputs_position_map, AssertMessage(
                         name, forward_outputs_position_map.keys()
                     )
-
-                set_tensor_wrappers = (
+                set_output_tensor_wrappers_list.append(
                     f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                 )
-                set_output_tensor_wrappers_list.append(set_tensor_wrappers)
                 continue
 
             is_optional = name in optional_inputs
             is_inplace_input = is_inplaced and name in self.forward_inplace_map
             no_need_buffer = name in self.no_need_buffers
-            set_tensor_wrappers_body = ""
+            set_tensor_wrappers_body: list[str] = []
             var_name = name
             if is_inplace_input:
                 if not no_need_buffer:
                     var_name += "_clone"
-                    set_tensor_wrappers_body += f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n"
+                    set_tensor_wrappers_body.append(
+                        f"auto {name}_clone = paddle::experimental::assign({name});"
+                    )
             elif not (
                 (forward_api_name in strided_op_list)
                 or IsVectorTensorType(atype)
@@ -1314,17 +1314,23 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                 if not is_inplace_input and for_backward:
                     check_name += "_optional"
                     var_name += "_optional"
-                set_tensor_wrappers_body += (
-                    f"{indent}grad_node->SetTensorWrapper_{name}({var_name});\n"
+                set_tensor_wrappers_body.append(
+                    f"grad_node->SetTensorWrapper_{name}({var_name});"
                 )
-                set_tensor_wrappers = (
-                    f"{indent}if ({check_name}){{\n{set_tensor_wrappers_body}}}"
-                )
+                if len(set_tensor_wrappers_body) == 1:
+                    set_tensor_wrappers = f"{indent}if ({check_name}) {set_tensor_wrappers_body[0]}"
+                else:
+                    set_tensor_wrappers_body_str = "\n".join(
+                        f"{indent}  {s}" for s in set_tensor_wrappers_body
+                    )
+                    set_tensor_wrappers = f"{indent}if ({check_name}){{\n{set_tensor_wrappers_body_str}\n{indent}}}"
             else:
-                set_tensor_wrappers_body += (
-                    f"{indent}grad_node->SetTensorWrapper_{name}({var_name});\n"
+                set_tensor_wrappers_body.append(
+                    f"grad_node->SetTensorWrapper_{name}({var_name});"
                 )
-                set_tensor_wrappers = set_tensor_wrappers_body
+                set_tensor_wrappers = "\n".join(
+                    f"{indent}{s}" for s in set_tensor_wrappers_body
+                )
             set_input_tensor_wrappers_list.append(set_tensor_wrappers)
 
         set_input_tensor_wrappers_str = "\n".join(
