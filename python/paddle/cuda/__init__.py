@@ -22,7 +22,6 @@ from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
-    current_device as current_device,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -476,5 +475,4 @@ __all__ = [
     "stream",
     "Stream",
     "get_stream_from_external",
-    "current_device",
 ]
