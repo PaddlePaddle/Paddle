@@ -1,8 +1,8 @@
 diff --git a/include/pybind11/detail/internals.h b/include/pybind11/detail/internals.h
-index ad2ff74c..bc4731c6 100644
+index 4ea37486..a4c72364 100644
 --- a/include/pybind11/detail/internals.h
 +++ b/include/pybind11/detail/internals.h
-@@ -120,7 +120,14 @@ public:
+@@ -129,7 +129,14 @@ public:
      }
  
  private:
