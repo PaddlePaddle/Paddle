@@ -24,6 +24,9 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
     def test_softmax_shard(self):
         self.run_test_case("softmax_co_shard.py")
 
+    def test_argsort_shard(self):
+        self.run_test_case("argsort_co_shard.py")
+
 
 if __name__ == "__main__":
     unittest.main()

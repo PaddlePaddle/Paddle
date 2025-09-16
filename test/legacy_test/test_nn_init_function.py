@@ -17,7 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from op_test import get_devices
+from op_test import get_devices, is_custom_device
 from scipy import stats
 from utils import dygraph_guard, static_guard
 
@@ -178,7 +178,8 @@ class Test_kaiming_uniform_(unittest.TestCase):
             )
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_kaiming_uniform_fp16(self):
         with dygraph_guard():
@@ -317,7 +318,8 @@ class Test_kaiming_normal_(unittest.TestCase):
             )
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -421,7 +423,8 @@ class Test_xavier_uniform_(unittest.TestCase):
             self.check(linear.weight, gain=2.0)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -514,7 +517,8 @@ class Test_xavier_normal_(unittest.TestCase):
             self.check(linear.weight, gain=2.6)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -592,7 +596,8 @@ class Test_uniform_(unittest.TestCase):
                 self.check(input_tensor, -3.0, 2.0)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -672,7 +677,8 @@ class Test_normal_(unittest.TestCase):
                 self.check(input_tensor, mean, std)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -938,7 +944,8 @@ class Test_ones_(unittest.TestCase):
                     self.check(pd_res)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -1018,7 +1025,8 @@ class Test_zeros_(unittest.TestCase):
                     self.check(pd_res)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -1092,7 +1100,8 @@ class Test_eye_(unittest.TestCase):
                     self.check(pd_res)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():
@@ -1156,7 +1165,8 @@ class Test_dirac_(unittest.TestCase):
                     self.assertEqual(pd_res.sum(), min_d * 2)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (paddle.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     def test_fp16(self):
         with dygraph_guard():

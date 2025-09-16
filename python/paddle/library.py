@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Iterable, Sequence
-from typing import Literal, Union, overload
+from typing import Union, overload
 
 from typing_extensions import TypeAlias
 
@@ -74,7 +74,7 @@ class CustomOpDef:
 @overload
 def custom_op(
     name: str,
-    fn: Literal[None] = None,
+    fn: None = None,
     /,
     *,
     mutates_args: str | Iterable[str],

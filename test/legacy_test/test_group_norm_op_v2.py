@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places, is_custom_device
+from op_test import get_device_place, get_places, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -152,8 +152,10 @@ class TestGroupNormAPIV2_With_NLC(unittest.TestCase):
         shape = (2, 4, 6)
         np.random.seed(10)
         places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("group_norm"):
-            places.append(base.CUDAPlace(0))
+        if (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and core.op_support_gpu("group_norm"):
+            places.append(get_device_place())
 
         for place in places:
             paddle.disable_static(place)

@@ -218,6 +218,18 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
         raise ValueError(
             "grad_outputs should have the same length of as outputs."
         )
+
+    def _check_shape(output, grad) -> bool:
+        if len(output.shape) != len(grad.shape):
+            return False
+        for o_dim, g_dim in zip(output.shape, grad.shape):
+            if o_dim == -1 or g_dim == -1:
+                # Skip comparison if any dimension is -1 (wildcard for dynamic shape)
+                continue
+            if o_dim != g_dim:
+                return False
+        return True
+
     backward_ops = []
     for i, grad in enumerate(grad_outputs):
         output = outputs[i]
@@ -229,7 +241,7 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
             )
             grad_outputs[i] = grad_value
         else:
-            if output.shape != grad.shape:
+            if not _check_shape(output, grad):
                 raise ValueError(
                     f"The shape of grad_output[{i}] {grad.shape} should be the same as the shape of output[{i}] {output.shape}"
                 )

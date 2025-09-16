@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -55,19 +55,19 @@ def attention_naive(q, k, v, causal=False):
 
 
 is_sm80 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
 
 is_sm8x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm90 = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 9
     and paddle.device.cuda.get_device_capability()[1] == 0
 )
@@ -76,7 +76,7 @@ is_sm_supported = is_sm8x or is_sm90
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -84,7 +84,7 @@ is_sm_supported = is_sm8x or is_sm90
 )
 class TestFlashAttentionAPIFlag(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 16)
         self.dtype = 'float16'
         self.dropout = 0.0
@@ -174,7 +174,7 @@ class TestFlashAttentionAPIFlag(unittest.TestCase):
 
 class TestFlashAttentionAPIFlagTest1(TestFlashAttentionAPIFlag):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (2, 128, 8, 16)
         self.dtype = paddle.float16
         self.dropout = 0.0
@@ -185,7 +185,7 @@ class TestFlashAttentionAPIFlagTest1(TestFlashAttentionAPIFlag):
 
 class TestFlashAttentionAPIFlagTest2(TestFlashAttentionAPIFlag):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         # Flash attention backward kernel only supports SM80 or SM90 for head dimension > 192
         self.shape = (
             (8, 1024, 16, 256) if (is_sm80 or is_sm90) else (8, 1024, 16, 192)
@@ -199,7 +199,7 @@ class TestFlashAttentionAPIFlagTest2(TestFlashAttentionAPIFlag):
 
 class TestSDPAttentionAPIFlagTest(TestFlashAttentionAPIFlag):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.shape = (8, 1024, 16, 128)
         self.dtype = paddle.float16
         self.dropout = 0.0

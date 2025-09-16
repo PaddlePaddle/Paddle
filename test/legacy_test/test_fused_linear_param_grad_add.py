@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 from paddle import _C_ops
@@ -168,7 +168,10 @@ class TestMainClassBase(unittest.TestCase):
             )
 
     def test_main(self):
-        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+        if (
+            not (paddle.is_compiled_with_cuda() or is_custom_device())
+            or paddle.is_compiled_with_rocm()
+        ):
             return
 
         prop = paddle.device.cuda.get_device_properties()
