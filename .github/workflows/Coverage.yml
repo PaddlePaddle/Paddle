@@ -137,7 +137,7 @@ jobs:
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           set -x
           rm -rf * .[^.]*
-          set -e
+          set +e
           echo "Downloading Paddle.tar.gz"
           source ${{ github.workspace }}/../../../proxy
           ls
