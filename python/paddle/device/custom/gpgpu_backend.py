@@ -41,7 +41,7 @@ def get_device_properties(
     Args:
         device (CustomPlace|str|int|None, optional): The device, the id of the device or
             the string name of device like 'metax_gpu:x' which to get the properties of the
-            device from. If device is None, the device is the current device.
+            device from. Notice that this api only supports gpgpu backend. If device is None, the device is the current device.
             Default: None.
 
     Returns:
