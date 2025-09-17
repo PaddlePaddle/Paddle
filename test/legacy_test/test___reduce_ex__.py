@@ -63,7 +63,7 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
         assert actual.dtype == expected.dtype
         assert actual.place == expected.place
         assert actual.stop_gradient == expected.stop_gradient
-        assert np.array_equal(actual.numpy(), expected.numpy())
+        np.testing.assert_array_equal(actual.numpy(), expected.numpy())
 
     def _perform_test(self, place, dtype, pin_mem, requires_grad):
         x = paddle.tensor(self._prepare_data(dtype, place))
