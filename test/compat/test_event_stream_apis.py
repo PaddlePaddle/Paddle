@@ -253,6 +253,14 @@ class TestEventStreamAPIs(unittest.TestCase):
                 pass
 
 
+@unittest.skipIf(
+    not (
+        core.is_compiled_with_cuda()
+        or core.is_compiled_with_xpu()
+        or is_custom_device()
+    ),
+    "CUDA, XPU or Custom Device not available",
+)
 class TestEventStreamTimingFunctionality(unittest.TestCase):
     """Test Event timing functionality with actual work in isolated environment."""
 
