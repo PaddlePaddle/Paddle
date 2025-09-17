@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, list
+from typing import TYPE_CHECKING
 
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
