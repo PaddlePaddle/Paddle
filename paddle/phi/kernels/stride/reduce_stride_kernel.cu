@@ -23,6 +23,9 @@
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 
 #include "paddle/phi/kernels/reduce_amax_kernel.h"
+#include "paddle/phi/kernels/reduce_amin_kernel.h"
+#include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_min_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -174,14 +177,14 @@ struct NewReduceConfig {
             cta2 * input_mult[CTA]);
   }
 
-  template <int output_vec_size>
+  template <int OUTPUT_VEC_SIZE>
   __host__ __device__ int output_idx() const {
     int lane = threadIdx.x;
     int warp = threadIdx.y;
     int cta1 = blockIdx.x;
     return (lane * output_mult[BLOCK_X] + warp * output_mult[BLOCK_Y] +
             cta1 * step_output) *
-           output_vec_size;
+           OUTPUT_VEC_SIZE;
   }
 
   __device__ int shared_memory_offset(int offset) const {
@@ -227,9 +230,9 @@ struct NewReduceConfig {
 
 std::ostream& operator<<(std::ostream& out, const NewReduceConfig& config);
 
-template <int nt, int output_vec_size, typename R>
+template <int nt, int OUTPUT_VEC_SIZE, typename R>
 __global__ void reduce_kernel(R reduction) {
-  reduction.template run<output_vec_size>();
+  reduction.template run<OUTPUT_VEC_SIZE>();
 }
 
 template <typename index_t>
@@ -338,7 +341,6 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
     dim0 = 1;
     dim1 = 1;
   }
-
   // We do vectorization to gain better memory access, there are two cases which
   // we call "vectorize along input" and "vectorize along output". Note that the
   // "input/output" here does not mean we are vectorizing load/store
@@ -429,7 +431,6 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
 
   const int blocks_per_sm = max_threads_per_mp / config.num_threads;
   const int target_grid_size = num_mp * blocks_per_sm;
-
   int grid = config.grid().x;
   if (config.input_mult[1] != 0 &&
       config.values_per_thread() >= max_values_per_thread &&
@@ -572,34 +573,34 @@ struct ReduceOp {
     }
   }
 
-  template <int output_vec_size>
+  template <int OUTPUT_VEC_SIZE>
   __device__ void run() const {
     extern __shared__ char shared_memory[];
-    index_t output_idx = config.output_idx<output_vec_size>();
+    index_t output_idx = config.output_idx<OUTPUT_VEC_SIZE>();
     index_t input_idx = config.input_idx();
     auto base_offsets1 = output_calc.get(output_idx)[1];
-    using arg_vec_t = std::array<arg_t, output_vec_size>;
+    using arg_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
     arg_vec_t value;
 
     if (output_idx < config.num_outputs && input_idx < config.num_inputs) {
       const scalar_t* input_slice =
           (const scalar_t*)((const char*)src + base_offsets1);
-      value = thread_reduce<output_vec_size>(input_slice);
+      value = thread_reduce<OUTPUT_VEC_SIZE>(input_slice);
     }
     if (config.should_block_y_reduce()) {
-      value = block_y_reduce<output_vec_size>(value, shared_memory);
+      value = block_y_reduce<OUTPUT_VEC_SIZE>(value, shared_memory);
     }
     if (config.should_block_x_reduce()) {
-      value = block_x_reduce<output_vec_size>(value, shared_memory);
+      value = block_x_reduce<OUTPUT_VEC_SIZE>(value, shared_memory);
     }
 
-    using out_ptr_vec_t = std::array<out_scalar_t*, output_vec_size>;
-    using offset_vec_t = std::array<index_t, output_vec_size>;
+    using out_ptr_vec_t = std::array<out_scalar_t*, OUTPUT_VEC_SIZE>;
+    using offset_vec_t = std::array<index_t, OUTPUT_VEC_SIZE>;
     offset_vec_t base_offsets;
     out_ptr_vec_t out;
 
 #pragma unroll
-    for (int i = 0; i < output_vec_size; i++) {
+    for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
       base_offsets[i] = output_calc.get(output_idx + i)[0];
       out[i] = reinterpret_cast<out_scalar_t*>(reinterpret_cast<char*>(dst[0]) +
                                                base_offsets[i]);
@@ -616,18 +617,18 @@ struct ReduceOp {
     }
 
     if (config.should_global_reduce()) {
-      value = global_reduce<output_vec_size>(value, acc, shared_memory);
+      value = global_reduce<OUTPUT_VEC_SIZE>(value, acc, shared_memory);
     } else if (config.should_store(output_idx)) {
       if (acc == nullptr) {
 #pragma unroll
-        for (int i = 0; i < output_vec_size; i++) {
+        for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
           *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
               out[i], value[i]);
         }
       } else {
         if (accumulate) {
 #pragma unroll
-          for (int i = 0; i < output_vec_size; i++) {
+          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
             kps::Reduce<arg_t,
                         1,
                         1,
@@ -641,8 +642,8 @@ struct ReduceOp {
     }
   }
 
-  template <int output_vec_size>
-  __device__ std::array<arg_t, output_vec_size> thread_reduce(
+  template <int OUTPUT_VEC_SIZE>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> thread_reduce(
       const scalar_t* data) const {
     if (config.vectorize_input) {
       // reduce at the header of input_slice where memory is not aligned,
@@ -652,13 +653,13 @@ struct ReduceOp {
       index_t element_stride = input_calc.strides_[0][0] / sizeof(scalar_t);
       bool is_contiguous = (input_calc.dims == 1 && element_stride == 1);
       if (is_contiguous) {
-        return thread_reduce_impl<output_vec_size>(
+        return thread_reduce_impl<OUTPUT_VEC_SIZE>(
             data, [](index_t idx) { return idx; });
       } else if (input_calc.dims == 1) {
-        return thread_reduce_impl<output_vec_size>(
+        return thread_reduce_impl<OUTPUT_VEC_SIZE>(
             data, [&](index_t idx) { return idx * element_stride; });
       } else {
-        return thread_reduce_impl<output_vec_size>(data, [&](index_t idx) {
+        return thread_reduce_impl<OUTPUT_VEC_SIZE>(data, [&](index_t idx) {
           return input_calc.get(idx)[0] / sizeof(scalar_t);
         });
       }
@@ -706,15 +707,6 @@ struct ReduceOp {
 
     while (idx * INPUT_VEC_SIZE + INPUT_VEC_SIZE - 1 < end) {
       arg_t values_vec[INPUT_VEC_SIZE];
-
-      // constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
-      // constexpr int kVectorsPerThread = NX / kVectorSize;
-
-      // using VecType = kps::details::VectorType<T, kVectorSize>;
-      // const VecType* vec_input = reinterpret_cast<const
-      // VecType*>((arg_t*)(data + idx * INPUT_VEC_SIZE)); VecType
-      // vec_temp[kVectorsPerThread];
-
       TmpReadData<arg_t, INPUT_VEC_SIZE, 1, false>(
           &(values_vec[0]),
           reinterpret_cast<const arg_t*>(data + idx * INPUT_VEC_SIZE));
@@ -751,14 +743,14 @@ struct ReduceOp {
     return value_list[0];
   }
 
-  template <int output_vec_size, typename offset_calc_t>
-  __device__ std::array<arg_t, output_vec_size> thread_reduce_impl(
+  template <int OUTPUT_VEC_SIZE, typename offset_calc_t>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> thread_reduce_impl(
       const scalar_t* data_, offset_calc_t calc) const {
     index_t idx = config.input_idx();
     const index_t end = config.num_inputs;
     const index_t stride = config.step_input;
 
-    using arg_vec_t = std::array<arg_t, output_vec_size>;
+    using arg_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
 
     // Multiple accumulators to remove dependency between unrolled loops.
     arg_vec_t value_list[VT0];
@@ -766,7 +758,7 @@ struct ReduceOp {
 #pragma unroll
     for (int i = 0; i < VT0; i++) {
 #pragma unroll
-      for (int j = 0; j < output_vec_size; j++) {
+      for (int j = 0; j < OUTPUT_VEC_SIZE; j++) {
         value_list[i][j] = ident;
       }
     }
@@ -776,16 +768,16 @@ struct ReduceOp {
     while (idx + (VT0 - 1) * stride < end) {
 #pragma unroll
       for (index_t i = 0; i < VT0; i++) {
-        const auto offset = calc(idx + i * stride) / output_vec_size;
+        const auto offset = calc(idx + i * stride) / OUTPUT_VEC_SIZE;
         kps::details::ReadData<arg_t>(
-            &(values[0]), reinterpret_cast<const arg_t*>(data_ + offset), VT0);
+            &(values[i]), reinterpret_cast<const arg_t*>(data_ + offset), VT0);
       }
 #pragma unroll
       for (index_t i = 0; i < VT0; i++) {
 #pragma unroll
-        for (index_t j = 0; j < output_vec_size; j++) {
+        for (index_t j = 0; j < OUTPUT_VEC_SIZE; j++) {
           kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
-              &(value_list[i][j]), &(values[0]), ops, false);
+              &(value_list[i][j]), &(values[i]), ops, false);
         }
       }
       idx += stride * VT0;
@@ -798,9 +790,9 @@ struct ReduceOp {
       if (idx >= end) {
         break;
       }
-      const auto offset = calc(idx) / output_vec_size;
+      const auto offset = calc(idx) / OUTPUT_VEC_SIZE;
       kps::details::ReadData<arg_t>(
-          &(values[0]), reinterpret_cast<const arg_t*>(data_ + offset), VT0);
+          &(values[i]), reinterpret_cast<const arg_t*>(data_ + offset), VT0);
       idx += stride;
     }
     idx = idx_;
@@ -810,9 +802,9 @@ struct ReduceOp {
         break;
       }
 #pragma unroll
-      for (index_t j = 0; j < output_vec_size; j++) {
+      for (index_t j = 0; j < OUTPUT_VEC_SIZE; j++) {
         kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
-            &(value_list[i][j]), &(values[0]), ops, false);
+            &(value_list[i][j]), &(values[i]), ops, false);
       }
       idx += stride;
     }
@@ -821,7 +813,7 @@ struct ReduceOp {
 #pragma unroll
     for (int i = 1; i < VT0; i++) {
 #pragma unroll
-      for (index_t j = 0; j < output_vec_size; j++) {
+      for (index_t j = 0; j < OUTPUT_VEC_SIZE; j++) {
         kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
             &(value_list[0][j]), &(value_list[i][j]), ops, false);
       }
@@ -829,10 +821,10 @@ struct ReduceOp {
     return value_list[0];
   }
 
-  template <int output_vec_size>
-  __device__ std::array<arg_t, output_vec_size> block_x_reduce(
-      std::array<arg_t, output_vec_size> value, char* shared_memory) const {
-    using args_vec_t = std::array<arg_t, output_vec_size>;
+  template <int OUTPUT_VEC_SIZE>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> block_x_reduce(
+      std::array<arg_t, OUTPUT_VEC_SIZE> value, char* shared_memory) const {
+    using args_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
     int dim_x = blockDim.x;
     args_vec_t* shared = reinterpret_cast<args_vec_t*>(shared_memory);
     if (dim_x > warpSize) {
@@ -843,7 +835,7 @@ struct ReduceOp {
         if (threadIdx.x < offset && threadIdx.x + offset < blockDim.x) {
           args_vec_t other = shared[address_base + offset];
 #pragma unroll
-          for (int i = 0; i < output_vec_size; i++) {
+          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
             kps::Reduce<arg_t,
                         1,
                         1,
@@ -864,10 +856,10 @@ struct ReduceOp {
     return value;
   }
 
-  template <int output_vec_size>
-  __device__ std::array<arg_t, output_vec_size> block_y_reduce(
-      std::array<arg_t, output_vec_size> value, char* shared_memory) const {
-    using args_vec_t = std::array<arg_t, output_vec_size>;
+  template <int OUTPUT_VEC_SIZE>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> block_y_reduce(
+      std::array<arg_t, OUTPUT_VEC_SIZE> value, char* shared_memory) const {
+    using args_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
     args_vec_t* shared = reinterpret_cast<args_vec_t*>(shared_memory);
     shared[config.shared_memory_offset(0)] = value;
     for (int offset = blockDim.y / 2; offset > 0; offset >>= 1) {
@@ -875,7 +867,7 @@ struct ReduceOp {
       if (threadIdx.y < offset && threadIdx.y + offset < blockDim.y) {
         args_vec_t other = shared[config.shared_memory_offset(offset)];
 #pragma unroll
-        for (int i = 0; i < output_vec_size; i++) {
+        for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
           kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
               &(value[i]), &(other[i]), ops, false);
         }
@@ -899,14 +891,14 @@ struct ReduceOp {
     return is_last_block_done_shared;
   }
 
-  template <int output_vec_size, bool can_acc>
-  __device__ std::array<arg_t, output_vec_size> accumulate_in_output(
-      std::array<out_scalar_t*, output_vec_size> out,
-      std::array<arg_t, output_vec_size> value,
+  template <int OUTPUT_VEC_SIZE, bool can_acc>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> accumulate_in_output(
+      std::array<out_scalar_t*, OUTPUT_VEC_SIZE> out,
+      std::array<arg_t, OUTPUT_VEC_SIZE> value,
       typename std::enable_if_t<can_acc>* = nullptr) const {
-    std::array<arg_t, output_vec_size> ret;
+    std::array<arg_t, OUTPUT_VEC_SIZE> ret;
 #pragma unroll
-    for (int i = 0; i < output_vec_size; i++) {
+    for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
       kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
           &(ret[i]), out[i], ops, false);
       kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
@@ -926,10 +918,10 @@ struct ReduceOp {
   // This function should never be called --
   // it's the version of `accumulate_in_output`
   // when accumulation in the output is not possible.
-  template <int output_vec_size, bool can_acc>
-  __device__ std::array<arg_t, output_vec_size> accumulate_in_output(
-      std::array<out_scalar_t*, output_vec_size>,
-      std::array<arg_t, output_vec_size>,
+  template <int OUTPUT_VEC_SIZE, bool can_acc>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> accumulate_in_output(
+      std::array<out_scalar_t*, OUTPUT_VEC_SIZE>,
+      std::array<arg_t, OUTPUT_VEC_SIZE>,
       typename std::enable_if_t<!can_acc>* = nullptr) const {
     return {arg_t{}};
   }
@@ -970,22 +962,22 @@ struct ReduceOp {
     }
   }
 
-  template <int output_vec_size>
-  __device__ std::array<arg_t, output_vec_size> global_reduce(
-      std::array<arg_t, output_vec_size> value,
-      std::array<arg_t, output_vec_size>* acc,
+  template <int OUTPUT_VEC_SIZE>
+  __device__ std::array<arg_t, OUTPUT_VEC_SIZE> global_reduce(
+      std::array<arg_t, OUTPUT_VEC_SIZE> value,
+      std::array<arg_t, OUTPUT_VEC_SIZE>* acc,
       char* shared_memory) const {
-    using arg_vec_t = std::array<arg_t, output_vec_size>;
-    using out_ptr_vec_t = std::array<out_scalar_t*, output_vec_size>;
-    using offset_vec_t = std::array<index_t, output_vec_size>;
+    using arg_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
+    using out_ptr_vec_t = std::array<out_scalar_t*, OUTPUT_VEC_SIZE>;
+    using offset_vec_t = std::array<index_t, OUTPUT_VEC_SIZE>;
 
     arg_vec_t* reduce_buffer = reinterpret_cast<arg_vec_t*>(cta_buf);
-    index_t output_idx = config.output_idx<output_vec_size>();
+    index_t output_idx = config.output_idx<OUTPUT_VEC_SIZE>();
     offset_vec_t base_offsets;
     out_ptr_vec_t out;
 
 #pragma unroll
-    for (int i = 0; i < output_vec_size; i++) {
+    for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
       base_offsets[i] = output_calc.get(output_idx + i)[0];
       out[i] = reinterpret_cast<out_scalar_t*>(reinterpret_cast<char*>(dst[0]) +
                                                base_offsets[i]);
@@ -998,8 +990,8 @@ struct ReduceOp {
     }
 
     __threadfence();  // make sure writes are globally visible
-    __syncthreads();  // if multiple warps in this block wrote to staging, make
-                      // sure they're all done
+    __syncthreads();  // if multiple warps in this block wrote to staging,
+                      // make sure they're all done
     bool is_last_block_done = mark_block_finished();
 
     if (is_last_block_done) {
@@ -1014,7 +1006,7 @@ struct ReduceOp {
           index_t idx = config.staging_memory_offset(input_offset);
           arg_vec_t next = reduce_buffer[idx];
 #pragma unroll
-          for (int i = 0; i < output_vec_size; i++) {
+          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
             kps::Reduce<arg_t,
                         1,
                         1,
@@ -1030,7 +1022,7 @@ struct ReduceOp {
           index_t idx = config.staging_memory_offset(input_offset);
           arg_vec_t next = reduce_buffer[idx];
 #pragma unroll
-          for (int i = 0; i < output_vec_size; i++) {
+          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
             kps::Reduce<arg_t,
                         1,
                         1,
@@ -1041,31 +1033,33 @@ struct ReduceOp {
         }
       }
 
-      value = block_y_reduce<output_vec_size>(value, shared_memory);
+      value = block_y_reduce<OUTPUT_VEC_SIZE>(value, shared_memory);
 
       if (config.should_block_x_reduce()) {
-        value = block_x_reduce<output_vec_size>(value, shared_memory);
+        value = block_x_reduce<OUTPUT_VEC_SIZE>(value, shared_memory);
       }
 
-      if (acc == nullptr) {
+      if (should_store) {
+        if (acc == nullptr) {
 #pragma unroll
-        for (int i = 0; i < output_vec_size; i++) {
-          *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
-              out[i], value[i]);
-        }
-      } else {
-        if (accumulate) {
-#pragma unroll
-          for (int i = 0; i < output_vec_size; i++) {
-            kps::Reduce<arg_t,
-                        1,
-                        1,
-                        ops_t,
-                        kps::details::ReduceMode::kLocalMode>(
-                &(value[i]), &((*acc)[i]), ops, false);
+          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+            *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
+                out[i], value[i]);
           }
+        } else {
+          if (accumulate) {
+#pragma unroll
+            for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+              kps::Reduce<arg_t,
+                          1,
+                          1,
+                          ops_t,
+                          kps::details::ReduceMode::kLocalMode>(
+                  &(value[i]), &((*acc)[i]), ops, false);
+            }
+          }
+          *acc = value;
         }
-        *acc = value;
       }
     }
 
@@ -1081,7 +1075,6 @@ static void launch_reduce_kernel(const Context& dev_ctx,
   dim3 grid = config.grid();
 
   int shared_memory = config.shared_memory_size();
-
   auto stream = dev_ctx.stream();
   reduce_kernel<max_threads / 1, 1, R>
       <<<grid, block, shared_memory, stream>>>(reduction);
@@ -1112,26 +1105,14 @@ void StrideImpl(const Context& dev_ctx,
   // ban usage of acc_buf_ptr
   char* acc_buf_ptr = nullptr;
 
-  // if (iter.data_ptr(0) == nullptr) {
-  //   acc_buf_ptr = nullptr;
-  // } else {
-  //   acc_buf_ptr = (char*)(iter.data_ptr(0));
-  // }
-
   const char* in_data =
       reinterpret_cast<const char*>(iter.data_ptr(iter.ntensors() - 1));
   char* out_data = reinterpret_cast<char*>(out->data<T>());
   const auto noutputs = iter.noutputs();
 
   std::optional<char*> out_data_extra;
-  // if (noutputs > 1) {
-  //   out_data_extra = reinterpret_cast<const char*>(iter.data_ptr(1));
-  // } else {
   out_data_extra = std::nullopt;
-  // }
 
-  // char* acc_data = acc_buf_ptr + ((out_data - (char*)(iter.data_ptr(0))) *
-  // numerator_ / denominator_);
   char* acc_data = acc_buf_ptr;
 
   constexpr int VT0 = 4;
@@ -1150,11 +1131,10 @@ void StrideImpl(const Context& dev_ctx,
   uint64_t check1 = reduce_config.global_memory_size() / phi::SizeOf(x.dtype());
   uint64_t check2 = reduce_config.semaphore_size() / phi::SizeOf(x.dtype());
 
-  int check_tmp1 = static_cast<int>(check1);
-  int check_tmp2 = static_cast<int>(check2);
-
-  std::vector<int> buffer_size = {check_tmp1};
-  std::vector<int> semaphore_size = {check_tmp2};
+  std::vector<int> buffer_size = {static_cast<int>(
+      reduce_config.global_memory_size() / phi::SizeOf(x.dtype()))};
+  std::vector<int> semaphore_size = {static_cast<int>(
+      reduce_config.semaphore_size() / phi::SizeOf(x.dtype()))};
 
   if (reduce_config.should_global_reduce()) {
     buffer_tensor.Resize(common::make_ddim(buffer_size));
@@ -1165,7 +1145,6 @@ void StrideImpl(const Context& dev_ctx,
     semaphores_data =
         reinterpret_cast<void*>(dev_ctx.template Alloc<T>(&semaphore_tensor));
 
-    // auto stream = at::cuda::getCurrentCUDAStream();
     auto stream = dev_ctx.stream();
     cudaMemsetAsync(semaphores_data, 0, reduce_config.semaphore_size(), stream);
   }
@@ -1223,7 +1202,8 @@ void AMaxStrideKernel(const Context& dev_ctx,
   } else {
     x_ = x;
   }
-  if (x_.meta().is_contiguous() && (keep_dim || out->dims().size() > 0)) {
+
+  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1237,6 +1217,118 @@ void AMaxStrideKernel(const Context& dev_ctx,
   return;
 }
 
+template <typename T, typename Context>
+void AMinStrideKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::AMinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  T ident = std::numeric_limits<T>::max();
+  StrideImpl<T, Context, kps::MinFunctor>(
+      dev_ctx, x_, dims, keep_dim, ident, out);
+  return;
+}
+
+template <typename T, typename Context>
+void MaxStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& dims,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+
+  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::MaxKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  T ident = std::numeric_limits<T>::lowest();
+  StrideImpl<T, Context, kps::MaxFunctor>(
+      dev_ctx, x_, dims, keep_dim, ident, out);
+  return;
+}
+
+template <typename T, typename Context>
+void MinStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& dims,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::MinKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  T ident = std::numeric_limits<T>::max();
+  StrideImpl<T, Context, kps::MinFunctor>(
+      dev_ctx, x_, dims, keep_dim, ident, out);
+  return;
+}
+
 }  // namespace phi
 
 using float16 = phi::float16;
@@ -1246,5 +1338,14 @@ using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(
     amax, GPU, STRIDED, phi::AMaxStrideKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    amin, GPU, STRIDED, phi::AMinStrideKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    max, GPU, STRIDED, phi::MaxStrideKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    min, GPU, STRIDED, phi::MinStrideKernel, float, double, int, int64_t) {}
 
 #endif
