@@ -39,6 +39,8 @@ function make_cpu_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-13#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-13#g' ${dockerfile_name}
   sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
+  sed -i 's#cmake-3.18.0-Linux#cmake-3.19.0-Linux#g' ${dockerfile_name}
+  sed -i 's#v3.18#v3.19#g' ${dockerfile_name}
 }
 
 
@@ -122,6 +124,8 @@ function make_ubuntu20_cu123_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
+  sed -i 's#cmake-3.18.0-Linux#cmake-3.19.0-Linux#g' ${dockerfile_name}
+  sed -i 's#v3.18#v3.19#g' ${dockerfile_name}
 
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \

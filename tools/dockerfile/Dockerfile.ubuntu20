@@ -56,10 +56,8 @@ RUN rm -rf /build_script
 
 # install cmake
 WORKDIR /home
-# RUN wget -q https://cmake.org/files/v3.27/cmake-3.27.0-linux-x86_64.tar.gz && tar -zxvf cmake-3.27.0-linux-x86_64.tar.gz && rm cmake-3.27.0-linux-x86_64.tar.gz
-# ENV PATH=/home/cmake-3.27.0-linux-x86_64/bin:$PATH
-RUN wget -q https://cmake.org/files/v3.19/cmake-3.19.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.19.0-Linux-x86_64.tar.gz && rm cmake-3.19.0-Linux-x86_64.tar.gz
-ENV PATH=/home/cmake-3.19.0-Linux-x86_64/bin:$PATH
+RUN wget -q https://cmake.org/files/v3.18/cmake-3.18.0-Linux-x86_64.tar.gz && tar -zxvf cmake-3.18.0-Linux-x86_64.tar.gz && rm cmake-3.18.0-Linux-x86_64.tar.gz
+ENV PATH=/home/cmake-3.18.0-Linux-x86_64/bin:$PATH
 
 RUN apt-get update && \
   apt-get install -y python3.9 python3.9-dev python3.9-distutils \
