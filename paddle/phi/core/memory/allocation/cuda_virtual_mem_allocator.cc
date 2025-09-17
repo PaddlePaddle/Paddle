@@ -222,4 +222,5 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 }
 
 }  // namespace paddle::memory::allocation
+
 #endif

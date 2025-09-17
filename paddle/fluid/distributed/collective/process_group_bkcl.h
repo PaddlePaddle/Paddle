@@ -136,6 +136,13 @@ class ProcessGroupBKCL : public ProcessGroupWithStream {
       const ReduceScatterOptions& opts,
       bool sync_op,
       bool use_calc_stream) override;
+#if defined(PADDLE_WITH_FLAGCX)
+  std::shared_ptr<ProcessGroup::Task> Scatter(phi::DenseTensor* out_tensor,
+                                              const phi::DenseTensor& in_tensor,
+                                              const ScatterOptions& opts,
+                                              bool sync_op,
+                                              bool use_calc_stream) override;
+#endif
 
   std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
                                            int src_rank,
