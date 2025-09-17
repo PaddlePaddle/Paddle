@@ -467,12 +467,12 @@ class DataLoader:
         collate_fn: _CollateFn | None = None,
         num_workers: int = 0,
         use_buffer_reader: bool = True,
-        reader_buffer_size: int = 2,
         prefetch_factor: int = 2,
         use_shared_memory: bool = True,
         timeout: int = 0,
         worker_init_fn: Callable[[int], None] | None = None,
         persistent_workers: bool = False,
+        reader_buffer_size: int = 2,
     ) -> None:
         self.return_list = return_list
         self.collate_fn = collate_fn
