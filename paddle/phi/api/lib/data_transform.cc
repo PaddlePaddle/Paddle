@@ -929,6 +929,10 @@ void ReshardKernelOutputToApiOutput(
     const std::string& arg_name) {
   if (dst_tensor && dst_tensor->is_dist_tensor()) {
     auto tensor_out = dst_tensor->impl();
+    PADDLE_ENFORCE_NE(
+        tensor_out,
+        nullptr,
+        common::errors::InvalidArgument("The output tensor is nullptr."));
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_out.get());
     dist_tensor->unsafe_set_dims(src_tensor->dims());
