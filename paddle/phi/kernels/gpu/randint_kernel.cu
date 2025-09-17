@@ -33,12 +33,28 @@ void RandintKernel(const Context& dev_ctx,
   int seed = 0;
   out->Resize(common::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
-  funcs::uniform_distribution<uint32_t> dist;
-  funcs::uniform_int_transform<T, uint32_t> trans(low, high);
-  funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  if constexpr (std::is_floating_point<T>::value) {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    funcs::uniform_distribution<MT> dist;
+    funcs::uniform_float_int_transform<T, MT> trans(low, high);
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  } else {
+    funcs::uniform_distribution<uint32_t> dist;
+    funcs::uniform_int_transform<T, uint32_t> trans(low, high);
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
+  }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(randint, GPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
-}
+PD_REGISTER_KERNEL(randint,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RandintKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   bool,
+                   phi::float16,
+                   phi::bfloat16) {}
