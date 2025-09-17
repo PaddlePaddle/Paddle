@@ -109,10 +109,26 @@ inline py::object OperationInvoker::to_py_object(const torch::IValue& value) {
   } else if (value.is_tensor()) {
     return py::reinterpret_borrow<py::object>(
         paddle::pybind::ToPyObject(value.to_tensor()._PD_GetInner()));
+  } else if (value.is_list()) {
+    auto ivalue_list = value.to_list();
+    py::list py_list;
+    for (const auto& item : ivalue_list) {
+      py_list.append(to_py_object(item));
+    }
+    return py_list;
+  } else if (value.is_tuple()) {
+    auto ivalue_tuple = value.to_tuple();
+    size_t size = ivalue_tuple.size();
+    py::tuple py_tuple(size);
+    for (size_t i = 0; i < size; ++i) {
+      py_tuple[i] = to_py_object(ivalue_tuple[i]);
+    }
+    return py_tuple;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Conversion of torch::IValue to Python object for this type is not "
-        "implemented yet."));
+        "Conversion of torch::IValue to Python object for type %s is not "
+        "implemented yet.",
+        value.type_string()));
   }
 }
 

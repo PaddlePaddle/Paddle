@@ -99,6 +99,8 @@ void BindDeepEPApi(pybind11::module *m) {
       .def("barrier_all", &deep_ep::Buffer::barrier_all)
       .def("clean_low_latency_buffer",
            &deep_ep::Buffer::clean_low_latency_buffer)
+      .def("clean_low_latency_two_stage_buffer",
+           &deep_ep::Buffer::clean_low_latency_two_stage_buffer)
       .def("low_latency_dispatch", &deep_ep::Buffer::low_latency_dispatch_api)
       .def("low_latency_combine", &deep_ep::Buffer::low_latency_combine_api)
       .def("low_latency_dispatch_two_stage",

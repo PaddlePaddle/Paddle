@@ -68,14 +68,13 @@ void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -126,13 +125,13 @@ void AddStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 || y.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!y.meta().is_contiguous() || y.offset() != 0) {
+    if (!y.meta().is_contiguous()) {
       y_ = Tensor2Contiguous<Context>(dev_ctx, y);
     } else {
       y_ = y;
@@ -183,8 +182,8 @@ void AddStrideKernel(const Context &dev_ctx,
 
 using float16 = phi::float16;
 using bfloat16 = phi::bfloat16;
-using complex64 = ::phi::complex64;
-using complex128 = ::phi::complex128;
+using complex64 = phi::complex64;
+using complex128 = phi::complex128;
 
 PD_REGISTER_KERNEL(add,
                    GPU,

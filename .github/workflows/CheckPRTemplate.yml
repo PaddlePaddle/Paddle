@@ -16,7 +16,15 @@ jobs:
       - name: Clone paddle
         uses: actions/checkout@v4
 
+      - name: Check bypass
+        id: check-bypass
+        uses: ./.github/actions/check-bypass
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: template
+
       - name: Check PR Template
+        if: steps.check-bypass.outputs.can-skip != 'true'
         env:
           AGILE_PULL_ID: ${{ github.event.pull_request.number }}
           AGILE_COMPILE_BRANCH: ${{ github.base_ref }}

@@ -31,6 +31,8 @@ import paddle.static
 from paddle import base
 from paddle.base import core
 
+paddle.enable_static()
+
 
 def broadcast_wrapper(shape=[1, 10, 12, 1]):
     def div_wrapper(x, y, axis=-1):
@@ -542,7 +544,6 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
     def test_shape_with_batch_sizes(self):
-        paddle.enable_static()
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
             x_var = paddle.static.data(
@@ -554,12 +555,10 @@ class TestElementwiseDivBroadcast(unittest.TestCase):
             x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype("float32")
             (out_result,) = exe.run(feed={'x': x}, fetch_list=[out])
             self.assertEqual((out_result == (2 / x)).all(), True)
-        paddle.disable_static()
 
 
 class TestDivideOp(unittest.TestCase):
     def test_name(self):
-        paddle.enable_static()
         with paddle.pir_utils.OldIrGuard():
             main_program = paddle.static.Program()
             with paddle.static.program_guard(main_program):
@@ -569,8 +568,6 @@ class TestDivideOp(unittest.TestCase):
                 y_1 = paddle.divide(x, y, name='div_res')
 
                 self.assertEqual(('div_res' in y_1.name), True)
-
-        paddle.disable_static()
 
     def test_dygraph(self):
         with base.dygraph.guard():
@@ -704,9 +701,9 @@ class TestElementwiseDivopInt(unittest.TestCase):
         np.testing.assert_allclose(actual_res, expect_res)
         np.testing.assert_allclose(expect_a_grad, actual_a_grad)
         np.testing.assert_allclose(expect_b_grad, actual_b_grad)
+        paddle.enable_static()
 
     def test_pir_div(self):
-        paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             exe = paddle.static.Executor()
             main_program = paddle.static.Program()
@@ -972,5 +969,4 @@ class TestElementwiseDivOp_Stride_ZeroSize1(TestElementwiseDivOp_Stride):
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()

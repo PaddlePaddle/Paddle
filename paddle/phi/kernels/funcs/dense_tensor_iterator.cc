@@ -140,7 +140,12 @@ void DenseTensorIteratorBase::allocate_or_resize_outputs() {
   for (auto i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (!op.tensor().initialized() || op.will_resize || !valid_stride) {
+    bool reduce_pass = false;
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      reduce_pass = true;
+    }
+    if (!reduce_pass &&
+        (!op.tensor().initialized() || op.will_resize || !valid_stride)) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
       bool inverted = true;
@@ -283,6 +288,9 @@ void DenseTensorIteratorBase::populate_operands(
   for (size_t idx = 0; idx < config.tensors_.size(); idx++) {
     auto& tensor = config.tensors_[idx];
     operands_.emplace_back(std::move(const_cast<DenseTensor*>(tensor)));
+    if (idx < config.num_outputs_) {
+      operands_[idx].is_output = true;
+    }
   }
   num_outputs_ = config.num_outputs_;
 }
@@ -337,6 +345,26 @@ bool DenseTensorIteratorBase::fast_set_up(
   return true;
 }
 
+int DenseTensorIteratorBase::num_reduce_dims() const {
+  int count = 0;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] == 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int64_t DenseTensorIteratorBase::num_output_elements() const {
+  int64_t elem = 1;
+  for (int dim = 0; dim < ndim(); dim++) {
+    if (operands_[0].stride_bytes[dim] != 0 || shape_[dim] == 0) {
+      elem *= shape_[dim];
+    }
+  }
+  return elem;
+}
+
 void DenseTensorIteratorBase::compute_shape(
     const DenseTensorIteratorConfig& config) {
   all_ops_same_shape_ = true;
@@ -369,11 +397,30 @@ void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (op.tensor().initialized() && !op.will_resize && valid_stride) {
-      std::vector<int64_t> original_shape =
-          config.static_shape_ ? shape_
-                               : common::vectorize<int64_t>(op.tensor().dims());
-      auto original_stride = common::vectorize<int64_t>(op.tensor().strides());
+
+    bool reduce_pass = false;
+
+    std::vector<int64_t> tmp_shape =
+        common::vectorize<int64_t>(op.tensor().dims());
+    std::vector<int64_t> tmp_stride =
+        common::vectorize<int64_t>(op.tensor().strides());
+
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      tmp_stride = std::vector<int64_t>(shape_.size(), 0);
+      tmp_shape = std::vector<int64_t>(shape_.size(), 1);
+      reduce_pass = true;
+    }
+
+    if (reduce_pass ||
+        op.tensor().initialized() && !op.will_resize && valid_stride) {
+      std::vector<int64_t> original_shape;
+      original_shape = config.static_shape_
+                           ? shape_
+                           : common::vectorize<int64_t>(op.tensor().dims());
+      if (op.is_output && reduce_pass) original_shape = tmp_shape;
+      std::vector<int64_t> original_stride;
+      original_stride = common::vectorize<int64_t>(op.tensor().strides());
+      if (op.is_output && reduce_pass) original_stride = tmp_stride;
       auto element_size_in_bytes = phi::SizeOf(op.tensor().dtype());
       auto offset = ndim() - original_shape.size();
       if (offset > 0)
@@ -393,6 +440,7 @@ void DenseTensorIteratorBase::compute_strides(
 }
 
 void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
+  is_reduction_ = config.is_reduction_;
   populate_operands(config);
   compute_shape(config);
   if (!fast_set_up(config)) {

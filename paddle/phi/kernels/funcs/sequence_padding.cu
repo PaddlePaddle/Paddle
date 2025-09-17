@@ -199,12 +199,12 @@ class UnpaddingDenseTensorFunctor<phi::GPUContext, T> {
 
 template class PaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class PaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API PaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class PaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, int64_t>;
-template class UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
+template class PADDLE_API UnpaddingDenseTensorFunctor<phi::GPUContext, float>;
 template class UnpaddingDenseTensorFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

@@ -36,15 +36,16 @@ using egr::InputsContainDistTensor;
 COMMON_DECLARE_bool(check_cuda_error);
 
 COMMON_DECLARE_bool(check_nan_inf);
-
+#define SEPARATOR "=========================="
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 MultiplyGradNode::operator()(
     paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "multiply_grad";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "multiply_grad" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("MultiplyGradNode begin");
   }
@@ -110,8 +111,6 @@ MultiplyGradNode::operator()(
 
   // Inplace Strategy
 
-  VLOG(5) << "Running C++ API: "
-          << "multiply_grad";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -135,7 +134,9 @@ MultiplyGradNode::operator()(
   }
 
   // Call grad_api function
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "multiply_grad" << SEPARATOR;
   std::string grad_op_name = "multiply_grad";
   auto need_skip =
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
@@ -156,7 +157,9 @@ MultiplyGradNode::operator()(
         x, y, grad_out, axis, api_output_0, api_output_1);
     VLOG(4) << "Fused api multiply_grad is called ";
   }
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "multiply_grad" << SEPARATOR;
   // Check NaN and Inf id needed
 
   if (FLAGS_check_nan_inf) {
@@ -225,7 +228,6 @@ MultiplyGradNode::operator()(
     }
   }
 
-  VLOG(4) << "Finish AD API GRAD: multiply_grad";
   VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 
@@ -268,6 +270,10 @@ MultiplyGradNode::operator()(
 
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "multiply_grad" << SEPARATOR;
+
   return returns;
 }
 

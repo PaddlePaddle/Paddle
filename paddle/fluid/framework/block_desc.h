@@ -38,7 +38,7 @@ class VarDesc;
 // read/write speed. Only when we want the protobuf message, the local changes
 // will be synchronized (by `Sync` method).
 
-class TEST_API BlockDesc {
+class PADDLE_API BlockDesc {
  public:
   BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc);
 

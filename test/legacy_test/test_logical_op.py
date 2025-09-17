@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     convert_float_to_uint16,
     get_device_place,
+    get_places,
     is_custom_device,
 )
 
@@ -317,14 +318,6 @@ class TestCUDA(unittest.TestCase):
         type_map_list = type_map_factory()
         for type_map in type_map_list:
             test_type_error(self, True, type_map)
-
-
-def get_places():
-    places = []
-    if base.is_compiled_with_cuda() or is_custom_device():
-        places.append(get_device_place())
-    places.append(paddle.CPUPlace())
-    return places
 
 
 class TestLogicalOpsAPI_Compatibility(unittest.TestCase):

@@ -29,7 +29,11 @@ from paddle._C_ops import (  # noqa: F401
 )
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
-from paddle.utils.decorator_utils import ParamAliasDecorator, param_two_alias
+from paddle.utils.decorator_utils import (
+    ParamAliasDecorator,
+    param_one_alias,
+    param_two_alias,
+)
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
@@ -965,13 +969,18 @@ def not_equal_(x: Tensor, y: Tensor, name: str | None = None) -> Tensor:
         return _C_ops.not_equal_(x, y)
 
 
+@param_one_alias(["x", "obj"])
 def is_tensor(x: Any) -> TypeGuard[Tensor]:
     """
 
     Tests whether input object is a paddle.Tensor.
 
+    .. note::
+        Alias Support: The parameter name ``obj`` can be used as an alias for ``x``.
+        For example, ``is_tensor(obj=tensor_x)`` is equivalent to ``is_tensor(x=tensor_x)``.
+
     Args:
-        x (object): Object to test.
+        x (object): Object to test. alias: ``obj``.
 
     Returns:
         A boolean value. True if ``x`` is a paddle.Tensor, otherwise False.

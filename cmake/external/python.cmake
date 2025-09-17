@@ -16,8 +16,20 @@ include(python_module)
 
 check_py_version(${PY_VERSION})
 
-# Find Python with minimum PY_VERSION specified or will raise error!
-find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+if(Python_EXECUTABLE)
+  find_package(Python ${PY_VERSION} COMPONENTS Interpreter Development)
+else()
+  find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
+  if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL
+                         "Python_EXECUTABLE-NOTFOUND")
+    message(
+      STATUS
+        "Exact Python ${PY_VERSION} not found, trying any available Python...")
+    find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter
+                                                          Development)
+  endif()
+endif()
+
 set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
 
@@ -27,8 +39,6 @@ set(PYTHON_INCLUDE_DIRS ${Python_INCLUDE_DIRS})
 
 set(PYTHON_LIBRARY ${Python_LIBRARIES})
 set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS})
-# find_package(PythonInterp ${PY_VERSION} REQUIRED)
-# find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
   execute_process(

@@ -779,4 +779,4 @@ class TestLoadShardedStateDictWithAOA:
 if __name__ == '__main__':
     TestLoadStateDict().run_test_case()
     TestLoadShardedStateDict().run_test_case()
-    # TestLoadShardedStateDictWithAOA().run_test_case()
+    TestLoadShardedStateDictWithAOA().run_test_case()

@@ -109,7 +109,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS data_type device_context phi common)
+  DEPS data_type dlpack_tensor device_context phi common)
 
 cc_library(
   lod_tensor
@@ -343,6 +343,7 @@ if(WITH_PYTHON)
   add_custom_target(fleet_proto_init)
   add_custom_command(
     TARGET fleet_proto_init
+    POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
             ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
     COMMAND
@@ -382,9 +383,8 @@ if(WITH_PYTHON)
               ${PADDLE_BINARY_DIR}/python/paddle/base/proto
       COMMAND copy /Y *.py ${proto_dstpath}
       COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
-      COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       COMMENT
-        "Copy generated python proto into directory paddle/distributed/fleet/proto."
+        "Copy generated python proto into paddle/fluid/proto and paddle/distributed/fleet/proto directories."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endif()
@@ -549,7 +549,7 @@ cc_library(
 cc_library(
   dlpack_tensor
   SRCS dlpack_tensor.cc
-  DEPS tensor dlpack)
+  DEPS dlpack phi)
 
 cc_library(
   op_compatible_info
