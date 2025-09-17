@@ -62,6 +62,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/memory/allocation/allocator_strategy.h"
+#include "paddle/phi/core/tensor_utils.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/core/memory/allocation/cuda_ipc_allocator.h"
 #endif
@@ -194,6 +195,69 @@ static void TensorCopyFrom(phi::DenseTensor *dst,
     auto sliced = src.Slice(0, batch_size);
     framework::TensorCopy(sliced, place, dst);
   }
+}
+
+std::tuple<phi::DenseTensor, bool> HandleTensorCopy(
+    const phi::DenseTensor &src,
+    const std::optional<std::tuple<int, int>> dl_device,
+    std::optional<bool> copy) {
+  bool force_copy = copy.has_value() && copy.value();
+  bool disallow_copy = copy.has_value() && !copy.value();
+
+  phi::Place dst_place = src.place();
+  if (dl_device.has_value()) {
+    ::DLDeviceType dl_type =
+        static_cast<::DLDeviceType>(std::get<0>(dl_device.value()));
+    int dl_id = std::get<1>(dl_device.value());
+    dst_place = framework::DLDeviceToPlace({dl_type, dl_id});
+  }
+
+  if (src.place() != dst_place && disallow_copy) {
+    throw pybind11::buffer_error(
+        "The src tensor is on a different device from the target "
+        "device, so a copy will be performed. However, the user "
+        "has set copy=False, which means that the user does not "
+        "want to perform a copy operation. If you want to "
+        "perform a copy operation, please set copy=True or "
+        "copy=None.");
+  }
+
+  if (force_copy || src.place() != dst_place) {
+    phi::Place ctx_place =
+        src.place() != phi::CPUPlace() ? src.place() : dst_place;
+    phi::DenseTensor dst(
+        std::make_shared<phi::Allocation>(nullptr, 0, dst_place), src.meta());
+    const auto *dev_ctx = phi::DeviceContextPool::Instance().Get(ctx_place);
+    phi::Copy(*dev_ctx, src, dst_place, false, &dst);
+    return std::make_tuple(dst, true);
+  }
+
+  return std::make_tuple(src, false);
+}
+
+template <typename T>
+pybind11::capsule TensorToDLPack(
+    const phi::DenseTensor &tensor,
+    const std::optional<std::tuple<int, int>> dl_device = std::nullopt,
+    std::optional<bool> copy = std::nullopt) {
+  const auto [maybe_copied_tensor, is_copied] =
+      HandleTensorCopy(tensor, dl_device, copy);
+  uint64_t flags =
+      static_cast<uint64_t>(is_copied) * DLPACK_FLAG_BITMASK_IS_COPIED;
+  T *dlMTensor =
+      framework::DLPackTraits<T>::ToDLPack(maybe_copied_tensor, flags);
+  auto capsule = pybind11::capsule(
+      static_cast<void *>(dlMTensor),
+      framework::DLPackTraits<T>::capsule,
+      [](PyObject *data) {
+        if (!PyCapsule_IsValid(data, framework::DLPackTraits<T>::capsule)) {
+          return;
+        }
+        T *dlMTensor = reinterpret_cast<T *>(
+            PyCapsule_GetPointer(data, framework::DLPackTraits<T>::capsule));
+        dlMTensor->deleter(dlMTensor);
+      });
+  return capsule;
 }
 
 void BindTensor(pybind11::module &m) {  // NOLINT
@@ -435,22 +499,14 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                     >>> print(t.shape())
                     [5, 30]
            )DOC")
-      .def(
-          "_to_dlpack",
-          [](phi::DenseTensor &self) {
-            DLManagedTensor *dlMTensor = framework::toDLPack(self);
-            auto capsule = pybind11::capsule(
-                static_cast<void *>(dlMTensor), "dltensor", [](PyObject *data) {
-                  if (!PyCapsule_IsValid(data, "dltensor")) {
-                    return;
-                  }
-                  DLManagedTensor *dlMTensor =
-                      reinterpret_cast<DLManagedTensor *>(
-                          PyCapsule_GetPointer(data, "dltensor"));
-                  dlMTensor->deleter(dlMTensor);
-                });
-            return capsule;
-          })
+      .def("_to_dlpack",
+           TensorToDLPack<::DLManagedTensor>,
+           py::arg("dl_device") = py::none(),
+           py::arg("copy") = py::none())
+      .def("_to_dlpack_versioned",
+           TensorToDLPack<::DLManagedTensorVersioned>,
+           py::arg("dl_device") = py::none(),
+           py::arg("copy") = py::none())
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)

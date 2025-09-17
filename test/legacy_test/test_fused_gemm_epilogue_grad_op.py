@@ -17,7 +17,12 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 from paddle.base import core
@@ -43,13 +48,14 @@ def get_outputs(DOut, X, Y):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -81,7 +87,8 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP16(OpTest):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDXYBiasFP32(
@@ -94,7 +101,8 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP32(
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueGradOpDXYBiasFP64(
@@ -107,13 +115,14 @@ class TestFuseGemmEpilogueGradOpDXYBiasFP64(
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -145,7 +154,8 @@ class TestFuseGemmEpilogueGradOpDYBiasFP16(OpTest):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDYBiasFP32(
@@ -158,7 +168,8 @@ class TestFuseGemmEpilogueGradOpDYBiasFP32(
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueGradOpDYBiasFP64(
@@ -171,13 +182,14 @@ class TestFuseGemmEpilogueGradOpDYBiasFP64(
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -209,7 +221,8 @@ class TestFuseGemmEpilogueGradOpDYFP16(OpTest):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDYFP32(TestFuseGemmEpilogueGradOpDYFP16):
@@ -220,7 +233,8 @@ class TestFuseGemmEpilogueGradOpDYFP32(TestFuseGemmEpilogueGradOpDYFP16):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueGradOpDYFP64(TestFuseGemmEpilogueGradOpDYFP16):
@@ -231,13 +245,14 @@ class TestFuseGemmEpilogueGradOpDYFP64(TestFuseGemmEpilogueGradOpDYFP16):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
     def setUp(self):
         self.op_type = "fused_gemm_epilogue_grad"
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.init_dtype_type()
 
         self.inputs = {
@@ -269,7 +284,8 @@ class TestFuseGemmEpilogueGradOpDXYFP16(OpTest):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or not is_rocm_gfx928(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not is_rocm_gfx928(),
     "core is not compiled with CUDA",
 )
 class TestFuseGemmEpilogueGradOpDXYFP32(TestFuseGemmEpilogueGradOpDXYFP16):
@@ -280,7 +296,8 @@ class TestFuseGemmEpilogueGradOpDXYFP32(TestFuseGemmEpilogueGradOpDXYFP16):
 
 @skip_check_grad_ci(reason="no grad op")
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.is_compiled_with_rocm(),
     "core is not compiled with CUDA or is compiled with ROCm",
 )
 class TestFuseGemmEpilogueGradOpDXYFP64(TestFuseGemmEpilogueGradOpDXYFP16):

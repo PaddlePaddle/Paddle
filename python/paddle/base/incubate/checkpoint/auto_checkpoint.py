@@ -444,7 +444,7 @@ class TrainEpochRange(SerializableBase):
         _thread_checker()
 
         if self._max_epoch_num < 0:
-            self._max_epoch_num = sys.maxint
+            self._max_epoch_num = sys.maxsize
 
         assert self._epoch_no >= -1, (
             f"self._epoch_no:{self._epoch_no} must >=-1"
@@ -608,7 +608,7 @@ def _get_checker():
 
 def _normal_yield(max_epoch_num):
     if max_epoch_num < 0:
-        max_epoch_num = sys.maxint
+        max_epoch_num = sys.maxsize
     yield from range(0, max_epoch_num)
 
 

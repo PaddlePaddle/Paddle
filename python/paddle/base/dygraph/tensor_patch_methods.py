@@ -46,6 +46,8 @@ from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
 
 if TYPE_CHECKING:
+    from enum import IntEnum
+
     from paddle import Tensor
     from paddle._typing import DTypeLike, PlaceLike, TensorIndex
 
@@ -1443,15 +1445,31 @@ def monkey_patch_tensor():
             "version": 2,
         }
 
-    def __dlpack__(self, stream=None):
+    def __dlpack__(
+        self,
+        *,
+        stream: int | None = None,
+        max_version: tuple[int, int] | None = None,
+        dl_device: tuple[IntEnum, int] | None = None,
+        copy: bool | None = None,
+    ):
         """
         Creates a DLPack capsule of the current tensor to be exported to other libraries.
         Args:
-            stream (int | None): An optional Python integer representing a pointer
-                                to a CUDA stream. Synchronizes the tensor with this
-                                stream before exporting.
-                                If None or -1, no synchronization is performed.
-                                If 0, the default stream is used.
+            stream (int | None, optional): An optional Python integer representing a pointer
+                to a CUDA stream. Synchronizes the tensor with this stream before exporting.
+                If None or -1, no synchronization is performed. If 0, the default stream is used.
+            max_version (tuple[int, int] | None): An optional Python tuple with
+                2 integers, representing the maximum version the caller supports. If
+                None (default), we will fallback to DLPack 0.8.
+            dl_device (tuple[IntEnum, int] | None, optional): The DLPack device type. Default is
+                None, meaning the exported capsule should be on the same device as self is. When
+                specified, the format must be a 2-tuple, following that of the return value of
+                array.__dlpack_device__().
+            copy (bool | None, optional): Whether or not to copy the input. If True, the output
+                tensor always copied. If False, the output tensor must never copied, and raise a
+                BufferError in case a copy is deemed necessary. If None, the output tensor must
+                reuse the existing memory buffer if possible and copy otherwise. Default: None.
         """
 
         if self.is_sparse():
@@ -1474,7 +1492,53 @@ def monkey_patch_tensor():
                     event.record(current_stream)
                     current_stream.synchronize()
 
-        return paddle.to_dlpack(self)
+        if max_version is None or max_version[0] < 1:
+            return self.get_tensor()._to_dlpack(dl_device=dl_device, copy=copy)
+
+        return self.get_tensor()._to_dlpack_versioned(
+            dl_device=dl_device, copy=copy
+        )
+
+    def get_device(self: Tensor) -> int:
+        """
+        Return the device id where the Tensor is located.
+
+        Returns:
+            int: The device id of the Tensor. Returns -1 for CPU tensors; for GPU tensors,
+                 returns the CUDA device id (e.g., 0 for `gpu:0`).
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+                >>> x.get_device()
+                -1
+
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> y = paddle.to_tensor([1, 2, 3], place=paddle.CUDAPlace(0))
+                >>> y.get_device()
+                0
+        """
+        if self.place.is_cpu_place():
+            return -1
+        else:
+            return self.place.gpu_device_id()
+
+    def __tvm_ffi_env_stream__(self) -> int:
+        """
+        Returns the raw stream pointer of the current tensor's device context.
+        This is used for TVM FFI environment integration.
+        """
+        if self.place.is_gpu_place():
+            return paddle.base.libpaddle._get_current_raw_stream(
+                self.place.gpu_device_id()
+            )
+        else:
+            # TODO: Add XPU and custom device support.
+            raise RuntimeError(
+                "Currently, the __tvm_ffi_env_stream__ method is only supported for GPU tensors."
+            )
 
     if not hasattr(core, "eager"):
         return
@@ -1523,6 +1587,8 @@ def monkey_patch_tensor():
         ("__cuda_array_interface__", __cuda_array_interface__),
         ("__dlpack__", __dlpack__),
         ("__dlpack_device__", __dlpack_device__),
+        ("get_device", get_device),
+        ("__tvm_ffi_env_stream__", __tvm_ffi_env_stream__),
     ):
         setattr(core.eager.Tensor, method_name, method)
 

@@ -181,6 +181,8 @@ from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
 from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
+SiLU = Silu
+
 __all__ = [
     'BatchNorm',
     'CELU',
@@ -268,6 +270,7 @@ __all__ = [
     'GLU',
     'SELU',
     'Silu',
+    'SiLU',
     'Conv2DTranspose',
     'CTCLoss',
     'RNNTLoss',

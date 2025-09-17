@@ -109,6 +109,7 @@
 [submodule "third_party/yaml-cpp"]
 	path = third_party/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp
+	ignore = dirty
 [submodule "third_party/openvino"]
 	path = third_party/openvino
 	url = https://github.com/openvinotoolkit/openvino.git
@@ -120,3 +121,4 @@
 [submodule "third_party/libuv"]
 	path = third_party/libuv
 	url = https://github.com/libuv/libuv.git
+	ignore = dirty

@@ -107,6 +107,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/cudart_py.h"
 #include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
@@ -1470,6 +1471,24 @@ PYBIND11_MODULE(libpaddle, m) {
 
   BindException(&m);
 
+#define SET_STR_DEFINE(name) m.attr("_" #name) = std::string(name);
+
+#ifdef PYBIND11_COMPILER_TYPE
+  SET_STR_DEFINE(PYBIND11_COMPILER_TYPE);
+#endif
+#ifdef PYBIND11_STDLIB
+  SET_STR_DEFINE(PYBIND11_STDLIB);
+#endif
+#ifdef PYBIND11_BUILD_ABI
+  SET_STR_DEFINE(PYBIND11_BUILD_ABI);
+#endif
+
+#ifdef _GLIBCXX_USE_CXX11_ABI
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = true;
+#else
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = false;
+#endif
+
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const phi::DataType &>())
       .def_readonly("min", &iinfo::min)
@@ -1747,23 +1766,58 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
+  m.def("place_to_dl_device", [](const phi::Place &place) {
+    ::DLDevice dl_device = PlaceToDLDevice(place);
+    return py::make_tuple(static_cast<int>(dl_device.device_type),
+                          dl_device.device_id);
+  });
+
   m.def("from_dlpack", [](py::object data) {
-    DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
-        PyCapsule_GetPointer(data.ptr(), "dltensor"));
+    if (PyCapsule_IsValid(data.ptr(),
+                          DLPackTraits<DLManagedTensorVersioned>::capsule)) {
+      DLManagedTensorVersioned *dlMTensor =
+          reinterpret_cast<DLManagedTensorVersioned *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensorVersioned>::capsule));
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+      PADDLE_ENFORCE_LE(
+          dlMTensor->version.major,
+          DLPACK_MAJOR_VERSION,
+          common::errors::InvalidArgument(
+              "The major version of DLManagedTensorVersioned (%d) is "
+              "greater than the supported version (%d).",
+              dlMTensor->version.major,
+              DLPACK_MAJOR_VERSION));
 
-    PADDLE_ENFORCE_NOT_NULL(
-        dlMTensor,
-        common::errors::InvalidArgument(
-            "from_dlpack received an invalid capsule. "
-            "Note that DLTensor capsules can be consumed only once, "
-            "so you might have already constructed a tensor from it once."));
+      // NOTE: Might meet bugged numpy version, see:
+      // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
+      auto ptensor =
+          DLPackTraits<DLManagedTensorVersioned>::FromDLPack(dlMTensor);
 
-    // NOTE: Might meet bugged numpy version, see:
-    // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
-    auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
+      PyCapsule_SetName(data.ptr(),
+                        DLPackTraits<DLManagedTensorVersioned>::used);
+      return ptensor;
+    } else {
+      DLManagedTensor *dlMTensor =
+          reinterpret_cast<DLManagedTensor *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensor>::capsule));
 
-    PyCapsule_SetName(data.ptr(), "used_dltensor");
-    return ptensor;
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+
+      auto ptensor = DLPackTraits<DLManagedTensor>::FromDLPack(dlMTensor);
+
+      PyCapsule_SetName(data.ptr(), DLPackTraits<DLManagedTensor>::used);
+      return ptensor;
+    }
   });
 
   m.def("tensor_from_cuda_array_interface", [](py::object obj) {
@@ -4131,6 +4185,10 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   BindDeepEPApi(&m);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+  BindCudaRt(&m);
 #endif
 }
 }  // namespace paddle::pybind

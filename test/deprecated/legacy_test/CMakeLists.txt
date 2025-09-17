@@ -517,7 +517,6 @@ set_tests_properties(
   PROPERTIES LABELS "RUN_TYPE=DIST")
 
 set_tests_properties(test_deformable_conv_op_deprecated PROPERTIES TIMEOUT 200)
-set_tests_properties(test_regularizer_api_deprecated PROPERTIES TIMEOUT 150)
 
 if(NOT WIN32)
   if(WITH_NV_JETSON)
@@ -542,7 +541,6 @@ set_tests_properties(test_generator_dataloader_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_decoupled_py_reader_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_conv2d_api_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_regularizer_deprecated PROPERTIES TIMEOUT 150)
 set_tests_properties(test_slice_op_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataloader_keep_order_deprecated PROPERTIES TIMEOUT
                                                                       120)
@@ -551,12 +549,6 @@ set_tests_properties(test_dataloader_unkeep_order_deprecated PROPERTIES TIMEOUT
 set_tests_properties(test_reader_reset_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_uniform_random_op_deprecated PROPERTIES TIMEOUT 60)
-
-set_tests_properties(test_inplace_addto_strategy_deprecated PROPERTIES TIMEOUT
-                                                                       120)
-
-set(TEST_CINN_OPS test_slice_op_deprecated test_layer_norm_op_deprecated
-                  test_instance_norm_op_deprecated)
 
 foreach(TEST_CINN_OP ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -580,7 +572,6 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader_deprecated
     test_fuse_bn_act_pass_deprecated
     test_layer_norm_op_deprecated
-    test_lookup_table_v2_op_deprecated
     test_momentum_op_deprecated
     test_nce_deprecated
     test_sparse_conv_op

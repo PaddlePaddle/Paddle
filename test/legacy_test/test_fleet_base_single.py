@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+
+from op_test import get_device_place, is_custom_device
 
 os.environ['FLAGS_enable_pir_api'] = '0'
 import numpy as np
@@ -96,8 +97,8 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         place = (
-            base.CUDAPlace(0)
-            if paddle.base.is_compiled_with_cuda()
+            get_device_place()
+            if (paddle.base.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
 
