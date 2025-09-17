@@ -24,6 +24,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -32,6 +33,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -40,6 +42,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -48,6 +51,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -56,6 +60,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "False",
         },
         {
@@ -64,6 +69,7 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -72,10 +78,57 @@ TEST_CONFIGS = {
             "world_size": 2,
             "tp": 2,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
-        # {"test_type": "optimizer", "layer_type": "DygraphShardingOptimizer", "world_size": 2, "tp": 1, "dp": 2},
-        # {"test_type": "optimizer", "layer_type": "DygraphShardingOptimizerV2", "world_size": 2, "tp": 1, "dp": 2},
+        {
+            "test_type": "optimizer",
+            "layer_type": "AdamW",
+            "world_size": 2,
+            "tp": 2,
+            "sharding_degree": 1,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizer",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizerV2",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "False",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "AdamW",
+            "world_size": 2,
+            "tp": 2,
+            "sharding_degree": 1,
+            "has_bias": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizer",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "DygraphShardingOptimizerV2",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+        },
     ],
     "4_card_tests": [
         {
@@ -84,6 +137,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 4,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -92,6 +146,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 4,
             "dp": 1,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -100,6 +155,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 2,
             "dp": 2,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
         {
@@ -108,6 +164,7 @@ TEST_CONFIGS = {
             "world_size": 4,
             "tp": 2,
             "dp": 2,
+            "sharding_degree": 1,
             "has_bias": "True",
         },
     ],
