@@ -64,14 +64,13 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -114,14 +113,13 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(BitwiseXor)
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -172,8 +170,8 @@ void BitwiseNotStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;

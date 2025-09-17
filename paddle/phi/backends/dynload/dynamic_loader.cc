@@ -525,7 +525,7 @@ void* GetCublasLtDsoHandle() {
         "temporarily no longer supports");
     return nullptr;
   }
-#elif !defined(__linux__) && defined(PADDLE_WITH_CUDA)
+#elif !defined(__linux__) && defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10010
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcublasLt.so");
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "libhipblaslt.so");

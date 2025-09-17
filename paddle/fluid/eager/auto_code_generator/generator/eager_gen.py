@@ -1276,57 +1276,63 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             is_fwd_input,
             pos,
         ) in backward_forward_inputs_map.items():
-            is_optional = name in optional_inputs
-            is_inplace_input = is_inplaced and name in self.forward_inplace_map
-            if is_fwd_input:
-                if is_optional:
-                    if is_inplace_input:
-                        set_tensor_wrappers = """{indent}if ({name}) {
-                                                            auto {name}_clone = paddle::experimental::assign({name});
-                                                            grad_node->SetTensorWrapper_{name}(*{name}_clone);}""".format_map(
-                            {"indent": indent, "name": name}
-                        )
-                    else:
-                        if (
-                            (forward_api_name in strided_op_list)
-                            or for_backward
-                            or IsVectorTensorType(atype)
-                            or (name in self.optional_inputs)
-                        ):
-                            if for_backward is False:
-                                set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper_{name}(*{name});"
-                            else:
-                                set_tensor_wrappers = f"{indent}if ({name}_optional) grad_node->SetTensorWrapper_{name}(*{name}_optional);"
-
-                        else:
-                            need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}if ({name}) grad_node->SetTensorWrapper_{name}(*{name}_tmp);"
-                else:
-                    if is_inplace_input:
-                        set_tensor_wrappers = f"{indent}auto {name}_clone = paddle::experimental::assign({name});\n{indent}grad_node->SetTensorWrapper_{name}({name}_clone);"
-                    else:
-                        if (
-                            (forward_api_name in strided_op_list)
-                            or for_backward
-                            or IsVectorTensorType(atype)
-                            or (name in self.optional_inputs)
-                        ):
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name});"
-                        else:
-                            need_pre_contiguous_set.add(name)
-                            set_tensor_wrappers = f"{indent}grad_node->SetTensorWrapper_{name}({name}_tmp);"
-                set_input_tensor_wrappers_list.append(set_tensor_wrappers)
-            else:  # Forward's output as backward's input
+            if not is_fwd_input:
+                # Forward's output as backward's input
                 if num_fwd_outputs > 1:
                     # Aligned with forward output position
                     assert name in forward_outputs_position_map, AssertMessage(
                         name, forward_outputs_position_map.keys()
                     )
-
-                set_tensor_wrappers = (
+                set_output_tensor_wrappers_list.append(
                     f"{indent}grad_node->SetTensorWrapper_{name}({name});"
                 )
-                set_output_tensor_wrappers_list.append(set_tensor_wrappers)
+                continue
+
+            is_optional = name in optional_inputs
+            is_inplace_input = is_inplaced and name in self.forward_inplace_map
+            no_need_buffer = name in self.no_need_buffers
+            set_tensor_wrappers_body: list[str] = []
+            var_name = name
+            if is_inplace_input:
+                if not no_need_buffer:
+                    var_name += "_clone"
+                    set_tensor_wrappers_body.append(
+                        f"auto {name}_clone = paddle::experimental::assign({name});"
+                    )
+            elif not (
+                (forward_api_name in strided_op_list)
+                or IsVectorTensorType(atype)
+                or for_backward
+                or is_optional
+            ):
+                var_name += "_tmp"
+                need_pre_contiguous_set.add(name)
+
+            if is_optional:
+                check_name = name
+                var_name = f"*{var_name}"
+                if not is_inplace_input and for_backward:
+                    check_name += "_optional"
+                    var_name += "_optional"
+                set_tensor_wrappers_body.append(
+                    f"grad_node->SetTensorWrapper_{name}({var_name});"
+                )
+                if len(set_tensor_wrappers_body) == 1:
+                    set_tensor_wrappers = f"{indent}if ({check_name}) {set_tensor_wrappers_body[0]}"
+                else:
+                    set_tensor_wrappers_body_str = "\n".join(
+                        f"{indent}  {s}" for s in set_tensor_wrappers_body
+                    )
+                    set_tensor_wrappers = f"{indent}if ({check_name}){{\n{set_tensor_wrappers_body_str}\n{indent}}}"
+            else:
+                set_tensor_wrappers_body.append(
+                    f"grad_node->SetTensorWrapper_{name}({var_name});"
+                )
+                set_tensor_wrappers = "\n".join(
+                    f"{indent}{s}" for s in set_tensor_wrappers_body
+                )
+            set_input_tensor_wrappers_list.append(set_tensor_wrappers)
+
         set_input_tensor_wrappers_str = "\n".join(
             set_input_tensor_wrappers_list
         )
