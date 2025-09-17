@@ -136,10 +136,10 @@ from .logic import (  # noqa: F401
     greater_equal_,
     greater_than,
     greater_than_,
+    gt,
     is_empty,
     is_tensor,
     isclose,
-    less,
     less_,
     less_equal,
     less_equal_,
@@ -506,6 +506,13 @@ take_along_dim = take_along_axis
 swapdims = transpose
 swapaxes = transpose
 clamp = clip
+eq = equal
+ne = not_equal
+lt = less_than
+less = less_than
+le = less_equal
+ge = greater_equal
+greater = gt
 sub = subtract
 sub_ = subtract_
 
@@ -932,6 +939,13 @@ tensor_method_func = [
     'resize_',
     'argwhere',
     'softmax',
+    'eq',
+    'ne',
+    'lt',
+    'le',
+    'ge',
+    'gt',
+    'greater',
     'clamp',
 ]
 

@@ -47,12 +47,10 @@
 #include "paddle/phi/backends/gpu/rocm/hip_graph.h"
 #endif
 
-#if CUDA_VERSION >= 10020
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/core/memory/allocation/cuda_malloc_async_allocator.h"
 #include "paddle/phi/core/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/phi/core/memory/allocation/virtual_memory_auto_growth_best_fit_allocator.h"
-#endif
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/phi/core/memory/allocation/cuda_malloc_async_allocator.h"  // NOLINT
@@ -999,7 +997,6 @@ class AllocatorFacadePrivate {
 #endif
 
 #if defined(PADDLE_WITH_CUDA)
-#if CUDA_VERSION >= 10020
     CUdevice device;
     int val;
     try {
@@ -1038,55 +1035,6 @@ class AllocatorFacadePrivate {
                 allow_free_idle_chunk_);
       }
     }
-#else
-    auto cuda_allocator = CreateCUDAAllocator(p);
-    auto alignment = platform::GpuMinChunkSize();
-    bool need_addr_align = true;
-    // NOTE: sometimes, since cuda runtime can not be forked, calling any cuda
-    // API in that case may got cuda error(3), i.e.,
-    // cudaErrorInitializationError. And, the CUDAAllocator is only initialized
-    // but not really used.
-    // Here, the try-catch block is added to handle the case that
-    // GetDeviceProperties() may failed in the multiple process(for example, in
-    // dataloader with num_worker > 0)
-    try {
-      const auto& prop = platform::GetDeviceProperties(p.GetDeviceId());
-      need_addr_align = prop.textureAlignment < alignment;
-      VLOG(4) << "GetDeviceProperties ok, textureAlignment: "
-              << prop.textureAlignment
-              << ", set need_addr_align=" << need_addr_align;
-    } catch (...) {
-      need_addr_align = true;
-      VLOG(4) << "GetDeviceProperties failed, set need_addr_align=true";
-    }
-    // The address returned is aligned already,
-    // ref:
-    // https://stackoverflow.com/questions/14082964/cuda-alignment-256bytes-seriously/14083295#14083295
-    std::shared_ptr<Allocator> underlying_allocator{nullptr};
-    if (need_addr_align) {
-      VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
-      underlying_allocator =
-          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
-    } else {
-      VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
-      underlying_allocator = cuda_allocator;
-    }
-    if (FLAGS_use_auto_growth_v2) {
-      cuda_allocators_[p][stream] =
-          std::make_shared<AutoGrowthBestFitAllocatorV2>(
-              underlying_allocator,
-              alignment,
-              p,
-              chunk_size,
-              allow_free_idle_chunk_);
-    } else {
-      cuda_allocators_[p][stream] =
-          std::make_shared<AutoGrowthBestFitAllocator>(underlying_allocator,
-                                                       alignment,
-                                                       chunk_size,
-                                                       allow_free_idle_chunk_);
-    }
-#endif
 #endif
   }
 

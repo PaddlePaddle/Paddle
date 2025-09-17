@@ -639,6 +639,165 @@ class TestElementwiseModOp_Stride(OpTest):
         pass
 
 
+class TestRemainderAPICompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_shape = [5, 6]
+        self.y_shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_input = np.random.randint(0, 8, self.x_shape).astype(
+            self.dtype
+        )
+        self.np_y_input = np.random.randint(3, 9, self.y_shape).astype(
+            self.dtype
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_input)
+        y = paddle.to_tensor(self.np_y_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.remainder(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.remainder(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.remainder(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.remainder(x, other=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.remainder(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.remainder(other=y)
+        paddle_dygraph_out.append(out6)
+        # Numpy reference  out
+        ref_out = self.np_x_input % self.np_y_input
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=self.dtype
+            )
+            y = paddle.static.data(
+                name="y", shape=self.y_shape, dtype=self.dtype
+            )
+            # Position args (args)
+            out1 = paddle.remainder(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.remainder(x=x, y=y)
+            # Key words args for torch
+            out3 = paddle.remainder(input=x, other=y)
+            # Combined args and kwargs
+            out4 = paddle.remainder(x, other=y)
+            # Tensor method args
+            out5 = x.remainder(y)
+            # Tensor method kwargs
+            out6 = x.remainder(other=y)
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_input, "y": self.np_y_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = self.np_x_input % self.np_y_input
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
+# test y is a scalar
+class TestRemainderAPICompatibility1(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_x_input = np.random.randint(0, 8, self.x_shape).astype(
+            self.dtype
+        )
+        self.np_y_input = 2
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x_input)
+        y = self.np_y_input
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.remainder(x, y)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.remainder(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.remainder(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.remainder(x, other=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.remainder(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.remainder(other=y)
+        paddle_dygraph_out.append(out6)
+        out7 = paddle.empty([])
+        paddle.remainder(x, y, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Numpy reference  out
+        ref_out = self.np_x_input % self.np_y_input
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=self.dtype
+            )
+            y = self.np_y_input
+            # Position args (args)
+            out1 = paddle.remainder(x, y)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.remainder(x=x, y=y)
+            # Key words args for torch
+            out3 = paddle.remainder(input=x, other=y)
+            # Combined args and kwargs
+            out4 = paddle.remainder(x, other=y)
+            # Tensor method args
+            out5 = x.remainder(y)
+            # Tensor method kwargs
+            out6 = x.remainder(other=y)
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x_input, "y": self.np_y_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            ref_out = self.np_x_input % self.np_y_input
+            for out in fetches:
+                np.testing.assert_allclose(out, ref_out)
+
+
 class TestElementwiseModOp_Stride1(TestElementwiseModOp_Stride):
     def init_input_output(self):
         self.strided_input_type = "transpose"
