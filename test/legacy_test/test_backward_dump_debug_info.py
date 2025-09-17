@@ -143,6 +143,57 @@ grads = paddle.autograd.backward(
             text=True,
         )
 
+    def test_manual_vlog(self):
+        if 'Windows' == platform.system():
+            return
+        code = """
+import os
+os.environ['GLOG_v'] = '6'
+os.environ['FLAGS_dump_grad_node_forward_stack_path']="call_stack.log"
+import paddle
+import paddle.nn.functional as F
+import paddle.nn as nn
+
+
+x = paddle.randn([3,3],dtype='float16')
+y = paddle.randn([3,3],dtype='float32')
+z = paddle.randn([3,3],dtype='float64')
+w = paddle.randn([3,3],dtype='float64')
+x.stop_gradient = False
+y.stop_gradient = False
+z.stop_gradient = False
+w.stop_gradient = True
+
+conv_x  = paddle.randn((2, 3, 8, 8), dtype='float32')
+conv_w = paddle.randn((6, 3, 3, 3), dtype='float16')
+
+sync_bn_input = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+
+conv_x.stop_gradient = False
+conv_w.stop_gradient = False
+sync_bn_input.stop_gradient = False
+
+with paddle.amp.auto_cast(enable=True):
+    out1 = paddle.add_n([x,y])
+    out2 = paddle.multiply(x,y)
+    out6 = F.conv2d(conv_x,conv_w)
+
+out3 = paddle.add_n([out1,y])
+out4 = paddle.multiply(out2,z)
+out5 = paddle.multiply_(w, y)
+if paddle.is_compiled_with_cuda():
+    sync_batch_norm = nn.SyncBatchNorm(2)
+    hidden1 = sync_batch_norm(sync_bn_input)
+loss = out1 + out2 + out3 + out4 + out5 + out6.sum()+hidden1.sum()
+loss.backward(dump_backward_graph_path="./backward")
+
+    """
+        process = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True,
+            text=True,
+        )
+
     # Test the input path is not valid
     @patch('os.path.exists')
     @patch('os.path.isdir')

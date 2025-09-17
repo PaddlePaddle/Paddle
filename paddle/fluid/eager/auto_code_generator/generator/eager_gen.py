@@ -2140,7 +2140,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         )
         amp_get_dst_dtype_str = "auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
         amp_get_dst_dtype_str += (
-            'VLOG(5) << "AMP Get Dest Dtype : "<<amp_dst_dtype;\n'
+            '    VLOG(5) << "AMP Get Dest Dtype : "<<amp_dst_dtype;\n'
         )
         amp_autocast_list_str = (
             "    ".join(amp_autocast_list)
