@@ -4008,19 +4008,15 @@ class ShardDataloader:
     ):
         dist_data = []
         for j in range(len(list_tensors)):
-            if isinstance(list_tensors[j], paddle.Tensor):
-                if dense_tensor_idx is not None and j in dense_tensor_idx:
-                    dist_data.append(list_tensors[j])
-                else:
-                    dist_data.append(
-                        dtensor_from_local(
-                            list_tensors[j], meshes[j], placements[j]
-                        )
-                    )
+            if (
+                dense_tensor_idx is not None and j in dense_tensor_idx
+            ) or not isinstance(list_tensors[j], paddle.Tensor):
+                dist_data.append(list_tensors[j])
             else:
-                placements[j][0] = dist.Replicate()
                 dist_data.append(
-                    dist.shard_tensor(list_tensors[j], meshes[j], placements[j])
+                    dtensor_from_local(
+                        list_tensors[j], meshes[j], placements[j]
+                    )
                 )
         return dist_data
 
@@ -4102,11 +4098,7 @@ class ShardDataloader:
                             batch_data[key], mesh, placements
                         )
                 else:
-                    mesh, placements = self._get_mesh_and_placement(i)
-                    placements[0] = dist.Replicate()
-                    dist_batch_data[key] = dist.shard_tensor(
-                        input_data, mesh, placements
-                    )
+                    dist_batch_data[key] = input_data
             return dist_batch_data
         elif isinstance(batch_data, paddle.Tensor):
             mesh, placements = self._get_mesh_and_placement(0)
