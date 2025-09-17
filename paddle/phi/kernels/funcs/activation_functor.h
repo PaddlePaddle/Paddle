@@ -3896,9 +3896,7 @@ struct CudaTanGradFunctor<ComplexType<T>>
     return static_cast<ComplexType<T>>(dout * conj(tan(x) * tan(x) + one));
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() {
-    return ActBwdOpFwdDeps::kDepOut;
-  }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
 template <typename T>
