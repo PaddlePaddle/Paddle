@@ -17,8 +17,8 @@ from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
 
+import paddle
 from paddle.base import core
-from paddle.device import _convert_to_place
 from paddle.utils import deprecated
 
 from .streams import Event, Stream, create_event, create_stream  # noqa: F401
@@ -84,7 +84,7 @@ def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
         elif isinstance(device, str):
-            place = _convert_to_place(device)
+            place = paddle.device._convert_to_place(device)
             device_id = place.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
