@@ -1087,7 +1087,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
             common::vectorize<int64_t>(mask_tensor.dims()),
             common::vectorize<int64_t>(mask_tensor.strides()),
             slice_offset);
-        *out_is_view = false;
+        // *out_is_view = false;
         return;
       } else {
         paddle::Tensor value_tmp_tensor =
@@ -1136,7 +1136,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                                      slice_offset);
       // New kernel does not need to transpose back, so set out_is_view to
       // false. Remove when all cases use this branch.
-      *out_is_view = false;
+      // *out_is_view = false;
     } else {
       *transed_index = expandTensors(*transed_index);
       *transed_index = expand_outplace(*transed_index);
@@ -1164,7 +1164,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                                            slice_offset);
       // New kernel does not need to transpose back, so set out_is_view to
       // false. Remove when all cases use this branch.
-      *out_is_view = false;
+      // *out_is_view = false;
     }
   } else {
     // TODO(czy): remove in the future
