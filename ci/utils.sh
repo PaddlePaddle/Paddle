@@ -1069,7 +1069,11 @@ set -ex
 
 function check_coverage() {
     if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
-        /bin/bash ${PADDLE_ROOT}/ci/coverage_info.sh
+	if [ ${WITH_ALL_COVERAGE:-OFF} == "ON" ];then
+	    /bin/bash ${PADDLE_ROOT}/ci/coverage_all_info.sh
+        else
+            /bin/bash ${PADDLE_ROOT}/ci/coverage_info.sh
+	fi
     else
         echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
     fi
