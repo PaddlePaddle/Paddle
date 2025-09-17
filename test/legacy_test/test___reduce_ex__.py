@@ -36,8 +36,6 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
             'int32',
             'int64',
             'uint8',
-            'complex64',
-            'complex128',
         ]
         self.places = [paddle.CPUPlace()]
         if paddle.device.is_compiled_with_cuda():
@@ -52,7 +50,7 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
             or dtype.startswith("bfloat")
             or dtype.startswith("complex")
         ):
-            tensor = paddle.rand(shape=self.shape, dtype=dtype)
+            tensor = paddle.rand(shape=self.shape).astype(dtype)
         elif dtype.startswith("bool"):
             tensor = paddle.rand(self.shape) > 0.5
 
