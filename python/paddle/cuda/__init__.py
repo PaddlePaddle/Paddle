@@ -76,7 +76,7 @@ def synchronize(device: DeviceLike = None) -> None:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             # synchronize the current device
@@ -105,7 +105,7 @@ def current_stream(device: DeviceLike = None) -> Stream:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             # Get the current stream on the default CUDA device
@@ -140,7 +140,7 @@ def get_device_properties(device: DeviceLike = None):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             # Get the properties of the current device
@@ -171,7 +171,7 @@ def get_device_name(device: DeviceLike = None) -> str:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             # Get the name of the current CUDA device
@@ -205,7 +205,7 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             # Get compute capability of the current CUDA device
@@ -239,7 +239,7 @@ class StreamContext(_PaddleStreamGuard):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> paddle.set_device('cuda')
@@ -273,7 +273,7 @@ def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> paddle.set_device('cuda')
@@ -307,7 +307,7 @@ def cudart():
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.cuda import cudart, check_error
             >>> import os
@@ -358,7 +358,7 @@ def check_error(res: int) -> None:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> from paddle.cuda import check_error
             >>> check_error(0) # check for cuda success code # will not raise Error
             >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
@@ -387,7 +387,7 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> from paddle.cuda import mem_get_info
             >>> free_bytes, total_bytes = mem_get_info()
     """
@@ -436,7 +436,7 @@ def get_stream_from_external(
 
     Examples:
         .. code-block:: python
-
+            >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
 
             >>> # Assume an external library provides a stream pointer
