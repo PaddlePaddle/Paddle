@@ -52,7 +52,7 @@ class Test__Reduce_EX__BASE(unittest.TestCase):
             or dtype.startswith("bfloat")
             or dtype.startswith("complex")
         ):
-            tensor = paddle.rand(shape=self.shape).astype(dtype)
+            tensor = paddle.rand(shape=self.shape, dtype=dtype)
         elif dtype.startswith("bool"):
             tensor = paddle.rand(self.shape) > 0.5
 
