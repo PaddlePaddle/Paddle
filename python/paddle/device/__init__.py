@@ -720,8 +720,7 @@ class Event:
 
         '''
         if stream is None:
-            stream_base = current_stream(self.device)
-            self.event_base.record(stream_base)
+            stream = current_stream(self.device)
 
         self.event_base.record(stream.stream_base)
 
@@ -797,8 +796,8 @@ class Event:
         '''
         self.event_base.synchronize()
 
-    def __repr__(self) -> core.CUDAEvent | core.CustomDeviceEvent:
-        return self.event_base
+    def __repr__(self) -> str:
+        return f"Event(device={self.device}, event_base={self.event_base})"
 
 
 class Stream:
