@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.base import core
 
 
 def conv1d_forward_naive(
@@ -130,7 +131,9 @@ def conv1d_forward_naive(
 
 def get_places():
     places = []
-    if base.is_compiled_with_cuda():
+    if core.is_compiled_with_xpu():
+        places.append(paddle.device.XPUPlace(0))
+    elif core.is_compiled_with_cuda():
         places.append(paddle.CUDAPlace(0))
     places.append(paddle.CPUPlace())
     return places
@@ -154,28 +157,39 @@ class TestConv1dAPI_Compatibility(unittest.TestCase):
         )
 
     def test_dygraph_Compatibility(self):
-        paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-        w = paddle.to_tensor(self.np_w)
+        for place in self.places:
+            paddle.device.set_device(place)
+            paddle.disable_static()
+            x = paddle.to_tensor(self.np_x)
+            w = paddle.to_tensor(self.np_w)
 
-        paddle_dygraph_out = []
-        # Position args (args)
-        out1 = paddle.nn.functional.conv1d(x, w)
-        paddle_dygraph_out.append(out1)
-        # Key words args (kwargs) for paddle
-        out2 = paddle.nn.functional.conv1d(x=x, weight=w)
-        paddle_dygraph_out.append(out2)
-        # Key words args for alias compatibility - testing x->input
-        out3 = paddle.nn.functional.conv1d(input=x, weight=w)
-        paddle_dygraph_out.append(out3)
-        # Combined args and kwargs
-        out4 = paddle.nn.functional.conv1d(x, weight=w)
-        paddle_dygraph_out.append(out4)
+            paddle_dygraph_out = []
+            # Position args (args)
+            out1 = paddle.nn.functional.conv1d(x, w)
+            paddle_dygraph_out.append(out1)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.nn.functional.conv1d(x=x, weight=w)
+            paddle_dygraph_out.append(out2)
+            # Key words args for alias compatibility - testing x->input
+            out3 = paddle.nn.functional.conv1d(input=x, weight=w)
+            paddle_dygraph_out.append(out3)
+            # Combined args and kwargs
+            out4 = paddle.nn.functional.conv1d(x, weight=w)
+            paddle_dygraph_out.append(out4)
 
-        # Check all dygraph results against reference
-        for out in paddle_dygraph_out:
-            np.testing.assert_allclose(self.np_ref_out, out.numpy(), rtol=1e-05)
-        paddle.enable_static()
+            if isinstance(place, core.XPUPlace):
+                rtol = 5e-3
+                atol = 5e-3
+            else:
+                rtol = 1e-5
+                atol = 0
+
+            # Check all dygraph results against reference
+            for out in paddle_dygraph_out:
+                np.testing.assert_allclose(
+                    self.np_ref_out, out.numpy(), rtol=rtol, atol=atol
+                )
+            paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()
@@ -205,6 +219,13 @@ class TestConv1dAPI_Compatibility(unittest.TestCase):
             fetch_list.append(out4)
 
             for place in self.places:
+                if isinstance(place, core.XPUPlace):
+                    rtol = 5e-3
+                    atol = 5e-3
+                else:
+                    rtol = 1e-5
+                    atol = 0
+
                 exe = base.Executor(place)
                 fetches = exe.run(
                     main,
@@ -212,7 +233,9 @@ class TestConv1dAPI_Compatibility(unittest.TestCase):
                     fetch_list=fetch_list,
                 )
                 for out in fetches:
-                    np.testing.assert_allclose(out, self.np_ref_out, rtol=1e-05)
+                    np.testing.assert_allclose(
+                        out, self.np_ref_out, rtol=rtol, atol=atol
+                    )
 
 
 if __name__ == "__main__":
