@@ -913,6 +913,43 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
       use_calc_stream);
 }
 
+#if defined(PADDLE_WITH_FLAGCX)
+std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Scatter(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ScatterOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  CheckTensorContiguous(in_tensor);
+  CheckTensorContiguous(*out_tensor);
+
+  phi::distributed::CommStaticCheck::ScatterLikeShape(
+      *out_tensor,
+      in_tensor,
+      /*dst_rank*/ opts.root_rank,
+      /*cur_rank*/ rank_,
+      size_,
+      phi::AllocationType::XPU);
+  return Collective(
+      [&](phi::distributed::BKCLCommContext* comm_context, XPUStream stream) {
+        VLOG(3) << "bkcl_scatter "
+                << "sendbuff: " << in_tensor.data()
+                << ", recvbuff: " << out_tensor->data()
+                << ", count: " << in_tensor.numel() << ", datatype: "
+                << BKCLDTypeToString(phi::ToBKCLDataType(in_tensor.dtype()))
+                << ", bkcl_comm: " << comm_context->GetBKCLComm()
+                << ", stream: " << stream << ", rank_in_group: " << rank_
+                << ", nranks: " << size_ << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        comm_context->Scatter(out_tensor, in_tensor, opts.root_rank, stream);
+      },
+      in_tensor,
+      CommType::SCATTER,
+      sync_op,
+      use_calc_stream);
+}
+#endif
+
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
   PADDLE_ENFORCE_GE(opts.device_id,

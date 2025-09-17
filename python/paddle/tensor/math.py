@@ -8147,6 +8147,7 @@ def sinc_(x: Tensor, name: str | None = None) -> Tensor:
     return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))
 
 
+@param_two_alias(["x", "elements"], ["test_x", "test_elements"])
 def isin(
     x: Tensor,
     test_x: Tensor,
@@ -8157,9 +8158,13 @@ def isin(
     r"""
     Tests if each element of `x` is in `test_x`.
 
+    .. note::
+        Alias Support: The parameter name ``elements`` can be used as an alias for ``x``, and the parameter name ``test_elements`` can be used as an alias for ``test_x``.
+        For example, ``isin(elements=tensor1, test_elements=tensor2)`` is equivalent to ``isin(x=tensor1, test_x=tensor2)``.
+
     Args:
-        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
-        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'.
+        x (Tensor): The input Tensor. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'. alias: ``elements``.
+        test_x (Tensor): Tensor values against which to test for each input element. Supported data type: 'bfloat16', 'float16', 'float32', 'float64', 'int32', 'int64'. alias: ``test_elements``.
         assume_unique (bool, optional): If True, indicates both `x` and `test_x` contain unique elements, which could make the calculation faster. Default: False.
         invert (bool, optional): Indicate whether to invert the boolean return tensor. If True, invert the results. Default: False.
         name (str|None, optional): Name for the operation (optional, default is None).For more information, please refer to :ref:`api_guide_Name`.
