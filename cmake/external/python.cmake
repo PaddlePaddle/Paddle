@@ -27,20 +27,18 @@ if(NOT PYTHON_EXECUTABLE)
   endif()
 endif()
 if(NOT ${PY_VERSION})
-  find_package(Python 3.9 COMPONENTS Interpreter Development.Module)
+  find_package(Python 3.9 COMPONENTS Interpreter Development)
 else()
-  find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter
-                                                     Development.Module)
+  find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
   if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL
                          "Python_EXECUTABLE-NOTFOUND")
     unset(Python_EXECUTABLE CACHE)
     unset(Python_EXECUTABLE)
-    find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter
-                                                       Development.Module)
+    find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
     if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL
                            "Python_EXECUTABLE-NOTFOUND")
       find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter
-                                                            Development.Module)
+                                                            Development)
     endif()
   endif()
 endif()
