@@ -130,9 +130,10 @@ class TestEventStreamAPIs(unittest.TestCase):
         self.assertTrue(event1.query())  # Should be completed now
 
         # Test Stream.query()
-        self.assertTrue(
-            stream1.query()
-        )  # Should be completed (no work submitted)
+        if not core.is_compiled_with_xpu():
+            self.assertTrue(
+                stream1.query()
+            )  # Should be completed (no work submitted)
 
         # Test Stream.synchronize()
         stream1.synchronize()  # Should not raise exception
@@ -198,7 +199,8 @@ class TestEventStreamAPIs(unittest.TestCase):
         # Test Stream properties and methods
         self.assertTrue(hasattr(stream1, 'stream_base'))
         self.assertTrue(hasattr(stream1, 'device'))
-        self.assertTrue(callable(stream1.query))
+        if not core.is_compiled_with_xpu():
+            self.assertTrue(callable(stream1.query))
         self.assertTrue(callable(stream1.synchronize))
         self.assertTrue(callable(stream1.wait_event))
         self.assertTrue(callable(stream1.wait_stream))

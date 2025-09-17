@@ -1110,6 +1110,9 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
             >>> s3 = paddle.device.current_stream(place)
 
     '''
+    if device is None:
+        device = paddle.framework._current_expected_place_()
+
     return Stream(stream_base=_current_stream_base(device))
 
 

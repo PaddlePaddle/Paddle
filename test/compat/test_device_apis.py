@@ -617,7 +617,7 @@ class TestDeviceAPIs(unittest.TestCase):
         stream1 = paddle.device.current_stream()
         self.assertIsNotNone(stream1)
 
-        stream2 = paddle.device.current_stream('xpu:0')
+        stream2 = paddle.device.current_stream(core.XPUPlace(0))
         self.assertIsNotNone(stream2)
 
         stream3 = paddle.device.current_stream(0)

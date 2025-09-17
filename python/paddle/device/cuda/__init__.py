@@ -93,6 +93,9 @@ def current_stream(device: _CudaPlaceLike | None = None) -> core.CUDAStream:
             device_id = device
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            place = paddle.device._convert_to_place(device)
+            device_id = place.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
