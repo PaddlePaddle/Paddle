@@ -344,6 +344,7 @@ void GridSampleKernel(const Context& dev_ctx,
     enum_mode = Mode::bilinear;
   }
 
+#ifndef PADDLE_WITH_HIP
   if (condCudnnGridSampler<T>(x, grid) &&
       enum_padding_mode == PaddingMode::zeros && enum_mode == Mode::bilinear &&
       align_corners) {
@@ -427,6 +428,7 @@ void GridSampleKernel(const Context& dev_ctx,
         phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
     return;
   }
+#endif
 
   bool use_int32_index = x.numel() <= std::numeric_limits<int>::max() &&
                          grid.numel() <= std::numeric_limits<int>::max() &&
