@@ -147,16 +147,16 @@ class TestCudaCompat(unittest.TestCase):
 
         cuda_version = paddle.version.cuda()
         if int(cuda_version.split(".")[0]) < 12:
-            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode"))
+            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode_"))
             self.assertTrue(hasattr(cuda_rt_module, "cudaProfilerInitialize"))
 
             self.assertTrue(
-                hasattr(cuda_rt_module.cudaOutputMode, "KeyValuePair")
+                hasattr(cuda_rt_module.cudaOutputMode_, "KeyValuePair")
             )
-            self.assertEqual(cuda_rt_module.cudaOutputMode.KeyValuePair, 0)
+            self.assertEqual(cuda_rt_module.cudaOutputMode_.KeyValuePair, 0)
 
-            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode, "CSV"))
-            self.assertEqual(cuda_rt_module.cudaOutputMode.CSV, 1)
+            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode_, "CSV"))
+            self.assertEqual(cuda_rt_module.cudaOutputMode_.CSV, 1)
 
         self.assertTrue(hasattr(cuda_rt_module, "cudaError_"))
         self.assertTrue(hasattr(cuda_rt_module.cudaError_, "success"))
