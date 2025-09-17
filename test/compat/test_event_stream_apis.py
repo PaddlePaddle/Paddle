@@ -27,6 +27,14 @@ def is_custom_device():
     return False
 
 
+@unittest.skipIf(
+    not (
+        core.is_compiled_with_cuda()
+        or core.is_compiled_with_xpu()
+        or is_custom_device()
+    ),
+    "CUDA, XPU or Custom Device not available",
+)
 class TestEventStreamAPIs(unittest.TestCase):
     """Test paddle.device Event and Stream APIs across different hardware types."""
 
