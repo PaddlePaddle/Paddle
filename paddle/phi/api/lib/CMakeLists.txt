@@ -143,9 +143,9 @@ set(operants_manager_header_file_tmp ${operants_manager_header_file}.tmp)
 set(operants_manager_source_file_tmp ${operants_manager_source_file}.tmp)
 
 if(NOT PYTHONINTERP_FOUND)
-  find_package(Python COMPONENTS Interpreter)
-  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
-  set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
+  find_package(Python3 COMPONENTS Interpreter)
+  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+  set(PYTHONINTERP_FOUND ${Python3_Interpreter_FOUND})
   # find_package(PythonInterp REQUIRED)
 endif()
 
