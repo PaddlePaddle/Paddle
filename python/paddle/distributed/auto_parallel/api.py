@@ -3954,6 +3954,7 @@ class ShardDataloader:
         return len(self._dataloader)
 
     def __iter__(self):
+        self.iter = self._dataloader.__iter__()
         return self
 
     def _get_mesh_and_placement(self, index):
@@ -4122,8 +4123,6 @@ class ShardDataloader:
             raise ValueError(f"Unsupported batch_data type {type(batch_data)}")
 
     def __next__(self):
-        if self.iter is None:
-            self.iter = self._dataloader.__iter__()
         batch_data = next(self.iter)
         return self._get_batch(batch_data)
 
