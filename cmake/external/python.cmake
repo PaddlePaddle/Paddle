@@ -14,19 +14,48 @@
 
 include(python_module)
 
-check_py_version(${PY_VERSION})
+# check_py_version(${PY_VERSION})
 
-# Find Python with minimum PY_VERSION specified or will raise error!
-find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
-if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL "Python_EXECUTABLE-NOTFOUND")
-  set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
-  set(Python_LIBRARIES ${PYTHON_LIBRARY})
-  set(Python_INCLUDE_DIRS ${PYTHON_INCLUDE_DIR})
-  message(
-    STATUS
-      "Exact Python ${PY_VERSION} not found, trying any available Python...")
-  find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+if(NOT PYTHON_EXECUTABLE)
+  execute_process(
+    COMMAND "which" "python"
+    RESULT_VARIABLE _exitcode
+    OUTPUT_VARIABLE Python_EXECUTABLE
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(${_exitcode} EQUAL 0)
+    message(STATUS "Setting Python to ${Python_EXECUTABLE}")
+  endif()
 endif()
+if(NOT ${PY_VERSION})
+  find_package(Python 3.9 COMPONENTS Interpreter Development.Module)
+else()
+  find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter
+                                                     Development.Module)
+  if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL
+                         "Python_EXECUTABLE-NOTFOUND")
+    unset(Python_EXECUTABLE CACHE)
+    unset(Python_EXECUTABLE)
+    find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter
+                                                       Development.Module)
+    if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL
+                           "Python_EXECUTABLE-NOTFOUND")
+      find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter
+                                                            Development.Module)
+    endif()
+  endif()
+endif()
+
+# # Find Python with minimum PY_VERSION specified or will raise error!
+# find_package(Python ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
+# if(NOT Python_FOUND OR Python_EXECUTABLE STREQUAL "Python_EXECUTABLE-NOTFOUND")
+#   set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
+#   set(Python_LIBRARIES ${PYTHON_LIBRARY})
+#   set(Python_INCLUDE_DIRS ${PYTHON_INCLUDE_DIR})
+#   message(
+#     STATUS
+#       "Exact Python ${PY_VERSION} not found, trying any available Python...")
+#   find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+# endif()
 set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
 set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
 
