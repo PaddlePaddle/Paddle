@@ -58,7 +58,7 @@ class ETCDClient:
         while times < self.retry_times:
             try:
                 return self.client.get(key)
-                break
+
             except Exception as e:
                 times += 1
                 logging.info(
