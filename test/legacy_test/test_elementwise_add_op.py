@@ -18,7 +18,13 @@ import unittest
 import warnings
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    skip_check_grad_ci,
+)
 
 import paddle
 import paddle.distributed as dist
@@ -175,7 +181,8 @@ class TestElementwiseAddOp_ZeroSize3(TestElementwiseAddOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
@@ -183,7 +190,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support onednn op in dygraph mode
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place,
             atol=1e-3,
@@ -192,11 +199,11 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         )
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(place, ['X', 'Y'], 'Out', check_prim=True)
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -208,7 +215,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -221,7 +228,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or core.cudnn_version() < 8100
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
@@ -249,11 +256,11 @@ class TestBF16ElementwiseAddOp(OpTest):
         self.if_enable_cinn()
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X', 'Y'],
@@ -264,7 +271,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         )
 
     def test_check_grad_ignore_x(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['Y'],
@@ -276,7 +283,7 @@ class TestBF16ElementwiseAddOp(OpTest):
         )
 
     def test_check_grad_ignore_y(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X'],
@@ -721,8 +728,8 @@ class TestAddApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
-            if core.is_compiled_with_cuda()
+            [paddle.CPUPlace(), get_device_place()]
+            if (core.is_compiled_with_cuda() or is_custom_device())
             else [paddle.CPUPlace()]
         )
         for place in places:
@@ -940,7 +947,7 @@ class TestTensorAddNumpyScalar(unittest.TestCase):
         self.assertTrue(c.dtype == paddle.float32)
 
     def test_float16_add(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
         paddle.disable_static()
         a = paddle.full([4, 5, 6], 1.5, dtype='float16')
@@ -998,25 +1005,26 @@ class TestTensorFloat32Bfloat16OrFloat16Add(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or core.cudnn_version() < 8100
     or paddle.device.cuda.get_device_capability()[0] < 8,
     "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
 )
 class TestTensorFloat32Bfloat16Add(TestTensorFloat32Bfloat16OrFloat16Add):
     def test_float32_bfloat16_add(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         with base.dygraph.base.guard(place=place):
             self._float32_bfloat16_or_float16_add(y_dtype=paddle.bfloat16)
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or core.cudnn_version() < 8100,
     "only support compiled with CUDA and cudnn version need larger than 8.1.0",
 )
 class TestTensorFloat32Float16Add(TestTensorFloat32Bfloat16OrFloat16Add):
     def test_float32_float16_add(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         with base.dygraph.base.guard(place=place):
             self._float32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
@@ -1095,7 +1103,8 @@ class TestElementwiseAddOpAutoParallelXShardBroadcast(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
     def init_placements(self):
@@ -1105,7 +1114,7 @@ class TestElementwiseAddOpAutoParallelXYShard(TestElementwiseAddOpAutoParallel):
         }
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_auto_parallel=True
         )
@@ -1126,7 +1135,7 @@ class TestElementwiseAddOpAutoParallelXYShardBroadcast(
         }
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place, ['X', 'Y'], 'Out', check_auto_parallel=True
         )
@@ -1138,7 +1147,8 @@ class TestElementwiseAddOpAutoParallelXYShardBroadcast(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
     def setUp(self):
@@ -1167,7 +1177,7 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,
@@ -1183,7 +1193,7 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
 
     def test_check_grad_normal(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
@@ -1194,7 +1204,7 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
 
     def test_check_grad_ignore_x(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(
@@ -1206,7 +1216,7 @@ class TestElementwiseAddOp_Stride(TestElementwiseAddOp):
 
     def test_check_grad_ignore_y(self):
         self.test_stride_backward = True
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if self.dtype == np.float16:
             return
         self.check_grad_with_place(

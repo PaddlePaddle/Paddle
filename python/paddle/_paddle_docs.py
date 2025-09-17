@@ -805,7 +805,12 @@ add_doc_and_signature(
 
     Returns:
         `Tensor`, the bool result which shows every element of `x` whether it is finite number or not.
-    >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([float('-inf'), -2, 3.6, float('inf'), 0, float('-nan'), float('nan')])
             >>> out = paddle.isfinite(x)
             >>> out
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
@@ -990,6 +995,116 @@ def ceil(
     name: str | None = None,
     *,
     out: Tensor | None = None
+) -> Tensor
+""",
+)
+
+add_doc_and_signature(
+    "sum",
+    """
+    Computes the sum of tensor elements over the given dimension.
+     .. note::
+        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
+        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+            alias: ``dim``.
+        dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
+        otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # x is a Tensor with following elements:
+            >>> #    [[0.2, 0.3, 0.5, 0.9]
+            >>> #     [0.1, 0.2, 0.6, 0.7]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+            ...                       [0.1, 0.2, 0.6, 0.7]])
+            >>> out1 = paddle.sum(x)
+            >>> out1
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.50000000)
+            >>> out2 = paddle.sum(x, axis=0)
+            >>> out2
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.30000001, 0.50000000, 1.10000002, 1.59999990])
+            >>> out3 = paddle.sum(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.89999998, 1.60000002])
+            >>> out4 = paddle.sum(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.89999998],
+             [1.60000002]])
+
+            >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
+            >>> #      [[[1, 2], [3, 4]],
+            >>> #      [[5, 6], [7, 8]]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> y = paddle.to_tensor([[[1, 2], [3, 4]],
+            ...                       [[5, 6], [7, 8]]])
+            >>> out5 = paddle.sum(y, axis=[1, 2])
+            >>> out5
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [10, 26])
+            >>> out6 = paddle.sum(y, axis=[0, 1])
+            >>> out6
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [16, 20])
+
+            >>> # x is a Tensor with following elements:
+            >>> #    [[True, True, True, True]
+            >>> #     [False, False, False, False]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> x = paddle.to_tensor([[True, True, True, True],
+            ...                       [False, False, False, False]])
+            >>> out7 = paddle.sum(x)
+            >>> out7
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            4)
+            >>> out8 = paddle.sum(x, axis=0)
+            >>> out8
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 1, 1, 1])
+            >>> out9 = paddle.sum(x, axis=1)
+            >>> out9
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4, 0])
+    """,
+    """
+def sum(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor
 """,
 )
