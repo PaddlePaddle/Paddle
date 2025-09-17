@@ -609,7 +609,6 @@ class small_vector_template_base<T, true>
       this->set_size(this->size() - 1);
     }
   }
-
 };
 
 /// This class consists of common code factored out of the small_vector class to
