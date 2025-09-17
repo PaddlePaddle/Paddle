@@ -24,7 +24,10 @@ if(WIN32)
   option(WITH_STATIC_LIB
          "Compile demo with static/shared library, default use dynamic." OFF)
   if(NOT PYTHON_EXECUTABLE)
-    find_package(PythonInterp REQUIRED)
+    find_package(Python COMPONENTS Interpreter)
+    set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+    set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
+    # find_package(PythonInterp REQUIRED)
   endif()
 endif()
 

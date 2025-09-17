@@ -17,8 +17,18 @@ include(python_module)
 check_py_version(${PY_VERSION})
 
 # Find Python with minimum PY_VERSION specified or will raise error!
-find_package(PythonInterp ${PY_VERSION} REQUIRED)
-find_package(PythonLibs ${PY_VERSION} REQUIRED)
+find_package(Python ${PY_VERSION} REQUIRED COMPONENTS Interpreter Development)
+set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
+
+set(PYTHONLIBS_FOUND ${Python_Development_FOUND})
+set(PYTHON_LIBRARIES ${Python_LIBRARIES})
+set(PYTHON_INCLUDE_DIRS ${Python_INCLUDE_DIRS})
+
+set(PYTHON_LIBRARY ${Python_LIBRARIES})
+set(PYTHON_INCLUDE_DIR ${Python_INCLUDE_DIRS})
+# find_package(PythonInterp ${PY_VERSION} REQUIRED)
+# find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
 if(WIN32)
   execute_process(

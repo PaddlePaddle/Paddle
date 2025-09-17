@@ -26,7 +26,10 @@ add_definitions("-DPADDLE_WITH_CUTLASS")
 add_definitions("-DSPCONV_WITH_CUTLASS=0")
 
 if(NOT PYTHON_EXECUTABLE)
-  find_package(PythonInterp REQUIRED)
+  find_package(Python COMPONENTS Interpreter)
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+  set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
+  # find_package(PythonInterp REQUIRED)
 endif()
 
 ExternalProject_Add(

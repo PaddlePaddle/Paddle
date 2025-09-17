@@ -15,7 +15,10 @@ set(static_bw_op_yaml_file ${ops_yaml_dir}/legacy/static_backward.yaml)
 set(fused_bw_op_yaml_file ${ops_yaml_dir}/fused_backward.yaml)
 
 if(NOT PYTHONINTERP_FOUND)
-  find_package(PythonInterp REQUIRED)
+  find_package(Python COMPONENTS Interpreter)
+  set(PYTHON_EXECUTABLE ${Python_EXECUTABLE})
+  set(PYTHONINTERP_FOUND ${Python_Interpreter_FOUND})
+  # find_package(PythonInterp REQUIRED)
 endif()
 
 function(install_py_pyyaml)
