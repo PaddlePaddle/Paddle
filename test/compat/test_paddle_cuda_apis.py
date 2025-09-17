@@ -12,10 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 from unittest import TestCase
 
 import paddle
+
+
+def should_skip_tests():
+    """
+    Check if tests should be skipped based on device availability.
+    Skip if neither CUDA, XPU, nor any custom device is available.
+    """
+    # Check CUDA availability
+    cuda_available = paddle.is_compiled_with_cuda()
+
+    # Check XPU availability
+    xpu_available = paddle.is_compiled_with_xpu()
+
+    # Check custom device availability
+    custom_available = False
+    try:
+        custom_devices = paddle.device.get_all_custom_device_type()
+        if custom_devices:
+            for device_type in custom_devices:
+                if paddle.device.is_compiled_with_custom_device(device_type):
+                    custom_available = True
+                    break
+    except Exception:
+        custom_available = False
+
+    # Skip tests if no supported devices are available
+    return not (cuda_available or xpu_available or custom_available)
+
+
+# Check if we should skip all tests
+if should_skip_tests():
+    print(
+        "Skipping paddle.cuda API tests: No CUDA, XPU, or custom devices available"
+    )
+    sys.exit(0)
 
 
 class TestCurrentDevice(TestCase):
