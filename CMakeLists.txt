@@ -17,9 +17,10 @@ if(APPLE AND WITH_ARM)
   cmake_minimum_required(VERSION 3.19.2)
   cmake_policy(VERSION 3.19.2)
 else()
-  cmake_minimum_required(VERSION 3.18)
-  cmake_policy(VERSION 3.12)
+  cmake_minimum_required(VERSION 3.15)
+  cmake_policy(VERSION 3.13)
 endif()
+cmake_policy(SET CMP0073 OLD)
 # use to get_property location of static lib
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
