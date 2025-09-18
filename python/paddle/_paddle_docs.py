@@ -16,7 +16,11 @@ import inspect
 
 import paddle
 
-from .base.dygraph.generated_tensor_methods_patch import methods_map
+from .base.dygraph.generated_tensor_methods_patch import (
+    funcs_map,
+    methods_map,
+    nn_funcs_map,
+)
 
 # Add docstr for some C++ functions in paddle
 _add_docstr = paddle.base.core.eager._add_docstr
@@ -53,8 +57,11 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
     methods_dict = dict(methods_map)
-    if func_name in methods_dict.keys():
-        tensor_func = methods_dict[func_name]
+    funcs_dict = dict(funcs_map)
+    nn_funcs_dict = dict(nn_funcs_map)
+    all_funcs_dict = methods_dict | funcs_dict | nn_funcs_dict
+    if func_name in all_funcs_dict.keys():
+        tensor_func = all_funcs_dict[func_name]
         tensor_func.__signature__ = python_api_sig
 
 
@@ -999,6 +1006,116 @@ def ceil(
 """,
 )
 
+add_doc_and_signature(
+    "sum",
+    """
+    Computes the sum of tensor elements over the given dimension.
+     .. note::
+        Parameter order support: When passing positional parameters, it is possible to support swapping the positional order of dtype and axis.
+        For example, ``sum(x, axis, keepdim, dtype)`` is equivalent to ``sum(x, axis, dtype, keepdim)``.
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``dim`` can be used as an alias for ``axis``.
+        For example, ``sum(input=tensor_x, dim=1)`` is equivalent to ``sum(x=tensor_x, axis=1)``.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is bool, bfloat16, float16, float32, float64,
+            uint8, int8, int16, int32, int64, complex64, complex128.
+            alias: ``input``.
+        axis (int|list|tuple|None, optional): The dimensions along which the sum is performed. If
+            :attr:`None`, sum all elements of :attr:`x` and return a
+            Tensor with a single element, otherwise must be in the
+            range :math:`[-rank(x), rank(x))`. If :math:`axis[i] < 0`,
+            the dimension to reduce is :math:`rank + axis[i]`.
+            alias: ``dim``.
+        dtype (str|paddle.dtype|np.dtype, optional): The dtype of output Tensor. The default value is None, the dtype
+            of output is the same as input Tensor `x`.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result Tensor will have one fewer dimension
+            than the :attr:`x` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
+        otherwise it's data type is the same as `x`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # x is a Tensor with following elements:
+            >>> #    [[0.2, 0.3, 0.5, 0.9]
+            >>> #     [0.1, 0.2, 0.6, 0.7]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
+            ...                       [0.1, 0.2, 0.6, 0.7]])
+            >>> out1 = paddle.sum(x)
+            >>> out1
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            3.50000000)
+            >>> out2 = paddle.sum(x, axis=0)
+            >>> out2
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.30000001, 0.50000000, 1.10000002, 1.59999990])
+            >>> out3 = paddle.sum(x, axis=-1)
+            >>> out3
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.89999998, 1.60000002])
+            >>> out4 = paddle.sum(x, axis=1, keepdim=True)
+            >>> out4
+            Tensor(shape=[2, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.89999998],
+             [1.60000002]])
+
+            >>> # y is a Tensor with shape [2, 2, 2] and elements as below:
+            >>> #      [[[1, 2], [3, 4]],
+            >>> #      [[5, 6], [7, 8]]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> y = paddle.to_tensor([[[1, 2], [3, 4]],
+            ...                       [[5, 6], [7, 8]]])
+            >>> out5 = paddle.sum(y, axis=[1, 2])
+            >>> out5
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [10, 26])
+            >>> out6 = paddle.sum(y, axis=[0, 1])
+            >>> out6
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [16, 20])
+
+            >>> # x is a Tensor with following elements:
+            >>> #    [[True, True, True, True]
+            >>> #     [False, False, False, False]]
+            >>> # Each example is followed by the corresponding output tensor.
+            >>> x = paddle.to_tensor([[True, True, True, True],
+            ...                       [False, False, False, False]])
+            >>> out7 = paddle.sum(x)
+            >>> out7
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            4)
+            >>> out8 = paddle.sum(x, axis=0)
+            >>> out8
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [1, 1, 1, 1])
+            >>> out9 = paddle.sum(x, axis=1)
+            >>> out9
+            Tensor(shape=[2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [4, 0])
+    """,
+    """
+def sum(
+    x: Tensor,
+    axis: int | Sequence[int] | None = None,
+    dtype: DTypeLike | None = None,
+    keepdim: bool = False,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor
+""",
+)
+
 # liuyi
 add_doc_and_signature(
     "any",
@@ -1123,6 +1240,77 @@ add_doc_and_signature(
 )
 
 # shenwei
+
+add_doc_and_signature(
+    "gelu",
+    """
+    gelu activation.
+
+    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
+
+    approximate parameter must be True, False, "tanh", "none".
+
+    if approximate is True or "tanh"
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\\sqrt{2}}))
+
+     .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``gelu(input=tensor_x)`` is equivalent to ``gelu(x=tensor_x)``.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+            alias: ``input``.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
+            >>> out1 = F.gelu(x)
+            >>> print(out1)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out2 = F.gelu(x, True)
+            >>> print(out2)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
+            >>> out3 = F.gelu(x, "none")
+            >>> print(out3)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out4 = F.gelu(x, "tanh")
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
+    """,
+    """
+    def gelu(
+        x: Tensor,
+        approximate: Literal["tanh", "none"] | bool = False,
+        name: str | None = None,
+    ) -> Tensor
+    """,
+)
 
 add_doc_and_signature(
     "sigmoid",

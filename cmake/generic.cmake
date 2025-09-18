@@ -457,6 +457,15 @@ function(cc_test_build TARGET_NAME)
   endif()
 endfunction()
 
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/libs" PADDLE_LIBS_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/python/paddle/base" PADDLE_BASE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/pybind"
+     PADDLE_PYBIND_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference"
+     PADDLE_INFERENCE_PATH)
+file(TO_NATIVE_PATH "${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi_exp"
+     PADDLE_INFERENCE_C_PATH)
+
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs DIR)
@@ -472,25 +481,47 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
+    string(
+      REPLACE
+        ";"
+        "\;"
+        PATH
+        "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
+    )
     if(NOT "${DEPRECATED_TARGET_NAME}" STREQUAL "")
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          FLAGS_enable_pir_api=0
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true FLAGS_enable_pir_api=0
+                   "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            FLAGS_enable_pir_api=0
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     else()
-      set_property(
-        TEST ${TARGET_NAME}
-        PROPERTY
-          ENVIRONMENT
-          FLAGS_init_allocated_mem=true
-          FLAGS_cudnn_deterministic=true
-          LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
-      )
+      if(WIN32)
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true
+                   FLAGS_cudnn_deterministic=true "PATH=${PATH}")
+      else()
+        set_property(
+          TEST ${TARGET_NAME}
+          PROPERTY
+            ENVIRONMENT
+            FLAGS_init_allocated_mem=true
+            FLAGS_cudnn_deterministic=true
+            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+        )
+      endif()
     endif()
     # No unit test should exceed 2 minutes.
     if(WIN32)
@@ -513,31 +544,13 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
-    # if(WIN32)
-    #   # NOTE(zhiqiu): on windows platform, the symbols should be exported
-    #   # explicitly by __declspec(dllexport), however, there are several
-    #   # symbols not exported, and link error occurs.
-    #   # so, the tests are not built against dynamic libraries now.
-    #   cc_test_old(
-    #     ${TARGET_NAME}
-    #     SRCS
-    #     ${cc_test_SRCS}
-    #     DEPS
-    #     ${cc_test_DEPS}
-    #     ARGS
-    #     ${cc_test_ARGS})
-    # else()
     list(LENGTH cc_test_SRCS len)
-    # message("cc_test_SRCS ${cc_test_SRCS}")
-    # message("cc_test_ARGS ${cc_test_ARGS}")
-
     if(${len} GREATER 1)
       message(
         SEND_ERROR
           "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
       )
     endif()
-
     list(LENGTH cc_test_ARGS len_arg)
     if(len_arg GREATER_EQUAL 1)
       set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
@@ -589,7 +602,7 @@ function(paddle_test_build TARGET_NAME)
     endif()
     if(WITH_SHARED_PHI)
       target_link_libraries(${TARGET_NAME} phi)
-      if(WITH_GPU)
+      if(WITH_GPU AND NOT WIN32)
         target_link_libraries(${TARGET_NAME} -Wl,--as-needed phi_core phi_gpu
                               -Wl,--no-as-needed)
       endif()
@@ -743,6 +756,18 @@ function(nv_test TARGET_NAME)
                                               FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cudnn_deterministic=true)
+    if(WIN32)
+      string(
+        REPLACE
+          ";"
+          "\;"
+          PATH
+          "${PADDLE_LIBS_PATH};${PADDLE_BASE_PATH};${PADDLE_PYBIND_PATH};${PADDLE_INFERENCE_PATH};${PADDLE_INFERENCE_C_PATH};$ENV{PATH}"
+      )
+      set_property(
+        TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true
+                                     "PATH=${PATH}")
+    endif()
     if((CUDA_VERSION GREATER 9.2)
        AND (CUDA_VERSION LESS 11.0)
        AND (MSVC_VERSION LESS 1910))

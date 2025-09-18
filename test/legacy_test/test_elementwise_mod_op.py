@@ -757,6 +757,9 @@ class TestRemainderAPICompatibility1(unittest.TestCase):
         # Tensor method kwargs
         out6 = x.remainder(other=y)
         paddle_dygraph_out.append(out6)
+        out7 = paddle.empty([])
+        paddle.remainder(x, y, out=out7)
+        paddle_dygraph_out.append(out7)
         # Numpy reference  out
         ref_out = self.np_x_input % self.np_y_input
         # Check
