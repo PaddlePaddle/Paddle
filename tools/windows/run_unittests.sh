@@ -144,7 +144,7 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_analyzer_int8_mobilenetv3_large$|\
 ^test_analyzer_bfloat16_mobilenetv3_large$|\
 ^test_api_impl$|\
-^test_mkldnn_conv_affine_channel_fuse_pass$|\
+^test_onednn_conv_affine_channel_fuse_pass$|\
 ^test_mkldnn_conv_gelu_fuse_pass$|\
 ^test_onednn_conv_hard_sigmoid_fuse_pass$|\
 ^test_onednn_conv_hard_swish_fuse_pass$|\
