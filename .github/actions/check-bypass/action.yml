@@ -25,6 +25,7 @@ runs:
         non-pull-request-event-strategy: 'never-skipped'
         type: 'composite'
         composite-rule: |
+        
           {
             "any": [
               {
