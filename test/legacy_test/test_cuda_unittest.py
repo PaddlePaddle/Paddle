@@ -133,6 +133,25 @@ class TestCudaCompat(unittest.TestCase):
                 current = paddle.cuda.current_stream()
                 self.assertEqual(current.stream_base, s1.stream_base)
 
+    def test_manual_seed_all(self):
+        seed = 42
+        paddle.cuda.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy(), y.numpy())
+
+        seed = 21
+        paddle.cuda.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy(), y.numpy())
+
+    def test_get_default_device(self):
+        default_device = paddle.cuda.get_device()
+        self.assertInstance(default_device, str)
+
     @unittest.skipIf(
         (
             not paddle.device.is_compiled_with_cuda()

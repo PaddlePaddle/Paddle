@@ -22,6 +22,7 @@ from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
+    manual_seed_all as manual_seed_all,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -264,4 +265,5 @@ __all__ = [
     "stream",
     "Stream",
     "get_stream_from_external",
+    "manual_seed_all",
 ]

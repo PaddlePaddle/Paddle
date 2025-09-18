@@ -1775,6 +1775,27 @@ def get_stream_from_external(
     )
 
 
+def manual_seed_all(seed: int) -> None:
+    """
+
+    Sets the seed for global default generator, which manages the random number generation.
+
+    Args:
+        seed(int): The random seed to set. It is recommend to set a large int number.
+
+    Returns:
+        Generator: The global default generator object.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> gen = paddle.device.manual_seed_all(102)
+
+    """
+    paddle.seed(seed)
+
+
 class Device(str):
     """
     Paddle computing device.
