@@ -16,7 +16,11 @@ import inspect
 
 import paddle
 
-from .base.dygraph.generated_tensor_methods_patch import methods_map
+from .base.dygraph.generated_tensor_methods_patch import (
+    funcs_map,
+    methods_map,
+    nn_funcs_map,
+)
 
 # Add docstr for some C++ functions in paddle
 _add_docstr = paddle.base.core.eager._add_docstr
@@ -53,8 +57,11 @@ def add_doc_and_signature(func_name: str, docstr: str, func_def: str) -> None:
             elif inspect.isbuiltin(func):
                 _add_docstr(func, docstr)
     methods_dict = dict(methods_map)
-    if func_name in methods_dict.keys():
-        tensor_func = methods_dict[func_name]
+    funcs_dict = dict(funcs_map)
+    nn_funcs_dict = dict(nn_funcs_map)
+    all_funcs_dict = methods_dict | funcs_dict | nn_funcs_dict
+    if func_name in all_funcs_dict.keys():
+        tensor_func = all_funcs_dict[func_name]
         tensor_func.__signature__ = python_api_sig
 
 
@@ -1086,6 +1093,77 @@ add_doc_and_signature(
 )
 
 # shenwei
+
+add_doc_and_signature(
+    "gelu",
+    """
+    gelu activation.
+
+    The activation function of Gelu is calculated element by element. More information refers to :ref: `Gaussian Error Linear Units`.
+
+    approximate parameter must be True, False, "tanh", "none".
+
+    if approximate is True or "tanh"
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + tanh(\\sqrt{\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
+
+    .. math::
+
+        gelu(x) = 0.5 * x * (1 + erf(\frac{x}{\\sqrt{2}}))
+
+     .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x``.
+        For example, ``gelu(input=tensor_x)`` is equivalent to ``gelu(x=tensor_x)``.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type float32, float64.
+            alias: ``input``.
+        approximate (str|bool, optional): Whether to enable approximation. Default is False.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same data type and shape as ``x`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([[-1, 0.5], [1, 1.5]])
+            >>> out1 = F.gelu(x)
+            >>> print(out1)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out2 = F.gelu(x, True)
+            >>> print(out2)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
+            >>> out3 = F.gelu(x, "none")
+            >>> print(out3)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> out4 = F.gelu(x, "tanh")
+            >>> print(out4)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
+    """,
+    """
+    def gelu(
+        x: Tensor,
+        approximate: Literal["tanh", "none"] | bool = False,
+        name: str | None = None,
+    ) -> Tensor
+    """,
+)
 
 add_doc_and_signature(
     "sigmoid",
