@@ -149,7 +149,7 @@ class TestCudaCompat(unittest.TestCase):
         self.assertEqual(x.numpy(), y.numpy())
 
     def test_get_default_device(self):
-        default_device = paddle.cuda.get_device()
+        default_device = paddle.get_default_device()
         self.assertInstance(default_device, str)
 
     @unittest.skipIf(
