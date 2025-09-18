@@ -26,8 +26,6 @@
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
-#endif
-#if CUDA_VERSION >= 10020
 
 namespace paddle::memory::allocation {
 

@@ -34,9 +34,6 @@ def addmm(
     name: str | None = None,
 ) -> Tensor:
     """
-    Note:
-        This API is only supported from ``CUDA 11.0`` .
-
     Applies matrix multiplication for `x` and `y` , `input` is added to
     the final result. The equation is:
 
