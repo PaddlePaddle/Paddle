@@ -139,18 +139,18 @@ class TestCudaCompat(unittest.TestCase):
 
         x = paddle.randn([3, 3])
         y = paddle.randn([3, 3])
-        self.assertEqual(x.numpy(), y.numpy())
+        self.assertEqual(x.numpy().all(), y.numpy().all())
 
         seed = 21
         paddle.device.manual_seed_all(seed)
 
         x = paddle.randn([3, 3])
         y = paddle.randn([3, 3])
-        self.assertEqual(x.numpy(), y.numpy())
+        self.assertEqual(x.numpy().all(), y.numpy().all())
 
     def test_get_default_device(self):
         default_device = paddle.get_default_device()
-        self.assertInstance(default_device, str)
+        self.assertIsInstance(default_device, str)
 
     @unittest.skipIf(
         (
