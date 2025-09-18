@@ -367,12 +367,10 @@ def build_reduce_scatter_buffer(
     param_buffer = paddle.zeros(shape=[total_buffer_size], dtype=dtype)
     # TODO(@gexiao): Currently only support gpus
     if core.is_compiled_with_cuda() and not core.is_compiled_with_rocm():
-        # param_buffer_ipc_meta = param_buffer.value().get_tensor()._share_cuda()
-        # 优先 cuda IPC；失败（VMM 分配）则回退到 VMM IPC
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
-            # VMM: 返回 (fd, offset, size, dtype, dims, lod, device)
+            # vmm_meta: (fd, offset, size, dtype, dims, lod, device)
             vmm_meta = param_buffer.value().get_tensor()._share_vmm()
             ipc_meta = ("vmm_ipc", vmm_meta)
         else:

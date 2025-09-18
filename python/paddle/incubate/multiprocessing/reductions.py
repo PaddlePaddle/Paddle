@@ -14,6 +14,7 @@
 
 import copy
 import multiprocessing
+import os
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -95,18 +96,14 @@ def _rebuild_tensor(cls, lodtensor, metadata):
 def _rebuild_vmm_tensor(
     cls, fd_or_dup, offset_bytes, size, type_idx, dims, lod, device_idx
 ):
-    # 与 CPU 共享文件的 rebuild 一样，DupFd 需要先 detach 成真正的 int FD
     if hasattr(fd_or_dup, "detach"):
         fd = fd_or_dup.detach()
     else:
         fd = int(fd_or_dup)
     try:
-        import os
-
-        os.fstat(fd)  # EBADF 会在这里抛出，便于定位
+        os.fstat(fd)
     except Exception as e:
         raise ValueError(f"VMM meta fd invalid before import: fd={fd}, err={e}")
-    # 直接用你在 pybind 里加的 _new_shared_vmm 重建
     lodtensor = cls._new_shared_vmm(
         (fd, offset_bytes, size, type_idx, dims, lod, device_idx)
     )
@@ -293,10 +290,7 @@ def _reduce_lodtensor(lodtensor):
                     lodtensor._share_vmm()
                 )
                 if not hasattr(fd, "detach"):
-                    from multiprocessing.reduction import DupFd
-
-                    # 像 CPU 的 file-descriptor 路径一样，用 DupFd 传 fd
-                    fd = DupFd(fd)
+                    fd = multiprocessing.reduction.DupFd(fd)
                 metadata = (fd, offset, size, type_idx, dims, lod, device)
                 rebuild = _rebuild_vmm_tensor
             else:

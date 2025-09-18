@@ -34,14 +34,11 @@ try:
 
     @wraps(_orig_share_vmm)
     def _spy_share_vmm(self):
-        """
-        发送端：导出 VMM 元信息，并且把 fd 用 DupFd 包起来，确保经由 mp 管道以 SCM_RIGHTS 传递。
-        """
         meta = _orig_share_vmm(self)
         try:
             fd, off, size, dtype, dims, lod, dev = meta
             fd_safely = fd
-            fd_safely = DupFd(fd)  # ★★ 核心：包装 fd ★★
+            fd_safely = DupFd(fd)
             meta = (fd_safely, off, size, dtype, dims, lod, dev)
             print(
                 f"[IPC-TX] pid={os.getpid()} "
@@ -63,9 +60,6 @@ try:
 
     @wraps(_orig_new_shared_vmm)
     def _spy_new_shared_vmm(meta):
-        """
-        接收端：把 DupFd 转为当前进程有效的 int，再交给 C++ 导入。
-        """
         try:
             fd, off, size, dtype, dims, lod, dev = meta
             print(
@@ -76,9 +70,8 @@ try:
             core.set_cuda_current_device_id(dev)
             print("before set device: ", core.get_cuda_current_device_id())
             if hasattr(fd, "detach"):
-                fd = fd.detach()  # ★★ 核心：detach 成 int ★★
+                fd = fd.detach()
                 print(f"[RX] after detach: fd(int)={fd}", flush=True)
-            # 立刻做一次探测，提前暴露 EBADF（定位更快）
             import os as _os
 
             _os.fstat(fd)
@@ -96,7 +89,7 @@ try:
                 dims,
                 lod,
                 dev,
-            )  # 用 detch 后的 fd 覆盖
+            )
         except Exception as e:
             print(
                 f"[IPC-RX] _new_shared_vmm precheck failed: {e}",
@@ -105,7 +98,6 @@ try:
             )
         return _orig_new_shared_vmm(meta)
 
-    # ★★ 正确绑定（你之前错绑到了 _share_cuda/_new_shared_cuda）★★
     core.DenseTensor._share_vmm = _spy_share_vmm
     core.DenseTensor._new_shared_vmm = _spy_new_shared_vmm
 except Exception as e:
@@ -258,14 +250,11 @@ class FusionWorker(multiprocessing.Process):
 
             task_type, task_body = task
             if task_type == DO_FUSE_OPTIMIZER:
-                print("====== debug DO_FUSE_OPTIMIZER")
                 self.build_fusion_storage_helper(task_body)
             elif task_type == DO_SYNC_PARAM:
-                print("====== debug DO_SYNC_PARAM")
                 self.fusion_storage_helper.sync_param()
                 self.fusion_storage_helper.wait_all()
             elif task_type == DO_RETURN_DICT:
-                print("====== debug DO_RETURN_DICT")
                 result = self.fusion_storage_helper.state_dict()
                 self.result_queue.put((self.worker_id, result))
             else:
@@ -279,7 +268,6 @@ class FusionWorker(multiprocessing.Process):
             buffer_ipc_meta,
         ) = task_body
         if self.fusion_storage_helper is None:
-            print("============== fusion_storage_helper is none  ==========")
             self.fusion_storage_helper = FusionStorageHelper(
                 accumulators_meta,
                 master_weights_meta,
@@ -287,7 +275,6 @@ class FusionWorker(multiprocessing.Process):
                 buffer_ipc_meta,
             )
         else:
-            print("============== reset_meta ==========")
             self.fusion_storage_helper.reset_meta(
                 accumulators_meta,
                 master_weights_meta,

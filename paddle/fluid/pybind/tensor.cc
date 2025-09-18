@@ -688,7 +688,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::cuMemGetAddressRange(&base, &range, va));
         void* any_va = reinterpret_cast<void*>(base);
-        VLOG(0) << "VMM export try: dev=" << device_id
+        VLOG(10) << "VMM export try: dev=" << device_id
                  << " any_va=" << any_va
                  << " range=(" << reinterpret_cast<void*>(base)
                  << ",+" << range << ")";
@@ -703,8 +703,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
             holder->place().DebugString().c_str()));}
 
         int type_idx = static_cast<int>(self.type());
-        size_t data_size = self.numel() * framework::SizeOfType(
-          framework::TransToProtoVarType(self.type()));
         int fd = info.os_fd;
         int fd_dup = ::fcntl(fd, F_DUPFD_CLOEXEC, 0);
         PADDLE_ENFORCE_NE(fd_dup, -1,
@@ -721,7 +719,6 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         if (t.size() != 7)
           throw std::runtime_error(
             "Invalid Tensor meta info for shared cuda tensor!");
-        // 1) parse meta info
         int fd         = t[0].cast<int>();
         ptrdiff_t offset_bytes  = (ptrdiff_t)t[1].cast<int64_t>();
         size_t size  = t[2].cast<size_t>();
@@ -747,23 +744,19 @@ void BindTensor(pybind11::module &m) {  // NOLINT
               cur_dev, export_dev));
         }
 
-        // 2) 导入句柄 & 映射
         CUmemGenericAllocationHandle handle;
         PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cuMemImportFromShareableHandle(
           &handle, reinterpret_cast<void*>(static_cast<intptr_t>(fd)),
           CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR));
 
-        // 3) 预留 VA（对齐由驱动处理，alignment 传 0）
         CUdeviceptr addr = 0;
         PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cuMemAddressReserve(&addr, size, 0, 0, 0));
 
-        // 4) 映射
         PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cuMemMap(addr, size, 0, handle, 0));
 
-        // 5) 设置访问权限（当前设备读写)
         CUmemAccessDesc desc{};
         desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
         desc.location.id   = cur_dev;
@@ -771,11 +764,9 @@ void BindTensor(pybind11::module &m) {  // NOLINT
         PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::cuMemSetAccess(addr, size, &desc, 1));
 
-        // 5) 释放导入句柄（映射后可释放），关闭 FD
         phi::dynload::cuMemRelease(handle);
         ::close(fd);
 
-        // 3) 构造 Allocation（导入版），并复原 Tensor
         void* dev = reinterpret_cast<void*>(addr + offset_bytes);
         auto shared_holder =
         std::make_shared<memory::allocation::Allocation>(

@@ -142,7 +142,7 @@ class FusionStorage:
         if paddle.get_flags('FLAGS_use_virtual_memory_auto_growth')[
             'FLAGS_use_virtual_memory_auto_growth'
         ]:
-            # VMM: 返回 (fd, offset, size, dtype, dims, lod, device)
+            # buffer_ipc_meta: (fd, offset, size, dtype, dims, lod, device)
             self.buffer_ipc_meta = self.buffer.value().get_tensor()._share_vmm()
         else:
             self.buffer_ipc_meta = (

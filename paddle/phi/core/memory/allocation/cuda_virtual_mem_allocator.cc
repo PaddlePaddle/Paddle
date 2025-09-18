@@ -97,23 +97,18 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const phi::GPUPlace& place)
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
 
   virtual_mem_alloced_offset_ = 0;
-  // ★ 注册到全局：用于后续通过 device 找到 allocator
-  // —— 注册到每设备表
   Register(place.device, this);
 }
 
 CUDAVirtualMemAllocator::~CUDAVirtualMemAllocator() {
-  // 1) 从注册表摘掉自己（防止后续 TryExportShareHandle 命中已销毁实例）
   Unregister(place_.device, this);
 
-  // 2) 可选：在调试期确保没有未解除映射的区域
   if (!virtual_2_physical_map_.empty()) {
     VLOG(2) << "CUDAVirtualMemAllocator destroyed with "
             << virtual_2_physical_map_.size()
             << " mapped regions still tracked.";
   }
 
-  // 3) 可选：释放保留的 VA 空间（如果设计允许在析构时做）
 #if CUDA_VERSION >= 10020
   if (virtual_mem_base_ && virtual_mem_size_) {
     auto r =
@@ -255,9 +250,6 @@ phi::Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
       reinterpret_cast<void*>(ptr), size, phi::Place(place_));  // NOLINT
 }
 
-// --------- VMM IPC: export/import helpers ----------
-
-// 区间命中 + 导出 FD
 bool CUDAVirtualMemAllocator::ExportShareHandleFromVA(CUdeviceptr va,
                                                       VmmShareInfo* out) {
   if (virtual_2_physical_map_.empty()) return false;
@@ -311,40 +303,6 @@ bool CUDAVirtualMemAllocator::TryExportShareHandle(int device,
   }
   return false;
 }
-
-class CudaVmmImportedAllocation final : public Allocation {
- public:
-  CudaVmmImportedAllocation(void* ptr,
-                            void* base_ptr,
-                            size_t size,
-                            phi::Place place,
-                            CUmemGenericAllocationHandle h,
-                            CUdeviceptr va,
-                            size_t va_size,
-                            int os_fd)
-      : Allocation(ptr, base_ptr, size, place),
-        handle_(h),
-        va_(va),
-        va_size_(va_size),
-        os_fd_(os_fd) {}
-
-  ~CudaVmmImportedAllocation() override {
-#if CUDA_VERSION >= 10020
-    auto unmap = phi::dynload::cuMemUnmap(va_, va_size_);
-    if (unmap != CUDA_ERROR_DEINITIALIZED) PADDLE_ENFORCE_GPU_SUCCESS(unmap);
-    auto rel = phi::dynload::cuMemRelease(handle_);
-    if (rel != CUDA_ERROR_DEINITIALIZED) PADDLE_ENFORCE_GPU_SUCCESS(rel);
-    phi::dynload::cuMemAddressFree(va_, va_size_);
-    if (os_fd_ >= 0) ::close(os_fd_);
-#endif
-  }
-
- private:
-  CUmemGenericAllocationHandle handle_{};
-  CUdeviceptr va_{0};
-  size_t va_size_{0};
-  int os_fd_{-1};
-};
 
 }  // namespace paddle::memory::allocation
 
