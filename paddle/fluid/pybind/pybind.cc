@@ -25,6 +25,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -3196,6 +3197,44 @@ All parameter, weight, gradient are variables in Paddle.
             Scope *,
             const phi::DenseTensor &,
             const std::string &)>(&framework::SetVariable));
+  m.def(
+      "set_vlog_level",
+      [](const py::dict &module_levels) {
+        for (auto &item : module_levels) {
+          auto module_name = item.first.cast<std::string>();
+          auto level = item.second.cast<int>();
+          if (module_name == "*") {
+            // Do not using google::SetVLOGLevel("*", level);
+            // It may cause configuration effects for a single module
+            FLAGS_v = level;
+          } else {
+            google::SetVLOGLevel(module_name.c_str(), level);
+          }
+        }
+      },
+      py::arg("dict"),
+      R"DOC(
+    Set the verbosity logging level for specified modules.
+
+    This function allows setting the VLOG level for specific modules or for all modules ('*').
+    The VLOG level controls the verbosity of logging output, with higher levels producing more
+    detailed logs.
+
+    Parameters:
+      module_levels (dict): A dictionary where keys are module names (str) and values are the
+                          corresponding verbosity levels (int). If a key is '*', the verbosity
+                          level is set globally for all modules.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # case1: set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level({"*": 1}).
+            >>> # case2: set GLOG_vmodule=dygraph_functions=4,nodes=5
+            >>> paddle.base.core.set_vlog_level({"dygraph_functions": 4, "nodes": 5})
+
+)DOC");
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,

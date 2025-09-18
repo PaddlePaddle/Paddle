@@ -1235,15 +1235,18 @@ void SaveDebugInfo(std::string dir_path,
   if (serialized_forward_graph.empty() == false) {
     std::string forward_graph_file_path =
         file_path_prefix + "_ref_forward_graph" + ".dot";
+    VLOG(4) << "Save forward graph to file : " << forward_graph_file_path;
     SaveStringToFile(forward_graph_file_path, serialized_forward_graph);
   }
   if (call_stack.empty() == false) {
     std::string call_stack_file = file_path_prefix + "_call_stack" + ".log";
+    VLOG(4) << "Save call stack to file : " << call_stack_file;
     SaveStringToFile(call_stack_file, call_stack);
   }
   if (serialized_backward_graph.empty() == false) {
     std::string backward_graph_file_path =
         file_path_prefix + "_backward_graph" + ".dot";
+    VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
   }
 }
