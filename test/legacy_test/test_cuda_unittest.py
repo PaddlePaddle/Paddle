@@ -142,7 +142,7 @@ class TestCudaCompat(unittest.TestCase):
         self.assertEqual(x.numpy(), y.numpy())
 
         seed = 21
-        paddle.cuda.manual_seed_all(seed)
+        paddle.device.manual_seed_all(seed)
 
         x = paddle.randn([3, 3])
         y = paddle.randn([3, 3])
