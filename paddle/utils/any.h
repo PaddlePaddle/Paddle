@@ -90,7 +90,7 @@ class any {
     ValueType held;
 
    private:  // intentionally left unimplemented
-    holder &operator=(const holder &);
+    holder &operator=(const holder &) = delete;
   };
 
  public:  // representation (public so any_cast can be non-friend)
