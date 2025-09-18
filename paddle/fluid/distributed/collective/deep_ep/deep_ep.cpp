@@ -1649,9 +1649,36 @@ void Buffer::clean_low_latency_two_stage_buffer(
     int num_max_dispatch_tokens_per_rank,
     int hidden,
     int num_experts,
-    int num_topk) {
+    int num_topk,
+    int num_ranks,
+    bool use_fp8) {
 #ifdef PADDLE_WITH_NVSHMEM
   EP_HOST_ASSERT(low_latency_mode);
+  CUDA_CHECK(
+      cudaMemsetAsync(rdma_buffer_ptr, 0, num_rdma_bytes, calc_ctx->stream()));
+
+  const int num_local_experts = num_experts / num_ranks;
+  const int num_rdma_experts = num_local_experts * NUM_MAX_NVL_PEERS;
+  const int num_scales = hidden / 128;
+  const int num_rdma_ranks = num_ranks / NUM_MAX_NVL_PEERS;
+  const size_t dispatch_num_bytes_per_msg =
+      sizeof(int4) + (use_fp8 ? (hidden + num_scales * sizeof(float))
+                              : (hidden * sizeof(nv_bfloat16)));
+  auto dispatch_nvl_num_bytes = num_local_experts * num_ranks *
+                                num_max_dispatch_tokens_per_rank *
+                                dispatch_num_bytes_per_msg;
+  const size_t combine_num_bytes_per_msg = hidden * sizeof(nv_bfloat16);
+  auto combine_nvl_num_bytes = num_rdma_experts * num_rdma_ranks *
+                               num_max_dispatch_tokens_per_rank *
+                               combine_num_bytes_per_msg;
+  const size_t signal_bytes = (num_local_experts * num_ranks * sizeof(int) +
+                               NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+                              NUM_BUFFER_ALIGNMENT_BYTES *
+                              NUM_BUFFER_ALIGNMENT_BYTES;
+  auto max_nvl_num_bytes =
+      (std::max(dispatch_nvl_num_bytes, combine_nvl_num_bytes) +
+       NUM_BUFFER_ALIGNMENT_BYTES - 1) /
+      NUM_BUFFER_ALIGNMENT_BYTES * NUM_BUFFER_ALIGNMENT_BYTES;
 
   auto layout = LowLatencyTwoStageLayout(rdma_buffer_ptr,
                                          num_max_dispatch_tokens_per_rank,
@@ -1671,11 +1698,17 @@ void Buffer::clean_low_latency_two_stage_buffer(
   check_boundary(clean_meta_0.first, clean_meta_0.second * sizeof(int));
   check_boundary(clean_meta_1.first, clean_meta_1.second * sizeof(int));
 
-  internode_ll::clean_low_latency_buffer(clean_meta_0.first,
-                                         clean_meta_0.second,
-                                         clean_meta_1.first,
-                                         clean_meta_1.second,
-                                         calc_ctx->stream());
+  internode_ll_two_stage::clean_low_latency_buffer_two_stage(
+      buffer_ptrs_gpu,
+      max_nvl_num_bytes,
+      signal_bytes,
+      nvl_rank,
+      num_experts,
+      clean_meta_0.first,
+      clean_meta_0.second,
+      clean_meta_1.first,
+      clean_meta_1.second,
+      calc_ctx->stream());
 #else
   LOG(ERROR) << "NVSHMEM is not enabled. You can enable it by setting cmake "
                 "option WITH_NVSHMEM=ON.";

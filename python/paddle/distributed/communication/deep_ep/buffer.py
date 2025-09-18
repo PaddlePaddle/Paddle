@@ -831,6 +831,8 @@ class Buffer:
         hidden: int,
         num_experts: int,
         num_topk: int,
+        num_ranks: int,
+        use_fp8: bool,
     ) -> None:
         """
         As low-latency two-stage kernels require part of the buffer to be zero-initialized, so it is vital to clean the buffer
@@ -845,7 +847,12 @@ class Buffer:
             num_topk: the number of moe topk.
         """
         self.runtime.clean_low_latency_two_stage_buffer(
-            num_max_dispatch_tokens_per_rank, hidden, num_experts, num_topk
+            num_max_dispatch_tokens_per_rank,
+            hidden,
+            num_experts,
+            num_topk,
+            num_ranks,
+            use_fp8,
         )
 
     # noinspection PyTypeChecker
