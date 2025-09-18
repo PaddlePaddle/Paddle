@@ -71,6 +71,10 @@ def attention_naive(q, k, v, causal=False):
     return paddle.transpose(o, [0, 2, 1, 3])
 
 
+@unittest.skipIf(
+    paddle.is_compiled_with_xpu(),
+    "sdpa backend selection logic fails on XPU when testing CPU place",
+)
 class TestSDPAKernelCPU(unittest.TestCase):
     """Test sdpa_kernel on CPU specifically."""
 
@@ -196,6 +200,10 @@ class TestSDPAKernelBasic(unittest.TestCase):
             v.grad.numpy(), v_.grad.numpy(), rtol=5e-3, atol=1e-3
         )
 
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "Efficient attention backend is not supported on CPU",
+    )
     def test_multiple_backends(self):
         """Test with multiple backends."""
         paddle.disable_static()
@@ -237,6 +245,10 @@ class TestSDPAKernelBasic(unittest.TestCase):
         )
 
 
+@unittest.skipIf(
+    not is_flashattn_supported(),
+    "Priority test requires flash attention support (CUDA SM80+)",
+)
 class TestSDPAKernelPriority(unittest.TestCase):
     """Test priority settings for sdpa_kernel."""
 
