@@ -41,16 +41,19 @@ void BindCudaRt(py::module* m) {
 #if !defined(USE_ROCM) && defined(CUDA_VERSION) && CUDA_VERSION < 12000
   // cudaOutputMode_t is used in cudaProfilerInitialize only. The latter is gone
   // in CUDA 12.
-  py::enum_<cudaOutputMode_t>(cudart,
-                              "cuda"
-                              "OutputMode")
+  py::enum_<cudaOutputMode_t>(
+      cudart,
+      "cuda"
+      "OutputMode_")  // Appended '_' to prevent duplicate registration across
+                      // DL frameworks.
       .value("KeyValuePair", cudaKeyValuePair)
       .value("CSV", cudaCSV);
 #endif
 
   py::enum_<cudaError_t>(cudart,
                          "cuda"
-                         "Error")
+                         "Error_")  // Appended '_' to prevent duplicate
+                                    // registration across DL frameworks.
       .value("success", cudaSuccess);
 
   cudart.def(

@@ -66,6 +66,18 @@ g_profile_pipeline_details_steps = int(
 __all__ = []
 
 
+def profile_pipeline_details(msg):
+    GB = 1024.0 * 1024.0 * 1024.0
+    if paddle.base.core.is_compiled_with_cuda():
+        memory_allocated_size = paddle.device.cuda.memory_allocated() / GB
+        memory_reserved_size = paddle.device.cuda.memory_reserved() / GB
+    else:
+        memory_allocated_size, memory_reserved_size = 0, 0
+    get_sync_logger().info(
+        f"{msg}: memory_allocated_size={memory_allocated_size:.2f}, memory_reserved_size={memory_reserved_size:.2f}"
+    )
+
+
 def get_action(is_dp, shard_split_param=False):
     if is_dp:
         return HOOK_ACTION.ALL_REDUCE
@@ -741,7 +753,9 @@ class PipelineParallel(MetaParallelBase):
         self.user_hooks_enabled = True
 
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("start forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] Start_forward_backward_pipeline"
+            )
         if static_scheduler:
             assert not self._profiling, (
                 "While _profiling, static scheduler is not available"
@@ -938,7 +952,9 @@ class PipelineParallel(MetaParallelBase):
         self.timer_printer()
 
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("end forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] End_forward_backward_pipeline"
+            )
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
         return train_loss
@@ -1189,7 +1205,9 @@ class PipelineParallel(MetaParallelBase):
         if self.user_hooks_enabled:
             self.forward_hooks.run_hook()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("Before forward_step")
+            profile_pipeline_details(
+                f"[Pipeline details] Before_forward_step_chunk_{chunk_id}_step_{step_id}"
+            )
         if self._enable_timer:
             self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
@@ -1231,7 +1249,9 @@ class PipelineParallel(MetaParallelBase):
         if self._enable_timer:
             self.timers("forward_step").stop()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("After forward_step")
+            profile_pipeline_details(
+                f"[Pipeline details] After_forward_step_chunk_{chunk_id}_step_{step_id}"
+            )
         if self.is_pipeline_last_stage() and self._compute_loss:
             return backward_loss_tensor, schedule_chunk, backward_loss_fn_node
         return output_tensor, schedule_chunk, backward_loss_fn_node
@@ -1241,6 +1261,7 @@ class PipelineParallel(MetaParallelBase):
         input_tensor,
         output_tensor,
         output_tensor_grad,
+        chunk_id=None,
         step_id=None,
         overlap_schedule_mode=False,
         schedule_chunk=None,
@@ -1251,7 +1272,9 @@ class PipelineParallel(MetaParallelBase):
         if self._enable_timer:
             self.timers("backward_step").start()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("Before backward_step")
+            profile_pipeline_details(
+                f"[Pipeline details] Before_backward_step_chunk_{chunk_id}_step_{step_id}"
+            )
         with paddle.amp.auto_cast(enable=False):
             self.callbacks.on_location(
                 PipelineParallelMicroStepLocations.BACKWARD_BEGIN,
@@ -1331,7 +1354,9 @@ class PipelineParallel(MetaParallelBase):
             )
 
             if self.processed_steps < g_profile_pipeline_details_steps:
-                get_sync_logger().info("After backward_step")
+                profile_pipeline_details(
+                    f"[Pipeline details] After_backward_step_chunk_{chunk_id}_step_{step_id}"
+                )
             return input_tensor_grad
 
     def _check_micro_batch_data_valid(self, micro_batch_data):
@@ -1871,6 +1896,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             input_tensor,
             output_tensor,
             output_tensor_grad,
+            chunk_id=virtual_pp_rank,
             step_id=micro_step,
             overlap_schedule_mode=overlap_schedule_mode,
             schedule_chunk=schedule_chunk,
@@ -1973,7 +1999,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             # 4. forward & backward
             if self.processed_steps < g_profile_pipeline_details_steps:
-                get_sync_logger().info("Before forward_backward_step")
+                profile_pipeline_details(
+                    "[Pipeline details] Start_forward_backward_step"
+                )
             if self._enable_timer:
                 self.timers("forward_backward_step").start()
             output_tensor, forward_loss, input_tensor_grad = (
@@ -1989,7 +2017,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 )
             )
             if self.processed_steps < g_profile_pipeline_details_steps:
-                get_sync_logger().info("After forward_backward_step")
+                profile_pipeline_details(
+                    "[Pipeline details] After_forward_backward_step"
+                )
             if self._enable_timer:
                 self.timers("forward_backward_step").stop()
 
@@ -2059,7 +2089,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
     ):
         self._reset_user_hooks_status()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("start forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] Start_forward_backward_step"
+            )
         # use interleave scheduling strategy.
         # this strategy is inspired by:
         # https://github.com/NVIDIA/Megatron-LM/blob/main/megatron/schedules.py
@@ -2856,7 +2888,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self.timer_printer()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("end forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] End_forward_backward_step"
+            )
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
 
@@ -3012,7 +3046,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
     ):
         self._reset_user_hooks_status()
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("start forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] Start_forward_backward_step"
+            )
         if not compute_loss:
             assert forward_only, (
                 "compute_loss can only be set to False when forward_only is set to True"
@@ -3178,7 +3214,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self.timer_printer()
 
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("end forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] End_forward_backward_step"
+            )
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
         return train_loss_or_logits
@@ -3261,7 +3299,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             )
 
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("start forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] Start_forward_backward_step"
+            )
 
         # init some attributes for this batch run
         self.scaler = scaler
@@ -3534,7 +3574,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         self.timer_printer()
 
         if self.processed_steps < g_profile_pipeline_details_steps:
-            get_sync_logger().info("end forward_backward_pipeline")
+            profile_pipeline_details(
+                "[Pipeline details] End_forward_backward_step"
+            )
         self.processed_steps += 1
         self._check_user_hooks_status_at_step_end()
         return train_loss_or_logits

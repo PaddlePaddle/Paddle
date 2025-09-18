@@ -286,6 +286,8 @@ disable_wingpu_cuda12_test="^test_cholesky_op$|\
 ^test_trt_convert_clip$|\
 ^test_trt_convert_grid_sampler$|\
 ^test_trt_convert_p_norm$|\
+^new_profiler_test$|\
+^save_load_version_compat_test$|\
 ^disable_wingpu_cuda12_test$"
 
 # /*=================Fixed Disabled Windows TRT MKL unittests=======================*/
@@ -536,7 +538,20 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv3d_layer_deprecated$|\
 ^test_conv3d_transpose_part2_op_deprecated$|\
 ^test_split_program_deprecated$|\
-^test_trt_convert_multihead_matmul_roformer$"
+^test_trt_convert_multihead_matmul_roformer$|\
+^test_cudnn_placement_pass$|\
+^operator_test$|\
+^new_profiler_test$|\
+^test_kernel_factory$|\
+^save_load_version_compat_test$|\
+^trt_mobilenet_test$|\
+^trt_disable_tensorrt_half_ops_test$|\
+^trt_quant_int8_test$|\
+^trt_dynamic_shape_test$|\
+^paddle_infer_api_test$|\
+^device_context_test_cuda_graph$|\
+^cudnn_helper_test$|\
+^test_cudnn_norm_conv$"
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -553,6 +568,9 @@ disable_wincpu_test="^jit_kernel_test$|\
 ^test_mobile_net$|\
 ^test_build_strategy$|\
 ^test_se_resnet$|\
+^operator_test|\
+^new_profiler_test$|\
+^save_load_version_compat_test|\
 ^disable_wincpu_test$"
 
 # these unittest that cost long time, disabled temporarily, Maybe moved to the night

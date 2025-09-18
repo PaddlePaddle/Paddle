@@ -27,7 +27,7 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
-
+#define SEPARATOR "=========================="
 bool check_if_support_elementwise_mul_mem_opt(const std::string& device_type) {
   // TODO(@gexiao): replace this function with api implemented at custom repo
   if (device_type == "npu") {
@@ -42,8 +42,9 @@ paddle::Tensor multiply_ad_func(
     const paddle::Tensor& y,
     paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << "Running AD API: "
-          << "multiply";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API: "
+          << "multiply" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply_ad_func begin");
   }
@@ -61,7 +62,7 @@ paddle::Tensor multiply_ad_func(
 
     auto amp_dst_dtype =
         paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
-
+    VLOG(5) << "AMP Get Dest Dtype : " << amp_dst_dtype;
     auto new_x =
         paddle::imperative::AmpAutoCast("x", x, amp_dst_dtype, op_name);
     auto new_y =
@@ -78,14 +79,15 @@ paddle::Tensor multiply_ad_func(
   // Type promotion Logic
   if (phi::NeedTypePromotion(
           "multiply", x.dtype(), y.dtype(), x.shape(), y.shape())) {
-    VLOG(5) << "got different data type, run type promotion automatically.";
     LOG_FIRST_N(WARNING, 1)
         << "got different data type, run type promotion "
            "automatically, this may cause data type been changed.";
     auto op_name = phi::TransToFluidOpName("multiply");
     auto promotion_type = phi::GetPromoteDtype(
         op_name, x.dtype(), y.dtype(), x.shape(), y.shape());
-
+    VLOG(5) << "Got different data type, run type promotion automatically. The "
+               "type after type promotion is "
+            << promotion_type;
     auto new_x = egr::PromoteCast("x", x, promotion_type);
     auto new_y = egr::PromoteCast("y", y, promotion_type);
 
@@ -120,8 +122,6 @@ paddle::Tensor multiply_ad_func(
   egr::AutogradMeta* y_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(y);
 
-  VLOG(5) << "Running C++ API: "
-          << "multiply";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -139,11 +139,15 @@ paddle::Tensor multiply_ad_func(
     input_str += input_y_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "multiply" << SEPARATOR;
   // Forward API Call
   auto api_result = paddle::experimental::multiply(x, y, predefined_out);
   // Check NaN and Inf if needed
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "multiply" << SEPARATOR;
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("multiply", api_result);
   }
@@ -170,7 +174,7 @@ paddle::Tensor multiply_ad_func(
     auto grad_node = std::shared_ptr<MultiplyGradNode>(  // NOLINT
         new MultiplyGradNode(1, 2));
     // Set for forward trace
-    if (FLAGS_check_nan_inf) {
+    if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
     // SetAttributes if needed
@@ -212,7 +216,7 @@ paddle::Tensor multiply_ad_func(
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-  VLOG(4) << "Finish AD API: multiply";
+  VLOG(4) << "\n" << SEPARATOR << "Finish_AD_API: multiply" << SEPARATOR;
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -247,8 +251,9 @@ paddle::Tensor& multiply__ad_func(
     const paddle::Tensor& y,
     paddle::optional<paddle::Tensor*> predefined_out) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << "Running AD API: "
-          << "multiply_";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API: "
+          << "multiply_" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply__ad_func begin");
   }
@@ -306,8 +311,6 @@ paddle::Tensor& multiply__ad_func(
   egr::AutogradMeta* y_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(y);
 
-  VLOG(5) << "Running C++ API: "
-          << "multiply_";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -352,7 +355,14 @@ paddle::Tensor& multiply__ad_func(
   }
 
   // Forward API Call
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "multiply_" << SEPARATOR;
   auto& api_result = paddle::experimental::multiply_(x, y);
+
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "multiply" << SEPARATOR;
   // Check NaN and Inf if needed
 
   if (FLAGS_check_nan_inf) {
@@ -389,7 +399,6 @@ paddle::Tensor& multiply__ad_func(
     // Set TensorWrappers for Forward Outputs if needed
   }
 
-  VLOG(4) << "Finish AD API: multiply_";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -416,6 +425,9 @@ paddle::Tensor& multiply__ad_func(
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("multiply__ad_func finish");
   }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API: "
+          << "multiply_" << SEPARATOR;
   // Returns
   return out;
 }

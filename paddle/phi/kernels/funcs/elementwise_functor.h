@@ -94,7 +94,7 @@ struct IsZeroFunctor {
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor) divide. Please check the input value."
+  "(floor/trunc) divide. Please check the input value."
 
 template <typename T, typename Enable = void>
 struct DivideFunctor {
@@ -1244,6 +1244,90 @@ struct InverseFloorDivideFunctor<dtype::bfloat16> {
     }
 
     return static_cast<dtype::bfloat16>(floordiv);
+  }
+};
+
+template <typename T, typename Enable = void>
+struct TruncDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(a / b);
+  }
+};
+
+template <typename T>
+struct TruncDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(b == 0)) {
+      return static_cast<T>(a / b);
+    }
+    return std::trunc(a / b);
+  }
+};
+
+template <>
+struct TruncDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::trunc(a_float / b_float));
+  }
+};
+
+template <>
+struct TruncDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::bfloat16>(std::trunc(a_float / b_float));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseTruncDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(b / a);
+  }
+};
+
+template <typename T>
+struct InverseTruncDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(a == 0)) {
+      return static_cast<T>(b / a);
+    }
+    return std::trunc(b / a);
+  }
+};
+
+template <>
+struct InverseTruncDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::trunc(b_float / a_float));
+  }
+};
+
+template <>
+struct InverseTruncDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::bfloat16>(std::trunc(b_float / a_float));
   }
 };
 
