@@ -122,7 +122,6 @@ jobs:
           work_dir: ${{ github.workspace }}
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
-          apt-get install -y python3.10-dev
           mkdir -p /root/.cache/build
           mkdir -p /root/.ccache/gpubox
           rm -rf * .[^.]*

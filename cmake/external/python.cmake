@@ -102,9 +102,7 @@ endif(WIN32)
 
 # Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
 add_library(python SHARED IMPORTED GLOBAL)
-set_property(
-  TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES}
-                         INTERFACE_INCLUDE_DIRECTORIES "${PYTHON_INCLUDE_DIRS}")
+set_property(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
 
 set(py_env "")
 if(PYTHONINTERP_FOUND)
