@@ -79,7 +79,6 @@ if core.is_compiled_with_cuda():
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
-        synchronize,
     )
 elif core.is_compiled_with_xpu():
     from .xpu import (
@@ -94,7 +93,6 @@ elif core.is_compiled_with_xpu():
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
-        synchronize,
     )
 else:
     if hasattr(core, 'get_all_custom_device_type'):
@@ -115,7 +113,6 @@ else:
             memory_reserved,
             reset_max_memory_allocated,
             reset_max_memory_reserved,
-            synchronize,
         )
     else:
         current_device_is_cpu = 1
@@ -1338,6 +1335,47 @@ class device_guard:
     ) -> None:
         if self._original_place != self._target_place:
             paddle.framework._set_expected_place(self._original_place)
+
+
+def synchronize(device: PlaceLike | None = None) -> None:
+    """
+    Wait for the compute on the given device to finish.
+    Args:
+        device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevice,
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
+    Examples:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> paddle.set_device('custom_cpu')
+            >>> paddle.device.synchronize()
+            >>> paddle.device.synchronize("custom_cpu:0")
+            >>> place = paddle.CustomPlace('custom_cpu', 0)
+            >>> paddle.device.synchronize(place)
+    """
+
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    elif isinstance(device, str):
+        place = paddle.device._convert_to_place(device)
+    else:
+        place = device
+
+    if paddle.is_compiled_with_cuda() and isinstance(place, paddle.CUDAPlace):
+        core._device_synchronize(place.get_device_id())
+    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
+        core._xpu_device_synchronize(place.get_device_id())
+    elif isinstance(place, paddle.CustomPlace):
+        core._synchronize_custom_device(
+            place.get_device_type(), place.get_device_id()
+        )
+    else:
+        raise TypeError(
+            "device should be gpu, xpu, {}".format(
+                ",".join(paddle.device.get_all_custom_device_type())
+            )
+        )
 
 
 def get_stream_from_external(
