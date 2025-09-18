@@ -231,12 +231,12 @@ function(merge_static_libs TARGET_NAME)
   list(REMOVE_DUPLICATES libs)
 
   # Get all propagation dependencies from the merged libraries
-  foreach(lib ${libs})
-    list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
-  endforeach()
-  if(libs_deps)
-    list(REMOVE_DUPLICATES libs_deps)
-  endif()
+  # foreach(lib ${libs})
+  #   list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
+  # endforeach()
+  # if(libs_deps)
+  #   list(REMOVE_DUPLICATES libs_deps)
+  # endif()
 
   # To produce a library we need at least one source file.
   # It is created by add_custom_command below and will helps
@@ -254,7 +254,7 @@ function(merge_static_libs TARGET_NAME)
   # Generate dummy static lib
   generate_dummy_static_lib(LIB_NAME ${TARGET_NAME} FILE_PATH ${target_SRCS}
                             GENERATOR "generic.cmake:merge_static_libs")
-  target_link_libraries(${TARGET_NAME} ${libs_deps})
+  target_link_libraries(${TARGET_NAME} PUBLIC ${libs})
 
   # OSX: use 'libtool' to merge archives
   if(APPLE)
