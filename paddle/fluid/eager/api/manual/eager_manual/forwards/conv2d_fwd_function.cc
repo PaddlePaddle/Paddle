@@ -20,6 +20,7 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/amp_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+#define SEPARATOR "=========================="
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
@@ -52,7 +53,7 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
 
     auto amp_dst_dtype =
         paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
-
+    VLOG(5) << "AMP Get Dest Dtype : " << amp_dst_dtype;
     auto new_input =
         paddle::imperative::AmpAutoCast("input", input, amp_dst_dtype, op_name);
     auto new_filter = paddle::imperative::AmpAutoCast(
@@ -108,8 +109,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
   egr::AutogradMeta* filter_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
-  VLOG(3) << "Final State Running: "
-          << "conv2d_ad_func";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "conv2d" << SEPARATOR;
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,
@@ -118,6 +120,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                                                  dilations,
                                                  groups,
                                                  data_format);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finshi_C++_API: "
+          << "conv2d" << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -177,6 +182,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("conv2d_ad_func finish");
   }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API: "
+          << "conv2d" << SEPARATOR;
   // Returns
   return out;
 }

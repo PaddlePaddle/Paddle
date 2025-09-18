@@ -32,6 +32,10 @@ void Copy(const Context& dev_ctx,
           Place dst_place,
           bool blocking,
           DenseTensor* dst) {
+  VLOG(5) << "TensorCopy: "
+          << "src Tensor(" << &src << ")"
+          << " is_contiguous: " << src.meta().is_contiguous() << " dims "
+          << src.dims() << " from " << src.place() << " to " << dst_place;
   if (!src.meta().is_contiguous()) {
     DenseTensor src_copy = paddle::experimental::Trans2Contiguous(src);
     Copy(dev_ctx, src_copy, dst_place, blocking, dst);
@@ -43,19 +47,16 @@ void Copy(const Context& dev_ctx,
 
   if (&src == dst) {
     if (src_place.GetType() == dst_place.GetType()) {
-      VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place
+      VLOG(7) << "Skip copy the same data(" << src_ptr << ") from " << src_place
               << " to " << dst_place;
     } else {
-      VLOG(6) << "Src and dst are the same Tensor, in-place copy data("
+      VLOG(7) << "Src and dst are the same Tensor, in-place copy data("
               << src_ptr << ") from " << src_place << " to " << dst_place;
       const DenseTensor src_copy = src;
       Copy(dev_ctx, src_copy, dst_place, blocking, dst);
     }
     return;
   }
-
-  VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
-          << dst_place;
 
   dst->Resize(src.dims());
 
@@ -100,7 +101,7 @@ void Copy(const Context& dev_ctx,
             << dst_place;
     return;
   }
-  VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
+  VLOG(7) << "TensorCopy: src:" << src_ptr << ", dst:" << dst_ptr;
   PADDLE_ENFORCE_EQ(dst->layout(),
                     src.layout(),
                     common::errors::PreconditionNotMet(

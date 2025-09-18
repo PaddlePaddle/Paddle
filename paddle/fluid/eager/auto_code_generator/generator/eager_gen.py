@@ -328,7 +328,7 @@ class {} : public egr::GradNodeBase {{
 
 GRAD_FUNCTION_TEMPLATE = """
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}::operator()(paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>& grads, bool create_graph, bool is_new_grad) {{
-  VLOG(3) << \"Running AD API GRAD: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<< \"Running_AD_API_GRAD: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -359,18 +359,18 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   // Inplace Strategy
 {}
 
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
   // Before log info
 {}
+  VLOG(4) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Call grad_api function
 {}
+  VLOG(4) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Check NaN and Inf id needed
 {}
   // Get GradOut autograd_meta
 {}
   // Create Grad Node
 {}
-  VLOG(4) << \"Finish AD API GRAD: {}";
   VLOG(6) << "gradnode_ptr = " << this;
   // LOG IF DEBUG
 {}
@@ -382,6 +382,8 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
+    VLOG(4) << \"\\n\"<<separator<<\"Finish_AD_API_GRAD: {}\"<<separator;
+
 
   // Return
 {}
@@ -391,7 +393,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 FORWARD_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"Running AD API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running_AD_API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -409,7 +411,6 @@ TEST_API {} {}({}) {{
   // Get Input AutoGradMeta
 {}
 
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
  // Before log info
 {}
 
@@ -424,9 +425,10 @@ TEST_API {} {}({}) {{
 
   // Set grad_node before API Call
 {}
-
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Forward API Call
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
@@ -440,30 +442,30 @@ TEST_API {} {}({}) {{
   // Set grad_node after API call
 {}
 
-  VLOG(4) << \"Finish AD API: {}";
   // LOG IF DEBUG
 {}
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} finish\");
   }}
+    VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
   // Returns
   return {};
 }}
 """
 
 AFTER_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(4)) {{
-    const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s],  \\n Output: [%s] }} \";
+  if (VLOG_IS_ON(6)) {{
+    const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]  \\n Output: [%s] }} \";
 {}
-    VLOG(4) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
+    VLOG(6) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str, output_str);
   }}
 """
 
 BEFORE_LOG_PRINT_TEMPLATE = """
-  if (VLOG_IS_ON(3)) {{
+  if (VLOG_IS_ON(5)) {{
     const char* INPUT_PRINT_TEMPLATE = \"{{ Input: [%s]}} \";
 {}
-    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
+    VLOG(5) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }}
 """
 
@@ -476,7 +478,7 @@ STRIDED_FLAGS_CHECK_TEMPLATE = """
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
 TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << \"Running AD API: \" << \"{}\";
+  VLOG(3) << \"\\n\"<<separator<<\"Running_AD_API: \" << \"{}\"<<separator;
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
@@ -491,18 +493,20 @@ TEST_API {} {}({}) {{
 {}
   // Layout autotune
 {}
-  VLOG(5) << \"Running C++ API: \" << \"{}\";
+
   // Before log info
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Running_C++_API: \" << \"{}\"<<separator;
   // Forward API Call
 {}
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_C++_API: \" << \"{}\"<<separator;
   // Log memory information
 {}
   // Check NaN and Inf if needed
 {}
   // Get Outputs
 {}
-  VLOG(4) << \"Finish AD API: {}";
+  VLOG(3) << \"\\n\"<<separator<<\"Finish_AD_API: {}\"<<separator;
 
   // Check Inplace if needed
 {}{}
@@ -520,7 +524,7 @@ FORWARD_BODY_BEFORE_API_CALL_TEMPLATE = """  if (require_any_grad) {{
 {}
     // Node Construction
 {}
-    VLOG(3) << "Create node " << grad_node->name() << " addr " << grad_node;
+    VLOG(4) << "Create node " << grad_node->name() << " addr " << grad_node;
 
     // Set for forward trace
   if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {{
@@ -598,6 +602,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+static std::string separator = "==========================";
 {}
 """
 
@@ -642,6 +647,7 @@ COMMON_DECLARE_int32(call_stack_level);
 COMMON_DECLARE_string(tensor_operants_mode);
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(check_cuda_error);
+static std::string separator = "==========================";
 {}
 {}
 """
@@ -692,7 +698,7 @@ BUMP_INPLACE_VERSION_TEMPLATE = """
 """
 
 AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddle::imperative::AmpLevel::O0) {{
-    VLOG(5) << "Check and Prepare For AMP";
+    VLOG(5) << "Check and Prepare For AMP, AMP Level : "<<static_cast<int>(egr::Controller::Instance().GetAMPLevel());
     {}
     paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> amp_tensors_vector = {};
     {}
@@ -707,11 +713,10 @@ AMP_LOGIC_TEMPLATE = """  if (egr::Controller::Instance().GetAMPLevel() != paddl
 
 TYPE_PROMOTION_LOGIC_TEMPLATE = """
     if (phi::NeedTypePromotion({op_func_name}, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape())) {{
-    VLOG(5) << "got different data type, run type promotion automatically.";
-    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    LOG_FIRST_N(WARNING, 1) << "Got different data type, run type promotion automatically, this may cause data type been changed.";
     {op_name}
     auto promotion_type = phi::GetPromoteDtype(op_name, {x}.dtype(), {y}.dtype(), {x}.shape(), {y}.shape());
-
+    VLOG(5) << "Got different data type, run type promotion automatically. The type after type promotion is " << promotion_type;
     {x_cast}
     auto new_{y} = egr::PromoteCast("{y}", {y}, promotion_type);
 
@@ -2127,6 +2132,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             amp_tensors_vector_optional_list
         )
         amp_get_dst_dtype_str = "auto amp_dst_dtype = paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);\n"
+        amp_get_dst_dtype_str += (
+            '    VLOG(5) << "AMP Get Dest Dtype : "<<amp_dst_dtype;\n'
+        )
         amp_autocast_list_str = (
             "    ".join(amp_autocast_list)
             + "    "
@@ -2272,13 +2280,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         var_str = f'\n{indent}  std::string input_str = "";'
         var_str += f'\n{indent}  std::string output_str = "";'
         for name, (ttype, pos) in forward_inputs_position_map.items():
-            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , %s), ";'
             var_str += f"\n{indent}  std::string input_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  input_str += input_{name}_str;"
 
         before_log_str = BEFORE_LOG_PRINT_TEMPLATE.format(var_str)
         for name, (ttype, pos) in forward_outputs_position_map.items():
-            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , [%s]), ";'
+            var_str += f'\n{indent}  const char* TENSOR_{name.upper()}_TEMPLATE = " \\n( {name} , %s), ";'
             var_str += f"\n{indent}  std::string output_{name}_str = paddle::string::Sprintf(TENSOR_{name.upper()}_TEMPLATE, egr::EagerUtils::TensorStr({name}));"
             var_str += f"\n{indent}  output_str += output_{name}_str;"
 
@@ -2306,9 +2314,10 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     type_promotion_logic_str,
                     type_autocast_logic_str,
                     layout_logic_str,
-                    forward_api_name,
                     before_log_str,
+                    forward_api_name,
                     forward_call_str,
+                    forward_api_name,
                     log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
@@ -2334,13 +2343,14 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 type_autocast_logic_str,
                 layout_logic_str,
                 inputs_autograd_meta_str,
-                forward_api_name,
                 before_log_str,
                 compute_require_grad_args_str,
                 self.grad_node_name,
                 node_creation_pre_contiguous_str,
                 node_creation_before_call_str,
+                forward_api_name,
                 forward_call_str,
+                forward_api_name,
                 log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,
@@ -2348,9 +2358,9 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 check_inplace_str,
                 bump_inplace_version_str,
                 node_creation_after_call_str,
-                forward_api_name,
                 log_str,
                 forward_ad_function_name,
+                forward_api_name,
                 returns_str,
             )
 
@@ -3243,15 +3253,16 @@ if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
             set_out_dist_attr_str,
             inplace_check_str,
             inplace_for_grad_outs_str,
-            self.backward_api_name,
             before_log_str,
+            self.backward_api_name,
             grad_function_call_str,
+            self.backward_api_name,
             check_nan_inf_str,
             outputs_autograd_meta_str,
             next_grad_node_creation_str,
-            self.backward_api_name,
             log_str,
             grad_node_name,
+            self.backward_api_name,
             returns_str,
         )
 
