@@ -1447,7 +1447,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE(d,
                     std::numeric_limits<int>::max(),
                     common::errors::InvalidArgument(
-                        "(PreconditionNotMet) The num of"
+                        "(PreconditionNotMetError) The num of"
                         " the classes should be <= INT_MAX(2147483647)"));
   if (softmax->numel() == 0) {
     // When soft_label is False, the axis column cannot be 0. Other dimensions

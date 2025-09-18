@@ -159,7 +159,7 @@ inline HOSTDEVICE uint8_t fp8e4m3fnuz_from_fp32_value(float f) {
  * 8-bit floating-point number in fp8 e8m0fnu format, in bit representation.
  */
 inline HOSTDEVICE uint8_t fp8e8m0fnu_from_fp32_value(float f) {
-  Bits fb, denorm_mask;
+  Bits fb;
 
   fb.f = f;
 

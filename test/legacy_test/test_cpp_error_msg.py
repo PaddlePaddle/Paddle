@@ -27,7 +27,7 @@ class TestCppErrorMsg(unittest.TestCase):
             paddle.bincount(input_value, minlength=-1)
         # InvalidArgumentError: xxx -> (InvalidArgument) xxx
         self.assertEqual(
-            str(em.exception).startswith("(InvalidArgument)"), True
+            str(em.exception).startswith("(InvalidArgumentError)"), True
         )
 
 

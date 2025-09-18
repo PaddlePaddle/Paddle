@@ -269,7 +269,7 @@ class TestSetItemErrorCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             x[::-1] = paddle.to_tensor(
                 [0, 1, 2, 3]
-            )  # ValueError: (InvalidArgument)
+            )  # ValueError: (InvalidArgumentError)
 
 
 if __name__ == '__main__':

@@ -54,7 +54,7 @@ std::string error_name(ErrorCode code) {
 
 std::string ErrorSummary::to_string() const {
   std::string result(error_name(code()));
-  result += " : ";
+  result += ": ";
   result += error_message();
   return result;
 }

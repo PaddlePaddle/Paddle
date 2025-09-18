@@ -339,7 +339,6 @@ struct numeric_limits<phi::dtype::float8_e4m3fnuz> {
     return phi::dtype::raw_uint8_to_float8_e4m3fnuz(0x01);
   }
 };
-// 新增特化：定义 float 和 float8_e4m3fnuz 的公共类型为 float
 template <>
 struct common_type<float, phi::dtype::float8_e4m3fnuz> {
   using type = float;

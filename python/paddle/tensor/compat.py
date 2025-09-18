@@ -126,7 +126,7 @@ def split(
         if isinstance(dim, int):
             if dim < -shape_range or dim >= shape_range:
                 raise ValueError(
-                    f"(InvalidArgument) The dim is expected to be in range of [-{shape_range}, {shape_range}), but got {dim}"
+                    f"(InvalidArgumentError) The dim is expected to be in range of [-{shape_range}, {shape_range}), but got {dim}"
                 )
         return shape[dim]
 
