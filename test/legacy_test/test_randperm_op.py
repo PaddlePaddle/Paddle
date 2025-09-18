@@ -523,6 +523,15 @@ class TestRandpermNewParams(unittest.TestCase):
                 self.assertEqual(result.dtype, out_tensor.dtype)
                 self.assertTrue(check_randperm_out(self.n, result.numpy()))
 
+    def test_pin_memory_error_cases(self):
+        """Test pin_memory error cases"""
+        if not paddle.device.is_compiled_with_cuda():
+            return
+
+        with dygraph_guard(), self.assertRaises(RuntimeError):
+            # Test unsupported device with pin_memory=True
+            paddle.randperm([2, 3], device=paddle.CPUPlace(), pin_memory=True)
+
 
 if __name__ == "__main__":
     paddle.enable_static()

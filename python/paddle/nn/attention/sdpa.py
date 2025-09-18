@@ -145,22 +145,34 @@ def sdpa_kernel(
 
     Example:
 
-    .. code-block:: python
+        >>> import paddle
+        >>> from paddle.nn.functional import scaled_dot_product_attention
+        >>> from paddle.nn.attention import SDPBackend, sdpa_kernel
 
-        from paddle.nn.functional import scaled_dot_product_attention
-        from paddle.nn.attention import SDPBackend, sdpa_kernel
-
-        # Only enable flash attention backend
-        with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
-            scaled_dot_product_attention(...)
-
-        # Enable the Math or Efficient attention backends
-        with sdpa_kernel([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION]):
-            scaled_dot_product_attention(...)
-
-        # Set priority order
-        with sdpa_kernel([SDPBackend.FLASH_ATTENTION, SDPBackend.MATH], set_priority=True):
-            scaled_dot_product_attention(...)
+        >>> # Create dummy tensors
+        >>> query = paddle.rand(shape=[2, 4, 8, 16])
+        >>> key = paddle.rand(shape=[2, 4, 8, 16])
+        >>> value = paddle.rand(shape=[2, 4, 8, 16])
+        >>> # Example 1: Only enable math backend
+        >>> with sdpa_kernel(SDPBackend.MATH):
+        ...     out = scaled_dot_product_attention(query, key, value)
+        >>> print(out.shape)
+        [2, 4, 8, 16]
+        >>> # Example 2: Enable multiple backends
+        >>> with sdpa_kernel([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION]):
+        ...     out = scaled_dot_product_attention(query, key, value)
+        >>> print(out.shape)
+        [2, 4, 8, 16]
+        >>> # Example 3: Set priority order for multiple backends
+        >>> with sdpa_kernel([SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION], set_priority=True):
+        ...     out = scaled_dot_product_attention(query, key, value)
+        >>> print(out.shape)
+        [2, 4, 8, 16]
+        >>> # doctest: +SKIP('FlashAttention may not be available in all environments')
+        >>> # Example 4: Flash attention (skipped due to environment requirements)
+        >>> with sdpa_kernel(SDPBackend.FLASH_ATTENTION):
+        ...     out = scaled_dot_product_attention(query, key, value)
+        >>> # doctest: -SKIP
 
     This context manager can be used to select which backend to use for scaled dot product attention.
     Upon exiting the context manager, the previous state of the flags will be restored.

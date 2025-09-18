@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -155,6 +156,11 @@ class TestSDPAKernelCPU(unittest.TestCase):
         out.backward()
 
 
+@unittest.skipIf(
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
+    "CUDA is not available, this test requires GPU support.",
+)
 class TestSDPAKernelBasic(unittest.TestCase):
     """Test basic functionality of sdpa_kernel context manager (defaults to available device)."""
 
@@ -200,10 +206,6 @@ class TestSDPAKernelBasic(unittest.TestCase):
             v.grad.numpy(), v_.grad.numpy(), rtol=5e-3, atol=1e-3
         )
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(),
-        "Efficient attention backend is not supported on CPU",
-    )
     def test_multiple_backends(self):
         """Test with multiple backends."""
         paddle.disable_static()
@@ -231,6 +233,47 @@ class TestSDPAKernelBasic(unittest.TestCase):
         )
 
         # Test backward
+        out.backward()
+        ref_out.backward()
+
+        np.testing.assert_allclose(
+            q.grad.numpy(), q_.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            k.grad.numpy(), k_.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            v.grad.numpy(), v_.grad.numpy(), rtol=5e-3, atol=1e-3
+        )
+
+    def test_multiple_backends_with_priority(self):
+        """
+        Test set_priority=True with available backends (MATH, EFFICIENT).
+        """
+        paddle.disable_static()
+
+        query = np.random.random(self.shape).astype(self.dtype)
+        key = np.random.random(self.shape).astype(self.dtype)
+        value = np.random.random(self.shape).astype(self.dtype)
+
+        q = paddle.to_tensor(query, dtype=self.dtype, stop_gradient=False)
+        k = paddle.to_tensor(key, dtype=self.dtype, stop_gradient=False)
+        v = paddle.to_tensor(value, dtype=self.dtype, stop_gradient=False)
+
+        q_ = paddle.to_tensor(query, dtype=self.dtype, stop_gradient=False)
+        k_ = paddle.to_tensor(key, dtype=self.dtype, stop_gradient=False)
+        v_ = paddle.to_tensor(value, dtype=self.dtype, stop_gradient=False)
+
+        backends = [SDPBackend.MATH, SDPBackend.EFFICIENT_ATTENTION]
+
+        with sdpa_kernel(backends, set_priority=True):
+            out = scaled_dot_product_attention(q, k, v)
+
+        ref_out = attention_naive(q_, k_, v_, causal=False)
+        np.testing.assert_allclose(
+            out.numpy(), ref_out.numpy(), rtol=5e-3, atol=1e-3
+        )
+
         out.backward()
         ref_out.backward()
 
