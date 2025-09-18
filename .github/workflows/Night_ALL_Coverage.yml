@@ -231,6 +231,7 @@ jobs:
 
   test:
     name: Coverage test
+    needs: [build]
     runs-on:
       group: BD_BJ-V100
     steps:
