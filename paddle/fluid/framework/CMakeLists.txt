@@ -109,7 +109,7 @@ cc_library(
 cc_library(
   tensor
   SRCS tensor_util.cc
-  DEPS data_type device_context phi common)
+  DEPS data_type dlpack_tensor device_context phi common)
 
 cc_library(
   lod_tensor
@@ -549,7 +549,7 @@ cc_library(
 cc_library(
   dlpack_tensor
   SRCS dlpack_tensor.cc
-  DEPS tensor dlpack)
+  DEPS dlpack phi)
 
 cc_library(
   op_compatible_info

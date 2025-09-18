@@ -32,6 +32,7 @@ using egr::InputsContainDistTensor;
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
+#define SEPARATOR "=========================="
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 Conv2dGradNodeFinal::operator()(
@@ -40,7 +41,10 @@ Conv2dGradNodeFinal::operator()(
     bool create_graph,
     bool is_new_grad) {
   // Fill Zero For GradIn Tensors
-  VLOG(3) << " Running Conv2dGradNodeFinal: " << this;
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "conv2d_grad" << SEPARATOR;
+
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("Conv2dGradNodeFinal begin");
   }
@@ -109,7 +113,9 @@ Conv2dGradNodeFinal::operator()(
   // Inplace Strategy
 
   // Call grad_api function
-  VLOG(3) << "Final State Running: Conv2dGradNodeFinal";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "conv2d_grad" << SEPARATOR;
 
   paddle::experimental::conv2d_grad(input,
                                     filter,
@@ -122,6 +128,9 @@ Conv2dGradNodeFinal::operator()(
                                     data_format,
                                     api_output_0,
                                     api_output_1);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "conv2d_grad" << SEPARATOR;
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d_grad", returns);
@@ -239,6 +248,9 @@ Conv2dGradNodeFinal::operator()(
 
   // Return
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "conv2d_grad" << SEPARATOR;
   return returns;
 }
 

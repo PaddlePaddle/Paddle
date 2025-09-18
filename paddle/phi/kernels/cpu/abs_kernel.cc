@@ -22,7 +22,9 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+PADDLE_API void AbsKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          DenseTensor* out) {
   auto numel = x.numel();
   auto* x_data = x.data<T>();
   dev_ctx.template Alloc<phi::dtype::Real<T>>(

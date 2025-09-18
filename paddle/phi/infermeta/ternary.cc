@@ -1483,10 +1483,11 @@ void LerpInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
-void LinspaceRawInferMeta(const MetaTensor& start,
-                          const MetaTensor& stop,
-                          const MetaTensor& number,
-                          MetaTensor* out) {
+void LinspaceInferMeta(const MetaTensor& start,
+                       const MetaTensor& stop,
+                       const MetaTensor& number,
+                       DataType dtype,
+                       MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       common::product(start.dims()),
       1,
@@ -1509,15 +1510,7 @@ void LinspaceRawInferMeta(const MetaTensor& start,
                                       common::product(number.dims())));
 
   out->set_dims(common::make_ddim({-1}));
-  out->set_dtype(start.dtype());
-}
-
-void LinspaceInferMeta(const MetaTensor& start,
-                       const MetaTensor& stop,
-                       const MetaTensor& number,
-                       DataType dtype,
-                       MetaTensor* out) {
-  LinspaceRawInferMeta(start, stop, number, out);
+  out->set_dtype(dtype);
 }
 
 void MatchMatrixTensorInferMeta(const MetaTensor& x,
