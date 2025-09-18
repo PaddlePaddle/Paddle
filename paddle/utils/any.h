@@ -1,8 +1,10 @@
+// Copyright (c) 2025 Paddle Authors. All Rights Reserved.
 // This file copy from boost/any.hpp and boost version: 1.41.0
 // Modified the following points:
 // 1. modify namespace from boost::any to paddle::any
 // 2. remove the depending boost header files
 // 3. remove/modify some macro
+// 4. use std::unique_ptr instead of raw pointer
 
 // See http://www.boost.org/libs/any for Documentation.
 
@@ -16,11 +18,11 @@
 // where: tested with BCC 5.5, MSVC 6.0, and g++ 2.95
 
 #include <algorithm>
+#include <memory>
 #include <type_traits>
 #include <typeinfo>
 
 // See boost/python/type_id.hpp
-// TODO: add BOOST_TYPEID_COMPARE_BY_NAME to config.hpp
 #if (defined(__GNUC__) && __GNUC__ >= 3) || defined(_AIX) || \
     (defined(__sgi) && defined(__host_mips)) ||              \
     (defined(__hpux) && defined(__HP_aCC)) ||                \
@@ -32,14 +34,18 @@
 namespace paddle {
 class any {
  public:  // structors
-  any() : content(0) {}
+  any() : content(nullptr) {}
 
   template <typename ValueType>
-  any(const ValueType &value) : content(new holder<ValueType>(value)) {}
+  explicit any(const ValueType &value)
+      : content(std::make_unique<holder<ValueType>>(value)) {}
 
-  any(const any &other) : content(other.content ? other.content->clone() : 0) {}
+  any(const any &other)
+      : content(other.content ? other.content->clone() : nullptr) {}
 
-  ~any() { delete content; }
+  any(any &&other) noexcept = default;
+
+  ~any() = default;
 
  public:  // modifiers
   any &swap(any &rhs) {
@@ -49,7 +55,7 @@ class any {
 
   template <typename ValueType>
   any &operator=(const ValueType &rhs) {
-    any(rhs).swap(*this);
+    any(rhs).swap(*this);  // NOLINT(runtime/explicit)
     return *this;
   }
 
@@ -73,18 +79,20 @@ class any {
    public:  // queries
     virtual const std::type_info &type() const = 0;
 
-    virtual placeholder *clone() const = 0;
+    virtual std::unique_ptr<placeholder> clone() const = 0;
   };
 
   template <typename ValueType>
   class holder : public placeholder {
    public:  // structors
-    holder(const ValueType &value) : held(value) {}
+    explicit holder(const ValueType &value) : held(value) {}
 
    public:  // queries
-    virtual const std::type_info &type() const { return typeid(ValueType); }
+    const std::type_info &type() const override { return typeid(ValueType); }
 
-    virtual placeholder *clone() const { return new holder(held); }
+    std::unique_ptr<placeholder> clone() const override {
+      return std::make_unique<holder>(held);
+    }
 
    public:  // representation
     ValueType held;
@@ -94,12 +102,12 @@ class any {
   };
 
  public:  // representation (public so any_cast can be non-friend)
-  placeholder *content;
+  std::unique_ptr<placeholder> content;
 };
 
 class bad_any_cast : public std::bad_cast {
  public:
-  virtual const char *what() const throw() {
+  const char *what() const throw() override {
     return "paddle::bad_any_cast: "
            "failed conversion using paddle::any_cast";
   }
@@ -114,7 +122,8 @@ ValueType *any_cast(any *operand) {
 #else
                  operand->type() == typeid(ValueType)
 #endif
-             ? &static_cast<any::holder<ValueType> *>(operand->content)->held
+             ? &(static_cast<any::holder<ValueType> *>(operand->content.get())
+                     ->held)
              : 0;
 }
 
@@ -124,15 +133,9 @@ inline const ValueType *any_cast(const any *operand) {
 }
 
 template <typename ValueType>
-ValueType any_cast(any &operand) {
+ValueType any_cast(const any &operand) {
   typedef typename std::remove_reference<ValueType>::type nonref;
 
-  // If 'nonref' is still reference type, it means the user has not
-  // specialized 'remove_reference'.
-
-  // Please use BOOST_BROKEN_COMPILER_TYPE_TRAITS_SPECIALIZATION macro
-  // to generate specialization of remove_reference for your class
-  // See type traits library documentation for details
   static_assert(!std::is_reference<nonref>::value,
                 "!std::is_reference<nonref>::value");
 
@@ -145,8 +148,6 @@ template <typename ValueType>
 inline ValueType any_cast(const any &operand) {
   typedef typename std::remove_reference<ValueType>::type nonref;
 
-  // The comment in the above version of 'any_cast' explains when this
-  // assert is fired and what to do.
   static_assert(!std::is_reference<nonref>::value,
                 "!std::is_reference<nonref>::value");
 
@@ -160,7 +161,7 @@ inline ValueType any_cast(const any &operand) {
 // different shared libraries.
 template <typename ValueType>
 inline ValueType *unsafe_any_cast(any *operand) {
-  return &static_cast<any::holder<ValueType> *>(operand->content)->held;
+  return &(static_cast<any::holder<ValueType> *>(operand->content.get())->held);
 }
 
 template <typename ValueType>
