@@ -45,8 +45,8 @@ __all__ = [
     'reset_max_memory_reserved',
     'memory_allocated',
     'memory_reserved',
-    'memory_total',  # memory maneged by runtime, not paddle
-    'memory_used',  # memory maneged by runtime, not paddle
+    'memory_total',  # memory managed by runtime, not paddle
+    'memory_used',  # memory managed by runtime, not paddle
 ]
 
 

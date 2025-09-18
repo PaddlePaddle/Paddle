@@ -14,16 +14,16 @@
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
 
-template <typename T, typename IndexT = int>
-void CPUIndexElementwisePutWithTensorKernel(
-    const phi::CPUContext& dev_ctx,
+template <typename T, typename Context, typename IndexT = int>
+void XPUIndexElementwisePutWithTensorKernel(
+    const Context& dev_ctx,
     const DenseTensor& input,
     const DenseTensor& value,
     const std::vector<const DenseTensor*>& index,
@@ -39,7 +39,6 @@ void CPUIndexElementwisePutWithTensorKernel(
   if (is_initialized) {
     is_same_place = (input.place() == output->place());
   }
-  T* output_ = dev_ctx.template Alloc<T>(output);
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
@@ -55,7 +54,6 @@ void CPUIndexElementwisePutWithTensorKernel(
     sizes[i] = index_dims[i];
     strides[i] = index_strides[i];
   }
-  auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
   std::array<int64_t*, 3> strides_array;
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
@@ -72,36 +70,62 @@ void CPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
                     common::errors::PreconditionNotMet(
                         "the value of N should be in [0, "
                         "std::numeric_limits<int32_t>::max()]"));
-  using dtype = funcs::OpaqueType<sizeof(T)>;
-  const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
-  char* out_ptr = reinterpret_cast<char*>(output_);
-  for (int64_t idx = 0; idx < N; idx++) {
-    const auto offsets = offset_calc.cpu_get(idx);
-    char* const out_data = out_ptr + offsets[0] + slice_offset;
-    const char* const in_data = in_ptr + offsets[1];
-    int64_t offset = 0;
-    for (int64_t i = 0; i < num_indices; i++) {
-      int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-      if (index < 0) {
-        index += sizes[i];
-      }
-      offset += index * strides[i];
-    }
-    *reinterpret_cast<dtype*>(out_data + offset) =
-        *reinterpret_cast<const dtype*>(in_data);
+
+  dev_ctx.template Alloc<T>(output);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeIndexT = typename XPUTypeTrait<IndexT>::Type;
+
+  // passed vector params for XPU
+  std::vector<const XPUTypeIndexT*> index_ptrs_vec;
+  std::vector<int64_t> index_numel_vec;
+  for (int i = 0; i < num_indices; i++) {
+    // since XPU WRAPPER_CHECK_PTR only supports original GM ptrs, so we pass
+    // the IndexT* type ptrs, which is different from the CPU/GPU's char* ptr.
+    index_ptrs_vec.push_back(
+        reinterpret_cast<const XPUTypeIndexT*>(index[i]->data<IndexT>()));
+    // index_numel_vec is for the length of WRAPPER_CHECK_PTR
+    index_numel_vec.push_back(index[i]->numel());
   }
+  std::vector<int64_t> sizes_vec =
+      std::vector<int64_t>(sizes.begin(), sizes.begin() + num_indices);
+  std::vector<int64_t> orig_strides_vec =
+      std::vector<int64_t>(strides.begin(), strides.begin() + num_indices);
+  std::vector<std::vector<int64_t>> strides_vec_vec =
+      std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
+
+  const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
+  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
+
+  // for checkptr and checksum in XPU
+  int64_t data_size_in = value.Holder()->size() - value.meta().offset;
+  int64_t data_size_out = output->Holder()->size() - output->meta().offset;
+
+  bool is_get = false;
+  int r = xpu::index_elementwise_tensor<XPUType, XPUTypeIndexT>(
+      dev_ctx.x_context(),
+      reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
+      reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
+      index_ptrs_vec,                            // vec of XPU ptrs
+      index_numel_vec,                           // CPU vec
+      desired_shape,                             // CPU vec
+      sizes_vec,                                 // CPU vec
+      orig_strides_vec,                          // CPU vec
+      strides_vec_vec,                           // CPU vec
+      N,                                         // int64_t
+      data_size_in,                              // int64_t
+      data_size_out,                             // int64_t
+      is_get);                                   // true for get, false for put
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_tensor_put");
 }
 
-template <typename T, typename IndexT = int>
-void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
+template <typename T, typename Context, typename IndexT = int>
+void XPUIndexElementwisePutKernel(const Context& dev_ctx,
                                   const DenseTensor& input,
                                   const Scalar& value,
                                   const std::vector<const DenseTensor*>& index,
@@ -117,8 +141,6 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   if (is_initialized) {
     is_same_place = (input.place() == output->place());
   }
-  T* output_ = dev_ctx.template Alloc<T>(output);
-  T value_T = value.to<T>();
   if (!is_initialized || !is_same_place) {
     phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
@@ -127,6 +149,7 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
   auto sizes = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, phi::DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -149,40 +172,58 @@ void CPUIndexElementwisePutKernel(const phi::CPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
                     common::errors::PreconditionNotMet(
                         "the value of N should be in [0, "
                         "std::numeric_limits<int32_t>::max()]"));
-  char* out_ptr = reinterpret_cast<char*>(output_) + slice_offset;
-  if (index.size() == 1 && index[0]->dtype() == phi::DataType::BOOL) {
-    const bool* mask_data = index[0]->data<bool>();
-    for (int64_t idx = 0; idx < N; idx++) {
-      const auto offsets = offset_calc.cpu_get(idx);
-      char* const out_data = out_ptr + offsets[0];
-      if (mask_data[idx]) {
-        *reinterpret_cast<T*>(out_data) = value_T;
-      }
-    }
-  } else {
-    auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
-    for (int64_t idx = 0; idx < N; idx++) {
-      const auto offsets = offset_calc.cpu_get(idx);
-      char* const out_data = out_ptr + offsets[0];
-      int64_t offset = 0;
-      for (int64_t i = 0; i < num_indices; i++) {
-        int64_t index = *reinterpret_cast<int64_t*>(index_ptrs[i] + offsets[2]);
-        if (index < 0) {
-          index += sizes[i];
-        }
-        offset += index * strides[i];
-      }
-      *reinterpret_cast<T*>(out_data + offset) = value_T;
-    }
+
+  dev_ctx.template Alloc<T>(output);
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  using XPUTypeIndexT = typename XPUTypeTrait<IndexT>::Type;
+
+  // passed vector params for XPU
+  std::vector<const XPUTypeIndexT*> index_ptrs_vec;
+  std::vector<int64_t> index_numel_vec;
+  for (int i = 0; i < std::min(num_indices, (int64_t)index.size()); i++) {
+    // since XPU WRAPPER_CHECK_PTR only supports original GM ptrs, so we pass
+    // the IndexT* type ptrs, which is different from the CPU/GPU's char* ptr.
+    index_ptrs_vec.push_back(
+        reinterpret_cast<const XPUTypeIndexT*>(index[i]->data<IndexT>()));
+    // index_numel_vec is for the length of WRAPPER_CHECK_PTR
+    index_numel_vec.push_back(index[i]->numel());
   }
+  std::vector<int64_t> sizes_vec =
+      std::vector<int64_t>(sizes.begin(), sizes.begin() + num_indices);
+  std::vector<int64_t> orig_strides_vec =
+      std::vector<int64_t>(strides.begin(), strides.begin() + num_indices);
+  std::vector<std::vector<int64_t>> strides_vec_vec =
+      std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
+
+  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
+
+  // for checkptr and checksum in XPU
+  int64_t data_size_out = output->Holder()->size() - output->meta().offset;
+
+  const XPUType value_T = static_cast<XPUType>(value.to<T>());
+  bool is_get = false;
+
+  // bool and int64_t index will be handled in XPU's op wrapper
+  int r = xpu::index_elementwise_scalar<XPUType, XPUTypeIndexT>(
+      dev_ctx.x_context(),
+      value_T,                              // scalar
+      reinterpret_cast<XPUType*>(out_ptr),  // XPU ptr
+      index_ptrs_vec,                       // vec of XPU ptrs
+      index_numel_vec,                      // CPU vec
+      desired_shape,                        // CPU vec
+      sizes_vec,                            // CPU vec
+      orig_strides_vec,                     // CPU vec
+      strides_vec_vec,                      // CPU vec
+      N,                                    // int64_t
+      data_size_out,                        // int64_t
+      is_get);                              // false for put
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_scalar_put");
 }
 
 template <typename T, typename Context>
@@ -216,16 +257,16 @@ void IndexElementwisePutWithTensorKernel(
     return;
   }
   if (out->numel() == 0) return;
-  CPUIndexElementwisePutWithTensorKernel<T, int64_t>(dev_ctx,
-                                                     x,
-                                                     value,
-                                                     index,
-                                                     input_dims,
-                                                     input_strides,
-                                                     index_dims,
-                                                     index_strides,
-                                                     slice_offset,
-                                                     out);
+  XPUIndexElementwisePutWithTensorKernel<T, Context, int64_t>(dev_ctx,
+                                                              x,
+                                                              value,
+                                                              index,
+                                                              input_dims,
+                                                              input_strides,
+                                                              index_dims,
+                                                              index_strides,
+                                                              slice_offset,
+                                                              out);
 }
 
 template <typename T, typename Context>
@@ -260,22 +301,22 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
     return;
   }
   if (out->numel() == 0) return;
-  CPUIndexElementwisePutKernel<T, int64_t>(dev_ctx,
-                                           x,
-                                           value,
-                                           index,
-                                           input_dims,
-                                           input_strides,
-                                           index_dims,
-                                           index_strides,
-                                           slice_offset,
-                                           out);
+  XPUIndexElementwisePutKernel<T, Context, int64_t>(dev_ctx,
+                                                    x,
+                                                    value,
+                                                    index,
+                                                    input_dims,
+                                                    input_strides,
+                                                    index_dims,
+                                                    index_strides,
+                                                    slice_offset,
+                                                    out);
 }
 
 }  // namespace phi
 
 PD_REGISTER_KERNEL(index_elementwise_put,
-                   CPU,
+                   XPU,
                    ALL_LAYOUT,
                    phi::IndexElementwisePutKernel,
                    bool,
@@ -287,12 +328,10 @@ PD_REGISTER_KERNEL(index_elementwise_put,
                    int16_t,
                    uint8_t,
                    phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
-                   CPU,
+                   XPU,
                    ALL_LAYOUT,
                    phi::IndexElementwisePutWithTensorKernel,
                    bool,
@@ -304,6 +343,4 @@ PD_REGISTER_KERNEL(index_elementwise_put_with_tensor,
                    int16_t,
                    uint8_t,
                    phi::float16,
-                   phi::bfloat16,
-                   phi::complex64,
-                   phi::complex128) {}
+                   phi::bfloat16) {}
