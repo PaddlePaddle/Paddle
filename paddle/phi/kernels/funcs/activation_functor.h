@@ -4208,9 +4208,18 @@ struct CudaSTanhGradFunctor<ComplexType<T>>
 };
 
 template <typename T>
+__device__ __forceinline__ T log1p_local(T x) {
+  return log1p(x);
+}
+
+template <typename T>
+__device__ __forceinline__ ComplexType<T> log1p_local(ComplexType<T> x) {
+  return log(ComplexType<T>{1.} + exp(x));
+}
+
+template <typename T>
 struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-  MPType one = static_cast<MPType>(1.0f);
   float beta;
   float threshold;
 
@@ -4223,8 +4232,7 @@ struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType b = static_cast<MPType>(beta);
     MPType t = static_cast<MPType>(threshold);
-    MPType x_beta = x * static_cast<MPType>(beta);
-    return static_cast<T>(x_beta > t ? x : log(one + exp(x_beta)) / b);
+    return static_cast<T>((x * b) > t ? x : (log1p_local(exp(x * b))) / b);
   }
 };
 
@@ -4246,8 +4254,8 @@ struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType b = static_cast<MPType>(beta);
     MPType t = static_cast<MPType>(threshold);
-    MPType x_beta = x * beta;
-    return x_beta > t ? arg_dout : static_cast<T>(dout / (one + exp(-x_beta)));
+    MPType z = std::exp(x * b);
+    return (x * b) > t ? arg_dout : static_cast<T>(dout * z / (z + one));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4272,10 +4280,10 @@ struct CudaSoftplusGradFunctor<ComplexType<T>>
     MPType x = static_cast<MPType>(arg_x);
     MPType b = static_cast<MPType>(beta);
     MPType t = static_cast<MPType>(threshold);
-    MPType x_beta = x * static_cast<MPType>(beta);
-    return x_beta > t
+    MPType z = exp(x * b);
+    return (x * b) > t
                ? dout
-               : static_cast<ComplexType<T>>(dout / conj(one + exp(-x_beta)));
+               : static_cast<ComplexType<T>>(dout * conj(z / (z + one)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
