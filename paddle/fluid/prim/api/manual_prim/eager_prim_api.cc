@@ -28,6 +28,16 @@ Tensor full<Tensor>(const IntArray& shape,
 }
 
 template <>
+Tensor full_like<Tensor>(const Tensor& x,
+                    const Scalar& value,
+                    DataType dtype,
+                    const Place& place) {
+  VLOG(4) << "Eager Prim API full_like_ad_func call";
+  return ::full_like_ad_func(x, value, dtype, place);
+}
+
+
+template <>
 Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
   return ::cast_ad_func(x, dtype);
 }
