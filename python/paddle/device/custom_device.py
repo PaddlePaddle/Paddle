@@ -19,7 +19,12 @@ from typing_extensions import TypeAlias
 
 from paddle.base import core
 
-from .streams import Event, Stream, create_event, create_stream  # noqa: F401
+from .custom_streams import (  # noqa: F401
+    Event,
+    Stream,
+    create_event,
+    create_stream,
+)
 
 if TYPE_CHECKING:
     from paddle import CustomPlace

@@ -98,7 +98,7 @@ else:
     else:
         dev_types = []
     if dev_types and core.is_compiled_with_custom_device(dev_types[0]):
-        from .custom import (
+        from .custom_device import (
             create_event as _create_event_base,
             create_stream as _create_stream_base,
             device_count,
