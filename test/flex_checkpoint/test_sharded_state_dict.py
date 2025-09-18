@@ -112,6 +112,7 @@ TEST_CONFIGS = {
             "tp": 2,
             "sharding_degree": 1,
             "has_bias": "True",
+            "master_weight": "True",
         },
         {
             "test_type": "optimizer",
@@ -120,6 +121,7 @@ TEST_CONFIGS = {
             "tp": 1,
             "sharding_degree": 2,
             "has_bias": "True",
+            "master_weight": "True",
         },
         {
             "test_type": "optimizer",
@@ -128,6 +130,7 @@ TEST_CONFIGS = {
             "tp": 1,
             "sharding_degree": 2,
             "has_bias": "True",
+            "master_weight": "True",
         },
     ],
     "4_card_tests": [
