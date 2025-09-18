@@ -468,6 +468,12 @@ void* GetCublasDsoHandle() {
 #else
     return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so");
 #endif
+  } else if (CUDA_VERSION >= 13000 && CUDA_VERSION < 14000) {
+#ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
+    return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so.13");
+#else
+    return GetDsoHandleFromSearchPath(FLAGS_cublas_dir, "libcublas.so");
+#endif
   } else {
     std::string warning_msg(
         "Your CUDA_VERSION is less than 11 or greater than 13, paddle "
