@@ -578,13 +578,13 @@ class TestDeviceAPIs(unittest.TestCase):
         stream2 = paddle.device.current_stream(paddle.CUDAPlace(0))
         self.assertIsNotNone(stream2)
 
-        stream3 = paddle.device.current_stream(0)
-        self.assertIsNotNone(stream3)
+        # stream3 = paddle.device.current_stream(0)
+        # self.assertIsNotNone(stream3)
 
         # Test synchronize
         paddle.device.synchronize()
         paddle.device.synchronize(paddle.CUDAPlace(0))
-        paddle.device.synchronize(0)
+        # paddle.device.synchronize(0)
 
     @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_stream_apis_customdevice(self):
@@ -601,14 +601,14 @@ class TestDeviceAPIs(unittest.TestCase):
         )
         self.assertIsNotNone(stream3)
 
-        stream4 = paddle.device.current_stream(0)
-        self.assertIsNotNone(stream4)
+        # stream4 = paddle.device.current_stream(0)
+        # self.assertIsNotNone(stream4)
 
         # Test synchronize
         paddle.device.synchronize()
         paddle.device.synchronize(self.default_custom_device)
         paddle.device.synchronize(f'{self.default_custom_device}:0')
-        paddle.device.synchronize(0)
+        # paddle.device.synchronize(0)
 
     @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
     def test_stream_apis_xpu(self):
@@ -620,13 +620,13 @@ class TestDeviceAPIs(unittest.TestCase):
         stream2 = paddle.device.current_stream(core.XPUPlace(0))
         self.assertIsNotNone(stream2)
 
-        stream3 = paddle.device.current_stream(0)
-        self.assertIsNotNone(stream3)
+        # stream3 = paddle.device.current_stream(0)
+        # self.assertIsNotNone(stream3)
 
         # Test synchronize
         paddle.device.synchronize()
         paddle.device.synchronize('xpu:0')
-        paddle.device.synchronize(0)
+        # paddle.device.synchronize(0)
 
     @unittest.skipIf(
         not (

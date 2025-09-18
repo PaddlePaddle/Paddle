@@ -69,7 +69,6 @@ if core.is_compiled_with_cuda():
     from .cuda import (
         create_event as _create_event_base,
         create_stream as _create_stream_base,
-        current_stream as _current_stream_base,
         device_count,
         empty_cache,
         get_device_properties as _get_device_properties,
@@ -84,7 +83,6 @@ elif core.is_compiled_with_xpu():
     from .xpu import (
         create_event as _create_event_base,
         create_stream as _create_stream_base,
-        current_stream as _current_stream_base,
         device_count,
         empty_cache,
         max_memory_allocated,
@@ -103,7 +101,6 @@ else:
         from .custom import (
             create_event as _create_event_base,
             create_stream as _create_stream_base,
-            current_stream as _current_stream_base,
             device_count,
             empty_cache,
             get_device_properties as _get_device_properties,
@@ -1143,10 +1140,27 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
             >>> s3 = paddle.device.current_stream(place)
 
     '''
-    if not current_device_is_cpu:
-        if device is None:
-            device = paddle.framework._current_expected_place_()
-        return Stream(stream_base=_current_stream_base(device))
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    elif isinstance(device, str):
+        place = paddle.device._convert_to_place(device)
+    else:
+        place = device
+
+    if paddle.is_compiled_with_cuda() and isinstance(place, paddle.CUDAPlace):
+        return Stream(
+            stream_base=core._get_current_stream(place.get_device_id())
+        )
+    elif paddle.is_compiled_with_xpu() and isinstance(place, paddle.XPUPlace):
+        return Stream(
+            stream_base=core._xpu_get_current_stream(place.get_device_id())
+        )
+    elif isinstance(place, paddle.CustomPlace):
+        return Stream(
+            stream_base=core._get_current_custom_device_stream(
+                place.get_device_type(), place.get_device_id()
+            )
+        )
     else:
         raise TypeError(
             "device should be gpu, xpu, {}".format(
