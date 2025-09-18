@@ -2,7 +2,7 @@ name: Check PR Template
 
 on:
   pull_request:
-    branches: [fleety*]
+    branches: [fleety_*]
     types: [opened, synchronize, reopened, edited]
 
 jobs:
