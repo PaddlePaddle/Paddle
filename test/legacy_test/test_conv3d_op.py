@@ -63,7 +63,7 @@ def conv3d_forward_naive(
     stride, pad, dilation = (
         conv_param['stride'],
         conv_param['pad'],
-        conv_param['dilations'],
+        conv_param['dilation'],
     )
 
     # update pad and dilation
@@ -404,7 +404,7 @@ class TestConv3DOp(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilations': self.dilations,
+            'dilation': self.dilation,
         }
 
         if self.is_bfloat16_op():
@@ -442,7 +442,7 @@ class TestConv3DOp(OpTest):
             'strides': self.stride,
             'paddings': self.pad,
             'groups': self.groups,
-            'dilations': self.dilations,
+            'dilation': self.dilation,
             'use_cudnn': self.use_cudnn,
             'use_onednn': self.use_onednn,
             'data_format': self.data_format,
@@ -516,7 +516,7 @@ class TestConv3DOp(OpTest):
         pass
 
     def init_dilation(self):
-        self.dilations = [1, 1, 1]
+        self.dilation = [1, 1, 1]
 
     def init_group(self):
         self.groups = 1
@@ -555,7 +555,7 @@ class TestWith1x1(TestConv3DOp):
         self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
-        self.dilations = [1, 1, 1]
+        self.dilation = [1, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -571,7 +571,7 @@ class TestWithInput1x1Filter1x1(TestConv3DOp):
         self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
-        self.dilations = [1, 1, 1]
+        self.dilation = [1, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -587,7 +587,7 @@ class TestWithDilation(TestConv3DOp):
         self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
-        self.dilations = [2, 2, 2]
+        self.dilation = [2, 2, 2]
 
     def init_group(self):
         self.groups = 3
@@ -779,7 +779,7 @@ class TestConv3DOp_2(OpTest):
         conv3d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilations': self.dilations,
+            'dilation': self.dilation,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -802,7 +802,7 @@ class TestConv3DOp_2(OpTest):
             'paddings': self.pad,
             'padding_algorithm': self.padding_algorithm,
             'groups': self.groups,
-            'dilations': self.dilations,
+            'dilation': self.dilation,
             'use_cudnn': self.use_cudnn,
             'use_onednn': self.use_onednn,
             'data_format': self.data_format,
@@ -873,7 +873,7 @@ class TestConv3DOp_2(OpTest):
         pass
 
     def init_dilation(self):
-        self.dilations = [1, 1, 1]
+        self.dilation = [1, 1, 1]
 
     def init_group(self):
         self.groups = 1
@@ -967,7 +967,7 @@ class TestWith1x1_AsyPadding(TestConv3DOp_2):
         self.filter_size = [120, f_c, 1, 1, 1]
 
     def init_dilation(self):
-        self.dilations = [1, 1, 1]
+        self.dilation = [1, 1, 1]
 
     def init_group(self):
         self.groups = 3
@@ -986,7 +986,7 @@ class TestWithDilation_AsyPadding(TestConv3DOp_2):
         self.filter_size = [24, f_c, 2, 2, 2]
 
     def init_dilation(self):
-        self.dilations = [2, 2, 2]
+        self.dilation = [2, 2, 2]
 
     def init_group(self):
         self.groups = 3
