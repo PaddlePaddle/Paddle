@@ -1654,8 +1654,6 @@ void Buffer::clean_low_latency_two_stage_buffer(
     bool use_fp8) {
 #ifdef PADDLE_WITH_NVSHMEM
   EP_HOST_ASSERT(low_latency_mode);
-  CUDA_CHECK(
-      cudaMemsetAsync(rdma_buffer_ptr, 0, num_rdma_bytes, calc_ctx->stream()));
 
   const int num_local_experts = num_experts / num_ranks;
   const int num_rdma_experts = num_local_experts * NUM_MAX_NVL_PEERS;
