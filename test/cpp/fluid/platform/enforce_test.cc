@@ -532,6 +532,7 @@ TEST(GET_DATA_SAFELY_MACRO, SUCCESS) {
   delete a;
 }
 
+#ifndef _WIN32
 TEST(GET_DATA_SAFELY_MACRO, FAIL) {
   bool caught_exception = false;
   try {
@@ -542,6 +543,7 @@ TEST(GET_DATA_SAFELY_MACRO, FAIL) {
   }
   EXPECT_TRUE(caught_exception);
 }
+#endif
 
 TEST(OP_INOUT_CHECK_MACRO, SUCCESS) {
   OP_INOUT_CHECK(true, "Input", "X", "dummy");

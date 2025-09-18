@@ -104,7 +104,7 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   out->set_meta(meta);
   T* out_data = dev_ctx.template Alloc<T>(out);
   if (!is_initialized) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+    if (!x.meta().is_contiguous()) {
       StridedTensorCopy<T>(x,
                            common::vectorize<int64_t>(out->dims()),
                            common::vectorize<int64_t>(out->strides()),
@@ -120,12 +120,12 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
   if (!CheckIsDimsMatchBool(ad.src.dims(), value.dims())) {
     DenseTensor x_;
     DenseTensor value_;
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!value.meta().is_contiguous() || value.offset() != 0) {
+    if (!value.meta().is_contiguous()) {
       value_ = Tensor2Contiguous<Context>(dev_ctx, value);
     } else {
       value_ = value;
@@ -217,14 +217,13 @@ void IndexPutKernel_V2(const Context& dev_ctx,
                           "Indices in Index_put must be contiguous."));
   }
 
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||
-      value.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!value.meta().is_contiguous() || value.offset() != 0) {
+    if (!value.meta().is_contiguous()) {
       value_ = Tensor2Contiguous<Context>(dev_ctx, value);
     } else {
       value_ = value;

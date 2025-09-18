@@ -615,16 +615,44 @@ class TestCompareOpPlace(unittest.TestCase):
         self.assertEqual((result.numpy() == np.array([False])).all(), True)
 
 
-class TestCompareOut(unittest.TestCase):
+class TestCompareOutAndParamAlias(unittest.TestCase):
     def setUp(self) -> None:
         self.shape = [2, 3, 4, 5]
-        self.apis = [paddle.eq, paddle.gt]
-        self.np_apis = [np.equal, np.greater]
+        self.api_names = [
+            "eq",
+            "equal",
+            "ne",
+            "not_equal",
+            "lt",
+            "less",
+            "le",
+            "less_equal",
+            "gt",
+            "greater",
+            "ge",
+            "greater_equal",
+        ]
+        self.apis = [getattr(paddle, name) for name in self.api_names]
+
+        self.np_apis = [
+            np.equal,
+            np.equal,
+            np.not_equal,
+            np.not_equal,
+            np.less,
+            np.less,
+            np.less_equal,
+            np.less_equal,
+            np.greater,
+            np.greater,
+            np.greater_equal,
+            np.greater_equal,
+        ]
         self.input = np.random.rand(*self.shape).astype(np.float32)
         self.other = np.random.rand(*self.shape).astype(np.float32)
         self.other[0, 0, 3, 0] = self.input[0, 0, 3, 0]
 
-    def test_dygraph(self):
+    def test_dygraph_out(self):
         paddle.disable_static()
         for api, np_api in zip(self.apis, self.np_apis):
             x = paddle.to_tensor(self.input)
@@ -634,6 +662,48 @@ class TestCompareOut(unittest.TestCase):
             np.testing.assert_allclose(
                 out_holder.numpy(), np_api(self.input, self.other)
             )
+
+    def test_dygraph_param_alias(self):
+        paddle.disable_static()
+        for api, np_api in zip(self.apis, self.np_apis):
+            x = paddle.to_tensor(self.input)
+            y = paddle.to_tensor(self.other)
+            out1 = api(x, other=y)
+            out2 = api(x, y)
+            out3 = api(input=x, other=y)
+            out4 = api(other=y, input=x)
+            for out in [out1, out2, out3, out4]:
+                np.testing.assert_allclose(
+                    out.numpy(), np_api(self.input, self.other)
+                )
+
+    def test_dygraph_param_alias_out(self):
+        paddle.disable_static()
+        for api, np_api in zip(self.apis, self.np_apis):
+            x = paddle.to_tensor(self.input)
+            y = paddle.to_tensor(self.other)
+            out_holders = [paddle.zeros_like(x) for _ in range(4)]
+            api(x, other=y, out=out_holders[0])
+            api(x, y, out=out_holders[1])
+            api(input=x, other=y, out=out_holders[2])
+            api(other=y, input=x, out=out_holders[3])
+            for out in out_holders:
+                np.testing.assert_allclose(
+                    out.numpy(), np_api(self.input, self.other)
+                )
+
+    def test_tensor_api_dygraph_param_alias(self):
+        paddle.disable_static()
+        for api, np_api in zip(self.api_names, self.np_apis):
+            x = paddle.to_tensor(self.input)
+            y = paddle.to_tensor(self.other)
+            api = getattr(x, api)
+            out1 = api(y)
+            out2 = api(other=y)
+            for out in [out1, out2]:
+                np.testing.assert_allclose(
+                    out.numpy(), np_api(self.input, self.other)
+                )
 
 
 if __name__ == '__main__':

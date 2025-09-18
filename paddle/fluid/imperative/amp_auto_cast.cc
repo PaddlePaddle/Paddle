@@ -110,9 +110,9 @@ OpSupportedInfos(const std::string& place,
     }
   }
 
-  VLOG(4) << "-- The size of all_ops: " << all_ops.size() << " --";
-  VLOG(4) << "-- The size of supported_ops: " << supported_ops.size() << " --";
-  VLOG(4) << "-- The size of unsupported_ops: " << unsupported_ops.size()
+  VLOG(5) << "-- The size of all_ops: " << all_ops.size() << " --";
+  VLOG(5) << "-- The size of supported_ops: " << supported_ops.size() << " --";
+  VLOG(5) << "-- The size of unsupported_ops: " << unsupported_ops.size()
           << " --";
   return std::make_tuple(
       std::move(all_ops), std::move(supported_ops), std::move(unsupported_ops));
