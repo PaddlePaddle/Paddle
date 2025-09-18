@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/grid_sample_grad_kernel.h"
 
-#include "paddle/phi/backends/gpu/cudnn_desc.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
