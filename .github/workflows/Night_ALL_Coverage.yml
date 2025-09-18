@@ -122,6 +122,7 @@ jobs:
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           rm -rf * .[^.]*
           set -e
+          source ${{ github.workspace }}/../../../proxy
           echo "Clone Paddle"
           git clone --depth=1000 https://github.com/PaddlePaddle/Paddle.git .
           git config --global user.name "PaddleCI"
@@ -133,23 +134,14 @@ jobs:
           set -e
           git checkout test
           echo "Pull upstream $BRANCH"
-          source ${{ github.workspace }}/../../../proxy
           bash ci/git_pull.sh $BRANCH
           '
-
-      - name: Check bypass
-        id: check-bypass
-        uses: ./.github/actions/check-bypass
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: coverage
 
       - name: Build
         run: |
           docker exec -t ${{ env.container_name }}  /bin/bash -c '
           mkdir -p ${CFS_DIR}/.cache/coverage
           mkdir -p ${CFS_DIR}/.ccache/coverage
-          source ${{ github.workspace }}/../../../proxy
           bash ${ci_scripts}/cmake-predownload.sh
           bash $ci_scripts/coverage_build.sh bdist_wheel
           '
