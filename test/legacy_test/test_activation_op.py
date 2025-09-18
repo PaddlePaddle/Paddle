@@ -1149,7 +1149,7 @@ class TestSinhAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.sinh(var)
             loss.backward()
-            grad_var = var.gradient()
+            grad_var = var.grad
             self.assertEqual(grad_var.shape, input_x.shape)
 
 
@@ -1282,7 +1282,7 @@ class TestCoshAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.cosh(var)
             loss.backward()
-            grad_var = var.gradient()
+            grad_var = var.grad
             self.assertEqual(grad_var.shape, input_x.shape)
 
 
@@ -2385,7 +2385,7 @@ class TestTanAPI(unittest.TestCase):
             var.stop_gradient = False
             loss = paddle.tan(var)
             loss.backward()
-            grad_var = var.gradient()
+            grad_var = var.grad
             self.assertEqual(grad_var.shape, input_x.shape)
 
 
