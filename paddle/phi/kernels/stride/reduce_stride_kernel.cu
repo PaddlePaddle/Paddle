@@ -22,8 +22,11 @@
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 
+#include "paddle/phi/kernels/prod_kernel.h"
+#include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_amax_kernel.h"
 #include "paddle/phi/kernels/reduce_amin_kernel.h"
+#include "paddle/phi/kernels/reduce_any_kernel.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 
@@ -1203,7 +1206,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
     x_ = x;
   }
 
-  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1240,7 +1243,7 @@ void AMinStrideKernel(const Context& dev_ctx,
   } else {
     x_ = x;
   }
-  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1278,7 +1281,7 @@ void MaxStrideKernel(const Context& dev_ctx,
     x_ = x;
   }
 
-  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1315,7 +1318,7 @@ void MinStrideKernel(const Context& dev_ctx,
   } else {
     x_ = x;
   }
-  if (x_.meta().is_contiguous() && (out->dims().size() > 0)) {
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
     out->set_meta(meta);
@@ -1326,6 +1329,167 @@ void MinStrideKernel(const Context& dev_ctx,
   T ident = std::numeric_limits<T>::max();
   StrideImpl<T, Context, kps::MinFunctor>(
       dev_ctx, x_, dims, keep_dim, ident, out);
+  return;
+}
+
+template <typename T, typename Context>
+void ProdStrideKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      bool reduce_all,
+                      DenseTensor* out) {
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::ProdKernel<T, Context>(dev_ctx, x_, dims, keep_dim, reduce_all, out);
+    return;
+  }
+
+  if (x.numel() == 0) {
+    // fill with 1.
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
+    return;
+  }
+
+  T ident = 1;
+  StrideImpl<T, Context, kps::MulFunctor>(
+      dev_ctx, x_, dims, keep_dim, ident, out);
+  return;
+}
+
+template <typename T, typename Context>
+void AllStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& dims,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::AllKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<bool>(out);
+    if (out->numel() > 0) {
+      std::vector<int64_t> vec_dims = common::vectorize(out->dims());
+      phi::Full<bool, Context>(dev_ctx, phi::IntArray(vec_dims), 0, out);
+    }
+    return;
+  }
+
+  auto out_dtype = phi::DataType::BOOL;
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
+        out_dtype,
+        "StrideImpl",
+        ([&] {
+          data_t ident = static_cast<data_t>(1);
+          StrideImpl<data_t, Context, kps::LogicalAndFunctor>(
+              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
+        }));
+  } else {
+    T ident = 0;
+    StrideImpl<T, Context, kps::LogicalAndFunctor>(
+        dev_ctx, x_, dims, keep_dim, ident, out);
+  }
+  return;
+}
+
+template <typename T, typename Context>
+void AnyStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& dims,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::AnyKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  auto out_dtype = phi::DataType::BOOL;
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
+        out_dtype,
+        "StrideImpl",
+        ([&] {
+          data_t ident = static_cast<data_t>(0);
+          StrideImpl<data_t, Context, kps::LogicalOrFunctor>(
+              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
+        }));
+  } else {
+    T ident = 0;
+    StrideImpl<T, Context, kps::LogicalOrFunctor>(
+        dev_ctx, x_, dims, keep_dim, ident, out);
+  }
   return;
 }
 
@@ -1347,5 +1511,36 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_KERNEL(
     min, GPU, STRIDED, phi::MinStrideKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(
+    prod, GPU, STRIDED, phi::ProdStrideKernel, float, double, int, int64_t) {}
+
+PD_REGISTER_KERNEL(any,
+                   GPU,
+                   STRIDED,
+                   phi::AnyStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+PD_REGISTER_KERNEL(all,
+                   GPU,
+                   STRIDED,
+                   phi::AllStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   bool,
+                   complex64,
+                   complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 #endif
