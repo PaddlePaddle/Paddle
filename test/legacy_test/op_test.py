@@ -2996,8 +2996,13 @@ class OpTest(unittest.TestCase):
                 'on',
             ]
             or not (
-                core.is_compiled_with_cuda()
-                and core.op_support_gpu(self.op_type)
+                (
+                    (
+                        core.is_compiled_with_cuda()
+                        and core.op_support_gpu(self.op_type)
+                    )
+                    or is_custom_device()
+                )
                 and not cpu_only
             )
             or self.op_type

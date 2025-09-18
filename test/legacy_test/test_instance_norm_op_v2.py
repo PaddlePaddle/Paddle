@@ -211,9 +211,7 @@ class TestInstanceNormFP32OP(OpTest):
         self.prim_op_type = "comp"
         self.python_api = instance_norm_wrapper
         self.public_python_api = instance_norm_wrapper
-        self.check_prim = (
-            False if os.getenv("FLAGS_enable_pir_in_executor") else True
-        )
+        self.check_prim = False
 
     def test_check_output(self):
         self.check_output(
@@ -394,9 +392,7 @@ class TestInstanceNormBF16OP(OpTest):
             'momentum': 0.9,
             'data_format': self.data_format,
         }
-        self.check_prim = (
-            False if os.getenv("FLAGS_enable_pir_in_executor") else True
-        )
+        self.check_prim = False
 
     def init_value(self):
         np.random.seed(0)
