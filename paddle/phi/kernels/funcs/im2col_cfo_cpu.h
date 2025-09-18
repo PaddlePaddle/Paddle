@@ -54,18 +54,21 @@ inline void im2col_common(const phi::DenseTensor& im,
       int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
       for (int w = 0; w < output_width; ++w) {
         int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
-        int im_idx;
-        if (data_layout != DataLayout::kNHWC) {
-          im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
-        } else {
-          im_idx = (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
-        }
         int col_idx = (c * output_height + h) * output_width + w;
 
-        col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
-                             im_col_idx < 0 || im_col_idx >= im_width)
-                                ? static_cast<T>(0)
-                                : im_data[im_idx];
+        // Check bounds first to avoid buffer overflow in im_idx calculation
+        if (im_row_idx < 0 || im_row_idx >= im_height || im_col_idx < 0 ||
+            im_col_idx >= im_width) {
+          col_data[col_idx] = static_cast<T>(0);
+        } else {
+          int im_idx;
+          if (data_layout != DataLayout::kNHWC) {
+            im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
+          } else {
+            im_idx = (im_row_idx * im_width + im_col_idx) * im_channels + c_im;
+          }
+          col_data[col_idx] = im_data[im_idx];
+        }
       }
     }
   }

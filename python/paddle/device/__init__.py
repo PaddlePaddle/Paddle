@@ -1387,7 +1387,7 @@ class Stream:
 
 
 def _device_to_paddle(
-    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None,
+    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None = None,
 ):
     if isinstance(dev, (paddle.CUDAPlace, paddle.CustomPlace)):
         return dev

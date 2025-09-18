@@ -108,7 +108,7 @@ struct SelectedRowsAdd<phi::GPUContext, T> {
   }
 };
 
-template struct SelectedRowsAdd<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAdd<phi::GPUContext, float>;
 template struct SelectedRowsAdd<phi::GPUContext, double>;
 
 namespace {
@@ -258,7 +258,7 @@ struct SelectedRowsAddTo<phi::GPUContext, T> {
   }
 };
 
-template struct SelectedRowsAddTo<phi::GPUContext, float>;
+template struct PADDLE_API SelectedRowsAddTo<phi::GPUContext, float>;
 template struct SelectedRowsAddTo<phi::GPUContext, double>;
 template struct SelectedRowsAddTo<phi::GPUContext, int>;
 template struct SelectedRowsAddTo<phi::GPUContext, int64_t>;

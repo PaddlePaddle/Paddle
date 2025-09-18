@@ -24,6 +24,9 @@ from paddle.base.framework import (
     in_dynamic_or_pir_mode,
     in_pir_mode,
 )
+from paddle.utils.decorator_utils import (
+    param_two_alias,
+)
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -317,6 +320,7 @@ def batch_norm(
         return helper.append_activation(batch_norm_out)
 
 
+@param_two_alias(["x", "input"], ["epsilon", "eps"])
 def layer_norm(
     x: Tensor,
     normalized_shape: int | Sequence[int],
@@ -328,9 +332,13 @@ def layer_norm(
     """
     nn.LayerNorm is recommended.
     For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
+     .. note::
+        Alias Support: The parameter name ``input`` can be used as an alias for ``x`` and the parameter name ``eps`` can be used as an alias for ``epsilon``.
+        For example, ``layer_norm(input=tensor_x, eps=1e-5)`` is equivalent to ``layer_norm(x=tensor_x, epsilon=1e-5)``.
 
     Parameters:
         x(Tensor): Input Tensor. It's data type should be bfloat16, float16, float32, float64.
+            alias: ``input``.
         normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
@@ -339,6 +347,7 @@ def layer_norm(
         bias(Tensor, optional): The bias tensor of layer_norm. Default: None.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
+            alias: ``eps``.
         name(str, optional): Name for the LayerNorm, default is None. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
