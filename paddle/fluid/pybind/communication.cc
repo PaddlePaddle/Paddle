@@ -26,6 +26,9 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/gpu_task.h"
+#include "paddle/phi/core/distributed/gpu_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_config.h"
 #endif
 #include "paddle/phi/core/distributed/store/store_utils.h"
@@ -156,6 +159,50 @@ void BindNCCLConfig(py::module *m) {
                   py::arg("algoStr") = "",
                   py::arg("protoStr") = "",
                   py::call_guard<py::gil_scoped_release>());
+}
+
+void BindGPUTaskManager(py::module *m) {
+  py::class_<phi::distributed::GPUTaskManager,
+             std::shared_ptr<phi::distributed::GPUTaskManager>>(
+      *m, "GPUTaskManager")
+      .def_static(
+          "set_start_time",
+          []() {
+            auto &gpu_task_manager =
+                phi::distributed::GPUTaskManager::GetInstance();
+            gpu_task_manager.SetStartTime();
+          },
+          py::call_guard<py::gil_scoped_release>())
+      .def_static(
+          "enqueue",
+          [](std::shared_ptr<phi::distributed::GPUTask> gpu_task) {
+            auto &gpu_task_manager =
+                phi::distributed::GPUTaskManager::GetInstance();
+            gpu_task_manager.GPUTaskEnqueue(std::move(gpu_task));
+          },
+          py::call_guard<py::gil_scoped_release>());
+}
+
+void BindGPUTask(py::module *m) {
+  py::class_<phi::distributed::GPUTask,
+             std::shared_ptr<phi::distributed::GPUTask>>(*m, "GPUTask")
+      .def_static(
+          "create",
+          [](const std::string &label) {
+            const auto deviceId = phi::backends::gpu::GetCurrentDeviceId();
+            const auto &place = phi::GPUPlace(deviceId);
+            return std::make_shared<phi::distributed::GPUTask>(
+                place, nullptr, label);
+          },
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "start_record",
+          [](phi::distributed::GPUTask &self) { return self.StartRecord(); },
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "end_record",
+          [](phi::distributed::GPUTask &self) { return self.EndRecord(); },
+          py::call_guard<py::gil_scoped_release>());
 }
 #endif
 }  // namespace paddle::pybind

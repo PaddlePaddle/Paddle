@@ -1833,6 +1833,20 @@ PHI_DEFINE_EXPORTED_bool(enable_async_trace,
                          false,
                          "enable collective async trace");
 
+/**
+ * gpu timer related FLAG
+ * Name: enable_gpu_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable gpu async trace.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_gpu_async_trace,
+                         false,
+                         "enable gpu async trace");
+PHI_DEFINE_EXPORTED_bool(enable_time_compare, false, "enable time compare");
+
 PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");
 
 PHI_DEFINE_EXPORTED_bool(
