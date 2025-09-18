@@ -35,8 +35,6 @@ class TestCurrentStream(unittest.TestCase):
 
             self.assertEqual(s1, s2)
 
-            self.assertRaises(ValueError, cuda.current_stream, "gpu:0")
-
 
 class TestSynchronize(unittest.TestCase):
     def test_synchronize(self):
@@ -44,8 +42,6 @@ class TestSynchronize(unittest.TestCase):
             self.assertIsNone(cuda.synchronize())
             self.assertIsNone(cuda.synchronize(0))
             self.assertIsNone(cuda.synchronize(paddle.CUDAPlace(0)))
-
-            self.assertRaises(ValueError, cuda.synchronize, "gpu:0")
 
 
 class TestCUDAStream(unittest.TestCase):

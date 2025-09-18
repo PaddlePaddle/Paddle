@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     ]
 
     from paddle import CUDAPlace, CustomPlace
+    from paddle.base.libpaddle import _customDeviceProperties
 
     _CustomPlaceLike: TypeAlias = Union[
         CUDAPlace,
@@ -63,6 +64,7 @@ if TYPE_CHECKING:
     ]
 
 # Dynamically import device functions based on available devices
+current_device_is_cpu = 0
 if core.is_compiled_with_cuda():
     from .cuda import (
         create_event as _create_event_base,
@@ -70,7 +72,7 @@ if core.is_compiled_with_cuda():
         current_stream as _current_stream_base,
         device_count,
         empty_cache,
-        get_device_properties,
+        get_device_properties as _get_device_properties,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
@@ -106,7 +108,7 @@ else:
             current_stream as _current_stream_base,
             device_count,
             empty_cache,
-            get_device_properties,
+            get_device_properties as _get_device_properties,
             max_memory_allocated,
             max_memory_reserved,
             memory_allocated,
@@ -115,6 +117,8 @@ else:
             reset_max_memory_reserved,
             synchronize,
         )
+    else:
+        current_device_is_cpu = 1
 
 __all__ = [
     'get_cudnn_version',
@@ -546,6 +550,38 @@ def get_available_custom_device() -> list[str] | None:
 
     """
     return core.get_available_custom_device()
+
+
+def get_device_properties(
+    device: _CustomPlaceLike | None = None,
+) -> _customDeviceProperties:
+    """
+
+    Return the properties of given device.
+
+    Args:
+        device(|paddle.CustomPlace|int|str|None, optional): The device, the id of the device or
+            the string name of device like npu:x' which to get the properties of the
+            device from. If device is None, the device is the current device.
+            Default: None.
+
+    Returns:
+       _customDeviceProperties: The properties of the device which include ASCII string
+        identifying device, major compute capability, minor compute capability, global
+        memory available and the number of multiprocessors on the device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # import paddle
+            >>> # paddle.device.set_device('npu')
+            >>> # paddle.device.get_device_properties('npu:0')
+            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
+
+            >>> # paddle.device.get_device_properties('npu')
+            >>> # _customDeviceProperties(name='', major=0, minor=0, total_memory=0MB, multi_processor_count=0)
+    """
+    return _get_device_properties(device)
 
 
 def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
@@ -1110,10 +1146,16 @@ def current_stream(device: PlaceLike | None = None) -> Stream:
             >>> s3 = paddle.device.current_stream(place)
 
     '''
-    if device is None:
-        device = paddle.framework._current_expected_place_()
-
-    return Stream(stream_base=_current_stream_base(device))
+    if not current_device_is_cpu:
+        if device is None:
+            device = paddle.framework._current_expected_place_()
+        return Stream(stream_base=_current_stream_base(device))
+    else:
+        raise TypeError(
+            "device should be gpu, xpu, {}".format(
+                ",".join(paddle.device.get_all_custom_device_type())
+            )
+        )
 
 
 def set_stream(stream: Stream) -> Stream:

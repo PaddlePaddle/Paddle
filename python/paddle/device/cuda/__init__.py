@@ -132,8 +132,19 @@ def synchronize(device: _CudaPlaceLike | None = None) -> None:
             device_id = device
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('gpu:'):
+                device_id = int(device[4:])
+            elif device == 'gpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device.cuda."
+                    "synchronize only support string which is like 'gpu:x' or 'gpu'. "
+                    "Please input appropriate string again!"
+                )
         else:
-            raise ValueError("device type must be int or paddle.CUDAPlace")
+            raise ValueError("device type must be int, str or paddle.CUDAPlace")
     else:
         place = paddle.framework._current_expected_place()
         if paddle.is_compiled_with_cuda() and isinstance(
@@ -630,10 +641,12 @@ def get_device_properties(
         elif isinstance(device, str):
             if device.startswith('gpu:'):
                 device_id = int(device[4:])
+            elif device == 'gpu':
+                device_id = 0
             else:
                 raise ValueError(
                     f"The current string {device} is not expected. Because paddle.device."
-                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
+                    "cuda.get_device_properties only support string which is like 'gpu:x' or 'gpu'. "
                     "Please input appropriate string again!"
                 )
         else:

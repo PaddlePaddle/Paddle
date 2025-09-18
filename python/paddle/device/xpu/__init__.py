@@ -167,6 +167,17 @@ def synchronize(device: _XPUPlaceLike | None = None) -> int:
             device_id = device
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('xpu:'):
+                device_id = int(device[4:])
+            elif device == 'xpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device.cuda."
+                    "synchronize only support string which is like 'xpu:x' or 'xpu'. "
+                    "Please input appropriate string again!"
+                )
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
 

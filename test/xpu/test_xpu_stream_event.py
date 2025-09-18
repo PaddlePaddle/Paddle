@@ -33,7 +33,6 @@ class TestCurrentStream(unittest.TestCase):
             s2 = xpu.current_stream(paddle.XPUPlace(0))
             self.assertTrue(isinstance(s2, xpu.Stream))
             self.assertEqual(s1, s2)
-            self.assertRaises(ValueError, xpu.current_stream, "xpu:0")
 
 
 class TestSynchronize(unittest.TestCase):
@@ -42,8 +41,6 @@ class TestSynchronize(unittest.TestCase):
             self.assertIsNone(xpu.synchronize())
             self.assertIsNone(xpu.synchronize(0))
             self.assertIsNone(xpu.synchronize(paddle.XPUPlace(0)))
-
-            self.assertRaises(ValueError, xpu.synchronize, "xpu:0")
 
 
 class TestXPUStream(unittest.TestCase):

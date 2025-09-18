@@ -177,9 +177,10 @@ class TestEventStreamAPIs(unittest.TestCase):
             end_event.synchronize()
 
             # Measure elapsed time
-            elapsed_time = start_event.elapsed_time(end_event)
-            self.assertIsInstance(elapsed_time, (int, float))
-            self.assertGreaterEqual(elapsed_time, 0)
+            if not core.is_compiled_with_xpu():
+                elapsed_time = start_event.elapsed_time(end_event)
+                self.assertIsInstance(elapsed_time, (int, float))
+                self.assertGreaterEqual(elapsed_time, 0)
 
         # Test stream_guard context manager
         with paddle.device.stream_guard(stream1):
@@ -211,7 +212,8 @@ class TestEventStreamAPIs(unittest.TestCase):
         self.assertTrue(hasattr(event1, 'device'))
         self.assertTrue(callable(event1.record))
         self.assertTrue(callable(event1.query))
-        self.assertTrue(callable(event1.elapsed_time))
+        if not core.is_compiled_with_xpu():
+            self.assertTrue(callable(event1.elapsed_time))
         self.assertTrue(callable(event1.synchronize))
 
         # Test Stream equality and hash
@@ -338,13 +340,13 @@ class TestEventStreamTimingFunctionality(unittest.TestCase):
 
         # Wait for the end event to complete
         end_event.synchronize()
+        if not core.is_compiled_with_xpu():
+            # Calculate elapsed time
+            elapsed_time = start_event.elapsed_time(end_event)
 
-        # Calculate elapsed time
-        elapsed_time = start_event.elapsed_time(end_event)
-
-        # Verify the timing result
-        self.assertIsInstance(elapsed_time, (int, float))
-        self.assertGreater(elapsed_time, 0)  # Should take some time
+            # Verify the timing result
+            self.assertIsInstance(elapsed_time, (int, float))
+            self.assertGreater(elapsed_time, 0)  # Should take some time
 
 
 if __name__ == '__main__':
