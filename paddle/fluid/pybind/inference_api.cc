@@ -761,10 +761,13 @@ void BindPaddlePredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](PaddlePredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            if (device_types.size() > 0 && device_types[0] == "npu") {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clone", [](PaddlePredictor &self) { return self.Clone(nullptr); })
@@ -818,10 +821,13 @@ void BindNativePredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](NativePaddlePredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            if (device_types.size() > 0 && device_types[0] == "npu") {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clone",
@@ -1193,10 +1199,13 @@ void BindAnalysisPredictor(py::module *m) {
       .def(
           "zero_copy_run",
           [](AnalysisPredictor &self, bool switch_stream) {
-#if !defined(PADDLE_NO_PYTHON)
-            pybind11::gil_scoped_release release;
-#endif
-            return self.ZeroCopyRun(switch_stream);
+            auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+            if (device_types.size() > 0 && device_types[0] == "npu") {
+              pybind11::gil_scoped_release release;
+              return self.ZeroCopyRun(switch_stream);
+            } else {
+              return self.ZeroCopyRun(switch_stream);
+            }
           },
           py::arg("switch_stream") = false)
       .def("clear_intermediate_tensor",
