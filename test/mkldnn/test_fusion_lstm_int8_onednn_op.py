@@ -131,7 +131,7 @@ class TestFusionLSTMINT8ONEDNNOp(OpTest):
             'is_reverse': self.is_reverse,
             'use_peepholes': self.use_peepholes,
             'use_onednn': self.use_onednn,
-            'mkldnn_data_type': self.onednn_data_type,
+            'onednn_data_type': self.onednn_data_type,
             'force_fp32_output': self.force_fp32_output,
             'Scale_data': scale_data,
             'Shift_data': shift_data,

@@ -18,8 +18,6 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/complex_kernel_impl.h"
 
-#include "paddle/phi/common/complex.h"
-
 PD_REGISTER_KERNEL(conj,
                    CPU,
                    ALL_LAYOUT,

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle import base
@@ -45,9 +46,9 @@ class TensorToTest(unittest.TestCase):
     def test_Tensor_to_device(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             places.append("gpu:0")
-            places.append("gpu")
+            places.append(get_device())
         if base.core.is_compiled_with_xpu():
             places.append("xpu:0")
             places.append("xpu")
@@ -55,7 +56,7 @@ class TensorToTest(unittest.TestCase):
         for place in places:
             tensorx = tensorx.to(place)
             placex_str = str(tensorx.place)
-            if place == "gpu" or place == "xpu":
+            if place == get_device() or place == "xpu":
                 self.assertTrue(placex_str, "Place(" + place + ":0)")
             else:
                 self.assertTrue(placex_str, "Place(" + place + ")")
@@ -70,9 +71,9 @@ class TensorToTest(unittest.TestCase):
     def test_Tensor_to_device_dtype(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         places = ["cpu"]
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             places.append("gpu:0")
-            places.append("gpu")
+            places.append(get_device())
         if base.core.is_compiled_with_xpu():
             places.append("xpu:0")
             places.append("xpu")
@@ -96,7 +97,7 @@ class TensorToTest(unittest.TestCase):
             for place in places:
                 tensorx = tensorx.to(place, dtype)
                 placex_str = str(tensorx.place)
-                if place == "gpu" or place == "xpu":
+                if place == get_device() or place == "xpu":
                     self.assertTrue(placex_str, "Place(" + place + ":0)")
                 else:
                     self.assertTrue(placex_str, "Place(" + place + ")")
@@ -140,6 +141,15 @@ class TensorToTest(unittest.TestCase):
         self.assertTrue(place2_str, "Place(cpu)")
         type2_str = str(tensor2.dtype)
         self.assertTrue(type2_str, "paddle.int8")
+        tensor3 = paddle.to_tensor([7, 8, 9])
+        tensor4 = tensor3.to(dtype="int8", non_blocking=True)
+        self.assertTrue(tensor4.dtype, "paddle.int8")
+        tensor5 = tensor3.to(dtype="int8", copy=True)
+        self.assertTrue(tensor5.dtype, "paddle.int8")
+        tensor6 = tensor3.to(dtype="int8", non_blocking=True, copy=True)
+        self.assertTrue(tensor6.dtype, "paddle.int8")
+        tensor7 = tensor3.to(dtype=tensor3.dtype, copy=True)
+        self.assertTrue(tensor7.dtype, tensor3.dtype)
 
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])

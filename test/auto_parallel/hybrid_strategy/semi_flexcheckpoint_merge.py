@@ -241,7 +241,7 @@ class TestDistCheckpoint:
         dist.save_state_dict(model.state_dict(), model_path, safetensors=False)
 
         dist.flex_checkpoint.dcp.load_state_dict.merge_sharded_state_dict(
-            model_path, single_path, offload=True, safetensors=False, file_num=2
+            model_path, single_path, offload=True, safetensors=False
         )
         # assert self.count_files_in_temp_dir(single_path) == 5, (
         #     f"Expected 5 files in temp dir, but got {self.count_files_in_temp_dir(single_path)}"

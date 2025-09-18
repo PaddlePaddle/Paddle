@@ -99,6 +99,46 @@ def forward_pre_hook1(layer, input):
     return input_return
 
 
+def forward_pre_hook_with_kwargs(layer, args, kwargs):
+    kwargs['x'] = kwargs['x'] * 2
+    return (args, kwargs)
+
+
+def forward_post_hook_with_kwargs(layer, inputs, kwargs, outputs):
+    outputs = outputs + kwargs["x"]
+    return outputs
+
+
+class SimpleNetWithKWArgs(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        z = x + y
+        return z
+
+
+class DummyContextManager:
+    def __init__(self, inp):
+        self.input = inp
+
+    def __enter__(self, *args, **kwargs):
+        self.input.append(2)
+
+    def __exit__(self, *args, **kwargs):
+        self.input.append(-1)
+
+
+class FailsNetInForward(paddle.nn.Layer):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def forward(self, x, fail: bool = True):
+        if fail:
+            raise RuntimeError("failing in forward")
+        return x
+
+
 class Test_Forward_Hook(unittest.TestCase):
     # test forward_pre_hook and forward_post_hook that have return value
     def test_forward_hook_return_value(self):
@@ -254,33 +294,91 @@ class Test_Forward_Hook(unittest.TestCase):
                 self.assertFalse(call_forward_post_hook)
                 self.assertFalse(call_forward_pre_hook)
 
+    def test_always_called_forward_hooks(self):
+        x = paddle.ones((10, 10))
+        stack = []
+        ctx = None
 
-def forward_pre_hook_with_kwargs(layer, args, kwargs):
-    kwargs['x'] = kwargs['x'] * 2
-    return (args, kwargs)
+        def setup_context():
+            nonlocal ctx
+            ctx = DummyContextManager(stack)
 
+        def ctx_setup_hook(m, i):
+            setup_context()
+            ctx.__enter__()
 
-class SimpleNetWithKWArgs(paddle.nn.Layer):
-    def __init__(
-        self,
-    ):
-        super().__init__()
+        def ctx_setup_failure_hook(m, i):
+            setup_context()
+            ctx.__enter__()
+            raise RuntimeError("failing in ctx setup")
 
-    def forward(self, x, y):
-        z = x + y
+        def ctx_shutdown_hook(m, i, o):
+            ctx.__exit__()
 
-        return z
+        def ctx_shutdown_failure_hook(m, i, o):
+            ctx.__exit__()
+            raise RuntimeError("failing in ctx shutdown")
+
+        def throw_hook(m, i, o):
+            raise RuntimeError("failing in throw")
+
+        net = FailsNetInForward()
+        forward_pre_hook_handle = net.register_forward_pre_hook(ctx_setup_hook)
+        forward_post_hook_handle = net.register_forward_post_hook(
+            ctx_shutdown_hook, always_call=True
+        )
+        self.assertTrue(len(net._forward_post_hooks_always_called) == 1)
+
+        # make sure always_called forward hook runs when model.forward raises RuntimeError
+        with self.assertRaisesRegex(RuntimeError, "failing in forward"):
+            net(x=x)
+        self.assertEqual(stack, [2, -1])
+
+        # make sure that always_called forward hook does not run twice if there is no error
+        net(x, fail=False)
+        self.assertEqual(stack, [2, -1, 2, -1])
+
+        # make sure always_called forward hook runs when forward pre hook raises RuntimeError
+        forward_pre_hook_handle.remove()
+        net.register_forward_pre_hook(ctx_setup_failure_hook)
+        with self.assertRaisesRegex(RuntimeError, "failing in ctx setup"):
+            net(x, fail=False)
+        self.assertEqual(stack, [2, -1, 2, -1, 2, -1])
+
+        # make sure always_called hook runs when another always_called forward hook raises an error
+        forward_post_hook_handle2 = net.register_forward_post_hook(
+            throw_hook, prepend=True, always_call=True
+        )
+
+        # error raised should not be error of the forced hook
+        with self.assertRaisesRegex(RuntimeError, "failing in ctx setup"):
+            net(x, fail=False)
+        self.assertEqual(stack, [2, -1, 2, -1, 2, -1, 2, -1])
+
+        # make sure that always called forward hooks are properly removed
+        forward_post_hook_handle.remove()
+        forward_post_hook_handle2.remove()
+        self.assertTrue(len(net._forward_post_hooks_always_called) == 0)
+
+        # make sure that always called forward hook is not run twice if it fails while running
+        forward_post_hook_handle3 = net.register_forward_post_hook(
+            ctx_shutdown_failure_hook, always_call=True
+        )
+        with self.assertRaisesRegex(RuntimeError, "failing in ctx setup"):
+            net(x, fail=False)
+        self.assertEqual(stack, [2, -1, 2, -1, 2, -1, 2, -1, 2, -1])
 
 
 class TestHookWithKWArgs(unittest.TestCase):
     def test_kwargs_hook(self):
+        x = paddle.randn((2, 3))
+        y = paddle.randn((2, 3))
+
+        # 1. test forward pre hook
         net = SimpleNetWithKWArgs()
         remove_handler = net.register_forward_pre_hook(
             forward_pre_hook_with_kwargs, with_kwargs=True
         )
-
-        x = paddle.randn((2, 3))
-        y = paddle.randn((2, 3))
 
         out = net(x=x, y=y)
         np.testing.assert_allclose(out.numpy(), (x * 2 + y).numpy())
@@ -288,6 +386,20 @@ class TestHookWithKWArgs(unittest.TestCase):
         remove_handler.remove()
         out = net(x=x, y=y)
         np.testing.assert_allclose(out.numpy(), (x + y).numpy())
+
+        # 2. test forward pre and forward post hooks
+        net = SimpleNetWithKWArgs()
+        net.register_forward_post_hook(
+            forward_post_hook_with_kwargs, with_kwargs=True
+        )
+        net.register_forward_pre_hook(
+            forward_pre_hook_with_kwargs, with_kwargs=True
+        )
+
+        out = net(x=x, y=y)
+        np.testing.assert_allclose(
+            out.numpy(), (x * 4 + y).numpy(), rtol=1e-5, atol=1e-6
+        )
 
 
 if __name__ == '__main__':

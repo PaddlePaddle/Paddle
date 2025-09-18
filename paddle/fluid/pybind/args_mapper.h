@@ -25,7 +25,7 @@ namespace paddle {
 namespace pybind {
 void ArgMaxMinMapper(PyObject* args,
                      PyObject* kwargs,
-                     Tensor* x,
+                     Tensor** x_ptr_ptr,
                      paddle::experimental::Scalar* axis,
                      bool* keepdims,
                      bool* flatten,
@@ -38,6 +38,18 @@ void ArgMaxMinMapper(PyObject* args,
                      bool* flatten,
                      phi::DataType* dtype);
 
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  Tensor** x_ptr_ptr,
+                  paddle::experimental::IntArray* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim);
+void ArgSumMapper(PyObject* args,
+                  PyObject* kwargs,
+                  pir::Value* x,
+                  pir::Value* axis,
+                  phi::DataType* dtype,
+                  bool* keepdim);
 }  // namespace pybind
 
 }  // namespace paddle

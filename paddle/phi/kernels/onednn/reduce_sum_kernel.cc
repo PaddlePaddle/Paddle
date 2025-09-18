@@ -48,4 +48,4 @@ void SumRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::dtype::bfloat16) {}
+    sum_raw, OneDNN, ONEDNN, phi::SumRawKernel, float, phi::bfloat16) {}

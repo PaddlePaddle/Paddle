@@ -25,3 +25,12 @@ PD_REGISTER_KERNEL(slogdet,
                    double,
                    phi::complex64,
                    phi::complex128) {}
+
+PD_REGISTER_KERNEL(slogdet_v2,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SlogDeterminantV2Kernel,
+                   float,
+                   double,
+                   phi::complex64,
+                   phi::complex128) {}

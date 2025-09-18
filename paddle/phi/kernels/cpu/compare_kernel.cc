@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"

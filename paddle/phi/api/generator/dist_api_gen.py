@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -1227,9 +1227,26 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_calls = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_creation_code += (
+                            f"std::tuple<{tuple_types}> out_tmp;"
+                            f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                            f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                            f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):

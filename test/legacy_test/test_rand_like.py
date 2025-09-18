@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base, core
@@ -49,8 +49,8 @@ class TestRandLikeAPI(unittest.TestCase):
                 out2 = paddle.rand_like(x_float32, name="test_rand_like")
 
                 place = base.CPUPlace()
-                if core.is_compiled_with_cuda():
-                    place = base.CUDAPlace(0)
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
 
                 exe = paddle.static.Executor(place)
                 outs = exe.run(
@@ -76,14 +76,16 @@ class TestRandLikeAPI(unittest.TestCase):
                 )
 
                 place = base.CPUPlace()
-                if core.is_compiled_with_cuda():
-                    place = base.CUDAPlace(0)
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    place = get_device_place()
 
                 exe = paddle.static.Executor(place)
 
                 # Test with different dtypes
                 for dtype in self.dtype:
-                    if dtype == "float16" and not core.is_compiled_with_cuda():
+                    if dtype == "float16" and not (
+                        core.is_compiled_with_cuda() or is_custom_device()
+                    ):
                         continue
 
                     out = paddle.rand_like(x_float32, dtype=dtype)
@@ -121,9 +123,11 @@ class TestRandLikeAPI(unittest.TestCase):
                 self.assertTrue(((result >= 0.0) & (result <= 1.0)).all())
 
                 # Test with CUDA device if available
-                if core.is_compiled_with_cuda():
-                    out2 = paddle.rand_like(x_float32, device=base.CUDAPlace(0))
-                    place_cuda = base.CUDAPlace(0)
+                if core.is_compiled_with_cuda() or is_custom_device():
+                    out2 = paddle.rand_like(
+                        x_float32, device=get_device_place()
+                    )
+                    place_cuda = get_device_place()
                     exe_cuda = paddle.static.Executor(place_cuda)
                     result_cuda = exe_cuda.run(
                         feed={'x_float32': self.x_float32}, fetch_list=[out2]
@@ -158,7 +162,7 @@ class TestRandLikeAPI(unittest.TestCase):
             )
 
         # Test with float16 if CUDA is available
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             x = paddle.to_tensor(self.x_float16)
             out = paddle.rand_like(x)
             self.assertEqual(out.shape, x.shape)
@@ -170,7 +174,9 @@ class TestRandLikeAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_float32)
 
         for dtype in self.dtype:
-            if dtype == "float16" and not core.is_compiled_with_cuda():
+            if dtype == "float16" and not (
+                core.is_compiled_with_cuda() or is_custom_device()
+            ):
                 continue
 
             out = paddle.rand_like(x, dtype=dtype)
@@ -206,8 +212,8 @@ class TestRandLikeAPI(unittest.TestCase):
         self.assertTrue(((out1.numpy() >= 0.0) & (out1.numpy() <= 1.0)).all())
 
         # Test with CUDA device if available
-        if core.is_compiled_with_cuda():
-            out2 = paddle.rand_like(x, device=paddle.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            out2 = paddle.rand_like(x, device=get_device_place())
             self.assertEqual(out2.shape, x.shape)
             self.assertEqual(out2.dtype, x.dtype)
             self.assertTrue(out2.place.is_gpu_place())
@@ -256,7 +262,7 @@ class TestRandLikeAPI(unittest.TestCase):
         """Test default dtype behavior"""
         # Test that output dtype matches input dtype when dtype=None
         dtypes_to_test = ['float32', 'float64']
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             dtypes_to_test.append('float16')
 
         for dtype_str in dtypes_to_test:
@@ -265,45 +271,24 @@ class TestRandLikeAPI(unittest.TestCase):
             self.assertEqual(out.dtype, x.dtype)
             self.assertTrue(((out.numpy() >= 0.0) & (out.numpy() <= 1.0)).all())
 
+    def test_device_consistency_default_behavior(self):
+        """Test that output tensor is on the same device as input tensor by default"""
+        # Test CPU case
+        x_cpu = paddle.to_tensor(self.x_float32, place=paddle.CPUPlace())
+        out_cpu = paddle.rand_like(x_cpu)  # No device specified
 
-class TestRandLikeOpForDygraph(unittest.TestCase):
-    """
-    Test rand_like operation in dygraph mode with different scenarios.
-    """
+        self.assertTrue(x_cpu.place.is_cpu_place())
+        self.assertTrue(out_cpu.place.is_cpu_place())
+        self.assertEqual(str(x_cpu.place), str(out_cpu.place))
 
-    def run_net(self, use_cuda=False):
-        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
-        with base.dygraph.guard(place):
-            # Test basic functionality
-            x1 = paddle.zeros([3, 4], dtype='float32')
-            out1 = paddle.rand_like(x1)
-
-            # Test with different dtype
-            x2 = paddle.zeros([3, 4], dtype='float32')
-            out2 = paddle.rand_like(x2, dtype='float64')
-
-            # Test with requires_grad
-            x3 = paddle.zeros([2, 5], dtype='float32')
-            out3 = paddle.rand_like(x3, requires_grad=True)
-
-            # Test with device specification
-            x4 = paddle.zeros([4, 3], dtype='float32')
-            out4 = paddle.rand_like(x4, device=place)
-
-            # Test with all parameters including device
-            x5 = paddle.zeros([2, 3], dtype='float32')
-            out5 = paddle.rand_like(
-                x5,
-                name="test_all_params",
-                dtype='float64',
-                device=place,
-                requires_grad=False,
-            )
-
-    def test_run(self):
-        self.run_net(False)
+        # Test CUDA case if available
         if core.is_compiled_with_cuda():
-            self.run_net(True)
+            x_cuda = paddle.to_tensor(self.x_float32, place=get_device_place())
+            out_cuda = paddle.rand_like(x_cuda)  # No device specified
+
+            self.assertTrue(x_cuda.place.is_gpu_place())
+            self.assertTrue(out_cuda.place.is_gpu_place())
+            self.assertEqual(str(x_cuda.place), str(out_cuda.place))
 
 
 if __name__ == "__main__":

@@ -183,7 +183,7 @@ PD_REGISTER_KERNEL(fused_elementwise_add,
                    ONEDNN,
                    phi::fusion::FusedAddKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {}
 
@@ -192,7 +192,7 @@ PD_REGISTER_KERNEL(fused_elementwise_sub,
                    ONEDNN,
                    phi::fusion::FusedSubtractKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {}
 
@@ -201,7 +201,7 @@ PD_REGISTER_KERNEL(fused_elementwise_mul,
                    ONEDNN,
                    phi::fusion::FusedMultiplyKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {}
 
@@ -210,6 +210,6 @@ PD_REGISTER_KERNEL(fused_elementwise_div,
                    ONEDNN,
                    phi::fusion::FusedDivideKernel,
                    float,
-                   phi::dtype::bfloat16,
+                   phi::bfloat16,
                    int8_t,
                    uint8_t) {}

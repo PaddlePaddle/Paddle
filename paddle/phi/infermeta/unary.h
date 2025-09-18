@@ -813,6 +813,10 @@ PADDLE_API void SliceRawInferMeta(const MetaTensor& input,
                                   MetaTensor* out,
                                   MetaConfig config = MetaConfig());
 
+PADDLE_API void SlogdetV2InferMeta(const MetaTensor& x,
+                                   MetaTensor* sign,
+                                   MetaTensor* logdet);
+
 PADDLE_API void ViewSliceInferMeta(const MetaTensor& input,
                                    int64_t begin_idx,
                                    int64_t end_idx,

@@ -140,5 +140,18 @@ class TestParallelLayersWith4Devices(test_base.CommunicationTestDistBase):
             )
 
 
+class TestMergeShardedAOA(test_base.CommunicationTestDistBase):
+    def setUp(self):
+        super().setUp(num_of_devices=2, timeout=120)
+
+    def test_merge_sharded(self):
+        config = TEST_CONFIGS["2_card_tests"][0]
+        envs = {k: str(v) for k, v in config.items()}
+        self.run_test_case(
+            "merge_sharded_state_dict.py",
+            user_defined_envs=envs,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
