@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
 import op_test
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -35,7 +35,8 @@ def number_count_wrapper(numbers, upper_num):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNumberCountOpInt64(op_test.OpTest):
     def setUp(self):
@@ -48,11 +49,12 @@ class TestNumberCountOpInt64(op_test.OpTest):
         self.attrs = {"upper_range": upper_num}
 
     def test_forward(self):
-        self.check_output_with_place(paddle.CUDAPlace(0))
+        self.check_output_with_place(get_device_place())
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestNumberCountAPI(unittest.TestCase):
     def setUp(self):
@@ -61,7 +63,7 @@ class TestNumberCountAPI(unittest.TestCase):
             'int64'
         )
         self.out = count(self.x, self.upper_num)
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_api_static(self):
         paddle.enable_static()

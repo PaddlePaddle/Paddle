@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -45,7 +45,8 @@ def all_close(exp, out, n_worker):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLimitByCapacityInt64API(unittest.TestCase):
     def init_test_case(self):
@@ -57,7 +58,7 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
         )
         self.expert_count = self.expert_count.astype("int64")
         self.capacity = self.capacity.astype("int64")
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def setUp(self):
         self.capacity = np.array([100, 12000, 1200, 800, 4700, 10000, 57, 99])
@@ -98,7 +99,8 @@ class TestLimitByCapacityInt64API(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLimitByCapacityInt64API_SmallWorker(TestLimitByCapacityInt64API):
     def setUp(self):

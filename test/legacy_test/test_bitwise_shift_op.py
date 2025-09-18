@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_device_place
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -568,12 +568,13 @@ class TestTensorShiftAPI_FLOAT(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBitwiseRightShiftOp_Stride(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_input(self):
         self.strided_input_type = "transpose"
@@ -690,12 +691,13 @@ class TestBitwiseRightShiftOp_Stride_ZeroSize1(TestBitwiseRightShiftOp_Stride):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestBitwiseLeftShiftOp_Stride(unittest.TestCase):
     def setUp(self):
         self.init_input()
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def init_input(self):
         self.strided_input_type = "transpose"

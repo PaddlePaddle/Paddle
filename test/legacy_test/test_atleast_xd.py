@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
 import parameterized as param
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -24,7 +24,9 @@ RTOL = 1e-5
 ATOL = 1e-8
 
 PLACES = [('cpu', paddle.CPUPlace())] + (
-    [('gpu', paddle.CUDAPlace(0))] if core.is_compiled_with_cuda() else []
+    [(get_device(), get_device_place())]
+    if (core.is_compiled_with_cuda() or is_custom_device())
+    else []
 )
 
 

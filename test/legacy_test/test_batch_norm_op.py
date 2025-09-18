@@ -22,7 +22,9 @@ from op_test import (
     _set_use_system_allocator,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     get_places,
+    is_custom_device,
 )
 
 import paddle
@@ -488,8 +490,8 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
     def test_check_output(self):
         places = []
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             if core.is_float16_supported(place):
                 places.append(place)
         for place in places:
@@ -510,8 +512,8 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBF16BatchNormOpInference(TestBatchNormOpInference):
@@ -522,7 +524,7 @@ class TestBF16BatchNormOpInference(TestBatchNormOpInference):
         self.init_kernel_type()
 
     def test_check_output(self):
-        places = [core.CUDAPlace(0)]
+        places = [get_device_place()]
         for place in places:
             # for data_format in ["NCHW", "NHWC"]:
             for data_format in ["NCHW"]:

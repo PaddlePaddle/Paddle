@@ -16,36 +16,48 @@
 
 #include <dlpack/dlpack.h>
 
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
 
-class DLPackTensor {
- public:
-  using LaneType = decltype(::DLTensor::dtype.lanes);  // uint16_t
-  using ShapeType =
-      std::remove_reference<decltype(::DLTensor::shape[0])>::type;  // int64_t
+/*
+dlpack related code ref:
+https://github.com/pytorch/pytorch/blob/main/aten/src/ATen/DLConvertor.cpp
+and paddle/phi/api/lib/tensor_utils.cc
+*/
+using Deleter = std::function<void(void*)>;
 
-  // lanes is only used in CPU to enable vectorization
-  TEST_API explicit DLPackTensor(const phi::DenseTensor& tensor,
-                                 LaneType lanes = 1);
+phi::Place DLDeviceToPlace(const DLDevice& device);
+DLDevice PlaceToDLDevice(const phi::Place& place);
 
-  inline operator const ::DLTensor&() const { return t_; }
+TEST_API DLManagedTensor* ToDLPack(const phi::DenseTensor& src,
+                                   uint64_t flags = 0);
+DLManagedTensorVersioned* ToDLPackVersioned(const phi::DenseTensor& src,
+                                            uint64_t flags = 0);
+TEST_API phi::DenseTensor FromDLPack(DLManagedTensor* src);
+phi::DenseTensor FromDLPackVersioned(DLManagedTensorVersioned* src);
 
-  inline operator ::DLTensor&() { return t_; }
+// A traits to support both DLManagedTensor and DLManagedTensorVersioned
+template <typename T>
+struct DLPackTraits {};
 
-  PADDLE_API ::DLManagedTensor* ToDLManagedTensor();
-
- private:
-  ::DLTensor t_;
-
-  // The shape in DLTensor is defined as int64_t*
-  // Add this member to make TVMTensor init without heap allocation
-  ShapeType shape_[phi::DDim::kMaxRank];
+template <>
+struct DLPackTraits<DLManagedTensor> {
+  inline static const char* capsule = "dltensor";
+  inline static const char* used = "used_dltensor";
+  inline static auto ToDLPack = framework::ToDLPack;
+  inline static auto FromDLPack = framework::FromDLPack;
 };
 
-DLManagedTensor* toDLPack(const phi::DenseTensor& src);
+template <>
+struct DLPackTraits<DLManagedTensorVersioned> {
+  inline static const char* capsule = "dltensor_versioned";
+  inline static const char* used = "used_dltensor_versioned";
+  inline static auto ToDLPack = framework::ToDLPackVersioned;
+  inline static auto FromDLPack = framework::FromDLPackVersioned;
+};
 
 }  // namespace framework
 }  // namespace paddle

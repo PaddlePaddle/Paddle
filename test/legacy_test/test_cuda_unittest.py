@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # test_cuda_unittest.py
 import ctypes
 import types
 import unittest
 
 import numpy as np
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.cuda import (
@@ -59,14 +59,14 @@ class TestCudaCompat(unittest.TestCase):
     # is_available test
     # ---------------------
     def test_is_available(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.assertIsInstance(is_available(), bool)
 
     # ---------------------
     # synchronize test
     # ---------------------
     def test_synchronize(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             try:
                 synchronize(None)
                 synchronize(0)
@@ -79,7 +79,7 @@ class TestCudaCompat(unittest.TestCase):
     # current_stream test
     # ---------------------
     def test_current_stream(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             stream = current_stream(None)
             self.assertIsNotNone(stream)
             stream = current_stream(0)
@@ -89,7 +89,7 @@ class TestCudaCompat(unittest.TestCase):
     # get_device_properties test
     # ---------------------
     def test_get_device_properties(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             props = get_device_properties(0)
             self.assertTrue(hasattr(props, 'name'))
             self.assertTrue(hasattr(props, 'total_memory'))
@@ -98,7 +98,7 @@ class TestCudaCompat(unittest.TestCase):
     # get_device_name / get_device_capability test
     # ---------------------
     def test_device_name_and_capability(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             name = get_device_name(0)
             self.assertIsInstance(name, str)
 
@@ -107,15 +107,15 @@ class TestCudaCompat(unittest.TestCase):
             self.assertEqual(len(cap), 2)
 
     def test_stream_creation(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             s = Stream()
             s1 = Stream()
             self.assertIsInstance(s, paddle.device.Stream)
             self.assertIsInstance(s1, paddle.device.Stream)
 
     def test_stream_context(self):
-        if paddle.is_compiled_with_cuda():
-            s = Stream(device='gpu', priority=2)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            s = Stream(device=get_device(), priority=2)
             with stream(s):
                 ctx = stream(s)
                 self.assertIsInstance(ctx, StreamContext)
@@ -123,7 +123,7 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertEqual(current.stream_base, s.stream_base)
 
     def test_nested_streams(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             s1 = Stream()
             s2 = Stream()
             with stream(s1):
@@ -147,20 +147,20 @@ class TestCudaCompat(unittest.TestCase):
 
         cuda_version = paddle.version.cuda()
         if int(cuda_version.split(".")[0]) < 12:
-            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode"))
+            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode_"))
             self.assertTrue(hasattr(cuda_rt_module, "cudaProfilerInitialize"))
 
             self.assertTrue(
-                hasattr(cuda_rt_module.cudaOutputMode, "KeyValuePair")
+                hasattr(cuda_rt_module.cudaOutputMode_, "KeyValuePair")
             )
-            self.assertEqual(cuda_rt_module.cudaOutputMode.KeyValuePair, 0)
+            self.assertEqual(cuda_rt_module.cudaOutputMode_.KeyValuePair, 0)
 
-            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode, "CSV"))
-            self.assertEqual(cuda_rt_module.cudaOutputMode.CSV, 1)
+            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode_, "CSV"))
+            self.assertEqual(cuda_rt_module.cudaOutputMode_.CSV, 1)
 
-        self.assertTrue(hasattr(cuda_rt_module, "cudaError"))
-        self.assertTrue(hasattr(cuda_rt_module.cudaError, "success"))
-        self.assertEqual(cuda_rt_module.cudaError.success, 0)
+        self.assertTrue(hasattr(cuda_rt_module, "cudaError_"))
+        self.assertTrue(hasattr(cuda_rt_module.cudaError_, "success"))
+        self.assertEqual(cuda_rt_module.cudaError_.success, 0)
 
         func_list = [
             "cudaGetErrorString",
@@ -187,7 +187,7 @@ class TestCudaCompat(unittest.TestCase):
 
         # cudaGetErrorString
         err_str = cuda_rt_module.cudaGetErrorString(
-            cuda_rt_module.cudaError.success
+            cuda_rt_module.cudaError_.success
         )
         self.assertIsInstance(err_str, str)
 
@@ -202,22 +202,22 @@ class TestCudaCompat(unittest.TestCase):
         buf = np.zeros(1024, dtype=np.float32)
         ptr = buf.ctypes.data
         err = cuda_rt_module.cudaHostRegister(ptr, buf.nbytes, 0)
-        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        self.assertEqual(err, cuda_rt_module.cudaError_.success)
         err = cuda_rt_module.cudaHostUnregister(ptr)
-        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        self.assertEqual(err, cuda_rt_module.cudaError_.success)
 
         # cudaStreamCreate / cudaStreamDestroy
         stream = ctypes.c_size_t(0)
         err = cuda_rt_module.cudaStreamCreate(ctypes.addressof(stream))
-        assert err == cuda_rt_module.cudaError.success
+        assert err == cuda_rt_module.cudaError_.success
 
         err = cuda_rt_module.cudaStreamDestroy(stream.value)
-        assert err == cuda_rt_module.cudaError.success
+        assert err == cuda_rt_module.cudaError_.success
 
         err = cuda_rt_module.cudaProfilerStart()
-        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        self.assertEqual(err, cuda_rt_module.cudaError_.success)
         err = cuda_rt_module.cudaProfilerStop()
-        self.assertEqual(err, cuda_rt_module.cudaError.success)
+        self.assertEqual(err, cuda_rt_module.cudaError_.success)
 
     @unittest.skipIf(
         (
