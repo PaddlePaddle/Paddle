@@ -359,16 +359,15 @@ class TestParallelLayersLogic:
                                 opt_var_globle_size_flattened
                                 == model_var_globle_size_flattened
                             )
-                        else:
-                            assert opt_sharded_state_dict[
-                                opt__var_name
-                            ].local_shape == tuple(value.local_shape)
-                            assert opt_sharded_state_dict[
-                                opt__var_name
-                            ].global_shape == tuple(value.global_shape)
-                            assert opt_sharded_state_dict[
-                                opt__var_name
-                            ].global_offset == tuple(value.global_offset)
+                        assert opt_sharded_state_dict[
+                            opt__var_name
+                        ].local_shape == tuple(value.local_shape)
+                        assert opt_sharded_state_dict[
+                            opt__var_name
+                        ].global_shape == tuple(value.global_shape)
+                        assert opt_sharded_state_dict[
+                            opt__var_name
+                        ].global_offset == tuple(value.global_offset)
         else:
             raise ValueError(f"Unknown layer_type: {self.layer_type}")
 
