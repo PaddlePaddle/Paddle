@@ -39,22 +39,13 @@ void RandintKernel(const Context& dev_ctx,
   } else {
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
-  std::uniform_int_distribution<int64_t> dist(low, high - 1);
+  std::uniform_int_distribution<T> dist(low, high - 1);
   for (int64_t i = 0; i < numel; ++i) {
-    data[i] = static_cast<T>(dist(*engine));
+    data[i] = dist(*engine);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(randint,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::RandintKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double,
-                   bool,
-                   phi::float16,
-                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(randint, CPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
+}

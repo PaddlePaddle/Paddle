@@ -43,9 +43,9 @@ void RandintKernel(const Context& dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
   std::unique_ptr<T[]> data_cpu(new T[size]);
-  std::uniform_int_distribution<int64_t> dist(low, high - 1);
+  std::uniform_int_distribution<T> dist(low, high - 1);
   for (int64_t i = 0; i < numel; ++i) {
-    data_cpu[i] = static_cast<T>(dist(*engine));
+    data_cpu[i] = dist(*engine);
   }
   memory_utils::Copy(dev_ctx.GetPlace(),
                      data,
@@ -56,12 +56,5 @@ void RandintKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(randint,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::RandintKernel,
-                   int,
-                   int64_t,
-                   float,
-                   phi::float16,
-                   phi::bfloat16) {}
+PD_REGISTER_KERNEL(randint, XPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
+}
