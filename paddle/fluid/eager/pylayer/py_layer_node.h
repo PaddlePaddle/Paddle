@@ -39,6 +39,7 @@ class GradNodePyLayer : public GradNodeBase {
   GradNodePyLayer(const GradNodePyLayer& other) : GradNodeBase(other) {
     this->ctx_ = other.ctx_;
     Py_INCREF(this->ctx_);
+    this->name_ = other.name_ + "_";
     this->forward_outputs_meta_ = other.forward_outputs_meta_;
     this->forward_outputs_place_ = other.forward_outputs_place_;
   }
