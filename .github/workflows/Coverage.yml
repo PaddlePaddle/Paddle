@@ -29,25 +29,8 @@ defaults:
     shell: bash
 
 jobs:
-  clone:
-    name: Coverage clone
-    uses: ./.github/workflows/_Clone-linux.yml
-    with:
-      workflow-name: 'coverage'
-      clone_dir: Paddle-coverage
-
-  build-docker:
-    name: Coverage build docker
-    needs: clone
-    uses: ./.github/workflows/docker.yml
-    with:
-      clone_dir: Paddle-coverage
-      task: coverage
-
   build:
     name: Coverage build
-    needs: [clone, build-docker]
-    if: needs.clone.outputs.can-skip != 'true'
     runs-on:
       group: GZ_BD-CPU
     outputs:
@@ -86,7 +69,7 @@ jobs:
         run: |
           container_name=${TASK}-build-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ needs.build-docker.outputs.docker_coverage_image }}
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:4e0e92ac425746d69a0211c9102b2566
           docker run -d -t --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
@@ -252,8 +235,7 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build, build-docker]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build]
     runs-on:
       group: BD_BJ-V100
     steps:
@@ -285,7 +267,7 @@ jobs:
         run: |
           container_name=${TASK}-$(date +%Y%m%d-%H%M%S)
           echo "container_name=${container_name}" >> ${{ github.env }}
-          docker_image=${{ needs.build-docker.outputs.docker_coverage_image }}
+          docker_image=ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:4e0e92ac425746d69a0211c9102b2566
           docker run -d -t --gpus all --name ${container_name} \
             -v "/home/data/cfs:/home/data/cfs" \
             -v "/home/data/cfs/.cache:/root/.cache" \
