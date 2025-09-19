@@ -4113,7 +4113,7 @@ class ShardDataloader:
         return self._get_batch(batch_data)
 
     def __call__(self):
-        self.iter = self._dataloader.__iter__()
+        self.iter = None
         return self
 
 
