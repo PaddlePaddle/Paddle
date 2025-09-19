@@ -439,13 +439,13 @@ class TensorVariable(VariableBase):
         self.value = None
         self.meta = meta
         dynamic_axes: list[int] = []
+        self.var_name = self.var_name_generator.next()
         if (
             ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
             and self.tracker.is_traceable()
             and not self.meta.is_null()
         ):
             dynamic_axes = self.analyse_dynamic_axes(tracker)
-        self.var_name = self.var_name_generator.next()
         self.graph.side_effects.record_mutable_variable(self)
         self.meta = self.meta.with_dynamic_axes(self.var_name, dynamic_axes)
         self.origin_meta = self.meta
@@ -1257,15 +1257,9 @@ class SymbolicVariable(VariableBase):
     @check_faster_guard
     def make_faster_guard(self) -> list[paddle.framework.core.GuardNodeBase]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-        from ..executor_cache import OpcodeExecutorCache
 
         expr_node = self.tracker.guard_tree_expr_node()
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        # TODO(zrr1999): symbolic_inputs need frame_value_tracer.inlined_expr
-        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-            self.graph.pycode_gen._origin_code
-        )
-        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {expr_node}\n")
@@ -1294,16 +1288,9 @@ class SymbolicVariable(VariableBase):
     @check_guard
     def make_stringified_guard(self) -> list[StringifiedExpression]:
         assert ENV_SOT_ALLOW_DYNAMIC_SHAPE.get()
-        from ..executor_cache import OpcodeExecutorCache
-
         # NOTE(zrr1999): SymbolicVariable is not supported in faster guard mode
 
         frame_value_tracer = self.tracker.trace_value_from_frame()
-        symbolic_inputs = OpcodeExecutorCache().get_symbolic_inputs(
-            self.graph.pycode_gen._origin_code
-        )
-
-        assert frame_value_tracer.inlined_expr in symbolic_inputs
 
         if self.need_guard_value:
             log(3, f"Need guard value for {self} in {frame_value_tracer}\n")
@@ -1385,8 +1372,6 @@ class SymbolicVariable(VariableBase):
         if not ENV_SOT_ALLOW_DYNAMIC_SHAPE.get():
             return None
         if isinstance(value, SymbolicInt):
-            if value.is_backed():
-                return SymbolicVariable(value, graph, tracker)
             tensor_shape_source_result = (
                 SymbolicVariable.find_tensor_shape_source(tracker)
             )
