@@ -1781,10 +1781,10 @@ def manual_seed_all(seed: int) -> None:
     Sets the seed for global default generator, which manages the random number generation.
 
     Args:
-        seed(int): The random seed to set. It is recommend to set a large int number.
+        seed(int): The random seed to set.
 
     Returns:
-        Generator: The global default generator object.
+        None
 
     Examples:
         .. code-block:: python

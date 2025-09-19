@@ -22,7 +22,7 @@ from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
-    manual_seed_all as manual_seed_all,
+    manual_seed_all as device_manual_seed_all,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -219,6 +219,27 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     """
     dev = _device_to_paddle(device)
     return paddle_device.cuda.get_device_capability(dev)
+
+
+def manual_seed_all(seed: int) -> None:
+    """
+
+    Sets the seed for global default generator, which manages the random number generation.
+
+    Args:
+        seed(int): The random seed to set.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.cuda.manual_seed_all(102)
+
+    """
+    device_manual_seed_all(seed)
 
 
 def is_initialized() -> bool:
