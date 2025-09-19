@@ -3223,7 +3223,7 @@ All parameter, weight, gradient are variables in Paddle.
               "The parameters of set_vlog_level must be int or dict! "));
         }
       },
-      py::arg("obj"),
+      py::arg("module_levels"),
       R"DOC(
     Set the verbosity logging level for specified modules.
 
