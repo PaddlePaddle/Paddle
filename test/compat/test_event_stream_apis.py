@@ -27,19 +27,18 @@ def is_custom_device():
     return False
 
 
-@unittest.skipIf(
-    not (
-        core.is_compiled_with_cuda()
-        or core.is_compiled_with_xpu()
-        or is_custom_device()
-    ),
-    "CUDA, XPU or Custom Device not available",
-)
 class TestEventStreamAPIs(unittest.TestCase):
     """Test paddle.device Event and Stream APIs across different hardware types."""
 
     def setUp(self):
         """Set up test environment."""
+        if not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or is_custom_device()
+        ):
+            self.skipTest("CUDA, XPU or Custom Device not available")
+
         self.cuda_available = core.is_compiled_with_cuda()
         self.xpu_available = core.is_compiled_with_xpu()
         self.custom_device_available = is_custom_device()
@@ -64,19 +63,22 @@ class TestEventStreamAPIs(unittest.TestCase):
         except Exception:
             pass
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_event_stream_apis_cuda(self):
         """Test Event and Stream APIs with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         self._test_event_stream_apis_impl('gpu:0')
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_event_stream_apis_customdevice(self):
         """Test Event and Stream APIs with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         self._test_event_stream_apis_impl(f'{self.default_custom_device}:0')
 
-    @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
     def test_event_stream_apis_xpu(self):
         """Test Event and Stream APIs with XPU."""
+        if not core.is_compiled_with_xpu():
+            self.skipTest("XPU not available")
         self._test_event_stream_apis_impl('xpu:0')
 
     def _test_event_stream_apis_impl(self, device_str):
@@ -265,19 +267,18 @@ class TestEventStreamAPIs(unittest.TestCase):
                 pass
 
 
-@unittest.skipIf(
-    not (
-        core.is_compiled_with_cuda()
-        or core.is_compiled_with_xpu()
-        or is_custom_device()
-    ),
-    "CUDA, XPU or Custom Device not available",
-)
 class TestEventStreamTimingFunctionality(unittest.TestCase):
     """Test Event timing functionality with actual work in isolated environment."""
 
     def setUp(self):
         """Set up test environment for timing functionality."""
+        if not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or is_custom_device()
+        ):
+            self.skipTest("CUDA, XPU or Custom Device not available")
+
         self.cuda_available = core.is_compiled_with_cuda()
         self.custom_device_available = is_custom_device()
 

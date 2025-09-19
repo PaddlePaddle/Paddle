@@ -44,23 +44,26 @@ class TestDeviceAPIs(unittest.TestCase):
             self.custom_device_types = []
             self.default_custom_device = None
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_device_count_cuda(self):
         """Test device_count with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         count = paddle.device.device_count()
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
 
-    @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
     def test_device_count_xpu(self):
         """Test device_count with XPU."""
+        if not core.is_compiled_with_xpu():
+            self.skipTest("XPU not available")
         count = paddle.device.device_count()
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_device_count_customdevice(self):
         """Test device_count with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         count = paddle.device.device_count()
         self.assertIsInstance(count, int)
         self.assertGreaterEqual(count, 0)
@@ -70,9 +73,10 @@ class TestDeviceAPIs(unittest.TestCase):
         self.assertIsInstance(count_custom, int)
         self.assertGreaterEqual(count_custom, 0)
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_get_device_properties_cuda(self):
         """Test get_device_properties with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         # Test with default device
         props = paddle.device.get_device_properties()
         self.assertIsNotNone(props)
@@ -89,9 +93,10 @@ class TestDeviceAPIs(unittest.TestCase):
         props_int = paddle.device.get_device_properties(paddle.CUDAPlace(0))
         self.assertIsNotNone(props_int)
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_get_device_properties_customdevice(self):
         """Test get_device_properties with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         # Test with default device
         props = paddle.device.get_device_properties()
         self.assertIsNotNone(props)
@@ -118,21 +123,24 @@ class TestDeviceAPIs(unittest.TestCase):
         )
         self.assertIsNotNone(props_custom)
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_empty_cache_cuda(self):
         """Test empty_cache with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         # Should not raise any exception
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_empty_cache_customdevice(self):
         """Test empty_cache with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         # Should not raise any exception
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_memory_apis_cuda(self):
         """Test memory management APIs with CUDA with actual tensor allocation."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         # Set device to GPU
         paddle.device.set_device('gpu')
 
@@ -285,9 +293,10 @@ class TestDeviceAPIs(unittest.TestCase):
         del tensor2
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_memory_apis_customdevice(self):
         """Test memory management APIs with custom device with actual tensor allocation."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         # Set device to custom device
         paddle.device.set_device(self.default_custom_device)
 
@@ -470,9 +479,10 @@ class TestDeviceAPIs(unittest.TestCase):
         del tensor2
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_reset_memory_apis_cuda(self):
         """Test reset memory APIs with CUDA with actual tensor allocation."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         # Set device to GPU
         paddle.device.set_device('gpu')
 
@@ -514,9 +524,10 @@ class TestDeviceAPIs(unittest.TestCase):
         del tensor
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_reset_memory_apis_customdevice(self):
         """Test reset memory APIs with custom device with actual tensor allocation."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         # Set device to custom device
         paddle.device.set_device(self.default_custom_device)
 
@@ -568,9 +579,10 @@ class TestDeviceAPIs(unittest.TestCase):
         del tensor
         paddle.device.empty_cache()
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(), "CUDA not available")
     def test_stream_apis_cuda(self):
         """Test stream APIs with CUDA."""
+        if not core.is_compiled_with_cuda():
+            self.skipTest("CUDA not available")
         # Test current_stream with different input types
         stream1 = paddle.device.current_stream()
         self.assertIsNotNone(stream1)
@@ -586,9 +598,10 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.synchronize(paddle.CUDAPlace(0))
         # paddle.device.synchronize(0)
 
-    @unittest.skipIf(not is_custom_device(), "Custom device not available")
     def test_stream_apis_customdevice(self):
         """Test stream APIs with custom device."""
+        if not is_custom_device():
+            self.skipTest("Custom device not available")
         # Test current_stream with different input types
         stream1 = paddle.device.current_stream()
         self.assertIsNotNone(stream1)
@@ -610,9 +623,10 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.synchronize(f'{self.default_custom_device}:0')
         # paddle.device.synchronize(0)
 
-    @unittest.skipIf(not core.is_compiled_with_xpu(), "XPU not available")
     def test_stream_apis_xpu(self):
         """Test stream APIs with XPU."""
+        if not core.is_compiled_with_xpu():
+            self.skipTest("XPU not available")
         # Test current_stream with different input types
         stream1 = paddle.device.current_stream()
         self.assertIsNotNone(stream1)
@@ -628,16 +642,14 @@ class TestDeviceAPIs(unittest.TestCase):
         paddle.device.synchronize('xpu:0')
         # paddle.device.synchronize(0)
 
-    @unittest.skipIf(
-        not (
+    def test_error_handling(self):
+        """Test error handling for invalid inputs."""
+        if not (
             core.is_compiled_with_xpu()
             or core.is_compiled_with_cuda()
             or is_custom_device()
-        ),
-        "CUDA, XPU and Custom device not available",
-    )
-    def test_error_handling(self):
-        """Test error handling for invalid inputs."""
+        ):
+            self.skipTest("CUDA, XPU and Custom device not available")
         # Test invalid device ID format
         with self.assertRaises(ValueError):
             paddle.device.max_memory_allocated('gpu:invalid')
