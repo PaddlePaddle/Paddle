@@ -38,6 +38,15 @@ if(WITH_LOONGARCH)
   set(CBLAS_TAG v0.3.18)
 endif()
 
+# For CMake >= 4.0.0, set policy compatibility for OpenBLAS's CMake.
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "OpenBLAS: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(OPENBLAS_POLICY_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
+
 file(GLOB CBLAS_SOURCE_FILE_LIST ${CBLAS_SOURCE_DIR})
 list(LENGTH CBLAS_SOURCE_FILE_LIST RES_LEN)
 if(RES_LEN EQUAL 0)
@@ -117,6 +126,7 @@ else()
                -DBUILD_SHARED_LIBS=ON
                -DCMAKE_VERBOSE_MAKEFILE=OFF
                -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
+               ${OPENBLAS_POLICY_ARGS}
                ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS
       -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
