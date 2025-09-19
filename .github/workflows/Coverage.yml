@@ -148,12 +148,13 @@ jobs:
           git fetch origin pull/75296/head:test
           git checkout test
           git reset --hard ef335f5
-          git cherry-pick 2bec6949b89f6836247b723839c73eee4a9dea05
+          git cherry-pick 9a9fc6df3990a9105dd8bf436678cde9e41953c6
           git checkout --theirs -- ci/coverage_info.sh
           git commit -am "fix merge diff"
           git remote -v
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
+          git submodule update --init --recursive
           set -e
           git config pull.rebase false
           echo "Pull upstream $BRANCH"
