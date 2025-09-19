@@ -41,14 +41,20 @@ mkdir coverage_files
 
 function gen_full_report() {
     lcov --extract coverage.info \
+        "${PADDLE_ROOT}/paddle/fluid/framework/*" \
+        "${PADDLE_ROOT}/paddle/fluid/imperative/*" \
+        "${PADDLE_ROOT}/paddle/fluid/inference/*" \
+        "${PADDLE_ROOT}/paddle/fluid/memory/*" \
+        "${PADDLE_ROOT}/paddle/fluid/operators/*" \
+        "${PADDLE_ROOT}/paddle/fluid/eager/*" \
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
         "${PADDLE_ROOT}/paddle/ap/*" \
         "${PADDLE_ROOT}/paddle/common/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
-	"${PADDLE_ROOT}/paddle/ap/*" \
-	"${PADDLE_ROOT}/paddle/common/*" \
-	"${PADDLE_ROOT}/paddle/cinn/adt/*" \
+	    "${PADDLE_ROOT}/paddle/ap/*" \
+	    "${PADDLE_ROOT}/paddle/common/*" \
+	    "${PADDLE_ROOT}/paddle/cinn/adt/*" \
         "${PADDLE_ROOT}/paddle/cinn/ast_gen_ius/*" \
         "${PADDLE_ROOT}/paddle/cinn/backends/*" \
         "${PADDLE_ROOT}/paddle/cinn/common/*" \
