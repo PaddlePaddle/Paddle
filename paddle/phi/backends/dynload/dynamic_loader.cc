@@ -244,7 +244,7 @@ static inline std::vector<std::string> split(
 
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   s_py_site_pkg_path.path = py_site_pkg_path;
-  VLOG(3) << "Set paddle lib path : " << py_site_pkg_path;
+  VLOG(6) << "Set paddle lib path : " << py_site_pkg_path;
 }
 
 static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
