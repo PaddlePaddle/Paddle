@@ -332,5 +332,64 @@ class TestIsIn_ZeroSize(unittest.TestCase):
         test(DATA_CASES_ZERO_SIZE, DATA_TYPE, use_gpu=True)
 
 
+class TestIsinCompatibility(unittest.TestCase):
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+
+        for case in DATA_CASES:
+            x_data = case['x_data']
+            test_x_data = case['test_x_data']
+
+            x_tensor = paddle.to_tensor(x_data)
+            test_x_tensor = paddle.to_tensor(test_x_data)
+
+            result_1 = paddle.isin(x_tensor, test_x_tensor)
+            result_2 = paddle.isin(x=x_tensor, test_x=test_x_tensor)
+            result_3 = paddle.isin(
+                elements=x_tensor, test_elements=test_x_tensor
+            )
+            result_4 = paddle.isin(x_tensor, test_elements=test_x_tensor)
+
+            np.testing.assert_array_equal(result_1.numpy(), result_2.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_3.numpy())
+            np.testing.assert_array_equal(result_1.numpy(), result_4.numpy())
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+
+        for case in DATA_CASES:
+            main_prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+
+            with paddle.static.program_guard(main_prog, startup_prog):
+                x = paddle.static.data(
+                    name='x',
+                    shape=case['x_data'].shape,
+                    dtype=str(case['x_data'].dtype),
+                )
+                test_x = paddle.static.data(
+                    name='test_x',
+                    shape=case['test_x_data'].shape,
+                    dtype=str(case['test_x_data'].dtype),
+                )
+
+                out_1 = paddle.isin(x, test_x)
+                out_2 = paddle.isin(x=x, test_x=test_x)
+                out_3 = paddle.isin(elements=x, test_elements=test_x)
+                out_4 = paddle.isin(x, test_elements=test_x)
+
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                results = exe.run(
+                    main_prog,
+                    feed={'x': case['x_data'], 'test_x': case['test_x_data']},
+                    fetch_list=[out_1, out_2, out_3, out_4],
+                )
+
+                for i in range(1, len(results)):
+                    np.testing.assert_array_equal(results[0], results[i])
+
+
 if __name__ == '__main__':
     unittest.main()

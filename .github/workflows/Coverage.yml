@@ -148,7 +148,7 @@ jobs:
           git fetch origin pull/75296/head:test
           git checkout test
           git reset --hard ef335f5
-          git cherry-pick 4dba2fb8e64cdebbb59f21b3261b702899c70f9a
+          git cherry-pick 2bec6949b89f6836247b723839c73eee4a9dea05
           git checkout --theirs -- ci/coverage_info.sh
           git commit -am "fix merge diff"
           git remote -v

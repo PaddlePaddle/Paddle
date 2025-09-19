@@ -41,16 +41,10 @@ mkdir coverage_files
 
 function gen_full_report() {
     lcov --extract coverage.info \
-        "${PADDLE_ROOT}/paddle/fluid/framework/*" \
-        "${PADDLE_ROOT}/paddle/fluid/imperative/*" \
-        "${PADDLE_ROOT}/paddle/fluid/inference/*" \
-        "${PADDLE_ROOT}/paddle/fluid/memory/*" \
-        "${PADDLE_ROOT}/paddle/fluid/operators/*" \
-        "${PADDLE_ROOT}/paddle/fluid/eager/*" \
-        "${PADDLE_ROOT}/paddle/fluid/pir/*" \
-        "${PADDLE_ROOT}/paddle/fluid/ir_adaptor/*" \
         "${PADDLE_ROOT}/paddle/phi/*" \
         "${PADDLE_ROOT}/paddle/pir/*" \
+        "${PADDLE_ROOT}/paddle/ap/*" \
+        "${PADDLE_ROOT}/paddle/common/*" \
         "${PADDLE_ROOT}/paddle/utils/*" \
 	"${PADDLE_ROOT}/paddle/ap/*" \
 	"${PADDLE_ROOT}/paddle/common/*" \
@@ -66,6 +60,7 @@ function gen_full_report() {
         "${PADDLE_ROOT}/paddle/cinn/pass/*" \
         "${PADDLE_ROOT}/paddle/cinn/runtime/*" \
         "${PADDLE_ROOT}/paddle/cinn/utils/*" \
+        "${PADDLE_ROOT}/paddle/cinn/*" \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 

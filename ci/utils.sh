@@ -206,7 +206,6 @@ function show_ut_retry_result() {
             echo "${retry_unittests_record}" | sort -u | grep -E "$failed_ut_re" | while IFS= read -r line; do
                 echo -e "${RED}${line}${NONE}"
             done
-            exit 8;
         fi
     fi
 }

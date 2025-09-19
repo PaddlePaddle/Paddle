@@ -268,7 +268,7 @@ class TestDLPack(unittest.TestCase):
             s2.wait_event(e)
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
             s1.synchronize()
-            dlpack_capsule = x.__dlpack__(s1)
+            dlpack_capsule = x.__dlpack__(stream=s1)
             y = paddle.from_dlpack(dlpack_capsule)
             np.testing.assert_array_equal(x.numpy(), y.numpy())
             self.assertTrue(s1.query(), "Stream s1 did not complete all tasks.")

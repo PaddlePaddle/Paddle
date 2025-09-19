@@ -44,10 +44,15 @@ class TestCallCustomOp(unittest.TestCase):
 
 
 class TestRegisterFake(unittest.TestCase):
-    def test_register_fake(self):
+    def test_register_fake_without_call(self):
         paddle.library.register_fake(
             "test_namespace::add_two",
-            lambda x: x,
+            lambda x: x + 2,
+        )
+
+    def test_register_fake_with_call(self):
+        paddle.library.register_fake("test_namespace::add_three")(
+            lambda x: x + 3,
         )
 
 
