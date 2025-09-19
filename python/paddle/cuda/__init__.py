@@ -121,6 +121,37 @@ def current_stream(device: DeviceLike = None) -> Stream:
     return paddle_device.current_stream(dev)
 
 
+def is_current_stream_capturing() -> bool:
+    """
+    Check whether the current CUDA stream is in capturing state.
+    Returns:
+        bool: True if current CUDA stream is capturing, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # Check initial state (not capturing)
+            >>> print(paddle.cuda.is_current_stream_capturing())  # False
+
+            >>> # Check CUDA availability first
+            >>> if paddle.device.device_count()>0:
+            ...     # Check initial state (not capturing)
+            ...     print(paddle.cuda.is_current_stream_capturing())  # False
+            ...
+            ...     # Start capturing
+            ...     graph = paddle.device.cuda.graphs.CUDAGraph()
+            ...     graph.capture_begin()
+            ...     print(paddle.cuda.is_current_stream_capturing())  # True
+            ...
+            ...     # End capturing
+            ...     graph.capture_end()
+            ...     print(paddle.cuda.is_current_stream_capturing())  # False
+    """
+    return core.is_cuda_graph_capturing()
+
+
 def get_device_properties(device: DeviceLike = None):
     """
     Get the properties of a CUDA device.
