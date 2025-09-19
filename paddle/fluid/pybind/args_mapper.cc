@@ -278,5 +278,97 @@ void ArgSumMapper(PyObject* args,
   // Check Remaining Params validity if needed
   CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
 }
+
+void GeluMapper(PyObject* args,
+                PyObject* kwargs,
+                Tensor** x_ptr_ptr,
+                bool* approximate) {
+  // Get Total Params count and check validity if needed
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 2;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get EagerTensors from args
+  auto& x = GetTensorFromArgsOrKWArgs("gelu",
+                                      "x",
+                                      args,
+                                      0,
+                                      kwargs,
+                                      {"input", "x"},
+                                      nargs,
+                                      &remaining_kwargs,
+                                      false);
+  *x_ptr_ptr = &x;
+
+  PyObject* approximate_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"approximate"}, nargs, &remaining_kwargs);
+  if (approximate_obj != nullptr && PyUnicode_Check(approximate_obj)) {
+    std::string approximate_str =
+        std::string(PyUnicode_AsUTF8(approximate_obj));
+    if (approximate_str == "tanh") {
+      *approximate = true;
+    } else if (approximate_str == "none") {
+      *approximate = false;
+    } else {
+      approximate = nullptr;
+      PADDLE_ENFORCE_NE(approximate,
+                        nullptr,
+                        phi::errors::InvalidArgument(
+                            "the value of approximate in gelu should be 'tanh' "
+                            "or 'none', but received %s",
+                            approximate_str.c_str()));
+    }
+  } else {
+    *approximate = CastPyArg2Boolean(approximate_obj, "gelu", 1, false);
+  }
+
+  // Check Reminding Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+void GeluMapper(PyObject* args,
+                PyObject* kwargs,
+                pir::Value* x,
+                bool* approximate) {
+  // Get Total Params count and check validity if needed
+  int nargs = args ? static_cast<int>(PyTuple_Size(args)) : 0;
+  int remaining_kwargs = kwargs ? static_cast<int>(PyDict_Size(kwargs)) : 0;
+  const int max_args = 2;
+  CheckParamsCount(nargs, remaining_kwargs, max_args);
+
+  // Get Value from args
+  PyObject* x_obj = GetItemFromArgsOrKWArgs(
+      args, 0, kwargs, {"input", "x"}, nargs, &remaining_kwargs);
+  *x = CastPyArg2Value(x_obj, "gelu", 0, false);
+
+  // Parse Attributes
+  PyObject* approximate_obj = GetItemFromArgsOrKWArgs(
+      args, 1, kwargs, {"approximate"}, nargs, &remaining_kwargs);
+
+  // give `approximate` a value based on the type of `approximate_obj`
+  if (approximate_obj != nullptr && PyUnicode_Check(approximate_obj)) {
+    std::string approximate_str =
+        std::string(PyUnicode_AsUTF8(approximate_obj));
+    if (approximate_str == "tanh") {
+      *approximate = true;
+    } else if (approximate_str == "none") {
+      *approximate = false;
+    } else {
+      approximate = nullptr;
+      PADDLE_ENFORCE_NE(approximate,
+                        nullptr,
+                        phi::errors::InvalidArgument(
+                            "the value of approximate in gelu should be 'tanh' "
+                            "or 'none', but received %s",
+                            approximate_str.c_str()));
+    }
+  } else {
+    *approximate = CastPyArg2Boolean(approximate_obj, "gelu", 1, false);
+  }
+
+  // Check Remaining Params validity if needed
+  CheckRemainingParamsValidity(args, kwargs, remaining_kwargs, nargs);
+}
+
 }  // namespace pybind
 }  // namespace paddle

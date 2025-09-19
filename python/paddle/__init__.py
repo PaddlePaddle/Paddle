@@ -169,6 +169,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
     device as device,

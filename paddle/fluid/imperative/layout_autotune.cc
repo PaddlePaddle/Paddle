@@ -28,7 +28,7 @@ LayoutAutoTune::LayoutAutoTune() {
     // only when op was not in Lightly、Heavily or Agnostic Set
     if (IsLightlyLayoutSensitive(info.first) ||
         IsHeavilyLayoutSensitive(info.first) || IsLayoutAgnostic(info.first)) {
-      VLOG(4) << "Already exists in Layout OP: " << info.first;
+      VLOG(7) << "Already exists in Layout OP: " << info.first;
       continue;
     }
 
@@ -80,7 +80,7 @@ LayoutAutoTune::LayoutAutoTune() {
     }
   }
 
-  VLOG(3) << "The number of layout agnostic OPs: "
+  VLOG(6) << "The number of layout agnostic OPs: "
           << layout_agnostic_ops_.size() << ", heavily layout sensitive OPs: "
           << heavily_layout_sensitive_ops_.size()
           << ", lightly layout sensitive OPs: "

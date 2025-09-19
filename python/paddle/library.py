@@ -153,3 +153,11 @@ def register_fake(
     warn_about_unimplemented_torch_features(
         "register_fake", "torch.library.register_fake"
     )
+
+    def register(func):
+        return func
+
+    if func is None:
+        return register
+    else:
+        return register(func)
