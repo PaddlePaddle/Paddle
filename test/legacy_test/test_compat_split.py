@@ -143,7 +143,7 @@ class TestCompatSplit(unittest.TestCase):
             "paddle.compat.split() received unexpected keyword argument 'num_or_sections'. "
             "\nDid you mean to use paddle.split() instead?"
         )
-        msg_gt_3 = "(InvalidArgument) The dim is expected to be in range of [-3, 3), but got 3"
+        msg_gt_3 = "(InvalidArgumentError) The dim is expected to be in range of [-3, 3), but got 3"
         msg_gt_4 = "paddle.compat.split expects split_sizes have only non-negative entries, but got size = -5 on dim 2"
 
         split_size = paddle.to_tensor([3])
