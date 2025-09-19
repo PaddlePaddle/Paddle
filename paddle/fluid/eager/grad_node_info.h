@@ -147,7 +147,6 @@ class GradSlotMeta {
     }
     return *meta_.get();
   }
-
   void SetPlace(const phi::Place& place) { place_ = place; }
   const phi::Place& GetPlace() const { return place_; }
 
@@ -196,10 +195,10 @@ class GradSlotMeta {
 
 class GradNodeBase {
  public:
-  GradNodeBase() { VLOG(7) << "Construct GradNodeBase"; }
+  GradNodeBase() { VLOG(6) << "Construct GradNodeBase"; }
   TEST_API GradNodeBase(size_t bwd_in_slot_num, size_t bwd_out_slot_num);
   // TODO(jiabin): Should we have other constructor here?
-  virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
+  virtual ~GradNodeBase() { VLOG(6) << "Destruct GradNodeBase"; }
 
   /**
    * operator() designed to contain the real backward execution logic, it should

@@ -222,7 +222,7 @@ std::pair<ScoreType, CandidateType> ScheduleConfigSearcher::Search(
     VLOG(6) << "Score = " << score;
     records_[score] = candidate;
   }
-  return is_search_minimum ? *records_.begin() : *(records_.end()--);
+  return is_search_minimum ? *records_.begin() : *records_.rbegin();
 }
 
 }  // namespace search
