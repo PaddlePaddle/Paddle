@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
@@ -27,6 +28,8 @@ from paddle.distributed.fleet.meta_parallel import (
     SharedLayerDesc,
 )
 from paddle.nn import Layer
+
+os.environ['FLAGS_profile_optimizer_details_steps'] = 1
 
 
 def print_hook_fn(grad):
