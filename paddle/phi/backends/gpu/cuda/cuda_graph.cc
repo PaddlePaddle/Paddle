@@ -55,6 +55,14 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaGraphGetEdges(graph, from.data(), to.data(), nullptr, &num_edges));
 #endif
+
+  std::unordered_map<cudaGraphNode_t, std::unordered_set<cudaGraphNode_t>>
+      in_edges, out_edges;
+  for (auto node : nodes) {
+    in_edges[node];
+    out_edges[node];
+  }
+
   for (size_t i = 0; i < num_edges; ++i) {
     in_edges[to[i]].insert(from[i]);
     out_edges[from[i]].insert(to[i]);
