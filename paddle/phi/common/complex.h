@@ -230,16 +230,43 @@ HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T> operator/(const complex<T>& a,
-                                       const complex<T>& b) {
-#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  return complex<T>(thrust::complex<T>(a) / thrust::complex<T>(b));
+HOSTDEVICE inline complex<T> operator/(const complex<T>& x,
+                                       const complex<T>& y) {
+  T a = x.real;
+  T b = x.imag;
+  T c = y.real;
+  T d = y.imag;
+
+  // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+  // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+  // std::abs is already constexpr by gcc
+  auto abs_c = std::abs(c);
+  auto abs_d = std::abs(d);
 #else
-  T denominator = b.real * b.real + b.imag * b.imag;
-  return complex<T>((a.real * b.real + a.imag * b.imag) / denominator,
-                    (a.imag * b.real - a.real * b.imag) / denominator);
+  auto abs_c = c < 0 ? -c : c;
+  auto abs_d = d < 0 ? -d : d;
 #endif
+
+  T real_, imag_;
+  if (abs_c >= abs_d) {
+    if (abs_c == T(0) && abs_d == T(0)) {
+      /* divide by zeros should yield a complex inf or nan */
+      real_ = a / abs_c;
+      imag_ = b / abs_d;
+    } else {
+      auto rat = d / c;
+      auto scl = T(1.0) / (c + d * rat);
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+    }
+  } else {
+    auto rat = c / d;
+    auto scl = T(1.0) / (d + c * rat);
+    real_ = (a * rat + b) * scl;
+    imag_ = (b * rat - a) * scl;
+  }
+  return complex<T>(real_, imag_);
 }
 
 template <typename T>
@@ -303,19 +330,44 @@ HOSTDEVICE inline complex<T>& operator*=(complex<T>& a,  // NOLINT
 }
 
 template <typename T>
-HOSTDEVICE inline complex<T>& operator/=(complex<T>& a,  // NOLINT
-                                         const complex<T>& b) {
-#if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
-    (defined(__CUDA_ARCH__) || defined(__HIPCC__))
-  a = complex<T>(thrust::complex<T>(a.real, a.imag) /=
-                 thrust::complex<T>(b.real, b.imag));
-  return a;
+HOSTDEVICE inline complex<T>& operator/=(complex<T>& x,  // NOLINT
+                                         const complex<T>& y) {
+  T a = x.real;
+  T b = x.imag;
+  T c = y.real;
+  T d = y.imag;
+
+  // (a + bi) / (c + di) = (ac + bd)/(c^2 + d^2) + (bc - ad)/(c^2 + d^2) i
+  // the calculation below follows numpy's complex division
+#if defined(__GNUC__) && !defined(__clang__)
+  // std::abs is already constexpr by gcc
+  auto abs_c = std::abs(c);
+  auto abs_d = std::abs(d);
 #else
-  T denominator = b.real * b.real + b.imag * b.imag;
-  a.real = (a.real * b.real + a.imag * b.imag) / denominator;
-  a.imag = (a.imag * b.real - a.real * b.imag) / denominator;
-  return a;
+  auto abs_c = c < 0 ? -c : c;
+  auto abs_d = d < 0 ? -d : d;
 #endif
+
+  T real_, imag_;
+  if (abs_c >= abs_d) {
+    if (abs_c == T(0) && abs_d == T(0)) {
+      /* divide by zeros should yield a complex inf or nan */
+      real_ = a / abs_c;
+      imag_ = b / abs_d;
+    } else {
+      auto rat = d / c;
+      auto scl = T(1.0) / (c + d * rat);
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+    }
+  } else {
+    auto rat = c / d;
+    auto scl = T(1.0) / (d + c * rat);
+    real_ = (a * rat + b) * scl;
+    imag_ = (b * rat - a) * scl;
+  }
+  x = complex<T>(real_, imag_);
+  return x;
 }
 
 template <typename T>
