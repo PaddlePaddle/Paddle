@@ -2090,6 +2090,8 @@ class TestCeil(TestActivation):
         # we return zero as gradient, but the numpy return nan.
         # for prim, we compare result with eager python api,
         # so, we use only_prim flag to express we only test prim.
+        if not np.issubdtype(self.dtype, np.floating):
+            self.skipTest("Integer types don't support gradient computation")
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
                 get_device_place(),
@@ -2174,6 +2176,8 @@ class TestFloor(TestActivation):
         # we return zero as gradient, but the numpy return nan.
         # for prim, we compare result with eager python api,
         # so, we use only_prim flag to express we only test prim.
+        if not np.issubdtype(self.dtype, np.floating):
+            self.skipTest("Integer types don't support gradient computation")
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
                 get_device_place(),
