@@ -94,7 +94,7 @@ struct IsZeroFunctor {
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor/trunc) divide. Please check the input value."
+  "(floor) divide. Please check the input value."
 
 template <typename T, typename Enable = void>
 struct DivideFunctor {
