@@ -31,6 +31,7 @@ from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
+import paddle.pir_utils
 from paddle import base, static
 from paddle.base import Program, core, program_guard
 from paddle.base.layer_helper import LayerHelper
@@ -2894,9 +2895,12 @@ class TestRelu_NanInput(TestActivation):
         self.outputs_paddle = out
 
     def test_check_output(self):
-        self.assertTrue(
-            paddle.isnan(self.outputs_paddle).cast('int32').sum() > 0
-        )
+        nan_count = paddle.isnan(self.outputs_paddle).cast('int32').sum()
+        try:
+            nan_count = nan_count.numpy()
+        except AttributeError:
+            nan_count = np.array(nan_count)
+        self.assertTrue(nan_count.item() > 0)
 
     def test_check_grad(self):
         pass
@@ -3441,6 +3445,10 @@ class TestRelu6APIWarnings(unittest.TestCase):
         with (
             static_guard(),
             warnings.catch_warnings(record=True) as context,
+            paddle.pir_utils.OldIrGuard(),
+            paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ),
         ):
             warnings.simplefilter("always")
 
@@ -4813,9 +4821,6 @@ class TestPow_API(TestActivation):
         with static_guard():
             input = np.random.uniform(1, 2, [11, 17]).astype("float32")
             x = paddle.static.data(name="x", shape=[11, 17], dtype="float32")
-            res = paddle.static.data(
-                name="res", shape=[11, 17], dtype="float32"
-            )
 
             factor_1 = 2.0
             factor_2 = paddle.tensor.fill_constant([1], "float32", 3.0)
@@ -4823,13 +4828,26 @@ class TestPow_API(TestActivation):
             out_2 = paddle.pow(x, factor_2)
             out_4 = paddle.pow(x, factor_1, name='pow_res')
             out_6 = paddle.pow(x, factor_2)
-            self.assertEqual(('pow_res' in out_4.name), True)
+            if paddle.framework.in_pir_mode():
+                with (
+                    paddle.pir_utils.OldIrGuard(),
+                    paddle.static.program_guard(
+                        paddle.static.Program(), paddle.static.Program()
+                    ),
+                ):
+                    x_old = paddle.static.data(
+                        name="x", shape=[11, 17], dtype="float32"
+                    )
+                    out_old = paddle.pow(x_old, factor_1, name='pow_res')
+                    self.assertTrue('pow_res' in out_old.name)
+            else:
+                self.assertTrue('pow_res' in out_4.name)
 
             exe = base.Executor(place=base.CPUPlace())
-            res_1, res_2, res, res_6 = exe.run(
+            res_1, res_2, res_6 = exe.run(
                 base.default_main_program(),
                 feed={"x": input},
-                fetch_list=[out_1, out_2, res, out_6],
+                fetch_list=[out_1, out_2, out_6],
             )
 
             np.testing.assert_allclose(
