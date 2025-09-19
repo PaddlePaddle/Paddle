@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <array>
 #include "paddle/common/bfloat16.h"
 #include "paddle/common/bfloat16.inc.h"
 #include "paddle/common/complex.h"
