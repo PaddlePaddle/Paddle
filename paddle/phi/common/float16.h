@@ -14,3 +14,4 @@
 
 #pragma once
 #include "paddle/common/float16.h"
+#include "paddle/common/float16.inc.h"

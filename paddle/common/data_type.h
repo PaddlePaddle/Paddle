@@ -15,10 +15,13 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/common/bfloat16.h"
+#include "paddle/common/bfloat16.inc.h"
 #include "paddle/common/complex.h"
 #include "paddle/common/exception.h"
 #include "paddle/common/float16.h"
+#include "paddle/common/float16.inc.h"
 #include "paddle/common/float8_e4m3fn.h"
+#include "paddle/common/float8_e4m3fn.inc.h"
 #include "paddle/common/float8_e4m3fnuz.h"
 #include "paddle/common/float8_e5m2.h"
 #include "paddle/common/float8_e5m2fnuz.h"

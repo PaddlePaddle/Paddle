@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(__CUDACC__)
 #include <cuda.h>
 #endif
 

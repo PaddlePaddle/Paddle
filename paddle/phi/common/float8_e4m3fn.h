@@ -14,3 +14,4 @@
 
 #pragma once
 #include "paddle/common/float8_e4m3fn.h"
+#include "paddle/common/float8_e4m3fn.inc.h"

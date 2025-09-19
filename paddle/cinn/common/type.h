@@ -21,9 +21,12 @@
 #include "paddle/cinn/common/macros.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/bfloat16.h"
+#include "paddle/common/bfloat16.inc.h"
 #include "paddle/common/enforce.h"
 #include "paddle/common/float16.h"
+#include "paddle/common/float16.inc.h"
 #include "paddle/common/float8_e4m3fn.h"
+#include "paddle/common/float8_e4m3fn.inc.h"
 //! Much of the concepts are borrowed from Halide project.
 
 namespace cinn {

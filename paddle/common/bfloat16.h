@@ -16,7 +16,6 @@
 
 #include <stdint.h>
 
-#include <array>
 #include <cmath>
 #include <cstring>
 #include <iostream>
@@ -27,44 +26,27 @@
 namespace phi {
 namespace dtype {
 
-template <typename T, typename U>
-inline T bit_cast(U x) {
-  static_assert(sizeof(T) == sizeof(U), "invalid sizeof");
-  static_assert(std::is_pod<T>::value, "invalid pod type T");
-  static_assert(std::is_pod<U>::value, "invalid pod type U");
-  T y;
-  std::memcpy(&y, &x, sizeof(T));
-  return y;
-}
-
-// NOTE(zengjinle): this code is mainly from
-// https://github.com/oneapi-src/oneDNN/blob/main/src/common/bfloat16.cpp
-// with minor changes.
 inline uint16_t cpu_float_to_bfloat16(float f) {
-  auto iraw = bit_cast<std::array<uint16_t, 2>>(f);
+  uint32_t int_raw;
+  memcpy(&int_raw, &f, sizeof(float));
+
+  uint16_t high_part = (int_raw >> 16);
   uint16_t x;
-  switch (std::fpclassify(f)) {
-    case FP_ZERO: {
-      x = iraw[1];
-      x &= 0x8000;
-      break;
-    }
-    case FP_INFINITE: {
-      x = iraw[1];
-      break;
-    }
-    case FP_NAN: {
+  uint32_t abs_int = int_raw & 0x7FFFFFFF;
+
+  if (abs_int == 0) {  // Zero
+    x = high_part & 0x8000;
+  } else if (abs_int >= 0x7F800000) {  // Inf or NaN
+    if (abs_int == 0x7F800000) {       // Infinity
+      x = high_part;
+    } else {  // NaN
       x = 0x7FFF;
-      break;
     }
-    default: {
-      // round to nearest even and truncate
-      const uint32_t rounding_bias = 0x00007FFF + (iraw[1] & 0x1);
-      const uint32_t int_raw = bit_cast<uint32_t>(f) + rounding_bias;
-      iraw = bit_cast<std::array<uint16_t, 2>>(int_raw);
-      x = iraw[1];
-      break;
-    }
+  } else {  // Normal or subnormal
+    // round to nearest even and truncate
+    const uint32_t rounding_bias = 0x00007FFF + (high_part & 0x1);
+    int_raw = int_raw + rounding_bias;
+    x = (int_raw >> 16);
   }
   return x;
 }
@@ -399,11 +381,6 @@ HOSTDEVICE inline bfloat16(abs)(const bfloat16& a) {
 #endif
 }
 
-inline std::ostream& operator<<(std::ostream& os, const bfloat16& a) {
-  os << static_cast<float>(a);
-  return os;
-}
-
 }  // namespace dtype
 }  // namespace phi
 
@@ -457,93 +434,3 @@ namespace common {
 using bfloat16 = ::phi::dtype::bfloat16;
 }  // namespace common
 }  // namespace cinn
-
-namespace std {
-
-template <>
-struct is_pod<phi::dtype::bfloat16> {
-  static const bool value = is_trivial<phi::dtype::bfloat16>::value &&
-                            is_standard_layout<phi::dtype::bfloat16>::value;
-};
-
-template <>
-struct is_floating_point<phi::dtype::bfloat16>
-    : std::integral_constant<
-          bool,
-          std::is_same<
-              phi::dtype::bfloat16,
-              typename std::remove_cv<phi::dtype::bfloat16>::type>::value> {};
-template <>
-struct is_signed<phi::dtype::bfloat16> {
-  static const bool value = true;
-};
-
-template <>
-struct is_unsigned<phi::dtype::bfloat16> {
-  static const bool value = false;
-};
-
-inline bool isnan(const phi::dtype::bfloat16& a) {
-  return phi::dtype::isnan(a);
-}
-
-inline bool isinf(const phi::dtype::bfloat16& a) {
-  return phi::dtype::isinf(a);
-}
-
-template <>
-struct numeric_limits<phi::dtype::bfloat16> {
-  static const bool is_specialized = true;
-  static const bool is_signed = true;
-  static const bool is_integer = false;
-  static const bool is_exact = false;
-  static const bool has_infinity = true;
-  static const bool has_quiet_NaN = true;
-  static const bool has_signaling_NaN = true;
-  static const float_denorm_style has_denorm = denorm_present;
-  static const bool has_denorm_loss = false;
-  static const std::float_round_style round_style = std::round_to_nearest;
-  static const bool is_iec559 = false;
-  static const bool is_bounded = false;
-  static const bool is_modulo = false;
-  static const int digits = 8;
-  static const int digits10 = 2;
-  static const int max_digits10 = 9;
-  static const int radix = 2;
-  static const int min_exponent = -125;
-  static const int min_exponent10 = -37;
-  static const int max_exponent = 128;
-  static const int max_exponent10 = 38;
-  static const bool traps = true;
-  static const bool tinyness_before = false;
-
-  HOSTDEVICE static phi::dtype::bfloat16(min)() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x0080);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 lowest() {
-    return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16(max)() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 epsilon() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x3C00);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 round_error() {
-    return phi::dtype::bfloat16(0.5);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 infinity() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x7f80);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 quiet_NaN() {
-    return phi::dtype::raw_uint16_to_bfloat16(0xffc1);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 signaling_NaN() {
-    return phi::dtype::raw_uint16_to_bfloat16(0xff81);
-  }
-  HOSTDEVICE static phi::dtype::bfloat16 denorm_min() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x0001);
-  }
-};
-
-}  // namespace std
