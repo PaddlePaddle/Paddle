@@ -3235,7 +3235,7 @@ All parameter, weight, gradient are variables in Paddle.
       module_levels (dict|int): A dictionary where the keys are module names (str) and
                                 the values are the corresponding verbosity levels (int),
                                 or an int variable that represents the verbosity level set globally for all modules.
-‘
+
     Example:
         .. code-block:: python
 
