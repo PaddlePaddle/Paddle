@@ -39,8 +39,6 @@ function make_cpu_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/gcc#/usr/bin/gcc-13#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/bin/g++-13#g' ${dockerfile_name}
   sed -i 's#ENV PATH=/usr/local/gcc-8.2/bin:$PATH##g' ${dockerfile_name}
-  sed -i 's#cmake-3.18.0-Linux#cmake-4.1.1-linux#g' ${dockerfile_name}
-  sed -i 's#v3.18#v4.1#g' ${dockerfile_name}
 }
 
 
@@ -57,8 +55,6 @@ function make_ce_framework_dockerfile(){
   sed -i "${dockerfile_line}i RUN pip3.10 install wheel distro jinja2 bce-python-sdk==0.8.74" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip3.10 install nvidia-cuda-cupti-cu11==11.8.87 nvidia-cuda-runtime-cu11==11.8.89 nvidia-cudnn-cu11==8.7.0.84 nvidia-cublas-cu11==11.11.3.6 nvidia-cufft-cu11==10.9.0.58 nvidia-curand-cu11==10.3.0.86 nvidia-cusolver-cu11==11.4.1.48 nvidia-cusparse-cu11==11.7.5.86 nvidia-nccl-cu11==2.19.3" ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8531#g' ${dockerfile_name}
-  sed -i 's#cmake-3.18.0-Linux#cmake-4.1.1-linux#g' ${dockerfile_name}
-  sed -i 's#v3.18#v4.1#g' ${dockerfile_name}
 }
 
 
@@ -89,8 +85,6 @@ function make_ubuntu20_cu12_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
-  sed -i 's#cmake-3.18.0-Linux#cmake-4.1.1-linux#g' ${dockerfile_name}
-  sed -i 's#v3.18#v4.1#g' ${dockerfile_name}
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
     pip3.10 install -r requirements.txt \&\& \
@@ -128,8 +122,6 @@ function make_ubuntu20_cu123_dockerfile(){
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#/usr/local/gcc-8.2/bin/g++#/usr/local/gcc-12.1/bin/g++#g' ${dockerfile_name}
   sed -i 's#PATH=/usr/local/gcc-8.2/bin:$PATH#PATH=/usr/local/gcc-12.1/bin:$PATH#g' ${dockerfile_name}
-  sed -i 's#cmake-3.18.0-Linux#cmake-4.1.1-linux#g' ${dockerfile_name}
-  sed -i 's#v3.18#v4.1#g' ${dockerfile_name}
 
   sed -i "${dockerfile_line}i WORKDIR /home \n \
     RUN git clone --depth=1 https://github.com/PaddlePaddle/PaddleNLP.git -b stable/paddle-ci \&\& cd PaddleNLP \&\& \
