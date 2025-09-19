@@ -66,7 +66,6 @@ jobs:
           git config user.name "PaddleCI"
           git config user.email "paddle_ci@example.com"
           git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
-          git rebase 066b3a0
           git merge --no-ff pr
           git submodule update --init
           git branch -d pr
