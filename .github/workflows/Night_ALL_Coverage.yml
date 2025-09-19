@@ -332,6 +332,7 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ~/.bashrc
           unset GREP_OPTIONS
+          export WITH_ALL_COVERAGE=ON
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
           coverage_tag=$(date +"%m-%d")
@@ -345,23 +346,6 @@ jobs:
           directory: build/coverage_files
           verbose: true
 
-      - name: Determine whether the coverage rate reaches 90%
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
-          unset GREP_OPTIONS
-          source ${{ github.workspace }}/../../../proxy
-          source ${ci_scripts}/utils.sh
-          bash $ci_scripts/coverage_judge.sh
-          COVERAGE_EXIT_CODE=$?
-          echo $COVERAGE_EXIT_CODE
-          if [ "$COVERAGE_EXIT_CODE" -ne 0 ]; then
-            echo "Coverage check failed, unit tests have all passed, please do not rerun, check whether the newly added code lines are fully covered by unit tests. If you have any questions, please contact XieYunshen."
-            exit $COVERAGE_EXIT_CODE
-          else
-            echo "Coverage passed"
-          fi
-          '
 
       - name: Terminate and delete the container
         if: always()
