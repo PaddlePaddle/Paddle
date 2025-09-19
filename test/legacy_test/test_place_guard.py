@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
+from op_test import get_device, get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -24,9 +24,9 @@ class TestPlaceGuard(unittest.TestCase):
         places = [
             ["cpu", paddle.CPUPlace()],
         ]
-        if paddle.device.is_compiled_with_cuda():
-            places.append(["gpu", paddle.CUDAPlace(0)])
-            places.append(["gpu:0", paddle.CUDAPlace(0)])
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            places.append([get_device(), get_device_place()])
+            places.append(["gpu:0", get_device_place()])
         elif paddle.device.is_compiled_with_ipu():
             places.append(["ipu", paddle.IPUPlace()])
         elif paddle.device.is_compiled_with_xpu():
@@ -41,9 +41,9 @@ class TestPlaceGuard(unittest.TestCase):
 
     def test_str_place_obj_scope_in_device(self):
         places = []
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-            places.append(paddle.CUDAPlace(0))
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+            places.append(get_device_place())
         elif paddle.device.is_compiled_with_ipu():
             places.append(paddle.IPUPlace())
         elif paddle.device.is_compiled_with_xpu():
@@ -65,7 +65,7 @@ class TestPlaceGuard(unittest.TestCase):
             dygraph_guard(),
             self.assertRaisesRegex(
                 ValueError,
-                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x',",
+                "The device must be a string which is like 'cpu', 'gpu', 'gpu:x', 'dcu', 'dcu:x', 'xpu', 'xpu:x', 'npu', 'npu:x'",
             ),
             paddle.device.device_guard("xxx"),
         ):
@@ -84,9 +84,9 @@ class TestPlaceGuard(unittest.TestCase):
 
     def test_str_place_obj_nested(self):
         places = [paddle.CPUPlace()]
-        if paddle.device.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-            places.append(paddle.CUDAPlace(0))
+        if paddle.device.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+            places.append(get_device_place())
         elif paddle.device.is_compiled_with_ipu():
             places.append(paddle.IPUPlace())
         elif paddle.device.is_compiled_with_xpu():
@@ -133,12 +133,11 @@ class TestPlaceGuard(unittest.TestCase):
 
     def test_place_str_cuda(self):
         if (
-            paddle.device.is_compiled_with_cuda()
-            and not paddle.device.is_compiled_with_rocm()
-        ):
-            with paddle.device.device_guard("gpu"):
+            paddle.device.is_compiled_with_cuda() or is_custom_device()
+        ) and not paddle.device.is_compiled_with_rocm():
+            with paddle.device.device_guard(get_device()):
                 tensor_cuda = paddle.randn([3, 3], device="cuda:0")
-                self.assertEqual(tensor_cuda.place, paddle.CUDAPlace(0))
+                self.assertEqual(tensor_cuda.place, get_device_place())
 
 
 if __name__ == "__main__":

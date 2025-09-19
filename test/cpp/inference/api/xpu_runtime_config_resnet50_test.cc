@@ -91,8 +91,8 @@ TEST(resnet50_xpu, basic) {
       predictor##idx_->GetExecStream(),                                    \
       config_.stream,                                                      \
       common::errors::InvalidArgument(                                     \
-          "predictor##idx_->GetExecStream() is not equal with"             \
-          "config_.stream while predictor##idx_->GetExecStream()"          \
+          "predictor##idx_->GetExecStream() is not equal with "            \
+          "config_.stream while predictor##idx_->GetExecStream() "         \
           "is %d and config_.stream is %d",                                \
           predictor##idx_->GetExecStream(),                                \
           config_.stream));

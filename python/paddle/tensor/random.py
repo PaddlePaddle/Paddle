@@ -1845,6 +1845,62 @@ def randint(
         return out
 
 
+def random_(
+    x: Tensor,
+    from_: int = 0,
+    to: int | None = None,
+    *,
+    generator: None = None,
+) -> Tensor:
+    """
+    Fills self tensor with numbers sampled from the discrete uniform distribution over [from, to - 1].
+    If not specified, the values are usually only bounded by self tensor’s data type. However,
+    for floating point types, if unspecified, range will be [0, 2^mantissa] to ensure that every value is representable.
+
+    Args:
+        from (int, optional): The lower bound on the range of random values to generate. Default is 0.
+        to (int|None, optional): The upper bound on the range of random values to generate. Default is None.
+        generator (None): Placeholder for random number generator (currently not implemented, reserved for future use).
+
+    Returns:
+        Tensor, A Tensor filled with random integers from a discrete uniform
+        distribution in the range [``from``, ``to``).
+
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.zeros([3], dtype=paddle.int32)
+            >>> x.random_(0, 10)
+    """
+    dtype = x.dtype
+    if to is None:
+        if from_ == 0:
+            if paddle.is_floating_point(x):
+                if dtype == paddle.float32:
+                    mantissa = 24
+                elif dtype == paddle.float64:
+                    mantissa = 53
+                elif dtype == paddle.float16:
+                    mantissa = 11
+                else:
+                    mantissa = 8
+                to = 2**mantissa
+            else:
+                to = paddle.iinfo(dtype).max
+        else:
+            to = from_
+            from_ = 0
+
+    if from_ >= to:
+        raise ValueError(
+            f"random_ expects 'from' to be less than 'to', but got from={from_} >= to={to}"
+        )
+    return _C_ops.random_(x, from_, to)
+
+
 def randint_like(
     x: Tensor,
     low: int = 0,

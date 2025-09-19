@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -72,7 +72,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': pinned_var},
             attrs={'dst_place_type': 2},
         )
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
@@ -88,7 +88,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': gpu_var},
             attrs={'dst_place_type': 1},
         )
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
@@ -144,7 +144,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                 outputs={'Out': gpu_var},
                 attrs={'dst_place_type': 1},
             )
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             exe = base.Executor(place)
             gpu_, pinned_ = exe.run(
                 main_program,
@@ -207,7 +207,7 @@ class TestMemcpyOPError(unittest.TestCase):
                 outputs={'Out': pinned_var},
                 attrs={'dst_place_type': 2},
             )
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             exe = base.Executor(place)
             selected_row_var_, pinned_ = exe.run(
                 main_program,

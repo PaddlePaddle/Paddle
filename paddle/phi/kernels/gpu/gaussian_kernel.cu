@@ -220,13 +220,13 @@ void GaussianRandomInplace(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void GaussianKernel(const Context& dev_ctx,
-                    const IntArray& shape,
-                    float mean,
-                    float std,
-                    int seed,
-                    DataType dtype,
-                    DenseTensor* out) {
+PADDLE_API void GaussianKernel(const Context& dev_ctx,
+                               const IntArray& shape,
+                               float mean,
+                               float std,
+                               int seed,
+                               DataType dtype,
+                               DenseTensor* out) {
   GaussianRandom<T>(dev_ctx, shape, mean, std, seed, dtype, out);
 }
 

@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -60,9 +61,9 @@ class TestNetWithDtype(unittest.TestCase):
         self.run_net_on_place(place)
 
     def test_gpu(self):
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             return
-        place = base.CUDAPlace(0)
+        place = get_device_place()
         self.run_net_on_place(place)
 
 
