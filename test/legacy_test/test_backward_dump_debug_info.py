@@ -121,6 +121,7 @@ grads = paddle.autograd.backward(
     [x, y],
     [None, None],
 )
+paddle.base.core.set_vlog_level(4)
         """
         process = subprocess.run(
             [sys.executable, '-c', code.format(glog_level=4)],
@@ -241,6 +242,12 @@ loss.backward(dump_backward_graph_path="./backward")
             "Create '/path/to/create' failed : Mocked exception"
             in str(context.exception)
         )
+
+
+class TestSetVlogLevelError(unittest.TestCase):
+    def test_input_invalid(self):
+        with self.assertRaises(ValueError):
+            paddle.base.core.set_vlog_level("3")
 
 
 if __name__ == "__main__":
