@@ -202,14 +202,15 @@ jobs:
             tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
           fi
           cd /paddle/dist
-          mkdir -p ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
+          coverage_tag=$(date +"%m-%d")
+          mkdir -p ${CFS_DIR}/coverage_night/${coverage_tag}
           echo "Uploading coverage build size"
           python ${{ env.bos_file }} coverage_build_size paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           echo "Uploading coverage wheel"
           python ${{ env.bos_file }} ${{ env.paddle_whl }} paddle-github-action/PR/coverage/${{ env.PR_ID }}/${{ env.COMMIT_ID }}
           cd /
           echo "Uploading Paddle.tar.gz"
-          cp Paddle.tar.gz ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}
+          cp Paddle.tar.gz ${CFS_DIR}/coverage_night/${coverage_tag}
           rm Paddle.tar.gz
           '
 
@@ -307,7 +308,8 @@ jobs:
           rm -rf * .[^.]*
           set -e
           echo "Downloading Paddle.tar.gz from cfs"
-          cp ${CFS_DIR}/coverage_bos/${PR_ID}/${COMMIT_ID}/Paddle.tar.gz .
+          coverage_tag=$(date +"%m-%d")
+          cp ${CFS_DIR}/coverage_night/${coverage_tag}/Paddle.tar.gz .
           echo "Extracting Paddle.tar.gz"
           tar --use-compress-program="pzstd -1" -xf Paddle.tar.gz --strip-components=1
           rm Paddle.tar.gz
@@ -332,8 +334,9 @@ jobs:
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; check_coverage
-          mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
-          cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
+          coverage_tag=$(date +"%m-%d")
+          mkdir -p /home/data/cfs/coverage/${coverage_tag}
+          cp build/coverage_files/* /home/data/cfs/coverage/${coverage_tag}
           '
 
       - name: Upload coverage report
