@@ -12,8 +12,18 @@ env:
   token: ${{ vars.ACTION_GITHUB_TOKEN }}
 
 jobs:
+  check-bypass:
+    name: Check bypass
+    uses: ./.github/workflows/check-bypass.yml
+    with:
+      workflow-name: 'warning'
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
   warning:
     name: Warning
+    needs: check-bypass
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
