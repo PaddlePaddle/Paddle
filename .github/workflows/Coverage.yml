@@ -140,7 +140,6 @@ jobs:
           set +e
           echo "Downloading Paddle.tar.gz"
           source ${{ github.workspace }}/../../../proxy
-          ls
           rm -rf Paddle
           git clone --depth=10000 https://github.com/PaddlePaddle/Paddle.git .
           git config --global user.name "PaddleCI"
@@ -155,6 +154,7 @@ jobs:
           set +e
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
+          git submodule update --init --recursive
           git config pull.rebase false
           echo "Pull upstream $BRANCH"
           '
