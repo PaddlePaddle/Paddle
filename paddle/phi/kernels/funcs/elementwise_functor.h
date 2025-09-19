@@ -142,23 +142,21 @@ struct DivideFunctor<ComplexType<T>> {
 #endif
 
     T real_, imag_;
-    if (abs_c >= abs_d) {
-      if (abs_c == T(0) && abs_d == T(0)) {
-        /* divide by zeros should yield a complex inf or nan */
-        real_ = a / abs_c;
-        imag_ = b / abs_d;
-      } else {
-        auto rat = d / c;
-        auto scl = T(1.0) / (c + d * rat);
+
+    auto rat = (abs_c >= abs_d) ? (d / c) : (c / d);
+    auto scl = (abs_c >= abs_d) ? (T(1.0) / (c + d * rat))
+                                : (T(1.0) / (d + c * rat));
+    if constexpr (std::is_same_v<T, float>) {
+        real_ = std::fmaf(b, rat, a) * scl;
+        imag_ = std::fmaf(-a, rat, b) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+        real_ = std::fma(b, rat, a) * scl;
+        imag_ = std::fma(-a, rat, b) * scl;
+    } else {
         real_ = (a + b * rat) * scl;
         imag_ = (b - a * rat) * scl;
-      }
-    } else {
-      auto rat = c / d;
-      auto scl = T(1.0) / (d + c * rat);
-      real_ = (a * rat + b) * scl;
-      imag_ = (b * rat - a) * scl;
     }
+    
     return ComplexType<T>(real_, imag_);
   }
 };
@@ -184,23 +182,21 @@ struct InverseDivideFunctor<ComplexType<T>> {
 #endif
 
     T real_, imag_;
-    if (abs_c >= abs_d) {
-      if (abs_c == T(0) && abs_d == T(0)) {
-        /* divide by zeros should yield a complex inf or nan */
-        real_ = a / abs_c;
-        imag_ = b / abs_d;
-      } else {
-        auto rat = d / c;
-        auto scl = T(1.0) / (c + d * rat);
+
+    auto rat = (abs_c >= abs_d) ? (d / c) : (c / d);
+    auto scl = (abs_c >= abs_d) ? (T(1.0) / (c + d * rat))
+                                : (T(1.0) / (d + c * rat));
+    if constexpr (std::is_same_v<T, float>) {
+        real_ = std::fmaf(b, rat, a) * scl;
+        imag_ = std::fmaf(-a, rat, b) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+        real_ = std::fma(b, rat, a) * scl;
+        imag_ = std::fma(-a, rat, b) * scl;
+    } else {
         real_ = (a + b * rat) * scl;
         imag_ = (b - a * rat) * scl;
-      }
-    } else {
-      auto rat = c / d;
-      auto scl = T(1.0) / (d + c * rat);
-      real_ = (a * rat + b) * scl;
-      imag_ = (b * rat - a) * scl;
     }
+    
     return ComplexType<T>(real_, imag_);
   }
 };
@@ -776,22 +772,18 @@ struct RemainderFunctor<ComplexType<T>> {
 #endif
 
     T real_, imag_;
-    if (abs_c >= abs_d) {
-      if (abs_c == T(0) && abs_d == T(0)) {
-        /* divide by zeros should yield a complex inf or nan */
-        real_ = a__ / abs_c;
-        imag_ = b__ / abs_d;
-      } else {
-        auto rat = d__ / c__;
-        auto scl = T(1.0) / (c__ + d__ * rat);
+    auto rat = (abs_c >= abs_d) ? (d__ / c__) : (c__ / d__);
+    auto scl = (abs_c >= abs_d) ? (T(1.0) / (c__ + d__ * rat))
+                                : (T(1.0) / (d__ + c__ * rat));
+    if constexpr (std::is_same_v<T, float>) {
+        real_ = std::fmaf(b__, rat, a__) * scl;
+        imag_ = std::fmaf(-a__, rat, b__) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+        real_ = std::fma(b__, rat, a__) * scl;
+        imag_ = std::fma(-a__, rat, b__) * scl;
+    } else {
         real_ = (a__ + b__ * rat) * scl;
         imag_ = (b__ - a__ * rat) * scl;
-      }
-    } else {
-      auto rat = c__ / d__;
-      auto scl = T(1.0) / (d__ + c__ * rat);
-      real_ = (a__ * rat + b__) * scl;
-      imag_ = (b__ * rat - a__) * scl;
     }
     auto q = ComplexType<T>(real_, imag_);
 
@@ -970,22 +962,18 @@ struct InverseRemainderFunctor<
 #endif
 
     T real_, imag_;
-    if (abs_c >= abs_d) {
-      if (abs_c == T(0) && abs_d == T(0)) {
-        /* divide by zeros should yield a complex inf or nan */
-        real_ = a__ / abs_c;
-        imag_ = b__ / abs_d;
-      } else {
-        auto rat = d__ / c__;
-        auto scl = T(1.0) / (c__ + d__ * rat);
+    auto rat = (abs_c >= abs_d) ? (d__ / c__) : (c__ / d__);
+    auto scl = (abs_c >= abs_d) ? (T(1.0) / (c__ + d__ * rat))
+                                : (T(1.0) / (d__ + c__ * rat));
+    if constexpr (std::is_same_v<T, float>) {
+        real_ = std::fmaf(b__, rat, a__) * scl;
+        imag_ = std::fmaf(-a__, rat, b__) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+        real_ = std::fma(b__, rat, a__) * scl;
+        imag_ = std::fma(-a__, rat, b__) * scl;
+    } else {
         real_ = (a__ + b__ * rat) * scl;
         imag_ = (b__ - a__ * rat) * scl;
-      }
-    } else {
-      auto rat = c__ / d__;
-      auto scl = T(1.0) / (d__ + c__ * rat);
-      real_ = (a__ * rat + b__) * scl;
-      imag_ = (b__ * rat - a__) * scl;
     }
     auto q = ComplexType<T>(real_, imag_);
 
