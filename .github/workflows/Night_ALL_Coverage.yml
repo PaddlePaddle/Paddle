@@ -133,6 +133,7 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           set -e
           git checkout test
+          git submodule update --init --recursive
           echo "Pull upstream $BRANCH"
           bash ci/git_pull.sh $BRANCH
           '
