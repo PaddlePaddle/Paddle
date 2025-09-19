@@ -1790,7 +1790,7 @@ def manual_seed_all(seed: int) -> None:
         .. code-block:: python
 
             >>> import paddle
-            >>> gen = paddle.device.manual_seed_all(102)
+            >>> paddle.device.manual_seed_all(102)
 
     """
     paddle.seed(seed)
