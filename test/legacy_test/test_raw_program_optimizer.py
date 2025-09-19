@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle import base
@@ -71,7 +71,7 @@ class TestRawProgramOptimizer(unittest.TestCase):
                 optimizer.minimize(cost)
 
             trainer_id = fleet.worker_index()
-            exe = paddle.static.Executor(paddle.CUDAPlace(trainer_id))
+            exe = paddle.static.Executor(get_device_place(trainer_id))
             rank = fleet.worker_index()
             exe.run(sharding_startup_program)
             exe.run(program=sharding_program, feed=self.gen_data())

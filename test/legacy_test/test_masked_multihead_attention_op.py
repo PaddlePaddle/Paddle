@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.framework import core
@@ -22,7 +22,8 @@ from paddle.incubate.nn.functional import masked_multihead_attention
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestMMHAOp(unittest.TestCase):
     def setUp(self):
@@ -214,7 +215,7 @@ class TestMMHAOp(unittest.TestCase):
         return paddle_naive_mmha_out, paddle_mmha_out
 
     def test_mmha_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         paddle_naive_mmha, paddle_mmha_out = self.check_main(
@@ -235,7 +236,7 @@ class TestMMHAOp(unittest.TestCase):
         )
 
     def test_mmha_qkv_out_scale(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         paddle_naive_mmha, paddle_mmha_out = self.check_main(
@@ -256,7 +257,7 @@ class TestMMHAOp(unittest.TestCase):
         )
 
     def test_mmha_outlinear_in_scale(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         paddle_naive_mmha, paddle_mmha_out = self.check_main(
@@ -278,7 +279,8 @@ class TestMMHAOp(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestLayerNormStaticInt8Op(unittest.TestCase):
     def setUp(self):
@@ -334,7 +336,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         self.quant_round_type = 1
         self.quant_max_bound = 127
         self.quant_min_bound = -127
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def mmha_naive(
         self,
@@ -469,7 +471,7 @@ class TestLayerNormStaticInt8Op(unittest.TestCase):
         return paddle_naive_mmha_out, out_s
 
     def test_mmha_fp16(self):
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
 
         paddle_naive_mmha_out, paddle_mmha_out = self.check_main(

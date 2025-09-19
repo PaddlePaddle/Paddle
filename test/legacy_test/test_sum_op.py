@@ -25,7 +25,9 @@ from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
+    get_device_place,
     get_places,
+    is_custom_device,
 )
 from utils import dygraph_guard, static_guard
 
@@ -300,14 +302,15 @@ class TestDenseTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
 
 # ----------- test fp16 -----------
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestAFP16SumOp(TestSumOp):
     def init_kernel_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_output_with_place(
                 place,
@@ -320,7 +323,7 @@ class TestAFP16SumOp(TestSumOp):
     # FIXME: Because of the precision fp16, max_relative_error
     # should be 0.15 here.
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         if core.is_float16_supported(place):
             self.check_grad(
                 ['x0'],
@@ -334,14 +337,15 @@ class TestAFP16SumOp(TestSumOp):
 
 def create_test_sum_fp16_class(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not (core.is_compiled_with_cuda() or is_custom_device()),
+        "core is not compiled with CUDA",
     )
     class TestSumFp16Case(parent):
         def init_kernel_type(self):
             self.dtype = np.float16
 
         def test_w_is_selected_rows(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             if core.is_float16_supported(place):
                 for inplace in [True, False]:
                     self.check_with_place(place, inplace)
@@ -605,12 +609,12 @@ class TestSumOpError(unittest.TestCase):
 
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            r"sum\(\): argument 'X' \(position 0\) must be list of Tensors",
             test_empty_list_input,
         )
         self.assertRaisesRegex(
             ValueError,
-            r"(.|)+sum\(\): argument 'X' \(position 0\) must be list of Tensors",
+            r"sum\(\): argument 'X' \(position 0\) must be list of Tensors",
             test_list_of_none_input,
         )
 
@@ -626,8 +630,8 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_path = os.path.join(self.temp_dir.name, 'reduce_tensor_axis')
         self.place = (
-            paddle.CUDAPlace(0)
-            if paddle.is_compiled_with_cuda()
+            get_device_place()
+            if (paddle.is_compiled_with_cuda() or is_custom_device())
             else paddle.CPUPlace()
         )
         self.keepdim = False
@@ -695,7 +699,7 @@ class TestReduceOPTensorAxisBase(unittest.TestCase):
                 config = paddle_infer.Config(
                     self.save_path + '.pdmodel', self.save_path + '.pdiparams'
                 )
-            if paddle.is_compiled_with_cuda():
+            if paddle.is_compiled_with_cuda() or is_custom_device():
                 config.enable_use_gpu(100, 0)
             else:
                 config.disable_gpu()
@@ -928,6 +932,164 @@ class TestSum_BoolToInt64_ZeroSize(unittest.TestCase):
             for keepdim in keepdims_options:
                 self._test_dygraph(place, None, keepdim, "bool")
                 self._test_dygraph(place, None, keepdim, "int32")
+
+
+class TestSumOp_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.shape = [2, 3, 4]
+        self.axis = 0
+        self.input_dtype = 'float32'
+        self.test_dtypes = [
+            np.int32,
+            np.int64,
+            np.float64,
+            np.bool,
+        ]
+
+    def test_dygraph(self):
+        with dygraph_guard():
+            x_paddle = paddle.ones(shape=self.shape, dtype=self.input_dtype)
+            for dtype_input in self.test_dtypes:
+                numpy_result = np.sum(
+                    x_paddle.numpy(),
+                    axis=self.axis,
+                    dtype=np.dtype(dtype_input),
+                    keepdims=False,
+                )
+
+                # paddle test case
+                paddle_result0 = paddle.sum(x_paddle, self.axis, dtype_input)
+                np.testing.assert_allclose(paddle_result0, numpy_result)
+
+                paddle_result1 = paddle.sum(
+                    x_paddle, self.axis, dtype_input, False
+                )
+                np.testing.assert_allclose(paddle_result1, numpy_result)
+
+                paddle_result2 = paddle.sum(
+                    x=x_paddle, axis=self.axis, dtype=dtype_input, keepdim=False
+                )
+                np.testing.assert_allclose(paddle_result2, numpy_result)
+
+                # torch test case
+                paddle_result3 = paddle.sum(
+                    input=x_paddle, dim=self.axis, keepdim=False
+                )
+                self.assertEqual(paddle_result3.dtype, paddle.float32)
+
+                paddle_result4 = paddle.sum(
+                    input=x_paddle,
+                    dim=self.axis,
+                    keepdim=False,
+                    dtype=dtype_input,
+                )
+                np.testing.assert_allclose(paddle_result4, numpy_result)
+
+                paddle_result5 = paddle.sum(
+                    x_paddle, self.axis, keepdim=False, dtype=dtype_input
+                )
+                np.testing.assert_allclose(paddle_result5, numpy_result)
+
+                paddle_result6 = paddle.sum(
+                    x_paddle, self.axis, False, dtype=dtype_input
+                )
+                np.testing.assert_allclose(paddle_result6, numpy_result)
+
+                paddle_result7 = paddle.sum(
+                    x_paddle, self.axis, False, dtype_input
+                )
+                np.testing.assert_allclose(paddle_result7, numpy_result)
+
+                paddle_result8 = paddle.sum(
+                    x_paddle, self.axis, dtype_input, False
+                )
+                np.testing.assert_allclose(paddle_result8, numpy_result)
+
+                paddle_result9 = paddle.sum(x_paddle, self.axis, False)
+                self.assertEqual(paddle_result9.dtype, paddle.float32)
+
+                paddle_result10 = paddle.sum(x_paddle, self.axis, dtype_input)
+                np.testing.assert_allclose(paddle_result10, numpy_result)
+
+    def test_static(self):
+        self.test_dtypes = [
+            paddle.int32,
+            paddle.int64,
+            paddle.float64,
+            paddle.bool,
+        ]
+        with static_guard():
+            for dtype_input in self.test_dtypes:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x_paddle = paddle.static.data(
+                        name='x', shape=self.shape, dtype=self.input_dtype
+                    )
+
+                    # paddle test case
+                    paddle_result0 = paddle.sum(
+                        x_paddle, axis=self.axis, dtype=dtype_input
+                    )
+                    self.assertEqual(paddle_result0.dtype, dtype_input)
+
+                    paddle_result1 = paddle.sum(
+                        x_paddle,
+                        axis=self.axis,
+                        dtype=dtype_input,
+                        keepdim=False,
+                    )
+                    self.assertEqual(paddle_result1.dtype, dtype_input)
+
+                    paddle_result2 = paddle.sum(
+                        x=x_paddle,
+                        axis=self.axis,
+                        dtype=dtype_input,
+                        keepdim=False,
+                    )
+                    self.assertEqual(paddle_result2.dtype, dtype_input)
+
+                    # torch test case
+                    paddle_result3 = paddle.sum(
+                        input=x_paddle, dim=self.axis, keepdim=False
+                    )
+                    self.assertEqual(paddle_result3.dtype, paddle.float32)
+
+                    paddle_result4 = paddle.sum(
+                        input=x_paddle,
+                        dim=self.axis,
+                        keepdim=False,
+                        dtype=dtype_input,
+                    )
+                    self.assertEqual(paddle_result4.dtype, dtype_input)
+
+                    paddle_result5 = paddle.sum(
+                        x_paddle, self.axis, keepdim=False, dtype=dtype_input
+                    )
+                    self.assertEqual(paddle_result5.dtype, dtype_input)
+
+                    paddle_result6 = paddle.sum(
+                        x_paddle, self.axis, False, dtype=dtype_input
+                    )
+                    self.assertEqual(paddle_result6.dtype, dtype_input)
+
+                    paddle_result7 = paddle.sum(
+                        x_paddle, self.axis, False, dtype_input
+                    )
+                    self.assertEqual(paddle_result7.dtype, dtype_input)
+
+                    paddle_result8 = paddle.sum(
+                        x_paddle, self.axis, dtype_input, False
+                    )
+                    self.assertEqual(paddle_result8.dtype, dtype_input)
+
+                    paddle_result9 = paddle.sum(x_paddle, self.axis, False)
+                    self.assertEqual(paddle_result9.dtype, paddle.float32)
+
+                    paddle_result10 = paddle.sum(
+                        x_paddle, self.axis, dtype_input
+                    )
+                    self.assertEqual(paddle_result10.dtype, dtype_input)
 
 
 if __name__ == "__main__":

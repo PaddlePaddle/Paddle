@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import sys
-import unittest
-
-sys.path.append("../../../legacy_test")
-from test_parallel_dygraph_dataparallel import (
-    TestMultipleAccelerators,
+from .compat import split
+from .tensor.einsum import einsum
+from .tensor.linalg import norm
+from .tensor.manipulation import (
+    atleast_1d,
+    atleast_2d,
+    atleast_3d,
+    unique_consecutive,
 )
+from .tensor.math import broadcast_shapes
 
-
-class TestParallelizer(TestMultipleAccelerators):
-    # check sharding logic as well as the accuracy with single mode
-    def test_parallelizer_logic(self):
-        self.run_mnist_2accelerators('auto_parallel_parallelizer_deprecated.py')
-
-
-if __name__ == "__main__":
-    unittest.main()
+__all__ = [
+    'atleast_1d',
+    'atleast_2d',
+    'atleast_3d',
+    'broadcast_shapes',
+    "einsum",
+    "norm",
+    'split',
+    'unique_consecutive',
+]

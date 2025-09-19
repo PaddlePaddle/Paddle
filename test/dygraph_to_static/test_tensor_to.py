@@ -259,6 +259,13 @@ class TensorToTest(Dy2StTestBase):
         )
         self.assertEqual(tensor8.dtype, tensor3.dtype)
         self.assertEqual(tensor3.place, tensor8.place)
+        tensor9 = paddle.to_tensor([7, 8, 9], stop_gradient=False)
+        tensor10 = paddle.jit.to_static(to_kwargs_dtype_copy)(
+            tensor9, dtype=tensor9.dtype, copy=True
+        )
+        self.assertEqual(tensor10.dtype, tensor9.dtype)
+        self.assertEqual(tensor10.place, tensor9.place)
+        self.assertEqual(tensor10.stop_gradient, tensor9.stop_gradient)
 
         if paddle.is_compiled_with_cuda():
             tensor8 = paddle.jit.to_static(to_kwargs_device_copy)(

@@ -16,7 +16,7 @@ import unittest
 from functools import reduce
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import base
@@ -295,7 +295,7 @@ class TestVariable(unittest.TestCase):
         w = b.create_var(dtype="float64")
         self.assertTrue(isinstance(str(w), str))
 
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             wc = b.create_var(dtype="int")
             self.assertTrue(isinstance(str(wc), str))
 
@@ -528,8 +528,11 @@ class TestListIndex(unittest.TestCase):
 
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -609,8 +612,11 @@ class TestListIndex(unittest.TestCase):
 
             place = (
                 paddle.base.CPUPlace()
-                if not paddle.base.core.is_compiled_with_cuda()
-                else paddle.base.CUDAPlace(0)
+                if not (
+                    paddle.base.core.is_compiled_with_cuda()
+                    or is_custom_device()
+                )
+                else get_device_place()
             )
 
             prog = paddle.static.default_main_program()
@@ -930,8 +936,11 @@ class TestListIndex(unittest.TestCase):
                 x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1009,8 +1018,11 @@ class TestListIndex(unittest.TestCase):
                 y2 = x2_out[index_mod2]
                 place = (
                     paddle.base.CPUPlace()
-                    if not paddle.base.core.is_compiled_with_cuda()
-                    else paddle.base.CUDAPlace(0)
+                    if not (
+                        paddle.base.core.is_compiled_with_cuda()
+                        or is_custom_device()
+                    )
+                    else get_device_place()
                 )
 
                 prog = paddle.static.default_main_program()

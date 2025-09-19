@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -140,8 +146,8 @@ class TestAtan2API(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestAtan2BF16OP(OpTest):
@@ -163,13 +169,13 @@ class TestAtan2BF16OP(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_output_with_place(
             place, check_cinn=self.check_cinn, check_pir=True
         )
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_grad_with_place(
             place,
             ['X1', 'X2'],
@@ -183,8 +189,8 @@ class TestAtan2BF16OP(OpTest):
 class TestAtan2Broadcasting(unittest.TestCase):
     def _get_places(self):
         places = [paddle.base.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.base.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def _generate_inputs_outputs(self, shapes):

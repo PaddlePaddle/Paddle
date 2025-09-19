@@ -169,6 +169,7 @@ from paddle import (
     amp as amp,
     audio as audio,
     autograd as autograd,
+    cuda as cuda,
     dataset as dataset,
     decomposition as decomposition,
     device as device,
@@ -201,6 +202,7 @@ from . import (
     callbacks as callbacks,
     compat as compat,
     fft as fft,
+    functional as functional,
     hub as hub,
     library as library,
     linalg as linalg,
@@ -267,6 +269,11 @@ from .hapi import (
     flops,
     summary,
 )
+from .nn.functional import (
+    conv1d,
+    conv2d,
+    conv3d,
+)
 from .nn.functional.distance import (
     pdist,
 )
@@ -294,6 +301,7 @@ from .tensor.creation import (
     MmapStorage,
     ShortTensor,
     arange,
+    asarray,
     assign,
     cauchy_,
     clone,
@@ -305,6 +313,7 @@ from .tensor.creation import (
     empty,
     empty_like,
     eye,
+    from_numpy,
     full,
     full_like,
     geometric_,
@@ -370,10 +379,10 @@ from .tensor.logic import (
     greater_equal_,
     greater_than,
     greater_than_,
+    gt,
     is_empty,
     is_tensor,
     isclose,
-    less,
     less_,
     less_equal,
     less_equal_,
@@ -938,9 +947,15 @@ ger = outer
 div = divide
 div_ = divide_
 eq = equal
-gt = greater_than
+ne = not_equal
+lt = less_than
+less = less_than
+le = less_equal
+greater = gt
+ge = greater_equal
 swapdims = transpose
 swapaxes = transpose
+manual_seed = seed
 sub = subtract
 sub_ = subtract_
 
@@ -1009,6 +1024,7 @@ __all__ = [
     'equal',
     'equal_',
     'equal_all',
+    "from_numpy",
     'is_tensor',
     'is_complex',
     'is_integer',
@@ -1257,6 +1273,7 @@ __all__ = [
     'chunk',
     'tolist',
     'tensordot',
+    "greater",
     'greater_than',
     'greater_than_',
     'shard_index',
@@ -1434,6 +1451,15 @@ __all__ = [
     'get_autocast_dtype',
     'get_autocast_cpu_dtype',
     'get_autocast_gpu_dtype',
+    'ne',
+    'lt',
+    'le',
+    'ge',
+    'asarray',
+    'conv1d',
+    'conv2d',
+    'conv3d',
+    'manual_seed',
     'softmax',
 ]
 import os

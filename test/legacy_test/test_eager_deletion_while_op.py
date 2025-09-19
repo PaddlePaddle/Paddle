@@ -19,7 +19,11 @@ os.environ['CPU_NUM'] = '2'
 import unittest
 
 import numpy
-from op_test import get_places
+from op_test import (
+    get_device_class,
+    get_places,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -42,9 +46,9 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
     def run_main(self, place):
         self.place = place
 
-        if not core.is_compiled_with_cuda() and isinstance(
-            self.place, core.CUDAPlace
-        ):
+        if not (
+            core.is_compiled_with_cuda() or is_custom_device()
+        ) and isinstance(self.place, get_device_class()):
             return
 
         device_cnt = 1

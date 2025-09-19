@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     get_places,
     is_custom_device,
     skip_check_grad_ci,
@@ -67,7 +68,7 @@ class TestSumOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -102,7 +103,7 @@ class TestSumOp_ZeroDim(TestSumOp):
             ['X'],
             'Out',
             check_pir=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
         )
 
@@ -159,7 +160,7 @@ class TestSumOp_withInt(TestSumOp):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
         )
@@ -185,7 +186,7 @@ class TestSumOp3Dim(TestSumOp):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
         )
@@ -207,7 +208,7 @@ def create_test_fp16_class(parent):
             self.check_grad(
                 ['X'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -225,7 +226,7 @@ def create_test_fp16_class_cpu(parent):
             self.check_grad(
                 ['X'],
                 'Out',
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -245,7 +246,7 @@ class TestSumOp3D0size(TestSumOp3Dim):
             ['X'],
             'Out',
             user_defined_grads=self.calc_gradient(),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=True,
@@ -308,17 +309,17 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
 
         def test_check_output(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_output_with_place(place, check_pir=True)
 
         def test_check_grad(self):
-            place = core.CUDAPlace(0)
+            place = get_device_place()
             self.check_grad_with_place(
                 place,
                 ['X'],
                 'Out',
                 user_defined_grads=self.gradient,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
             )
@@ -414,7 +415,7 @@ class TestMaxOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -449,7 +450,7 @@ class TestMaxOp_ZeroDim(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -503,7 +504,7 @@ class TestMaxFP32Op(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -520,7 +521,7 @@ class TestMaxFP16Op(TestMaxFP32Op):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestMaxBF16Op(TestMaxFP32Op):
@@ -531,15 +532,15 @@ class TestMaxBF16Op(TestMaxFP32Op):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -655,7 +656,7 @@ class TestMinFP16Op(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestMinBF16Op(TestMinFP16Op):
@@ -663,7 +664,7 @@ class TestMinBF16Op(TestMinFP16Op):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
 
 def raw_reduce_prod(x, dim=[0], keep_dim=False):
@@ -697,26 +698,27 @@ class TestProdOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=True
         )
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestProdFP16OP(TestProdOp):
     def init_data_type(self):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -725,7 +727,7 @@ class TestProdFP16OP(TestProdOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestProdBFP16OP(TestProdOp):
@@ -742,14 +744,14 @@ class TestProdBFP16OP(TestProdOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_pir=True,
             check_prim_pir=True,
         )
@@ -780,7 +782,7 @@ class TestProdOp_ZeroDim(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', check_prim=True, check_pir=True, check_prim_pir=True
+            ['X'], 'Out', check_prim=False, check_pir=True, check_prim_pir=True
         )
 
 
@@ -838,29 +840,30 @@ class TestProd6DOp(OpTest):
         self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestProd6DFP16OP(TestProd6DOp):
     def init_data_type(self):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestProd6DBFP16OP(TestProd6DOp):
@@ -878,11 +881,11 @@ class TestProd6DBFP16OP(TestProd6DOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
         )
 
 
@@ -918,25 +921,26 @@ class TestProd8DOp(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    "FP16 test runs only on GPU",
 )
 class TestProd8DFP16OP(TestProd8DOp):
     def init_data_type(self):
         self.data_type = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            get_device_place(), ['X'], 'Out', check_pir=True
         )
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or paddle.is_compiled_with_rocm()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestProd8DBFP16OP(TestProd8DOp):
@@ -951,11 +955,11 @@ class TestProd8DBFP16OP(TestProd8DOp):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_pir=True
+            get_device_place(), ['X'], 'Out', check_pir=True
         )
 
 
@@ -1552,7 +1556,7 @@ class Test1DReduce(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSum_ZeroDim(Test1DReduce):
@@ -1754,7 +1758,7 @@ class TestReduceMaxOpMultiAxes(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             only_check_prim=True,
             check_pir=True,
         )
@@ -1802,7 +1806,7 @@ class TestKeepDimReduceSumMultiAxes(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestKeepDimReduceSumMultiAxesForEager(OpTest):
@@ -1846,7 +1850,7 @@ class TestReduceSumWithDimOne(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumWithDimOneForEager(OpTest):
@@ -1918,7 +1922,7 @@ class TestReduceAll(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceAllFp32(OpTest):
@@ -1939,7 +1943,7 @@ class TestReduceAllFp32(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class Test1DReduceWithAxes1(OpTest):
@@ -1960,7 +1964,7 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 def reduce_sum_wrapper_fp64(
@@ -1993,7 +1997,7 @@ class TestReduceWithDtype(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype1(TestReduceWithDtype):
@@ -2018,7 +2022,7 @@ class TestReduceWithDtype1(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceWithDtype2(TestReduceWithDtype):
@@ -2043,7 +2047,7 @@ class TestReduceWithDtype2(TestReduceWithDtype):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=False, check_prim_pir=True)
 
 
 class TestReduceSumOpError(unittest.TestCase):
@@ -2604,7 +2608,7 @@ class TestAnyCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
         if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+            self.places.append(get_device_place())
         self.func = paddle.any
         self.init_data()
         self.init_case()

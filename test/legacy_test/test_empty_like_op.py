@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import convert_uint16_to_float
+from op_test import convert_uint16_to_float, get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -193,8 +193,8 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
                 out = paddle.empty_like(data_x)
 
                 place = (
-                    paddle.CUDAPlace(0)
-                    if core.is_compiled_with_cuda()
+                    get_device_place()
+                    if (core.is_compiled_with_cuda() or is_custom_device())
                     else paddle.CPUPlace()
                 )
                 exe = paddle.static.Executor(place)
@@ -228,8 +228,8 @@ class TestEmptyLikeAPI_StaticForFP16Op(TestEmptyLikeAPICommon):
 
     def test_static_graph(self):
         with static_guard():
-            if paddle.base.core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):
@@ -261,8 +261,8 @@ class TestEmptyLikeAPI_StaticForBF16Op(TestEmptyLikeAPICommon):
 
     def test_static_graph(self):
         with static_guard():
-            if paddle.base.core.is_compiled_with_cuda():
-                place = paddle.CUDAPlace(0)
+            if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+                place = get_device_place()
                 with paddle.static.program_guard(
                     paddle.static.Program(), paddle.static.Program()
                 ):

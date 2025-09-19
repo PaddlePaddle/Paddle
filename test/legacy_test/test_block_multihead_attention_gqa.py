@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_block_multihead_attention import (
     RopeEmbedding,
     block_cache_to_naive_cache,
@@ -131,7 +131,7 @@ def naive_attention_impl(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -141,7 +141,7 @@ class TestBlockGroupQueryAttnEncDec(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -416,7 +416,7 @@ class TestBlockGroupQueryAttnEncDec(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -426,7 +426,7 @@ class TestBlockGroupQueryAttnEncDecSkipGetMaxLen(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecSkipGetMaxLen"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -709,7 +709,7 @@ class TestBlockGroupQueryAttnEncDecSkipGetMaxLen(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -719,7 +719,7 @@ class TestBlockGroupQueryAttnRoPE(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnRoPE"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -1030,7 +1030,7 @@ class TestBlockGroupQueryAttnRoPE(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1040,7 +1040,7 @@ class TestBlockGroupQueryAttnEncStatic(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncStatic"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -1259,7 +1259,7 @@ class TestBlockGroupQueryAttnEncStatic(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1269,7 +1269,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecPTQDequant"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -1620,7 +1620,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1632,7 +1632,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -2023,7 +2023,7 @@ class TestBlockGroupQueryAttnEncDecPTQDequantQuantShiftSmooth(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2033,7 +2033,7 @@ class TestBlockGroupQueryAttnEncDecQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecQuant"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -2317,7 +2317,7 @@ class TestBlockGroupQueryAttnEncDecQuant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2327,7 +2327,7 @@ class TestBlockGroupQueryAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecCacheKVDynamicQuant"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
@@ -2616,7 +2616,7 @@ class TestBlockGroupQueryAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2626,7 +2626,7 @@ class TestBlockGroupQueryAttnEncDecCacheKVStaticQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockGroupQueryAttnEncDecCacheKVStaticQuant"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.q_num_head = 8
         self.kv_num_head = 2
