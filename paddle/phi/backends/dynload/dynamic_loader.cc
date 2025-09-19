@@ -722,7 +722,7 @@ void* GetCusolverDsoHandle() {
 #endif
 #elif defined(PADDLE_WITH_HIP)
   return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocsolver.so");
-#else
+#elif defined(__linux__) && defined(PADDLE_WITH_CUDA)
   if (CUDA_VERSION < 13000) {
 #ifdef PADDLE_WITH_PIP_CUDA_LIBRARIES
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so.11");
