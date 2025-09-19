@@ -279,7 +279,7 @@ def get_cudnn_version() -> int | None:
         return _cudnn_version
 
 
-def _convert_to_place(device: PlaceLike) -> PlaceLike:
+def _convert_to_place(device: PlaceLike) -> Place:
     if not isinstance(device, str):
         return device  # return directly if not a string
 
@@ -1056,7 +1056,7 @@ class Stream:
 
 
 def _device_to_paddle(
-    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None,
+    dev: paddle.CUDAPlace | paddle.CustomPlace | int | str | None = None,
 ):
     if isinstance(dev, (paddle.CUDAPlace, paddle.CustomPlace)):
         return dev

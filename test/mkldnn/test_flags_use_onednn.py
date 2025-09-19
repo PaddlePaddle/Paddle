@@ -18,7 +18,10 @@ import subprocess
 import sys
 import unittest
 
+from op_test import OpTestTool
 
+
+@OpTestTool.skip_if_not_cpu()
 class TestFlagsUseOnednn(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable

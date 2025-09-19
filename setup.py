@@ -2446,6 +2446,7 @@ def get_setup_parameters():
         'paddle.tensor',
         'paddle.onnx',
         'paddle.autograd',
+        'paddle.cuda',
         'paddle.device',
         'paddle.device.cuda',
         'paddle.device.xpu',

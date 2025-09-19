@@ -84,7 +84,7 @@ const std::shared_ptr<Generator>& DefaultCUDAGenerator(int64_t device_id) {
   std::call_once(cuda_device_flags[device_id], [device_id]() {
     default_cuda_generators[device_id] =
         std::make_shared<Generator>(GetRandomSeed(), device_id);
-    VLOG(4) << "initial seed: "
+    VLOG(7) << "initial seed: "
             << default_cuda_generators[device_id]->GetCurrentSeed();
   });
   return default_cuda_generators[device_id];
@@ -178,7 +178,7 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t seed) {
 }
 
 inline void Generator::print_state_info() {
-  VLOG(4) << "Generator Random state "
+  VLOG(7) << "Generator Random state "
           << "device id: " << state().device << ", seed: " << state().seed
           << ", offset: " << state().offset << ", cpu_engine: " << cpu_engine();
 }

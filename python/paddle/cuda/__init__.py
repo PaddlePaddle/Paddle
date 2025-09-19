@@ -18,8 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
-import paddle
-from paddle import CUDAPlace, CustomPlace
+from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
@@ -27,109 +26,437 @@ from paddle.device import (
 )
 
 if TYPE_CHECKING:
-    from paddle.base import core
+    from paddle import CUDAPlace, CustomPlace
 
-DeviceLike = Union[CUDAPlace, CustomPlace, int, str, None]
+    DeviceLike = Union["CUDAPlace", "CustomPlace", int, str, None]
 
 
 def is_available() -> bool:
     """
-    Returns True if CUDA is available and Paddle was built with CUDA support.
+    Check whether CUDA is available in the current environment
+
+    If Paddle is built with CUDA support and there is at least one CUDA device
+    available, this function returns True. Otherwise, it returns False.
+
+    Returns:
+        bool: True if CUDA is available, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> if paddle.cuda.is_available():
+            ...     print("CUDA is available")
+            ... else:
+            ...     print("CUDA is not available")
     """
-    return paddle.device.cuda.device_count() >= 1
+    return paddle_device.cuda.device_count() >= 1
 
 
 def synchronize(device: DeviceLike = None) -> None:
     """
+    Wait for all streams on a given device to complete.
+
+    This function blocks the calling thread until all the operations
+    on the specified device have finished. It is useful for ensuring
+    synchronization between CPU and GPU or across multiple devices.
+
     Args:
-        device (int | str | None): Device to synchronize.
-            - None: synchronize current device
-            - int: device index (e.g., 2 -> 'gpu:2')
-            - str: device string (e.g., 'cuda:0' or 'gpu:0')
+        device (CUDAPlace | CustomPlace | int | str | None, optional): The target device to synchronize.
+            - None: Synchronize the current device.
+            - int: Device index, e.g., ``2`` means ``gpu:2``.
+            - str: Device string, e.g., ``'cuda:0'`` or ``'gpu:0'``.
+            - CUDAPlace: A Paddle CUDA place object.
+            - CustomPlace: A Paddle custom device place object.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            # synchronize the current device
+            >>> paddle.cuda.synchronize()
     """
     dev = _device_to_paddle(device)
-    paddle.device.synchronize(dev)
+    paddle_device.synchronize(dev)
 
 
-def current_stream(device: DeviceLike = None) -> core.CUDAStream:
+def current_stream(device: DeviceLike = None) -> Stream:
     """
-    Returns the current stream for the specified device.
+    Return the current stream for the given device.
+
+    Args:
+        device (int | str | paddle.CUDAPlace | paddle.CustomPlace | None, optional):
+            The target device to query.
+
+            - None: use the current device.
+            - int: device index (e.g., 0 -> 'gpu:0').
+            - str: device string (e.g., "cuda:0", "gpu:1").
+            - CUDAPlace or CustomPlace: Paddle device objects.
+
+    Returns:
+        core.CUDAStream: The current CUDA stream associated with the given device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            # Get the current stream on the default CUDA device
+            >>> s1 = paddle.cuda.current_stream()
+            >>> print(s1)
+
+            # Get the current stream on device cuda:0
+            >>> s2 = paddle.cuda.current_stream("cuda:0")
+            >>> print(s2)
     """
     dev = _device_to_paddle(device)
-    return paddle.device.current_stream(dev)
+    return paddle_device.current_stream(dev)
 
 
 def get_device_properties(device: DeviceLike = None):
     """
-    Returns the properties of a given device.
+    Get the properties of a CUDA device.
+
+    Args:
+        device (int | str | paddle.CUDAPlace | paddle.CustomPlace | None, optional):
+            The target device to query.
+
+            - None: use the current device.
+            - int: device index (e.g., 0 -> 'gpu:0').
+            - str: device string (e.g., "cuda:0", "gpu:1").
+            - CUDAPlace or CustomPlace: Paddle device objects.
+
+    Returns:
+        DeviceProperties: An object containing the device properties, such as
+        name, total memory, compute capability, and multiprocessor count.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            # Get the properties of the current device
+            >>> props = paddle.cuda.get_device_properties()
+            >>> print(props)
+
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_properties(dev)
+    return paddle_device.cuda.get_device_properties(dev)
 
 
 def get_device_name(device: DeviceLike = None) -> str:
     """
-    Returns the name of a given CUDA device.
+    Get the name of a device.
+
+    Args:
+        device (int | str | paddle.CUDAPlace | paddle.CustomPlace | None, optional):
+            The target device to query.
+
+            - None: use the current device.
+            - int: device index (e.g., 0 -> 'gpu:0').
+            - str: device string (e.g., "cuda:0", "gpu:1").
+            - CUDAPlace or CustomPlace: Paddle device objects.
+
+    Returns:
+        str: The name of the CUDA device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            # Get the name of the current CUDA device
+            >>> name = paddle.cuda.get_device_name()
+            >>> print(name)
+
+            # Get the name of device cuda:0
+            >>> name0 = paddle.cuda.get_device_name("cuda:0")
+            >>> print(name0)
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_name(device)
+    return paddle_device.cuda.get_device_name(dev)
 
 
 def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     """
-    Returns the major and minor compute capability of a given device.
+    Get the compute capability (major, minor) of a device.
+
+    Args:
+        device (int | str | paddle.CUDAPlace | paddle.CustomPlace | None, optional):
+            The target device to query.
+
+            - None: use the current device.
+            - int: device index (e.g., 0 -> 'gpu:0').
+            - str: device string (e.g., "cuda:0", "gpu:1").
+            - CUDAPlace or CustomPlace: Paddle device objects.
+
+    Returns:
+        tuple[int, int]: A tuple ``(major, minor)`` representing the compute capability of the CUDA device.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+
+            # Get compute capability of the current CUDA device
+            >>> capability = paddle.cuda.get_device_capability()
+            >>> print(capability)  # e.g., (8, 0)
+
+            # Get compute capability of device cuda:0
+            >>> capability0 = paddle.cuda.get_device_capability("cuda:0")
+            >>> print(capability0)
     """
     dev = _device_to_paddle(device)
-    return paddle.device.cuda.get_device_capability(device)
+    return paddle_device.cuda.get_device_capability(dev)
+
+
+def is_initialized() -> bool:
+    return paddle_device.is_compiled_with_cuda()
 
 
 class StreamContext(_PaddleStreamGuard):
     """
-    Stream context manager, inherited from Paddle's stream_guard.
+    Notes:
+        This API only supports dynamic graph mode currently.
+    A context manager that specifies the current stream context by the given stream.
+
+    Args:
+        stream(Stream, optional): the selected stream. If stream is None, just yield.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('cuda')
+            >>> s = paddle.cuda.Stream()
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> data3 = data1 + data2
+            >>> with paddle.cuda.StreamContext(s):
+            ...     s.wait_stream(paddle.cuda.current_stream()) # type: ignore[attr-defined]
+            ...     data4 = data1 + data3
+
     """
 
-    def __init__(self, stream: paddle.device.Stream):
+    def __init__(self, stream: paddle_device.Stream):
         super().__init__(stream)
 
 
-def stream(stream_obj: paddle.device.Stream | None) -> StreamContext:
-    """
-    A context manager that sets a given stream as the current stream.
-    """
+def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
+    '''
+
+    Notes:
+        This API only supports dynamic graph mode currently.
+    A context manager that specifies the current stream context by the given stream.
+
+    Args:
+        stream(Stream, optional): the selected stream. If stream is None, just yield.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> paddle.set_device('cuda')
+            >>> s = paddle.cuda.Stream()
+            >>> data1 = paddle.ones(shape=[20])
+            >>> data2 = paddle.ones(shape=[20])
+            >>> data3 = data1 + data2
+
+            >>> with paddle.cuda.stream(s):
+            ...     s.wait_stream(paddle.cuda.current_stream())
+            ...     data4 = data1 + data3
+            >>> print(data4)
+
+    '''
     return StreamContext(stream_obj)
+
+
+def cudart():
+    r"""Retrieves the CUDA runtime API module.
+
+    This function initializes the CUDA runtime environment if it is not already
+    initialized and returns the CUDA runtime API module (_cudart). The CUDA
+    runtime API module provides access to various CUDA runtime functions.
+
+    Args:
+        ``None``
+
+    Returns:
+        module: The CUDA runtime API module (_cudart).
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+            >>> from paddle.cuda import cudart, check_error
+            >>> import os
+            >>>
+            >>> os.environ['CUDA_PROFILE'] = '1'
+            >>>
+            >>> def perform_cuda_operations_with_streams():
+            >>>     stream = paddle.cuda.Stream()
+            >>>     with paddle.cuda.stream(stream):
+            >>>         x = paddle.randn((100, 100), device='cuda')
+            >>>         y = paddle.randn((100, 100), device='cuda')
+            >>>         z = paddle.mul(x, y)
+            >>>     return z
+            >>>
+            >>> paddle.cuda.synchronize()
+            >>> # print("====== Start nsys profiling ======")
+            >>> check_error(cudart().cudaProfilerStart())
+            >>> paddle.core.nvprof_start()
+            >>> paddle.core.nvprof_nvtx_push("Test")
+            >>> result = perform_cuda_operations_with_streams()
+            >>> paddle.core.nvprof_nvtx_pop()
+            >>> # print("CUDA operations completed.")
+            >>> check_error(paddle.cuda.cudart().cudaProfilerStop())
+            >>> # print("====== End nsys profiling ======")
+    """
+    return base.libpaddle._cudart
+
+
+class CudaError(RuntimeError):
+    def __init__(self, code: int) -> None:
+        msg = base.libpaddle._cudart.cudaGetErrorString(
+            base.libpaddle._cudart.cudaError_(code)
+        )
+        super().__init__(f"{msg} ({code})")
+
+
+def check_error(res: int) -> None:
+    r"""Check the return code of a CUDA runtime API call.
+
+    This function validates whether the given result code from a CUDA
+    runtime call indicates success. If the result code is not
+    :data:`base.libpaddle._cudart.cudaError_.success`, it raises a
+    :class:`CudaError`.
+
+    Args:
+        res (int): The CUDA runtime return code.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> from paddle.cuda import check_error
+            >>> check_error(0) # check for cuda success code # will not raise Error
+            >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
+            >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
+    """
+    if res != base.libpaddle._cudart.cudaError_.success:
+        raise CudaError(res)
+
+
+def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
+    r"""Return the free and total GPU memory (in bytes) for a given device using ``cudaMemGetInfo``.
+
+    This function queries the CUDA runtime for the amount of memory currently
+    available and the total memory capacity of the specified device.
+
+    Args:
+        device (DeviceLike, optional): The target device. If ``None`` (default),
+            the current device, as returned by ``paddle.device.get_device``
+            will be used.
+
+    Returns:
+        tuple[int, int]: A tuple ``(free, total)``, where
+            - ``free`` (int): The number of free bytes of GPU memory available.
+            - ``total`` (int): The total number of bytes of GPU memory.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> from paddle.cuda import mem_get_info
+            >>> free_bytes, total_bytes = mem_get_info()
+    """
+    if device is None:
+        device: str = paddle_device.get_device()
+
+    if isinstance(device, str):
+        device: core.Place = paddle_device._convert_to_place(device)
+
+    if not isinstance(device, core.CUDAPlace) or (
+        isinstance(device, core.Place) and not device.is_gpu_place()
+    ):
+        raise ValueError(f"Expected a cuda device, but got: {device}")
+
+    device_id = (
+        device.get_device_id()
+        if isinstance(device, core.CUDAPlace)
+        else device.gpu_device_id()
+    )
+    return cudart().cudaMemGetInfo(device_id)
 
 
 def get_stream_from_external(
     data_ptr: int, device: DeviceLike = None
 ) -> Stream:
-    r"""Return a :class:`paddle.cuda.Stream` from an externally allocated CUDA stream.
+    """
+    Wrap an externally allocated CUDA stream into a Paddle :class:`paddle.cuda.Stream` object.
 
-    This function is used to wrap streams allocated in other libraries in order
-    to facilitate data exchange and multi-library interactions.
+    This function allows integrating CUDA streams allocated by other libraries
+    into Paddle, enabling multi-library interoperability and data exchange.
 
-    .. note:: This function doesn't manage the stream life-cycle, it is the user
-        responsibility to keep the referenced stream alive while this returned
-        stream is being used.
+    Note:
+        - This function does not manage the lifetime of the external stream.
+          It is the caller's responsibility to ensure the external stream remains valid
+          while the returned Paddle stream is in use.
+        - Providing an incorrect `device` may result in errors during kernel launches.
 
     Args:
-        data_ptr(int): Integer representation of the `cudaStream_t` value that
-            is allocated externally.
-        device(paddle.CUDAPlace or int, optional): the device where the stream
-            was originally allocated. If device is specified incorrectly,
-            subsequent launches using this stream may fail.
+        data_ptr (int): Integer representation of the external `cudaStream_t`.
+        device (DeviceLike, optional): The device where the external stream was created.
+            Can be a Paddle device string (e.g., "cuda:0"), an int index (e.g., 0),
+            or a PaddlePlace (CUDAPlace). Default: None (current device).
 
     Returns:
-        paddle.cuda.Stream: A Stream object wrapping the given external CUDA stream.
+        paddle.cuda.Stream: A Paddle Stream object that wraps the external CUDA stream.
+
+    Examples:
+        .. code-block:: python
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
+            >>> import paddle
+
+            >>> # Assume an external library provides a stream pointer:original_raw_ptr
+
+            >>> # Wrap it into a Paddle Stream
+            >>> # external_stream = paddle.cuda.get_stream_from_external(original_raw_ptr)
     """
 
     device = _device_to_paddle(device)
-    stream_ex = paddle.device.get_stream_from_external(data_ptr, device)
+    stream_ex = paddle_device.get_stream_from_external(data_ptr, device)
 
     return stream_ex
 
 
 __all__ = [
+    "cudart",
+    "check_error",
     "is_available",
+    "is_initialized",
+    "mem_get_info",
     "synchronize",
     "current_stream",
     "get_device_properties",

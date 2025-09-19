@@ -741,7 +741,7 @@ void BatchNormKernel(const Context &dev_ctx,
         C,
         common::errors::InvalidArgument(
             "The first dimension of mean must equal to the number of "
-            "Channels, which is [%d]. But received: the first dimension"
+            "Channels, which is [%d]. But received: the first dimension "
             "of mean is [%d], the dimensions of mean is [%s].",
             C,
             est_mean->dims()[0],
@@ -750,8 +750,8 @@ void BatchNormKernel(const Context &dev_ctx,
         est_var->dims()[0],
         C,
         common::errors::InvalidArgument(
-            "The first dimension of variance must equal to the number"
-            "of Channels, which is [%d]. But received: the first dimension of"
+            "The first dimension of variance must equal to the number "
+            "of Channels, which is [%d]. But received: the first dimension of "
             "variance is [%d], the dimensions of variance is [%s].",
             C,
             est_var->dims()[0],

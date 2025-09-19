@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -806,7 +810,7 @@ class TestStrideSliceBF16Op(OpTest):
 #         assert sliced_1.shape == [3, 2, 2, 2]
 
 #     @unittest.skipIf(
-#         not paddle.is_compiled_with_cuda(),
+#         not (paddle.is_compiled_with_cuda() or is_custom_device()),
 #         "Cannot use CUDAPinnedPlace in CPU only version",
 #     )
 #     def test_cuda_pinned_place(self):
@@ -938,7 +942,7 @@ class ArrayLayer(paddle.nn.Layer):
 #         )
 
 #     def test_strided_slice_tensor_array_cuda_pinned_place(self):
-#         if paddle.device.is_compiled_with_cuda():
+#         if (paddle.device.is_compiled_with_cuda() or is_custom_device()):
 #             with paddle.base.dygraph.guard():
 
 #                 class Simple(paddle.nn.Layer):
@@ -1150,7 +1154,8 @@ class ArrayLayer(paddle.nn.Layer):
 
 
 @unittest.skipIf(
-    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestStridedSliceFloat16(unittest.TestCase):
     def init_test_case(self):

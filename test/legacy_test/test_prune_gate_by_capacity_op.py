@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -67,11 +67,12 @@ def assert_allclose(output, expected, n_expert):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPruneGateByCapacityOp(OpTest):
     def _get_places(self):
-        return [paddle.CUDAPlace(0)]
+        return [get_device_place()]
 
     def setUp(self):
         self.op_type = "prune_gate_by_capacity"
@@ -101,7 +102,8 @@ class TestPruneGateByCapacityOp(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPruneGateByCapacityAPI1(unittest.TestCase):
     def init_test_case(self):
@@ -116,7 +118,7 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
         self.out = prune_gate_by_capacity(
             self.gate_idx, self.expert_count, self.n_expert, self.n_worker
         ).astype(self.dtype)
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
 
     def setUp(self):
         self.n_expert = 24
@@ -160,7 +162,8 @@ class TestPruneGateByCapacityAPI1(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestPruneGateByCapacityAPI2(TestPruneGateByCapacityAPI1):
     def setUp(self):

@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle import static
@@ -308,8 +308,8 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 class TestDiffOpFp16(TestDiffOp):
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -346,8 +346,8 @@ class TestDiffOp_ZeroSize(TestDiffOp):
 class TestDiffOpFp16_TorchAlias(TestDiffOp):
     def test_fp16_with_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

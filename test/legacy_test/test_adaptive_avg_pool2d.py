@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -117,9 +117,11 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -175,9 +177,11 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -219,9 +223,11 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
 
     def test_grad(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
@@ -265,9 +271,11 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
             main_program = paddle.static.Program()
             startup_program = paddle.static.Program()
@@ -325,9 +333,11 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -454,9 +464,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_static_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
 
             main_program = paddle.static.Program()
@@ -484,9 +496,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_dynamic_graph(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
 
@@ -500,9 +514,11 @@ class TestAdaptiveAvgPool2DAPI_ZeroSize(unittest.TestCase):
 
     def test_grad(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
@@ -521,9 +537,11 @@ class TestInterpolateAPI_ZeroSize(unittest.TestCase):
 
     def test_functional_interpolate(self):
         for use_cuda in (
-            [False, True] if core.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (core.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             x = paddle.to_tensor(self.x_np)
             x.stop_gradient = False
