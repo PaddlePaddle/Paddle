@@ -736,6 +736,8 @@ void* GetCusolverDsoHandle() {
     return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so");
 #endif
   }
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcusolver.so.11");
 #endif
 }
 
