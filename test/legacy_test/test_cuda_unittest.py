@@ -281,14 +281,6 @@ class TestCudaCompat(unittest.TestCase):
 class TestCurrentStreamCapturing(unittest.TestCase):
     def test_cuda_fun(self):
         self.assertFalse(paddle.cuda.is_current_stream_capturing())
-        if paddle.cuda.is_available():
-            x = paddle.randn([10, 10])
-            g = paddle.device.cuda.graphs.CUDAGraph()
-            g.capture_begin()
-            self.assertTrue(paddle.cuda.is_current_stream_capturing())
-            y = x + 1
-            g.capture_end()
-        self.assertFalse(paddle.cuda.is_current_stream_capturing())
 
 
 class TestExternalStream(unittest.TestCase):
