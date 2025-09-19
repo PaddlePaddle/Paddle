@@ -707,6 +707,9 @@ PADDLE_API void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                                   float diag_val,
                                                   MetaTensor* x_grad);
 
+PADDLE_API void RandomGradInferMeta(const MetaTensor& out_grad,
+                                    MetaTensor* x_grad);
+
 PADDLE_API void UnStackGradInferMeta(
     const std::vector<const MetaTensor*>& out_grad,
     int axis,

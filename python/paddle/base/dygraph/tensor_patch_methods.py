@@ -34,6 +34,7 @@ from paddle.base.libpaddle import Place
 from paddle.profiler.utils import in_profiler_mode
 from paddle.utils import deprecated
 from paddle.utils.dlpack import DLDeviceType
+from paddle.utils.download import check_and_create_dir
 
 from .. import core, framework, unique_name
 from ..framework import (
@@ -285,6 +286,7 @@ def monkey_patch_tensor():
         self: Tensor,
         grad_tensor: Tensor | None = None,
         retain_graph: bool = False,
+        dump_backward_graph_path: str | None = None,
     ) -> None:
         """
         Run backward of current Graph which starts from current Tensor.
@@ -302,6 +304,9 @@ def monkey_patch_tensor():
                 like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
                 :code:`retain_graph` to True, then the grads will be retained. Thus, setting it to False is much more memory-efficient.
                 Defaults to False.
+            dump_backward_graph_path(str, optional): Specifies the directory path for storing the debug file.
+                If this parameter is specified, the backward-related graph (in dot format)
+                and the debugging call stack information will be generated in this directory.
 
         Returns:
             None
@@ -315,37 +320,26 @@ def monkey_patch_tensor():
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward()
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                500.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1500.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2500.)
+                0: 500.0
+                1: 1000.0
+                2: 1500.0
+                3: 2000.0
+                4: 2500.0
 
                 >>> x.clear_grad()
                 >>> print("{}".format(x.grad))
-                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                0.)
+                0.0
 
                 >>> grad_tensor=paddle.to_tensor(2.)
                 >>> for i in range(5):
                 ...     y = paddle.pow(x, 4.0)
                 ...     y.backward(grad_tensor)
                 ...     print("{}: {}".format(i, x.grad))
-                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                1000.)
-                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                2000.)
-                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                3000.)
-                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                4000.)
-                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
-                5000.)
+                0: 1000.0
+                1: 2000.0
+                2: 3000.0
+                3: 4000.0
+                4: 5000.0
         """
         if framework.in_dygraph_mode():
             if in_profiler_mode():
@@ -369,8 +363,10 @@ def monkey_patch_tensor():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-
-            core.eager.run_backward([self], grad_tensor, retain_graph)
+            check_and_create_dir(dump_backward_graph_path)
+            core.eager.run_backward(
+                [self], grad_tensor, retain_graph, dump_backward_graph_path
+            )
 
             if in_profiler_mode():
                 record_event.end()

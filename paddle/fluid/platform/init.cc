@@ -98,7 +98,7 @@ bool InitGflags(std::vector<std::string> args) {
       line += arg;
       line += ' ';
     }
-    VLOG(1) << "Before Parse: argc is " << argc
+    VLOG(8) << "Before Parse: argc is " << argc
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
@@ -106,7 +106,7 @@ bool InitGflags(std::vector<std::string> args) {
     paddle::flags::ParseCommandLineFlags(&argc, &arr);
     succeeded = true;
 
-    VLOG(1) << "After Parse: argc is " << argc;
+    VLOG(8) << "After Parse: argc is " << argc;
   });
   return succeeded;
 }

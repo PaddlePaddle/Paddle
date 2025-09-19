@@ -3097,7 +3097,7 @@ All parameter, weight, gradient are variables in Paddle.
         std::make_unique<paddle::prim::StaticTensorOperants>();
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
-    VLOG(4) << "Initialize tensor operants successfully";
+    VLOG(7) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
   m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
