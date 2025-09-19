@@ -26,6 +26,8 @@
 #include <utility>
 #include <vector>
 
+#include "paddle/common/macros.h"
+
 namespace paddle {
 namespace string {
 
@@ -87,7 +89,7 @@ std::string format_string(const std::string& fmt, ARGS&&... args) {
 std::string trim_spaces(const std::string& str);
 
 // erase all spaces in str
-std::string erase_spaces(const std::string& str);
+PADDLE_API std::string erase_spaces(const std::string& str);
 
 inline int str_to_float(const char* str, float* v) {
   const char* head = str;

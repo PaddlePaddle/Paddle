@@ -371,7 +371,6 @@ def conv3d(
     name: str | None = None,
 ) -> Tensor:
     r"""
-
     The sparse convolution3d functional calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
     Output(Output) are multidimensional SparseCooTensors with a shape of

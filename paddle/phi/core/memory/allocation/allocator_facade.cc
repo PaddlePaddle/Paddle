@@ -211,7 +211,7 @@ class AllocatorFacadePrivate {
     strategy_ = GetAllocatorStrategy();
     is_stream_safe_cuda_allocator_used_ = false;
     is_cuda_malloc_async_allocator_used_ = false;
-    VLOG(2) << "selected allocator strategy:" << int(strategy_) << std::endl;
+    VLOG(6) << "selected allocator strategy:" << int(strategy_) << std::endl;
     switch (strategy_) {
       case AllocatorStrategy::kNaiveBestFit: {
         InitNaiveBestFitCPUAllocator();
@@ -384,7 +384,7 @@ class AllocatorFacadePrivate {
                       allocators.end(),
                       common::errors::NotFound(
                           "No allocator found for the place, %s", place));
-    VLOG(6) << "[GetAllocator]"
+    VLOG(7) << "[GetAllocator]"
             << " place = " << place << " size = " << size
             << " Allocator = " << iter->second;
     return iter->second;
@@ -1042,7 +1042,7 @@ class AllocatorFacadePrivate {
   void InitAutoGrowthCUDAAllocator(phi::GPUPlace p,
                                    bool allow_free_idle_chunk) {
     auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
-    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+    VLOG(7) << "FLAGS_auto_growth_chunk_size_in_mb is "
             << FLAGS_auto_growth_chunk_size_in_mb;
 #if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = CreateCUDAAllocator(p);
