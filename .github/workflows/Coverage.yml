@@ -130,7 +130,7 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git fetch origin pull/75296/head:test
           git checkout test
-          git reset --hard ff45dc44d9b43a021b8a8dba051c6a7939c788b6
+          git reset --hard bd707efe4c8b6c7cb50f9cb91d515e1a58af3b4a
           git cherry-pick 4dba2fb8e64cdebbb59f21b3261b702899c70f9a
           git checkout --theirs -- ci/coverage_info.sh
           git commit -am "fix merge diff"
