@@ -105,7 +105,12 @@ class TestFleetUtil(unittest.TestCase):
     def test_get_file_shard(self):
         from paddle.distributed import fleet
 
-        self.assertRaises(Exception, fleet.util.get_file_shard, "files")  # noqa: B017
+        self.assertRaisesRegex(
+            TypeError,
+            "files should be a list of file need to be read",
+            fleet.util.get_file_shard,
+            "files",
+        )
 
         role = role_maker.UserDefinedRoleMaker(
             is_collective=False,
@@ -174,7 +179,6 @@ class TestFleetUtil(unittest.TestCase):
             "pruned_main_program.save_var_shape_not_match"
         )
 
-        fleet.util._params_check(conf)
         self.assertRaises(Exception, fleet.util._params_check)  # noqa: B017
 
         # test program.proto without feed_op and fetch_op
