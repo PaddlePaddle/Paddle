@@ -18,8 +18,6 @@
 
 #include <cmath>
 #include <cstring>
-#include <iostream>
-#include <limits>
 #include "paddle/common/backend_header.h"
 #include "paddle/common/hostdevice.h"
 
@@ -431,6 +429,6 @@ __host__ __device__ inline phi::dtype::bfloat16 min(
 
 namespace cinn {
 namespace common {
-using bfloat16 = ::phi::dtype::bfloat16;
+using namespace phi::dtype;  // NOLINT
 }  // namespace common
 }  // namespace cinn

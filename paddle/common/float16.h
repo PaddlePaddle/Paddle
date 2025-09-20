@@ -29,39 +29,9 @@
 #include <stdint.h>
 
 #include <cmath>
-#include <iostream>
-#include <limits>
 
+#include "paddle/common/backend_header.h"
 #include "paddle/common/hostdevice.h"
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#endif  // PADDLE_WITH_CUDA
-
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
-#if defined(__CUDACC__) && CUDA_VERSION >= 7050
-#define PADDLE_CUDA_FP16
-#include <cuda_fp16.h>
-#endif
-
-#ifdef __HIPCC__
-#define PADDLE_CUDA_FP16
-#include <hip/hip_fp16.h>
-#endif
-
-#ifndef PADDLE_WITH_HIP
-#if !defined(_WIN32)
-#define PADDLE_ALIGN(x) __attribute__((aligned(x)))
-#else
-#define PADDLE_ALIGN(x) __declspec(align(x))
-#endif
-#else
-#define PADDLE_ALIGN(x)
-#endif
-
-#define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
 
 namespace phi {
 namespace dtype {
@@ -1080,7 +1050,7 @@ HOSTDEVICE inline float16(abs)(const float16& a) {
 
 namespace cinn {
 namespace common {
-using float16 = ::phi::dtype::float16;
+using namespace ::phi::dtype;  // NOLINT
 }  // namespace common
 }  // namespace cinn
 

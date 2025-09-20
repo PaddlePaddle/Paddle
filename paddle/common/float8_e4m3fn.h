@@ -17,8 +17,6 @@
 #include <stdint.h>
 #include <cmath>
 #include <cstring>
-#include <iostream>
-#include <limits>
 #include "paddle/common/hostdevice.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -371,9 +369,8 @@ HOSTDEVICE inline float8_e4m3fn(abs)(const float8_e4m3fn& a) {
 
 }  // namespace dtype
 }  // namespace phi
-
 namespace cinn {
 namespace common {
-using float8_e4m3fn = ::phi::dtype::float8_e4m3fn;
+using namespace phi::dtype;  // NOLINT
 }  // namespace common
 }  // namespace cinn

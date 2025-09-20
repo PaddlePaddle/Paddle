@@ -14,13 +14,35 @@
 
 #pragma once
 
-#if defined(__CUDACC__)
+#ifdef __CUDACC__
+// #ifdef WITH_CINN
+#define PADDLE_WITH_CUDA
+// #endif
 #include <cuda.h>
+#endif
+#ifdef __HIPCC__
+// #ifdef WITH_CINN
+#define PADDLE_WITH_HIP
+// #endif
+#include <hip/hip_runtime.h>
 #endif
 
 #if defined(__CUDACC__) && (CUDA_VERSION >= 11000 || defined(PADDLE_WITH_COREX))
 #define PADDLE_CUDA_BF16
+#define CINN_CUDA_BF16
 #include <cuda_bf16.h>
+#endif
+
+#if defined(__CUDACC__) && CUDA_VERSION >= 7050
+#define PADDLE_CUDA_FP16
+#define CINN_CUDA_FP16
+#include <cuda_fp16.h>
+#endif
+
+#ifdef __HIPCC__
+#define PADDLE_CUDA_FP16
+#define CINN_HIP_FP16
+#include <hip/hip_fp16.h>
 #endif
 
 #ifndef PADDLE_WITH_HIP
@@ -32,3 +54,5 @@
 #else
 #define PADDLE_ALIGN(x)
 #endif
+
+#define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
