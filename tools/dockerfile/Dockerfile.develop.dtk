@@ -21,14 +21,14 @@ ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 WORKDIR /opt
 
 # cmake 3.27.7
-RUN wget -q https://cmake.org/files/v4.1/cmake-4.1.0-linux-x86_64.sh && \
-    chmod +x cmake-4.1.0-linux-x86_64.sh && mkdir -p /opt/cmake-4.1.0 && \
-    ./cmake-4.1.0-linux-x86_64.sh --prefix=/opt/cmake-4.1.0 --skip-license && \
-    rm -rf cmake-4.1.0-linux-x86_64.sh && rm -rf /opt/cmake
+RUN wget -q https://cmake.org/files/v3.27/cmake-3.27.7-linux-x86_64.sh && \
+    chmod +x cmake-3.27.7-linux-x86_64.sh && mkdir -p /opt/cmake-3.27.7 && \
+    ./cmake-3.27.7-linux-x86_64.sh --prefix=/opt/cmake-3.27.7 --skip-license && \
+    rm -rf cmake-3.27.7-linux-x86_64.sh && rm -rf /opt/cmake
 RUN rm -rf /usr/bin/cmake /usr/bin/cmake3 && \
-    ln -s /opt/cmake-4.1.0/bin/cmake /usr/bin/cmake && \
-    ln -s /opt/cmake-4.1.0/bin/cmake /usr/bin/cmake3
-ENV PATH=/opt/cmake-4.1.0/bin:${PATH}
+    ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake && \
+    ln -s /opt/cmake-3.27.7/bin/cmake /usr/bin/cmake3
+ENV PATH=/opt/cmake-3.27.7/bin:${PATH}
 
 # Python 3.8\3.9\3.10
 RUN wget -q https://www.python.org/ftp/python/3.8.14/Python-3.8.14.tgz && \
