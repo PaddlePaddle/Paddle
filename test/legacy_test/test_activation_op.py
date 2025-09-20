@@ -59,11 +59,11 @@ class TestSqrtOpError(unittest.TestCase):
             # The input type of sqrt op must be Variable or numpy.ndarray.
             in1 = 1
             self.assertRaises(TypeError, paddle.sqrt, in1)
-            # The input dtype of sqrt op must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             in2 = paddle.static.data(
                 name='input2', shape=[-1, 12, 10], dtype="int32"
             )
-            self.assertRaises(TypeError, paddle.sqrt, in2)
+            paddle.sqrt(in2)  # This should work without error
 
             in3 = paddle.static.data(
                 name='input3', shape=[-1, 12, 10], dtype="float16"
@@ -950,11 +950,11 @@ class TestTanhAPI(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, self.tanh, 1)
-            # The input dtype must be float16, float32.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, self.tanh, x_int32)
+            self.tanh(x_int32)  # This should work without error
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -1162,11 +1162,11 @@ class TestSinhOpError(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.sinh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.sinh, x_int32)
+            paddle.sinh(x_int32)  # This should work without error
             # support the input dtype is float16
             if paddle.is_compiled_with_cuda() or is_custom_device():
                 x_fp16 = paddle.static.data(
@@ -1295,11 +1295,11 @@ class TestCoshOpError(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.cosh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.cosh, x_int32)
+            paddle.cosh(x_int32)  # This should work without error
             # support the input dtype is float16
             x_fp16 = paddle.static.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
@@ -2391,7 +2391,7 @@ class TestTanAPI(unittest.TestCase):
             loss = paddle.tan(var)
             loss.backward()
             grad_var = var.grad
-            self.assertEqual(grad_var.shape, input_x.shape)
+            self.assertEqual(list(grad_var.shape), list(input_x.shape))
 
 
 class TestAcos(TestActivation):
@@ -2891,17 +2891,28 @@ class TestRelu_NanInput(TestActivation):
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         x[-1] = float('nan')
-        tensor_x = paddle.to_tensor(x)
-        out = paddle.nn.functional.relu(tensor_x)
-        self.outputs_paddle = out
+        self.x_np = x
 
-    def test_check_output(self):
-        nan_count = paddle.isnan(self.outputs_paddle).cast('int32').sum()
-        try:
-            nan_count = nan_count.numpy()
-        except AttributeError:
+    def test_static(self):
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            x = paddle.static.data('X', self.shape, dtype=self.dtype)
+            out = paddle.nn.functional.relu(x)
+            exe = paddle.static.Executor()
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            nan_count = paddle.isnan(res[0]).cast('int32').sum()
             nan_count = np.array(nan_count)
-        self.assertTrue(nan_count.item() > 0)
+            self.assertTrue(nan_count.item() > 0)
+
+    def test_dygraph(self):
+        with dynamic_guard():
+            tensor_x = paddle.to_tensor(self.x_np)
+            out = paddle.nn.functional.relu(tensor_x)
+            nan_count = paddle.isnan(out).cast('int32').sum()
+            nan_count = nan_count.numpy()
+            self.assertTrue(nan_count.item() > 0)
 
     def test_check_grad(self):
         pass
@@ -4990,11 +5001,11 @@ class TestSTanhAPI(unittest.TestCase):
         ):
             # The input type must be Variable.
             self.assertRaises(TypeError, paddle.stanh, 1)
-            # The input dtype must be float16, float32, float64.
+            # Test that int32 input is supported (auto-cast to float32)
             x_int32 = paddle.static.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
-            self.assertRaises(TypeError, paddle.stanh, x_int32)
+            paddle.stanh(x_int32)  # This should work without error
             # support the input dtype is float16
             if core.is_compiled_with_cuda():
                 x_fp16 = paddle.static.data(
