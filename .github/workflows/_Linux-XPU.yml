@@ -136,6 +136,10 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
+          python3.10 -m pip install cmake=4.1.0
+          PYTHON_BIN_DIR=$(python3.10 -c "import os, sys; print(os.path.dirname(sys.executable))")
+          export PATH="$PYTHON_BIN_DIR:$PATH"
+          cmake --version
           bash ${ci_scripts}/cmake-predownload.sh
           apt install zstd -y
           bash ${ci_scripts}/run_setup.sh bdist_wheel
