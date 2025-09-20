@@ -25,6 +25,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -3196,6 +3197,57 @@ All parameter, weight, gradient are variables in Paddle.
             Scope *,
             const phi::DenseTensor &,
             const std::string &)>(&framework::SetVariable));
+  m.def(
+      "set_vlog_level",
+      [](py::object module_levels) {
+        if (py::isinstance<py::int_>(module_levels)) {
+          auto level = module_levels.cast<int>();
+          // Do not using google::SetVLOGLevel("*", level);
+          // It may cause configuration effects for a single module
+          VLOG(3) << "Set the VLOG level of all modules to " << level;
+          FLAGS_v = level;
+        } else if (py::isinstance<py::dict>(module_levels)) {
+          auto module_levels_dict = module_levels.cast<py::dict>();
+          for (auto &item : module_levels_dict) {
+            auto module_name = item.first.cast<std::string>();
+            auto level = item.second.cast<int>();
+            if (module_name == "*") {
+              VLOG(3) << "Set the VLOG level of all modules to " << level;
+              FLAGS_v = level;
+            } else {
+              google::SetVLOGLevel(module_name.c_str(), level);
+            }
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The parameters of set_vlog_level must be int or dict! "));
+        }
+      },
+      py::arg("module_levels"),
+      R"DOC(
+    Set the verbosity logging level for specified modules.
+
+    This function allows setting the VLOG level for specific modules or for all modules.
+    The VLOG level controls the verbosity of logging output, with higher levels producing more
+    detailed logs.
+
+    Parameters:
+      module_levels (dict|int): A dictionary where the keys are module names (str) and
+                                the values are the corresponding verbosity levels (int),
+                                or an int variable that represents the verbosity level set globally for all modules.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # case1: Set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level(1)
+            >>> # case2: Another way to set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level({"*": 1})
+            >>> # case3: Set GLOG_vmodule=dygraph_functions=4,nodes=5
+            >>> paddle.base.core.set_vlog_level({"dygraph_functions": 4, "nodes": 5})
+
+)DOC");
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
