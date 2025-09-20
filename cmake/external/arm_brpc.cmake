@@ -59,7 +59,7 @@ file(
 
 file(
   WRITE ${ARM_BRPC_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(ARM_BRPC)\n" "cmake_minimum_required(VERSION 3.0)\n"
+  "PROJECT(ARM_BRPC)\n" "cmake_minimum_required(VERSION 3.5)\n"
   "install(DIRECTORY ${ARM_BRPC_DST_DIR} ${ARM_BRPC_DST_DIR} \n"
   "        DESTINATION ${ARM_BRPC_NAME})\n")
 
