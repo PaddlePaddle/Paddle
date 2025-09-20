@@ -26,17 +26,17 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             self.skipTest("CUDA not available, skipping test")
         
-        # 使用动态图模式进行测试
+        # Use dynamic graph mode for testing
         paddle.disable_static()
         
-        # 创建GPU上的tensor
+        # Create tensor on GPU
         gpu_tensor = paddle.ones([10, 10], dtype='float32')
         gpu_tensor = gpu_tensor.cuda()
         
-        # 使用memcpy API复制到pinned memory
+        # Use memcpy API to copy to pinned memory
         pinned_tensor = paddle.tensor.creation._memcpy(gpu_tensor, paddle.CUDAPinnedPlace())
         
-        # 验证结果
+        # Verify results
         np.testing.assert_allclose(gpu_tensor.numpy(), pinned_tensor.numpy(), rtol=1e-05)
         np.testing.assert_allclose(pinned_tensor.numpy(), np.ones((10, 10)), rtol=1e-05)
 
@@ -44,17 +44,17 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             self.skipTest("CUDA not available, skipping test")
         
-        # 使用动态图模式进行测试
+        # Use dynamic graph mode for testing
         paddle.disable_static()
         
-        # 创建pinned memory上的tensor
+        # Create tensor on pinned memory
         pinned_tensor = paddle.zeros([10, 10], dtype='float32')
         pinned_tensor = pinned_tensor.pin_memory()
         
-        # 使用memcpy API复制到GPU
+        # Use memcpy API to copy to GPU
         gpu_tensor = paddle.tensor.creation._memcpy(pinned_tensor, paddle.CUDAPlace())
         
-        # 验证结果
+        # Verify results
         np.testing.assert_allclose(gpu_tensor.numpy(), pinned_tensor.numpy(), rtol=1e-05)
         np.testing.assert_allclose(gpu_tensor.numpy(), np.zeros((10, 10)), rtol=1e-05)
 
@@ -62,17 +62,17 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         if not core.is_compiled_with_rocm():
             self.skipTest("ROCm not available, skipping test")
         
-        # 使用动态图模式进行测试
+        # Use dynamic graph mode for testing
         paddle.disable_static()
         
-        # 创建pinned memory上的bool tensor
+        # Create bool tensor on pinned memory
         pinned_tensor = paddle.ones([1], dtype='bool')
         pinned_tensor = pinned_tensor.pin_memory()
         
-        # 使用memcpy API复制到GPU
+        # Use memcpy API to copy to GPU
         gpu_tensor = paddle.tensor.creation._memcpy(pinned_tensor, paddle.CUDAPlace())
         
-        # 验证结果
+        # Verify results
         expect_value = np.array([True]).astype('bool')
         np.testing.assert_array_equal(gpu_tensor.numpy(), expect_value)
 
@@ -82,18 +82,18 @@ class TestMemcpyOPError(unittest.TestCase):
         if not paddle.is_compiled_with_cuda():
             self.skipTest("CUDA not available, skipping test")
         
-        # 使用动态图模式进行测试
+        # Use dynamic graph mode for testing
         paddle.disable_static()
         
-        # 创建SELECTED_ROWS类型的tensor（如果支持的话）
+        # Create SELECTED_ROWS type tensor (if supported)
         try:
-            # 尝试创建SELECTED_ROWS类型的tensor
+            # Try to create SELECTED_ROWS type tensor
             selected_row_tensor = paddle.zeros([10, 10], dtype='float32')
-            # 这里应该会失败，因为memcpy不支持SELECTED_ROWS
+            # This should fail because memcpy doesn't support SELECTED_ROWS
             with self.assertRaises(RuntimeError):
                 pinned_tensor = paddle.tensor.creation._memcpy(selected_row_tensor, paddle.CUDAPinnedPlace())
         except Exception as e:
-            # 如果创建SELECTED_ROWS tensor本身就失败，那也是预期的
+            # If creating SELECTED_ROWS tensor itself fails, that's also expected
             pass
 
 
