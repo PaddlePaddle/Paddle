@@ -28,7 +28,9 @@
 #include "paddle/phi/kernels/reduce_amin_kernel.h"
 #include "paddle/phi/kernels/reduce_any_kernel.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_mean_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -361,13 +363,13 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
   // and will produce results for different outputs. In such case, values in
   // each loaded vector always correspond to different outputs.
   if (fastest_moving_stride == sizeof(scalar_t)) {
-    // #ifdef defined(__HIPCC__)
-    //     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
-    //     iter.num_reduce_dims() == 1) {
-    // #else
+#ifdef defined(__HIPCC__)
+    if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
+        iter.num_reduce_dims() == 1) {
+#else
     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
         iter.num_reduce_dims() == 1 && VT0 >= INPUT_VEC_SIZE) {
-      // #endif
+#endif
       // Case 1: "vectorize along input"
       // Note that if VT0 < ReduceConfig::vec_size, then this means the register
       // pressure could be high, in such case, we should avoid vectorization.
@@ -545,6 +547,8 @@ struct ReduceOp {
   bool accumulate;
   bool final_output;
   int noutputs;
+  bool is_mean;
+  int64_t mean_factor;
 
   ReduceOp(ops_t ops,
            NewReduceConfig config,
@@ -558,7 +562,9 @@ struct ReduceOp {
            int* semaphores,
            arg_t ident,
            int noutputs,
-           int64_t base_idx)
+           int64_t base_idx,
+           bool is_mean,
+           int64_t mean_factor)
       : ops(ops),
         ident(ident),
         config(config),
@@ -569,7 +575,9 @@ struct ReduceOp {
         cta_buf(cta_buf),
         semaphores(semaphores),
         base_idx(base_idx),
-        noutputs(noutputs) {
+        noutputs(noutputs),
+        is_mean(is_mean),
+        mean_factor(mean_factor) {
     dst[0] = dst0;
     if (dst1.has_value()) {
       dst[1] = dst1.value();
@@ -625,6 +633,9 @@ struct ReduceOp {
       if (acc == nullptr) {
 #pragma unroll
         for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+          if (is_mean) {
+            value[i] = value[i] / static_cast<arg_t>(mean_factor);
+          }
           *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
               out[i], value[i]);
         }
@@ -1046,6 +1057,9 @@ struct ReduceOp {
         if (acc == nullptr) {
 #pragma unroll
           for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+            if (is_mean) {
+              value[i] = value[i] / static_cast<arg_t>(mean_factor);
+            }
             *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
                 out[i], value[i]);
           }
@@ -1083,7 +1097,11 @@ static void launch_reduce_kernel(const Context& dev_ctx,
       <<<grid, block, shared_memory, stream>>>(reduction);
 }
 
-template <typename T, typename Context, template <typename> class reduce_op>
+template <typename T,
+          typename Context,
+          template <typename>
+          class reduce_op,
+          bool IsMean = false>
 void StrideImpl(const Context& dev_ctx,
                 const DenseTensor& x,
                 const std::vector<int64_t>& dims,
@@ -1131,9 +1149,6 @@ void StrideImpl(const Context& dev_ctx,
   DenseTensor buffer_tensor;
   DenseTensor semaphore_tensor;
 
-  uint64_t check1 = reduce_config.global_memory_size() / phi::SizeOf(x.dtype());
-  uint64_t check2 = reduce_config.semaphore_size() / phi::SizeOf(x.dtype());
-
   std::vector<int> buffer_size = {static_cast<int>(
       reduce_config.global_memory_size() / phi::SizeOf(x.dtype()))};
   std::vector<int> semaphore_size = {static_cast<int>(
@@ -1158,6 +1173,8 @@ void StrideImpl(const Context& dev_ctx,
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto reducer = reduce_op<MPType>();
 
+  int64_t mean_factor = iter.numel();
+
   auto reduce =
       ReduceOp<T, reduce_op<MPType>, uint32_t, T, VT0, INPUT_VEC_SIZE>(
           reducer,
@@ -1172,7 +1189,9 @@ void StrideImpl(const Context& dev_ctx,
           reinterpret_cast<int*>(semaphores_data),
           ident,
           noutputs,
-          base_idx);
+          base_idx,
+          IsMean,
+          mean_factor);
 
   reduce.accumulate = iter.should_accumulate();
   reduce.final_output = iter.is_final_output();
@@ -1432,7 +1451,7 @@ void AllStrideKernel(const Context& dev_ctx,
               dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
         }));
   } else {
-    T ident = 0;
+    T ident = 1;
     StrideImpl<T, Context, kps::LogicalAndFunctor>(
         dev_ctx, x_, dims, keep_dim, ident, out);
   }
@@ -1493,6 +1512,153 @@ void AnyStrideKernel(const Context& dev_ctx,
   return;
 }
 
+template <typename T, typename Context>
+void SumStrideKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& dims,
+                     DataType out_dtype,
+                     bool keep_dim,
+                     DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::SumKernel<T, Context>(dev_ctx, x_, dims, out_dtype, keep_dim, out);
+    return;
+  }
+
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    out_dtype = out->dtype();
+  }
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    if (out_dtype == DataType::INT64) {
+      FullKernel<int64_t, Context>(
+          dev_ctx,
+          phi::IntArray(common::vectorize(out->dims())),
+          0,
+          out_dtype,  // not used
+          out);
+    } else {
+      FullKernel<T, Context>(dev_ctx,
+                             phi::IntArray(common::vectorize(out->dims())),
+                             0,
+                             out_dtype,  // not used
+                             out);
+    }
+    return;
+  }
+
+  if (x.dtype() == phi::DataType::BFLOAT16 &&
+      out_dtype == phi::DataType::FLOAT32) {
+    phi::dtype::bfloat16 ident = static_cast<phi::dtype::bfloat16>(0);
+    StrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
+        dev_ctx, x_, dims, keep_dim, ident, out);
+    *out = phi::Cast<phi::dtype::bfloat16>(dev_ctx, x_, out_dtype);
+  } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+    PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
+        phi::DataType::INT32,
+        phi::DataType::INT64,
+        phi::DataType::FLOAT16,
+        phi::DataType::BFLOAT16,
+        out_dtype,
+        "StrideImpl",
+        ([&] {
+          data_t ident = static_cast<data_t>(0);
+          StrideImpl<data_t, Context, kps::AddFunctor>(
+              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
+        }));
+  } else {
+    T ident = static_cast<T>(0);
+    StrideImpl<T, Context, kps::AddFunctor>(
+        dev_ctx, x_, dims, keep_dim, ident, out);
+  }
+  return;
+}
+
+template <typename T, typename Context>
+void MeanStrideKernel(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
+  if (!FLAGS_use_stride_kernel) {
+    PADDLE_THROW(common::errors::Fatal(
+        "FLAGS_use_stride_kernel is closed. Strided kernel "
+        "be called, something wrong has happened!"));
+  }
+
+  DenseTensor x_;
+  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+    if (!x.meta().is_contiguous() || x.offset() != 0) {
+      x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+    } else {
+      x_ = x;
+    }
+  } else {
+    x_ = x;
+  }
+  if (x_.meta().is_contiguous() || (out->dims().size() > 0)) {
+    auto meta = out->meta();
+    meta.strides = meta.calc_strides(out->dims());
+    out->set_meta(meta);
+    phi::MeanKernel<T, Context>(dev_ctx, x_, dims, keep_dim, out);
+    return;
+  }
+
+  if (x.numel() == 0) {
+    phi::Full<T, Context>(
+        dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
+    return;
+  }
+
+  if (std::is_same<T, int>::value || std::is_same<T, int64_t>::value ||
+      std::is_same<T, bool>::value) {
+    using Type =
+        typename std::conditional<std::is_same<T, int>::value ||
+                                      std::is_same<T, int64_t>::value ||
+                                      std::is_same<T, bool>::value,
+                                  float,
+                                  T>::type;
+    DenseTensor x_float =
+        phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+    DenseTensor* out_float = new DenseTensor();
+    out_float->Resize(out->dims());
+    MeanRawKernel<Type>(
+        dev_ctx, x_float, dims, keep_dim, reduce_all, out_float);
+
+    Type ident = static_cast<Type>(0);
+    StrideImpl<Type, Context, kps::AddFunctor, true>(
+        dev_ctx, x_float, dims, keep_dim, ident, out_float);
+
+    phi::CastKernel<Type, Context>(dev_ctx, *out_float, x.dtype(), out);
+  } else {
+    T ident = static_cast<T>(0);
+    StrideImpl<T, Context, kps::AddFunctor, true>(
+        dev_ctx, x_, dims, keep_dim, ident, out);
+  }
+  return;
+}
+
 }  // namespace phi
 
 using float16 = phi::float16;
@@ -1542,5 +1708,39 @@ PD_REGISTER_KERNEL(all,
                    complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
+
+PD_REGISTER_KERNEL(sum,
+                   GPU,
+                   STRIDED,
+                   phi::SumStrideKernel,
+                   bool,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   int16_t,
+                   int,
+                   int64_t,
+                   uint8_t,
+                   int8_t,
+                   phi::complex64,
+                   phi::complex128) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
+
+PD_REGISTER_KERNEL(mean,
+                   GPU,
+                   STRIDED,
+                   phi::MeanStrideKernel,
+                   float,
+                   double,
+                   bool,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::complex64,
+                   phi::complex128) {}
 
 #endif
