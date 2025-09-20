@@ -339,7 +339,7 @@ def cudart():
 class CudaError(RuntimeError):
     def __init__(self, code: int) -> None:
         msg = base.libpaddle._cudart.cudaGetErrorString(
-            base.libpaddle._cudart.cudaError_(code)
+            base.libpaddle._cudart.cudaError(code)
         )
         super().__init__(f"{msg} ({code})")
 
@@ -349,7 +349,7 @@ def check_error(res: int) -> None:
 
     This function validates whether the given result code from a CUDA
     runtime call indicates success. If the result code is not
-    :data:`base.libpaddle._cudart.cudaError_.success`, it raises a
+    :data:`base.libpaddle._cudart.cudaError.success`, it raises a
     :class:`CudaError`.
 
     Args:
@@ -364,7 +364,7 @@ def check_error(res: int) -> None:
             >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
             >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
     """
-    if res != base.libpaddle._cudart.cudaError_.success:
+    if res != base.libpaddle._cudart.cudaError.success:
         raise CudaError(res)
 
 

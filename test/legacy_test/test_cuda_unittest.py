@@ -147,20 +147,20 @@ class TestCudaCompat(unittest.TestCase):
 
         cuda_version = paddle.version.cuda()
         if int(cuda_version.split(".")[0]) < 12:
-            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode_"))
+            self.assertTrue(hasattr(cuda_rt_module, "cudaOutputMode"))
             self.assertTrue(hasattr(cuda_rt_module, "cudaProfilerInitialize"))
 
             self.assertTrue(
-                hasattr(cuda_rt_module.cudaOutputMode_, "KeyValuePair")
+                hasattr(cuda_rt_module.cudaOutputMode, "KeyValuePair")
             )
-            self.assertEqual(cuda_rt_module.cudaOutputMode_.KeyValuePair, 0)
+            self.assertEqual(cuda_rt_module.cudaOutputMode.KeyValuePair, 0)
 
-            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode_, "CSV"))
-            self.assertEqual(cuda_rt_module.cudaOutputMode_.CSV, 1)
+            self.assertTrue(hasattr(cuda_rt_module.cudaOutputMode, "CSV"))
+            self.assertEqual(cuda_rt_module.cudaOutputMode.CSV, 1)
 
-        self.assertTrue(hasattr(cuda_rt_module, "cudaError_"))
-        self.assertTrue(hasattr(cuda_rt_module.cudaError_, "success"))
-        self.assertEqual(cuda_rt_module.cudaError_.success, 0)
+        self.assertTrue(hasattr(cuda_rt_module, "cudaError"))
+        self.assertTrue(hasattr(cuda_rt_module.cudaError, "success"))
+        self.assertEqual(cuda_rt_module.cudaError.success, 0)
 
         func_list = [
             "cudaGetErrorString",
@@ -187,7 +187,7 @@ class TestCudaCompat(unittest.TestCase):
 
         # cudaGetErrorString
         err_str = cuda_rt_module.cudaGetErrorString(
-            cuda_rt_module.cudaError_.success
+            cuda_rt_module.cudaError.success
         )
         self.assertIsInstance(err_str, str)
 
@@ -202,22 +202,22 @@ class TestCudaCompat(unittest.TestCase):
         buf = np.zeros(1024, dtype=np.float32)
         ptr = buf.ctypes.data
         err = cuda_rt_module.cudaHostRegister(ptr, buf.nbytes, 0)
-        self.assertEqual(err, cuda_rt_module.cudaError_.success)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
         err = cuda_rt_module.cudaHostUnregister(ptr)
-        self.assertEqual(err, cuda_rt_module.cudaError_.success)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
 
         # cudaStreamCreate / cudaStreamDestroy
         stream = ctypes.c_size_t(0)
         err = cuda_rt_module.cudaStreamCreate(ctypes.addressof(stream))
-        assert err == cuda_rt_module.cudaError_.success
+        assert err == cuda_rt_module.cudaError.success
 
         err = cuda_rt_module.cudaStreamDestroy(stream.value)
-        assert err == cuda_rt_module.cudaError_.success
+        assert err == cuda_rt_module.cudaError.success
 
         err = cuda_rt_module.cudaProfilerStart()
-        self.assertEqual(err, cuda_rt_module.cudaError_.success)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
         err = cuda_rt_module.cudaProfilerStop()
-        self.assertEqual(err, cuda_rt_module.cudaError_.success)
+        self.assertEqual(err, cuda_rt_module.cudaError.success)
 
     @unittest.skipIf(
         (
