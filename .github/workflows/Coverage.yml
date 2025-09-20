@@ -140,7 +140,7 @@ jobs:
           git submodule update --init --recursive
           set -e
           git config pull.rebase false
-          sed -i '209s/exit 8/exit 0/' ci/utils.sh
+          sed -i "209s/exit 8/exit 0/" ci/utils.sh
           echo "Pull upstream $BRANCH"
           '
 
