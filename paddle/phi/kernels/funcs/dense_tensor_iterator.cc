@@ -140,10 +140,11 @@ void DenseTensorIteratorBase::allocate_or_resize_outputs() {
   for (auto i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-
-    bool reduce_pass = op.tensor().strides().size() == -1 ? false : true;
-
-    if (reduce_pass &&
+    bool reduce_pass = false;
+    if (is_reduction_ && !valid_stride && op.is_output) {
+      reduce_pass = true;
+    }
+    if (!reduce_pass &&
         (!op.tensor().initialized() || op.will_resize || !valid_stride)) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
@@ -287,6 +288,9 @@ void DenseTensorIteratorBase::populate_operands(
   for (size_t idx = 0; idx < config.tensors_.size(); idx++) {
     auto& tensor = config.tensors_[idx];
     operands_.emplace_back(std::move(const_cast<DenseTensor*>(tensor)));
+    if (idx < config.num_outputs_) {
+      operands_[idx].is_output = true;
+    }
   }
   num_outputs_ = config.num_outputs_;
 }
@@ -393,6 +397,7 @@ void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
+
     bool reduce_pass = false;
 
     std::vector<int64_t> tmp_shape =
@@ -400,7 +405,7 @@ void DenseTensorIteratorBase::compute_strides(
     std::vector<int64_t> tmp_stride =
         common::vectorize<int64_t>(op.tensor().strides());
 
-    if (is_reduction_ && !valid_stride) {
+    if (is_reduction_ && !valid_stride && op.is_output) {
       tmp_stride = std::vector<int64_t>(shape_.size(), 0);
       tmp_shape = std::vector<int64_t>(shape_.size(), 1);
       reduce_pass = true;
@@ -408,10 +413,14 @@ void DenseTensorIteratorBase::compute_strides(
 
     if (reduce_pass ||
         op.tensor().initialized() && !op.will_resize && valid_stride) {
-      // printf("enter one compute stride\n");
-      std::vector<int64_t> original_shape =
-          config.static_shape_ ? shape_ : tmp_shape;
-      auto original_stride = tmp_stride;
+      std::vector<int64_t> original_shape;
+      original_shape = config.static_shape_
+                           ? shape_
+                           : common::vectorize<int64_t>(op.tensor().dims());
+      if (op.is_output && reduce_pass) original_shape = tmp_shape;
+      std::vector<int64_t> original_stride;
+      original_stride = common::vectorize<int64_t>(op.tensor().strides());
+      if (op.is_output && reduce_pass) original_stride = tmp_stride;
       auto element_size_in_bytes = phi::SizeOf(op.tensor().dtype());
       auto offset = ndim() - original_shape.size();
       if (offset > 0)
