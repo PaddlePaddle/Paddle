@@ -151,7 +151,7 @@ jobs:
           set -x
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source /opt/dtk-24.04.1/env.sh
-          python3.10 -m pip install cmake=4.1.0
+          python3.10 -m pip install cmake==4.1.0
           PYTHON_BIN_DIR=$(python3.10 -c "import os, sys; print(os.path.dirname(sys.executable))")
           export PATH="$PYTHON_BIN_DIR:$PATH"
           cmake --version
