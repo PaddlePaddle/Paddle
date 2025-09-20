@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import enum
 import warnings
+from enum import IntEnum
 from typing import TYPE_CHECKING, Literal, Protocol, TypeVar
 
 import paddle
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from typing_extensions import CapsuleType
 
     from paddle import Tensor
+    from paddle._typing import PlaceLike
 
 
 __all__ = [
@@ -45,7 +47,14 @@ class SupportDLPack(Protocol[_T_contra]):
         https://github.com/numpy/numpy/blob/7e6e48ca7aacae9994d18a3dadbabd2b91c32151/numpy/__init__.pyi#L4730-L4731
     """
 
-    def __dlpack__(self, *, stream: None | _T_contra = ...) -> CapsuleType: ...
+    def __dlpack__(
+        self,
+        *,
+        stream: None | _T_contra = ...,
+        max_version: tuple[int, int] | None = ...,
+        dl_device: tuple[IntEnum, int] | None = None,
+        copy: bool | None = None,
+    ) -> CapsuleType: ...
 
     def __dlpack_device__(self) -> tuple[int, Literal[0]]: ...
 
@@ -59,8 +68,13 @@ class DLDeviceType(enum.IntEnum):
     kDLMetal = (8,)
     kDLVPI = (9,)
     kDLROCM = (10,)
+    kDLROCMHost = (11,)
     kDLExtDev = (12,)
+    kDLCUDAManaged = (13,)
     kDLOneAPI = (14,)
+    kDLWebGPU = (15,)
+    kDLHexagon = (16,)
+    kDLMAIA = (17,)
 
 
 def to_dlpack(x: Tensor) -> CapsuleType:
@@ -83,14 +97,14 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> # x is a tensor with shape [2, 4]
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]])
-            >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+            >>> dlpack = paddle.to_dlpack(x)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "dltensor" at 0x7f6103c681b0>
             >>> #doctest: -SKIP
 
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
-            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> y = paddle.from_dlpack(dlpack)
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
@@ -104,12 +118,11 @@ def to_dlpack(x: Tensor) -> CapsuleType:
             >>> import torch
 
             >>> x = paddle.randn([2, 4]).to(device="cpu")
-            >>> y = torch.from_dlpack(paddle.utils.dlpack.to_dlpack(x))
+            >>> y = torch.from_dlpack(paddle.to_dlpack(x))
             >>> print(y.shape)
             torch.Size([2, 4])
             >>> # doctest: -SKIP
     """
-
     if in_dygraph_mode():
         if not isinstance(x, paddle.Tensor):
             raise TypeError(
@@ -125,6 +138,9 @@ def to_dlpack(x: Tensor) -> CapsuleType:
 
 def from_dlpack(
     dlpack: SupportDLPack | CapsuleType,
+    *,
+    device: PlaceLike | None = None,
+    copy: bool | None = None,
 ) -> Tensor:
     """
     Decodes a DLPack to a tensor. The returned Paddle tensor will share the memory with
@@ -140,6 +156,14 @@ def from_dlpack(
             an opaque `PyCapsule` instance, typically produced by a
             `to_dlpack` function or method.
 
+        device (PlaceLike, optional): The device of the returned tensor. If not
+            specified, the device will be the same as that of the input `dlpack`.
+        copy (bool, optional): Whether or not to copy the input.
+            If True, the output tensor always copied. If False, the output tensor must never
+            copied, and raise a BufferError in case a copy is deemed necessary. If None, the
+            output tensor must reuse the existing memory buffer if possible and copy otherwise.
+            Default: None.
+
     Returns:
         out (Tensor): A tensor decoded from DLPack. The data type of returned tensor
             can be one of: ``int32``, ``int64``, ``float16``, ``float32`` and ``float64``.
@@ -153,13 +177,14 @@ def from_dlpack(
             >>> # From DLPack capsule
             >>> x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
             ...                       [0.1, 0.2, 0.6, 0.7]], place="cpu")
-            >>> dlpack = paddle.utils.dlpack.to_dlpack(x)
+            >>> dlpack = paddle.to_dlpack(x)
 
-            >>> y = paddle.utils.dlpack.from_dlpack(dlpack)
+            >>> y = paddle.from_dlpack(dlpack)
             >>> # dlpack capsule will be renamed to 'used_dltensor' after decoded
             >>> print(dlpack)
             >>> # doctest: +SKIP('the address will change in every run')
             <capsule object "used_dltensor" at 0x7f6103c681b0>
+            >>> # doctest: -SKIP
 
             >>> print(y)
             Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -180,7 +205,7 @@ def from_dlpack(
             >>> import numpy as np
             >>> x = np.array([[0.2, 0.3, 0.5, 0.9],
             ...              [0.1, 0.2, 0.6, 0.7]])
-            >>> y = paddle.utils.dlpack.from_dlpack(x)
+            >>> y = paddle.from_dlpack(x)
             >>> y[0, 0] = 10.0
             >>> # data of tensor x is shared with tensor y
             >>> print(x)
@@ -189,26 +214,39 @@ def from_dlpack(
     """
 
     if hasattr(dlpack, "__dlpack__"):
-        device = dlpack.__dlpack_device__()
+        kwargs = {}
+        kwargs["max_version"] = (1, 1)
+        if copy is not None:
+            kwargs["copy"] = copy
+
+        if device is not None:
+            place = paddle.base.framework._get_paddle_place(device)
+            kwargs["dl_device"] = paddle.base.core.place_to_dl_device(place)
+
+        dlpack_device = dlpack.__dlpack_device__()
         # device is CUDA, we need to pass the current
         # stream
-        if device[0] in (DLDeviceType.kDLCUDA,):
+        if dlpack_device[0] in (DLDeviceType.kDLCUDA,):
             with warnings.catch_warnings():
                 # ignore deprecation warning
                 warnings.filterwarnings("ignore", category=UserWarning)
-                stream = paddle.device.cuda.current_stream(device[1])
+                stream = paddle.device.cuda.current_stream(dlpack_device[1])
             # cuda_stream is the pointer to the stream and it is a public
             # attribute, but it is not documented
             # The array API specify that the default legacy stream must be passed
             # with a value of 1 for CUDA
             # https://data-apis.org/array-api/latest/API_specification/array_object.html?dlpack-self-stream-none#dlpack-self-stream-none
-            is_gpu = device[0] == DLDeviceType.kDLCUDA
+            is_gpu = dlpack_device[0] == DLDeviceType.kDLCUDA
             stream_ptr = (
                 1 if is_gpu and stream.cuda_stream == 0 else stream.cuda_stream
             )
-            dlpack_ = dlpack.__dlpack__(stream=stream_ptr)
-        else:
-            dlpack_ = dlpack.__dlpack__()
+            kwargs["stream"] = stream_ptr
+        try:
+            dlpack_ = dlpack.__dlpack__(**kwargs)
+        except TypeError:
+            # Remove the `max_version` argument if it is not supported
+            kwargs.pop("max_version")
+            dlpack_ = dlpack.__dlpack__(**kwargs)
     else:
         # Old versions just call the converter
         dlpack_ = dlpack

@@ -4881,7 +4881,7 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
     MPType temp = one / (one + exp(-x));
-    return static_cast<T>(dout * (temp * (one + x * (one - temp))));
+    return static_cast<T>(dout * temp * (one + x * (one - temp)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4975,7 +4975,7 @@ struct CudaSigmoidGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout * out * (1 - out)
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out * (one - out);
+    return dout * (one - out) * out;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
