@@ -199,8 +199,13 @@ class TestMeanOp_Complex64ZeroSize(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
+        self.public_python_api = paddle.mean
+        self.init_prim_type()
         self.inputs = {'X': np.array([]).astype("complex64")}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
         self.check_output(check_pir=True)
