@@ -39,7 +39,8 @@ if(WITH_LOONGARCH)
 endif()
 
 # For CMake >= 4.0.0, set policy compatibility for OpenBLAS's CMake.
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+# Only for Windows builds that use CMAKE_ARGS
+if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   message(
     WARNING
       "OpenBLAS: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
