@@ -20,7 +20,7 @@ namespace hip {
 
 const std::string CodeGenHipDevice::source_header_ =  // NOLINT
     R"(#define CINN_WITH_HIP
-     #include "paddle/common/float16.h"
+     #include "float16.h"
      using cinn::common::float16;
      #include "cinn_hip_runtime_source.h"
 )";
