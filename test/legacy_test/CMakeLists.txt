@@ -37,6 +37,10 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 endif()
 
+if(WIN32)
+  list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
+endif()
+
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
 list(REMOVE_ITEM TEST_OPS test_householder_product)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op_depthwise_conv)

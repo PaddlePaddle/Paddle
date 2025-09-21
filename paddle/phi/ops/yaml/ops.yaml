@@ -4352,6 +4352,19 @@
   interfaces : paddle::dialect::InferSymbolicShapeInterface
   traits : pir::SideEffectTrait, paddle::dialect::ForwardOnlyTrait
 
+- op : random
+  args : (Tensor x, int64_t from, int64_t to)
+  output : Tensor(out)
+  infer_meta :
+    func : RandomInferMeta
+    param : [x]
+  kernel :
+    func : random
+  inplace : (x -> out)
+  backward: random_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::SideEffectTrait
+
 - op : random_routing
   args : (Tensor prob, Tensor topk_value, Tensor topk_idx)
   output : Tensor(out)
@@ -5601,6 +5614,18 @@
   inplace: (input -> out)
   backward : trunc_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface
+
+- op : trunc_divide
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
+  kernel :
+    func : trunc_divide
+  inplace: (x -> out)
+  interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
+  traits : paddle::dialect::ForwardOnlyTrait, pir::BinaryElementWiseTrait
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random

@@ -477,9 +477,9 @@ struct IsinfFunctor<phi::GPUContext, T> {
 #endif
 
 template <typename T, typename Context>
-void IsfiniteKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    DenseTensor* out) {
+PADDLE_API void IsfiniteKernel(const Context& dev_ctx,
+                               const DenseTensor& x,
+                               DenseTensor* out) {
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
     return;

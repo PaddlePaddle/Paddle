@@ -1045,33 +1045,7 @@ def divide(
         return res
     elif rounding_mode == "trunc":
         if in_dynamic_or_pir_mode():
-            tmp = _C_ops.divide(x, y)
-            res = _C_ops.trunc(tmp, out=out)
-
-            if x.dtype in (
-                paddle.uint8,
-                paddle.int8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-            ) and y.dtype in (
-                paddle.uint8,
-                paddle.int8,
-                paddle.int16,
-                paddle.int32,
-                paddle.int64,
-            ):
-                if x.dtype == paddle.int64 or y.dtype == paddle.int64:
-                    target_dtype = paddle.int64
-                elif x.dtype == paddle.int32 or y.dtype == paddle.int32:
-                    target_dtype = paddle.int32
-                elif x.dtype == paddle.int16 or y.dtype == paddle.int16:
-                    target_dtype = paddle.int16
-                elif x.dtype == paddle.int8 or y.dtype == paddle.int8:
-                    target_dtype = paddle.int8
-                else:
-                    target_dtype = paddle.uint8
-                _C_ops.cast_(res, target_dtype)
+            res = _C_ops.trunc_divide(x, y, out=out)
         else:
             tmp = _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -1123,24 +1097,7 @@ def divide_(
     if rounding_mode is None:
         res = _C_ops.divide_(x, y)
     elif rounding_mode == "trunc":
-        x_dtype = x.dtype
-        y_dtype = y.dtype
-        tmp = _C_ops.divide_(x, y)
-        res = _C_ops.trunc_(tmp)
-        if x_dtype in (
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-        ) and y_dtype in (
-            paddle.uint8,
-            paddle.int8,
-            paddle.int16,
-            paddle.int32,
-            paddle.int64,
-        ):
-            _C_ops.cast_(res, x_dtype)
+        res = _C_ops.trunc_divide_(x, y)
     elif rounding_mode == "floor":
         res = _C_ops.floor_divide_(x, y)
     else:

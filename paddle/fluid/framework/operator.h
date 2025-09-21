@@ -749,10 +749,10 @@ class OperatorWithKernel : public OperatorBase {
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 
-  PADDLE_API OperatorWithKernel(const std::string& type,
-                                const VariableNameMap& inputs,
-                                const VariableNameMap& outputs,
-                                const AttributeMap& attrs);
+  PADDLE_EXP_API OperatorWithKernel(const std::string& type,
+                                    const VariableNameMap& inputs,
+                                    const VariableNameMap& outputs,
+                                    const AttributeMap& attrs);
 
   PADDLE_API virtual ~OperatorWithKernel();
 
@@ -789,7 +789,7 @@ class OperatorWithKernel : public OperatorBase {
   PADDLE_API bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx,
                                  proto::VarType::Type data_type) const;
 
-  virtual void InferShape(InferShapeContext* ctx) const;
+  PADDLE_API virtual void InferShape(InferShapeContext* ctx) const;
 
   void SetIsRuntimeInferShape(bool x) override {
     all_kernels_must_compute_runtime_shape_ = x;

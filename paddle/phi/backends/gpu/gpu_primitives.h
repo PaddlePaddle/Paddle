@@ -276,7 +276,7 @@ inline __device__ uint32_t add_to_high_half(uint32_t val, float x) {
   return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+#if CUDA_VERSION >= 10000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 static __device__ __forceinline__ phi::dtype::float16 CUDAFP16ToPDFP16(
     __half x) {
   return *reinterpret_cast<phi::dtype::float16 *>(&x);
@@ -335,13 +335,13 @@ struct VecAtomicAddHelperBase {
 template <typename T>
 struct VecAtomicAddHelper : VecAtomicAddHelperBase<T, false, void, void> {};
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
+#if CUDA_VERSION >= 10000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 template <>
 struct VecAtomicAddHelper<phi::dtype::float16>
     : VecAtomicAddHelperBase<phi::dtype::float16, true, __half, __half2> {};
 #endif
 
-#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
+#if CUDA_VERSION >= 11000 && defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
 template <>
 struct VecAtomicAddHelper<phi::dtype::bfloat16>
     : VecAtomicAddHelperBase<phi::dtype::bfloat16,

@@ -61,6 +61,7 @@ extern bool HasCUDADriver();
   __macro(cuDeviceGetAttribute);                        \
   __macro(cuDeviceGet)
 
+#if CUDA_VERSION >= 10020
 #define CUDA_ROUTINE_EACH_VVM(__macro)    \
   __macro(cuMemGetAllocationGranularity); \
   __macro(cuMemAddressReserve);           \
@@ -78,6 +79,7 @@ extern bool HasCUDADriver();
 
 CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
+#endif
 
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 
