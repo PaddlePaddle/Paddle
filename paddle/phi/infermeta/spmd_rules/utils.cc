@@ -841,7 +841,7 @@ std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
           dims_mapping.emplace_back(std::vector<int64_t>{});
         } else {
           common::errors::InvalidArgument(
-              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+              "Tensor axis [%s] is not in axis_to_dim_map.", axis);
         }
       } else {
         dims_mapping.emplace_back(iter->second);
@@ -850,7 +850,6 @@ std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
   }
   return dims_mapping;
 }
-
 void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result) {
   VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";

@@ -27,6 +27,12 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
     def test_reshape_co_shard(self):
         self.run_test_case("reshape_co_shard.py")
 
+    def test_binary_elementwise_co_shard(self):
+        self.run_test_case("elementwise_binary_co_shard.py")
+
+    def test_layernorm_co_shard(self):
+        self.run_test_case("layernorm_co_shard.py")
+
     def test_transpose_co_shard(self):
         self.run_test_case("transpose_co_shard.py")
 
