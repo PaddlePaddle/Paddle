@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA)
+#if defined(__NVCC__)
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
 
+#include "paddle/phi/kernels/funcs/dims_simplifier.h"
 #include "paddle/phi/kernels/prod_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_amax_kernel.h"
@@ -31,11 +32,6 @@
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-
-#if defined(__NVCC__) || defined(__xpu__)
-#include "paddle/phi/kernels/funcs/dims_simplifier.h"
-
-#endif
 
 COMMON_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(use_stride_compute_kernel);
