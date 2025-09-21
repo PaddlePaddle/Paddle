@@ -214,7 +214,7 @@ struct DenseTensorIteratorConfig final {
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;
-  bool resize_outputs_ = true;
+  bool resize_outputs_ = false;
 };
 
 }  // namespace phi

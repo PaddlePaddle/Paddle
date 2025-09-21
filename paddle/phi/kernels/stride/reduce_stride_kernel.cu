@@ -1279,7 +1279,7 @@ void AMinStrideKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MaxStrideKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& dims,
+                     const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
@@ -1310,14 +1310,14 @@ void MaxStrideKernel(const Context& dev_ctx,
 
   T ident = std::numeric_limits<T>::lowest();
   StrideImpl<T, Context, kps::MaxFunctor>(
-      dev_ctx, x_, dims, keep_dim, ident, out);
+      dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
 
 template <typename T, typename Context>
 void MinStrideKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& dims,
+                     const IntArray& dims,
                      bool keep_dim,
                      DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
@@ -1347,14 +1347,14 @@ void MinStrideKernel(const Context& dev_ctx,
 
   T ident = std::numeric_limits<T>::max();
   StrideImpl<T, Context, kps::MinFunctor>(
-      dev_ctx, x_, dims, keep_dim, ident, out);
+      dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
 
 template <typename T, typename Context>
 void ProdStrideKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const std::vector<int64_t>& dims,
+                      const IntArray& dims,
                       bool keep_dim,
                       bool reduce_all,
                       DenseTensor* out) {
@@ -1382,16 +1382,16 @@ void ProdStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  if (x.numel() == 0) {
+  if (x_.numel() == 0) {
     // fill with 1.
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), 1, out);
     return;
   }
 
-  T ident = 1;
+  T ident = static_cast<T>(1);
   StrideImpl<T, Context, kps::MulFunctor>(
-      dev_ctx, x_, dims, keep_dim, ident, out);
+      dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
 
@@ -1426,7 +1426,7 @@ void AllStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  if (x.numel() == 0) {
+  if (x_.numel() == 0) {
     dev_ctx.template Alloc<bool>(out);
     if (out->numel() > 0) {
       std::vector<int64_t> vec_dims = common::vectorize(out->dims());
@@ -1436,8 +1436,8 @@ void AllStrideKernel(const Context& dev_ctx,
   }
 
   auto out_dtype = phi::DataType::BOOL;
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x_, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
@@ -1490,7 +1490,7 @@ void AnyStrideKernel(const Context& dev_ctx,
   }
 
   auto out_dtype = phi::DataType::BOOL;
-  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
+  if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
     auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
@@ -1515,7 +1515,7 @@ void AnyStrideKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void SumStrideKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     const std::vector<int64_t>& dims,
+                     const IntArray& dims,
                      DataType out_dtype,
                      bool keep_dim,
                      DenseTensor* out) {
@@ -1544,10 +1544,10 @@ void SumStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+  if (out_dtype == DataType::UNDEFINED && out->dtype() != x_.dtype()) {
     out_dtype = out->dtype();
   }
-  if (x.numel() == 0) {
+  if (x_.numel() == 0) {
     dev_ctx.template Alloc<T>(out);
     if (out_dtype == DataType::INT64) {
       FullKernel<int64_t, Context>(
@@ -1570,10 +1570,10 @@ void SumStrideKernel(const Context& dev_ctx,
       out_dtype == phi::DataType::FLOAT32) {
     phi::dtype::bfloat16 ident = static_cast<phi::dtype::bfloat16>(0);
     StrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
-        dev_ctx, x_, dims, keep_dim, ident, out);
+        dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
     *out = phi::Cast<phi::dtype::bfloat16>(dev_ctx, x_, out_dtype);
-  } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x.dtype()) {
-    auto tmp_tensor = phi::Cast<T>(dev_ctx, x, out_dtype);
+  } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
+    auto tmp_tensor = phi::Cast<T>(dev_ctx, x_, out_dtype);
     PD_VISIT_BOOL_AND_FLOATING_AND_COMPLEX_AND_4_TYPES(
         phi::DataType::INT32,
         phi::DataType::INT64,
@@ -1584,12 +1584,12 @@ void SumStrideKernel(const Context& dev_ctx,
         ([&] {
           data_t ident = static_cast<data_t>(0);
           StrideImpl<data_t, Context, kps::AddFunctor>(
-              dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
+              dev_ctx, tmp_tensor, dims.GetData(), keep_dim, ident, out);
         }));
   } else {
     T ident = static_cast<T>(0);
     StrideImpl<T, Context, kps::AddFunctor>(
-        dev_ctx, x_, dims, keep_dim, ident, out);
+        dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   }
   return;
 }
@@ -1597,7 +1597,7 @@ void SumStrideKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void MeanStrideKernel(const Context& dev_ctx,
                       const DenseTensor& x,
-                      const std::vector<int64_t>& dims,
+                      const IntArray& dims,
                       bool keep_dim,
                       DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
@@ -1625,7 +1625,7 @@ void MeanStrideKernel(const Context& dev_ctx,
     return;
   }
 
-  if (x.numel() == 0) {
+  if (x_.numel() == 0) {
     phi::Full<T, Context>(
         dev_ctx, phi::IntArray(common::vectorize(out->dims())), NAN, out);
     return;
@@ -1640,7 +1640,7 @@ void MeanStrideKernel(const Context& dev_ctx,
                                   float,
                                   T>::type;
     DenseTensor x_float =
-        phi::Cast<T, Context>(dev_ctx, x, phi::DataType::FLOAT32);
+        phi::Cast<T, Context>(dev_ctx, x_, phi::DataType::FLOAT32);
     DenseTensor* out_float = new DenseTensor();
     out_float->Resize(out->dims());
     MeanRawKernel<Type>(
@@ -1648,13 +1648,13 @@ void MeanStrideKernel(const Context& dev_ctx,
 
     Type ident = static_cast<Type>(0);
     StrideImpl<Type, Context, kps::AddFunctor, true>(
-        dev_ctx, x_float, dims, keep_dim, ident, out_float);
+        dev_ctx, x_float, dims.GetData(), keep_dim, ident, out_float);
 
-    phi::CastKernel<Type, Context>(dev_ctx, *out_float, x.dtype(), out);
+    phi::CastKernel<Type, Context>(dev_ctx, *out_float, x_.dtype(), out);
   } else {
     T ident = static_cast<T>(0);
     StrideImpl<T, Context, kps::AddFunctor, true>(
-        dev_ctx, x_, dims, keep_dim, ident, out);
+        dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   }
   return;
 }
@@ -1678,8 +1678,18 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     min, GPU, STRIDED, phi::MinStrideKernel, float, double, int, int64_t) {}
 
-PD_REGISTER_KERNEL(
-    prod, GPU, STRIDED, phi::ProdStrideKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(prod,
+                   GPU,
+                   STRIDED,
+                   phi::ProdStrideKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(any,
                    GPU,
