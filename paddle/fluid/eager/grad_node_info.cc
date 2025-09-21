@@ -108,11 +108,11 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   if (!fwd_out.has_allocation()) {
     if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
         phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
-      VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
+      VLOG(5) << "Tensor " << fwd_out.name() << " is DistTensor,"
               << " and needs computation clip for pipeline parallel."
               << " Still SetGradInMeta for it.";
     } else {
-      VLOG(7)
+      VLOG(6)
           << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
       return;
     }
@@ -143,7 +143,7 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
             ->dims());
     SetIsRunAutoParallel(true);
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
   PADDLE_ENFORCE_NE(
@@ -202,7 +202,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                 << " and needs computation clip for pipeline parallel."
                 << " Still SetGradInMeta for it.";
       } else {
-        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
+        VLOG(6) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
                    "Tensor";
         return;
       }
@@ -356,7 +356,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor*>& fwd_out,
         need_complex_to_real_ = true;
       }
     } else {
-      VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
+      VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta "
                  "with non-DenseTensor argument.";
     }
   }
@@ -391,7 +391,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -468,7 +468,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
              "non-DenseTensor argument.";
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta because the Tensor "
                "is not initialized.";
   }
 }
@@ -508,7 +508,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -551,7 +551,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetPlace(fwd_in.place());
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+    VLOG(5) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
   }
 }
@@ -592,7 +592,7 @@ void GradNodeBase::SetGradOutMeta(
       fwd_in_meta->SetGradNode(
           std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
     }
-    VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+    VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
             << this->name() << " (addr: " << this << ") "
             << " to " << fwd_in_meta->GetMutableGradNode()->name()
             << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -666,7 +666,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";
@@ -746,7 +746,7 @@ void GradNodeBase::SetGradOutMeta(
         fwd_in_meta->SetGradNode(
             std::make_shared<egr::GradNodeAccumulation>(fwd_in_meta));
       }
-      VLOG(3) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
+      VLOG(5) << "Add Edges for slot: " << slot_rank << ", the Edge is from "
               << this->name() << " (addr: " << this << ") "
               << " to " << fwd_in_meta->GetMutableGradNode()->name()
               << " (addr: " << fwd_in_meta->GetMutableGradNode().get() << ")";

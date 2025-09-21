@@ -1342,7 +1342,11 @@ class DygraphShardingOptimizerV2:
         optim_state_dict = self.state_dict()
         master_weights = optim_state_dict.pop("master_weights", None)
         optim_state_dict.pop("LR_Scheduler", None)
+
         static_to_struct = {}
+        model_sharded_state_dict = dict(
+            sorted(model_sharded_state_dict.items())
+        )
         for k, v in model_sharded_state_dict.items():
             # When shared weights exist, the v.local_tensor.name of shared parameters are identical, but only the first parameter has optimizer states. Therefore, only the key-value pairs of the first occurrence in the shared parameter group need to be retained.
             if v.local_tensor.name not in static_to_struct:

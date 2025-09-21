@@ -178,6 +178,12 @@
   args_alias:
     x : [input]
 
+- op : gelu
+  name : [paddle.nn.functional.gelu]
+  args_alias:
+    x : [input]
+  args_mapper :
+    func : GeluMapper
 - op : sum
   name : [paddle.sum, paddle.Tensor.sum]
   args_alias:
