@@ -239,10 +239,6 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(STanh,
                                                scale_a,
                                                scale_b);
 
-DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
-                                               CudaSoftplusGradFunctor,
-                                               beta,
-                                               threshold);
 DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  CudaHardSigmoidGradFunctor,
                                                  slope,
@@ -251,6 +247,22 @@ DEFINE_GPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(ThresholdedRelu,
                                                CudaThresholdedReluGradFunctor,
                                                threshold,
                                                value);
+
+template <typename T, typename Context>
+void SoftplusGradKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& dout,
+                        double beta,
+                        double threshold,
+                        DenseTensor* dx) {
+  funcs::CudaSoftplusGradFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  ActivationGradGPUImpl<T, Context, funcs::CudaSoftplusGradFunctor<T>>(
+      dev_ctx, &x, nullptr, &dout, dx, functor);
+}
+
 template <typename T, typename Context>
 void SiluGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,

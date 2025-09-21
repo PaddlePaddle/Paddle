@@ -138,10 +138,6 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh,
                                      t_min,
                                      t_max)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Stanh, CudaSTanhFunctor, scale_a, scale_b)
-DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus,
-                                     CudaSoftplusFunctor,
-                                     beta,
-                                     threshold)
 DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      CudaHardSigmoidFunctor,
                                      slope,
@@ -151,6 +147,20 @@ DEFINE_GPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
                                      CudaThresholdedReluFunctor,
                                      threshold,
                                      value)
+
+template <typename T, typename Context>
+void SoftplusKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    double beta,
+                    double threshold,
+                    DenseTensor* out) {
+  funcs::CudaSoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  ActivationGPUImpl<T, Context, funcs::CudaSoftplusFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
@@ -327,7 +337,17 @@ PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(stanh, StanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(sqrt, SqrtKernel)
 PD_REGISTER_ACTIVATION_KERNEL(rsqrt, RsqrtKernel)
-PD_REGISTER_ACTIVATION_KERNEL_WITH_COMPLEX(softplus, SoftplusKernel)
+
+PD_REGISTER_KERNEL(softplus,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SoftplusKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(exp,
                    GPU,

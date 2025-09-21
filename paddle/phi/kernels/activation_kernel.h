@@ -83,10 +83,15 @@ DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Logit, eps)
 
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardTanh, t_min, t_max)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(STanh, scale_a, scale_b)
-DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus, beta, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid, slope, offset)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu, threshold, value)
 
+template <typename T, typename Context>
+void SoftplusKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    double beta,
+                    double threshold,
+                    DenseTensor* out);
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,

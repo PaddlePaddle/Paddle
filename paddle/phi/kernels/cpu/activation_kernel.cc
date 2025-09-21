@@ -115,7 +115,6 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh, HardTanhFunctor, t_min, t_max)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
-DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
                                      HardSigmoidFunctor,
                                      slope,
@@ -124,6 +123,20 @@ DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold,
                                      value)
+
+template <typename T, typename Context>
+void SoftplusKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    double beta,
+                    double threshold,
+                    DenseTensor* out) {
+  funcs::SoftplusFunctor<T> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = beta;
+  *(attrs[1].second) = threshold;
+  ActivationImpl<T, T, Context, funcs::SoftplusFunctor<T>>(
+      dev_ctx, x, out, functor);
+}
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
