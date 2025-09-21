@@ -25,6 +25,14 @@ cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
 }
 #endif
 
+#if CUDA_VERSION >= 11000
+#define CUDA_GRAPH_GET_EDGES(graph, from, to, num) \
+    cudaGraphGetEdges(graph, from, to, num, nullptr)
+#else
+#define CUDA_GRAPH_GET_EDGES(graph, from, to, num) \
+    cudaGraphGetEdges(graph, from, to, num)
+#endif
+
 COMMON_DECLARE_bool(use_cuda_malloc_async_allocator);
 COMMON_DECLARE_bool(auto_free_cudagraph_allocations_on_launch);
 
@@ -43,10 +51,10 @@ static std::vector<cudaGraphNode_t> ToposortCUDAGraph(cudaGraph_t graph) {
 
   size_t num_edges;
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaGraphGetEdges(graph, nullptr, nullptr, &num_edges));
+      CUDA_GRAPH_GET_EDGES(graph, nullptr, nullptr, &num_edges));
   std::vector<cudaGraphNode_t> from(num_edges), to(num_edges);
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaGraphGetEdges(graph, from.data(), to.data(), &num_edges));
+      CUDA_GRAPH_GET_EDGES(graph, from.data(), to.data(), &num_edges));
 
   std::unordered_map<cudaGraphNode_t, std::unordered_set<cudaGraphNode_t>>
       in_edges, out_edges;
