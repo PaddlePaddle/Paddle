@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -32,7 +32,7 @@
 #include "paddle/phi/kernels/reduce_min_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
+#if defined(__NVCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
 
 #endif
