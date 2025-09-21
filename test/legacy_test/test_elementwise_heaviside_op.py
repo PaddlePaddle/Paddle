@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle.base import core
@@ -116,9 +121,11 @@ class TestHeavisideAPI_float64(unittest.TestCase):
 
     def test_static(self):
         for use_cuda in (
-            [False, True] if paddle.device.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (paddle.device.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
             prog = paddle.static.Program()
@@ -146,9 +153,11 @@ class TestHeavisideAPI_float64(unittest.TestCase):
 
     def test_dygraph(self):
         for use_cuda in (
-            [False, True] if paddle.device.is_compiled_with_cuda() else [False]
+            [False, True]
+            if (paddle.device.is_compiled_with_cuda() or is_custom_device())
+            else [False]
         ):
-            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            place = get_device_place() if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
             result = paddle.heaviside(
                 paddle.to_tensor(self.x_np), paddle.to_tensor(self.y_np)
@@ -260,8 +269,8 @@ class TestHeavisideFP16Op(OpTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestHeavisideBF16Op(OpTest):
@@ -278,7 +287,7 @@ class TestHeavisideBF16Op(OpTest):
         }
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
         self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
         self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
         self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
@@ -331,7 +340,8 @@ class TestHeavisideError(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseHeavisideOp_Stride(OpTest):
     no_need_check_grad = True
@@ -362,7 +372,7 @@ class TestElementwiseHeavisideOp_Stride(OpTest):
         self.val_dtype = np.float64
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

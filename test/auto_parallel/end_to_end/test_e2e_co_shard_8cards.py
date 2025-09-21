@@ -24,6 +24,9 @@ class TestReshardE2E(test_base.CommunicationTestDistBase):
     def test_tile_shard(self):
         self.run_test_case("tile_co_shard.py")
 
+    def test_index_select_shard(self):
+        self.run_test_case("index_select_co_shard.py")
+
     def test_softmax_shard(self):
         self.run_test_case("softmax_co_shard.py")
 

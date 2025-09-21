@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -202,8 +207,8 @@ class TestCase_ZeroSize(TestClipOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestClipBF16Op(OpTest):
@@ -238,8 +243,8 @@ class TestClipBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.enable_static()
             self.check_output_with_place(
                 place,
@@ -250,8 +255,8 @@ class TestClipBF16Op(OpTest):
             paddle.disable_static()
 
     def test_check_grad_normal(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.enable_static()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
             paddle.disable_static()
@@ -325,8 +330,8 @@ class TestClipAPI(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -413,8 +418,8 @@ class TestClipAPI(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         paddle.disable_static(place)
@@ -497,8 +502,8 @@ class TestClipAPI_Int(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('int32')
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -585,8 +590,8 @@ class TestClipAPI_Int(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         paddle.disable_static(place)
@@ -637,7 +642,7 @@ class TestClipAPI_Int(unittest.TestCase):
 
 class TestClipOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             data_shape = [1, 9, 9, 4]
             data = np.random.random(data_shape).astype('float16')
@@ -653,7 +658,7 @@ class TestClipOpFp16(unittest.TestCase):
                     name='max1', shape=[1], dtype='float16'
                 )
                 out = paddle.clip(images, min, max)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 res1 = exe.run(
                     feed={
@@ -768,8 +773,8 @@ class TestClipOutAndParaDecorator(unittest.TestCase):
 class TestClipCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.clip
         self.init_data()
         self.init_case()
@@ -925,8 +930,8 @@ class TestClipCompatibility(unittest.TestCase):
 class TestClampAliasForClip(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.clamp
         self.init_data()
         self.init_case()

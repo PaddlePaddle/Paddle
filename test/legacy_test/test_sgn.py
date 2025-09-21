@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import is_custom_device
 from utils import static_guard
 
 import paddle
@@ -103,7 +103,7 @@ class TestSignAPI(unittest.TestCase):
 
     def test_float_dynamic(self):
         dtype_list = ['float32', 'float64']
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             dtype_list.append('float16')
         for dtype in dtype_list:
             np_x = np.random.randint(-10, 10, size=[12, 20, 2]).astype(dtype)
@@ -115,7 +115,7 @@ class TestSignAPI(unittest.TestCase):
 
     def test_float_static_and_pir(self):
         dtype_list = ['float32', 'float64']
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             dtype_list.append('float16')
         with static_guard():
             for dtype in dtype_list:

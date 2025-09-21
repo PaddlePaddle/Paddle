@@ -38,6 +38,7 @@ from .metadata import LocalTensorIndex, LocalTensorMetadata
 from .sharded_weight import (
     ShardedWeight,
     ShardedWeightDesc,
+    make_replicated_sharded_weight,
 )
 from .utils import (
     assign_sharded_slice,
@@ -707,6 +708,8 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
                 )
+                if local_tensor.place != tgt_shard.local_tensor.place:
+                    local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
                 new_load_dict[idx] = ShardedWeight(
                     key=src_desc.key,
                     local_tensor=local_tensor,
@@ -1139,9 +1142,18 @@ def _load_state_dict(
                 )
                 or idx + 1 == len(read_items)
             ):
-                paddle.assign(
-                    copied_target_state_dict[key].cpu(), target_state_dict[key]
-                )
+                if isinstance(value, ShardedWeight):
+                    target_value = target_state_dict[key].local_tensor
+                    paddle.assign(
+                        copied_target_state_dict[key].cpu(),
+                        target_value,
+                    )
+                    target_state_dict[key].local_tensor = target_value
+                else:
+                    paddle.assign(
+                        copied_target_state_dict[key].cpu(),
+                        target_state_dict[key],
+                    )
                 t = copied_target_state_dict[key]
                 copied_target_state_dict[key] = t.cpu()
                 del t
@@ -1423,7 +1435,12 @@ def merge_sharded_state_dict(
                 t = paddle.zeros(global_shape, dtype=local_tensor_meta[0].dtype)
                 if offload:
                     t = t.cpu()
-                local_state_dict_to_save[tensor_key] = t
+                local_state_dict_to_save[tensor_key] = (
+                    make_replicated_sharded_weight(
+                        key=tensor_key,
+                        tensor=t,
+                    )
+                )
             else:
                 continue
 
@@ -1495,6 +1512,13 @@ def merge_sharded_state_dict(
                 key
             )  # Add new key and remove the old one
 
+    for key, value in local_state_dict_to_save.items():
+        if isinstance(value, ShardedWeight):
+            value_to_save = value.local_tensor
+            local_state_dict_to_save[key] = value_to_save
+    logger.info(
+        f"rank :{rank} , SaveSafetensor.local_state_dict_to_save.size :{len(local_state_dict_to_save)}"
+    )
     SaveSafetensor.save_single_safetenors(
         local_state_dict_to_save, paddle.distributed.get_rank()
     )
