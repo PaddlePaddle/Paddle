@@ -143,9 +143,10 @@ std::unordered_map<std::string, int64_t> GetAxesSizes(
         // Get the max size for axis and check broadcastable.
         if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
           axis_to_size_map[axis] = pair.second[i];
-        } else if (axis_to_size_map[axis] == 1) {
+        } else if (axis_to_size_map[axis] == 1 ||
+                   axis_to_size_map[axis] == -1) {
           axis_to_size_map[axis] = pair.second[i];
-        } else if (pair.second[i] == 1) {
+        } else if (pair.second[i] == 1 || pair.second[i] == -1) {
           continue;
         } else {
           PADDLE_ENFORCE_EQ(
