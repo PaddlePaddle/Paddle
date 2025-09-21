@@ -16,9 +16,6 @@ limitations under the License. */
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/common/macros.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(__xpu__)
 #include <xpu/runtime.h>
@@ -97,7 +94,7 @@ struct IsZeroFunctor {
 // Divide
 #define DIV_ERROR_INFO                                             \
   "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor) divide. Please check the input value."
+  "(floor/trunc) divide. Please check the input value."
 
 template <typename T, typename Enable = void>
 struct DivideFunctor {
@@ -581,8 +578,8 @@ struct MaximumFunctor {
 template <typename T>
 struct MaximumFunctor<
     T,
-    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
-                            std::is_same_v<T, phi::dtype::float16>>::type> {
+    typename std::enable_if<std::is_same_v<T, phi::bfloat16> ||
+                            std::is_same_v<T, phi::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if (phi::dtype::isnan(a)) return a;
     if (phi::dtype::isnan(b)) return b;
@@ -654,8 +651,8 @@ struct MinimumFunctor {
 template <typename T>
 struct MinimumFunctor<
     T,
-    typename std::enable_if<std::is_same_v<T, phi::dtype::bfloat16> ||
-                            std::is_same_v<T, phi::dtype::float16>>::type> {
+    typename std::enable_if<std::is_same_v<T, phi::bfloat16> ||
+                            std::is_same_v<T, phi::float16>>::type> {
   inline HOSTDEVICE T operator()(const T a, const T b) const {
     if (phi::dtype::isnan(a)) return a;
     if (phi::dtype::isnan(b)) return b;
@@ -1250,6 +1247,90 @@ struct InverseFloorDivideFunctor<dtype::bfloat16> {
   }
 };
 
+template <typename T, typename Enable = void>
+struct TruncDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(a / b);
+  }
+};
+
+template <typename T>
+struct TruncDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(b == 0)) {
+      return static_cast<T>(a / b);
+    }
+    return std::trunc(a / b);
+  }
+};
+
+template <>
+struct TruncDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::trunc(a_float / b_float));
+  }
+};
+
+template <>
+struct TruncDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::bfloat16>(std::trunc(a_float / b_float));
+  }
+};
+
+template <typename T, typename Enable = void>
+struct InverseTruncDivideFunctor {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+#ifndef PADDLE_WITH_XPU_KP
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+#endif
+    return static_cast<T>(b / a);
+  }
+};
+
+template <typename T>
+struct InverseTruncDivideFunctor<
+    T,
+    typename std::enable_if_t<std::is_floating_point<T>::value>> {
+  inline HOSTDEVICE T operator()(const T a, const T b) const {
+    if (UNLIKELY(a == 0)) {
+      return static_cast<T>(b / a);
+    }
+    return std::trunc(b / a);
+  }
+};
+
+template <>
+struct InverseTruncDivideFunctor<dtype::float16> {
+  inline HOSTDEVICE dtype::float16 operator()(const dtype::float16 a,
+                                              const dtype::float16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::float16>(std::trunc(b_float / a_float));
+  }
+};
+
+template <>
+struct InverseTruncDivideFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float a_float = static_cast<float>(a);
+    float b_float = static_cast<float>(b);
+    return static_cast<dtype::bfloat16>(std::trunc(b_float / a_float));
+  }
+};
+
 #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
 template <typename T, typename MPType>
 inline HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
@@ -1343,13 +1424,12 @@ inline HOSTDEVICE auto copysign_func(const T& a, const T& b) {
 #endif
 }
 
-inline HOSTDEVICE phi::dtype::float16 copysign_func(phi::dtype::float16 a,
-                                                    phi::dtype::float16 b) {
+inline HOSTDEVICE phi::float16 copysign_func(phi::float16 a, phi::float16 b) {
   return phi::dtype::raw_uint16_to_float16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
-inline HOSTDEVICE phi::dtype::bfloat16 copysign_func(phi::dtype::bfloat16 a,
-                                                     phi::dtype::bfloat16 b) {
+inline HOSTDEVICE phi::bfloat16 copysign_func(phi::bfloat16 a,
+                                              phi::bfloat16 b) {
   return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 

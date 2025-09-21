@@ -15,12 +15,14 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/eager/utils.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
-
 COMMON_DECLARE_int32(call_stack_level);
+COMMON_DECLARE_string(dump_grad_node_forward_stack_path);
 namespace egr {
-
+using paddle::inference::analysis::Dot;
 std::unordered_map<GradNodeBase*, int> getInDegreeMap(
     const std::deque<GradNodeBase*>& init_queue) {
   // Calculate in_degree for each node
@@ -31,12 +33,10 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
   // Copy nodes
   std::deque<GradNodeBase*> queue = init_queue;
   std::unordered_set<GradNodeBase*> visited;
-
   // Visit each node exactly once in any order
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     queue.pop_front();
-
     if (visited.count(node)) {
       continue;
     }
@@ -57,8 +57,9 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
         // Next node could be nullptr if it is leaf tensor with no
         // AccumulationNode attached
         // Or it could also originated from dispensable inputs
-        if (!next_node) continue;
-
+        if (!next_node) {
+          continue;
+        }
         // Update in_degree
         if (!node_in_degree_map.count(next_node))
           node_in_degree_map[next_node] = 0;
@@ -67,8 +68,90 @@ std::unordered_map<GradNodeBase*, int> getInDegreeMap(
       }
     }
   }
-
   return node_in_degree_map;
+}
+
+// Construct a forward graph and call stack related to the nodes in the backward
+// graph
+void ConstructForwardDebugDotGraph(const std::deque<GradNodeBase*>& init_queue,
+                                   Dot* dot,
+                                   std::string* call_stack) {
+  std::deque<GradNodeBase*> queue = init_queue;
+  std::unordered_set<GradNodeBase*> visited;
+  std::unordered_map<GradNodeBase*, std::string> call_stack_map;
+  VLOG(6) << "Construct Forward Graph and Call Stack Info";
+  // Visit each node exactly once in any order
+  while (!queue.empty()) {
+    GradNodeBase* node = queue.front();
+    queue.pop_front();
+    std::string dot_node_label = CreateForwardNodeLabelInDot(node);
+    if (visited.count(node)) {
+      continue;
+    }
+    visited.insert(node);
+
+    if (!dot->ContainsNode(dot_node_label)) {
+      dot->AddNode(dot_node_label,
+                   paddle::inference::analysis::grey_box_attrs,
+                   dot_node_label,
+                   false);
+    }
+    call_stack_map[node] = node->GetForwardTrace();
+    PADDLE_ENFORCE_NOT_NULL(
+        node,
+        common::errors::Fatal(
+            "We got null node when we traverse the backward graph, and this "
+            "should not happened please check your code and contact us."));
+    // Find and append next nodes
+    const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
+        metas = node->OutputMeta();
+    for (const auto& meta_list : metas) {
+      for (const GradSlotMeta& meta : meta_list) {
+        const auto& edge = meta.GetEdge();
+        GradNodeBase* next_node = edge.GetMutableGradNode().get();
+        // Next node could be nullptr if it is leaf tensor with no
+        // AccumulationNode attached
+        // Or it could also originated from dispensable inputs
+        if (!next_node) {
+          continue;
+        }
+        std::string dot_next_node_label =
+            CreateForwardNodeLabelInDot(next_node);
+        auto& tm = meta.GetTensorMeta();
+        std::string tensor_label = CreateEdgeLabelInDot(tm);
+        if (!dot->ContainsNode(dot_next_node_label)) {
+          if (next_node->name() == "GradNodeAccumulation") {
+            dot->AddNode(dot_next_node_label,
+                         paddle::inference::analysis::teal_box_attrs,
+                         dot_next_node_label,
+                         false);
+          } else {
+            dot->AddNode(dot_next_node_label,
+                         paddle::inference::analysis::grey_box_attrs,
+                         dot_next_node_label,
+                         false);
+          }
+        }
+        call_stack_map[next_node] = next_node->GetForwardTrace();
+        dot->AddEdge(dot_next_node_label, dot_node_label, {}, tensor_label);
+        queue.push_back(next_node);
+      }
+    }
+  }
+  // Collect call stacks
+  std::string call_stack_tmp = "";
+  call_stack_tmp +=
+      "Note : If you want to see the call stack information of each Node, "
+      "please make sure FLAGS_call_stack_level=3 is set at runtime.\n";
+  for (auto& kv : call_stack_map) {
+    std::stringstream ss;
+    ss << "GradNodeBase " << kv.first->name() << " ptr : " << kv.first
+       << " call stack: \n"
+       << kv.second << std::endl;
+    call_stack_tmp += ss.str();
+  }
+  *call_stack = call_stack_tmp;
+  return;
 }
 
 // Enforce GradNode has TensorWrappers as Input
@@ -110,9 +193,12 @@ std::vector<paddle::Tensor> RunBackward(
     bool create_graph = false,
     const std::vector<paddle::Tensor>& inputs = {},
     bool allow_unused = false,
-    const std::vector<paddle::Tensor>& no_grad_vars = {}) {
-  VLOG(3) << "Start Backward";
-
+    const std::vector<paddle::Tensor>& no_grad_vars = {},
+    std::string dump_backward_graph_path = "") {
+  VLOG(3) << "=================RunBackward: Start Backward =================";
+  bool need_debug_backward_graph = !dump_backward_graph_path.empty();
+  bool need_dump_forward_stack =
+      !FLAGS_dump_grad_node_forward_stack_path.empty();
   egr::EagerBackwardStateGuard guard;
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -173,8 +259,9 @@ std::vector<paddle::Tensor> RunBackward(
 
     // Prepare GradTensorHolder
     if (!node_input_buffers_dict.count(grad_node)) {
-      VLOG(5) << "Create Value for grad input tensor " << i
-              << " of grad node: " << grad_node->name();
+      VLOG(4) << "RunBackward: Create Value for grad input tensor " << i
+              << " of grad node: " << grad_node->name() << "(" << grad_node
+              << ")";
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
@@ -190,7 +277,8 @@ std::vector<paddle::Tensor> RunBackward(
               "grad_tensors should either have "
               "size = 0 or same size as tensors."));
       // Feed given tensor if it's provided
-      VLOG(3) << "Fill grad input tensor " << i << "with give grad tensor";
+      VLOG(4) << "RunBackward: Fill grad input tensor " << i
+              << "with give grad tensor";
 
       bool use_shared_buffer = false;
       // Check if inputs and outputs are equal in size and share the same buffer
@@ -217,7 +305,7 @@ std::vector<paddle::Tensor> RunBackward(
             input_info.first, input_info.second, grad_tensors[i]);
       }
     } else {
-      VLOG(3) << "Fill grad input tensor " << i << " with 1.0";
+      VLOG(4) << "RunBackward:  Fill grad input tensor " << i << " with 1.0";
       // Initialize tensor with 1.0
       // Forward Tensor "tensor" is passed to indicate tensortype, datatype and
       // dims
@@ -241,11 +329,15 @@ std::vector<paddle::Tensor> RunBackward(
         inputs, no_grad_vars, orig_queue, &queue, node_input_buffers_dict);
   }
 
-  VLOG(5) << "Update In degree Map for backward";
+  VLOG(4) << "RunBackward: Update In degree Map for backward";
   // 3. Compute in_degree for each node
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
-
+  Dot forward_debug_dot_graph;
+  std::string debug_call_stack = "";
+  if (need_debug_backward_graph || need_dump_forward_stack)
+    ConstructForwardDebugDotGraph(
+        queue, &forward_debug_dot_graph, &debug_call_stack);
   std::deque<GradNodeBase*> ready_queue;
   for (GradNodeBase* item : queue) {
     if (!node_in_degree_map.count(item)) {
@@ -272,8 +364,9 @@ std::vector<paddle::Tensor> RunBackward(
     force_sequential_nodes_forward_queue.pop_front();
   }
 
-  VLOG(5) << "Startup_ops's size is " << queue.size();
-
+  VLOG(3) << "RunBackward: Start_up_ops's size is " << queue.size();
+  VLOG(5) << "RunBackward: Totoal GradNodes num is "
+          << node_in_degree_map.size();
   /* --- Topological Visit --- */
   // 1. Pop queue
   // 2. Run node
@@ -281,11 +374,27 @@ std::vector<paddle::Tensor> RunBackward(
   //    |- node(grads)
   //    |- Prepare for next node
   // 3. Update queue
+
+  // Using Dot to construct backward graph for debug
+  Dot dot;
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
-    VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
+    VLOG(3) << node->name() << "(" << node << ")"
+            << " Preparing ";
     try {
       queue.pop_front();
+
+      // Construct backward graph for debug
+      std::string dot_node_label = "";
+      if (need_debug_backward_graph) {
+        dot_node_label = CreateNodeLabelInDot(node);
+        if (!dot.ContainsNode(dot_node_label)) {
+          dot.AddNode(dot_node_label,
+                      paddle::inference::analysis::grey_box_attrs,
+                      dot_node_label,
+                      false);
+        }
+      }
 
       // Run node: This is where Hook happens
       auto node_input_buffer_iter = node_input_buffers_dict.find(node);
@@ -302,7 +411,7 @@ std::vector<paddle::Tensor> RunBackward(
       // Check input
       EnforceGradNodeHasInput(node);
 
-      VLOG(7) << "Run Backward Kernel with GradTensorHolder.";
+      VLOG(7) << "RunBackward: Run Backward Kernel with GradTensorHolder.";
 
       // This 'Global_XXXGradNode' record event is different with
       // 'Local_XXXGradNode' event.
@@ -317,6 +426,8 @@ std::vector<paddle::Tensor> RunBackward(
           "Global_" + std::string((*node).name()),
           phi::TracerEventType::Operator,
           1);
+      VLOG(4) << node->name() << "(" << node << ")"
+              << " begin run ";
 
       // Run Pre Backward Node and get outputs
       paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
@@ -330,7 +441,8 @@ std::vector<paddle::Tensor> RunBackward(
 
       // retain_grad or not
       if (!retain_graph) {
-        VLOG(3) << "retain_graph is false, need to clear the TensorWrapper of "
+        VLOG(5) << "RunBackward: retain_graph is false, need to clear the "
+                   "TensorWrapper of "
                    "nodes.";
         node->ClearTensorWrappers();
       }
@@ -361,9 +473,9 @@ std::vector<paddle::Tensor> RunBackward(
           // Since we make edge has as same rank as bwd outputs, we indexing
           // them with the same rank(i, j)
           auto next_node_shared = edge.GetMutableGradNode();
-          VLOG(3) << "Node: " << node->name() << " addr:" << node
-                  << ", Found pending node: " << next_node_shared->name()
-                  << " addr: " << next_node_shared.get();
+          VLOG(4) << node->name() << "(" << node << ")"
+                  << " Found pending node: " << next_node_shared->name() << "("
+                  << next_node_shared.get() << ")";
           // Next node could be nullptr if it is leaf tensor with no
           // AccumulationNode attached
           // Or it could also originated from dispensable inputs
@@ -384,28 +496,54 @@ std::vector<paddle::Tensor> RunBackward(
 
           if ((!grad_output_tensor.defined() ||
                !grad_output_tensor.has_allocation())) {
-            VLOG(7) << "We get grad_output_tensor with slot: " << i
-                    << ", rank: " << j
+            VLOG(7) << "RunBackward:  We get grad_output_tensor with slot: "
+                    << i << ", rank: " << j
                     << " as undefined tensor or without allocation.";
           }
 
-          VLOG(7) << "Get Edge and grad_output_tensor with slot: " << i
-                  << ", rank: " << j
+          VLOG(7) << "RunBackward: Get Edge and grad_output_tensor with slot: "
+                  << i << ", rank: " << j
                   << " 's name is: " << grad_output_tensor.name();
 
           auto* next_node = next_node_shared.get();
+
+          // Construct backward graph for debug
+          if (need_debug_backward_graph) {
+            std::string dot_next_node_label = CreateNodeLabelInDot(next_node);
+            if (!dot.ContainsNode(dot_next_node_label)) {
+              if (next_node->name() == "GradNodeAccumulation") {
+                dot.AddNode(dot_next_node_label,
+                            paddle::inference::analysis::teal_box_attrs,
+                            dot_next_node_label,
+                            false);
+              } else {
+                dot.AddNode(dot_next_node_label,
+                            paddle::inference::analysis::grey_box_attrs,
+                            dot_next_node_label,
+                            false);
+              }
+            }
+
+            std::string tensor_label = CreateEdgeLabelInDot(grad_output_tensor);
+            dot.AddEdge(dot_node_label, dot_next_node_label, {}, tensor_label);
+          }
+
           if (!node_input_buffers_dict.count(next_node)) {
             const auto& input_meta = next_node->InputMeta();
             auto grad_tensor_holder =
                 std::make_unique<GradTensorHolder>(input_meta);
-            VLOG(7) << "Construct GradTensorHolder for grad node: "
-                    << next_node->name();
+            VLOG(6) << "RunBackward: Construct GradTensorHolder for grad node: "
+                    << next_node->name() << "(" << next_node << ") ";
             node_input_buffers_dict[next_node] = std::move(grad_tensor_holder);
           }
 
-          VLOG(3) << "Sum or Move grad inputs for edge slot: "
+          VLOG(7) << "RunBackward: Sum or Move grad inputs for edge slot: "
                   << edge_rank.first << ", rank: " << edge_rank.second;
-
+          VLOG(6) << "RunBackward: Add grad_output_tensor to GradTensorHolder, "
+                     "grad_output_tensor info "
+                  << grad_output_tensor.place() << ","
+                  << grad_output_tensor.dtype() << ", ("
+                  << grad_output_tensor.dims() << ")";
           node_input_buffers_dict[next_node]->add(edge_rank.first,
                                                   edge_rank.second,
                                                   grad_output_tensor,
@@ -413,7 +551,7 @@ std::vector<paddle::Tensor> RunBackward(
 
           // Update queue
           node_in_degree_map[next_node]--;
-          VLOG(7) << next_node->name()
+          VLOG(5) << next_node->name() << "(" << next_node << ")"
                   << " ref_cnt is: " << node_in_degree_map[next_node];
 
           PADDLE_ENFORCE(
@@ -461,6 +599,13 @@ std::vector<paddle::Tensor> RunBackward(
 
       LOG(WARNING) << "While running Node (" << node->name()
                    << ") raises an EnforceNotMet exception";
+      // Save Debug info to the dump_backward_graph_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(dump_backward_graph_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
       throw ex;
     } catch (std::exception& ex) {
       LOG(WARNING) << "While running Node (" << node->name()
@@ -471,6 +616,13 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
+      // Save Debug info to the dump_backward_graph_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(dump_backward_graph_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
       std::rethrow_exception(std::current_exception());
     } catch (...) {
       LOG(WARNING) << "While running Node (" << node->name()
@@ -480,28 +632,56 @@ std::vector<paddle::Tensor> RunBackward(
                      << ")'s forward call stack is :" << node->GetForwardTrace()
                      << std::endl;
       }
+      // Save Debug info to the dump_backward_graph_path
+      if (need_debug_backward_graph) {
+        SaveDebugInfo(dump_backward_graph_path,
+                      forward_debug_dot_graph.Build(),
+                      debug_call_stack,
+                      dot.Build());
+      }
+
       std::rethrow_exception(std::current_exception());
     }
   }
-
-  VLOG(7) << "Run Backward Final hook size: "
+  // Save Debug info to the dump_backward_graph_path
+  if (need_debug_backward_graph) {
+    SaveDebugInfo(dump_backward_graph_path,
+                  forward_debug_dot_graph.Build(),
+                  debug_call_stack,
+                  dot.Build());
+  }
+  // Dump the all call stack into
+  // FLAGS_dump_grad_node_forward_stack_path
+  if (need_dump_forward_stack) {
+    SaveStringToFile(
+        FLAGS_dump_grad_node_forward_stack_path, debug_call_stack, "app");
+  }
+  VLOG(4) << "RunBackward: Final hook size: "
           << egr::Controller::Instance().FinalBackwardHooks().size();
   for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
     (*hook)();
   }
   egr::Controller::Instance().ClearFinalBackwardHooks();
+  VLOG(3) << "=================RunBackward: Finish Backward =================";
   if (!is_general_grad) return {};
-  VLOG(3) << "Finish Backward";
   return GeneralGrad::Instance().GetResults(inputs, allow_unused, create_graph);
 }
 
 void Backward(const std::vector<paddle::Tensor>& tensors,  // outputs
               const std::vector<paddle::Tensor>& grad_tensors,
-              bool retain_graph) {
+              bool retain_graph,
+              std::string dump_backward_graph_path) {
   VLOG(3) << "Run in Backward";
   phi::RecordEvent backward_record_event(
       "backward", phi::TracerEventType::UserDefined, 1);
-  RunBackward(tensors, grad_tensors, retain_graph);
+  RunBackward(tensors,
+              grad_tensors,
+              retain_graph,
+              false,
+              {},
+              false,
+              {},
+              dump_backward_graph_path);
   egr::Controller::Instance().ClearForceSequentialNodes();
   phi::autotune::AutoTuneStatus::Instance().Update();
 }
@@ -514,7 +694,8 @@ std::vector<paddle::Tensor> Grad(
     bool create_graph,
     bool only_inputs,
     bool allow_unused,
-    const std::vector<paddle::Tensor>& no_grad_vars) {
+    const std::vector<paddle::Tensor>& no_grad_vars,
+    const std::string dump_backward_graph_path) {
   VLOG(3) << "Run in Grad";
 
   DuplicateCheck(inputs, true /* is_input */);
@@ -526,6 +707,7 @@ std::vector<paddle::Tensor> Grad(
                      create_graph,
                      inputs,
                      allow_unused,
-                     no_grad_vars);
+                     no_grad_vars,
+                     dump_backward_graph_path);
 }
 }  // namespace egr

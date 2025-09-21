@@ -35,6 +35,16 @@ endif()
 
 include_directories(${GFLAGS_INCLUDE_DIR})
 
+# For CMake >= 4.0.0, set policy compatibility for third-party gflags' CMake.
+set(GFLAGS_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "gflags: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GFLAGS_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   extern_gflags
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -51,6 +61,7 @@ ExternalProject_Add(
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
              -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+             ${GFLAGS_POLICY_ARGS}
              -DBUILD_STATIC_LIBS=ON
              -DCMAKE_INSTALL_PREFIX=${GFLAGS_INSTALL_DIR}
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON

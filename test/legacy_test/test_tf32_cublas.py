@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -23,8 +23,8 @@ from paddle.base import core
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
-        if core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             self.assertTrue(core.get_cublas_switch())  # default
             core.set_cublas_switch(False)
             self.assertFalse(core.get_cublas_switch())  # turn off
@@ -38,8 +38,8 @@ class TestTF32Switch(unittest.TestCase):
 
 class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
-        if core.is_compiled_with_cuda():
-            place = base.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             core.set_cublas_switch(False)  # turn off
             with base.dygraph.guard(place):
                 input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")

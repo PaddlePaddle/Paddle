@@ -52,23 +52,21 @@ static dnnl::memory::data_type GetDstType(
   return dst_dt;
 }
 
-#define PD_VISIT_FLOAT_AND_INT8_TYPES(TYPE, NAME, ...)                    \
-  [&] {                                                                   \
-    const auto& __dtype__ = TYPE;                                         \
-    switch (__dtype__) {                                                  \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)          \
-      PD_PRIVATE_CASE_TYPE(                                               \
-          NAME, ::paddle::DataType::INT8, int8_t, __VA_ARGS__)            \
-      PD_PRIVATE_CASE_TYPE(NAME,                                          \
-                           ::paddle::DataType::BFLOAT16,                  \
-                           ::phi::dtype::bfloat16,                        \
-                           __VA_ARGS__)                                   \
-      default:                                                            \
-        PD_THROW("function " #NAME " is not implemented for data type `", \
-                 __dtype__,                                               \
-                 "`");                                                    \
-    }                                                                     \
+#define PD_VISIT_FLOAT_AND_INT8_TYPES(TYPE, NAME, ...)                      \
+  [&] {                                                                     \
+    const auto& __dtype__ = TYPE;                                           \
+    switch (__dtype__) {                                                    \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::FLOAT32, float, __VA_ARGS__)            \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::INT8, int8_t, __VA_ARGS__)              \
+      PD_PRIVATE_CASE_TYPE(                                                 \
+          NAME, ::paddle::DataType::BFLOAT16, ::phi::bfloat16, __VA_ARGS__) \
+      default:                                                              \
+        PD_THROW("function " #NAME " is not implemented for data type `",   \
+                 __dtype__,                                                 \
+                 "`");                                                      \
+    }                                                                       \
   }()
 
 template <typename T, typename T_out>

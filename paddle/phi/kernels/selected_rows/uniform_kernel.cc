@@ -65,7 +65,7 @@ PD_REGISTER_KERNEL(uniform_raw_sr,
                    phi::sr::UniformRawKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(uniform_sr,
                    CPU,
@@ -73,7 +73,7 @@ PD_REGISTER_KERNEL(uniform_sr,
                    phi::sr::UniformKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
@@ -83,8 +83,8 @@ PD_REGISTER_KERNEL(uniform_raw_sr,
                    phi::sr::UniformRawKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(uniform_sr,
                    GPU,
@@ -92,8 +92,8 @@ PD_REGISTER_KERNEL(uniform_sr,
                    phi::sr::UniformKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU)

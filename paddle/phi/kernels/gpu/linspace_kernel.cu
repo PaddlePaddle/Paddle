@@ -22,17 +22,31 @@
 
 namespace phi {
 
-template <typename T>
+template <typename T, typename StepT>
 __global__ void LinspaceKernelInner(
-    T start, T stop, double step, int64_t size, T* out) {
+    T start, T stop, StepT step, int64_t size, T* out) {
   int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
 
   for (; index < size; index += blockDim.x * gridDim.x) {
     if (index < size / 2) {
-      out[index] = static_cast<T>(static_cast<double>(start) + step * index);
+      out[index] = static_cast<T>(static_cast<StepT>(start) + step * index);
     } else {
       out[index] =
-          static_cast<T>(static_cast<double>(stop) - step * (size - index - 1));
+          static_cast<T>(static_cast<StepT>(stop) - step * (size - index - 1));
+    }
+  }
+}
+
+template <typename T>
+__global__ void LinspaceKernelInner(
+    T start, T stop, T step, int64_t size, T* out) {
+  int64_t index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  for (; index < size; index += blockDim.x * gridDim.x) {
+    if (index < size / 2) {
+      out[index] = start + step * static_cast<T>(index);
+    } else {
+      out[index] = stop - step * static_cast<T>(size - index - 1);
     }
   }
 }
@@ -54,10 +68,9 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
     case DataType::INT64:
       return static_cast<T>(GetValue<int64_t, Context>(dev_ctx, x));
     case DataType::FLOAT16:
-      return static_cast<T>(GetValue<phi::dtype::float16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::float16, Context>(dev_ctx, x));
     case DataType::BFLOAT16:
-      return static_cast<T>(
-          GetValue<phi::dtype::bfloat16, Context>(dev_ctx, x));
+      return static_cast<T>(GetValue<phi::bfloat16, Context>(dev_ctx, x));
     case DataType::BOOL:
       return static_cast<T>(GetValue<bool, Context>(dev_ctx, x));
     case DataType::INT16:
@@ -69,6 +82,15 @@ T GetValueOfExpectedType(const Context& dev_ctx, const DenseTensor& x) {
           "Data type (%s) is not supported when casting data type.",
           x.dtype()));
   }
+}
+
+inline bool isIntegralType(DataType t, bool includeBool) {
+  bool isIntegral =
+      (t == DataType::UINT8 || t == DataType::INT8 || t == DataType::UINT16 ||
+       t == DataType::INT16 || t == DataType::UINT32 || t == DataType::INT32 ||
+       t == DataType::UINT64 || t == DataType::INT64);
+
+  return isIntegral || (includeBool && t == DataType::BOOL);
 }
 
 template <typename T, typename Context>
@@ -94,14 +116,25 @@ void LinspaceKernel(const Context& dev_ctx,
     return;
   }
   auto stream = dev_ctx.stream();
-  if (num != 1) {
+  if (num == 1) {
+    LinspaceSpecialKernel<T><<<1, 1, 0, stream>>>(start_value, out_data);
+  } else if (isIntegralType(dtype, true)) {
     int block = 512;
     int grid = (num + block - 1) / block;
-    double step = (static_cast<double>(stop_value - start_value)) / (num - 1);
-    LinspaceKernelInner<T><<<grid, block, 0, stream>>>(
+
+    float step =
+        (static_cast<float>(stop_value) - static_cast<float>(start_value)) /
+        (num - 1);
+    LinspaceKernelInner<T, float><<<grid, block, 0, stream>>>(
         start_value, stop_value, step, num, out_data);
   } else {
-    LinspaceSpecialKernel<T><<<1, 1, 0, stream>>>(start_value, out_data);
+    int block = 512;
+    int grid = (num + block - 1) / block;
+
+    T step = (static_cast<T>(stop_value) - static_cast<T>(start_value)) /
+             static_cast<T>(num - 1);
+    LinspaceKernelInner<T><<<grid, block, 0, stream>>>(
+        start_value, stop_value, step, num, out_data);
   }
 }
 
@@ -115,8 +148,8 @@ PD_REGISTER_KERNEL(linspace,
                    int32_t,
                    int64_t,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

@@ -17,7 +17,7 @@ import collections
 import re
 
 import yaml
-from api_base import PREFIX_TENSOR_NAME
+from api_base import PREFIX_TENSOR_NAME, IsUsePredefinedOut
 from api_gen import (
     BackwardAPI,
     ForwardAPI,
@@ -370,11 +370,11 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
-      VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+      VLOG(4) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
       auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
           "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
       const auto& kernel = kernel_result.kernel;
-      VLOG(6) << "{} kernel: " << kernel;
+      VLOG(4) << "{} kernel: " << kernel;
       dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
@@ -1151,7 +1151,7 @@ class DistForwardAPI(ForwardAPI):
                     and self.outputs['types'][0] == "Tensor"
                     and self.api != "empty_like"
                 ):
-                    output_creation_code += "Tensor out_tmp; Tensor& api_output = input_out ? **input_out : out_tmp;"
+                    output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
                 else:
                     output_creation_code += API_OUT_CREATION_TEMPLATE.format(
                         return_type, ""
@@ -1227,9 +1227,26 @@ class DistForwardAPI(ForwardAPI):
                     )
                 )
             else:
-                output_creation_code += API_OUT_CREATION_TEMPLATE.format(
-                    return_type, ""
-                )
+                if IsUsePredefinedOut(self.outputs['types']):
+                    length = len(self.outputs['names'])
+                    if length == 1:
+                        output_creation_code += "Tensor out_tmp; Tensor& api_output = predefined_out ? **predefined_out : out_tmp;"
+                    else:
+                        tuple_types = ", ".join(["Tensor"] * length)
+                        get_calls = ", ".join(
+                            f"*std::get<{i}>(*predefined_out)"
+                            for i in range(length)
+                        )
+                        output_creation_code += (
+                            f"std::tuple<{tuple_types}> out_tmp;"
+                            f"\n    paddle::optional<std::tuple<{tuple_types}>> predefined_out_value;"
+                            f"\n    if(predefined_out) {{ predefined_out_value = std::make_tuple({get_calls}); }}"
+                            f"\n    std::tuple<{tuple_types}>& api_output = predefined_out_value ? *predefined_out_value : out_tmp;"
+                        )
+                else:
+                    output_creation_code += API_OUT_CREATION_TEMPLATE.format(
+                        return_type, ""
+                    )
 
             # kernel output generate
             for i, out_type in enumerate(self.outputs['types']):
@@ -2106,7 +2123,7 @@ class DistForwardAPI(ForwardAPI):
 
     # override BaseAPI's method
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         # init status
         self.inplace_flag = inplace_flag
@@ -2174,23 +2191,27 @@ class DistForwardAPI(ForwardAPI):
 
 class DistBackwardAPI(DistForwardAPI):
     def gene_base_api_code(
-        self, inplace_flag=False, grad_flag=False, append_input_out=True
+        self, inplace_flag=False, grad_flag=False, append_predefined_out=True
     ):
         return BackwardAPI.gene_base_api_code(
             self,
             inplace_flag,
             grad_flag=grad_flag,
-            append_input_out=append_input_out,
+            append_predefined_out=append_predefined_out,
         )
 
-    def gene_api_code(self, grad_flag=False, append_input_out=False):
+    def gene_api_code(self, grad_flag=False, append_predefined_out=False):
         return BackwardAPI.gene_api_code(
-            self, grad_flag=grad_flag, append_input_out=append_input_out
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
         )
 
-    def gene_api_declaration(self, grad_flag=False, append_input_out=True):
+    def gene_api_declaration(self, grad_flag=False, append_predefined_out=True):
         return BackwardAPI.gene_api_declaration(
-            self, grad_flag=grad_flag, append_input_out=append_input_out
+            self,
+            grad_flag=grad_flag,
+            append_predefined_out=append_predefined_out,
         )
 
 
@@ -2260,7 +2281,7 @@ def generate_api(
             dist_forward_api.is_dygraph_api = False
             header_file.write(
                 dist_forward_api.gene_api_declaration(
-                    grad_flag=grad_flag, append_input_out=not grad_flag
+                    grad_flag=grad_flag, append_predefined_out=not grad_flag
                 )
             )
             source_file.write(
@@ -2270,7 +2291,7 @@ def generate_api(
 
         header_file.write(
             dist_forward_api.gene_api_declaration(
-                grad_flag=grad_flag, append_input_out=not grad_flag
+                grad_flag=grad_flag, append_predefined_out=not grad_flag
             )
         )
         source_file.write(dist_forward_api.gene_api_code(grad_flag=grad_flag))

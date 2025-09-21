@@ -353,6 +353,14 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for ReshapeOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
           PADDLE_ENFORCE_EQ(attrs.find("use_quantizer") != attrs.end(),
                             true,
                             common::errors::InvalidArgument(
@@ -362,7 +370,11 @@ void OperationFactory::RegisterManualOpCreator() {
               attrs.at("use_quantizer").dyn_cast<pir::BoolAttribute>().data();
 
           return rewriter.Build<paddle::onednn::dialect::ReshapeOp>(
-              inputs[0], inputs[1], mkldnn_data_type, use_quantizer);
+              inputs[0],
+              inputs[1],
+              mkldnn_data_type,
+              onednn_data_type,
+              use_quantizer);
         }
         return rewriter.Build<paddle::onednn::dialect::ReshapeOp>(inputs[0],
                                                                   attrs);
@@ -382,6 +394,14 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for Reshape_Op. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
           PADDLE_ENFORCE_EQ(attrs.find("use_quantizer") != attrs.end(),
                             true,
                             common::errors::InvalidArgument(
@@ -391,7 +411,11 @@ void OperationFactory::RegisterManualOpCreator() {
               attrs.at("use_quantizer").dyn_cast<pir::BoolAttribute>().data();
 
           return rewriter.Build<paddle::onednn::dialect::Reshape_Op>(
-              inputs[0], inputs[1], mkldnn_data_type, use_quantizer);
+              inputs[0],
+              inputs[1],
+              mkldnn_data_type,
+              onednn_data_type,
+              use_quantizer);
         }
         return rewriter.Build<paddle::onednn::dialect::Reshape_Op>(inputs[0],
                                                                    attrs);
@@ -500,6 +524,14 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for Pool2dOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
 
           PADDLE_ENFORCE_EQ(attrs.find("use_quantizer") != attrs.end(),
                             true,
@@ -531,6 +563,7 @@ void OperationFactory::RegisterManualOpCreator() {
               padding_algorithm,
               use_quantizer,
               mkldnn_data_type,
+              onednn_data_type,
               is_test);
         }
         return rewriter.Build<paddle::onednn::dialect::Pool2dOp>(inputs[0],
@@ -550,6 +583,14 @@ void OperationFactory::RegisterManualOpCreator() {
                                 "'mkldnn_data_type' Attribute is expected "
                                 "for SumOp. "));
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for SumOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
           PADDLE_ENFORCE_EQ(
@@ -572,7 +613,12 @@ void OperationFactory::RegisterManualOpCreator() {
                   .data();
 
           return rewriter.Build<paddle::onednn::dialect::SumOp>(
-              inputs[0], inputs[1], dtype, keepdim, mkldnn_data_type);
+              inputs[0],
+              inputs[1],
+              dtype,
+              keepdim,
+              mkldnn_data_type,
+              onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::SumOp>(inputs[0], attrs);
       });
@@ -589,6 +635,14 @@ void OperationFactory::RegisterManualOpCreator() {
                                 "'mkldnn_data_type' Attribute is expected "
                                 "for SliceOp. "));
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for SliceOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
 
@@ -649,7 +703,8 @@ void OperationFactory::RegisterManualOpCreator() {
               axes,
               infer_flags,
               decrease_axis,
-              mkldnn_data_type);
+              mkldnn_data_type,
+              onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::SliceOp>(inputs[0],
                                                                 attrs);
@@ -669,9 +724,17 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for SqueezeOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
 
           return rewriter.Build<paddle::onednn::dialect::SqueezeOp>(
-              inputs[0], inputs[1], mkldnn_data_type);
+              inputs[0], inputs[1], mkldnn_data_type, onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::SqueezeOp>(inputs[0],
                                                                   attrs);
@@ -691,9 +754,17 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for Squeeze_Op. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
 
           return rewriter.Build<paddle::onednn::dialect::Squeeze_Op>(
-              inputs[0], inputs[1], mkldnn_data_type);
+              inputs[0], inputs[1], mkldnn_data_type, onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::Squeeze_Op>(inputs[0],
                                                                    attrs);
@@ -713,9 +784,20 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
-
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for ClipOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
           return rewriter.Build<paddle::onednn::dialect::ClipOp>(
-              inputs[0], inputs[1], inputs[2], mkldnn_data_type);
+              inputs[0],
+              inputs[1],
+              inputs[2],
+              mkldnn_data_type,
+              onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::ClipOp>(inputs[0],
                                                                attrs);
@@ -735,9 +817,21 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for Clip_Op. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
 
           return rewriter.Build<paddle::onednn::dialect::Clip_Op>(
-              inputs[0], inputs[1], inputs[2], mkldnn_data_type);
+              inputs[0],
+              inputs[1],
+              inputs[2],
+              mkldnn_data_type,
+              onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::Clip_Op>(inputs[0],
                                                                 attrs);
@@ -758,6 +852,14 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for ScaleOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
           PADDLE_ENFORCE_EQ(attrs.find("bias_after_scale") != attrs.end(),
                             true,
                             common::errors::InvalidArgument(
@@ -775,7 +877,12 @@ void OperationFactory::RegisterManualOpCreator() {
           bool bias = attrs.at("bias").dyn_cast<pir::FloatAttribute>().data();
 
           return rewriter.Build<paddle::onednn::dialect::ScaleOp>(
-              inputs[0], inputs[1], bias, bias_after_scale, mkldnn_data_type);
+              inputs[0],
+              inputs[1],
+              bias,
+              bias_after_scale,
+              mkldnn_data_type,
+              onednn_data_type);
         }
         return rewriter.Build<paddle::onednn::dialect::ScaleOp>(inputs[0],
                                                                 attrs);
@@ -885,7 +992,14 @@ void OperationFactory::RegisterManualOpCreator() {
           std::string mkldnn_data_type = attrs.at("mkldnn_data_type")
                                              .dyn_cast<pir::StrAttribute>()
                                              .AsString();
-
+          PADDLE_ENFORCE_EQ(attrs.find("onednn_data_type") != attrs.end(),
+                            true,
+                            common::errors::InvalidArgument(
+                                "'onednn_data_type' Attribute is expected "
+                                "for Conv2dTransposeOp. "));
+          std::string onednn_data_type = attrs.at("onednn_data_type")
+                                             .dyn_cast<pir::StrAttribute>()
+                                             .AsString();
           PADDLE_ENFORCE_EQ(
               attrs.find("is_test") != attrs.end(),
               true,
@@ -906,6 +1020,7 @@ void OperationFactory::RegisterManualOpCreator() {
               dilations,
               data_format,
               mkldnn_data_type,
+              onednn_data_type,
               is_test);
         }
 

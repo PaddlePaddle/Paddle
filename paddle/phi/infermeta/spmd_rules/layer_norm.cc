@@ -66,7 +66,7 @@ SpmdInfo LayerNormInferSpmd(const DistMetaTensor& x,
   // Because the mean and variance is 'flattened' from
   // x[0:begin_norm_axis], only the first axis of x can
   // be sharded
-  std::string x_axes(x_ndim, alphabet.substr(0, x_ndim));
+  std::string x_axes = alphabet.substr(0, x_ndim);
   std::string mean_axes(begin_norm_axis, '1');
   std::string variance_axes(begin_norm_axis, '1');
   // allow axis before begin_norm_axis be sharded

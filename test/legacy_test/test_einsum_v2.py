@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -167,8 +167,8 @@ class TestEinsum(unittest.TestCase):
         if force_to_use_cpu:
             return core.CPUPlace()
         else:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                return get_device_place()
             return core.CPUPlace()
 
     def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
@@ -552,8 +552,8 @@ class TestNumpyTests(unittest.TestCase):
         if force_to_use_cpu:
             return core.CPUPlace()
         else:
-            if core.is_compiled_with_cuda():
-                return core.CUDAPlace(0)
+            if core.is_compiled_with_cuda() or is_custom_device():
+                return get_device_place()
             return core.CPUPlace()
 
     def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
@@ -650,8 +650,8 @@ class TestNumpyTests(unittest.TestCase):
     def test_static_graph(self):
         paddle.enable_static()
         base = paddle.base
-        if base.core.is_compiled_with_cuda():
-            self.place = base.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
         else:
             self.place = base.CPUPlace()
         main = base.Program()
@@ -713,8 +713,8 @@ class TestStaticGraphShape(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestBF16(unittest.TestCase):

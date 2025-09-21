@@ -37,7 +37,6 @@ def create_test_data(
 
 
 class TestCustomCrossEntropyBwd(unittest.TestCase):
-
     def compute_losses(self, preds, labels):
         loss_func = paddle.nn.CrossEntropyLoss(
             reduction="none", ignore_index=-100

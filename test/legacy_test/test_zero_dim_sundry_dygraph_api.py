@@ -21,7 +21,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import get_device_place, get_devices
+from op_test import get_device_place, get_devices, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -602,7 +602,7 @@ class TestSundryAPI(unittest.TestCase):
 
     def test_minmax_with_index(self):
         # min/max_with_index is a GPU only op
-        if not paddle.is_compiled_with_cuda():
+        if not (paddle.is_compiled_with_cuda() or is_custom_device()):
             return
         # 1) x is 0D
         x = paddle.to_tensor(1)
@@ -2199,6 +2199,29 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
 
         self.assertTrue(out1.shape, [2, 3])
+        self.assertTrue(x1.grad.shape, [3, 3, 3])
+
+    def test_compat_slogdet(self):
+        # 2-D input
+        x = paddle.randn([3, 3])
+        x.stop_gradient = False
+        sign, logabsdet = paddle.compat.slogdet(x)
+        loss = logabsdet.sum()
+        loss.backward()
+
+        self.assertEqual(sign.shape, [])
+        self.assertEqual(logabsdet.shape, [])
+        self.assertTrue(x.grad.shape, [3, 3])
+
+        # 3-D input
+        x1 = paddle.randn([3, 3, 3])
+        x1.stop_gradient = False
+        sign1, logabsdet1 = paddle.compat.slogdet(x1)
+        loss1 = logabsdet1.sum()
+        loss1.backward()
+
+        self.assertTrue(sign1.shape, [3])
+        self.assertTrue(logabsdet1.shape, [3])
         self.assertTrue(x1.grad.shape, [3, 3, 3])
 
     def test_multi_dot(self):

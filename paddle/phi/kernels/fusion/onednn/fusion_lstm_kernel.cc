@@ -422,11 +422,11 @@ void RunKernel(const Context& dev_ctx,
     weight_x_memory_p = handler.template AcquireWeightXMemory<float>(weight_x);
     weight_h_memory_p = handler.template AcquireWeightHMemory<float>(weight_h);
   } else if (weight_h->dtype() == phi::DataType::BFLOAT16) {
-    h0_memory_p = handler.template AcquireH0Memory<phi::dtype::bfloat16>(h0);
+    h0_memory_p = handler.template AcquireH0Memory<phi::bfloat16>(h0);
     weight_x_memory_p =
-        handler.template AcquireWeightXMemory<phi::dtype::bfloat16>(weight_x);
+        handler.template AcquireWeightXMemory<phi::bfloat16>(weight_x);
     weight_h_memory_p =
-        handler.template AcquireWeightHMemory<phi::dtype::bfloat16>(weight_h);
+        handler.template AcquireWeightHMemory<phi::bfloat16>(weight_h);
   } else {
     h0_memory_p = handler.template AcquireH0Memory<uint8_t>(h0);
     weight_x_memory_p = handler.template AcquireWeightXMemory<int8_t>(weight_x);
@@ -503,7 +503,7 @@ void FusionLSTMMKLDNNKernel(const Context& dev_ctx,
                             phi::DenseTensor* reordered_h0,
                             phi::DenseTensor* reordered_c0,
                             phi::DenseTensor* checked_cell) {
-  const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
+  const bool is_bf16 = std::is_same<T, phi::bfloat16>::value;
 
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
@@ -572,4 +572,4 @@ PD_REGISTER_KERNEL(fusion_lstm,
                    phi::fusion::FusionLSTMMKLDNNKernel,
                    float,
                    uint8_t,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

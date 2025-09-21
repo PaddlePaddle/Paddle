@@ -54,9 +54,9 @@ PD_REGISTER_KERNEL(strided_slice_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(strided_slice_grad,
                    GPU,
@@ -69,10 +69,10 @@ PD_REGISTER_KERNEL(strided_slice_grad,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif
 #if defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(strided_slice_grad,
@@ -82,6 +82,6 @@ PD_REGISTER_KERNEL(strided_slice_grad,
                    int,
                    int16_t,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 #endif

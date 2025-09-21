@@ -213,7 +213,7 @@ PD_REGISTER_KERNEL(sparse_weight_embedding_grad,
                    phi::SparseWeightEmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(sparse_weight_embedding_sparse_grad,
                    CPU,
@@ -221,4 +221,4 @@ PD_REGISTER_KERNEL(sparse_weight_embedding_sparse_grad,
                    phi::SparseWeightEmbeddingSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16) {}
+                   phi::bfloat16) {}

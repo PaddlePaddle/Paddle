@@ -30,9 +30,6 @@
 #include <type_traits>
 
 #include "paddle/phi/common/amp_type_traits.h"
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/complex.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -100,7 +97,7 @@ struct Cosine<dtype::bfloat16> {
 template <typename T>
 using ComplexType = phi::dtype::complex<T>;
 
-// T is phi::dtype::complex<float> or phi::dtype::complex<double>
+// T is phi::complex64 or phi::complex128
 template <typename T>
 struct Conj {
   HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
@@ -108,7 +105,7 @@ struct Conj {
   }
 };
 
-// T is phi::dtype::complex<float> or phi::dtype::complex<double>
+// T is phi::complex64 or phi::complex128
 template <typename T>
 struct Real {
   HOSTDEVICE ComplexType<T> operator()(const ComplexType<T>& val) const {
@@ -4884,7 +4881,7 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
     MPType temp = one / (one + exp(-x));
-    return static_cast<T>(dout * (temp * (one + x * (one - temp))));
+    return static_cast<T>(dout * temp * (one + x * (one - temp)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -4978,7 +4975,7 @@ struct CudaSigmoidGradFunctor : public BaseActivationFunctor<T> {
 
   // dx = dout * out * (1 - out)
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return dout * out * (one - out);
+    return dout * (one - out) * out;
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {

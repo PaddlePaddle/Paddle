@@ -394,7 +394,7 @@ TEST(InstanceNorm, Ctor) {
 }
 TEST(LayerNormSPMDRule, Ctor) {
   // build input data class
-  std::vector<int64_t> x_shape = {64, 32, 1024};
+  std::vector<int64_t> x_shape = {48, 32, 1024};
   std::vector<int64_t> scale_shape = {1024};
   std::vector<int64_t> bias_shape = {1024};
 
@@ -2020,6 +2020,29 @@ TEST(ElementwiseBinaryLike, Ctor) {
   check_multi_dims_mapping(forward_info.second[0], {{}, {0, 1}, {}});
 
   VLOG(4) << "test forward done.";
+
+  // build input data class
+  y_shape = {48};
+  x_dist_attr.set_dims_mapping(
+      std::vector<std::vector<int64_t>>({{0}, {}, {}}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false, false}));
+  y_dist_attr.set_dims_mapping(std::vector<std::vector<int64_t>>({{1}}));
+  y_dist_attr.set_dynamic_dims(std::vector<bool>({false}));
+
+  // Test forward 2.
+  // [0, -1, -1], [1] --> input: [0, -1, 1], [1]
+  // output: [0,-1,1]
+
+  phi::distributed::DistMetaTensor x2(common::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor y2(common::make_ddim(y_shape), y_dist_attr);
+  forward_info = phi::distributed::ElementwiseBinaryInferSpmd(x2, y2);
+  EXPECT_EQ(forward_info.first.size(), input_size);
+  EXPECT_EQ(forward_info.second.size(), output_size);
+  check_multi_dims_mapping(forward_info.first[0], {{0}, {}, {1}});
+  check_multi_dims_mapping(forward_info.first[1], {{1}});
+  check_multi_dims_mapping(forward_info.second[0], {{0}, {}, {1}});
+
+  VLOG(4) << "test forward 2 done.";
 
   // Test backward.
   // [-1 , [0,1], -1], [0, 1, -1],[-1,-1,[0,1]] --> input: [-1, -1, [0,1]],

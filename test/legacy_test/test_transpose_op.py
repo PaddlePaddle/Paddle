@@ -17,7 +17,13 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, get_places
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    get_places,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -225,7 +231,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.base.core.is_compiled_with_cuda()
+    not (paddle.base.core.is_compiled_with_cuda() or is_custom_device())
     or paddle.device.cuda.get_device_capability()[0] < 9.0,
     "core is not compiled with CUDA or not support native fp8",
 )
@@ -898,7 +904,7 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
         self.check_dtype_transpose('float64')
 
     def test_fp16(self):
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_dtype_transpose('float16')
 
     def test_int8(self):
@@ -920,8 +926,8 @@ class TestMatrixTransposeApiFPPrecision(unittest.TestCase):
 class TestTransposeCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.transpose
         self.init_data()
 

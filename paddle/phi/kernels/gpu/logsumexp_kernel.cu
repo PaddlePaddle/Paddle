@@ -15,8 +15,6 @@
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 #include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
 
-#include "paddle/phi/common/bfloat16.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -37,12 +35,12 @@ struct ComputeType {
 };
 
 template <>
-struct ComputeType<phi::dtype::float16> {
+struct ComputeType<phi::float16> {
   using type = float;
 };
 
 template <>
-struct ComputeType<phi::dtype::bfloat16> {
+struct ComputeType<phi::bfloat16> {
   using type = float;
 };
 
@@ -182,5 +180,5 @@ PD_REGISTER_KERNEL(logsumexp,
                    phi::LogsumexpKernel,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

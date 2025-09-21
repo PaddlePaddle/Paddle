@@ -99,5 +99,5 @@ PD_REGISTER_KERNEL(logsumexp,
                    ALL_LAYOUT,
                    phi::LogsumexpKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}

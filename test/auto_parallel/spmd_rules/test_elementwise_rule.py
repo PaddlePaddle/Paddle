@@ -252,7 +252,7 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, 1, -1])
         self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
 
-        # [0, -1, -1], [-1, 1, 0] --> [0, 1, -1], [0, 1, -1], [0, 1, -1]
+        # [0, -1, -1], [-1, 1, 0] --> [-1, 1, 0],  [-1, 1, 0], [-1, 1, 0]
         self.x_dist_tensor_spec.set_dims_mapping([0, -1, -1])
         self.y_dist_tensor_spec.set_dims_mapping([-1, 1, 0])
         resulted_dist_attrs = self.binary_rule.infer_forward(
@@ -261,9 +261,9 @@ class TestElementwiseSPMDRule(unittest.TestCase):
         inferred_input_dist_attrs = resulted_dist_attrs[0]
         inferred_output_dist_attrs = resulted_dist_attrs[1]
 
-        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [0, 1, -1])
-        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [0, 1, -1])
-        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [0, 1, -1])
+        self.assertEqual(inferred_input_dist_attrs[0].dims_mapping, [-1, 1, 0])
+        self.assertEqual(inferred_input_dist_attrs[1].dims_mapping, [-1, 1, 0])
+        self.assertEqual(inferred_output_dist_attrs[0].dims_mapping, [-1, 1, 0])
 
     def test_multi_mesh_dim_broadcast(self):
         process_mesh = auto.ProcessMesh([[0, 1, 2], [3, 4, 5]])

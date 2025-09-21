@@ -272,7 +272,7 @@ PD_REGISTER_KERNEL(fused_dropout_add,
                    phi::fusion::FusedDropoutAddKernel,
                    float,
                    double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
+                   phi::bfloat16,
+                   phi::float16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

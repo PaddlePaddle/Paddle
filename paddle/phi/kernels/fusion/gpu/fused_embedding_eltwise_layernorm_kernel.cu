@@ -16,7 +16,6 @@
 #include <type_traits>
 
 #include "paddle/common/errors.h"
-#include "paddle/phi/common/float16.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
@@ -90,7 +89,7 @@ void EmbeddingEltWiseLayerNormKernel(
   auto* scale_d = scale.data<T>();
   auto* output_d = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
-  if (std::is_same<T, phi::dtype::float16>::value) {
+  if (std::is_same<T, phi::float16>::value) {
     const half* scale_new = reinterpret_cast<const half*>(scale_d);
     const half* bias_new = reinterpret_cast<const half*>(bias_d);
     half* output_new = reinterpret_cast<half*>(output_d);
@@ -132,7 +131,7 @@ PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::EmbeddingEltWiseLayerNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(fused_embedding_eltwise_layernorm,
                    GPU,

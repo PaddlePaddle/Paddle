@@ -15,7 +15,7 @@
 
 target_lists_for_semi_auto_ci=(
     "python/paddle/distributed/auto_parallel"
-    "python/paddle/distributed/checkpoint"
+    "python/paddle/distributed/flex_checkpoint"
     "paddle/fluid/distributed/auto_parallel"
     "paddle/fluid/framework/new_executor"
     "paddle/fluid/pybind/auto_parallel_py.cc"

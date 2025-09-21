@@ -205,8 +205,8 @@ PD_REGISTER_KERNEL(triangular_solve,
                    phi::TriangularSolveKernel,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 #else  // PADDLE_WITH_HIP
 // blas_impl.hip.h not support CUBlas<T>::TRSM for complex
 PD_REGISTER_KERNEL(triangular_solve,
