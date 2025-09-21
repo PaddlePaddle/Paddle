@@ -74,7 +74,8 @@ def attention_naive_with_bool_mask(q, k, v, bool_mask):
 
 
 @unittest.skipIf(
-    not (paddle.is_compiled_with_cuda() or is_custom_device()),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "CUDA is not available, this test requires GPU support.",
 )
 class TestAttentionWithBoolMask(unittest.TestCase):
@@ -180,6 +181,76 @@ class TestAttentionWithBoolMask(unittest.TestCase):
         out_.backward()
         np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
 
+    def test_efficient_backend_with_mask(self):
+        """
+        Test efficient backend selection when mask is present.
+        """
+        paddle.disable_static()
+        query = np.random.random(self.shape).astype(self.dtype)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        mask_shape = (self.shape[0], 1, self.shape[1], self.shape[1])
+        mask = np.random.random(mask_shape).astype(self.dtype)
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+
+        # Enable only efficient backend
+        with sdp_kernel(
+            enable_math=False, enable_flash=False, enable_mem_efficient=True
+        ):
+            # This will enter _select_sdp_for_sdpa, check EFFICIENT_ATTENTION,
+            # pass can_use_efficient, and return "mem_efficient"
+            out = scaled_dot_product_attention(
+                q, q, q, m, self.dropout, self.causal
+            )
+
+        # Compare with naive math implementation for correctness
+        q_ = paddle.to_tensor(
+            query, place=self.place, dtype=self.dtype, stop_gradient=False
+        )
+        out_ = attention_naive_with_mask(q_, q_, q_, m)
+        np.testing.assert_allclose(out.numpy(), out_, rtol=5e-03, atol=1e-03)
+
+    def test_flash_backend_rejection(self):
+        """
+        Test that flash backend is skipped and RuntimeError is raised
+        if conditions are not met (e.g., head_dim > 256), regardless of hardware.
+        """
+        paddle.disable_static()
+
+        # Use head_dim = 288, which is > 256
+        # This will *always* fail can_use_flash_attn()
+        shape = (1, 8, 2, 288)
+        dtype = 'float16'
+
+        query = np.random.random(shape).astype(dtype)
+        q = paddle.to_tensor(
+            query, place=self.place, dtype=dtype, stop_gradient=False
+        )
+
+        mask_shape = (shape[0], 1, shape[1], shape[1])
+        mask = np.random.random(mask_shape).astype(dtype)
+        m = paddle.to_tensor(
+            mask, place=self.place, dtype=dtype, stop_gradient=False
+        )
+
+        # Enable *only* flash backend
+        with (
+            sdp_kernel(
+                enable_math=False, enable_flash=True, enable_mem_efficient=False
+            ),
+            self.assertRaises(
+                RuntimeError,
+                msg="No available backend for scaled_dot_product_attention was found.",
+            ),
+        ):
+            _ = scaled_dot_product_attention(
+                q, q, q, m, self.dropout, self.causal
+            )
+
 
 class TestAttentionWith3DInput(unittest.TestCase):
     def setUp(self):
@@ -227,6 +298,37 @@ class TestAttentionWithBoolMaskZeroSize(TestAttentionWithBoolMask):
         self.dtype = 'float32'
         self.dropout = 0.0
         self.causal = False
+
+
+class TestSDPKernelFlags(unittest.TestCase):
+    def test_sdp_kernel_value_error(self):
+        """
+        Test ValueError when no backend is enabled in sdp_kernel.
+        """
+        with (
+            self.assertRaises(
+                ValueError, msg="At least one backend must be enabled"
+            ),
+            sdp_kernel(
+                enable_math=False,
+                enable_flash=False,
+                enable_mem_efficient=False,
+            ),
+        ):
+            pass
+
+    def test_sdp_kernel_all_flags(self):
+        """
+        Test that sdp_kernel runs with flash and efficient flags.
+        """
+        # This test just ensures the context manager itself works
+        # when flags are enabled.
+        with sdp_kernel(
+            enable_math=False,
+            enable_flash=True,
+            enable_mem_efficient=True,
+        ):
+            pass
 
 
 if __name__ == '__main__':
