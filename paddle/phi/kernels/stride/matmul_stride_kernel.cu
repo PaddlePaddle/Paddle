@@ -107,75 +107,6 @@ void MatmulStrideKernel(const Context &dev_ctx,
   DenseTensor x_;
   DenseTensor y_;
 
-  //   auto y_meta = y.meta();
-  //   DDim y_stride = y_meta.strides;
-  //   DDim y_shape = y_meta.dims;
-  //   std::vector<int> y_axis;
-
-  //   if (is_only_transposed(x_meta.dims, x_meta.strides, x_meta.offset,
-  //   x_shape, x_stride, x_axis)) {
-  //     printf("x only transposed\n");
-  //     printf("x_shape\n");
-  //     for (int i=0; i<x_shape.size(); i++) {
-  //       printf("%d ", x_shape[i]);
-  //     }
-  //     printf("\n");
-  //     printf("x_stride\n");
-  //     for (int i=0; i<x_stride.size(); i++) {
-  //       printf("%d ", x_stride[i]);
-  //     }
-  //     printf("\n");
-  //     printf("x_axis\n");
-  //     for (int i=0; i<x_axis.size(); i++) {
-  //       printf("%d ", x_axis[i]);
-  //     }
-  //     printf("\n");
-  //   } else {
-  //     printf("x not transposed\n");
-  //     printf("x_shape\n");
-  //     for (int i=0; i<x.dims().size(); i++) {
-  //       printf("%d ", x.dims()[i]);
-  //     }
-  //     printf("\n");
-  //     printf("x_stride\n");
-  //     for (int i=0; i<x.strides().size(); i++) {
-  //       printf("%d ", x.strides()[i]);
-  //     }
-  //     printf("\n");
-  //   }
-
-  // if (is_only_transposed(y_meta.dims, y_meta.strides, y_meta.offset, y_shape,
-  // y_stride, y_axis)) {
-  //     printf("y only transposed\n");
-  //     printf("y_shape\n");
-  //     for (int i=0; i<y_shape.size(); i++) {
-  //       printf("%d ", y_shape[i]);
-  //     }
-  //     printf("\n");
-  //     printf("y_stride\n");
-  //     for (int i=0; i<y_stride.size(); i++) {
-  //       printf("%d ", y_stride[i]);
-  //     }
-  //     printf("\n");
-  //     printf("y_axis\n");
-  //     for (int i=0; i<y_axis.size(); i++) {
-  //       printf("%d ", y_axis[i]);
-  //     }
-  //     printf("\n");
-  //   } else {
-  //     printf("y not transposed\n");
-  //     printf("y_shape\n");
-  //     for (int i=0; i<y.dims().size(); i++) {
-  //       printf("%d ", y.dims()[i]);
-  //     }
-  //     printf("\n");
-  //     printf("y_stride\n");
-  //     for (int i=0; i<y.strides().size(); i++) {
-  //       printf("%d ", y.strides()[i]);
-  //     }
-  //     printf("\n");
-  //   }
-
   if (!FLAGS_use_stride_compute_kernel) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
@@ -191,6 +122,7 @@ void MatmulStrideKernel(const Context &dev_ctx,
     x_ = x;
     y_ = y;
   }
+
   if (x_.meta().is_contiguous() && y_.meta().is_contiguous()) {
     auto meta = out->meta();
     meta.strides = meta.calc_strides(out->dims());
