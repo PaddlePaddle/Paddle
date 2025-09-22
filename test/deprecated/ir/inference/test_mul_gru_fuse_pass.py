@@ -136,7 +136,7 @@ class TestMulGruFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_gru"], (1e-5, 1e-5)
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False, max_duration=600, passes=["mul_gru_fuse_pass"]
         )
 

@@ -89,7 +89,7 @@ class TestTransferElimPass0(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=30,
             passes=["transfer_layout_elim_pass"],
@@ -171,7 +171,7 @@ class TestTransferElimPass1(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=30,
             passes=["transfer_layout_elim_pass"],
@@ -242,7 +242,7 @@ class TestTransferElimPass2(PassAutoScanTest):
         return program_config
 
     def test(self):
-        self.run_and_statis(
+        self.run_and_statistics(
             quant=False,
             max_examples=30,
             passes=["transfer_layout_elim_pass"],
