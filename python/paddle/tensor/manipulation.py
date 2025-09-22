@@ -617,14 +617,7 @@ def narrow(
     assert start <= dim_length - length, (
         f"start ({start}) + length ({length}) exceeds dimension size ({dim_length})."
     )
-    new_shape = list(input.shape)
-    new_shape[dim] = length
-    stride = input.strides
-    offset = start * stride[dim]
-    offset *= paddle.core.size_of_dtype(input.dtype)
-    return paddle.as_strided(
-        input, shape=new_shape, stride=stride, offset=offset
-    )
+    return _C_ops.slice(input, dim, start, start + length, [], [])
 
 
 def transpose(

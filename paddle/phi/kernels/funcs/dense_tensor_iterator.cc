@@ -140,7 +140,11 @@ void DenseTensorIteratorBase::allocate_or_resize_outputs() {
   for (auto i = 0; i < num_outputs_; i++) {
     auto& op = operands_[i];
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (!op.tensor().initialized() || op.will_resize || !valid_stride) {
+
+    bool reduce_pass = op.tensor().strides().size() == -1 ? false : true;
+
+    if (reduce_pass &&
+        (!op.tensor().initialized() || op.will_resize || !valid_stride)) {
       auto element_size = phi::SizeOf(op.tensor().dtype());
       op.stride_bytes = compatible_stride(static_cast<int64_t>(element_size));
       bool inverted = true;
@@ -283,6 +287,9 @@ void DenseTensorIteratorBase::populate_operands(
   for (size_t idx = 0; idx < config.tensors_.size(); idx++) {
     auto& tensor = config.tensors_[idx];
     operands_.emplace_back(std::move(const_cast<DenseTensor*>(tensor)));
+    if (idx < config.num_outputs_) {
+      operands_[idx].is_output = true;
+    }
   }
   num_outputs_ = config.num_outputs_;
 }
@@ -369,7 +376,16 @@ void DenseTensorIteratorBase::compute_strides(
     const DenseTensorIteratorConfig& config) {
   for (auto& op : operands_) {
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
-    if (op.tensor().initialized() && !op.will_resize && valid_stride) {
+    bool out_pass = false;
+
+    if (is_alloc_out_ && op.is_output) out_pass = true;
+
+    std::vector<int64_t> tmp_shape =
+        common::vectorize<int64_t>(op.tensor().dims());
+    std::vector<int64_t> tmp_stride =
+        common::vectorize<int64_t>(op.tensor().strides());
+    if (out_pass ||
+        op.tensor().initialized() && !op.will_resize && valid_stride) {
       std::vector<int64_t> original_shape =
           config.static_shape_ ? shape_
                                : common::vectorize<int64_t>(op.tensor().dims());
@@ -393,6 +409,8 @@ void DenseTensorIteratorBase::compute_strides(
 }
 
 void DenseTensorIteratorBase::build(DenseTensorIteratorConfig& config) {
+  is_reduction_ = config.is_reduction_;
+  is_alloc_out_ = config.is_alloc_out_;
   populate_operands(config);
   compute_shape(config);
   if (!fast_set_up(config)) {
@@ -429,7 +447,6 @@ void DimCounter::increment(const std::array<int64_t, 2>& step) {
   int64_t overflow = step[0];
   size_t i = 0;
   if (step[1] != 1) {
-    // TORCH_INTERNAL_ASSERT(step[0] == shape[0] && values[0] == 0);
     i = 1;
     overflow = step[1];
   }
@@ -440,13 +457,11 @@ void DimCounter::increment(const std::array<int64_t, 2>& step) {
     if (value >= size) {
       overflow = 1;
       value -= size;
-      // TORCH_INTERNAL_ASSERT(value < size);
     } else {
       overflow = 0;
     }
     values[i] = static_cast<int64_t>(value);
   }
-  // TORCH_INTERNAL_ASSERT(overflow == 0 || overflow == 1);
 }
 
 std::array<int64_t, 2> DimCounter::max_2d_step() const {

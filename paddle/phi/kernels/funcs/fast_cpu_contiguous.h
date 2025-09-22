@@ -63,11 +63,35 @@ inline int64_t divup(int64_t x, int64_t y) { return (x + y - 1) / y; }
 
 // TODO(wangjinheng): CPU vectorization
 
+inline void get_strides(int64_t* strides,
+                        DenseTensorIterator iter,
+                        int64_t ndim) {
+  for (int dim = 0; dim < ndim; dim++) {
+    for (int arg = 0; arg < iter.ntensors(); arg++) {
+      *strides++ = iter.strides(arg)[dim];
+    }
+  }
+  // Always at least 2d strides to support 2d for_each loops
+  if (ndim < 2) {
+    auto ntensors = iter.ntensors();
+    std::fill_n(strides, (2 - ndim) * ntensors, 0);
+  }
+}
+
+bool copy_transpose_valid(const DenseTensor& self, const DenseTensor& src) {
+  const int MIN_SZ = 60 * 60;
+  return src.numel() != 0 && src.dims().size() == 2 && src.strides()[0] == 1 &&
+         src.strides()[1] == src.dims()[0] &&
+         self.dims().size() == src.dims().size() && self.numel() >= MIN_SZ;
+}
+
 template <typename Context>
 void FastCPUCopy(const Context& dev_ctx,
                  const DenseTensor& src_tensor,
                  const phi::Place& target_place,
                  DenseTensor* dst_tensor) {
+  void* output_data;
+
   phi::DenseTensor dst_contig;
   phi::DenseTensor src_contig;
 
@@ -90,134 +114,338 @@ void FastCPUCopy(const Context& dev_ctx,
   out->set_meta(meta);
 
   const void* input_data = input.data();
-  void* output_data = dev_ctx.HostAlloc(out, src_tensor.dtype());
+  output_data = malloc(phi::SizeOf(input.dtype()) * out->numel());
 
-  phi::DenseTensorIteratorConfig config;
-  config.add_output(*out);
-  config.add_const_input(input);
-  phi::DenseTensorIterator iter = config.build();
+  if (copy_transpose_valid(*out, input)) {
+    int64_t BLOCK_SZ = 60;
+    void* buf = malloc(phi::SizeOf(input.dtype()) * BLOCK_SZ * BLOCK_SZ);
 
-  const int64_t& numel = iter.numel();
+    if (phi::SizeOf(input.dtype()) == 4) {
+      const int32_t* sp = reinterpret_cast<const int32_t*>(input_data);
+      int32_t* rp = reinterpret_cast<int32_t*>(output_data);
+      int32_t* bp = reinterpret_cast<int32_t*>(buf);
 
-  int64_t grain_size = 32768;
+      DenseTensor src = *out;
 
-  omp_set_num_threads(std::thread::hardware_concurrency());
+      int64_t NR = src.dims()[0];
+      int64_t NC = src.dims()[1];
 
-  Range range(0, numel);
-  auto counter = DimCounter(iter.shape(), range);
+      for (int64_t R = 0; R < NR; R += BLOCK_SZ) {
+        for (int64_t C = 0; C < NC; C += BLOCK_SZ) {
+          const int32_t* spo = sp + R + C * NR;
+          int32_t* rpo = rp + C + R * NC;
 
-  const char* in_ptr = reinterpret_cast<const char*>(input_data);
-  char* out_ptr = reinterpret_cast<char*>(output_data);
+          int nr = std::min(NR - R, BLOCK_SZ);
+          int nc = std::min(NC - C, BLOCK_SZ);
 
-  auto step = counter.max_2d_step();
+          // 1. copy columns from src to buf
+          for (int c = 0; c < nc; c++) {
+            memcpy(bp + c * BLOCK_SZ, spo + c * NR, nr * sizeof(int32_t));
+          }
 
-  int64_t end = step[0] * step[1];
-  int64_t begin = 0;
+          // 2. transpose buf in place
+          int rc_max = std::max(nr, nc);
+          int rc_min = std::min(nr, nc);
+          for (int r = 0; r < rc_max; r++) {
+            int end = std::min(r, rc_min);
+            for (int c = 0; c < end; c++) {
+              int32_t tmp = bp[r + BLOCK_SZ * c];
+              bp[r + BLOCK_SZ * c] = bp[r * BLOCK_SZ + c];
+              bp[r * BLOCK_SZ + c] = tmp;
+            }
+          }
 
-  if (phi::SizeOf(src_tensor.dtype()) == 1) {
-#pragma omp parallel
-    {
-      int64_t num_threads = omp_get_num_threads();
-
-      if (grain_size > 0) {
-        num_threads = std::min(num_threads, divup((end - begin), grain_size));
-      }
-
-      int64_t tid = omp_get_thread_num();
-      int64_t chunk_size = divup((end - begin), num_threads);
-      int64_t begin_tid = begin + tid * chunk_size;
-
-      if (begin_tid < end) {
-        const char* in_ptr = reinterpret_cast<const char*>(input_data);
-        char* out_ptr = reinterpret_cast<char*>(output_data);
-        for (int64_t idx = begin_tid; idx < chunk_size + begin_tid; idx++) {
-          if (idx >= end) break;
-          int outer_i = idx / step[1];
-          int inner_i = idx % step[1];
-          int input_offset =
-              outer_i * iter.strides(1)[0] + inner_i * iter.strides(1)[1];
-          int output_offset =
-              outer_i * iter.strides(0)[0] + inner_i * iter.strides(0)[1];
-
-          char* const out_data = out_ptr + output_offset;
-          const char* const in_data = in_ptr + input_offset;
-
-          *reinterpret_cast<int8_t*>(out_data) =
-              *reinterpret_cast<const int8_t*>(in_data);
+          // 3. copy rows from buf to dst
+          for (int r = 0; r < nr; r++) {
+            memcpy(rpo + r * NC, bp + r * BLOCK_SZ, nc * sizeof(int32_t));
+          }
         }
       }
-    }
 
-  } else if (phi::SizeOf(src_tensor.dtype()) == 2) {
-#pragma omp parallel
-    {
-      int64_t num_threads = omp_get_num_threads();
+    } else if (phi::SizeOf(input.dtype()) == 2) {
+      const int16_t* sp = reinterpret_cast<const int16_t*>(input_data);
+      int16_t* rp = reinterpret_cast<int16_t*>(output_data);
+      int16_t* bp = reinterpret_cast<int16_t*>(buf);
 
-      if (grain_size > 0) {
-        num_threads = std::min(num_threads, divup((end - begin), grain_size));
-      }
+      DenseTensor src = *out;
 
-      int64_t tid = omp_get_thread_num();
-      int64_t chunk_size = divup((end - begin), num_threads);
-      int64_t begin_tid = begin + tid * chunk_size;
+      int64_t NR = src.dims()[0];
+      int64_t NC = src.dims()[1];
 
-      if (begin_tid < end) {
-        const char* in_ptr = reinterpret_cast<const char*>(input_data);
-        char* out_ptr = reinterpret_cast<char*>(output_data);
-        for (int64_t idx = begin_tid; idx < chunk_size + begin_tid; idx++) {
-          if (idx >= end) break;
-          int outer_i = idx / step[1];
-          int inner_i = idx % step[1];
-          int input_offset =
-              outer_i * iter.strides(1)[0] + inner_i * iter.strides(1)[1];
-          int output_offset =
-              outer_i * iter.strides(0)[0] + inner_i * iter.strides(0)[1];
+      for (int64_t R = 0; R < NR; R += BLOCK_SZ) {
+        for (int64_t C = 0; C < NC; C += BLOCK_SZ) {
+          const int16_t* spo = sp + R + C * NR;
+          int16_t* rpo = rp + C + R * NC;
 
-          char* const out_data = out_ptr + output_offset;
-          const char* const in_data = in_ptr + input_offset;
+          int nr = std::min(NR - R, BLOCK_SZ);
+          int nc = std::min(NC - C, BLOCK_SZ);
 
-          *reinterpret_cast<int16_t*>(out_data) =
-              *reinterpret_cast<const int16_t*>(in_data);
+          // 1. copy columns from src to buf
+          for (int c = 0; c < nc; c++) {
+            memcpy(bp + c * BLOCK_SZ, spo + c * NR, nr * sizeof(int16_t));
+          }
+
+          // 2. transpose buf in place
+          int rc_max = std::max(nr, nc);
+          int rc_min = std::min(nr, nc);
+          for (int r = 0; r < rc_max; r++) {
+            int end = std::min(r, rc_min);
+            for (int c = 0; c < end; c++) {
+              int16_t tmp = bp[r + BLOCK_SZ * c];
+              bp[r + BLOCK_SZ * c] = bp[r * BLOCK_SZ + c];
+              bp[r * BLOCK_SZ + c] = tmp;
+            }
+          }
+
+          // 3. copy rows from buf to dst
+          for (int r = 0; r < nr; r++) {
+            memcpy(rpo + r * NC, bp + r * BLOCK_SZ, nc * sizeof(int16_t));
+          }
         }
       }
-    }
 
-  } else if (phi::SizeOf(src_tensor.dtype()) == 4) {
-#pragma omp parallel
-    {
-      int64_t num_threads = omp_get_num_threads();
+    } else if (phi::SizeOf(input.dtype()) == 1) {
+      const int8_t* sp = reinterpret_cast<const int8_t*>(input_data);
+      int8_t* rp = reinterpret_cast<int8_t*>(output_data);
+      int8_t* bp = reinterpret_cast<int8_t*>(buf);
 
-      if (grain_size > 0) {
-        num_threads = std::min(num_threads, divup((end - begin), grain_size));
-      }
+      DenseTensor src = *out;
 
-      int64_t tid = omp_get_thread_num();
-      int64_t chunk_size = divup((end - begin), num_threads);
-      int64_t begin_tid = begin + tid * chunk_size;
+      int64_t NR = src.dims()[0];
+      int64_t NC = src.dims()[1];
 
-      if (begin_tid < end) {
-        const char* in_ptr = reinterpret_cast<const char*>(input_data);
-        char* out_ptr = reinterpret_cast<char*>(output_data);
-        for (int64_t idx = begin_tid; idx < chunk_size + begin_tid; idx++) {
-          if (idx >= end) break;
-          int outer_i = idx / step[1];
-          int inner_i = idx % step[1];
-          int input_offset =
-              outer_i * iter.strides(1)[0] + inner_i * iter.strides(1)[1];
-          int output_offset =
-              outer_i * iter.strides(0)[0] + inner_i * iter.strides(0)[1];
+      for (int64_t R = 0; R < NR; R += BLOCK_SZ) {
+        for (int64_t C = 0; C < NC; C += BLOCK_SZ) {
+          const int8_t* spo = sp + R + C * NR;
+          int8_t* rpo = rp + C + R * NC;
 
-          char* const out_data = out_ptr + output_offset;
-          const char* const in_data = in_ptr + input_offset;
+          int nr = std::min(NR - R, BLOCK_SZ);
+          int nc = std::min(NC - C, BLOCK_SZ);
 
-          *reinterpret_cast<int32_t*>(out_data) =
-              *reinterpret_cast<const int32_t*>(in_data);
+          // 1. copy columns from src to buf
+          for (int c = 0; c < nc; c++) {
+            memcpy(bp + c * BLOCK_SZ, spo + c * NR, nr * sizeof(int8_t));
+          }
+
+          // 2. transpose buf in place
+          int rc_max = std::max(nr, nc);
+          int rc_min = std::min(nr, nc);
+          for (int r = 0; r < rc_max; r++) {
+            int end = std::min(r, rc_min);
+            for (int c = 0; c < end; c++) {
+              int8_t tmp = bp[r + BLOCK_SZ * c];
+              bp[r + BLOCK_SZ * c] = bp[r * BLOCK_SZ + c];
+              bp[r * BLOCK_SZ + c] = tmp;
+            }
+          }
+
+          // 3. copy rows from buf to dst
+          for (int r = 0; r < nr; r++) {
+            memcpy(rpo + r * NC, bp + r * BLOCK_SZ, nc * sizeof(int8_t));
+          }
         }
       }
+
+    } else {
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("Copy Dtype not Implemented"));
     }
+
+    free(buf);
 
   } else {
-    PADDLE_THROW(common::errors::Unimplemented("Not supported dtype!!!!!"));
+    phi::DenseTensorIteratorConfig config;
+    config.add_output(*out);
+    config.add_const_input(input);
+    config.is_alloc_out_ = true;
+    phi::DenseTensorIterator iter = config.build();
+
+    std::vector<int64_t> tmp_strides(
+        iter.ntensors() * static_cast<size_t>(std::max(iter.ndim(), 2)));
+
+    get_strides(tmp_strides.data(), iter, iter.ndim());
+
+    std::vector<int64_t> out_stride(tmp_strides.begin() + iter.ntensors(),
+                                    tmp_strides.end());
+
+    std::vector<int64_t> output_stride = iter.strides(0);
+    std::vector<int64_t> input_stride = iter.strides(1);
+
+    const int64_t& numel = iter.numel();
+
+    int all_num_threads = 96;
+
+    const char* env_threads = std::getenv("FLAGS_num_threads");
+    if (env_threads != nullptr) {
+      int parsed_threads = std::atoi(env_threads);
+      if (parsed_threads > 0) {
+        all_num_threads = parsed_threads;
+      }
+    }
+
+    omp_set_num_threads(all_num_threads);
+
+    const char* in_ptr = reinterpret_cast<const char*>(input_data);
+    char* out_ptr = reinterpret_cast<char*>(output_data);
+
+    int64_t end = numel;
+    int64_t begin = 0;
+    int64_t grain_size = 32768;
+
+    int64_t* whole_stride = tmp_strides.data();
+    int64_t* load_stride = &(whole_stride[1]);
+
+    std::atomic_flag err_flag = ATOMIC_FLAG_INIT;
+    std::exception_ptr eptr;
+
+    if (phi::SizeOf(input.dtype()) == 4) {
+#pragma omp parallel
+      {
+        int64_t num_threads = omp_get_num_threads();
+
+        if (grain_size > 0) {
+          num_threads = std::min(num_threads, divup((end - begin), grain_size));
+        }
+
+        int64_t tid = omp_get_thread_num();
+        int64_t chunk_size = divup((end - begin), num_threads);
+        int64_t begin_tid = begin + tid * chunk_size;
+
+        if (begin_tid < end) {
+          int64_t range_start = begin_tid;
+          int64_t range_end = std::min(end, chunk_size + begin_tid);
+
+          Range range(range_start, range_end);
+          auto counter = DimCounter(iter.shape(), range);
+          while (!counter.is_done()) {
+            const auto v_ndim = counter.values.size();
+            const char* tmp_in_data = in_ptr;
+            char* tmp_out_data = out_ptr;
+            for (int dim = 0; dim < v_ndim; dim++) {
+              int64_t value = counter.values[dim];
+              tmp_out_data += value * whole_stride[dim * iter.ntensors() + 0];
+              tmp_in_data += value * whole_stride[dim * iter.ntensors() + 1];
+            }
+
+            auto step = counter.max_2d_step();
+
+            for (int64_t i = 0; i < step[1]; i++) {
+              for (int64_t j = 0; j < step[0]; j++) {
+                const char* real_in_ptr = tmp_in_data + j * whole_stride[1];
+                char* real_out_ptr = tmp_out_data + j * whole_stride[0];
+
+                *reinterpret_cast<int32_t*>(real_out_ptr) =
+                    *reinterpret_cast<const int32_t*>(real_in_ptr);
+              }
+              tmp_in_data = tmp_in_data + out_stride[1];
+              tmp_out_data = tmp_out_data + out_stride[0];
+            }
+
+            counter.increment(step);
+          }
+        }
+      }
+
+    } else if (phi::SizeOf(input.dtype()) == 2) {
+#pragma omp parallel
+      {
+        int64_t num_threads = omp_get_num_threads();
+
+        if (grain_size > 0) {
+          num_threads = std::min(num_threads, divup((end - begin), grain_size));
+        }
+
+        int64_t tid = omp_get_thread_num();
+        int64_t chunk_size = divup((end - begin), num_threads);
+        int64_t begin_tid = begin + tid * chunk_size;
+
+        if (begin_tid < end) {
+          int64_t range_start = begin_tid;
+          int64_t range_end = std::min(end, chunk_size + begin_tid);
+
+          Range range(range_start, range_end);
+          auto counter = DimCounter(iter.shape(), range);
+          while (!counter.is_done()) {
+            const auto v_ndim = counter.values.size();
+            const char* tmp_in_data = in_ptr;
+            char* tmp_out_data = out_ptr;
+            for (int dim = 0; dim < v_ndim; dim++) {
+              int64_t value = counter.values[dim];
+              tmp_out_data += value * whole_stride[dim * iter.ntensors() + 0];
+              tmp_in_data += value * whole_stride[dim * iter.ntensors() + 1];
+            }
+
+            auto step = counter.max_2d_step();
+
+            for (int64_t i = 0; i < step[1]; i++) {
+              for (int64_t j = 0; j < step[0]; j++) {
+                const char* real_in_ptr = tmp_in_data + j * whole_stride[1];
+                char* real_out_ptr = tmp_out_data + j * whole_stride[0];
+
+                *reinterpret_cast<int16_t*>(real_out_ptr) =
+                    *reinterpret_cast<const int16_t*>(real_in_ptr);
+              }
+              tmp_in_data = tmp_in_data + out_stride[1];
+              tmp_out_data = tmp_out_data + out_stride[0];
+            }
+
+            counter.increment(step);
+          }
+        }
+      }
+
+    } else if (phi::SizeOf(input.dtype()) == 1) {
+#pragma omp parallel
+      {
+        int64_t num_threads = omp_get_num_threads();
+
+        if (grain_size > 0) {
+          num_threads = std::min(num_threads, divup((end - begin), grain_size));
+        }
+
+        int64_t tid = omp_get_thread_num();
+        int64_t chunk_size = divup((end - begin), num_threads);
+        int64_t begin_tid = begin + tid * chunk_size;
+
+        if (begin_tid < end) {
+          int64_t range_start = begin_tid;
+          int64_t range_end = std::min(end, chunk_size + begin_tid);
+
+          Range range(range_start, range_end);
+          auto counter = DimCounter(iter.shape(), range);
+          while (!counter.is_done()) {
+            const auto v_ndim = counter.values.size();
+            const char* tmp_in_data = in_ptr;
+            char* tmp_out_data = out_ptr;
+            for (int dim = 0; dim < v_ndim; dim++) {
+              int64_t value = counter.values[dim];
+              tmp_out_data += value * whole_stride[dim * iter.ntensors() + 0];
+              tmp_in_data += value * whole_stride[dim * iter.ntensors() + 1];
+            }
+
+            auto step = counter.max_2d_step();
+
+            for (int64_t i = 0; i < step[1]; i++) {
+              for (int64_t j = 0; j < step[0]; j++) {
+                const char* real_in_ptr = tmp_in_data + j * whole_stride[1];
+                char* real_out_ptr = tmp_out_data + j * whole_stride[0];
+
+                *reinterpret_cast<int8_t*>(real_out_ptr) =
+                    *reinterpret_cast<const int8_t*>(real_in_ptr);
+              }
+              tmp_in_data = tmp_in_data + out_stride[1];
+              tmp_out_data = tmp_out_data + out_stride[0];
+            }
+
+            counter.increment(step);
+          }
+        }
+      }
+
+    } else {
+      PADDLE_THROW(
+          ::common::errors::InvalidArgument("Copy Dtype not Implemented"));
+    }
   }
 
   auto src_cpu_place = src_tensor.place();
@@ -235,6 +463,8 @@ void FastCPUCopy(const Context& dev_ctx,
 
   phi::memory_utils::Copy(
       dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, stream);
+
+  free(output_data);
 
   if (dst_tensor != &dst_contig) {
     PD_VISIT_ALL_TYPES(dst_tensor->dtype(), "StridedCopyKernel", ([&] {
