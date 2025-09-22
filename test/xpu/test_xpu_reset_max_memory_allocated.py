@@ -85,5 +85,71 @@ class TestResetMaxMemoryAllocated(unittest.TestCase):
                 reset_max_memory_allocated()
 
 
+class TestResetMaxMemoryAllocated_paddle_device(unittest.TestCase):
+    def func_test_reset_max_memory_allocated(self, device=None):
+        if core.is_compiled_with_xpu():
+            alloc_time = 100
+            max_alloc_size = 10000
+            for i in range(alloc_time):
+                # first alloc
+                shape = paddle.randint(
+                    low=max_alloc_size, high=max_alloc_size * 2
+                )
+                tensor = paddle.zeros(shape)
+                peak_memory_allocated_size_first = (
+                    paddle.device.max_memory_allocated(device)
+                )
+
+                del shape
+                del tensor
+
+                # second alloc
+                shape = paddle.randint(low=0, high=max_alloc_size)
+                tensor = paddle.zeros(shape)
+
+                # reset peak memory stats
+                paddle.device.reset_max_memory_allocated(device)
+
+                peak_memory_allocated_size_second = (
+                    paddle.device.max_memory_allocated(device)
+                )
+                self.assertEqual(
+                    peak_memory_allocated_size_second,
+                    paddle.device.memory_allocated(device),
+                )
+                self.assertLess(
+                    peak_memory_allocated_size_second,
+                    peak_memory_allocated_size_first,
+                )
+
+                del shape
+                del tensor
+
+    def test_reset_max_memory_allocated_for_all_places(self):
+        if core.is_compiled_with_xpu():
+            xpu_num = paddle.device.device_count()
+            for i in range(xpu_num):
+                paddle.device.set_device("xpu:" + str(i))
+                self.func_test_reset_max_memory_allocated(core.XPUPlace(i))
+                self.func_test_reset_max_memory_allocated(i)
+                self.func_test_reset_max_memory_allocated("xpu:" + str(i))
+
+    def test_reset_max_memory_allocated_exception(self):
+        if core.is_compiled_with_xpu():
+            wrong_device = [
+                core.CPUPlace(),
+                paddle.device.device_count() + 1,
+                -2,
+                0.5,
+                "xpu1",
+            ]
+            for device in wrong_device:
+                with self.assertRaises(BaseException):  # noqa: B017
+                    paddle.device.reset_max_memory_allocated(device)
+        else:
+            with self.assertRaises(ValueError):
+                paddle.device.reset_max_memory_allocated()
+
+
 if __name__ == "__main__":
     unittest.main()
