@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from op_test import convert_float_to_uint16
+from op_test import (
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base
@@ -72,8 +76,8 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     startup_program = paddle.static.Program()
     main_program = paddle.static.Program()
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     exe = paddle.static.Executor(place)
     with paddle.static.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
@@ -92,8 +96,8 @@ def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
     x = paddle.to_tensor(x_np, dtype=x_np.dtype)
@@ -107,8 +111,8 @@ def run_dygraph(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 
 def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     paddle.disable_static(place)
     op = getattr(paddle, op_str)
     x = paddle.to_tensor(x_np, dtype=x_np.dtype)
@@ -144,9 +148,10 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
-                if not (paddle.is_compiled_with_cuda() and use_gpu) and (
-                    data_type in [np.float16, np.uint16]
-                ):
+                if not (
+                    (paddle.is_compiled_with_cuda() or is_custom_device())
+                    and use_gpu
+                ) and (data_type in [np.float16, np.uint16]):
                     continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
@@ -246,11 +251,11 @@ def test_type_error(unit_test, use_gpu, type_str_map):
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 
     place = paddle.CPUPlace()
-    if use_gpu and paddle.is_compiled_with_cuda():
-        place = paddle.CUDAPlace(0)
+    if use_gpu and (paddle.is_compiled_with_cuda() or is_custom_device()):
+        place = get_device_place()
     for op_data in TEST_META_OP_DATA:
         if (
-            paddle.is_compiled_with_cuda()
+            (paddle.is_compiled_with_cuda() or is_custom_device())
             and use_gpu
             and (
                 type_str_map['x'] in [np.float16, np.uint16]
@@ -316,8 +321,8 @@ class TestCUDA(unittest.TestCase):
 
 def get_places():
     places = []
-    if base.is_compiled_with_cuda():
-        places.append(paddle.CUDAPlace(0))
+    if base.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
     places.append(paddle.CPUPlace())
     return places
 

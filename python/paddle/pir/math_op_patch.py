@@ -1155,7 +1155,7 @@ def monkey_patch_value():
         return transform(self, device, dtype, blocking, copy_tensor)
 
     def __deepcopy__(self, memo):
-        new_tensor = self.clone().detach()
+        new_tensor = self.clone()
         memo[id(self)] = new_tensor
         return new_tensor
 

@@ -16,7 +16,7 @@ import os
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -268,7 +268,7 @@ class TestUnpoolOpException(unittest.TestCase):
             r"The indices should have \[N, C, H, W\] format",
             indices_rank_error,
         )
-        if not core.is_compiled_with_cuda():
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
             self.assertRaisesRegex(
                 ValueError,
                 r"index should less than output",
@@ -296,8 +296,8 @@ class TestUnpoolOpAPI_dy(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -337,8 +337,8 @@ class TestUnpoolOpAPI_dy2(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -377,8 +377,8 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -419,8 +419,8 @@ class TestUnpoolOpAPI_dy4(unittest.TestCase):
         from paddle import base
         from paddle.base import core
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         with base.dygraph.guard(place):
@@ -474,8 +474,8 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
         unpool_out = F.max_unpool2d(
             output, indices, kernel_size=2, stride=None, output_size=(5, 5)
         )
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
         else:
             place = core.CPUPlace()
         exe = paddle.static.Executor(place)

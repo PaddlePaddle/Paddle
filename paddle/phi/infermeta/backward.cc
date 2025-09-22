@@ -1897,6 +1897,16 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+void RandomGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad) {
+  PADDLE_ENFORCE_NE(x_grad,
+                    nullptr,
+                    common::errors::InvalidArgument(
+                        "The X@GRAD in RandomGradInferMeta can't be nullptr."));
+  auto dims = out_grad.dims();
+  x_grad->set_dims(dims);
+  x_grad->set_dtype(out_grad.dtype());
+}
+
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {

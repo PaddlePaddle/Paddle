@@ -14,6 +14,7 @@ limitations under the License. */
 #include <map>
 #include <unordered_map>
 
+#include "paddle/common/macros.h"
 #include "paddle/fluid/platform/profiler/dump/nodetree.pb.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/platform/profiler/output_logger.h"
@@ -25,7 +26,7 @@ namespace platform {
 // A SerializationLogger object can only dump a NodeTrees object,
 // creates a file in the constructor and closes the file in the destructor.
 // Should only call LogNodeTrees and LogMetaInfo.
-class SerializationLogger : public BaseLogger {
+class PADDLE_API SerializationLogger : public BaseLogger {
  public:
   explicit SerializationLogger(const std::string& filename);
   explicit SerializationLogger(const char* filename);

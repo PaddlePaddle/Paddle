@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # test_cuda_unittest.py
 import ctypes
 import types
 import unittest
 
 import numpy as np
+from op_test import get_device
 
 import paddle
 from paddle.cuda import (
@@ -115,7 +115,7 @@ class TestCudaCompat(unittest.TestCase):
 
     def test_stream_context(self):
         if paddle.is_compiled_with_cuda():
-            s = Stream(device='gpu', priority=2)
+            s = Stream(device=get_device(), priority=2)
             with stream(s):
                 ctx = stream(s)
                 self.assertIsInstance(ctx, StreamContext)

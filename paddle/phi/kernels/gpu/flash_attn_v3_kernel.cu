@@ -1394,7 +1394,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(get_max_headdim(), 128);
+  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1429,6 +1429,8 @@ void FlashMaskV2BaseKernel(
     }
   }
 
+  bool const is_flashmask = startend_row_indices_.is_initialized();
+
   // This needs to go before kBlockM & kBlockN since we rely on the correct
   // window_size and is_causal to set kBlockM
   // TODO(tridao): check this
@@ -1442,7 +1444,7 @@ void FlashMaskV2BaseKernel(
   if (seqlen_q == 1 && window_size_left == -1 && window_size_right == -1) {
     // Special case of hdim 128 where we want causal to have kBlockN=128, better
     // for pagedKV and TMA
-    if ((head_size <= 64 || head_size > 128) || !paged_KV) {
+    if (((head_size <= 64 || head_size > 128) || !paged_KV) && !is_flashmask) {
       is_causal = false;
     }
   }
@@ -1564,8 +1566,8 @@ void FlashMaskV2BaseKernel(
   }
 
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  int const head_size_rounded = round_up_headdim(head_size);
-  int const head_size_v_rounded = round_up_headdim(head_size_v);
+  int const head_size_rounded = flashmaskv2_round_up_headdim(head_size);
+  int const head_size_v_rounded = flashmaskv2_round_up_headdim(head_size_v);
   int const seqlen_q_rounded = round_multiple(seqlen_q, 128);
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
@@ -2064,7 +2066,6 @@ void FlashMaskV2BaseKernel(
 #endif
 
   // flashmask
-  bool const is_flashmask = startend_row_indices_.is_initialized();
   DenseTensor startend_row_indices;
   if (is_flashmask) startend_row_indices = startend_row_indices_.get();
   DenseTensor flashmask_maxmin, lt_start_row_indices, lt_end_row_indices,

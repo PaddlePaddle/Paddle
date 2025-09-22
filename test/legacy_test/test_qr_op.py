@@ -16,7 +16,7 @@ import itertools
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device, get_device_place, is_custom_device
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -47,8 +47,8 @@ class TestQrOp(OpTest):
     def _get_places(self):
         places = []
         places.append(base.CPUPlace())
-        if core.is_compiled_with_cuda():
-            places.append(base.CUDAPlace(0))
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         return places
 
     def get_input_and_output(self):
@@ -182,8 +182,8 @@ class TestQrAPI(unittest.TestCase):
                 a = np.random.rand(*shape).astype(np_dtype)
             places = []
             places.append('cpu')
-            if core.is_compiled_with_cuda():
-                places.append('gpu')
+            if core.is_compiled_with_cuda() or is_custom_device():
+                places.append(get_device())
             for place in places:
                 if mode == "r":
                     np_r = np.linalg.qr(a, mode=mode)
@@ -243,8 +243,11 @@ class TestQrAPI(unittest.TestCase):
                 a = np.random.rand(*shape).astype(np_dtype)
             places = []
             places.append(paddle.CPUPlace())
-            if core.is_compiled_with_cuda():
-                places.append(paddle.CUDAPlace(0))
+            if (
+                core.is_compiled_with_cuda() or is_custom_device()
+            ) or is_custom_device():
+                places.append(get_device_place())
+
             for place in places:
                 with static.program_guard(static.Program(), static.Program()):
                     if mode == "r":

@@ -167,7 +167,7 @@ class TestIdentityLossAPI(unittest.TestCase):
         paddle.disable_static()
         x = np.random.uniform(-1, 1, [10, 12]).astype('float32')
         x = paddle.to_tensor(x)
-        err_msg = r".+reduction should be 0, 1 and 2\. But get"
+        err_msg = r"reduction should be 0, 1 and 2\. But get"
         self.assertRaisesRegex(
             ValueError, err_msg, paddle.incubate.identity_loss, x, -1
         )

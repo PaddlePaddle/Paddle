@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import itertools
 import unittest
 import warnings
 
 import numpy as np
+from op_test import get_device, get_device_place, is_custom_device
 from utils import dygraph_guard
 
 import paddle
@@ -322,7 +322,7 @@ class TestEagerTensor(unittest.TestCase):
         if core.is_compiled_with_cuda():
             check_with_place(core.CUDAPinnedPlace())
             check_with_place("gpu_pinned")
-            check_with_place(core.CUDAPlace(0))
+            check_with_place(get_device_place())
             check_with_place("gpu:0")
 
     def test_to_tensor_not_change_input_stop_gradient(self):
@@ -341,18 +341,18 @@ class TestEagerTensor(unittest.TestCase):
                 a = paddle.to_tensor(a)
                 self.assertEqual(a.place.__repr__(), "Place(cpu)")
 
-            with paddle.base.dygraph.guard(core.CUDAPlace(0)):
+            with paddle.base.dygraph.guard(get_device_place()):
                 a = paddle.to_tensor(a_np, place=paddle.CUDAPinnedPlace())
                 a = paddle.to_tensor(a)
                 self.assertEqual(a.place.__repr__(), "Place(gpu:0)")
 
-            with paddle.base.dygraph.guard(core.CUDAPlace(0)):
+            with paddle.base.dygraph.guard(get_device_place()):
                 a = paddle.to_tensor(a_np, place=paddle.CPUPlace())
                 a = paddle.to_tensor(a, place=paddle.CUDAPinnedPlace())
                 self.assertEqual(a.place.__repr__(), "Place(gpu_pinned)")
 
     def test_to_tensor_with_densetensor(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             a_np = np.random.rand(1024, 1024)
             with paddle.base.dygraph.guard(core.CPUPlace()):
                 dense_tensor = core.DenseTensor()
@@ -360,9 +360,9 @@ class TestEagerTensor(unittest.TestCase):
                 a = paddle.to_tensor(dense_tensor)
                 np.testing.assert_array_equal(a_np, a.numpy())
 
-            with paddle.base.dygraph.guard(core.CUDAPlace(0)):
+            with paddle.base.dygraph.guard(get_device_place()):
                 dense_tensor = core.DenseTensor()
-                dense_tensor.set(a_np, core.CUDAPlace(0))
+                dense_tensor.set(a_np, get_device_place())
                 a = paddle.to_tensor(dense_tensor, place=core.CPUPlace())
                 np.testing.assert_array_equal(a_np, a.numpy())
                 self.assertTrue(a.place.__repr__(), "Place(cpu)")
@@ -380,12 +380,12 @@ class TestEagerTensor(unittest.TestCase):
     def test_tensor_pin_memory_and_device(self):
         if core.is_compiled_with_cuda():
             tensor_res = paddle.tensor(
-                self.array, device="gpu", pin_memory=True
+                self.array, device=get_device(), pin_memory=True
             )
             self.assertEqual(tensor_res.place, core.CUDAPinnedPlace())
 
             tensor_cuda = paddle.tensor(self.array, device="cuda:0")
-            self.assertEqual(tensor_cuda.place, paddle.CUDAPlace(0))
+            self.assertEqual(tensor_cuda.place, get_device_place())
 
             tensor_pin = paddle.tensor(self.array, device="gpu_pinned")
             self.assertEqual(tensor_pin.place, core.CUDAPinnedPlace())
@@ -1360,7 +1360,7 @@ class TestEagerTensor(unittest.TestCase):
             )
 
             if paddle.device.is_compiled_with_cuda():
-                gpu_place = paddle.CUDAPlace(0)
+                gpu_place = get_device_place()
                 # raise AttributeError for sparse tensor.
                 sparse_tensor = (
                     paddle.rand([3, 3]).to(device=gpu_place).to_sparse_coo(2)
@@ -1461,7 +1461,7 @@ class TestEagerTensor(unittest.TestCase):
             # test CUDA
             if paddle.is_compiled_with_cuda():
                 tensor_cuda = paddle.to_tensor(
-                    [1, 2, 3], place=base.CUDAPlace(0)
+                    [1, 2, 3], place=get_device_place()
                 )
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)
@@ -1492,7 +1492,7 @@ class TestEagerTensor(unittest.TestCase):
 
             # test CUDA
             if paddle.is_compiled_with_cuda():
-                tensor_cuda = paddle.to_tensor(5.0, place=base.CUDAPlace(0))
+                tensor_cuda = paddle.to_tensor(5.0, place=get_device_place())
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)
                 self.assertEqual(device_id, 0)
@@ -1516,7 +1516,7 @@ class TestEagerTensor(unittest.TestCase):
             # test CUDA
             if paddle.is_compiled_with_cuda():
                 tensor_cuda = paddle.to_tensor(
-                    paddle.zeros([0, 10]), place=base.CUDAPlace(0)
+                    paddle.zeros([0, 10]), place=get_device_place()
                 )
                 device_type, device_id = tensor_cuda.__dlpack_device__()
                 self.assertEqual(device_type, DLDeviceType.kDLCUDA)
@@ -1793,7 +1793,7 @@ class TestEagerTensorIsCuda(unittest.TestCase):
 
         if paddle.is_compiled_with_cuda():
             gpu_tensor = paddle.to_tensor(
-                [2, 3], dtype="float32", place=paddle.CUDAPlace(0)
+                [2, 3], dtype="float32", place=get_device_place()
             )
             self.assertTrue(gpu_tensor.is_cuda)
 
@@ -1807,7 +1807,7 @@ class TestEagerTensorIsCuda(unittest.TestCase):
                 )
                 out = data + 1.0
 
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_exe = paddle.static.Executor(get_device_place())
                 gpu_result = gpu_exe.run(
                     feed={'data': np.array([1.0, 2.0], dtype='float32')},
                     fetch_list=[out],
@@ -1874,7 +1874,7 @@ class TestEagerTensorTo(unittest.TestCase):
         np.testing.assert_allclose(self.np_x, x_, rtol=1e-05)
 
         if paddle.base.is_compiled_with_cuda():
-            x_gpu = self.x._to(device=paddle.CUDAPlace(0))
+            x_gpu = self.x._to(device=get_device_place())
             self.assertTrue(x_gpu.place.is_gpu_place())
             self.assertEqual(x_gpu.place.gpu_device_id(), 0)
 
@@ -1890,6 +1890,25 @@ class TestEagerTensorTo(unittest.TestCase):
             x_gpu2 = self.x._to(device="gpu:0", dtype="float16")
             self.assertTrue(x_gpu2.place.is_gpu_place())
             self.assertEqual(x_gpu2.place.gpu_device_id(), 0)
+            self.assertEqual(x_gpu2.dtype, paddle.float16)
+
+        elif is_custom_device():
+            x_gpu = self.x._to(device=get_device_place())
+            self.assertTrue(x_gpu.place.is_custom_place())
+            self.assertEqual(x_gpu.place.custom_device_id(), 0)
+
+            x_gpu0 = self.x._to(device=get_device(True))
+            self.assertTrue(x_gpu0.place.is_custom_place())
+            self.assertEqual(x_gpu0.place.custom_device_id(), 0)
+
+            x_gpu1 = self.x._to(device=get_device(True), dtype="float64")
+            self.assertTrue(x_gpu1.place.is_custom_place())
+            self.assertEqual(x_gpu1.place.custom_device_id(), 0)
+            self.assertEqual(x_gpu1.dtype, paddle.float64)
+
+            x_gpu2 = self.x._to(device=get_device(True), dtype="float16")
+            self.assertTrue(x_gpu2.place.is_custom_place())
+            self.assertEqual(x_gpu2.place.custom_device_id(), 0)
             self.assertEqual(x_gpu2.dtype, paddle.float16)
 
         x_cpu = self.x._to(device=paddle.CPUPlace())
@@ -1919,8 +1938,8 @@ class TestEagerTensorTo(unittest.TestCase):
             paddle.complex64,
         ]
         places = [paddle.CPUPlace()]
-        if paddle.base.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if paddle.base.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
 
         for src_place, src_dtype in itertools.product(places, dtypes):
             src = paddle.to_tensor(
@@ -1975,9 +1994,14 @@ class TestEagerTensorInitEagerTensorFromTensorWithDevice(unittest.TestCase):
         t.set(np_x, base.CPUPlace())
 
         if paddle.base.is_compiled_with_cuda():
-            device = paddle.CUDAPlace(0)
+            device = get_device_place()
             tmp = base.core.eager.Tensor(t, device)
             self.assertTrue(tmp.place.is_gpu_place())
+            self.assertEqual(tmp.numpy().all(), np_x.all())
+        elif is_custom_device():
+            device = get_device_place()
+            tmp = base.core.eager.Tensor(t, device)
+            self.assertTrue(tmp.place.is_custom_place())
             self.assertEqual(tmp.numpy().all(), np_x.all())
 
         device = paddle.CPUPlace()
@@ -2126,8 +2150,8 @@ class TestEagerTensorGradNameValue(unittest.TestCase):
 class TestDenseTensorToTensor(unittest.TestCase):
     def test_same_place_data_ptr_consistency(self):
         places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
         for place in places:
             x = paddle.rand([3, 5]).to(device=place)
             x_dense = x.get_tensor()

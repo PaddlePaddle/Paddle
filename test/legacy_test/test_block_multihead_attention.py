@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import re
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -29,19 +29,19 @@ np.random.seed(2023)
 
 
 is_sm8x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 8
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm9x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 9
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
 
 is_sm7x = (
-    core.is_compiled_with_cuda()
+    (core.is_compiled_with_cuda() or is_custom_device())
     and paddle.device.cuda.get_device_capability()[0] == 7
     and paddle.device.cuda.get_device_capability()[1] >= 0
 )
@@ -253,7 +253,7 @@ def block_cache_to_naive_cache(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -263,7 +263,7 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -523,7 +523,7 @@ class TestBlockMultiHeadAttnEncDec(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -533,7 +533,7 @@ class TestBlockMultiHeadAttnEncDecSkipGetMaxLen(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDecSkipGetMaxLen"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -801,7 +801,7 @@ class TestBlockMultiHeadAttnEncDecSkipGetMaxLen(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -811,7 +811,7 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnRoPE"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -1109,7 +1109,7 @@ class TestBlockMultiHeadAttnRoPE(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1119,7 +1119,7 @@ class TestBlockMultiHeadAttnPreCache(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnPreCacbe"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -1396,7 +1396,7 @@ class TestBlockMultiHeadAttnPreCache(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1406,7 +1406,7 @@ class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncStatic"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -1617,7 +1617,7 @@ class TestBlockMultiHeadAttnEncStatic(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1627,7 +1627,7 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -1963,7 +1963,7 @@ class TestBlockMultiHeadAttnEncDecPTQDequant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -1973,7 +1973,7 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -2346,7 +2346,7 @@ class TestBlockMultiHeadAttnEncDecPTQDequantQuantShiftSmooth(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2356,7 +2356,7 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -2626,7 +2626,7 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2636,7 +2636,7 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64
@@ -2911,7 +2911,7 @@ class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
+    not (core.is_compiled_with_cuda() or is_custom_device())
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
@@ -2921,7 +2921,7 @@ class TestBlockMultiHeadAttnEncDecCacheKVStaticQuant(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.name = "TestBlockMultiHeadAttnEncDec"
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.batch_size = 2
         self.num_head = 8
         self.seq_len = 64

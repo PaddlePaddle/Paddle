@@ -495,7 +495,7 @@ class SequencePoolGradFunctor<phi::GPUContext, T> {
 // sequence pooling
 template class SequencePoolFunctor<phi::GPUContext, float>;
 template class SequencePoolFunctor<phi::GPUContext, double>;
-template class SequencePoolGradFunctor<phi::GPUContext, float>;
+template class PADDLE_API SequencePoolGradFunctor<phi::GPUContext, float>;
 template class SequencePoolGradFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs

@@ -424,18 +424,37 @@ def get_devices():
         devices.append('gpu')
     if is_custom_device():
         dev_type = paddle.device.get_all_custom_device_type()[0]
-        devices.append(f'{dev_type}:0')
+        devices.append(f'{dev_type}')
     return devices
 
 
-def get_device_place():
+def get_device(with_device_id=False):
+    if paddle.is_compiled_with_cuda():
+        return 'gpu' if not with_device_id else 'gpu:0'
+    elif is_custom_device():
+        dev_type = paddle.device.get_all_custom_device_type()[0]
+        return f'{dev_type}' if not with_device_id else f'{dev_type}:0'
+    else:
+        return None
+
+
+def get_device_class():
+    if paddle.is_compiled_with_cuda():
+        return core.CUDAPlace
+    elif is_custom_device():
+        return core.CustomPlace
+    else:
+        return core.CPUPlace
+
+
+def get_device_place(device_id: int = 0):
     if core.is_compiled_with_cuda():
-        return base.CUDAPlace(0)
+        return base.CUDAPlace(device_id)
     custom_dev_types = paddle.device.get_all_custom_device_type()
     if custom_dev_types and core.is_compiled_with_custom_device(
         custom_dev_types[0]
     ):
-        return base.CustomPlace(custom_dev_types[0], 0)
+        return base.CustomPlace(custom_dev_types[0], device_id)
     return base.CPUPlace()
 
 
@@ -2977,8 +2996,13 @@ class OpTest(unittest.TestCase):
                 'on',
             ]
             or not (
-                core.is_compiled_with_cuda()
-                and core.op_support_gpu(self.op_type)
+                (
+                    (
+                        core.is_compiled_with_cuda()
+                        and core.op_support_gpu(self.op_type)
+                    )
+                    or is_custom_device()
+                )
                 and not cpu_only
             )
             or self.op_type

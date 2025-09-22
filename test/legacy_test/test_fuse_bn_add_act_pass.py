@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 import paddle.nn.functional as F
@@ -25,7 +25,8 @@ paddle.enable_static()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "Paddle core is not compiled with CUDA",
 )
 class TestFusedBnAddActAPI(unittest.TestCase):
     def setUp(self):
@@ -242,7 +243,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
 
     def test_fuse_bn_add_act(self):
         with paddle.pir_utils.OldIrGuard():
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             self.check(place, use_cuda=True)
 
     def test_fuse_bn_add_act_API(self):
@@ -250,7 +251,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             # build_fused_program: use fused_bn_add_act python API
             main_program = base.Program()
             startup_program = base.Program()
-            place = base.CUDAPlace(0)
+            place = get_device_place()
             x, y, loss = self.build_fused_program(
                 main_program, startup_program, use_cuda=True
             )

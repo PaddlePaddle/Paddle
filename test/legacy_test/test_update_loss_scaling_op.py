@@ -15,7 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle import base
@@ -112,8 +118,8 @@ class TestUpdateLossScalingFP16Op(TestUpdateLossScalingOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support bfloat16",
 )
 class TestUpdateLossScalingBF16Op(OpTest):
@@ -165,7 +171,7 @@ class TestUpdateLossScalingBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), no_check_set=['Out'])
+        self.check_output_with_place(get_device_place(), no_check_set=['Out'])
 
 
 class TestUpdateLossScalingOpBad(TestUpdateLossScalingOp):
@@ -251,7 +257,7 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
                 name="update_loss_scaling",
             )
 
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            place = get_device_place() if use_cuda else base.CPUPlace()
             exe = base.Executor(place)
             with base.scope_guard(scope):
                 exe.run(base.default_startup_program())
@@ -337,7 +343,7 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
                 name="update_loss_scaling",
             )
 
-            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            place = get_device_place() if use_cuda else base.CPUPlace()
             exe = base.Executor(place)
             with base.scope_guard(scope):
                 exe.run(base.default_startup_program())
@@ -395,7 +401,7 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
                 self.loss_scaling_check_inf(use_cuda=False)
 
     def test_loss_scaling_gpu(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             with paddle_static_guard():
                 main = base.Program()
                 startup = base.Program()
@@ -406,7 +412,7 @@ class TestUpdateLossScalingLayer(unittest.TestCase):
                     self.loss_scaling_check(use_cuda=True)
 
     def test_loss_scaling_gpu_inf(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             with paddle_static_guard():
                 main = base.Program()
                 startup = base.Program()

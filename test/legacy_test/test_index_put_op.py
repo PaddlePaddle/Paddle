@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import get_devices
+from op_test import get_device_place, get_devices, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -1197,7 +1197,8 @@ class TestIndexPutPrim(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestElementwiseMaximumOp_Stride(unittest.TestCase):
     def setUp(self):
@@ -1226,7 +1227,7 @@ class TestElementwiseMaximumOp_Stride(unittest.TestCase):
         self.accumulate = False
 
     def setPlace(self):
-        self.place = core.CUDAPlace(0)
+        self.place = get_device_place()
 
     def test_dygraph_forward(self):
         paddle.disable_static()

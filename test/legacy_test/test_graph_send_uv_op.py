@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -159,16 +159,16 @@ class TestCase8_ZeroSize(TestGraphSendUVOp):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace(), check_pir=True)
-        if paddle.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
             core.CPUPlace(), ['x', 'y'], 'out', check_pir=True
         )
-        if paddle.is_compiled_with_cuda():
+        if paddle.is_compiled_with_cuda() or is_custom_device():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ['x', 'y'], 'out', check_pir=True
+                get_device_place(), ['x', 'y'], 'out', check_pir=True
             )
 
 
