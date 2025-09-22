@@ -39,14 +39,14 @@ class MatmulVariadicTemplate:
         self.dtype2type_name = ap.OrderedDict(
             [
                 [ap.PointerType.const_float_ptr, "const float*"],
-                [ap.PointerType.const_float16_ptr, "const half*"],
-                [ap.PointerType.const_bfloat16_ptr, "const hip_bfloat16*"],
+                [ap.PointerType.const_float16_ptr, "const ap_half*"],
+                [ap.PointerType.const_bfloat16_ptr, "const ap_bfloat16*"],
                 [ap.PointerType.float_ptr, "float*"],
-                [ap.PointerType.float16_ptr, "half*"],
-                [ap.PointerType.bfloat16_ptr, "hip_bfloat16*"],
+                [ap.PointerType.float16_ptr, "ap_half*"],
+                [ap.PointerType.bfloat16_ptr, "ap_bfloat16*"],
                 [ap.DataType.float, "float"],
-                [ap.DataType.float16, "ck::half_t"],
-                [ap.DataType.bfloat16, "hip_bfloat16"],
+                [ap.DataType.float16, "ap_half"],
+                [ap.DataType.bfloat16, "ap_bfloat16"],
                 [ap.DataType.int64_t, "int64_t"],
             ]
         )
@@ -59,6 +59,36 @@ class MatmulVariadicTemplate:
         registry.get_or_create_kernel_arg_id_manul_var_name(
             kernel_arg_id=pair[0], cpp_var_name=pair[1]
         )
+    
+    def make_gpu_compile_cmd(self, dir_name, source_dir):
+        cutlass_dir = f"{dir_name}/matmul/cutlass-3.7.0"
+        compile_cmd = "nvcc -std=c++17 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + cutlass_dir + "/tools/util/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = (
+            compile_cmd
+            + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
+        )
+        compile_cmd = (
+            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+        )
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cu -o lib{self.library_name}.so"
+        )
+        return compile_cmd
+
+    def make_dcu_compile_cmd(self, source_dir, cutlass_dir):
+        ck_dir = f"{dir_name}/matmul/composable_kernel"
+        compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx906"
+        compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
+        )
+        return compile_cmd
 
     def compile(
         self,
@@ -116,18 +146,14 @@ class MatmulVariadicTemplate:
         )
 
     def get_kernel_arg_runtime_getters(self):
-        all_kernel_arg_id_and_unique_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_unique_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ap.map(
             lambda pair: pair[0].runtime_getter,
             all_kernel_arg_id_and_unique_names,
         )
 
     def get_kernel_arg_types(self):
-        all_kernel_arg_id_and_unique_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_unique_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ap.map(
             lambda pair: pair[0].type, all_kernel_arg_id_and_unique_names
         )
@@ -151,9 +177,7 @@ class MatmulVariadicTemplate:
                 f"{type_name} {field_name}" if for_declare else f"{field_name}"
             )
 
-        all_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
-        )
+        all_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.all_kernel_arg_id2unique_name.items()
         return ", ".join(
             ap.map(
                 declare_epilogue_arguments_field, all_kernel_arg_id_and_names
@@ -171,9 +195,7 @@ class MatmulVariadicTemplate:
             type_name = self.dtype2type_name[dtype]
             return f"{type_name} {field_name};"
 
-        generated_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
-        )
+        generated_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
         return f"\n{indent}".join(
             ap.map(
                 declare_epilogue_arguments_field,
@@ -190,9 +212,7 @@ class MatmulVariadicTemplate:
             )
             return f"{param_obj_name}.{field_name} = {var_name};"
 
-        generated_kernel_arg_id_and_names = (
-            self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
-        )
+        generated_kernel_arg_id_and_names = self.mut_kernel_arg_id_registry.generated_kernel_arg_id2unique_name.items()
         return f"\n{indent}".join(
             ap.map(
                 declare_epilogue_arguments_assign,
@@ -232,13 +252,8 @@ class MatmulVariadicTemplate:
         input1_shape_kargs,
     ):
         code_template = """
-// auto generated codes for Hygon DCU
-#include <hip/hip_runtime.h> 
-#include <hip/hip_fp16.h>
-#include <hip/hip_bfloat16.h> 
-#include <vector>
-
-#include "ck_matmul.h"
+// auto generated codes
+#include "backend.h"
 
 namespace ap {
 
@@ -265,7 +280,11 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
 
-  CKMatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor>(params, epilogue_args);
+  constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
+  constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
+
+  CKMatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+                           AlignA, AlignB>(params, epilogue_args);
 }
 
 } // namespace ap
@@ -279,14 +298,14 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
   std::vector<int64_t> ${input1}_shape;
   ${AP_PARAMS_INPUT1_SHAPE_INIT}
 
-  hipStream_t* hip_stream_ptr = reinterpret_cast<hipStream_t*>(stream_ptr);
+  apStream_t* ap_stream_ptr = reinterpret_cast<apStream_t*>(stream_ptr);
   ap::GemmEpilogueParams params(
-      *hip_stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
+      *ap_stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
 
 #if AP_ENABLE_AUTOTUNE
-  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, *hip_stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
+  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, *ap_stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
 #else
-  ap::RunMatmulWithVariadicKernel(params, ${AP_KERNEL_ARGS_CALL});
+  ap::RunMatmulWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 #endif
 }
 }
@@ -294,8 +313,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
         code = (
-            code_template
-            .replace(
+            code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
             )
             .replace(
@@ -337,20 +355,16 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
 
-        # 获取当前硬件类型
         device_type = get_hardware_device()
-
-        print("device_type: ", device_type)
 
         dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"
-        ck_dir = f"{dir_name}/matmul/composable_kernel"
-        compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx906"
-        compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
-        compile_cmd = compile_cmd + " -I " + source_dir
-        compile_cmd = (
-            compile_cmd
-            + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
+
+        compile_cmd = 
+        (
+            self.make_dcu_compile_cmd(dir_name, source_dir)
+            if device_type == "dcu"
+            else self.make_gpu_compile_cmd(dir_name, source_dir)
         )
 
         return CodeModule(  # noqa: F821

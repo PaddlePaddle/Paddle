@@ -624,14 +624,18 @@ Result<axpr::Value> GetHardwareDevice(const axpr::Value&,
   if (!args.empty()) {
     return TypeError{"get_hardware_device takes no arguments"};
   }
-  
-#if defined(WITH_GPU)
-  return axpr::Value{"gpu"};
-#elif defined(WITH_ROCM)
-  return axpr::Value{"dcu"};
-#else
-  return axpr::Value{"cpu"};
-#endif
-}
+
+  std::string str = "cpu";
+
+  #ifdef CINN_WITH_CUDA
+    str = "gpu";
+  #endif
+
+  #ifdef CINN_WITH_HIP
+    str = "dcu";
+  #endif
+
+  return str;
+  }
 
 }  // namespace ap::axpr
