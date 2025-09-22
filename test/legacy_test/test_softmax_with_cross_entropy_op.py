@@ -16,7 +16,11 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import (
+    OpTest,
+    is_custom_device,
+    paddle_static_guard,
+)
 
 sys.path.append("../deprecated/legacy_test")
 from test_softmax_op import stable_softmax
@@ -467,7 +471,8 @@ class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def initParams(self):

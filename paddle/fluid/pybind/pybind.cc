@@ -25,6 +25,7 @@ limitations under the License. */
 #endif
 #include <Python.h>
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -107,6 +108,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/cudart_py.h"
 #include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/distributed_py.h"
@@ -1470,6 +1472,24 @@ PYBIND11_MODULE(libpaddle, m) {
 
   BindException(&m);
 
+#define SET_STR_DEFINE(name) m.attr("_" #name) = std::string(name);
+
+#ifdef PYBIND11_COMPILER_TYPE
+  SET_STR_DEFINE(PYBIND11_COMPILER_TYPE);
+#endif
+#ifdef PYBIND11_STDLIB
+  SET_STR_DEFINE(PYBIND11_STDLIB);
+#endif
+#ifdef PYBIND11_BUILD_ABI
+  SET_STR_DEFINE(PYBIND11_BUILD_ABI);
+#endif
+
+#ifdef _GLIBCXX_USE_CXX11_ABI
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = true;
+#else
+  m.attr("_GLIBCXX_USE_CXX11_ABI") = false;
+#endif
+
   py::class_<iinfo>(m, "iinfo")
       .def(py::init<const phi::DataType &>())
       .def_readonly("min", &iinfo::min)
@@ -1747,23 +1767,58 @@ PYBIND11_MODULE(libpaddle, m) {
       py::arg("count") = -1,
       py::arg("offset") = 0);
 
+  m.def("place_to_dl_device", [](const phi::Place &place) {
+    ::DLDevice dl_device = PlaceToDLDevice(place);
+    return py::make_tuple(static_cast<int>(dl_device.device_type),
+                          dl_device.device_id);
+  });
+
   m.def("from_dlpack", [](py::object data) {
-    DLManagedTensor *dlMTensor = reinterpret_cast<DLManagedTensor *>(
-        PyCapsule_GetPointer(data.ptr(), "dltensor"));
+    if (PyCapsule_IsValid(data.ptr(),
+                          DLPackTraits<DLManagedTensorVersioned>::capsule)) {
+      DLManagedTensorVersioned *dlMTensor =
+          reinterpret_cast<DLManagedTensorVersioned *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensorVersioned>::capsule));
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+      PADDLE_ENFORCE_LE(
+          dlMTensor->version.major,
+          DLPACK_MAJOR_VERSION,
+          common::errors::InvalidArgument(
+              "The major version of DLManagedTensorVersioned (%d) is "
+              "greater than the supported version (%d).",
+              dlMTensor->version.major,
+              DLPACK_MAJOR_VERSION));
 
-    PADDLE_ENFORCE_NOT_NULL(
-        dlMTensor,
-        common::errors::InvalidArgument(
-            "from_dlpack received an invalid capsule. "
-            "Note that DLTensor capsules can be consumed only once, "
-            "so you might have already constructed a tensor from it once."));
+      // NOTE: Might meet bugged numpy version, see:
+      // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
+      auto ptensor =
+          DLPackTraits<DLManagedTensorVersioned>::FromDLPack(dlMTensor);
 
-    // NOTE: Might meet bugged numpy version, see:
-    // https://github.com/pytorch/pytorch/blob/main/torch/csrc/utils/tensor_new.cpp#L1636-L1638
-    auto ptensor = paddle::framework::TensorFromDLPack(dlMTensor);
+      PyCapsule_SetName(data.ptr(),
+                        DLPackTraits<DLManagedTensorVersioned>::used);
+      return ptensor;
+    } else {
+      DLManagedTensor *dlMTensor =
+          reinterpret_cast<DLManagedTensor *>(PyCapsule_GetPointer(
+              data.ptr(), DLPackTraits<DLManagedTensor>::capsule));
 
-    PyCapsule_SetName(data.ptr(), "used_dltensor");
-    return ptensor;
+      PADDLE_ENFORCE_NOT_NULL(
+          dlMTensor,
+          common::errors::InvalidArgument(
+              "from_dlpack received an invalid capsule. "
+              "Note that DLTensor capsules can be consumed only once, "
+              "so you might have already constructed a tensor from it once."));
+
+      auto ptensor = DLPackTraits<DLManagedTensor>::FromDLPack(dlMTensor);
+
+      PyCapsule_SetName(data.ptr(), DLPackTraits<DLManagedTensor>::used);
+      return ptensor;
+    }
   });
 
   m.def("tensor_from_cuda_array_interface", [](py::object obj) {
@@ -3043,7 +3098,7 @@ All parameter, weight, gradient are variables in Paddle.
         std::make_unique<paddle::prim::StaticTensorOperants>();
     paddle::OperantsManager::Instance().phi_operants =
         std::make_unique<paddle::operants::PhiTensorOperants>();
-    VLOG(4) << "Initialize tensor operants successfully";
+    VLOG(7) << "Initialize tensor operants successfully";
   });
   m.def("is_compiled_with_flagcx", IsCompiledWithFlagcx);
   m.def("is_compiled_with_deepep", IsCompiledWithDeepEP);
@@ -3142,6 +3197,57 @@ All parameter, weight, gradient are variables in Paddle.
             Scope *,
             const phi::DenseTensor &,
             const std::string &)>(&framework::SetVariable));
+  m.def(
+      "set_vlog_level",
+      [](py::object module_levels) {
+        if (py::isinstance<py::int_>(module_levels)) {
+          auto level = module_levels.cast<int>();
+          // Do not using google::SetVLOGLevel("*", level);
+          // It may cause configuration effects for a single module
+          VLOG(3) << "Set the VLOG level of all modules to " << level;
+          FLAGS_v = level;
+        } else if (py::isinstance<py::dict>(module_levels)) {
+          auto module_levels_dict = module_levels.cast<py::dict>();
+          for (auto &item : module_levels_dict) {
+            auto module_name = item.first.cast<std::string>();
+            auto level = item.second.cast<int>();
+            if (module_name == "*") {
+              VLOG(3) << "Set the VLOG level of all modules to " << level;
+              FLAGS_v = level;
+            } else {
+              google::SetVLOGLevel(module_name.c_str(), level);
+            }
+          }
+        } else {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "The parameters of set_vlog_level must be int or dict! "));
+        }
+      },
+      py::arg("module_levels"),
+      R"DOC(
+    Set the verbosity logging level for specified modules.
+
+    This function allows setting the VLOG level for specific modules or for all modules.
+    The VLOG level controls the verbosity of logging output, with higher levels producing more
+    detailed logs.
+
+    Parameters:
+      module_levels (dict|int): A dictionary where the keys are module names (str) and
+                                the values are the corresponding verbosity levels (int),
+                                or an int variable that represents the verbosity level set globally for all modules.
+
+    Example:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # case1: Set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level(1)
+            >>> # case2: Another way to set GLOG_v=1
+            >>> paddle.base.core.set_vlog_level({"*": 1})
+            >>> # case3: Set GLOG_vmodule=dygraph_functions=4,nodes=5
+            >>> paddle.base.core.set_vlog_level({"dygraph_functions": 4, "nodes": 5})
+
+)DOC");
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
             Scope *,
@@ -4131,6 +4237,10 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   BindDeepEPApi(&m);
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+  BindCudaRt(&m);
 #endif
 }
 }  // namespace paddle::pybind

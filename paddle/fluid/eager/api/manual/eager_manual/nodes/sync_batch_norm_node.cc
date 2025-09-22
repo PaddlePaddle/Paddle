@@ -30,15 +30,16 @@
 
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
-
+#define SEPARATOR "=========================="
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 SyncBatchNormGradNode::operator()(
     paddle::small_vector<std::vector<paddle::Tensor>,
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running AD API GRAD: "
-          << "sync_batch_norm_grad";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API_GRAD: "
+          << "sync_batch_norm_grad" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("SyncBatchNormGradNode begin");
   }
@@ -108,9 +109,6 @@ SyncBatchNormGradNode::operator()(
   // Inplace Check
 
   // Inplace Strategy
-
-  VLOG(5) << "Running C++ API: "
-          << "sync_batch_norm_grad";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -153,7 +151,9 @@ SyncBatchNormGradNode::operator()(
   }
 
   // Call grad_api function
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "sync_batch_norm_grad" << SEPARATOR;
   paddle::experimental::sync_batch_norm_grad(x,
                                              scale,
                                              bias,
@@ -170,6 +170,9 @@ SyncBatchNormGradNode::operator()(
                                              api_output_0,
                                              api_output_1,
                                              api_output_2);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_C++_API: "
+          << "sync_batch_norm_grad" << SEPARATOR;
   // Check NaN and Inf id needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_grad", returns);
@@ -267,6 +270,9 @@ SyncBatchNormGradNode::operator()(
     egr::CUDAErrorCheck("SyncBatchNormGradNode finish");
   }
   // Return
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API_GRAD: "
+          << "sync_batch_norm_grad" << SEPARATOR;
   if (NeedComplexToRealConversion()) HandleComplexGradToRealGrad(&returns);
   return returns;
 }

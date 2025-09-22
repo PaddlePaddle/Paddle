@@ -1,5 +1,5 @@
 if(WIN32)
-  add_definitions(-DPADDLE_DLL_EXPORT)
+  remove_definitions(-DPADDLE_DLL_EXPORT)
 endif()
 cc_library(
   test_dialect
