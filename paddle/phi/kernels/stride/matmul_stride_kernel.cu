@@ -132,6 +132,13 @@ void MatmulStrideKernel(const Context &dev_ctx,
     return;
   }
 
+  if (!FLAGS_use_stride_compute_kernel) {
+    PADDLE_THROW(
+        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
+                              "Kernel using DenseTensorIterator "
+                              "be called, something wrong has happened!"));
+  }
+
   auto x_meta = x.meta();
   DDim x_stride = x_meta.strides;
   DDim x_shape = x_meta.dims;
@@ -187,13 +194,6 @@ void MatmulStrideKernel(const Context &dev_ctx,
   meta.strides = meta.calc_strides(out->dims());
   out->set_meta(meta);
   phi::MatmulKernel<T, Context>(dev_ctx, x_, y_, transpose_x, transpose_y, out);
-
-  if (!FLAGS_use_stride_compute_kernel) {
-    PADDLE_THROW(
-        common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
-                              "Kernel using DenseTensorIterator "
-                              "be called, something wrong has happened!"));
-  }
 }
 
 }  // namespace phi
