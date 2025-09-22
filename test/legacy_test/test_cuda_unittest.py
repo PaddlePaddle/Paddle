@@ -243,6 +243,9 @@ class TestCudaCompat(unittest.TestCase):
         self.assertGreaterEqual(a, 0)
         self.assertGreaterEqual(b, 0)
 
+        with self.assertRaises(ValueError):
+            a, b = mem_get_info('0')
+
     @unittest.skipIf(
         (
             not paddle.device.is_compiled_with_cuda()
