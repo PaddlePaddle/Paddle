@@ -4330,11 +4330,11 @@ struct CudaSqrtFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaSqrtGradFunctor : public BaseActivationFunctor<T> {
-  T one_half = static_cast<T>(0.5f);
+  T two = static_cast<T>(2);
 
-  // dx = dout * 0.5 / out
+  // dx = dout / (2 * out)
   __device__ __forceinline__ T operator()(const T dout, const T out) const {
-    return one_half * dout / out;
+    return dout / (two * out);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
@@ -4421,7 +4421,7 @@ struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
                                           const T arg_out) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType out = static_cast<MPType>(arg_out);
-    return static_cast<T>(minus_one_half * dout * out * out * out);
+    return static_cast<T>(minus_one_half * dout * (out * out * out));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
