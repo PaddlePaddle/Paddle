@@ -143,18 +143,6 @@ ValueType any_cast(const any &operand) {
   return *result;
 }
 
-template <typename ValueType>
-inline ValueType any_cast(const any &operand) {
-  typedef typename std::remove_reference<ValueType>::type nonref;
-
-  // The comment in the above version of 'any_cast' explains when this
-  // assert is fired and what to do.
-  static_assert(!std::is_reference<nonref>::value,
-                "!std::is_reference<nonref>::value");
-
-  return any_cast<const nonref &>(const_cast<any &>(operand));
-}
-
 // Note: The "unsafe" versions of any_cast are not part of the
 // public interface and may be removed at any time. They are
 // required where we know what type is stored in the any and can't
