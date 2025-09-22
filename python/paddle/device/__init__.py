@@ -649,8 +649,6 @@ def get_device_module(device: _CustomPlaceLike = None):
         if isinstance(place, place_type):
             return module
 
-    raise RuntimeError(f"Unsupported device type: {type(place).__name__}")
-
 
 def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
     '''

@@ -257,7 +257,8 @@ class StreamContext(_PaddleStreamGuard):
 
 
 def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
-    """Return the random number generator state of the specified device as a ByteTensor.
+    """
+    Return the random number generator state of the specified device as a ByteTensor.
 
     Args:
         device (DeviceLike, optional): The device to retrieve the RNG state from.
@@ -273,11 +274,12 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
             >>> import paddle
             >>> paddle.cuda.get_rng_state()
     """
+
     device = _device_to_paddle(device)
     if device is None:
         place = paddle.framework._current_expected_place_()
     else:
-        place = paddle.device._convert_to_place(device)
+        place = paddle_device._convert_to_place(device)
     if isinstance(place, paddle.CPUPlace):
         return core.default_cpu_generator().get_state()
     elif isinstance(place, paddle.CUDAPlace):
@@ -293,7 +295,8 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
 def set_rng_state(
     new_state: core.GeneratorState, device: DeviceLike | None = None
 ) -> None:
-    """Set the random number generator state of the specified device.
+    """
+    Set the random number generator state of the specified device.
 
     Args:
         new_state (core.GeneratorState): The desired RNG state to set.
@@ -320,7 +323,7 @@ def set_rng_state(
     if device is None:
         place = paddle.framework._current_expected_place_()
     else:
-        place = device._convert_to_place(device)
+        place = paddle_device._convert_to_place(device)
 
     if isinstance(place, paddle.CUDAPlace):
         core.default_cuda_generator(place.get_device_id()).set_state(new_state)
@@ -332,10 +335,6 @@ def set_rng_state(
         ).set_state(new_state)
     elif isinstance(place, core.CPUPlace):
         core.default_cpu_generator().set_state(new_state)
-    else:
-        raise ValueError(
-            f"set_rng_state is not implemented for current device: {place}"
-        )
 
 
 def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:

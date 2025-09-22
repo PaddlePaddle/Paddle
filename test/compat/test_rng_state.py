@@ -33,6 +33,22 @@ class TestRngState(unittest.TestCase):
         finally:
             paddle.cuda.set_rng_state(original_state)
 
+    def test_get_and_set_rng_state_cpu(self):
+        original_state = paddle.cuda.get_rng_state('cpu')
+        cur_dev = paddle.device.get_device()
+
+        paddle.set_device('cpu')
+        r = paddle.cuda.get_rng_state('cpu')
+        self.assertIsInstance(r, paddle.core.GeneratorState)
+
+        s = paddle.randn([10, 10])
+        paddle.cuda.set_rng_state(r, device='cpu')
+        s1 = paddle.randn([10, 10])
+        np.testing.assert_allclose(s.numpy(), s1.numpy(), rtol=0, atol=0)
+
+        paddle.cuda.set_rng_state(original_state, device='cpu')
+        paddle.set_device(cur_dev)
+
     def test_invalid_device_raises(self):
         with self.assertRaises(ValueError):
             paddle.set_rng_state(paddle.get_rng_state(), device="unknown:0")
