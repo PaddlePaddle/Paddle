@@ -424,16 +424,16 @@ def get_devices():
         devices.append('gpu')
     if is_custom_device():
         dev_type = paddle.device.get_all_custom_device_type()[0]
-        devices.append(f'{dev_type}:0')
+        devices.append(f'{dev_type}')
     return devices
 
 
-def get_device():
+def get_device(with_device_id=False):
     if paddle.is_compiled_with_cuda():
-        return 'gpu'
+        return 'gpu' if not with_device_id else 'gpu:0'
     elif is_custom_device():
         dev_type = paddle.device.get_all_custom_device_type()[0]
-        return f'{dev_type}:0'
+        return f'{dev_type}' if not with_device_id else f'{dev_type}:0'
     else:
         return None
 
