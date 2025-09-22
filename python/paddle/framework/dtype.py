@@ -139,6 +139,7 @@ def bind_datatype():
     global float32
     global double
     global float64
+    global half
     global float16
     global bfloat16
     global float8_e4m3fn
