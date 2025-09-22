@@ -41,4 +41,52 @@ static __forceinline__ __device__ bool InBounds3D(
   return d >= 0 && d < D && h >= 0 && h < H && w >= 0 && w < W;
 }
 
+inline bool cudnnIsAvailable() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // cuDNN/MIOpen version > 0 means DNN lib loaded; require v7+ for sampler
+  return phi::backends::gpu::DnnVersion() >= 7000;
+#else
+  return false;
+#endif
+}
+
+inline bool isGpuTensor(const phi::DenseTensor& x) {
+  return phi::is_gpu_place(x.place());
+}
+
+inline bool canUse32bitIndexMath(const phi::DenseTensor& x) {
+  auto elements = x.numel();
+  int64_t max_elem = static_cast<int64_t>(std::numeric_limits<int>::max());
+
+  if (elements > max_elem) {
+    return false;
+  }
+
+  auto dims = x.dims();
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] > max_elem) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename T>
+inline bool condCudnnGridSampler(const phi::DenseTensor& input,
+                                 const phi::DenseTensor& grid) {
+  if (!cudnnIsAvailable()) return false;
+  if (!isGpuTensor(input) || !isGpuTensor(grid)) return false;
+  if (!(std::is_same<T, float>::value || std::is_same<T, double>::value))
+    return false;
+  if (!canUse32bitIndexMath(input) || !canUse32bitIndexMath(grid)) return false;
+
+  // Only 4-D NCHW input is supported by cuDNN sampler path here
+  auto in_dims = input.dims();
+  if (in_dims.size() != 4) return false;
+
+  // Channel constraint to match PyTorch guard: C <= 1024
+  if (in_dims[1] > 1024) return false;
+
+  return true;
+}
 }  // namespace phi
