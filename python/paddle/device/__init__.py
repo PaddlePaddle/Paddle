@@ -275,6 +275,8 @@ def is_available() -> bool:
             ... else:
             ...     print("No supported devices available")
     """
+    if current_device_is_cpu:
+        return False
     return device_count() >= 1
 
 
