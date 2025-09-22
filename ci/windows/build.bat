@@ -96,10 +96,10 @@ if "%GENERATOR%" == "Ninja" (
 )
 
 rem ------show summary of current GPU environment----------
-python -m pip install cmake==4.1.0
+@REM python -m pip install cmake==4.1.0
 
-for /f "tokens=*" %%i in ('python -c "import os, sys; print(os.path.dirname(sys.executable))"') do set PYTHON_SCRIPTS_DIR=%%i\Scripts
-set "PATH=%PYTHON_SCRIPTS_DIR%;%PATH%"
+@REM for /f "tokens=*" %%i in ('python -c "import os, sys; print(os.path.dirname(sys.executable))"') do set PYTHON_SCRIPTS_DIR=%%i\Scripts
+@REM set "PATH=%PYTHON_SCRIPTS_DIR%;%PATH%"
 
 cmake --version
 if "%WITH_GPU%"=="ON" (
