@@ -119,8 +119,8 @@ void MaxStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -157,7 +157,7 @@ void MinStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
     if (!x.meta().is_contiguous() || x.offset() != 0) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
@@ -194,8 +194,8 @@ void ProdStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -238,8 +238,8 @@ void AllStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -301,8 +301,8 @@ void AnyStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -356,8 +356,8 @@ void SumStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -437,8 +437,8 @@ void MeanStrideKernel(const Context& dev_ctx,
   }
 
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
