@@ -330,11 +330,11 @@ jobs:
       - name: Generate coverage information
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
+          set -x
           source ~/.bashrc
           unset GREP_OPTIONS
-          export WITH_ALL_COVERAGE=ON
           source ${{ github.workspace }}/../../../proxy
-          source ${ci_scripts}/utils.sh; check_coverage
+          source ${ci_scripts}/utils.sh; export WITH_ALL_COVERAGE=ON &&  check_coverage
           coverage_tag=$(date +"%m-%d")
           mkdir -p /home/data/cfs/coverage/${coverage_tag}
           cp build/coverage_files/* /home/data/cfs/coverage/${coverage_tag}
