@@ -20,13 +20,11 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
-#include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 #include "paddle/phi/kernels/funcs/dims_simplifier.h"
@@ -1161,7 +1159,8 @@ void StrideImpl(const Context& dev_ctx,
         reinterpret_cast<void*>(dev_ctx.template Alloc<T>(&semaphore_tensor));
 
     auto stream = dev_ctx.stream();
-    cudaMemsetAsync(semaphores_data, 0, reduce_config.semaphore_size(), stream);
+    phi::backends::gpu::GpuMemsetAsync(
+        semaphores_data, 0, reduce_config.semaphore_size(), stream);
   }
 
   auto output_calc = make_output_calculator<uint32_t>(iter);
