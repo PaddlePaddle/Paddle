@@ -25,10 +25,12 @@ from paddle.base.framework import in_dynamic_or_pir_mode
 from paddle.base.layer_helper import LayerHelper
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.device.cuda import get_device_capability
-
-g_enable_math = None
-g_enable_flash = None
-g_enable_mem_efficient = None
+from paddle.nn.attention.sdpa import (
+    SDPBackend,
+    _get_backend_priority,
+    _get_enabled_backends,
+    sdpa_kernel,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -150,20 +152,22 @@ def sdp_kernel(
     With the sdp_kernel context manager, different algorithm implementations can
     be selected for scaled_dot_product_attention.
     """
-    global g_enable_math, g_enable_flash, g_enable_mem_efficient
-    original_enable_math = g_enable_math
-    original_enable_flash = g_enable_math
-    original_enable_mem_efficient = g_enable_mem_efficient
+    backend_list = []
+    if enable_flash:
+        backend_list.append(SDPBackend.FLASH_ATTENTION)
+    if enable_mem_efficient:
+        backend_list.append(SDPBackend.EFFICIENT_ATTENTION)
+    if enable_math:
+        backend_list.append(SDPBackend.MATH)
 
-    g_enable_math = enable_math
-    g_enable_flash = enable_flash
-    g_enable_mem_efficient = enable_mem_efficient
-    try:
-        yield
-    finally:
-        g_enable_math = original_enable_math
-        g_enable_flash = original_enable_flash
-        g_enable_mem_efficient = original_enable_mem_efficient
+    if not backend_list:
+        raise ValueError("At least one backend must be enabled")
+
+    with sdpa_kernel(backend_list) as context:
+        try:
+            yield context
+        finally:
+            pass
 
 
 # special for XPU device
@@ -283,30 +287,24 @@ def _select_sdp(head_dim: int) -> str:
     if "metax_gpu" in place:
         return "flash_attn"
 
-    # not use sdp_kernel
-    if g_enable_flash is None:
-        if "gpu" not in place:
-            return "math"
-        else:
-            return _select_sdp_cuda(head_dim)
-
-    if (
-        g_enable_math is False
-        and g_enable_flash is False
-        and g_enable_mem_efficient is False
-    ):
+    enabled_backends = _get_enabled_backends()
+    if not enabled_backends:
         raise AssertionError(
             "No available backend for scaled_dot_product_attention was found."
         )
 
-    if g_enable_math is True:
-        if g_enable_flash is False and g_enable_mem_efficient is False:
+    enable_math = SDPBackend.MATH in enabled_backends
+    enable_flash = SDPBackend.FLASH_ATTENTION in enabled_backends
+    enable_mem_efficient = SDPBackend.EFFICIENT_ATTENTION in enabled_backends
+
+    if enable_math is True:
+        if enable_flash is False and enable_mem_efficient is False:
             return "math"
         if "gpu" not in place:
             return "math"
-    if g_enable_flash is True and g_enable_mem_efficient is True:
+    if enable_flash is True and enable_mem_efficient is True:
         return _select_sdp_cuda(head_dim)
-    if g_enable_flash is True:
+    if enable_flash is True:
         return "flash_attn"
     return "mem_efficient"
 
@@ -325,44 +323,25 @@ def _select_sdp_for_sdpa(query, key, attn_mask, dropout, is_causal) -> str:
     if "metax_gpu" in place:
         return "flash_attn"
 
-    # not use sdp_kernel
-    if (
-        g_enable_flash is None
-        and g_enable_math is None
-        and g_enable_mem_efficient is None
-    ):
-        # test flash attn usage
-        use_flash = can_use_flash_attn(
-            query, key, attn_mask, dropout, is_causal
-        )
-        use_efficient = can_use_efficient(query)
-        use_math = True
-        if use_flash:
-            return "flash_attn"
-        elif use_efficient:
-            return "mem_efficient"
-        elif use_math:
+    enabled_backends = _get_enabled_backends()
+    priority_order = _get_backend_priority()
+
+    for backend in priority_order:
+        if backend not in enabled_backends:
+            continue
+
+        if backend == SDPBackend.FLASH_ATTENTION:
+            if can_use_flash_attn(query, key, attn_mask, dropout, is_causal):
+                return "flash_attn"
+        elif backend == SDPBackend.EFFICIENT_ATTENTION:
+            if can_use_efficient(query):
+                return "mem_efficient"
+        elif backend == SDPBackend.MATH:
             return "math"
 
-    if (
-        g_enable_math is False
-        and g_enable_flash is False
-        and g_enable_mem_efficient is False
-    ):
-        raise AssertionError(
-            "No available backend for scaled_dot_product_attention was found."
-        )
-
-    if g_enable_math is True:
-        if g_enable_flash is False and g_enable_mem_efficient is False:
-            return "math"
-        if "gpu" not in place:
-            return "math"
-    if g_enable_flash is True and g_enable_mem_efficient is True:
-        return _select_sdp_cuda(query.shape[-1])
-    if g_enable_flash is True:
-        return "flash_attn"
-    return "mem_efficient"
+    raise RuntimeError(
+        "No available backend for scaled_dot_product_attention was found."
+    )
 
 
 @overload
