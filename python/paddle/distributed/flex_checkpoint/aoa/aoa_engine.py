@@ -14,19 +14,18 @@
 from __future__ import annotations
 
 import ast
+import logging
 import re
-from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
 from .parser import Parser
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
 
@@ -57,28 +56,46 @@ class ShardMappingEntry:
 
 ShardMapping = list[ShardMappingEntry]
 
+OPTIMIZER_STATE_NAME = [
+    ".w_0",
+    ".moment1_0",
+    ".moment2_0",
+    ".beta1_pow_acc_0",
+    ".beta2_pow_acc_0",
+]
+
+
+def split_optimizer_state_key(key: str) -> tuple[str, str]:
+    for opt_state_name in OPTIMIZER_STATE_NAME:
+        if key.endswith(opt_state_name):
+            return key[: -len(opt_state_name)], opt_state_name
+    return key, None
+
 
 class AOAShardInfoContext:
     def __init__(
         self,
         source_state_shard_info: _ShardInfo,
         destination_state_shard_info: _ShardInfo,
+        source_state_origin_shard_num: dict[str, int] | None = None,
     ) -> None:
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
-        self.optim_state_name = [
-            ".w_0",
-            ".moment1_0",
-            ".moment2_0",
-            ".beta1_pow_acc_0",
-            ".beta2_pow_acc_0",
-        ]
+        self.source_state_origin_shard_num = source_state_origin_shard_num
 
-    def get_all_dst_state_keys(self) -> Iterable[str]:
-        return self.destination_state_shard_info.keys()
+    def get_all_dst_state_keys(self):
+        dst_state_keys = set()
+        for k in self.destination_state_shard_info.keys():
+            model_state_key, _ = split_optimizer_state_key(k)
+            dst_state_keys.add(model_state_key)
+        return dst_state_keys
 
-    def get_all_src_state_keys(self) -> Iterable[str]:
-        return self.source_state_shard_info.keys()
+    def get_all_src_state_keys(self):
+        src_state_keys = set()
+        for k in self.source_state_shard_info.keys():
+            model_state_key, _ = split_optimizer_state_key(k)
+            src_state_keys.add(model_state_key)
+        return src_state_keys
 
     def get_num_hidden_layers(
         self, name_with_layer_id: str, layer_id_macro_tag: str
@@ -98,36 +115,87 @@ class AOAShardInfoContext:
         return match_layer_id
 
     def get_src_state_shard_num(self, src_state_key: str) -> int:
-        if src_state_key not in self.source_state_shard_info:
-            raise KeyError(
-                f"src_state_key '{src_state_key}' not in  source_state_shard_info"
-            )
-        new_state_key = src_state_key
-        for state_name in self.optim_state_name:
-            if state_name in src_state_key:
-                new_state_key = src_state_key.replace(state_name, "")
-                break
+        model_state_key, opt_state_name = split_optimizer_state_key(
+            src_state_key
+        )
 
-        return len(self.source_state_shard_info[new_state_key])
+        assert opt_state_name is None, (
+            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
+        )
+
+        state_keys = [
+            model_state_key,
+            f"{model_state_key}.w_0",
+            f"{model_state_key}.moment1_0",
+            f"{model_state_key}.moment2_0",
+        ]
+
+        if self.source_state_origin_shard_num is not None:
+            shard_nums = {
+                self.source_state_origin_shard_num[key]
+                for key in state_keys
+                if key in self.source_state_origin_shard_num
+            }
+        else:
+            shard_nums = {
+                len(
+                    {
+                        shard_info.global_offset
+                        for shard_info in self.source_state_shard_info[key]
+                    }
+                )
+                for key in state_keys
+                if key in self.source_state_shard_info
+            }
+
+        if not shard_nums:
+            raise ValueError(
+                f"No shard information found for any of the keys: {state_keys}"
+            )
+
+        if len(shard_nums) > 1:
+            raise AssertionError(
+                f"Inconsistent shard numbers among keys in source_sharded_state_dict: {shard_nums}."
+            )
+        return shard_nums.pop()
 
     def get_dst_state_shard_num(self, dst_state_key: str) -> int:
-        if dst_state_key not in self.destination_state_shard_info:
-            raise KeyError(
-                f"dst_state_key '{dst_state_key}' not in destination_state_shard_info"
+        model_state_key, opt_state_name = split_optimizer_state_key(
+            dst_state_key
+        )
+
+        assert opt_state_name is None, (
+            "AOA notions apply only to the model state, but are automatically propagated to the optimizer state."
+        )
+
+        state_keys = [
+            model_state_key,
+            f"{model_state_key}.w_0",
+            f"{model_state_key}.moment1_0",
+            f"{model_state_key}.moment2_0",
+        ]
+
+        shard_nums = {
+            len(
+                {
+                    shard_info.global_offset
+                    for shard_info in self.destination_state_shard_info[key]
+                }
+            )
+            for key in state_keys
+            if key in self.destination_state_shard_info
+        }
+
+        if not shard_nums:
+            raise ValueError(
+                f"No shard information found for any of the keys: {state_keys}"
             )
 
-        new_state_key = dst_state_key
-        for state_name in self.optim_state_name:
-            if state_name in dst_state_key:
-                new_state_key = dst_state_key.replace(state_name, "")
-                break
-
-        shard_infos = self.destination_state_shard_info[new_state_key]
-        global_offset_set = set()
-        for shard_info in shard_infos:
-            global_offset_set.add(shard_info.global_offset)
-
-        return len(global_offset_set)
+        if len(shard_nums) > 1:
+            raise AssertionError(
+                f"Inconsistent shard numbers among keys in destination_state_shard_info: {shard_nums}."
+            )
+        return shard_nums.pop()
 
 
 class AOAEngine:
@@ -136,12 +204,15 @@ class AOAEngine:
         aoa_config: dict[str, list[str]],
         source_state_shard_info: _ShardInfo,
         destination_state_shard_info: _ShardInfo,
+        source_state_origin_shard_num: dict[str, int] | None = None,
     ):
         self.aoa_config = aoa_config
         self.source_state_shard_info = source_state_shard_info
         self.destination_state_shard_info = destination_state_shard_info
         self.context = AOAShardInfoContext(
-            source_state_shard_info, destination_state_shard_info
+            source_state_shard_info,
+            destination_state_shard_info,
+            source_state_origin_shard_num,
         )
         self.lexer = Lexer(self.context)
         self.parser = Parser(
@@ -163,7 +234,11 @@ class AOAEngine:
         input_vars = {}
         for key, shards in self.source_state_shard_info.items():
             global_shape = shards[0].global_shape
-            input_vars[key] = self.make_input_tensor(key, global_shape)
+            model_state_key, opt_state_name = split_optimizer_state_key(key)
+            if opt_state_name in [".w_0", ".moment1_0", ".moment2_0", None]:
+                input_vars[model_state_key] = self.make_input_tensor(
+                    model_state_key, global_shape
+                )
         return input_vars
 
     def split(
@@ -377,12 +452,15 @@ class AOAEngine:
                 raise SyntaxError(f'Unexpected statement: {stmt}')
 
         for name in self.destination_state_shard_info.keys():
-            if name not in self.output_vars:
-                if name in self.need_add_output_vars:
-                    self.output_vars[name] = None
+            model_state_key, opt_state_name = split_optimizer_state_key(name)
+            if model_state_key not in self.output_vars:
+                if model_state_key in self.need_add_output_vars:
+                    self.output_vars[model_state_key] = None
                 else:
-                    assert name in self.input_vars
-                    self.output_vars[name] = self.input_vars[name]
+                    assert model_state_key in self.input_vars
+                    self.output_vars[model_state_key] = self.input_vars[
+                        model_state_key
+                    ]
 
     def find_source_slices(
         self, key: str, local_slice: tuple[slice, ...]
@@ -449,10 +527,17 @@ class AOAEngine:
         self,
         target: ShardedWeightDesc,
     ) -> ShardMapping:
-        target_key = target.key
+        target_key, opt_state_name = split_optimizer_state_key(target.key)
         target_local_shape = target.local_shape
         target_global_offset = target.global_offset
         target_global_shape = target.global_shape
+
+        if opt_state_name in [".beta1_pow_acc_0", ".beta2_pow_acc_0"]:
+            assert target_key in self.output_vars
+            tensor = self.output_vars[target_key]
+            target_local_shape = tensor.shape
+            target_global_offset = (0,) * len(target_local_shape)
+            target_global_shape = target_local_shape
 
         slices = tuple(
             slice(offset, offset + size, 1)
@@ -462,6 +547,40 @@ class AOAEngine:
         results = self.find_source_slices(target_key, slices)
 
         shard_mappings = []
+
+        target_key = (
+            target_key + opt_state_name
+            if opt_state_name is not None
+            else target_key
+        )
+
+        src_keys = {
+            result[0]
+            for result in results
+            if result[0] not in self.need_remove_input_vars
+        }
+        if opt_state_name in [".beta1_pow_acc_0", ".beta2_pow_acc_0"]:
+            if len(src_keys) == 0:
+                return shard_mappings
+            elif len(src_keys) > 1:
+                logger.warning(
+                    f"{target_key} has multiple sources: {src_keys} (e.g., .beta1_pow_acc_0). Returning one arbitrarily."
+                )
+                src_key = next(iter(src_keys))
+            else:
+                src_key = next(iter(src_keys))
+            return [
+                ShardMappingEntry(
+                    target,
+                    ShardedWeightDesc(
+                        src_key + opt_state_name,
+                        target.local_shape,
+                        target.global_shape,
+                        target.global_offset,
+                    ),
+                    None,
+                )
+            ]
 
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
@@ -475,8 +594,14 @@ class AOAEngine:
             )
             tgt_global_offset = tuple(slc.start for slc in local_slices)
 
+            new_src_key = (
+                src_key + opt_state_name
+                if opt_state_name is not None
+                else src_key
+            )
+
             source_sharded_weight = ShardedWeightDesc(
-                src_key,
+                new_src_key,
                 src_local_shape,
                 tuple(src_global_shape),
                 src_global_offset,
@@ -488,7 +613,7 @@ class AOAEngine:
                 tgt_global_offset,
             )
 
-            if source_sharded_weight.key in self.need_remove_input_vars:
+            if src_key in self.need_remove_input_vars:
                 mapping_entry = ShardMappingEntry(
                     target_sharded_weight,
                     source_sharded_weight,
@@ -503,6 +628,7 @@ class AOAEngine:
                     pp_list,
                 )
             )
+
         return shard_mappings
 
 

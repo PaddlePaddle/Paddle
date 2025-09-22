@@ -195,6 +195,29 @@ def save_state_dict(
         use_dist = True if paddle.distributed.get_world_size() > 1 else False
         if use_dist:
             sharded_state_dict = state_dict
+
+            local_offsets = defaultdict(list)
+            for key, sharded_weight in sharded_state_dict.items():
+                local_offsets[key].append(tuple(sharded_weight.global_offset))
+
+            all_offsets = []
+            paddle.distributed.all_gather_object(
+                all_offsets,
+                dict(local_offsets),
+                process_group,
+            )
+
+            sharded_weight_global_offsets = defaultdict(set)
+            for process_offsets in all_offsets:
+                for key, offsets in process_offsets.items():
+                    for offset in offsets:
+                        sharded_weight_global_offsets[key].add(offset)
+
+            origin_shard_num = {
+                key: len(offsets)
+                for key, offsets in sharded_weight_global_offsets.items()
+            }
+
             flattened, unflattened = {}, {}
             for key, shard in sharded_state_dict.items():
                 if getattr(shard, "is_flattened", False):
@@ -291,11 +314,13 @@ def save_state_dict(
             save_dict.update(unflattened)
         else:
             save_dict = {}
+            origin_shard_num = {}
             for key, val in state_dict.items():
                 assert val.local_shape == val.global_shape, (
                     f"{key} is not replicated !"
                 )
                 save_dict[key] = val.local_tensor
+                origin_shard_num[key] = 1
 
         save_state_dict_impl(
             save_dict,
@@ -305,6 +330,7 @@ def save_state_dict(
             unique_id,
             async_save,
             safetensors,
+            origin_shard_num,
         )
     else:
         save_state_dict_impl(
@@ -326,6 +352,7 @@ def save_state_dict_impl(
     unique_id: int | None = None,
     async_save: bool = False,
     safetensors: bool = False,
+    origin_shard_num: dict[str, int] | None = None,
 ) -> None:
     with paddle.base.dygraph.guard():
         assert isinstance(state_dict, dict), (
@@ -447,6 +474,7 @@ def save_state_dict_impl(
             global_storage_metadata
         )
         metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
+        metadata.origin_shard_num = origin_shard_num
 
         logger.debug(f"metadata:{metadata}")
         write_to_file_if_empty(

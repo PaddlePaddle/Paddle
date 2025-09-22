@@ -43,3 +43,4 @@ class Metadata:
     state_dict_metadata: dict[str, list[LocalTensorMetadata]] = None
     storage_metadata: dict[LocalTensorIndex, str] = None
     flat_mapping: dict[str, tuple[str]] = None
+    origin_shard_num: dict[str, int] = None

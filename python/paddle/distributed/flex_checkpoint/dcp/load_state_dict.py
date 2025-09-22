@@ -655,6 +655,7 @@ def _unflatten_shards(flat_shards):
 
 def _handle_aoa(
     load_dict,
+    destination_state_shard_info,
     path,
     process_group,
     coordinator_rank,
@@ -666,6 +667,10 @@ def _handle_aoa(
     assert len(metadata_files) == 1, "Only support one metadata file now."
     metadata = paddle.load(os.path.join(path, metadata_files[0]))
     state_dict_metadata = metadata.state_dict_metadata
+    origin_shard_num = metadata.origin_shard_num
+    assert origin_shard_num is not None, (
+        "When using AOA, origin_shard_num should be stored in the metadata."
+    )
 
     source_state_shard_info = {
         param_name: [
@@ -679,30 +684,19 @@ def _handle_aoa(
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
     }
-    destination_state_shard_info = defaultdict(list)
-    for key, val in load_dict.items():
-        desc = build_shard_desc(val)
-        destination_state_shard_info[key].append(desc)
-    dst_sharded_shard_info_list = []
-    paddle.distributed.all_gather_object(
-        dst_sharded_shard_info_list,
-        dict(destination_state_shard_info),
-        process_group,
-    )
-    destination_state_shard_info = merge_shard_info_list(
-        dst_sharded_shard_info_list
-    )
 
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
         aoa_config=aoa_config,
+        source_state_origin_shard_num=origin_shard_num,
     )
 
     src_desc_to_sharded_tensor = {}
     dst_to_src_desc_mapping = {}
     new_load_dict = {}
     src_desc_to_postprocess_list = {}
+    force_gc = []
 
     for param_name, tgt_shard in load_dict.items():
         tgt_desc = build_shard_desc(tgt_shard)
@@ -731,6 +725,7 @@ def _handle_aoa(
                 local_tensor = paddle.empty(
                     src_desc.local_shape, dtype=tgt_shard.local_tensor.dtype
                 )
+                force_gc.append(local_tensor)
                 if local_tensor.place != tgt_shard.local_tensor.place:
                     local_tensor = local_tensor.to(tgt_shard.local_tensor.place)
                 new_load_dict[idx] = ShardedWeight(
@@ -759,6 +754,10 @@ def _handle_aoa(
         assign_sharded_slice(
             src_desc, src_tensor, dst_desc, dst_tensor, postprocess_list
         )
+
+    for tensor in force_gc:
+        tensor._clear_to_zero_allocation()
+        del tensor
 
 
 def _finish_unflatten(flat_shards, padding_info):
@@ -853,6 +852,20 @@ def load_state_dict(
         )
         return
 
+    destination_state_shard_info = defaultdict(list)
+    for key, val in state_dict.items():
+        desc = build_shard_desc(val)
+        destination_state_shard_info[key].append(desc)
+    dst_sharded_shard_info_list = []
+    paddle.distributed.all_gather_object(
+        dst_sharded_shard_info_list,
+        dict(destination_state_shard_info),
+        process_group,
+    )
+    destination_state_shard_info = merge_shard_info_list(
+        dst_sharded_shard_info_list
+    )
+
     flat_shards, nonflat_shards = _split_flat_shards(state_dict)
     load_dict, padding_info = _unflatten_shards(flat_shards)
     load_dict.update(nonflat_shards)
@@ -860,6 +873,7 @@ def load_state_dict(
     if aoa_config is not None:
         _handle_aoa(
             load_dict,
+            destination_state_shard_info,
             path,
             process_group,
             coordinator_rank,
