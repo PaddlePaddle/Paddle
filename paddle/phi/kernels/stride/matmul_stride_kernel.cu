@@ -47,17 +47,17 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   return dense_out;
 }
 
-bool is_only_transposed(const DDim &shape,
-                        const DDim &stride,
-                        uint64_t offset,
-                        DDim &src_shape,           // NOLINT
-                        DDim &src_stride,          // NOLINT
-                        std::vector<int> &axis) {  // NOLINT
+inline bool is_only_transposed_tensor(const DDim &shape,
+                                      const DDim &stride,
+                                      const uint64_t &offset,
+                                      DDim *src_shape,
+                                      DDim *src_stride,
+                                      std::vector<int> *axis) {
   if (offset != 0) {
     return false;
   }
   std::set<int> visited_idx;
-  axis.resize(stride.size());
+  axis->resize(stride.size());
   for (int i = 0; i < stride.size(); i++) {
     int64_t max_num = 0;
     int max_idx = -1;
@@ -76,16 +76,16 @@ bool is_only_transposed(const DDim &shape,
     if (max_idx == -1) {
       return false;
     }
-    if (i != 0 && src_stride[i - 1] == max_num) {
+    if (i != 0 && (*src_stride)[i - 1] == max_num) {
       return false;
     }
     visited_idx.insert(max_idx);
-    src_stride[i] = max_num;
-    src_shape[i] = shape[max_idx];
-    axis[max_idx] = i;
+    (*src_stride)[i] = max_num;
+    (*src_shape)[i] = shape[max_idx];
+    (*axis)[max_idx] = i;
   }
 
-  if (DenseTensorMeta::calc_strides(src_shape) == src_stride) {
+  if (DenseTensorMeta::calc_strides(*src_shape) == *src_stride) {
     return true;
   } else {
     return false;
@@ -148,12 +148,12 @@ void MatmulStrideKernel(const Context &dev_ctx,
   DDim y_shape = y_meta.dims;
   std::vector<int> y_axis;
 
-  if (!x.meta().is_contiguous() && is_only_transposed(x_meta.dims,
-                                                      x_meta.strides,
-                                                      x_meta.offset,
-                                                      x_shape,
-                                                      x_stride,
-                                                      x_axis)) {
+  if (!x.meta().is_contiguous() && is_only_transposed_tensor(x_meta.dims,
+                                                             x_meta.strides,
+                                                             x_meta.offset,
+                                                             &x_shape,
+                                                             &x_stride,
+                                                             &x_axis)) {
     auto x_trans_dims = x_axis.size();
     if (x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
         x_axis[x_trans_dims - 2] == x_trans_dims - 1) {
@@ -169,12 +169,12 @@ void MatmulStrideKernel(const Context &dev_ctx,
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
   }
 
-  if (!y.meta().is_contiguous() && is_only_transposed(y_meta.dims,
-                                                      y_meta.strides,
-                                                      y_meta.offset,
-                                                      y_shape,
-                                                      y_stride,
-                                                      y_axis)) {
+  if (!y.meta().is_contiguous() && is_only_transposed_tensor(y_meta.dims,
+                                                             y_meta.strides,
+                                                             y_meta.offset,
+                                                             &y_shape,
+                                                             &y_stride,
+                                                             &y_axis)) {
     auto y_trans_dims = y_axis.size();
     if (y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
         y_axis[y_trans_dims - 2] == y_trans_dims - 1) {
