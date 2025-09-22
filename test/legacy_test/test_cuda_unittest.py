@@ -17,7 +17,7 @@ import types
 import unittest
 
 import numpy as np
-from op_test import get_device, is_custom_device
+from op_test import get_device
 
 import paddle
 from paddle.cuda import (
@@ -59,14 +59,14 @@ class TestCudaCompat(unittest.TestCase):
     # is_available test
     # ---------------------
     def test_is_available(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             self.assertIsInstance(is_available(), bool)
 
     # ---------------------
     # synchronize test
     # ---------------------
     def test_synchronize(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             try:
                 synchronize(None)
                 synchronize(0)
@@ -79,7 +79,7 @@ class TestCudaCompat(unittest.TestCase):
     # current_stream test
     # ---------------------
     def test_current_stream(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             stream = current_stream(None)
             self.assertIsNotNone(stream)
             stream = current_stream(0)
@@ -89,7 +89,7 @@ class TestCudaCompat(unittest.TestCase):
     # get_device_properties test
     # ---------------------
     def test_get_device_properties(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             props = get_device_properties(0)
             self.assertTrue(hasattr(props, 'name'))
             self.assertTrue(hasattr(props, 'total_memory'))
@@ -98,7 +98,7 @@ class TestCudaCompat(unittest.TestCase):
     # get_device_name / get_device_capability test
     # ---------------------
     def test_device_name_and_capability(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             name = get_device_name(0)
             self.assertIsInstance(name, str)
 
@@ -107,14 +107,14 @@ class TestCudaCompat(unittest.TestCase):
             self.assertEqual(len(cap), 2)
 
     def test_stream_creation(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = Stream()
             s1 = Stream()
             self.assertIsInstance(s, paddle.device.Stream)
             self.assertIsInstance(s1, paddle.device.Stream)
 
     def test_stream_context(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s = Stream(device=get_device(), priority=2)
             with stream(s):
                 ctx = stream(s)
@@ -123,7 +123,7 @@ class TestCudaCompat(unittest.TestCase):
                 self.assertEqual(current.stream_base, s.stream_base)
 
     def test_nested_streams(self):
-        if paddle.is_compiled_with_cuda() or is_custom_device():
+        if paddle.is_compiled_with_cuda():
             s1 = Stream()
             s2 = Stream()
             with stream(s1):

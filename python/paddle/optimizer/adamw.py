@@ -775,9 +775,14 @@ class AdamW(Optimizer):
         optimizer_sharded_state_dict = {}
         optimizer_state_dict = self.state_dict()
         # Build name mapping and remove non-tensor entries from optimizer state
-        static_to_struct_mapping = {
-            v.local_tensor.name: k for k, v in model_sharded_state_dict.items()
-        }
+        static_to_struct_mapping = {}
+        model_sharded_state_dict = dict(
+            sorted(model_sharded_state_dict.items())
+        )
+        for k, v in model_sharded_state_dict.items():
+            if v.local_tensor.name not in static_to_struct_mapping:
+                static_to_struct_mapping[v.local_tensor.name] = k
+
         master_weights = optimizer_state_dict.pop("master_weights", None)
         optimizer_state_dict.pop("LR_Scheduler", None)
 

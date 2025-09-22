@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +13,28 @@
 # limitations under the License.
 from __future__ import annotations
 
-from paddle.base.core import CUDAEvent as Event, CUDAPlace, CUDAStream as Stream
+from paddle.base.core import (
+    CustomDeviceEvent as Event,
+    CustomDeviceStream as Stream,
+    CustomPlace,
+)
 
 
 def create_stream(
-    device_id: CUDAPlace | int | None = None,
+    device_id: CustomPlace | int | None = None,
     priority: int = 2,
     device_type: str | None = None,  # Ignored for compatibility
     blocking: bool = False,  # Ignored for compatibility
 ):
     """
-    Factory Function, used to create CUDA Stream
+    Factory Function, used to create Custom Stream
     """
-    return Stream(device_id, priority)
+    return Stream(
+        device_type,
+        device_id,
+        priority,
+        blocking=blocking,
+    )
 
 
 def create_event(
@@ -36,6 +45,12 @@ def create_event(
     device_id: int = 0,
 ):
     """
-    Factory Function, used to create CUDA Event
+    Factory Function, used to create Custom Event
     """
-    return Event(enable_timing, blocking, interprocess)
+    return Event(
+        device_type,
+        device_id,
+        enable_timing,
+        blocking,
+        interprocess,
+    )
