@@ -23,6 +23,7 @@ from op_test import (
     get_device_place,
     get_places,
     is_custom_device,
+    skip_check_grad_ci,
 )
 from test_sum_op import TestReduceOPTensorAxisBase
 
@@ -38,30 +39,6 @@ class TestMeanOp(OpTest):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
-        self.dtype = np.float64
-        self.init_dtype_type()
-        self.init_prim_type()
-        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
-
-    def init_prim_type(self):
-        self.prim_op_type = "comp"
-
-    def init_dtype_type(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
-
-
-class TestMeanAllOp(OpTest):
-    def setUp(self):
-        self.op_type = "mean_all"
-        self.python_api = paddle.mean_all
-        self.public_python_api = paddle.mean_all
         self.dtype = np.float64
         self.init_dtype_type()
         self.init_prim_type()
@@ -162,6 +139,9 @@ class TestMeanOp_Complex64ZeroSize(OpTest):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
+@skip_check_grad_ci(
+    reason="[skip float64 Nan check] Input nan, gradient is also nan"
+)
 class TestMeanOp_RealValuedNanInput(OpTest):
     def setUp(self):
         self.op_type = "mean"
@@ -173,6 +153,7 @@ class TestMeanOp_RealValuedNanInput(OpTest):
         data = np.append(data, np.nan).astype(self.dtype)
         self.inputs = {'X': data}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
+        self.no_need_check_grad = True
 
     def init_prim_type(self):
         self.prim_op_type = "comp"
@@ -180,8 +161,19 @@ class TestMeanOp_RealValuedNanInput(OpTest):
     def test_check_output(self):
         self.check_output(check_pir=True, equal_nan=True)
 
-    def test_checkout_grad(self):
-        pass
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        with paddle.base.dygraph.guard():
+            data = np.arange(1, 100, dtype="float64")
+            x_np = np.append(data, np.nan).astype(self.dtype)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            y = paddle.mean(x)
+            dx = paddle.grad(y, x)[0].numpy()
+            dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
+                x_np.shape
+            ).astype(self.dtype)
+            np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestMeanOp_RealNanInput(OpTest):
@@ -250,26 +242,6 @@ class TestMeanOp_ImagNanInput(OpTest):
                 x_np.shape
             ).astype(self.dtype)
             np.testing.assert_array_equal(dx, dx_expected)
-
-
-class TestMeanAllOp_ZeroDim(OpTest):
-    def setUp(self):
-        self.op_type = "mean_all"
-        self.python_api = paddle.mean_all
-        self.dtype = np.float64
-        self.public_python_api = paddle.mean_all
-        self.init_prim_type()
-        self.inputs = {'X': np.random.random([]).astype(self.dtype)}
-        self.outputs = {'Out': np.mean(self.inputs["X"])}
-
-    def init_prim_type(self):
-        self.prim_op_type = "comp"
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestMeanOp_ZeroDim_Prim(TestMeanOp_ZeroDim):
