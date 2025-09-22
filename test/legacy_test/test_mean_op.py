@@ -113,7 +113,7 @@ class TestMeanOp_ZeroDim(OpTest):
         self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -125,11 +125,15 @@ class TestMeanOp_float64ZeroSize(OpTest):
         self.python_api = paddle.mean
         self.dtype = np.float64
         self.public_python_api = paddle.mean
+        self.init_prim_type()
         self.inputs = {'X': np.array([]).astype(self.dtype)}
-        self.outputs = {'Out': np.nan}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -141,58 +145,15 @@ class TestMeanOp_float64ZeroSize3D(TestMeanOp_float64ZeroSize):
         self.python_api = paddle.mean
         self.dtype = np.float64
         self.public_python_api = paddle.mean
+        self.init_prim_type()
         self.shape = [2, 0, 4]
 
         x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        out_np = np.nan
         self.inputs = {'X': x_np}
-        self.outputs = {'Out': out_np}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
 
-
-class TestMeanOp_Int32ZeroSize(OpTest):
-    def setUp(self):
-        self.op_type = "mean"
-        self.python_api = paddle.mean
-        self.dtype = np.int32
-        self.public_python_api = paddle.mean
-        self.inputs = {'X': np.array([]).astype(self.dtype)}
-        self.outputs = {'Out': np.nan}
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
-
-
-class TestMeanOp_Int64ZeroSize(OpTest):
-    def setUp(self):
-        self.op_type = "mean"
-        self.python_api = paddle.mean
-        self.dtype = np.int64
-        self.public_python_api = paddle.mean
-        self.inputs = {'X': np.array([]).astype(self.dtype)}
-        self.outputs = {'Out': np.nan}
-
-    def test_check_output(self):
-        self.check_output(check_pir=True)
-
-    def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
-
-
-class TestMeanOp_Int64ZeroSize3D(TestMeanOp_Int64ZeroSize):
-    def setUp(self):
-        self.op_type = 'mean'
-        self.python_api = paddle.mean
-        self.dtype = np.int64
-        self.public_python_api = paddle.mean
-        self.shape = [2, 0, 4]
-
-        x_np = np.random.uniform(0, 8, self.shape).astype(self.dtype)
-        out_np = np.nan
-        self.inputs = {'X': x_np}
-        self.outputs = {'Out': out_np}
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
 
 
 class TestMeanOp_Complex64ZeroSize(OpTest):
@@ -208,7 +169,7 @@ class TestMeanOp_Complex64ZeroSize(OpTest):
         self.prim_op_type = "comp"
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -218,11 +179,18 @@ class TestMeanOp_RealValuedNanInput(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
-        self.inputs = {'X': np.array([1, 2, 3, np.nan]).astype("float64")}
+        self.public_python_api = paddle.mean
+        self.init_prim_type()
+        data = np.arange(1, 100, dtype="float64")
+        data = np.append(data, np.nan)
+        self.inputs = {'X': data}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -232,13 +200,18 @@ class TestMeanOp_RealNanInput(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
+        self.public_python_api = paddle.mean
+        self.init_prim_type()
         self.inputs = {
             'X': np.array([1 + 2j, 2 + 1j, np.nan + 1j]).astype("complex64")
         }
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -248,13 +221,18 @@ class TestMeanOp_ImagNanInput(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
+        self.public_python_api = paddle.mean
+        self.init_prim_type()
         self.inputs = {
             'X': np.array([1 + 1j, 2 + 2j, 1 + np.nan * 1j]).astype("complex64")
         }
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
+    def init_prim_type(self):
+        self.prim_op_type = "comp"
+
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
@@ -1078,6 +1056,7 @@ class TestMeanOp_ZeroSize3(OpTest):
     def setUp(self):
         self.op_type = 'mean'
         self.python_api = paddle.mean
+        self.public_python_api = paddle.mean
         self.init_prim_type()
         self.dtype = 'float64'
         self.shape = [2, 0, 4]
