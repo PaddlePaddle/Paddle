@@ -155,6 +155,7 @@ struct DenseTensorIteratorBase {
                                       std::vector<int64_t> sizes,
                                       std::vector<int64_t> strides);
   bool is_reduction_ = false;
+  bool is_alloc_out_ = false;
 };
 
 /**
@@ -232,6 +233,8 @@ struct DenseTensorIteratorConfig final {
     iter.build(*this);
     return iter;
   }
+
+  bool is_alloc_out_ = false;
 
  private:
   std::vector<const DenseTensor*> tensors_;
