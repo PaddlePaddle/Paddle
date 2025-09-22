@@ -51,7 +51,7 @@ class any {
 
   template <typename ValueType>
   any &operator=(const ValueType &rhs) {
-    explicit any(rhs).swap(*this);
+    any(rhs).swap(*this);  // NOLINT(runtime/explicit)
     return *this;
   }
 
