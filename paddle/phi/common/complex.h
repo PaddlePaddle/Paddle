@@ -252,15 +252,28 @@ HOSTDEVICE inline complex<T> operator/(const complex<T>& x,
   auto rat = (abs_c >= abs_d) ? (d / c) : (c / d);
   auto scl =
       (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
-  if constexpr (std::is_same_v<T, float>) {
-    real_ = std::fmaf(b, rat, a) * scl;
-    imag_ = std::fmaf(-a, rat, b) * scl;
-  } else if constexpr (std::is_same_v<T, double>) {
-    real_ = std::fma(b, rat, a) * scl;
-    imag_ = std::fma(-a, rat, b) * scl;
+  if (abs_c >= abs_d) {
+    if constexpr (std::is_same_v<T, float>) {
+      real_ = std::fmaf(b, rat, a) * scl;
+      imag_ = std::fmaf(-a, rat, b) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+      real_ = std::fma(b, rat, a) * scl;
+      imag_ = std::fma(-a, rat, b) * scl;
+    } else {
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+    }
   } else {
-    real_ = (a + b * rat) * scl;
-    imag_ = (b - a * rat) * scl;
+    if constexpr (std::is_same_v<T, float>) {
+      real_ = std::fmaf(a, rat, b) * scl;
+      imag_ = std::fmaf(b, rat, -a) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+      real_ = std::fma(a, rat, b) * scl;
+      imag_ = std::fma(b, rat, -a) * scl;
+    } else {
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
   }
 
   return complex<T>(real_, imag_);
@@ -349,15 +362,28 @@ HOSTDEVICE inline complex<T>& operator/=(complex<T>& x,  // NOLINT
   auto rat = (abs_c >= abs_d) ? (d / c) : (c / d);
   auto scl =
       (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
-  if constexpr (std::is_same_v<T, float>) {
-    real_ = std::fmaf(b, rat, a) * scl;
-    imag_ = std::fmaf(-a, rat, b) * scl;
-  } else if constexpr (std::is_same_v<T, double>) {
-    real_ = std::fma(b, rat, a) * scl;
-    imag_ = std::fma(-a, rat, b) * scl;
+  if (abs_c >= abs_d) {
+    if constexpr (std::is_same_v<T, float>) {
+      real_ = std::fmaf(b, rat, a) * scl;
+      imag_ = std::fmaf(-a, rat, b) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+      real_ = std::fma(b, rat, a) * scl;
+      imag_ = std::fma(-a, rat, b) * scl;
+    } else {
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+    }
   } else {
-    real_ = (a + b * rat) * scl;
-    imag_ = (b - a * rat) * scl;
+    if constexpr (std::is_same_v<T, float>) {
+      real_ = std::fmaf(a, rat, b) * scl;
+      imag_ = std::fmaf(b, rat, -a) * scl;
+    } else if constexpr (std::is_same_v<T, double>) {
+      real_ = std::fma(a, rat, b) * scl;
+      imag_ = std::fma(b, rat, -a) * scl;
+    } else {
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+    }
   }
   x = complex<T>(real_, imag_);
   return x;
