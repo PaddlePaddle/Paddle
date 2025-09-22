@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
-from paddle import base, core, device as paddle_device
+from paddle import base, core, device as paddle_device, framework
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
@@ -605,7 +605,13 @@ def set_device(device: DeviceLike) -> None:
     # This function supports multiple hardware types (CUDA, XPU, Custom devices)
     if isinstance(device, int):
         # Convert int device index to string format (e.g., 0 -> 'gpu:0')
-        device_str = f'gpu:{device}'
+        device_place = framework._current_expected_place_()
+        if isinstance(device, core.CUDAPlace):
+            device_str = f'gpu:{device}'
+        elif isinstance(device, core.CustomPlace):
+            device_str = f'{device_place.get_device_type()}:{device}'
+        elif isinstance(device, core.XPUPlace):
+            device_str = f'xpu:{device}'
     elif isinstance(device, str):
         # Device is already in string format
         device_str = device

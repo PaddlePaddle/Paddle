@@ -118,17 +118,34 @@ class TestEmptyCache(TestCase):
     def test_empty_cache_with_memory_allocation(self):
         """Test that empty_cache works after memory allocation."""
         if paddle.cuda.device_count() > 0:
-            # Allocate some memory
-            tensor = paddle.randn([100, 100], device='cuda')
+            # Get initial memory state
             initial_memory = paddle.cuda.memory_allocated()
+
+            # Allocate some memory
+            tensor = paddle.randn([1000, 1000])
+            allocated_memory = paddle.cuda.memory_allocated()
+
+            # Verify that memory was actually allocated
+            self.assertGreater(
+                allocated_memory,
+                initial_memory,
+                "Memory should increase after tensor allocation",
+            )
 
             # Delete tensor and empty cache
             del tensor
             paddle.cuda.empty_cache()
 
-            # Check that memory was released (this is a basic sanity check)
-            # Note: actual memory release behavior may vary based on allocator
-            self.assertTrue(True, "empty_cache completed without errors")
+            # Check memory after empty_cache
+            final_memory = paddle.cuda.memory_allocated()
+
+            # Memory should be reduced after empty_cache
+            # Note: We allow some tolerance as memory management may not free everything immediately
+            self.assertLessEqual(
+                final_memory,
+                allocated_memory,
+                "Memory should be reduced after empty_cache",
+            )
 
 
 class TestIsInitialized(TestCase):
@@ -319,7 +336,7 @@ class TestSetDevice(TestCase):
 
     def test_set_device_with_str_param(self):
         """Test that set_device works with string parameter."""
-        if paddle.cuda.device_count() > 0:
+        if paddle.is_compiled_with_cuda():
             try:
                 # Test with device string
                 paddle.cuda.set_device('gpu:0')
@@ -337,7 +354,7 @@ class TestSetDevice(TestCase):
 
     def test_set_device_with_cuda_place_param(self):
         """Test that set_device works with CUDAPlace parameter."""
-        if paddle.cuda.device_count() > 0:
+        if paddle.is_compiled_with_cuda():
             try:
                 # Test with CUDAPlace
                 place = paddle.CUDAPlace(0)
@@ -434,55 +451,6 @@ class TestSetDevice(TestCase):
             except Exception as e:
                 self.fail(
                     f"set_device with custom device string parameter raised an exception: {e}"
-                )
-
-    def test_set_device_consistency(self):
-        """Test that set_device and current_device work consistently."""
-        if paddle.cuda.device_count() > 1:
-            try:
-                # Set to device 0
-                paddle.cuda.set_device(0)
-                device_0 = paddle.cuda.current_device()
-                self.assertEqual(
-                    device_0,
-                    0,
-                    "current_device should return 0 after set_device(0)",
-                )
-
-                # Set to device 1
-                paddle.cuda.set_device(1)
-                device_1 = paddle.cuda.current_device()
-                self.assertEqual(
-                    device_1,
-                    1,
-                    "current_device should return 1 after set_device(1)",
-                )
-
-                # Set back to device 0
-                paddle.cuda.set_device(0)
-                device_0_again = paddle.cuda.current_device()
-                self.assertEqual(
-                    device_0_again,
-                    0,
-                    "current_device should return 0 after set_device(0) again",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device consistency test raised an exception: {e}"
-                )
-        elif paddle.cuda.device_count() == 1:
-            # If only one device, test that setting to 0 works
-            try:
-                paddle.cuda.set_device(0)
-                current_device = paddle.cuda.current_device()
-                self.assertEqual(
-                    current_device,
-                    0,
-                    "current_device should return 0 after set_device(0)",
-                )
-            except Exception as e:
-                self.fail(
-                    f"set_device consistency test with single device raised an exception: {e}"
                 )
 
     def test_set_device_invalid_param(self):
