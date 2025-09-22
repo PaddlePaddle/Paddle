@@ -45,7 +45,7 @@ class MatmulVariadicTemplate:
                 [ap.PointerType.float16_ptr, "half*"],
                 [ap.PointerType.bfloat16_ptr, "hip_bfloat16*"],
                 [ap.DataType.float, "float"],
-                [ap.DataType.float16, "half"],
+                [ap.DataType.float16, "ck::half_t"],
                 [ap.DataType.bfloat16, "hip_bfloat16"],
                 [ap.DataType.int64_t, "int64_t"],
             ]
@@ -336,6 +336,19 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${k_value}", f"{input0_shape_kargs[-1].value}")
             .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
         )
+
+        # 获取当前硬件类型
+        device_type = get_hardware_device()
+
+        print("device_type: ", device_type)
+
+        # # 根据硬件类型选择不同实现
+        # if device_type == "gpu":
+        #     print("use_cuda_kernel")
+        # elif device_type == "dcu":
+        #     print("use_rocm_kernel")
+        # else:
+        #     print("use_cpu_kernel")
 
         dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"

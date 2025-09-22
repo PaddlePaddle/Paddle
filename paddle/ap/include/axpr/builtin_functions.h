@@ -96,4 +96,7 @@ Result<axpr::Value> GetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
 Result<axpr::Value> SetAttr(axpr::InterpreterBase<axpr::Value>* interpreter,
                             const axpr::Value&,
                             const std::vector<axpr::Value>& args);
+
+Result<axpr::Value> GetHardwareDevice(const axpr::Value&,
+                                      const std::vector<axpr::Value>& args);
 }  // namespace ap::axpr
