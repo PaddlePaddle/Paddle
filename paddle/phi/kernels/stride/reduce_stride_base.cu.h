@@ -47,10 +47,11 @@ phi::DenseTensor Tensor2Contiguous(const Context& dev_ctx,
   return dense_out;
 }
 
-static inline int64_t div_up(int64_t a, int64_t b) { return (a + b - 1) / b; }
+static inline int64_t DivUp(const int64_t& a, const int64_t& b) {
+  return (a + b - 1) / b;
+}
 
-// returns floor(log2(n))
-static inline int last_pow2(int n) {
+static inline int LastPow2(int n) {
   n |= (n >> 1);
   n |= (n >> 2);
   n |= (n >> 4);
@@ -59,32 +60,12 @@ static inline int last_pow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
-// returns reduced fraction numerator & denominator
-__host__ __device__ static void reduce_fraction(size_t* numerator,
-                                                size_t* denominator) {
-  // get GCD of num and denom using Euclid's algorithm.
-  // Can replace this with std::gcd if we ever support c++17.
-  size_t a = *denominator;
-  size_t b = *numerator;
-  while (b != 0) {
-    a %= b;
-    // swap(a,b)
-    size_t tmp = a;
-    a = b;
-    b = tmp;
-  }
-
-  // a is now the GCD
-  *numerator /= a;
-  *denominator /= a;
-}
-
-struct NewReduceConfig {
+struct ReduceStrideConfig {
   static constexpr int BLOCK_X = 0;
   static constexpr int BLOCK_Y = 1;
   static constexpr int CTA = 2;
 
-  NewReduceConfig(int element_size_bytes, int num_outputs, int num_inputs)
+  ReduceStrideConfig(int element_size_bytes, int num_outputs, int num_inputs)
       : element_size_bytes(element_size_bytes),
         num_inputs(num_inputs),
         num_outputs(num_outputs) {}
@@ -111,9 +92,9 @@ struct NewReduceConfig {
   template <typename T>
   void set_block_dimension(int64_t dim0, int64_t dim1) {
     const int max_num_threads = MAX_THREADS / output_vec_size;
-    int dim0_pow2 = dim0 < max_num_threads ? static_cast<int>(last_pow2(dim0))
+    int dim0_pow2 = dim0 < max_num_threads ? static_cast<int>(LastPow2(dim0))
                                            : max_num_threads;
-    int dim1_pow2 = dim1 < max_num_threads ? static_cast<int>(last_pow2(dim1))
+    int dim1_pow2 = dim1 < max_num_threads ? static_cast<int>(LastPow2(dim1))
                                            : max_num_threads;
     block_width = std::min(dim0_pow2, static_cast<int>(warp_size));
     block_height =
@@ -138,7 +119,7 @@ struct NewReduceConfig {
   dim3 block() const { return dim3(block_width, block_height); }
 
   dim3 grid() const {
-    return dim3(div_up(num_outputs / output_vec_size, step_output),
+    return dim3(DivUp(num_outputs / output_vec_size, step_output),
                 ctas_per_output);
   }
 
@@ -221,10 +202,10 @@ struct NewReduceConfig {
     return sizeof(int) * grid().x;
   }
 
-  int values_per_thread() const { return div_up(num_inputs, step_input); }
+  int values_per_thread() const { return DivUp(num_inputs, step_input); }
 };
 
-std::ostream& operator<<(std::ostream& out, const NewReduceConfig& config);
+std::ostream& operator<<(std::ostream& out, const ReduceStrideConfig& config);
 
 template <int nt, int OUTPUT_VEC_SIZE, typename R>
 __global__ void reduce_kernel(R reduction) {
@@ -286,14 +267,13 @@ int get_output_vec_size(const DenseTensorIterator& iter) {
 }
 
 template <typename arg_t, typename scalar_t, int VT0, int INPUT_VEC_SIZE = VT0>
-NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
-  // Start by assuming that each thread handles a single output and all
-  // the inputs for that output.
+ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
   int64_t num_outputs = iter.num_output_elements();
   int64_t inputs_per_output = iter.numel() / num_outputs;
   int input_index = iter.ntensors() - 1;
 
-  auto config = NewReduceConfig(sizeof(arg_t), num_outputs, inputs_per_output);
+  auto config =
+      ReduceStrideConfig(sizeof(arg_t), num_outputs, inputs_per_output);
 
   int64_t dim0;
   int64_t dim1;
@@ -301,35 +281,18 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
   bool reduction_on_fastest_striding_dimension;
 
   if (iter.ndim() > 0) {
-    // Adjust block size to map block width to fastest changing dimension of
-    // input tensor. This grants the best possible memory accessing pattern,
-    // given that for non-contiguous tensor with space in between, we cannot
-    // have perfect memory coalescing.
     reduction_on_fastest_striding_dimension =
         (iter.num_reduce_dims() == iter.ndim()) ||
-        (iter.strides(/*arg=*/input_index)[0] <
-         iter.strides(/*arg=*/input_index)[iter.num_reduce_dims()]);
-    // Notice that dim0 & dim1 does NOT guarantee any launch configuration here!
-    // dim0 & dim1 are more like the upper bound of the block dimension. The
-    // actual launch config and reduction scheme is determined by setting values
-    // to `config.input_mult` and `config.output_mult`.
-    // We try to max out dim1 so that we have enough threads per CTA to deliver
-    // performance for larger problem size.
+        (iter.strides(input_index)[0] <
+         iter.strides(input_index)[iter.num_reduce_dims()]);
     if (reduction_on_fastest_striding_dimension) {
-      // Map block.x to the fastest reducing dimension. It implies:
-      //   1. block_x_reduce is required.
-      //   2. block.y now max out to num_outputs.
       dim0 = inputs_per_output;
       dim1 = num_outputs;
-      fastest_moving_stride = iter.strides(/*arg=*/input_index)[0];
+      fastest_moving_stride = iter.strides(input_index)[0];
     } else {
-      // Map block.x to the fastest non reducing dimension. It implies:
-      //   1. block_x_reduce is turned off.
-      //   2. block.y now max out to inputs_per_output.
       dim0 = num_outputs;
       dim1 = inputs_per_output;
-      fastest_moving_stride =
-          iter.strides(/*arg=*/input_index)[iter.num_reduce_dims()];
+      fastest_moving_stride = iter.strides(input_index)[iter.num_reduce_dims()];
     }
   } else {
     reduction_on_fastest_striding_dimension = true;
@@ -337,55 +300,25 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
     dim0 = 1;
     dim1 = 1;
   }
-  // We do vectorization to gain better memory access, there are two cases which
-  // we call "vectorize along input" and "vectorize along output". Note that the
-  // "input/output" here does not mean we are vectorizing load/store
-  // instructions. We always only vectorize load instructions.
-  //
-  // Case 1: "vectorize along input"
-  // This case happens when we are reducing along fastest moving dimesion. In
-  // such case, threads with the same threadIdx.y works on the same reduction
-  // cooperatively and will produce results for the same output. In such case,
-  // values in each loaded vector always correspond to the same output.
-  //
-  // Case 2: "vectorize along output"
-  // This case happens when the fastest moving dimesion is not the dimension of
-  // reduction. In such case, threads with different threadIdx.x are independent
-  // and will produce results for different outputs. In such case, values in
-  // each loaded vector always correspond to different outputs.
   if (fastest_moving_stride == sizeof(scalar_t)) {
-    // #ifdef defined(__HIPCC__)
-    //     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
-    //         iter.num_reduce_dims() == 1) {
-    // #else
     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
         iter.num_reduce_dims() == 1 && VT0 >= INPUT_VEC_SIZE) {
-      // #endif
-      // Case 1: "vectorize along input"
-      // Note that if VT0 < ReduceConfig::vec_size, then this means the register
-      // pressure could be high, in such case, we should avoid vectorization.
       config.vectorize_input = true;
       dim0 /= INPUT_VEC_SIZE;
     } else if (!reduction_on_fastest_striding_dimension) {
-      // Case 2: "vectorize along output"
       config.output_vec_size = get_output_vec_size<scalar_t>(iter);
       dim0 /= config.output_vec_size;
     }
   }
 
-  // Adjust block_width and block_height
   config.set_block_dimension<scalar_t>(dim0, dim1);
 
   int block_width = config.block_width;
   int block_height = config.block_height;
 
   if (iter.ndim() == 0 || reduction_on_fastest_striding_dimension) {
-    // Split the input across lanes if the input is contiguous in the reduced
-    // dimension. This will require reduction between threads using warp
-    // shuffle instructions and shared memory (if block_width > warpSize).
     config.input_mult[0] = config.split_input(block_width);
   } else {
-    // Otherwise split the output across lanes in a warp.
     config.output_mult[0] = config.split_output(block_width);
   }
 
@@ -398,81 +331,27 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
       std::min<int>(block_height * 16, max_values_per_thread);
   bool split_across_warps = config.values_per_thread() >= warp_split_threshold;
   const int num_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
-  // #ifdef defined(__HIPCC__)
-  //   bool force_splitting_output =
-  //       iter.ndim() == 2 && reduction_on_fastest_striding_dimension &&
-  //       config.values_per_thread() < 1024 && num_mp < 100;
-  //   split_across_warps = !force_splitting_output && split_across_warps;
-  // #endif
-
   if (split_across_warps) {
-    // Divide the input across warps in a thread-block, if that leaves at least
-    // 16 elements to be summed by each thread. This will require inter-warp
-    // reduction using shared memory.
     config.input_mult[1] = config.split_input(block_height);
   } else {
-    // Otherwise, each warp handles a separate output.
     config.output_mult[1] = config.split_output(block_height);
   }
 
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
-  // #ifdef defined(__HIPCC__)
-  //   // Control the number of threadblocks by adjusting the maximum number of
-  //   // threads per multi-processor. These numbers better reflect the maximum
-  //   // theoretical achievable threads per MP for the reduction operation.
-  //   if (iter.ndim() == 1 || iter.ndim() == 3) max_threads_per_mp = 512;
-  //   if (iter.ndim() == 2) max_threads_per_mp = 256;
-  // #endif
-
   const int blocks_per_sm = max_threads_per_mp / config.num_threads;
   const int target_grid_size = num_mp * blocks_per_sm;
   int grid = config.grid().x;
   if (config.input_mult[1] != 0 &&
       config.values_per_thread() >= max_values_per_thread &&
       grid <= target_grid_size) {
-    // Divide the input across thread-blocks if the amount of work per-thread
-    // is large enough and the size of the output is small enough. This will
-    // require a reduction using global memory.
-    // If we decide to split input across blocks, as long as we can get enough
-    // number of blocks (`target_grid_size`) to balance SM, we should still
-    // make the number of values per thread large for best performance.
-    int ctas_per_output1 = div_up(target_grid_size, grid);
+    int ctas_per_output1 = DivUp(target_grid_size, grid);
     int ctas_per_output2 =
-        div_up(config.values_per_thread(), min_values_per_thread);
+        DivUp(config.values_per_thread(), min_values_per_thread);
     int ctas_per_output3 =
-        div_up(config.values_per_thread(), max_values_per_thread);
-    // We want the minimum of ctas_per_output1 and ctas_per_output2, so that
-    // each thread can have a large number of values to deal with. But we don't
-    // want values_per_thread to be larger than max_values_per_thread
+        DivUp(config.values_per_thread(), max_values_per_thread);
     config.ctas_per_output = std::max(
         std::min<int>(ctas_per_output1, ctas_per_output2), ctas_per_output3);
-    // #ifdef defined(__HIPCC__)
-    //     // In cases where a number of threadblocks along the y direction of
-    //     the grid
-    //     // is needed then make sure they are reduced to the number of MPs.
-    //     For
-    //     // smaller sizes, use half the number of MPs. For smaller sizes than
-    //     half
-    //     // the number of MPs use the original value unless the value is less
-    //     than 16
-    //     // blocks in which case it is more profitable to use just 1 block.
-    //     if (config.ctas_per_output > num_mp) {
-    //       if (num_mp < 128) {
-    //         config.ctas_per_output =
-    //             num_mp * (config.ctas_per_output > 512 ? 4 : 2);
-    //       } else {
-    //         config.ctas_per_output = num_mp;
-    //       }
-    //     } else if (config.ctas_per_output > div_up(num_mp, 2)) {
-    //       config.ctas_per_output = div_up(num_mp, 2);
-    //     } else if (config.ctas_per_output < 16) {
-    //       config.ctas_per_output = 1;
-    //     }
-    //     if (iter.ndim() == 3 && !reduction_on_fastest_striding_dimension) {
-    //       config.ctas_per_output = 4;
-    //     }
-    // #endif
     if (config.ctas_per_output > 1) {
       config.input_mult[2] = config.split_input(config.ctas_per_output);
     }
@@ -481,8 +360,8 @@ NewReduceConfig setReduceConfig(const DenseTensorIterator& iter) {
 }
 
 template <typename T, int NX, int NY, bool IsBoundary = false>
-__device__ __forceinline__ void TmpReadData(T* dst, const T* __restrict__ src) {
-  if (IsBoundary) {  // blockDim.x * NX > num
+__device__ __forceinline__ void VecReadData(T* dst, const T* __restrict__ src) {
+  if (IsBoundary) {
     int64_t thread_offset = 0;
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
@@ -490,7 +369,7 @@ __device__ __forceinline__ void TmpReadData(T* dst, const T* __restrict__ src) {
         dst[idx] = src[thread_offset + idx];
       }
     }
-  } else {  // blockDim,x * NX < num
+  } else {
     constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
     constexpr int kVectorsPerThread = NX / kVectorSize;
 
@@ -515,7 +394,7 @@ template <typename scalar_t,
           typename out_scalar_t = scalar_t,
           int VT0 = 4,
           int INPUT_VEC_SIZE = VT0>
-struct ReduceOp {
+struct ReduceStrideOp {
   using arg_t = scalar_t;
 
   using InputCalculator = funcs::OffsetCalculator<1, index_t>;
@@ -527,15 +406,11 @@ struct ReduceOp {
 
   ops_t ops;
   arg_t ident;
-  NewReduceConfig config;
+  ReduceStrideConfig config;
   InputCalculator input_calc;
   OutputCalculator output_calc;
   const void* src;
-  char* dst[2];  // it accepts at most two destinations
-  // acc_buf used for accumulation among sub Tensor Iterator when accumulation
-  // on output is not permissible
-  void* acc_buf;
-  // cta_buf used for accumulation between blocks during global reduction
+  char* dst[2];
   void* cta_buf;
   int* semaphores;
   int64_t base_idx;
@@ -545,28 +420,25 @@ struct ReduceOp {
   bool is_mean;
   int64_t mean_factor;
 
-  ReduceOp(ops_t ops,
-           NewReduceConfig config,
-           InputCalculator input_calc,
-           OutputCalculator output_calc,
-           const void* src,
-           char* dst0,
-           std::optional<char*> dst1,
-           void* acc_buf,
-           void* cta_buf,
-           int* semaphores,
-           arg_t ident,
-           int noutputs,
-           int64_t base_idx,
-           bool is_mean,
-           int64_t mean_factor)
+  ReduceStrideOp(ops_t ops,
+                 ReduceStrideConfig config,
+                 InputCalculator input_calc,
+                 OutputCalculator output_calc,
+                 const void* src,
+                 char* dst0,
+                 void* cta_buf,
+                 int* semaphores,
+                 arg_t ident,
+                 int noutputs,
+                 int64_t base_idx,
+                 bool is_mean,
+                 int64_t mean_factor)
       : ops(ops),
         ident(ident),
         config(config),
         input_calc(input_calc),
         output_calc(output_calc),
         src(src),
-        acc_buf(acc_buf),
         cta_buf(cta_buf),
         semaphores(semaphores),
         base_idx(base_idx),
@@ -574,9 +446,6 @@ struct ReduceOp {
         is_mean(is_mean),
         mean_factor(mean_factor) {
     dst[0] = dst0;
-    if (dst1.has_value()) {
-      dst[1] = dst1.value();
-    }
   }
 
   template <int OUTPUT_VEC_SIZE>
@@ -612,41 +481,16 @@ struct ReduceOp {
                                                base_offsets[i]);
     }
 
-    arg_vec_t* acc = nullptr;
-    if (acc_buf != nullptr) {
-      size_t numerator = sizeof(arg_t);
-      size_t denominator = sizeof(out_scalar_t);
-      reduce_fraction(&numerator, &denominator);
-      acc = reinterpret_cast<arg_vec_t*>(
-          reinterpret_cast<char*>(acc_buf) +
-          (base_offsets[0] * numerator / denominator));
-    }
-
     if (config.should_global_reduce()) {
-      value = global_reduce<OUTPUT_VEC_SIZE>(value, acc, shared_memory);
+      value = global_reduce<OUTPUT_VEC_SIZE>(value, shared_memory);
     } else if (config.should_store(output_idx)) {
-      if (acc == nullptr) {
 #pragma unroll
-        for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
-          if (is_mean) {
-            value[i] = value[i] / static_cast<arg_t>(mean_factor);
-          }
-          *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
-              out[i], value[i]);
+      for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+        if (is_mean) {
+          value[i] = value[i] / static_cast<arg_t>(mean_factor);
         }
-      } else {
-        if (accumulate) {
-#pragma unroll
-          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
-            kps::Reduce<arg_t,
-                        1,
-                        1,
-                        ops_t,
-                        kps::details::ReduceMode::kLocalMode>(
-                &(value[i]), &((*acc)[i]), ops, false);
-          }
-        }
-        *acc = value;
+        *(out[i]) =
+            get_accumulated_output<can_accumulate_in_output>(out[i], value[i]);
       }
     }
   }
@@ -655,8 +499,6 @@ struct ReduceOp {
   __device__ std::array<arg_t, OUTPUT_VEC_SIZE> thread_reduce(
       const scalar_t* data) const {
     if (config.vectorize_input) {
-      // reduce at the header of input_slice where memory is not aligned,
-      // so that thread_reduce will have an aligned memory to work on.
       return {input_vectorized_thread_reduce_impl(data)};
     } else {
       index_t element_stride = input_calc.strides_[0][0] / sizeof(scalar_t);
@@ -678,7 +520,6 @@ struct ReduceOp {
   __device__ arg_t
   input_vectorized_thread_reduce_impl(const scalar_t* data) const {
     index_t end = config.num_inputs;
-    // Handle the head of input slice where data is not aligned
     arg_t value = ident;
     constexpr int align_bytes = INPUT_VEC_SIZE * sizeof(scalar_t);
     constexpr int align_elements = align_bytes / sizeof(scalar_t);
@@ -705,7 +546,6 @@ struct ReduceOp {
     index_t idx = config.input_idx();
     const index_t stride = config.step_input;
 
-    // Multiple accumulators to remove dependency between unrolled loops.
     arg_t value_list[INPUT_VEC_SIZE];
     value_list[0] = value;
 
@@ -716,7 +556,7 @@ struct ReduceOp {
 
     while (idx * INPUT_VEC_SIZE + INPUT_VEC_SIZE - 1 < end) {
       arg_t values_vec[INPUT_VEC_SIZE];
-      TmpReadData<arg_t, INPUT_VEC_SIZE, 1, false>(
+      VecReadData<arg_t, INPUT_VEC_SIZE, 1, false>(
           &(values_vec[0]),
           reinterpret_cast<const arg_t*>(data + idx * INPUT_VEC_SIZE));
 
@@ -729,7 +569,6 @@ struct ReduceOp {
       idx += stride;
     }
 
-    // tail
     index_t tail_start = end - end % INPUT_VEC_SIZE;
     if (config.should_reduce_tail()) {
       int idx = tail_start + threadIdx.x;
@@ -742,7 +581,6 @@ struct ReduceOp {
       }
     }
 
-// combine accumulators
 #pragma unroll
     for (int i = 1; i < INPUT_VEC_SIZE; i++) {
       kps::Reduce<arg_t, 1, 1, ops_t, kps::details::ReduceMode::kLocalMode>(
@@ -761,7 +599,6 @@ struct ReduceOp {
 
     using arg_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
 
-    // Multiple accumulators to remove dependency between unrolled loops.
     arg_vec_t value_list[VT0];
 
 #pragma unroll
@@ -792,7 +629,6 @@ struct ReduceOp {
       idx += stride * VT0;
     }
 
-    // tail
     int idx_ = idx;
 #pragma unroll
     for (index_t i = 0; i < VT0; i++) {
@@ -818,7 +654,6 @@ struct ReduceOp {
       idx += stride;
     }
 
-// combine accumulators
 #pragma unroll
     for (int i = 1; i < VT0; i++) {
 #pragma unroll
@@ -924,9 +759,6 @@ struct ReduceOp {
     return (out_scalar_t)value;
   }
 
-  // This function should never be called --
-  // it's the version of `accumulate_in_output`
-  // when accumulation in the output is not possible.
   template <int OUTPUT_VEC_SIZE, bool can_acc>
   __device__ std::array<arg_t, OUTPUT_VEC_SIZE> accumulate_in_output(
       std::array<out_scalar_t*, OUTPUT_VEC_SIZE>,
@@ -935,9 +767,6 @@ struct ReduceOp {
     return {arg_t{}};
   }
 
-  // This function should never be called --
-  // it's the version of `get_accumulated_output`
-  // when accumulation in the output is not possible.
   template <bool can_acc>
   __device__ out_scalar_t
   get_accumulated_output(out_scalar_t* out,
@@ -953,7 +782,6 @@ struct ReduceOp {
     *res = x;
   }
 
-  // Currently implemented for max of two outputs
   template <class T1, class T2>
   __device__ void set_results(const thrust::pair<T1, T2> x,
                               const index_t base_offset) const {
@@ -962,20 +790,11 @@ struct ReduceOp {
           reinterpret_cast<T1*>(reinterpret_cast<char*>(dst[0]) + base_offset);
       *res0 = x.first;
     }
-    if (noutputs >= 2) {
-      // base offset is computed assuming element size being sizeof(T1), so we
-      // need to make a correction to obtain the correct base offset
-      auto res1 = reinterpret_cast<T2*>(reinterpret_cast<char*>(dst[1]) +
-                                        base_offset / sizeof(T1) * sizeof(T2));
-      *res1 = x.second;
-    }
   }
 
   template <int OUTPUT_VEC_SIZE>
   __device__ std::array<arg_t, OUTPUT_VEC_SIZE> global_reduce(
-      std::array<arg_t, OUTPUT_VEC_SIZE> value,
-      std::array<arg_t, OUTPUT_VEC_SIZE>* acc,
-      char* shared_memory) const {
+      std::array<arg_t, OUTPUT_VEC_SIZE> value, char* shared_memory) const {
     using arg_vec_t = std::array<arg_t, OUTPUT_VEC_SIZE>;
     using out_ptr_vec_t = std::array<out_scalar_t*, OUTPUT_VEC_SIZE>;
     using offset_vec_t = std::array<index_t, OUTPUT_VEC_SIZE>;
@@ -998,13 +817,12 @@ struct ReduceOp {
       reduce_buffer[offset] = value;
     }
 
-    __threadfence();  // make sure writes are globally visible
-    __syncthreads();  // if multiple warps in this block wrote to staging,
-                      // make sure they're all done
+    __threadfence();
+    __syncthreads();
     bool is_last_block_done = mark_block_finished();
 
     if (is_last_block_done) {
-      __threadfence();  // complete the acquire pattern after atomic
+      __threadfence();
       for (auto& v : value) {
         v = ident;
       }
@@ -1049,28 +867,13 @@ struct ReduceOp {
       }
 
       if (should_store) {
-        if (acc == nullptr) {
 #pragma unroll
-          for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
-            if (is_mean) {
-              value[i] = value[i] / static_cast<arg_t>(mean_factor);
-            }
-            *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
-                out[i], value[i]);
+        for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
+          if (is_mean) {
+            value[i] = value[i] / static_cast<arg_t>(mean_factor);
           }
-        } else {
-          if (accumulate) {
-#pragma unroll
-            for (int i = 0; i < OUTPUT_VEC_SIZE; i++) {
-              kps::Reduce<arg_t,
-                          1,
-                          1,
-                          ops_t,
-                          kps::details::ReduceMode::kLocalMode>(
-                  &(value[i]), &((*acc)[i]), ops, false);
-            }
-          }
-          *acc = value;
+          *(out[i]) = get_accumulated_output<can_accumulate_in_output>(
+              out[i], value[i]);
         }
       }
     }
@@ -1081,7 +884,7 @@ struct ReduceOp {
 
 template <typename Context, int max_threads, typename R>
 static void launch_reduce_kernel(const Context& dev_ctx,
-                                 const NewReduceConfig& config,
+                                 const ReduceStrideConfig& config,
                                  const R& reduction) {
   dim3 block = config.block();
   dim3 grid = config.grid();
@@ -1092,20 +895,20 @@ static void launch_reduce_kernel(const Context& dev_ctx,
       <<<grid, block, shared_memory, stream>>>(reduction);
 }
 
+// TODO(wangjinheng): Support Multi-Dim Reduction
+
 template <typename T,
           typename Context,
           template <typename>
           class reduce_op,
           bool IsMean = false>
-void StrideImpl(const Context& dev_ctx,
-                const DenseTensor& x,
-                const std::vector<int64_t>& dims,
-                bool keep_dim,
-                T ident,
-                DenseTensor* out) {
+void ReduceStrideImpl(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& dims,
+                      bool keep_dim,
+                      T ident,
+                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-
-  // maybe need as_stride
 
   DenseTensorIteratorConfig config;
   config.is_reduction(true);
@@ -1113,30 +916,17 @@ void StrideImpl(const Context& dev_ctx,
   config.add_const_input(x);
   DenseTensorIterator iter = config.build();
 
-  // AccumulationBuffer
-  int64_t numerator_ = 1;
-  int64_t denominator_ = 1;
-
-  // not the same
-  // ban usage of acc_buf_ptr
-  char* acc_buf_ptr = nullptr;
-
   const char* in_data =
       reinterpret_cast<const char*>(iter.data_ptr(iter.ntensors() - 1));
   char* out_data = reinterpret_cast<char*>(out->data<T>());
   const auto noutputs = iter.noutputs();
-
-  std::optional<char*> out_data_extra;
-  out_data_extra = std::nullopt;
-
-  char* acc_data = acc_buf_ptr;
 
   constexpr int VT0 = 4;
   constexpr int INPUT_VEC_SIZE = 4;
 
   constexpr int base_idx = 0;
 
-  NewReduceConfig reduce_config = setReduceConfig<T, T, VT0>(iter);
+  ReduceStrideConfig reduce_config = setReduceConfig<T, T, VT0>(iter);
 
   void* buffer_data;
   void* semaphores_data;
@@ -1172,15 +962,13 @@ void StrideImpl(const Context& dev_ctx,
   int64_t mean_factor = iter.numel();
 
   auto reduce =
-      ReduceOp<T, reduce_op<MPType>, uint32_t, T, VT0, INPUT_VEC_SIZE>(
+      ReduceStrideOp<T, reduce_op<MPType>, uint32_t, T, VT0, INPUT_VEC_SIZE>(
           reducer,
           reduce_config,
           input_calc,
           output_calc,
           in_data,
           out_data,
-          out_data_extra,
-          acc_data,
           buffer_data,
           reinterpret_cast<int*>(semaphores_data),
           ident,

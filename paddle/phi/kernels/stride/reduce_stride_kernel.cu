@@ -63,7 +63,7 @@ void AMaxStrideKernel(const Context& dev_ctx,
   }
 
   T ident = std::numeric_limits<T>::lowest();
-  StrideImpl<T, Context, kps::MaxFunctor>(
+  ReduceStrideImpl<T, Context, kps::MaxFunctor>(
       dev_ctx, x_, dims, keep_dim, ident, out);
   return;
 }
@@ -100,7 +100,7 @@ void AMinStrideKernel(const Context& dev_ctx,
   }
 
   T ident = std::numeric_limits<T>::max();
-  StrideImpl<T, Context, kps::MinFunctor>(
+  ReduceStrideImpl<T, Context, kps::MinFunctor>(
       dev_ctx, x_, dims, keep_dim, ident, out);
   return;
 }
@@ -138,7 +138,7 @@ void MaxStrideKernel(const Context& dev_ctx,
   }
 
   T ident = std::numeric_limits<T>::lowest();
-  StrideImpl<T, Context, kps::MaxFunctor>(
+  ReduceStrideImpl<T, Context, kps::MaxFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
@@ -175,7 +175,7 @@ void MinStrideKernel(const Context& dev_ctx,
   }
 
   T ident = std::numeric_limits<T>::max();
-  StrideImpl<T, Context, kps::MinFunctor>(
+  ReduceStrideImpl<T, Context, kps::MinFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
@@ -219,7 +219,7 @@ void ProdStrideKernel(const Context& dev_ctx,
   }
 
   T ident = static_cast<T>(1);
-  StrideImpl<T, Context, kps::MulFunctor>(
+  ReduceStrideImpl<T, Context, kps::MulFunctor>(
       dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   return;
 }
@@ -273,15 +273,15 @@ void AllStrideKernel(const Context& dev_ctx,
         phi::DataType::FLOAT16,
         phi::DataType::BFLOAT16,
         out_dtype,
-        "StrideImpl",
+        "ReduceStrideImpl",
         ([&] {
           data_t ident = static_cast<data_t>(1);
-          StrideImpl<data_t, Context, kps::LogicalAndFunctor>(
+          ReduceStrideImpl<data_t, Context, kps::LogicalAndFunctor>(
               dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
         }));
   } else {
     T ident = 1;
-    StrideImpl<T, Context, kps::LogicalAndFunctor>(
+    ReduceStrideImpl<T, Context, kps::LogicalAndFunctor>(
         dev_ctx, x_, dims, keep_dim, ident, out);
   }
   return;
@@ -327,15 +327,15 @@ void AnyStrideKernel(const Context& dev_ctx,
         phi::DataType::FLOAT16,
         phi::DataType::BFLOAT16,
         out_dtype,
-        "StrideImpl",
+        "ReduceStrideImpl",
         ([&] {
           data_t ident = static_cast<data_t>(0);
-          StrideImpl<data_t, Context, kps::LogicalOrFunctor>(
+          ReduceStrideImpl<data_t, Context, kps::LogicalOrFunctor>(
               dev_ctx, tmp_tensor, dims, keep_dim, ident, out);
         }));
   } else {
     T ident = 0;
-    StrideImpl<T, Context, kps::LogicalOrFunctor>(
+    ReduceStrideImpl<T, Context, kps::LogicalOrFunctor>(
         dev_ctx, x_, dims, keep_dim, ident, out);
   }
   return;
@@ -398,7 +398,7 @@ void SumStrideKernel(const Context& dev_ctx,
   if (x.dtype() == phi::DataType::BFLOAT16 &&
       out_dtype == phi::DataType::FLOAT32) {
     phi::dtype::bfloat16 ident = static_cast<phi::dtype::bfloat16>(0);
-    StrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
+    ReduceStrideImpl<phi::dtype::bfloat16, Context, kps::AddFunctor>(
         dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
     *out = phi::Cast<phi::dtype::bfloat16>(dev_ctx, x_, out_dtype);
   } else if (out_dtype != phi::DataType::UNDEFINED && out_dtype != x_.dtype()) {
@@ -409,15 +409,15 @@ void SumStrideKernel(const Context& dev_ctx,
         phi::DataType::FLOAT16,
         phi::DataType::BFLOAT16,
         out_dtype,
-        "StrideImpl",
+        "ReduceStrideImpl",
         ([&] {
           data_t ident = static_cast<data_t>(0);
-          StrideImpl<data_t, Context, kps::AddFunctor>(
+          ReduceStrideImpl<data_t, Context, kps::AddFunctor>(
               dev_ctx, tmp_tensor, dims.GetData(), keep_dim, ident, out);
         }));
   } else {
     T ident = static_cast<T>(0);
-    StrideImpl<T, Context, kps::AddFunctor>(
+    ReduceStrideImpl<T, Context, kps::AddFunctor>(
         dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   }
   return;
@@ -476,13 +476,13 @@ void MeanStrideKernel(const Context& dev_ctx,
         dev_ctx, x_float, dims, keep_dim, reduce_all, out_float);
 
     Type ident = static_cast<Type>(0);
-    StrideImpl<Type, Context, kps::AddFunctor, true>(
+    ReduceStrideImpl<Type, Context, kps::AddFunctor, true>(
         dev_ctx, x_float, dims.GetData(), keep_dim, ident, out_float);
 
     phi::CastKernel<Type, Context>(dev_ctx, *out_float, x_.dtype(), out);
   } else {
     T ident = static_cast<T>(0);
-    StrideImpl<T, Context, kps::AddFunctor, true>(
+    ReduceStrideImpl<T, Context, kps::AddFunctor, true>(
         dev_ctx, x_, dims.GetData(), keep_dim, ident, out);
   }
   return;
