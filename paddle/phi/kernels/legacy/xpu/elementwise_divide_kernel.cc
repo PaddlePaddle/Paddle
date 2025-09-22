@@ -49,6 +49,6 @@ PD_REGISTER_KERNEL(divide_raw,
                    XPU,
                    ALL_LAYOUT,
                    phi::DivideRawKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float) {}

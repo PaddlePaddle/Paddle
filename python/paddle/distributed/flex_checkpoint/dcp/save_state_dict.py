@@ -17,6 +17,7 @@ import math
 import multiprocessing
 import os
 import time
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 import paddle
@@ -36,6 +37,7 @@ from .utils import (
     is_sharded_state_dict,
     minimal_nd_slice,
     ravel_index,
+    write_to_file_if_empty,
 )
 
 if TYPE_CHECKING:
@@ -108,6 +110,22 @@ def dedup_key_in_dict(global_storage_metadata):
             if key in out:
                 continue
             out[key] = val
+    return out
+
+
+def balanced_dedup_key_in_dict(global_storage_metadata):
+    lti_to_files = defaultdict(set)
+    for storage_metadata in global_storage_metadata:
+        for lti, fname in storage_metadata.items():
+            lti_to_files[lti].add(fname)
+
+    file_load = defaultdict(int)
+    out = {}
+    for lti, file_candidates in lti_to_files.items():
+        sorted_candidates = sorted(file_candidates)
+        selected_file = min(sorted_candidates, key=lambda f: file_load[f])
+        out[lti] = selected_file
+        file_load[selected_file] += 1
     return out
 
 
@@ -425,12 +443,15 @@ def save_state_dict_impl(
         metadata.state_dict_metadata = merge_state_dict_metadata(
             global_state_dict_metadata
         )
-        metadata.storage_metadata = dedup_key_in_dict(global_storage_metadata)
+        metadata.storage_metadata = balanced_dedup_key_in_dict(
+            global_storage_metadata
+        )
         metadata.flat_mapping = dedup_key_in_dict(global_flatten_mapping)
 
-        if coordinator_rank == paddle.distributed.get_rank():
-            logger.debug(f"metadata:{metadata}")
-            paddle.save(metadata, os.path.join(path, f"{unique_id}.metadata"))
+        logger.debug(f"metadata:{metadata}")
+        write_to_file_if_empty(
+            metadata, os.path.join(path, f"{unique_id}.metadata")
+        )
 
         # TODO(zhuxinming): dedup_tensor should using replica id when using ShardedWeight.
         dedup_tensor(

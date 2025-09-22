@@ -9,8 +9,8 @@ on:
       COMMIT_ID:
         required: false
         type: string
-  schedule:
-    - cron: '0 20 * * 0'
+        # schedule:
+        #   - cron: '0 20 * * 0'
 
 permissions: read-all
 

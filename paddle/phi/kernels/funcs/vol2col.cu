@@ -416,11 +416,11 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 }
 // };
 
-template class Vol2ColFunctor<phi::GPUContext, float>;
-template class Vol2ColFunctor<phi::GPUContext, double>;
+template class PADDLE_API Vol2ColFunctor<phi::GPUContext, float>;
+template class PADDLE_API Vol2ColFunctor<phi::GPUContext, double>;
 
-template class Col2VolFunctor<phi::GPUContext, float>;
-template class Col2VolFunctor<phi::GPUContext, double>;
+template class PADDLE_API Col2VolFunctor<phi::GPUContext, float>;
+template class PADDLE_API Col2VolFunctor<phi::GPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

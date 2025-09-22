@@ -30,8 +30,9 @@ class pstring;
 /// metadata are set unchanged.
 class StringTensorUtils;
 
-class StringTensor : public TensorBase,
-                     public TypeInfoTraits<TensorBase, StringTensor> {
+class PADDLE_API StringTensor
+    : public TensorBase,
+      public TypeInfoTraits<TensorBase, StringTensor> {
  public:
   /// \brief Construct a string tensor and allocate space.
   /// \param a The allocator used to allocate space.

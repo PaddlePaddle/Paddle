@@ -18,7 +18,7 @@
 
 ## 安装
 
-### PaddlePaddle 最新版本: [3.1](https://github.com/PaddlePaddle/Paddle/tree/release/3.1)
+### PaddlePaddle 最新版本: 3.2
 
 跟进 PaddlePaddle 最新特性请参考我们的[版本说明](https://github.com/PaddlePaddle/Paddle/releases)
 
@@ -33,7 +33,7 @@ pip install paddlepaddle-gpu
 
 更多安装信息详见官网 [安装说明](https://www.paddlepaddle.org.cn/install/quick)。
 
-## 飞桨新一代框架 3.1
+## 飞桨新一代框架 3.2
 
 - **动静统一自动并行**
 

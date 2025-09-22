@@ -24,6 +24,13 @@ echo "::group::Installing zstd"
 apt install zstd -y
 echo "::endgroup::"
 
+if [ `uname -s` == "Darwin" ]; then
+    # install deps for libuv
+    echo "::group::Installing autoconf automake libtool"
+    brew install autoconf automake libtool
+    echo "::endgroup::"
+fi
+
 if [ "$CI_name" == "cpu" ] || [ "$CI_name" == "coverage" ] || [ "$CI_name" == "xpu" ] || [ "$CI_name" == "distribute" ] || [ "$CI_name" == "build" ]; then
     if [ "$CI_name" == "xpu" ]; then
         echo "::group::Installing ninja-build"

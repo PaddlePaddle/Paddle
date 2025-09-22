@@ -116,10 +116,6 @@ class Parser:
         if self.peek().type == TokenType.COMMA:
             self.consume(TokenType.COMMA)
             attrs = self.parse_attr_list()
-        if left_vars[0].name.endswith("^T"):
-            assert len(list(filter(lambda x: x.key == "transpose", attrs))) == 0
-            attrs.append(Attribute("transpose", "[]"))
-            left_vars[0] = Var(left_vars[0].name.rstrip("^T"))
         return Statement(left_vars, right_vars, attrs)
 
     def parse_var(self):

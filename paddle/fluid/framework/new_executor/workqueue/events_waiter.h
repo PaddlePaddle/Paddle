@@ -30,7 +30,7 @@ namespace framework {
 // A multiplexing waiter, be able to wait multiple kinds of events
 // simultaneously.
 // Multi-Producer single-consumer single-slot message-queue.
-class EventsWaiter {
+class PADDLE_API EventsWaiter {
  public:
   using EventId = std::size_t;
 

@@ -157,7 +157,7 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
                    ALL_LAYOUT,
                    phi::fusion::FusedBiasDropoutResidualLnGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #else
 PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
                    GPU,
@@ -165,5 +165,5 @@ PD_REGISTER_KERNEL(fused_bias_dropout_residual_layer_norm_grad,
                    phi::fusion::FusedBiasDropoutResidualLnGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::float16) {}
 #endif

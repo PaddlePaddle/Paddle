@@ -45,12 +45,12 @@ namespace experimental {
 // declare cast api
 Tensor cast(const Tensor &x,
 DataType out_dtype,
-paddle::optional<Tensor*> input_out = paddle::none);
+paddle::optional<Tensor*> predefined_out = paddle::none);
 
 Tensor copy_to(const Tensor &x,
 const Place &place,
 bool blocking,
- paddle::optional<Tensor*> input_out = paddle::none);
+ paddle::optional<Tensor*> predefined_out = paddle::none);
 }  // namespace experimental
 
 // TODO(chenweihang): Remove this namespace using-directives later
@@ -253,7 +253,7 @@ void Tensor::copy_(const Tensor &src,
       auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
       if(!dst_tensor->meta().is_contiguous() ||
         !src_tensor->meta().is_contiguous()) {
-        VLOG(8) << "Tensor::copy_ , src or dst tesnor is not contiguous";
+        VLOG(8) << "Tensor::copy_ , src or dst tensor is not contiguous";
         if (!FLAGS_use_stride_kernel) {
           PADDLE_THROW(common::errors::Fatal(
               "FLAGS_use_stride_kernel is closed. Strided kernel "

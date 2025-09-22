@@ -129,6 +129,16 @@ bool FloorDivideOpInferSymbolicShape(
       });
 }
 
+bool TruncDivideOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return InferSymbolicShapeElementWiseBinary(
+      op,
+      infer_context,
+      [&](const symbol::DimExpr &x, const symbol::DimExpr &y) {
+        return x / y;
+      });
+}
+
 bool MinimumOpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
   return InferSymbolicShapeElementWiseBinary(
@@ -159,6 +169,7 @@ OP_ELEMENT_WISE_BINARY(ElementwisePow)
 OP_ELEMENT_WISE_BINARY(Equal)
 OP_ELEMENT_WISE_BINARY(Equal_)
 OP_ELEMENT_WISE_BINARY(FloorDivide_)
+OP_ELEMENT_WISE_BINARY(TruncDivide_)
 OP_ELEMENT_WISE_BINARY(Fmax)
 OP_ELEMENT_WISE_BINARY(Fmin)
 OP_ELEMENT_WISE_BINARY(Gammaincc)

@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 
 import paddle
 from paddle.framework import core
@@ -57,7 +57,7 @@ class TestScatterAddInplaceAPI(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not (core.is_compiled_with_cuda() or is_custom_device()),
     "core is not compiled with CUDA",
 )
 class TestScatterAddInplaceAPILargeCase(unittest.TestCase):
@@ -71,7 +71,7 @@ class TestScatterAddInplaceAPILargeCase(unittest.TestCase):
         self.value_np = np.random.randint(0, 50, (64, 102400)).astype(
             np.float32
         )
-        self.place = [paddle.CUDAPlace(0)]
+        self.place = [get_device_place()]
 
     def test_inplace_dygraph(self):
         def run(place):

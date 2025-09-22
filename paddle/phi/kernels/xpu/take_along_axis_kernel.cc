@@ -128,6 +128,6 @@ PD_REGISTER_KERNEL(take_along_axis,
                    XPU,
                    ALL_LAYOUT,
                    phi::TakeAlongAxisKernel,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    float) {}

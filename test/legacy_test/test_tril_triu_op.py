@@ -14,7 +14,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, get_device_place
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 
 import paddle
 from paddle import base, tensor
@@ -82,8 +87,8 @@ class TrilTriuOpDefaultTestComplex_128(TrilTriuOpDefaultTest):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     'not supported bf16',
 )
 class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
@@ -102,11 +107,11 @@ class TrilTriuOpDefaultTestBF16(TrilTriuOpDefaultTest):
         self.X = np.arange(1, 101, dtype="float32").reshape([10, -1])
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(get_device_place(), check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0),
+            get_device_place(),
             ['X'],
             'Out',
             numeric_grad_delta=0.05,

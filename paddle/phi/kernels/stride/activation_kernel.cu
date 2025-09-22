@@ -55,8 +55,8 @@ void LaunchUnaryElementwiseStrideKernel(const Context &dev_ctx,
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
@@ -115,8 +115,8 @@ DEFINE_CUDA_ACTIVATION_STRIDE_OP(Ceil, CudaCeilFunctor)
           "be called, something wrong has happened!"));                       \
     }                                                                         \
     DenseTensor x_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
@@ -163,8 +163,8 @@ DEFINE_CUDA_ACTIVATION_WITH_INT_IN_FLOAT_OUT_STRIDE_OP(Expm1, CudaExpm1Functor)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                 \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                      \
+    if (!FLAGS_use_stride_compute_kernel) {                                    \
+      if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
         x_ = x;                                                                \
@@ -218,8 +218,8 @@ DEFINE_CUDA_ACTIVATION_STRIDE_WITH_ONE_ATTRS(Mish, CudaMishFunctor, threshold)
           "be called, something wrong has happened!"));                        \
     }                                                                          \
     DenseTensor x_;                                                            \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {                 \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                      \
+    if (!FLAGS_use_stride_compute_kernel) {                                    \
+      if (!x.meta().is_contiguous()) {                                         \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                           \
       } else {                                                                 \
         x_ = x;                                                                \
@@ -275,8 +275,8 @@ void RoundStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -312,8 +312,8 @@ void HardSwishStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -356,14 +356,14 @@ template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
 };
 template <typename T>
 struct CudaAbsFunctor<
     T,
     std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
-                     !std::is_same<T, phi::dtype::bfloat16>::value>> {
+                     !std::is_same<T, phi::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -378,8 +378,8 @@ void AbsStrideKernel(const Context &dev_ctx,
         "be called, something wrong has happened!"));
   }
   DenseTensor x_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
@@ -413,10 +413,10 @@ PD_REGISTER_KERNEL(abs,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #define REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, func) \
@@ -426,10 +426,10 @@ PD_REGISTER_KERNEL(abs,
                      phi::func,                                   \
                      float,                                       \
                      double,                                      \
-                     phi::dtype::float16,                         \
-                     phi::dtype::bfloat16,                        \
-                     phi::dtype::complex<float>,                  \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                                \
+                     phi::bfloat16,                               \
+                     phi::complex64,                              \
+                     phi::complex128) {}
 
 #define REGISTER_ACTIVATION_MATH_STRIDE_KERNEL(exp, func) \
   PD_REGISTER_KERNEL(exp,                                 \
@@ -440,10 +440,10 @@ PD_REGISTER_KERNEL(abs,
                      double,                              \
                      int,                                 \
                      int64_t,                             \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16,                \
-                     phi::dtype::complex<float>,          \
-                     phi::dtype::complex<double>) {}
+                     phi::float16,                        \
+                     phi::bfloat16,                       \
+                     phi::complex64,                      \
+                     phi::complex128) {}
 
 #define REGISTER_ACTIVATION_FLOOR_STRIDE_KERNEL(floor, func) \
   PD_REGISTER_KERNEL(floor,                                  \
@@ -457,8 +457,8 @@ PD_REGISTER_KERNEL(abs,
                      int16_t,                                \
                      int,                                    \
                      int64_t,                                \
-                     phi::dtype::float16,                    \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                           \
+                     phi::bfloat16) {}
 
 #define REGISTER_ACTIVATION_STRIDE_KERNEL(leaky_relu, func) \
   PD_REGISTER_KERNEL(leaky_relu,                            \
@@ -467,8 +467,8 @@ PD_REGISTER_KERNEL(abs,
                      phi::func,                             \
                      float,                                 \
                      double,                                \
-                     phi::dtype::float16,                   \
-                     phi::dtype::bfloat16) {}
+                     phi::float16,                          \
+                     phi::bfloat16) {}
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(cos, CosStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(sin, SinStrideKernel)
 REGISTER_ACTIVATION_STRIDE_KERNEL_WITH_COMPLEX(tan, TanStrideKernel)

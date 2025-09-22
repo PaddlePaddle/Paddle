@@ -66,5 +66,5 @@ PD_REGISTER_KERNEL(fp8_fp8_half_gemm_fused,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::fp8_fp8_half_gemm,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}

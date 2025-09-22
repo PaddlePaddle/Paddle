@@ -23,7 +23,7 @@ class DenseTensor;
 
 namespace phi::funcs {
 
-class TensorFormatter {
+class PADDLE_API TensorFormatter {
  public:
   TensorFormatter() {}
 

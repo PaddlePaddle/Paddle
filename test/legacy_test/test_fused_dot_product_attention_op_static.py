@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
 
 import numpy as np
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.incubate.nn.functional import (
@@ -27,7 +27,7 @@ np.random.seed(2024)
 
 def skip_unit_test():
     return (
-        not paddle.is_compiled_with_cuda()
+        not (paddle.is_compiled_with_cuda() or is_custom_device())
         or paddle.device.cuda.get_device_capability()[0] < 8
         or paddle.get_cudnn_version() < 8906
     )
@@ -42,7 +42,7 @@ skip_msg = (
 @unittest.skipIf(skip_unit_test(), skip_msg)
 class TestFusedDotProductAttentionStatic(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0)
+        self.place = get_device_place()
         self.b = 2
         self.s_q = 128
         self.s_kv = 128

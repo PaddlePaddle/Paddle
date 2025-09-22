@@ -68,14 +68,13 @@ void LaunchBinaryElementwiseStrideKernel(const Context &dev_ctx,
     }                                                                         \
     DenseTensor x_;                                                           \
     DenseTensor y_;                                                           \
-    if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 ||                \
-        y.offset() != 0) {                                                    \
-      if (!x.meta().is_contiguous() || x.offset() != 0) {                     \
+    if (!FLAGS_use_stride_compute_kernel) {                                   \
+      if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
         x_ = x;                                                               \
       }                                                                       \
-      if (!y.meta().is_contiguous() || y.offset() != 0) {                     \
+      if (!y.meta().is_contiguous()) {                                        \
         y_ = Tensor2Contiguous<Context>(dev_ctx, y);                          \
       } else {                                                                \
         y_ = y;                                                               \
@@ -126,13 +125,13 @@ void AddStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
-  if (!FLAGS_use_stride_compute_kernel || x.offset() != 0 || y.offset() != 0) {
-    if (!x.meta().is_contiguous() || x.offset() != 0) {
+  if (!FLAGS_use_stride_compute_kernel) {
+    if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
     } else {
       x_ = x;
     }
-    if (!y.meta().is_contiguous() || y.offset() != 0) {
+    if (!y.meta().is_contiguous()) {
       y_ = Tensor2Contiguous<Context>(dev_ctx, y);
     } else {
       y_ = y;
@@ -181,10 +180,10 @@ void AddStrideKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(add,
                    GPU,
@@ -198,8 +197,8 @@ PD_REGISTER_KERNEL(add,
                    uint8_t,
                    int8_t,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
+                   phi::float16,
+                   phi::bfloat16,
                    complex64,
                    complex128) {}
 
@@ -260,8 +259,8 @@ PD_REGISTER_KERNEL(copysign,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(remainder,
                    GPU,
@@ -271,10 +270,10 @@ PD_REGISTER_KERNEL(remainder,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::complex64,
+                   phi::complex128,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(maximum,
                    GPU,
@@ -284,8 +283,8 @@ PD_REGISTER_KERNEL(maximum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(minimum,
                    GPU,
@@ -295,8 +294,8 @@ PD_REGISTER_KERNEL(minimum,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(floor_divide,
                    GPU,
@@ -309,8 +308,8 @@ PD_REGISTER_KERNEL(floor_divide,
                    int64_t,
                    float,
                    double,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(heaviside,
                    GPU,

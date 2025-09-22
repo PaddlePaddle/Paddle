@@ -89,11 +89,11 @@ const phi::Place &GetPlace(const std::shared_ptr<VarType> &var) {
         paddle::framework::ToTypeName(var->Var().Type())));
   }
 }
-template const phi::Place &GetPlace<VarBase>(
+template PADDLE_API const phi::Place &GetPlace<VarBase>(
     const std::shared_ptr<VarBase> &var);
-template const phi::Place &GetPlace<VariableWrapper>(
+template PADDLE_API const phi::Place &GetPlace<VariableWrapper>(
     const std::shared_ptr<VariableWrapper> &var);
-template const phi::Place &GetPlace<egr::EagerVariable>(
+template PADDLE_API const phi::Place &GetPlace<egr::EagerVariable>(
     const std::shared_ptr<egr::EagerVariable> &var);
 
 /* GetNameFromVar */
@@ -106,9 +106,9 @@ const std::string &GetNameFromVar<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> tensor) {
   return tensor->name();
 }
-template const std::string &GetNameFromVar<VariableWrapper>(
+template PADDLE_API const std::string &GetNameFromVar<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var);
-template const std::string &GetNameFromVar<VarBase>(
+template PADDLE_API const std::string &GetNameFromVar<VarBase>(
     std::shared_ptr<VarBase> var);
 
 /* SetType */
@@ -118,8 +118,9 @@ void SetType(std::shared_ptr<VarType> var,
   var->SetType(type);
 }
 template <>
-void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
-                                 framework::proto::VarType::Type type) {
+PADDLE_API void SetType<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var,
+    framework::proto::VarType::Type type) {
   switch (type) {
     case paddle::framework::proto::VarType::DENSE_TENSOR: {
       var->MutableVar()->GetMutable<phi::DenseTensor>();
@@ -136,10 +137,10 @@ void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
     }
   }
 }
-template void SetType<VarBase>(std::shared_ptr<VarBase> var,
-                               framework::proto::VarType::Type type);
-template void SetType<VariableWrapper>(std::shared_ptr<VariableWrapper> var,
-                                       framework::proto::VarType::Type type);
+template PADDLE_API void SetType<VarBase>(std::shared_ptr<VarBase> var,
+                                          framework::proto::VarType::Type type);
+template PADDLE_API void SetType<VariableWrapper>(
+    std::shared_ptr<VariableWrapper> var, framework::proto::VarType::Type type);
 
 /* GetType */
 template <typename VarType>
@@ -155,9 +156,9 @@ framework::proto::VarType::Type GetType<egr::EagerVariable>(
     return paddle::framework::proto::VarType::DENSE_TENSOR;
   }
 }
-template framework::proto::VarType::Type GetType<VarBase>(
+template PADDLE_API framework::proto::VarType::Type GetType<VarBase>(
     std::shared_ptr<VarBase> var);
-template framework::proto::VarType::Type GetType<VariableWrapper>(
+template PADDLE_API framework::proto::VarType::Type GetType<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var);
 
 /* GetDataType */
@@ -166,7 +167,7 @@ framework::proto::VarType::Type GetDataType(std::shared_ptr<VarType> var) {
   return var->DataType();
 }
 template <>
-framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
+PADDLE_API framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsType<phi::SelectedRows>()) {
     return framework::TransToProtoVarType(
@@ -183,10 +184,10 @@ framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
         var->name()));
   }
 }
-template framework::proto::VarType::Type GetDataType<VarBase>(
+template PADDLE_API framework::proto::VarType::Type GetDataType<VarBase>(
     std::shared_ptr<VarBase> var);
-template framework::proto::VarType::Type GetDataType<VariableWrapper>(
-    std::shared_ptr<VariableWrapper> var);
+template PADDLE_API framework::proto::VarType::Type
+GetDataType<VariableWrapper>(std::shared_ptr<VariableWrapper> var);
 
 /* GetDataLayout */
 template <typename VarType>
@@ -194,7 +195,7 @@ phi::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
   return var->DataLayout();
 }
 template <>
-phi::DataLayout GetDataLayout<egr::EagerVariable>(
+PADDLE_API phi::DataLayout GetDataLayout<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
   if (var->Var().IsType<phi::DenseTensor>()) {
     return var->Var().Get<phi::DenseTensor>().layout();
@@ -207,8 +208,9 @@ phi::DataLayout GetDataLayout<egr::EagerVariable>(
         var->name()));
   }
 }
-template phi::DataLayout GetDataLayout<VarBase>(std::shared_ptr<VarBase> var);
-template phi::DataLayout GetDataLayout<VariableWrapper>(
+template PADDLE_API phi::DataLayout GetDataLayout<VarBase>(
+    std::shared_ptr<VarBase> var);
+template PADDLE_API phi::DataLayout GetDataLayout<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var);
 
 /* SetDataLayout */
@@ -217,8 +219,8 @@ void SetDataLayout(std::shared_ptr<VarType> var, const phi::DataLayout layout) {
   var->SetDataLayout(layout);
 }
 template <>
-void SetDataLayout<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
-                                       const phi::DataLayout layout) {
+PADDLE_API void SetDataLayout<egr::EagerVariable>(
+    std::shared_ptr<egr::EagerVariable> var, const phi::DataLayout layout) {
   if (var->Var().IsType<phi::DenseTensor>()) {
     var->MutableVar()->GetMutable<phi::DenseTensor>()->set_layout(layout);
   } else {
@@ -230,9 +232,9 @@ void SetDataLayout<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
         var->name()));
   }
 }
-template void SetDataLayout<VarBase>(std::shared_ptr<VarBase> var,
-                                     const phi::DataLayout layout);
-template void SetDataLayout<VariableWrapper>(
+template PADDLE_API void SetDataLayout<VarBase>(std::shared_ptr<VarBase> var,
+                                                const phi::DataLayout layout);
+template PADDLE_API void SetDataLayout<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var, const phi::DataLayout layout);
 
 /* CheckCachedKey */
@@ -248,9 +250,9 @@ bool CheckCachedKey<egr::EagerVariable>(
   // equal to self: " << key == key.
   return false;
 }
-template bool CheckCachedKey<VarBase>(std::shared_ptr<VarBase> var,
-                                      const phi::KernelKey &key);
-template bool CheckCachedKey<VariableWrapper>(
+template PADDLE_API bool CheckCachedKey<VarBase>(std::shared_ptr<VarBase> var,
+                                                 const phi::KernelKey &key);
+template PADDLE_API bool CheckCachedKey<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var, const phi::KernelKey &key);
 
 /* GetCachedValue */
@@ -260,7 +262,7 @@ std::shared_ptr<VariableWrapper> GetCachedValue(std::shared_ptr<VarType> var,
   return GetVariableWrapper(var)->getCacheValue(key);
 }
 template <>
-std::shared_ptr<VariableWrapper> GetCachedValue(
+PADDLE_API std::shared_ptr<VariableWrapper> GetCachedValue(
     std::shared_ptr<egr::EagerVariable> var, const phi::KernelKey &key) {
   // TODO(jiabin): Support this later
   //   PADDLE_THROW(common::errors::Fatal("In eager mode program should not
@@ -270,10 +272,11 @@ std::shared_ptr<VariableWrapper> GetCachedValue(
   //   is equal to self: " << key == key.
   return std::make_shared<VariableWrapper>("");
 }
-template std::shared_ptr<VariableWrapper> GetCachedValue<VarBase>(
+template PADDLE_API std::shared_ptr<VariableWrapper> GetCachedValue<VarBase>(
     std::shared_ptr<VarBase> var, const phi::KernelKey &key);
-template std::shared_ptr<VariableWrapper> GetCachedValue<VariableWrapper>(
-    std::shared_ptr<VariableWrapper> var, const phi::KernelKey &key);
+template PADDLE_API std::shared_ptr<VariableWrapper>
+GetCachedValue<VariableWrapper>(std::shared_ptr<VariableWrapper> var,
+                                const phi::KernelKey &key);
 
 /* SetCachedValue */
 template <typename VarType>
@@ -293,10 +296,10 @@ void SetCachedValue<egr::EagerVariable>(
   //   VLOG(10) << "CheckCachedKey with tensor: " << tensor->name() << "and key
   //   is equal to self: " << key == key << " and res name is:" << res->Name().
 }
-template void SetCachedValue<VarBase>(std::shared_ptr<VarBase> var,
-                                      const phi::KernelKey &key,
-                                      std::shared_ptr<VarBase> res);
-template void SetCachedValue<VariableWrapper>(
+template PADDLE_API void SetCachedValue<VarBase>(std::shared_ptr<VarBase> var,
+                                                 const phi::KernelKey &key,
+                                                 std::shared_ptr<VarBase> res);
+template PADDLE_API void SetCachedValue<VariableWrapper>(
     std::shared_ptr<VariableWrapper> var,
     const phi::KernelKey &key,
     std::shared_ptr<VariableWrapper> res);

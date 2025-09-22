@@ -26,7 +26,8 @@ foreach(TEST_OP ${TEST_OPS})
   endif()
 endforeach()
 
-set(GPU_ONLY_DISTRIBUTED_TESTS test_sharded_state_dict test_strategy_conversion)
+set(GPU_ONLY_DISTRIBUTED_TESTS test_sharded_state_dict test_strategy_conversion
+                               test_load_static_dict_transpose)
 
 if(NOT (WITH_DISTRIBUTE AND WITH_GPU))
   get_property(

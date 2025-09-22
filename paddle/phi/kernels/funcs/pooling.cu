@@ -966,8 +966,8 @@ class MaxPool2dGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template class Pool2dDirectCUDAFunctor<MaxPool<float>, float>;
-template class Pool2dDirectCUDAFunctor<AvgPool<float>, float>;
+template class PADDLE_API Pool2dDirectCUDAFunctor<MaxPool<float>, float>;
+template class PADDLE_API Pool2dDirectCUDAFunctor<AvgPool<float>, float>;
 
 template class MaxPool2dGradFunctor<phi::GPUContext, float>;
 template class MaxPool2dGradFunctor<phi::GPUContext, double>;
@@ -1804,8 +1804,8 @@ class MaxPool3dGradFunctor<phi::GPUContext, T> {
   }
 };
 
-template class Pool3dDirectCUDAFunctor<MaxPool<float>, float>;
-template class Pool3dDirectCUDAFunctor<AvgPool<float>, float>;
+template class PADDLE_API Pool3dDirectCUDAFunctor<MaxPool<float>, float>;
+template class PADDLE_API Pool3dDirectCUDAFunctor<AvgPool<float>, float>;
 
 template class MaxPool3dGradFunctor<phi::GPUContext, float>;
 template class MaxPool3dGradFunctor<phi::GPUContext, double>;

@@ -27,7 +27,7 @@ PD_REGISTER_KERNEL(isinf_sr,
                    phi::IsinfSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 
@@ -37,7 +37,7 @@ PD_REGISTER_KERNEL(isnan_sr,
                    phi::IsnanSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 
@@ -47,7 +47,7 @@ PD_REGISTER_KERNEL(isfinite_sr,
                    phi::IsfiniteSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 
@@ -58,7 +58,7 @@ PD_REGISTER_KERNEL(isinf_sr,
                    phi::IsinfSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 
@@ -68,7 +68,7 @@ PD_REGISTER_KERNEL(isnan_sr,
                    phi::IsnanSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 
@@ -78,7 +78,7 @@ PD_REGISTER_KERNEL(isfinite_sr,
                    phi::IsfiniteSR,
                    float,
                    double,
-                   phi::dtype::float16,
+                   phi::float16,
                    int,
                    int64_t) {}
 #endif

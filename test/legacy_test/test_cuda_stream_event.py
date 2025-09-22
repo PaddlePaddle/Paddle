@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import ctypes
 import unittest
 
 import numpy as np
+from op_test import get_device_place
 
 import paddle
 from paddle.device import cuda
@@ -30,12 +30,13 @@ class TestCurrentStream(unittest.TestCase):
             s1 = cuda.current_stream(0)
             self.assertTrue(isinstance(s1, cuda.Stream))
 
-            s2 = cuda.current_stream(paddle.CUDAPlace(0))
+            s2 = cuda.current_stream(get_device_place())
             self.assertTrue(isinstance(s2, cuda.Stream))
 
             self.assertEqual(s1, s2)
 
-            self.assertRaises(ValueError, cuda.current_stream, "gpu:0")
+            s3 = cuda.current_stream('gpu:0')
+            self.assertTrue(isinstance(s3, cuda.Stream))
 
 
 class TestSynchronize(unittest.TestCase):
@@ -43,9 +44,11 @@ class TestSynchronize(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
             self.assertIsNone(cuda.synchronize(0))
-            self.assertIsNone(cuda.synchronize(paddle.CUDAPlace(0)))
+            self.assertIsNone(cuda.synchronize(get_device_place()))
+            self.assertIsNone(cuda.synchronize("gpu:0"))
+            self.assertIsNone(cuda.synchronize("gpu"))
 
-            self.assertRaises(ValueError, cuda.synchronize, "gpu:0")
+            self.assertRaises(ValueError, cuda.synchronize, "xpu")
 
 
 class TestCUDAStream(unittest.TestCase):

@@ -4300,6 +4300,7 @@ void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
 void RepeatInterleaveInferMeta(const MetaTensor& x,
                                int repeats,
                                int dim,
+                               int64_t output_size,
                                MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = common::vectorize(input_dim);
@@ -4336,7 +4337,13 @@ void RepeatInterleaveInferMeta(const MetaTensor& x,
       common::errors::InvalidArgument(
           "repeat_interleave's output tensor can't be nullptr"));
 
-  if (input_dim[n_dim] != -1) output_dim[n_dim] = input_dim[n_dim] * repeats;
+  if (output_size > 0) {
+    // Use provided output_size to avoid stream synchronization
+    output_dim[n_dim] = output_size;
+  } else if (input_dim[n_dim] != -1) {
+    output_dim[n_dim] = input_dim[n_dim] * repeats;
+  }
+
   out->set_dims(common::make_ddim(output_dim));
   out->share_lod(x);
   out->set_dtype(x.dtype());
@@ -4709,6 +4716,32 @@ void SliceRawInferMeta(const MetaTensor& input,
     out->share_lod(input);
   }
   out->set_dtype(input.dtype());
+}
+
+void SlogdetV2InferMeta(const MetaTensor& x,
+                        MetaTensor* sign,
+                        MetaTensor* logdet) {
+  DDim x_dims = x.dims();
+  int rank = x_dims.size();
+  PADDLE_ENFORCE_GE(rank,
+                    2,
+                    errors::InvalidArgument(
+                        "Input(X) should be at least a 2-D tensor, but got %u.",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[rank - 1],
+      x_dims[rank - 2],
+      errors::InvalidArgument("the input matrix should be square matrix."));
+  auto x_dtype = x.dtype();
+  auto x_layout = x.layout();
+  DDim out_dims = slice_ddim(x_dims, 0, rank - 2);
+  sign->set_dtype(x_dtype);
+  sign->set_layout(x_layout);
+  sign->set_dims(out_dims);
+
+  logdet->set_dtype(dtype::ToReal(x_dtype));
+  logdet->set_layout(x_layout);
+  logdet->set_dims(out_dims);
 }
 
 void ViewSliceInferMeta(const MetaTensor& input,

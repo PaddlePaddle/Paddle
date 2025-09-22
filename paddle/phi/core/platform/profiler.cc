@@ -41,22 +41,23 @@ struct ProfilerOptions {
   uint32_t trace_level = FLAGS_host_trace_level;
 };
 
-#if defined(_WIN32) && defined(PHI_SHARED)
-phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
-bool phi::ProfilerHelper::g_enable_nvprof_hook = false;
-thread_local uint64_t phi::ProfilerHelper::g_thread_id;
-uint32_t phi::ProfilerHelper::g_next_thread_id = 0;
-std::mutex phi::ProfilerHelper::g_all_event_lists_mutex;
-std::list<std::shared_ptr<phi::EventList<phi::Event>>>
-    phi::ProfilerHelper::g_all_event_lists;
-thread_local std::shared_ptr<phi::EventList<phi::Event>>
-    phi::ProfilerHelper::g_event_list;
-std::list<std::shared_ptr<phi::EventList<phi::MemEvent>>>
-    phi::ProfilerHelper::g_all_mem_event_lists;
-thread_local std::shared_ptr<phi::EventList<phi::MemEvent>>
-    phi::ProfilerHelper::g_mem_event_list;
-std::mutex phi::ProfilerHelper::g_all_mem_event_lists_mutex;
-#endif
+// #if defined(_WIN32) && defined(PHI_SHARED)
+// inline phi::ProfilerState phi::ProfilerHelper::g_state =
+//     phi::ProfilerState::kDisabled;
+// inline bool phi::ProfilerHelper::g_enable_nvprof_hook = false;
+// inline thread_local uint64_t phi::ProfilerHelper::g_thread_id;
+// inline uint32_t phi::ProfilerHelper::g_next_thread_id = 0;
+// inline std::mutex phi::ProfilerHelper::g_all_event_lists_mutex;
+// inline std::list<std::shared_ptr<phi::EventList<phi::Event>>>
+//     phi::ProfilerHelper::g_all_event_lists;
+// inline thread_local std::shared_ptr<phi::EventList<phi::Event>>
+//     phi::ProfilerHelper::g_event_list;
+// inline std::list<std::shared_ptr<phi::EventList<phi::MemEvent>>>
+//     phi::ProfilerHelper::g_all_mem_event_lists;
+// inline thread_local std::shared_ptr<phi::EventList<phi::MemEvent>>
+//     phi::ProfilerHelper::g_mem_event_list;
+// inline std::mutex phi::ProfilerHelper::g_all_mem_event_lists_mutex;
+// #endif
 namespace paddle::platform {
 
 MemEventRecorder MemEventRecorder::recorder;

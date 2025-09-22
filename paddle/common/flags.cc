@@ -737,11 +737,21 @@ PHI_DEFINE_EXPORTED_int32(
     "summary will be shown."
     "If FLAGS_call_stack_level == 2, the python stack, c++ stack, and "
     "error message summary will be shown.");
+/**
+ * Debug related FLAG
+ * Name: dump_grad_node_forward_stack_path
+ * Since Version: 3.2.1
+ * Value Range: string, default=""
+ * Example:
+ * Note: Dump grad node forward call stack to the dir path.
+ */
+PHI_DEFINE_EXPORTED_string(dump_grad_node_forward_stack_path,
+                           "",
+                           "Dump grad node forward call stack to the dir path");
 
 PHI_DEFINE_EXPORTED_bool(share_tensor_for_grad_tensor_holder,
                          false,
                          "CopyValueFromTensor do not deep copy, if true.");
-
 /**
  * Debug related FLAG
  * Name: sort_sum_gradient
@@ -1377,6 +1387,8 @@ PHI_DEFINE_EXPORTED_bool(eager_communication_connection,
                          false,
                          "enable eager to create nccl comm");
 
+PHI_DEFINE_EXPORTED_bool(tcp_store_using_libuv, true, "enable libuv tcp store");
+
 PHI_DEFINE_EXPORTED_int64(
     tcp_max_syn_backlog,
     2048,
@@ -1798,6 +1810,15 @@ PHI_DEFINE_EXPORTED_string(
     disable_logging_op_attr_list,
     "",
     "Remove some redundant information when printing the pir program");
+
+#ifdef _WIN32
+PHI_DEFINE_EXPORTED_string(
+    flagcx_dir,  // NOLINT
+    "",
+    "Specify path for loading libflagcx.so. For instance, "
+    "For instance, /usr/local/flagcx/lib. If default, "
+    "dlopen will search flagcx from LD_LIBRARY_PATH");
+#endif
 
 /**
  * ProcessGroupNCCL related FLAG

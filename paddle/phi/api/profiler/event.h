@@ -43,7 +43,7 @@ enum class EventRole {
   kSpecial,   // record event such as PE which is outer of thread local
 };
 
-class Event {
+class PADDLE_API Event {
  public:
   // The DeviceContext is used to get the cuda stream.
   // If CPU profiling mode, can pass nullptr.
@@ -140,9 +140,9 @@ class CudaEvent {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
  public:
-  CudaEvent();
+  PADDLE_API CudaEvent();
 
-  explicit CudaEvent(unsigned int flags);
+  PADDLE_API explicit CudaEvent(unsigned int flags);
 
   ~CudaEvent() {
 #ifdef PADDLE_WITH_HIP
@@ -160,9 +160,9 @@ class CudaEvent {
 #endif
   }
 
-  bool Query();
+  PADDLE_API bool Query();
 
-  float ElapsedTime(CudaEvent *end_event);
+  PADDLE_API float ElapsedTime(CudaEvent *end_event);
 
   void Synchronize() {
 #ifdef PADDLE_WITH_HIP

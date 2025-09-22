@@ -92,8 +92,8 @@ PD_REGISTER_KERNEL(real_grad,
                    CPU,
                    STRIDED,
                    phi::RealGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -101,8 +101,8 @@ PD_REGISTER_KERNEL(imag_grad,
                    CPU,
                    STRIDED,
                    phi::ImagGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -111,8 +111,8 @@ PD_REGISTER_KERNEL(real_grad,
                    GPU,
                    STRIDED,
                    phi::RealGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -120,8 +120,8 @@ PD_REGISTER_KERNEL(imag_grad,
                    GPU,
                    STRIDED,
                    phi::ImagGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif
@@ -131,8 +131,8 @@ PD_REGISTER_KERNEL(real_grad,
                    Custom,
                    STRIDED,
                    phi::RealGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 
@@ -140,8 +140,8 @@ PD_REGISTER_KERNEL(imag_grad,
                    Custom,
                    STRIDED,
                    phi::ImagGradStridedKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 #endif

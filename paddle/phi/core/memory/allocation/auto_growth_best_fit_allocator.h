@@ -29,7 +29,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class AutoGrowthBestFitAllocator : public Allocator {
+class PADDLE_API AutoGrowthBestFitAllocator : public Allocator {
  public:
   AutoGrowthBestFitAllocator(std::shared_ptr<Allocator> underlying_allocator,
                              size_t alignment,

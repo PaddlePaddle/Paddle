@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
 import os
 import subprocess
@@ -19,6 +18,8 @@ import sys
 import tempfile
 import unittest
 import uuid
+
+from op_test import is_custom_device
 
 import paddle
 from paddle import base
@@ -101,7 +102,7 @@ def _run_test_case(plan, flags, cuda_visible_devices="0"):
 
 class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
     def setUp(self):
-        if base.is_compiled_with_cuda():
+        if base.is_compiled_with_cuda() or is_custom_device():
             paddle.set_flags(
                 {
                     'FLAGS_allocator_strategy': 'auto_growth',
@@ -110,7 +111,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
             )
 
     def test_memory_pool_flags(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_small_pool_size_in_mb": 1,
@@ -134,7 +135,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(r1, r0 + int(2 * MiB), msg=f"r0={r0}, r1={r1}")
 
     def test_large_pool_growth_override_16mb(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_small_pool_size_in_mb": 1,
@@ -153,7 +154,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(r1, r0 + int(16 * MiB), msg=f"r0={r0}, r1={r1}")
 
     def test_single_pool(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_small_pool_size_in_mb": 0,
@@ -184,7 +185,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(r2, int(20 * MiB), msg=f"r2={r2}")
 
     def test_memory_limit(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_gpu_memory_limit_mb": 10,
@@ -198,7 +199,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertEqual(out["try_alloc_ok"][1], False)
 
     def test_auto_growth_allocator_v2(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_use_auto_growth_v2": True,
@@ -213,7 +214,7 @@ class TestAllocatorFlagsWithSubprocess(unittest.TestCase):
         self.assertLessEqual(r0, int(6 * MiB), msg=f"r0={r0}")
 
     def test_trace_flag(self):
-        if not base.is_compiled_with_cuda():
+        if not (base.is_compiled_with_cuda() or is_custom_device()):
             return
         flags = {
             "FLAGS_small_pool_size_in_mb": 1,

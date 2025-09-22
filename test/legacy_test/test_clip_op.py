@@ -15,7 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
 from utils import dygraph_guard, static_guard
 
 import paddle
@@ -202,8 +207,8 @@ class TestCase_ZeroSize(TestClipOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
     "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestClipBF16Op(OpTest):
@@ -238,8 +243,8 @@ class TestClipBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.enable_static()
             self.check_output_with_place(
                 place,
@@ -250,8 +255,8 @@ class TestClipBF16Op(OpTest):
             paddle.disable_static()
 
     def test_check_grad_normal(self):
-        if paddle.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             paddle.enable_static()
             self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
             paddle.disable_static()
@@ -325,8 +330,8 @@ class TestClipAPI(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -413,8 +418,8 @@ class TestClipAPI(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         paddle.disable_static(place)
@@ -497,8 +502,8 @@ class TestClipAPI_Int(unittest.TestCase):
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('int32')
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         exe = base.Executor(place)
@@ -585,8 +590,8 @@ class TestClipAPI_Int(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            base.CUDAPlace(0)
-            if base.core.is_compiled_with_cuda()
+            get_device_place()
+            if (base.core.is_compiled_with_cuda() or is_custom_device())
             else base.CPUPlace()
         )
         paddle.disable_static(place)
@@ -637,7 +642,7 @@ class TestClipAPI_Int(unittest.TestCase):
 
 class TestClipOpFp16(unittest.TestCase):
     def test_fp16(self):
-        if base.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda() or is_custom_device():
             paddle.enable_static()
             data_shape = [1, 9, 9, 4]
             data = np.random.random(data_shape).astype('float16')
@@ -653,7 +658,7 @@ class TestClipOpFp16(unittest.TestCase):
                     name='max1', shape=[1], dtype='float16'
                 )
                 out = paddle.clip(images, min, max)
-                place = paddle.CUDAPlace(0)
+                place = get_device_place()
                 exe = paddle.static.Executor(place)
                 res1 = exe.run(
                     feed={
@@ -768,8 +773,8 @@ class TestClipOutAndParaDecorator(unittest.TestCase):
 class TestClipCompatibility(unittest.TestCase):
     def setUp(self):
         self.places = [paddle.CPUPlace()]
-        if paddle.base.core.is_compiled_with_cuda():
-            self.places.append(paddle.CUDAPlace(0))
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
         self.func = paddle.clip
         self.init_data()
         self.init_case()
@@ -912,6 +917,112 @@ class TestClipCompatibility(unittest.TestCase):
                         )
 
                         out = x.clip(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+
+
+class TestClampAliasForClip(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            self.places.append(get_device_place())
+        self.func = paddle.clamp
+        self.init_data()
+        self.init_case()
+
+    def init_data(self):
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.min_val = 0.3
+        self.max_val = 0.7
+        self.np_input = np.random.rand(*self.shape).astype(self.dtype)
+        self.np_out = np.clip(self.np_input, self.min_val, self.max_val)
+
+    def init_case(self):
+        params = [['x', 'input'], ['min'], ['max']]
+
+        # Generate all valid combinations
+        def generate_cases(param_groups, case_list):
+            from itertools import product
+
+            for combo in product(*[[None, *names] for names in param_groups]):
+                args = ['pos' if p is None else 'kw' for p in combo]
+                if args == sorted(args, key=lambda x: x != 'pos'):
+                    case_list.append(combo)
+
+        # paddle.clamp()
+        self.test_cases = []
+        generate_cases(params, self.test_cases)
+        # x.clamp()
+        self.tensor_test_cases = []
+        generate_cases(params[1:], self.tensor_test_cases)
+
+    def _build_args_kwargs(self, param_names, params):
+        args = []
+        kwargs = {}
+        for name, param in zip(param_names, params):
+            if name is None:
+                args.append(param)
+            else:
+                kwargs[name] = param
+        return args, kwargs
+
+    def test_dygraph_compatibility(self):
+        with dygraph_guard():
+            for place in self.places:
+                paddle.device.set_device(place)
+                x = paddle.to_tensor(self.np_input)
+                # paddle.
+                for param_names in self.test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (x, self.min_val, self.max_val)
+                    )
+                    out = self.func(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+                # paddle.Tensor.
+                for param_names in self.tensor_test_cases:
+                    args, kwargs = self._build_args_kwargs(
+                        param_names, (self.min_val, self.max_val)
+                    )
+                    out = x.clamp(*args, **kwargs)
+                    np.testing.assert_array_equal(self.np_out, out.numpy())
+
+    def test_static_compatibility(self):
+        with static_guard():
+            for place in self.places:
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.base.program_guard(main, startup):
+                    x = paddle.static.data(
+                        name="x", shape=self.shape, dtype=self.dtype
+                    )
+                    # paddle.
+                    for param_names in self.test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (x, self.min_val, self.max_val)
+                        )
+                        out = self.func(*args, **kwargs)
+
+                        exe = paddle.base.Executor(place)
+                        fetches = exe.run(
+                            main,
+                            feed={"x": self.np_input},
+                            fetch_list=[out],
+                        )
+                        np.testing.assert_array_equal(self.np_out, fetches[0])
+                    # paddle.Tensor.
+                    for param_names in self.tensor_test_cases:
+                        args, kwargs = self._build_args_kwargs(
+                            param_names, (self.min_val, self.max_val)
+                        )
+
+                        out = x.clamp(*args, **kwargs)
 
                         exe = paddle.base.Executor(place)
                         fetches = exe.run(

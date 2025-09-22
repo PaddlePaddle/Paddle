@@ -21,14 +21,14 @@ PD_REGISTER_KERNEL(fft_c2c,
                    CPU,
                    ALL_LAYOUT,
                    phi::FFTC2CKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 PD_REGISTER_KERNEL(fft_c2r,
                    CPU,
                    ALL_LAYOUT,
                    phi::FFTC2RKernel,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {
+                   phi::complex64,
+                   phi::complex128) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
 }
 PD_REGISTER_KERNEL(fft_r2c, CPU, ALL_LAYOUT, phi::FFTR2CKernel, float, double) {

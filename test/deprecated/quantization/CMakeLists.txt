@@ -194,7 +194,6 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_weight_only_linear)
   list(REMOVE_ITEM TEST_OPS test_llm_int8_linear)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_deprecated)
-  list(REMOVE_ITEM TEST_OPS test_quant_post_quant_aware_deprecated)
   list(REMOVE_ITEM TEST_OPS test_quant_aware_user_defined_deprecated)
   list(REMOVE_ITEM TEST_OPS test_quant_amp_deprecated)
   list(REMOVE_ITEM TEST_OPS test_apply_per_channel_scale)
@@ -237,7 +236,7 @@ list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 if(WIN32)
   set(SINGLE_CARD_TEST_OPS
       test_user_defined_quantization_deprecated
-      test_quantization_scale_pass_deprecated test_quantization_pass_deprecated
+      test_quantization_scale_pass_deprecated
       test_moving_average_abs_max_scale_op_deprecated test_graph_deprecated)
   list(REMOVE_ITEM TEST_OPS ${SINGLE_CARD_TEST_OPS})
   foreach(src ${SINGLE_CARD_TEST_OPS})
@@ -256,15 +255,12 @@ if(NOT WIN32)
   set_tests_properties(test_weight_quantization_mobilenetv1_deprecated
                        PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant_aware_deprecated PROPERTIES TIMEOUT 200)
-  set_tests_properties(test_quant_post_quant_aware_deprecated PROPERTIES TIMEOUT
-                                                                         200)
   set_tests_properties(test_quant_aware_user_defined_deprecated
                        PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant_amp_deprecated PROPERTIES TIMEOUT 200)
 endif()
 
 set_tests_properties(test_graph_deprecated PROPERTIES TIMEOUT 120)
-set_tests_properties(test_quantization_pass_deprecated PROPERTIES TIMEOUT 120)
 set_tests_properties(test_user_defined_quantization_deprecated
                      PROPERTIES TIMEOUT 200)
 

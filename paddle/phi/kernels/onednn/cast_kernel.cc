@@ -78,6 +78,6 @@ void CastKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    cast, OneDNN, ONEDNN, phi::CastKernel, float, phi::dtype::bfloat16) {
+    cast, OneDNN, ONEDNN, phi::CastKernel, float, phi::bfloat16) {
   kernel->check_if_onednn_kernel_support_ = phi::CastCheckIfOneDNNSupport;
 }

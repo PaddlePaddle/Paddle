@@ -39,10 +39,5 @@ void EyeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(eye,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::EyeKernel,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(
+    eye, XPU, ALL_LAYOUT, phi::EyeKernel, float, phi::float16, phi::bfloat16) {}

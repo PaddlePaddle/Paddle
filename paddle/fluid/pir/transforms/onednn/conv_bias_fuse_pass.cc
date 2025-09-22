@@ -123,6 +123,7 @@ class ConvBiasFusePattern : public paddle::drr::DrrPatternBase {
                    {"groups", pat.Attr("groups")},
                    {"data_format", pat.Attr("data_format")},
                    {"mkldnn_data_type", res.StrAttr("float32")},
+                   {"onednn_data_type", res.StrAttr("")},
                    {"fuse_activation", res.StrAttr("")},
                    {"fuse_residual_connection", res.BoolAttr(false)},
                    {"force_fp32_output", res.BoolAttr(false)},

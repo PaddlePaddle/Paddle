@@ -33,63 +33,67 @@ class ComputePropagateScalesMkldnnPass : public FusePassBase {
 #endif
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  PADDLE_API void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void GetTensorFromVector(const std::vector<float>& data_v,
-                           phi::DenseTensor* tensor) const;
+  PADDLE_API void GetTensorFromVector(const std::vector<float>& data_v,
+                                      phi::DenseTensor* tensor) const;
 
-  void GetQuantInfo(ir::Graph* graph, StringPairMap* var_quant_scales) const;
-
-  std::vector<float> GetScales(phi::DenseTensor* tensor, int axis) const;
-
-  void ComputeVarScales(ir::Graph* graph,
-                        Scope* scope,
-                        const std::unordered_set<std::string>& ops,
-                        const std::string& weight_name,
-                        const int axis,
-                        StringPairMap* var_quant_scales) const;
-
-  void ComputeSingleGruWeightScales(Scope* scope,
-                                    const std::string& wx_var_name,
-                                    const std::string& wh_var_name,
-                                    phi::DenseTensor* tensor) const;
-
-  void ComputeGruWeightScales(ir::Graph* graph,
-                              Scope* scope,
-                              const std::string& wx_name,
-                              const std::string& wh_name,
-                              StringPairMap* var_quant_scales) const;
-
-  void ComputeSingleLstmWeightScales(Scope* scope,
-                                     const std::string& wx_var_name,
-                                     const std::string& wh_var_name,
-                                     phi::DenseTensor* tensor) const;
-
-  void ComputeLstmWeightScales(ir::Graph* graph,
-                               Scope* scope,
-                               const std::string& wx_name,
-                               const std::string& wh_name,
+  PADDLE_API void GetQuantInfo(ir::Graph* graph,
                                StringPairMap* var_quant_scales) const;
 
-  void ComputeWeightScales(ir::Graph* graph,
-                           Scope* scope,
-                           StringPairMap* var_quant_scales) const;
+  PADDLE_API std::vector<float> GetScales(phi::DenseTensor* tensor,
+                                          int axis) const;
 
-  void UpdateReluOutputScales(ir::Graph* graph,
-                              StringPairMap* var_quant_scales) const;
+  PADDLE_API void ComputeVarScales(ir::Graph* graph,
+                                   Scope* scope,
+                                   const std::unordered_set<std::string>& ops,
+                                   const std::string& weight_name,
+                                   const int axis,
+                                   StringPairMap* var_quant_scales) const;
 
-  void UpdateScaleOpInOutScales(Node* op_node,
-                                const std::string& input_name,
-                                const std::string& output_name,
-                                StringPairMap* var_quant_scales) const;
+  PADDLE_API void ComputeSingleGruWeightScales(Scope* scope,
+                                               const std::string& wx_var_name,
+                                               const std::string& wh_var_name,
+                                               phi::DenseTensor* tensor) const;
 
-  std::unordered_set<std::string> UpdateScales(
+  PADDLE_API void ComputeGruWeightScales(ir::Graph* graph,
+                                         Scope* scope,
+                                         const std::string& wx_name,
+                                         const std::string& wh_name,
+                                         StringPairMap* var_quant_scales) const;
+
+  PADDLE_API void ComputeSingleLstmWeightScales(Scope* scope,
+                                                const std::string& wx_var_name,
+                                                const std::string& wh_var_name,
+                                                phi::DenseTensor* tensor) const;
+
+  PADDLE_API void ComputeLstmWeightScales(
+      ir::Graph* graph,
+      Scope* scope,
+      const std::string& wx_name,
+      const std::string& wh_name,
+      StringPairMap* var_quant_scales) const;
+
+  PADDLE_API void ComputeWeightScales(ir::Graph* graph,
+                                      Scope* scope,
+                                      StringPairMap* var_quant_scales) const;
+
+  PADDLE_API void UpdateReluOutputScales(ir::Graph* graph,
+                                         StringPairMap* var_quant_scales) const;
+
+  PADDLE_API void UpdateScaleOpInOutScales(
+      Node* op_node,
+      const std::string& input_name,
+      const std::string& output_name,
+      StringPairMap* var_quant_scales) const;
+
+  PADDLE_API std::unordered_set<std::string> UpdateScales(
       ir::Graph* graph,
       StringPairMap* var_quant_scales,
       const std::unordered_set<std::string>& scale_immutable_ops) const;
 
-  void PropagateScales(
+  PADDLE_API void PropagateScales(
       ir::Graph* graph,
       StringPairMap* var_quant_scales,
       const std::unordered_set<std::string>& scale_immutable_ops) const;

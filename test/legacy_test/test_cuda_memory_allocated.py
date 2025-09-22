@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import unittest
+
+from op_test import get_device_place, is_custom_device
 
 import paddle
 from paddle.base import core
@@ -21,23 +22,23 @@ from paddle.device.cuda import device_count, memory_allocated
 
 class TestMemoryAllocated(unittest.TestCase):
     def test_memory_allocated(self, device=None):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             tensor = paddle.zeros(shape=[256])
             alloc_size = 4 * 256  # 256 float32 data, with 4 bytes for each one
             memory_allocated_size = memory_allocated(device)
             self.assertEqual(memory_allocated_size, alloc_size)
 
     def test_memory_allocated_for_all_places(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             gpu_num = device_count()
             for i in range(gpu_num):
                 paddle.device.set_device("gpu:" + str(i))
-                self.test_memory_allocated(core.CUDAPlace(i))
+                self.test_memory_allocated(get_device_place(i))
                 self.test_memory_allocated(i)
                 self.test_memory_allocated("gpu:" + str(i))
 
     def test_memory_allocated_exception(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda() or is_custom_device():
             wrong_device = [
                 core.CPUPlace(),
                 device_count() + 1,

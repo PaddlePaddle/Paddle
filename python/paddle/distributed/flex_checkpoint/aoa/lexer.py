@@ -49,7 +49,7 @@ class Lexer:
         ('COMMA', r','),
         ('NUMBER', r'\d+'),
         ('STRING', r'"[^"]*"|\'[^\']*\''),
-        ('IDENTIFIER', r'[A-Za-z][A-Za-z\.\$\_\*\d\^T]*'),
+        ('IDENTIFIER', r'[A-Za-z_][A-Za-z\.\$\_\*\d\^T]*'),
         ('SKIP', r'[ \t]+'),
         ('NEWLINE', r'[\r\n]+'),
         ('MISMATCH', r'.'),
@@ -71,7 +71,8 @@ class Lexer:
         pos = 0
         mo = self.get_token(text, pos)
         tokens = []
-        text += '\n'
+        if not text.endswith('\n'):
+            text += '\n'
         while mo is not None:
             kind = mo.lastgroup
             value = mo.group()

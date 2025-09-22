@@ -280,6 +280,172 @@ class TestMaxMinAmaxAminAPI_ZeroSize2(TestMaxMinAmaxAminAPI):
         self.keepdim = True
 
 
+class TestAmaxAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.amax(x, 1, True)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.amax(x=x, axis=1, keepdim=True)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.amax(input=x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.amax(x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.amax(1, True)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.amax(dim=1, keepdim=True)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.amax(x, 1, True, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Test default value
+        out8 = x.amax(1)
+        # Numpy reference  out
+        ref_out = np.amax(self.np_input, 1, keepdims=True)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        ref_out = np.amax(self.np_input, 1, keepdims=False)
+        np.testing.assert_allclose(ref_out, out8.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.amax(x, 1, True)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.amax(x=x, axis=1, keepdim=True)
+            # Key words args for torch
+            out3 = paddle.amax(input=x, dim=1, keepdim=True)
+            # Combined args and kwargs
+            out4 = paddle.amax(x, dim=1, keepdim=True)
+            # Tensor method args
+            out5 = x.amax(1, True)
+            # Tensor method kwargs
+            out6 = x.amax(dim=1, keepdim=True)
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            # paddle.all(x, 1, True, out=out7)
+            # Test default value
+            out8 = x.amax()
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6, out8],
+            )
+            ref_out = np.amax(self.np_input, 1, keepdims=True)
+            for out in fetches[:-1]:
+                np.testing.assert_allclose(out, ref_out)
+            ref_out = np.amax(self.np_input)
+            np.testing.assert_allclose(*fetches[-1:], ref_out)
+
+
+class TestAminAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.shape = [5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.amin(x, 1, True)
+        paddle_dygraph_out.append(out1)
+        # Key words args (kwargs) for paddle
+        out2 = paddle.amin(x=x, axis=1, keepdim=True)
+        paddle_dygraph_out.append(out2)
+        # Key words args for torch
+        out3 = paddle.amin(input=x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.amin(x, dim=1, keepdim=True)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.amin(1, True)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.amin(dim=1, keepdim=True)
+        paddle_dygraph_out.append(out6)
+        # Test out
+        out7 = paddle.empty([])
+        paddle.amin(x, 1, True, out=out7)
+        paddle_dygraph_out.append(out7)
+        # Test default value
+        out8 = x.amin(1)
+        # Numpy reference  out
+        ref_out = np.amin(self.np_input, 1, keepdims=True)
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(ref_out, out.numpy())
+        ref_out = np.amin(self.np_input, 1, keepdims=False)
+        np.testing.assert_allclose(ref_out, out8.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=self.shape, dtype=self.dtype)
+            # Position args (args)
+            out1 = paddle.amin(x, 1, True)
+            # Key words args (kwargs) for paddle
+            out2 = paddle.amin(x=x, axis=1, keepdim=True)
+            # Key words args for torch
+            out3 = paddle.amin(input=x, dim=1, keepdim=True)
+            # Combined args and kwargs
+            out4 = paddle.amin(x, dim=1, keepdim=True)
+            # Tensor method args
+            out5 = x.amin(1, True)
+            # Tensor method kwargs
+            out6 = x.amin(dim=1, keepdim=True)
+            # Do not support out in static
+            # out7 = paddle.empty([])
+            # paddle.all(x, 1, True, out=out7)
+            # Test default value
+            out8 = x.amin()
+            exe = base.Executor(paddle.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6, out8],
+            )
+            ref_out = np.amin(self.np_input, 1, keepdims=True)
+            for out in fetches[:-1]:
+                np.testing.assert_allclose(out, ref_out)
+            ref_out = np.amin(self.np_input)
+            np.testing.assert_allclose(*fetches[-1:], ref_out)
+
+
 class TestAmaxAminOutAPI(unittest.TestCase):
     def _run_api(self, api, x, case):
         out_buf = paddle.zeros([], dtype=x.dtype)

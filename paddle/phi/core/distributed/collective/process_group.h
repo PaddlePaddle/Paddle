@@ -528,7 +528,7 @@ class ProcessGroup {
   int gid_;
 };
 
-class ProcessGroupIdMap
+class PADDLE_API ProcessGroupIdMap
     : public std::unordered_map<int, std::shared_ptr<ProcessGroup>> {
  public:
   static ProcessGroupIdMap& GetInstance();

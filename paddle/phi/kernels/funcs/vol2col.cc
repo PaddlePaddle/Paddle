@@ -271,10 +271,10 @@ class Col2VolFunctor<phi::CPUContext, T> {
   }
 };
 
-template class Vol2ColFunctor<phi::CPUContext, float>;
-template class Vol2ColFunctor<phi::CPUContext, double>;
+template class PADDLE_API Vol2ColFunctor<phi::CPUContext, float>;
+template class PADDLE_API Vol2ColFunctor<phi::CPUContext, double>;
 
-template class Col2VolFunctor<phi::CPUContext, float>;
-template class Col2VolFunctor<phi::CPUContext, double>;
+template class PADDLE_API Col2VolFunctor<phi::CPUContext, float>;
+template class PADDLE_API Col2VolFunctor<phi::CPUContext, double>;
 
 }  // namespace phi::funcs

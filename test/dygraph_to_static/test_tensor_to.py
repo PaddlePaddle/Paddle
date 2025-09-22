@@ -101,6 +101,22 @@ def to_kwargs_device_dtype_blocking(tensor_x, device, dtype, blocking):
     return tensor_x.to(device=device, dtype=dtype, blocking=blocking)
 
 
+def to_kwargs_dtype_non_blocking(tensor_x, dtype, non_blocking):
+    return tensor_x.to(dtype, non_blocking=non_blocking)
+
+
+def to_kwargs_dtype_copy(tensor_x, dtype, copy):
+    return tensor_x.to(dtype, copy=copy)
+
+
+def to_kwargs_dtype_non_blocking_copy(tensor_x, dtype, non_blocking, copy):
+    return tensor_x.to(dtype, non_blocking=non_blocking, copy=copy)
+
+
+def to_kwargs_device_copy(tensor_x, device, copy):
+    return tensor_x.to(device, copy=copy)
+
+
 def to_kwargs_other(tensor_x, other):
     return tensor_x.to(other=other)
 
@@ -218,6 +234,48 @@ class TensorToTest(Dy2StTestBase):
         # Note: in static mode, the place of tensor2 is not changed
         self.assertEqual(str(tensor2.place), get_place())
         self.assertEqual(tensor2.dtype, paddle.int8)
+        # # detype, non_blocking, copy
+        tensor3 = paddle.to_tensor([7, 8, 9])
+        tensor4 = paddle.jit.to_static(to_kwargs_dtype_non_blocking)(
+            tensor3, dtype="int8", non_blocking=True
+        )
+        self.assertEqual(tensor4.dtype, paddle.int8)
+        tensor5 = paddle.jit.to_static(to_kwargs_dtype_copy)(
+            tensor3, dtype="int8", copy=True
+        )
+        self.assertEqual(tensor5.dtype, paddle.int8)
+        tensor6 = paddle.jit.to_static(to_kwargs_dtype_non_blocking_copy)(
+            tensor3, dtype="int8", non_blocking=True, copy=True
+        )
+        self.assertEqual(tensor6.dtype, paddle.int8)
+        # device, copy
+        tensor7 = paddle.jit.to_static(to_kwargs_device_copy)(
+            tensor3, device="cpu", copy=True
+        )
+        self.assertEqual(tensor7.place, paddle.CPUPlace())
+        # dtype, copy
+        tensor8 = paddle.jit.to_static(to_kwargs_dtype_copy)(
+            tensor3, dtype=tensor3.dtype, copy=True
+        )
+        self.assertEqual(tensor8.dtype, tensor3.dtype)
+        self.assertEqual(tensor3.place, tensor8.place)
+        tensor9 = paddle.to_tensor([7, 8, 9], stop_gradient=False)
+        tensor10 = paddle.jit.to_static(to_kwargs_dtype_copy)(
+            tensor9, dtype=tensor9.dtype, copy=True
+        )
+        self.assertEqual(tensor10.dtype, tensor9.dtype)
+        self.assertEqual(tensor10.place, tensor9.place)
+        self.assertEqual(tensor10.stop_gradient, tensor9.stop_gradient)
+
+        if paddle.is_compiled_with_cuda():
+            tensor8 = paddle.jit.to_static(to_kwargs_device_copy)(
+                tensor3, device="gpu", copy=True
+            )
+            self.assertEqual(tensor8.place, paddle.CUDAPlace(0))
+            tensor9 = paddle.jit.to_static(to_kwargs_device_copy)(
+                tensor3, device=paddle.CUDAPinnedPlace(), copy=False
+            )
+            self.assertEqual(tensor9.place, paddle.CUDAPinnedPlace())
 
     @test_ast_only
     def test_ast_error(self):

@@ -244,7 +244,7 @@ static inline std::vector<std::string> split(
 
 void SetPaddleLibPath(const std::string& py_site_pkg_path) {
   s_py_site_pkg_path.path = py_site_pkg_path;
-  VLOG(3) << "Set paddle lib path : " << py_site_pkg_path;
+  VLOG(6) << "Set paddle lib path : " << py_site_pkg_path;
 }
 
 static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
@@ -253,10 +253,15 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
   void* dso_handle = nullptr;
   if (!spec_path.empty() || !dso_name.empty()) {
     // search xxx.so from custom path
-    VLOG(3) << "Try to find library: " << dso_name
+    VLOG(6) << "Try to find library: " << dso_name
             << " from specific path: " << spec_path;
     std::string dso_path = join(spec_path, dso_name);
+#if defined(_WIN32) || defined(_WIN64)
+    HMODULE handle = LoadLibraryA(dso_path.c_str());
+    dso_handle = reinterpret_cast<void*>(handle);
+#else
     dso_handle = dlopen(dso_path.c_str(), dynload_flags);
+#endif
   }
   return dso_handle;
 }
@@ -291,6 +296,10 @@ static inline std::string FindLibAbsolutePath(const std::string& directory,
 
 static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
                                                 int dynload_flags) {
+#if defined(_WIN32) || defined(_WIN64)
+  HMODULE hModule = LoadLibraryA(dso_path.c_str());
+  return reinterpret_cast<void*>(hModule);
+#else
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
   // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
@@ -318,6 +327,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 #endif
 
   return dso_handle;
+#endif
 }
 
 /*

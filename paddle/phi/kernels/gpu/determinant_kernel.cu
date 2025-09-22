@@ -36,10 +36,10 @@ template <typename T>
 class EigenMatrix {};
 
 template <>
-class EigenMatrix<phi::dtype::float16> {
+class EigenMatrix<phi::float16> {
  public:
   using MatrixType =
-      Eigen::Matrix<phi::dtype::float16, Eigen::Dynamic, Eigen::Dynamic>;
+      Eigen::Matrix<phi::float16, Eigen::Dynamic, Eigen::Dynamic>;
 };
 
 template <>
@@ -254,8 +254,8 @@ PD_REGISTER_KERNEL(determinant,
                    GPU,
                    ALL_LAYOUT,
                    phi::DeterminantKernel,
-                   phi::dtype::float16,
+                   phi::float16,
                    float,
                    double,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}

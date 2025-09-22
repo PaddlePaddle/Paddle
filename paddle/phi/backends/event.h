@@ -33,7 +33,7 @@ class Stream;
 namespace event {
 using event_t = EVENT_TYPE;
 
-class Event {
+class PADDLE_API Event {
  public:
   enum Flag {
     Default = 0x0,

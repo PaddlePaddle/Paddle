@@ -65,8 +65,8 @@ struct PDNode {
   };
 
   // this link to others
-  PDNode& LinksTo(const std::vector<PDNode*>& others);
-  PDNode& LinksFrom(const std::vector<PDNode*>& others);
+  PADDLE_API PDNode& LinksTo(const std::vector<PDNode*>& others);
+  PADDLE_API PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
     if (teller_) return teller_(node);
@@ -244,19 +244,20 @@ class PDPattern {
  public:
   using edge_t = std::pair<PDNode*, PDNode*>;
 
-  void AddEdge(PDNode* a, PDNode* b);
+  PADDLE_API void AddEdge(PDNode* a, PDNode* b);
 
-  PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
-  PDNode* NewNode(const std::string& name = NewID());
+  PADDLE_API PDNode* NewNode(PDNode::teller_t&& teller,
+                             const std::string& name = NewID());
+  PADDLE_API PDNode* NewNode(const std::string& name = NewID());
   PDNode* NewNode(const std::string& prefix, const std::string& name) {
     return NewNode(prefix + "/" + name);
   }
-  PDNode* RetrieveNode(const std::string& id) const;
+  PADDLE_API PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
-  std::string DotString() const;
+  PADDLE_API std::string DotString() const;
 
  private:
 #ifdef PADDLE_WITH_TESTING
@@ -264,7 +265,7 @@ class PDPattern {
   FRIEND_TEST(PDPattern, NewNode);
 #endif
 
-  static std::string NewID() { return "pdnode-" + std::to_string(id_++); }
+  PADDLE_API static std::string NewID();
 
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
@@ -343,17 +344,17 @@ class GraphPatternDetector {
   using handle_t =
       std::function<void(const subgraph_t& /*hit pattern*/, Graph*)>;
 
-  void operator()(Graph* graph, handle_t handler);
+  PADDLE_API void operator()(Graph* graph, handle_t handler);
 
   const PDPattern& pattern() const { return pattern_; }
   PDPattern* mutable_pattern() { return &pattern_; }
 
  private:
   // Mark the nodes that fits the pattern.
-  bool MarkPDNodesInGraph(const ir::Graph& graph);
+  PADDLE_API bool MarkPDNodesInGraph(const ir::Graph& graph);
 
   // Detect all the pattern and output the hit records.
-  std::vector<subgraph_t> DetectPatterns();
+  PADDLE_API std::vector<subgraph_t> DetectPatterns();
 
   // Remove duplicate patterns.
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);

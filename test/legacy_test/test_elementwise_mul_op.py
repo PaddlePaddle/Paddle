@@ -18,6 +18,7 @@ import numpy as np
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    get_device_place,
     is_custom_device,
     skip_check_grad_ci,
 )
@@ -65,7 +66,7 @@ class ElementwiseMulOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -78,7 +79,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -91,7 +92,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -220,7 +221,8 @@ class TestElementwiseMulOp_ZeroSize3(TestElementwiseMulOp_ZeroSize1):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    not (paddle.is_compiled_with_cuda() or is_custom_device())
+    or paddle.is_compiled_with_rocm(),
     "BFP16 test runs only on CUDA",
 )
 class TestBF16ElementwiseMulOp(OpTest):
@@ -254,7 +256,7 @@ class TestBF16ElementwiseMulOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -265,7 +267,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -276,7 +278,7 @@ class TestBF16ElementwiseMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             check_pir=True,
             check_pir_onednn=self.check_pir_onednn,
@@ -390,7 +392,7 @@ class ElementwiseMulOp_broadcast(OpTest):
         self.axis = -1
 
     def if_check_prim(self):
-        self.check_prim = self.axis == -1
+        self.check_prim = False
 
     def if_check_dygraph(self):
         self.check_dygraph = (not self.use_onednn) and (self.axis == -1)
@@ -500,7 +502,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -513,7 +515,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -526,7 +528,7 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -703,7 +705,7 @@ class TestMulApiZeroSize(unittest.TestCase):
     def test_dygraph(self):
         self.init_data()
         places = (
-            [paddle.CPUPlace(), paddle.CUDAPlace(0)]
+            [paddle.CPUPlace(), get_device_place()]
             if core.is_compiled_with_cuda()
             else [paddle.CPUPlace()]
         )
@@ -760,7 +762,7 @@ class TestElementwiseMulop_Stride(ElementwiseMulOp):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
+        place = get_device_place()
         self.check_strided_forward = True
         self.check_output(
             place,

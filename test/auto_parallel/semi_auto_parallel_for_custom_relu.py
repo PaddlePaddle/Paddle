@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from pathlib import Path
 from site import getsitepackages
 
 import numpy as np
@@ -20,7 +21,11 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.utils.cpp_extension import get_build_directory, load
-from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS, run_cmd
+from paddle.utils.cpp_extension.extension_utils import (
+    IS_WINDOWS,
+    _get_all_paddle_includes_from_include_root,
+    run_cmd,
+)
 
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
 # `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
@@ -28,12 +33,11 @@ from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS, run_cmd
 # PaddlePaddle whl. So here we specific `include_dirs` to avoid errors in CI.
 paddle_includes = []
 for site_packages_path in getsitepackages():
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include')
+    paddle_include_dir = Path(site_packages_path) / "paddle/include"
+    paddle_includes.extend(
+        _get_all_paddle_includes_from_include_root(str(paddle_include_dir))
     )
-    paddle_includes.append(
-        os.path.join(site_packages_path, 'paddle', 'include', 'third_party')
-    )
+
 
 # Test for extra compile args
 extra_cc_args = ['-w', '-g'] if not IS_WINDOWS else ['/w']

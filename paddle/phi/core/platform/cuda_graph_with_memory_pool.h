@@ -27,10 +27,11 @@ namespace platform {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAGraph = phi::backends::gpu::CUDAGraph;
 
-void BeginCUDAGraphCapture(phi::GPUPlace place,
-                           gpuStreamCaptureMode mode,
-                           int64_t pool_id = CUDAGraph::kInvalidPoolID);
-std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
+PADDLE_API void BeginCUDAGraphCapture(
+    phi::GPUPlace place,
+    gpuStreamCaptureMode mode,
+    int64_t pool_id = CUDAGraph::kInvalidPoolID);
+PADDLE_API std::unique_ptr<CUDAGraph> EndCUDAGraphCapture();
 #endif
 
 inline phi::GPUPlace CUDAGraphCapturingPlace() {
@@ -54,21 +55,17 @@ class SkipCUDAGraphCaptureGuard {
  public:
   SkipCUDAGraphCaptureGuard() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::EndSegmentCapture();
     }
-#endif
 #endif
   }
 
   ~SkipCUDAGraphCaptureGuard() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 10010
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       CUDAGraph::BeginSegmentCapture();
     }
-#endif
 #endif
   }
 };

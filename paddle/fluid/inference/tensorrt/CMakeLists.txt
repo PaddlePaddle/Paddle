@@ -23,15 +23,22 @@ nv_library(
   tensorrt_op_teller
   SRCS op_teller.cc
   DEPS phi tensorrt_dynamic_shape_infermeta_factory)
-nv_test(
-  test_tensorrt
-  SRCS test_tensorrt.cc
-  DEPS phi common)
+if(WIN32)
+  nv_test(
+    test_tensorrt
+    SRCS test_tensorrt.cc
+    DEPS phi common dynload_tensorrt)
+else()
+  nv_test(
+    test_tensorrt
+    SRCS test_tensorrt.cc
+    DEPS phi common)
+endif()
 if(WIN32)
   nv_test(
     test_tensorrt_engine
     SRCS test_engine.cc test_dynamic_engine.cc
-    DEPS phi common tensorrt_engine tensorrt_plugin)
+    DEPS phi common dynload_tensorrt tensorrt_engine tensorrt_plugin)
 elseif(WITH_CINN)
   nv_test(
     test_tensorrt_engine

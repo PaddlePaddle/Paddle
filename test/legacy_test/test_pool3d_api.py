@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 sys.path.append("../deprecated/legacy_test")
-from op_test import get_places
+from op_test import get_device_place, get_places, is_custom_device
 from test_pool3d_op import (
     avg_pool3D_forward_naive,
     max_pool3D_forward_naive,
@@ -27,7 +27,6 @@ from test_pool3d_op import (
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.nn.functional import avg_pool3d, max_pool3d
 
 
@@ -393,8 +392,8 @@ class TestPool3D_API(unittest.TestCase):
 
     def test_static_fp16_gpu(self):
         paddle.enable_static()
-        if paddle.base.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
+        if paddle.base.core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -420,10 +419,9 @@ class TestPool3D_API(unittest.TestCase):
     def test_static_bf16_gpu(self):
         paddle.enable_static()
         if (
-            paddle.base.core.is_compiled_with_cuda()
-            and paddle.base.core.is_bfloat16_supported(core.CUDAPlace(0))
-        ):
-            place = paddle.CUDAPlace(0)
+            paddle.base.core.is_compiled_with_cuda() or is_custom_device()
+        ) and paddle.base.core.is_bfloat16_supported(get_device_place()):
+            place = get_device_place()
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):

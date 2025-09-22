@@ -17,10 +17,11 @@ from typing import TYPE_CHECKING, Union
 
 from typing_extensions import TypeAlias
 
+import paddle
 from paddle.base import core
 from paddle.utils import deprecated
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import XPUPlace
@@ -82,6 +83,9 @@ def current_stream(device: _XPUPlaceLike | None = None) -> core.XPUStream:
             device_id = device
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            place = paddle.device._convert_to_place(device)
+            device_id = place.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
 
@@ -163,6 +167,17 @@ def synchronize(device: _XPUPlaceLike | None = None) -> int:
             device_id = device
         elif isinstance(device, core.XPUPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('xpu:'):
+                device_id = int(device[4:])
+            elif device == 'xpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device.cuda."
+                    "synchronize only support string which is like 'xpu:x' or 'xpu'. "
+                    "Please input appropriate string again!"
+                )
         else:
             raise ValueError("device type must be int or paddle.XPUPlace")
 

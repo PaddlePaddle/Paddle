@@ -27,18 +27,21 @@ from paddle.framework import (
 )
 from paddle.utils.decorator_utils import (
     ParamAliasDecorator,
+    param_two_alias,
     param_two_alias_one_default,
 )
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, core
+from ..framework import LayerHelper, convert_np_dtype_to_dtype_, core
+from .manipulation import cast
 from .math import _get_reduce_axis_with_tensor
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 _Interpolation: TypeAlias = Literal[
     'linear', 'higher', 'lower', 'midpoint', 'nearest'
@@ -46,11 +49,15 @@ _Interpolation: TypeAlias = Literal[
 __all__ = []
 
 
+@param_two_alias(["x", "input"], ["axis", "dim"])
 def mean(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    dtype: DTypeLike | None = None,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the mean of the input tensor's elements along ``axis``.
@@ -58,6 +65,7 @@ def mean(
     Args:
         x (Tensor): The input Tensor with data type bool, bfloat16, float16, float32,
             float64, int32, int64, complex64, complex128.
+            alias: ``input``
         axis (int|list|tuple|None, optional): The axis along which to perform mean
             calculations. ``axis`` should be int, list(int) or tuple(int). If
             ``axis`` is a list/tuple of dimension(s), mean is calculated along
@@ -66,6 +74,7 @@ def mean(
             ``axis`` or element(s) of ``axis`` is less than 0, it works the
             same way as :math:`axis + D` . If ``axis`` is None, mean is
             calculated over all elements of ``x``. Default is None.
+            alias: ``dim``
         keepdim (bool, optional): Whether to reserve the reduced dimension(s)
             in the output Tensor. If ``keepdim`` is True, the dimensions of
             the output Tensor is the same as ``x`` except in the reduced
@@ -73,6 +82,8 @@ def mean(
             the output Tensor is squeezed in ``axis`` . Default is False.
         name (str|None, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+        dtype (str): The desired data type of returned tensor. Default: None.
+        out(Tensor|None, optional): The output tensor. Default: None.
 
     Returns:
         Tensor, results of average along ``axis`` of ``x``, with the same data
@@ -107,9 +118,19 @@ def mean(
             >>> out4 = paddle.mean(x, axis=[0, 2])
             >>> print(out4.numpy())
             [ 8.5 12.5 16.5]
+            >>> out5 = paddle.mean(x, dtype='float64')
+            >>> out5
+            Tensor(shape=[], dtype=float64, place=Place(gpu:0), stop_gradient=True,
+                12.50000000)
     """
+    if dtype is not None:
+        if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        if x.dtype != dtype:
+            x = cast(x, dtype)
+
     if in_dynamic_or_pir_mode():
-        return _C_ops.mean(x, axis, keepdim)
+        return _C_ops.mean(x, axis, keepdim, out=out)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         check_variable_and_dtype(
@@ -143,23 +164,26 @@ def mean(
         helper = LayerHelper('mean', **locals())
 
         attrs = {'dim': axis, 'keep_dim': keepdim, 'reduce_all': reduce_all}
-        out = helper.create_variable_for_type_inference(x.dtype)
+        out_tensor = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='reduce_mean',
             inputs={'X': x},
-            outputs={'Out': out},
+            outputs={'Out': out_tensor},
             attrs=attrs,
         )
-        return out
+        return out_tensor
 
 
 @ParamAliasDecorator({"x": ["input"], "axis": ["dim"]})
 def var(
     x: Tensor,
     axis: int | Sequence[int] | None = None,
-    unbiased: bool = True,
+    unbiased: bool | None = None,
     keepdim: bool = False,
     name: str | None = None,
+    *,
+    correction: float = 1,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the variance of ``x`` along ``axis`` .
@@ -181,6 +205,9 @@ def var(
         unbiased (bool, optional): Whether to use the unbiased estimation. If ``unbiased`` is True, the divisor used in the computation is :math:`N - 1`, where :math:`N` represents the number of elements along ``axis`` , otherwise the divisor is :math:`N`. Default is True.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result tensor will have one fewer dimension than the input unless keep_dim is true. Default is False.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        correction (int|float, optional): Difference between the sample size and sample degrees of freedom.
+            Defaults to 1 (Bessel's correction). If unbiased is specified, this parameter is ignored.
+        out (Tensor|None, optional): Output tensor. Default is None.
 
     Returns:
         Tensor, results of variance along ``axis`` of ``x``, with the same data type as ``x``.
@@ -198,6 +225,13 @@ def var(
             >>> print(out2.numpy())
             [1.         4.3333335]
     """
+    if unbiased is not None and correction != 1:
+        raise ValueError("Only one of unbiased and correction may be given")
+
+    if unbiased is not None:
+        actual_correction = 1.0 if unbiased else 0.0
+    else:
+        actual_correction = float(correction)
     if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'var'
@@ -205,21 +239,27 @@ def var(
 
     u = mean(x, axis, True, name)
     dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
-    out = paddle.sum(
+    out_tensor = paddle.sum(
         paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
     )
 
     n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
-        paddle.numel(out), "int64"
+        paddle.numel(out_tensor), "int64"
     )
     n = n.astype(dtype)
-    if unbiased:
-        one_const = paddle.ones([], x.dtype)
-        if paddle.in_dynamic_mode() and n <= one_const:
+
+    if actual_correction != 0:
+        corrected_n = n - actual_correction
+        corrected_n = paddle.maximum(
+            corrected_n, paddle.zeros_like(corrected_n)
+        )
+        if paddle.in_dynamic_mode() and paddle.any(corrected_n <= 0):
             warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
-        n = n - 1.0
-    n.stop_gradient = True
-    out /= n
+    else:
+        corrected_n = n
+
+    corrected_n.stop_gradient = True
+    out_tensor /= corrected_n
 
     def _replace_nan(out):
         indices = paddle.arange(out.numel(), dtype='int64')
@@ -229,12 +269,20 @@ def var(
         return out_nan
 
     if 0 in x.shape:
-        out = _replace_nan(out)
-    if len(x.shape) == 0 and not unbiased:
-        out = paddle.to_tensor(0, stop_gradient=out.stop_gradient)
-    if out.dtype != x.dtype:
-        return out.astype(x.dtype)
-    return out
+        out_tensor = _replace_nan(out_tensor)
+    if len(x.shape) == 0 and actual_correction == 0:
+        out_tensor = paddle.to_tensor(0, stop_gradient=out_tensor.stop_gradient)
+
+    if out_tensor.dtype != x.dtype:
+        result = out_tensor.astype(x.dtype)
+    else:
+        result = out_tensor
+
+    if out is not None:
+        paddle.assign(result, out)
+        return out
+
+    return result
 
 
 def std(
@@ -488,6 +536,8 @@ def median(
     keepdim: bool = ...,
     mode: Literal['min'] = ...,
     name: str | None = ...,
+    *,
+    out: tuple[Tensor, Tensor] | None = ...,
 ) -> tuple[Tensor, Tensor]: ...
 
 
@@ -508,6 +558,8 @@ def median(
     keepdim=False,
     mode='avg',
     name=None,
+    *,
+    out=None,
 ):
     """
     Compute the median along the specified axis.
@@ -649,13 +701,13 @@ def median(
     if mode == "avg" and not x.dtype == paddle.float64:
         x = x.astype(paddle.float32)
 
-    out, indices = _C_ops.median(x, axis, keepdim, mode)
+    values, indices = _C_ops.median(x, axis, keepdim, mode, out=out)
     indices.stop_gradient = True
 
     if mode == 'min' and need_idx:
-        return out, indices
+        return values, indices
     else:
-        return out
+        return values
 
 
 def _compute_quantile(

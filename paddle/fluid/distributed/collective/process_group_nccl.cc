@@ -1000,8 +1000,8 @@ void ProcessGroupNCCL::Restart() {
     phi::distributed::P2POption p2p_opts = place_to_p2p_opts_.at(place_key);
     phi::distributed::CommContextManager::RecreateNCCLComm(
         store_, store_key, rank_, std::to_string(create_count_), &p2p_opts);
-    create_count_++;
   }
+  create_count_++;
 }
 phi::CUDAStream ProcessGroupNCCL::GetStream(const Place& place) {
   const auto& place_key = GetKeyFromPlace(place);

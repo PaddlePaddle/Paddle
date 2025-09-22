@@ -172,7 +172,7 @@ class LlamaDecoderLayer(nn.Layer):
         hidden_states, _ = self.mlp(hidden_states, "ONLY_FOR_TEST")
         hidden_states = residual + hidden_states
 
-        return hidden_states
+        return (hidden_states,)
 
 
 class GlobalOutputNet(nn.Layer):
@@ -230,9 +230,10 @@ class LlamaModel(nn.Layer):
         global_tensor = self.global_layer(None)
 
         for idx, (decoder_layer) in enumerate(self.layers):
-            hidden_states = decoder_layer(
+            tuple_hidden_states = decoder_layer(
                 hidden_states=hidden_states, global_tensor=global_tensor
             )
+            hidden_states = tuple_hidden_states[0]
 
         hidden_states = self.norm(hidden_states)
 

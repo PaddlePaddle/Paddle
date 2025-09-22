@@ -15,7 +15,6 @@
 #include <limits>
 #include <set>
 
-#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -33,8 +32,8 @@
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #endif
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 namespace phi {
 
@@ -241,14 +240,14 @@ void SumRawKernel(const Context& dev_ctx,
     std::vector<int> reduce_dims = phi::funcs::details::GetReduceDim(
         dims.GetData(), x.dims().size(), reduce_all);
 
-    phi::funcs::ReduceKernel<phi::dtype::bfloat16,
+    phi::funcs::ReduceKernel<phi::bfloat16,
                              float,
                              kps::AddFunctor,
-                             kps::IdentityFunctor<phi::dtype::bfloat16, float>>(
+                             kps::IdentityFunctor<phi::bfloat16, float>>(
         dev_ctx,
         x,
         out,
-        kps::IdentityFunctor<phi::dtype::bfloat16, float>(),
+        kps::IdentityFunctor<phi::bfloat16, float>(),
         reduce_dims);
   } else {
     phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
@@ -280,10 +279,10 @@ PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
-using float16 = phi::dtype::float16;
-using bfloat16 = phi::dtype::bfloat16;
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
+using float16 = phi::float16;
+using bfloat16 = phi::bfloat16;
+using complex64 = ::phi::complex64;
+using complex128 = ::phi::complex128;
 
 PD_REGISTER_KERNEL(all_raw,
                    KPS,
@@ -339,10 +338,10 @@ PD_REGISTER_KERNEL(max,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn,
-                   phi::dtype::float8_e5m2) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2) {}
 
 PD_REGISTER_KERNEL(mean_raw,
                    KPS,
@@ -351,13 +350,13 @@ PD_REGISTER_KERNEL(mean_raw,
                    float,
                    double,
                    bool,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float8_e4m3fn,
+                   phi::bfloat16,
+                   phi::float8_e4m3fn,
                    float16,
                    int,
                    int64_t,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::complex64,
+                   phi::complex128) {}
 
 PD_REGISTER_KERNEL(min_raw,
                    KPS,
@@ -367,8 +366,8 @@ PD_REGISTER_KERNEL(min_raw,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(sum_raw,
                    KPS,
@@ -397,8 +396,8 @@ PD_REGISTER_KERNEL(prod,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::float16,
+                   phi::bfloat16,
+                   phi::complex64,
+                   phi::complex128) {}
 #endif

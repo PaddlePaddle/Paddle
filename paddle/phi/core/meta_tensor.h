@@ -34,7 +34,7 @@ struct TEST_API MetaConfig {
         is_run_onednn_kernel(is_run_onednn_kernel) {}  // NOLINT
 };
 
-class TEST_API MetaTensor {
+class PADDLE_API MetaTensor {
  public:
   typedef void (*unspecified_bool_type)();
 

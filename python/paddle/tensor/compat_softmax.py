@@ -43,18 +43,18 @@ def softmax(
     r"""
     This operator implements the compat.softmax. The calculation process is as follows:
 
-    1. The dimension :attr:`axis` of ``x`` will be permuted to the last.
+    1. The dimension :attr:`dim` of ``input`` will be permuted to the last.
 
-    2. Then ``x`` will be logically flattened to a 2-D matrix. The matrix's second
-    dimension(row length) is the same as the dimension :attr:`axis` of ``x``,
+    2. Then ``input`` will be logically flattened to a 2-D matrix. The matrix's second
+    dimension(row length) is the same as the dimension :attr:`axis` of ``input``,
     and the first dimension(column length) is the product of all other dimensions
-    of ``x``. For each row of the matrix, the softmax operator squashes the
-    K-dimensional(K is the width of the matrix, which is also the size of ``x``'s
-    dimension :attr:`axis`) vector of arbitrary real values to a K-dimensional
+    of ``input``. For each row of the matrix, the softmax operator squashes the
+    K-dimensional(K is the width of the matrix, which is also the size of ``input``'s
+    dimension :attr:`dim`) vector of arbitrary real values to a K-dimensional
     vector of real values in the range [0, 1] that add up to 1.
 
     3. After the softmax operation is completed, the inverse operations of steps 1 and 2
-    are performed to restore the two-dimensional matrix to the same dimension as the ``x`` .
+    are performed to restore the two-dimensional matrix to the same dimension as the ``input`` .
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -66,7 +66,7 @@ def softmax(
 
     .. math::
 
-        softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
+        softmax[i, j] = \frac{\exp(input[i, j])}{\sum_j(exp(input[i, j])}
 
     Example:
 
@@ -74,8 +74,8 @@ def softmax(
 
         Case 1:
           Input:
-            x.shape = [2, 3, 4]
-            x.data = [[[2.0, 3.0, 4.0, 5.0],
+            input.shape = [2, 3, 4]
+            input.data = [[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
                        [7.0, 8.0, 8.0, 9.0]],
                       [[1.0, 2.0, 3.0, 4.0],
@@ -83,7 +83,7 @@ def softmax(
                        [6.0, 7.0, 8.0, 9.0]]]
 
           Attrs:
-            axis = -1
+            dim = -1
 
           Output:
             out.shape = [2, 3, 4]
@@ -96,15 +96,15 @@ def softmax(
 
         Case 2:
           Input:
-            x.shape = [2, 3, 4]
-            x.data = [[[2.0, 3.0, 4.0, 5.0],
+            input.shape = [2, 3, 4]
+            input.data = [[[2.0, 3.0, 4.0, 5.0],
                        [3.0, 4.0, 5.0, 6.0],
                        [7.0, 8.0, 8.0, 9.0]],
                       [[1.0, 2.0, 3.0, 4.0],
                        [5.0, 6.0, 7.0, 8.0],
                        [6.0, 7.0, 8.0, 9.0]]]
           Attrs:
-            axis = 1
+            dim = 1
 
           Output:
             out.shape = [2, 3, 4]
@@ -117,16 +117,16 @@ def softmax(
 
     Parameters:
         input (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
-        dim (int, optional): The axis along which to perform softmax
+        dim (int, optional): The dim along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
-            rank of ``x`` . If ``axis`` < 0, it works the same way as
-            :math:`axis + D` . Default is None.
+            rank of ``input`` . If ``dim`` < 0, it works the same way as
+            :math:`dim + D` . Default is None.
         dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         out (Tensor, optional): The output Tensor.
 
     Returns:
         A Tensor with the same shape and data type (use ``dtype`` if it is
-        specified) as x.
+        specified) as input.
 
     Examples:
         .. code-block:: python
