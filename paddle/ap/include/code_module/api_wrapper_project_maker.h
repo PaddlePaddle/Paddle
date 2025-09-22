@@ -124,46 +124,65 @@ struct ApiWrapperProjectMaker {
   adt::Result<std::string> GenCode4DataType(const axpr::DataType& data_type) {
     using RetT = adt::Result<std::string>;
     return data_type.Match(
-        [&](axpr::CppDataType<bool>) -> RetT { return "bool"; },
-        [&](axpr::CppDataType<int8_t>) -> RetT { return "int8_t"; },
-        [&](axpr::CppDataType<uint8_t>) -> RetT { return "uint8_t"; },
-        [&](axpr::CppDataType<int16_t>) -> RetT { return "int16_t"; },
-        [&](axpr::CppDataType<uint16_t>) -> RetT { return "uint16_t"; },
-        [&](axpr::CppDataType<int32_t>) -> RetT { return "int32_t"; },
-        [&](axpr::CppDataType<uint32_t>) -> RetT { return "uint32_t"; },
-        [&](axpr::CppDataType<int64_t>) -> RetT { return "int64_t"; },
-        [&](axpr::CppDataType<uint64_t>) -> RetT { return "uint64_t"; },
-        [&](axpr::CppDataType<float>) -> RetT { return "float"; },
-        [&](axpr::CppDataType<double>) -> RetT { return "double"; },
-        [&](axpr::CppDataType<axpr::bfloat16>) -> RetT {
-          return adt::errors::TypeError{
-              "bfloat16 are not allowed being used by so function"};
+        [&](axpr::CppDataType<bool>) -> RetT {
+      return "bool"; },
+        [&](axpr::CppDataType<int8_t>) -> RetT {
+      return "int8_t"; },
+        [&](axpr::CppDataType<uint8_t>) -> RetT {
+      return "uint8_t"; },
+        [&](axpr::CppDataType<int16_t>) -> RetT {
+      return "int16_t"; },
+        [&](axpr::CppDataType<uint16_t>) -> RetT {
+      return "uint16_t"; },
+        [&](axpr::CppDataType<int32_t>) -> RetT {
+      return "int32_t"; },
+        [&](axpr::CppDataType<uint32_t>) -> RetT {
+      return "uint32_t"; },
+        [&](axpr::CppDataType<int64_t>) -> RetT {
+      return "int64_t"; },
+        [&](axpr::CppDataType<uint64_t>) -> RetT {
+      return "uint64_t"; },
+        [&](axpr::CppDataType<float>) -> RetT {
+      return "float"; },
+        [&](axpr::CppDataType<double>) -> RetT {
+      return "double"; },
+        ([&](axpr::CppDataType<axpr::bfloat16>) -> RetT {
+      return adt::errors::TypeError{
+          "bfloat16 is not supported in SO function calls; use float or half "
+          "(if available) as an alternative"};
         },
         [&](axpr::CppDataType<axpr::float8_e4m3fn>) -> RetT {
-          return adt::errors::TypeError{
-              "float8_e4m3fn are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "float8_e4m3fn is not supported in SO function calls; consider using "
+          "higher-precision floating-point types"};
         },
         [&](axpr::CppDataType<axpr::float8_e5m2>) -> RetT {
-          return adt::errors::TypeError{
-              "float8_e5m2 are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "float8_e5m2 is not supported in SO function calls; consider using "
+          "higher-precision floating-point types"};
         },
         [&](axpr::CppDataType<axpr::float16>) -> RetT {
-          return adt::errors::TypeError{
-              "float16 are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "float16 (half precision) is not supported in SO function calls; use "
+          "float instead if possible"};
         },
         [&](axpr::CppDataType<axpr::complex64>) -> RetT {
-          return adt::errors::TypeError{
-              "complex64 are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "complex64 is not supported in SO function calls; decompose into "
+          "real and imaginary parts manually"};
         },
         [&](axpr::CppDataType<axpr::complex128>) -> RetT {
-          return adt::errors::TypeError{
-              "complex128 are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "complex128 is not supported in SO function calls; handle complex "
+          "arithmetic explicitly"};
         },
         [&](axpr::CppDataType<axpr::pstring>) -> RetT {
-          return adt::errors::TypeError{
-              "pstring are not allowed being used by so function"};
+      return adt::errors::TypeError{
+          "pstring is not supported in SO function calls; use const char* or "
+          "void* with length metadata instead"};
         },
-        [&](axpr::CppDataType<adt::Undefined>) -> RetT { return "void"; });
+        [&](axpr::CppDataType<adt::Undefined>) -> RetT {
+      return "void"; });
   }
 
   adt::Result<std::string> GenCode4PointerType(
