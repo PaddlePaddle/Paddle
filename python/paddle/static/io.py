@@ -842,116 +842,12 @@ def load_from_file(path: str) -> bytes:
     return data
 
 
-@static_only
-def load_inference_model(
+def _load_inference_model_legacy_impl(
     path_prefix: str | None,
     executor: Executor,
     **kwargs: Unpack[_LoadInferenceModelKwargs],
 ) -> list[Program | list[str] | list[Tensor]]:
-    """
-
-    Load inference model from a given path. By this API, you can get the model
-    structure(Inference Program) and model parameters.
-
-    .. note::
-        **Format Compatibility**: This API automatically detects and supports both
-        modern JSON format (.json) and legacy binary format (.pdmodel) models.
-        In PIR mode (Paddle 3.x default), the API prioritizes JSON format but
-        seamlessly falls back to legacy format when only .pdmodel files are available.
-        This ensures backward compatibility with models created in earlier versions
-        or by tools that generate .pdmodel format files.
-
-    Args:
-        path_prefix(str | None): One of the following:
-          - Directory path to save model + model name without suffix.
-          - Set to None when reading the model from memory.
-
-          .. note::
-              **Format Detection**: The API automatically detects the model format:
-
-              - If `path_prefix + ".json"` exists, uses PIR mode (Paddle 3.x format)
-              - If only `path_prefix + ".pdmodel"` exists, automatically falls back to legacy mode
-              - JSON format takes priority when both formats are present
-
-        executor(Executor): The executor to run for loading inference model.
-                            See :ref:`api_guide_executor_en` for more details about it.
-        kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
-
-            - model_filename(str): specify model_filename if you don't want to use default name.
-
-            - params_filename(str): specify params_filename if you don't want to use default name.
-
-    Returns:
-        list: The return of this API is a list with three elements:
-        (program, feed_target_names, fetch_targets). The `program` is a
-        ``Program`` (refer to :ref:`api_guide_Program_en`), which is used for inference.
-        The `feed_target_names` is a list of ``str``, which contains names of variables
-        that need to feed data in the inference program. The `fetch_targets` is a list of
-        ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
-        we can get inference results.
-
-    Examples:
-        .. code-block:: python
-
-            >>> import paddle
-            >>> import numpy as np
-
-            >>> paddle.enable_static()
-
-            # Build the model
-            >>> startup_prog = paddle.static.default_startup_program()
-            >>> main_prog = paddle.static.default_main_program()
-            >>> with paddle.static.program_guard(main_prog, startup_prog):
-            ...     image = paddle.static.data(name="img", shape=[64, 784])
-            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
-            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
-            ...     hidden_w = paddle.matmul(x=image, y=w)
-            ...     hidden_b = paddle.add(hidden_w, b)
-            >>> exe = paddle.static.Executor(paddle.CPUPlace())
-            >>> exe.run(startup_prog)
-
-            # Save the inference model
-            >>> path_prefix = "./infer_model"
-            >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
-
-            >>> [inference_program, feed_target_names, fetch_targets] = (
-            ...     paddle.static.load_inference_model(path_prefix, exe))
-            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
-            >>> results = exe.run(inference_program,
-            ...               feed={feed_target_names[0]: tensor_img},
-            ...               fetch_list=fetch_targets)
-
-            # In this example, the inference program was saved in file
-            # "./infer_model.pdmodel" and parameters were saved in file
-            # " ./infer_model.pdiparams".
-            # By the inference program, feed_target_names and
-            # fetch_targets, we can use an executor to run the inference
-            # program to get the inference result.
-
-            # Note: The API works with both .json (PIR format) and .pdmodel (legacy format)
-            # files, automatically detecting and using the appropriate loading method.
-    """
-    # Format detection and automatic fallback for .pdmodel compatibility
-    if in_pir_mode() and path_prefix is not None:
-        json_path = path_prefix + ".json"
-        pdmodel_path = path_prefix + ".pdmodel"
-
-        if os.path.exists(json_path):
-            # PIR format (.json) exists, use PIR loader directly
-            return load_inference_model_pir(path_prefix, executor, **kwargs)
-        elif os.path.exists(pdmodel_path):
-            # Only legacy format (.pdmodel) exists, fallback to legacy mode
-            from paddle.pir_utils import OldIrGuard
-            with OldIrGuard():
-                # Switch to legacy mode and recursively call
-                return load_inference_model(path_prefix, executor, **kwargs)
-        else:
-            # No model files found, let PIR loader handle the error
-            return load_inference_model_pir(path_prefix, executor, **kwargs)
-
-    # PIR mode without file path (memory loading) or PIR mode enabled
-    elif in_pir_mode():
-        return load_inference_model_pir(path_prefix, executor, **kwargs)
+    """Legacy implementation of load_inference_model for fallback scenarios."""
     # check kwargs
     supported_args = ('model_filename', 'params_filename')
     deprecated_args = ('pserver_endpoints',)
@@ -1046,6 +942,7 @@ def load_inference_model(
                 predicate=is_persistable,
                 filename=params_filename,
             )
+    
     feed_target_names = program.desc.get_feed_target_names()
     if paddle.framework.in_pir_executor_mode():
         with paddle.pir_utils.IrGuard():
@@ -1078,6 +975,150 @@ def load_inference_model(
             program.global_block().var(name) for name in fetch_target_names
         ]
     return [program, feed_target_names, fetch_targets]
+
+
+@static_only
+def load_inference_model(
+    path_prefix: str | None,
+    executor: Executor,
+    **kwargs: Unpack[_LoadInferenceModelKwargs],
+) -> list[Program | list[str] | list[Tensor]]:
+    """
+
+    Load inference model from a given path. By this API, you can get the model
+    structure(Inference Program) and model parameters.
+
+    .. note::
+        **Format Compatibility**: This API automatically detects and supports both
+        modern JSON format (.json) and legacy binary format (.pdmodel) models.
+        In PIR mode (Paddle 3.x default), the API prioritizes JSON format but
+        seamlessly falls back to legacy format when only .pdmodel files are available.
+        This ensures backward compatibility with models created in earlier versions
+        or by tools that generate .pdmodel format files.
+        
+        **Environment Control**: The automatic fallback can be controlled via the
+        ``PADDLE_DISABLE_PDMODEL_FALLBACK`` environment variable. Set it to '1', 'true',
+        or 'yes' to disable automatic fallback and force PIR format usage.
+
+    Args:
+        path_prefix(str | None): One of the following:
+          - Directory path to save model + model name without suffix.
+          - Set to None when reading the model from memory.
+
+          .. note::
+              **Format Detection**: The API automatically detects the model format:
+
+              - If `path_prefix + ".json"` exists, uses PIR mode (Paddle 3.x format)
+              - If only `path_prefix + ".pdmodel"` exists, automatically falls back to legacy mode
+              - JSON format takes priority when both formats are present
+
+        executor(Executor): The executor to run for loading inference model.
+                            See :ref:`api_guide_executor_en` for more details about it.
+        kwargs: Supported keys including 'model_filename', 'params_filename'. Attention please, kwargs is used for backward compatibility mainly.
+
+            - model_filename(str): specify model_filename if you don't want to use default name.
+
+            - params_filename(str): specify params_filename if you don't want to use default name.
+
+    Returns:
+        list: The return of this API is a list with three elements:
+        (program, feed_target_names, fetch_targets). The `program` is a
+        ``Program`` (refer to :ref:`api_guide_Program_en`), which is used for inference.
+        The `feed_target_names` is a list of ``str``, which contains names of variables
+        that need to feed data in the inference program. The `fetch_targets` is a list of
+        ``Variable`` (refer to :ref:`api_guide_Program_en`). It contains variables from which
+        we can get inference results.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> paddle.enable_static()
+
+            # Build the model
+            >>> startup_prog = paddle.static.default_startup_program()
+            >>> main_prog = paddle.static.default_main_program()
+            >>> with paddle.static.program_guard(main_prog, startup_prog):
+            ...     image = paddle.static.data(name="img", shape=[64, 784])
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
+            ...     hidden_w = paddle.matmul(x=image, y=w)
+            ...     hidden_b = paddle.add(hidden_w, b)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(startup_prog)
+
+            # Save the inference model
+            >>> path_prefix = "./infer_model"
+            >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
+
+            >>> [inference_program, feed_target_names, fetch_targets] = (
+            ...     paddle.static.load_inference_model(path_prefix, exe))
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> results = exe.run(inference_program,
+            ...               feed={feed_target_names[0]: tensor_img},
+            ...               fetch_list=fetch_targets)
+
+            # In this example, the inference program was saved in file
+            # "./infer_model.pdmodel" and parameters were saved in file
+            # " ./infer_model.pdiparams".
+            # By the inference program, feed_target_names and
+            # fetch_targets, we can use an executor to run the inference
+            # program to get the inference result.
+
+            # Note: The API works with both .json (PIR format) and .pdmodel (legacy format)
+            # files, automatically detecting and using the appropriate loading method.
+    """
+    # Format detection and automatic fallback for .pdmodel compatibility
+    if in_pir_mode() and path_prefix is not None:
+        json_path = path_prefix + ".json"
+        pdmodel_path = path_prefix + ".pdmodel"
+        
+        # Check for environment variable to disable fallback
+        disable_fallback = os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', '').lower() in ('1', 'true', 'yes')
+
+        if os.path.exists(json_path):
+            # PIR format (.json) exists, use PIR loader directly
+            _logger.debug(f"Loading PIR format model from {json_path}")
+            return load_inference_model_pir(path_prefix, executor, **kwargs)
+        elif os.path.exists(pdmodel_path):
+            if disable_fallback:
+                # Fallback is disabled, raise error
+                _logger.error(f"Found legacy .pdmodel file at {pdmodel_path}, but fallback is disabled by PADDLE_DISABLE_PDMODEL_FALLBACK")
+                raise ValueError(f"Legacy .pdmodel format detected at '{pdmodel_path}', but automatic fallback is disabled. "
+                               f"Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 to enable fallback or convert model to PIR format.")
+            
+            # Only legacy format (.pdmodel) exists, fallback to legacy mode
+            _logger.warning(f"PIR mode detected legacy .pdmodel file at {pdmodel_path}. "
+                          f"Automatically falling back to legacy mode for compatibility. "
+                          f"Consider converting to PIR format (.json) for better performance.")
+            from paddle.pir_utils import OldIrGuard
+            with OldIrGuard():
+                # Switch to legacy mode and skip the PIR format detection by jumping to legacy logic
+                _logger.debug("Switching to legacy mode using OldIrGuard")
+                # Directly call the legacy loading logic to avoid recursion into PIR detection
+                return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+        else:
+            # No model files found, raise appropriate error
+            _logger.error(f"No model files found at path prefix '{path_prefix}'. "
+                        f"Checked for {json_path} (PIR format) and {pdmodel_path} (legacy format)")
+            raise ValueError(f"No model files found at path prefix '{path_prefix}'. "
+                           f"Expected either '{json_path}' (PIR format) or '{pdmodel_path}' (legacy format).")
+
+    # PIR mode without file path (memory loading) or PIR mode enabled
+    elif in_pir_mode():
+        if path_prefix is not None:
+            # Additional safety check for PIR mode with file path
+            json_path = path_prefix + ".json"
+            if not os.path.exists(json_path):
+                raise ValueError(f"PIR format model file '{json_path}' does not exist. "
+                               f"Use paddle.static.load_inference_model() with automatic format detection.")
+        return load_inference_model_pir(path_prefix, executor, **kwargs)
+    
+    # Legacy mode - use the extracted legacy implementation
+    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
+
 
 
 @overload

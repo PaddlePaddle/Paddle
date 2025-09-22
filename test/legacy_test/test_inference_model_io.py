@@ -87,24 +87,13 @@ class TestPdmodelCompatibility(unittest.TestCase):
                     # Input tensor: [batch_size, 10]
                     x = paddle.static.data(name='x', shape=[None, 10], dtype='float32')
 
-                    # Model parameters
-                    w_param = paddle.static.create_parameter(
-                        shape=[10, 1],
-                        dtype='float32',
-                        name='weight',
-                        default_initializer=paddle.nn.initializer.Normal(0.0, 1.0)
-                    )
-                    b_param = paddle.static.create_parameter(
-                        shape=[1],
-                        dtype='float32',
-                        name='bias',
-                        default_initializer=paddle.nn.initializer.Constant(0.0)
-                    )
-
-                    # Build computation graph: y = x * w + b
-                    # Note: Use explicit fluid.layers APIs to ensure ops are added to program
-                    mul_result = paddle.fluid.layers.matmul(x, w_param)
-                    y = paddle.fluid.layers.elementwise_add(mul_result, b_param)
+                    # Build computation graph: y = x * w + b using fc layer
+                    # Use static APIs that are compatible with legacy mode
+                    y = paddle.static.nn.fc(x, size=1, 
+                                          weight_attr=paddle.ParamAttr(name='weight', 
+                                                                      initializer=paddle.nn.initializer.Normal(0.0, 1.0)),
+                                          bias_attr=paddle.ParamAttr(name='bias',
+                                                                    initializer=paddle.nn.initializer.Constant(0.0)))
 
                 # Initialize parameters
                 self.exe.run(startup_program)
@@ -261,12 +250,52 @@ class TestPdmodelCompatibility(unittest.TestCase):
         """Test proper error handling when neither .json nor .pdmodel files exist."""
         model_path = os.path.join(self.temp_dir.name, "nonexistent_model")
 
-        # Should raise appropriate error when no model files exist
-        with self.assertRaises((FileNotFoundError, OSError, ValueError)):
+        # Should raise ValueError when no model files exist
+        with self.assertRaises(ValueError) as context:
             load_inference_model(
                 path_prefix=model_path,
                 executor=self.exe
             )
+        
+        # Verify the error message is informative
+        error_msg = str(context.exception)
+        self.assertIn("No model files found", error_msg)
+        self.assertIn("nonexistent_model", error_msg)
+
+    def test_environment_variable_control(self):
+        """Test PADDLE_DISABLE_PDMODEL_FALLBACK environment variable control."""
+        # Create model in legacy .pdmodel format
+        model_path = self._create_simple_model(save_format='pdmodel')
+        
+        # Test with fallback enabled (default)
+        program, feed_names, fetch_targets = load_inference_model(
+            path_prefix=model_path,
+            executor=self.exe
+        )
+        self.assertIsNotNone(program, "Should load successfully with fallback enabled")
+        
+        # Test with fallback disabled
+        import os
+        original_env = os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', None)
+        try:
+            os.environ['PADDLE_DISABLE_PDMODEL_FALLBACK'] = '1'
+            
+            with self.assertRaises(ValueError) as context:
+                load_inference_model(
+                    path_prefix=model_path,
+                    executor=self.exe
+                )
+            
+            error_msg = str(context.exception)
+            self.assertIn("automatic fallback is disabled", error_msg)
+            self.assertIn("PADDLE_DISABLE_PDMODEL_FALLBACK", error_msg)
+            
+        finally:
+            # Restore original environment
+            if original_env is None:
+                os.environ.pop('PADDLE_DISABLE_PDMODEL_FALLBACK', None)
+            else:
+                os.environ['PADDLE_DISABLE_PDMODEL_FALLBACK'] = original_env
 
 
 
