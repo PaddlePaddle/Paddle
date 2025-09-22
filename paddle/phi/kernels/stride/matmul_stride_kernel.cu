@@ -15,6 +15,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <limits>
+#include <set>
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -46,6 +47,51 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   return dense_out;
 }
 
+bool is_only_transposed(const DDim &shape,
+                        const DDim &stride,
+                        uint64_t offset,
+                        DDim &src_shape,           // NOLINT
+                        DDim &src_stride,          // NOLINT
+                        std::vector<int> &axis) {  // NOLINT
+  if (offset != 0) {
+    return false;
+  }
+  std::set<int> visited_idx;
+  axis.resize(stride.size());
+  for (int i = 0; i < stride.size(); i++) {
+    int64_t max_num = 0;
+    int max_idx = -1;
+    for (int j = 0; j < stride.size(); j++) {
+      if (visited_idx.count(j)) {
+        continue;
+      }
+      if (stride[j] < 1) {
+        return false;
+      }
+      if (stride[j] > max_num) {
+        max_num = stride[j];
+        max_idx = j;
+      }
+    }
+    if (max_idx == -1) {
+      return false;
+    }
+    if (i != 0 && src_stride[i - 1] == max_num) {
+      return false;
+    }
+    visited_idx.insert(max_idx);
+    src_stride[i] = max_num;
+    src_shape[i] = shape[max_idx];
+    axis[max_idx] = i;
+  }
+
+  if (DenseTensorMeta::calc_strides(src_shape) == src_stride) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 template <typename T, typename Context>
 void MatmulStrideKernel(const Context &dev_ctx,
                         const DenseTensor &x,
@@ -60,6 +106,76 @@ void MatmulStrideKernel(const Context &dev_ctx,
   }
   DenseTensor x_;
   DenseTensor y_;
+
+  //   auto y_meta = y.meta();
+  //   DDim y_stride = y_meta.strides;
+  //   DDim y_shape = y_meta.dims;
+  //   std::vector<int> y_axis;
+
+  //   if (is_only_transposed(x_meta.dims, x_meta.strides, x_meta.offset,
+  //   x_shape, x_stride, x_axis)) {
+  //     printf("x only transposed\n");
+  //     printf("x_shape\n");
+  //     for (int i=0; i<x_shape.size(); i++) {
+  //       printf("%d ", x_shape[i]);
+  //     }
+  //     printf("\n");
+  //     printf("x_stride\n");
+  //     for (int i=0; i<x_stride.size(); i++) {
+  //       printf("%d ", x_stride[i]);
+  //     }
+  //     printf("\n");
+  //     printf("x_axis\n");
+  //     for (int i=0; i<x_axis.size(); i++) {
+  //       printf("%d ", x_axis[i]);
+  //     }
+  //     printf("\n");
+  //   } else {
+  //     printf("x not transposed\n");
+  //     printf("x_shape\n");
+  //     for (int i=0; i<x.dims().size(); i++) {
+  //       printf("%d ", x.dims()[i]);
+  //     }
+  //     printf("\n");
+  //     printf("x_stride\n");
+  //     for (int i=0; i<x.strides().size(); i++) {
+  //       printf("%d ", x.strides()[i]);
+  //     }
+  //     printf("\n");
+  //   }
+
+  // if (is_only_transposed(y_meta.dims, y_meta.strides, y_meta.offset, y_shape,
+  // y_stride, y_axis)) {
+  //     printf("y only transposed\n");
+  //     printf("y_shape\n");
+  //     for (int i=0; i<y_shape.size(); i++) {
+  //       printf("%d ", y_shape[i]);
+  //     }
+  //     printf("\n");
+  //     printf("y_stride\n");
+  //     for (int i=0; i<y_stride.size(); i++) {
+  //       printf("%d ", y_stride[i]);
+  //     }
+  //     printf("\n");
+  //     printf("y_axis\n");
+  //     for (int i=0; i<y_axis.size(); i++) {
+  //       printf("%d ", y_axis[i]);
+  //     }
+  //     printf("\n");
+  //   } else {
+  //     printf("y not transposed\n");
+  //     printf("y_shape\n");
+  //     for (int i=0; i<y.dims().size(); i++) {
+  //       printf("%d ", y.dims()[i]);
+  //     }
+  //     printf("\n");
+  //     printf("y_stride\n");
+  //     for (int i=0; i<y.strides().size(); i++) {
+  //       printf("%d ", y.strides()[i]);
+  //     }
+  //     printf("\n");
+  //   }
+
   if (!FLAGS_use_stride_compute_kernel) {
     if (!x.meta().is_contiguous()) {
       x_ = Tensor2Contiguous<Context>(dev_ctx, x);
@@ -83,6 +199,63 @@ void MatmulStrideKernel(const Context &dev_ctx,
         dev_ctx, x_, y_, transpose_x, transpose_y, out);
     return;
   }
+
+  auto x_meta = x.meta();
+  DDim x_stride = x_meta.strides;
+  DDim x_shape = x_meta.dims;
+  std::vector<int> x_axis;
+  auto y_meta = y.meta();
+  DDim y_stride = y_meta.strides;
+  DDim y_shape = y_meta.dims;
+  std::vector<int> y_axis;
+
+  if (!x.meta().is_contiguous() && is_only_transposed(x_meta.dims,
+                                                      x_meta.strides,
+                                                      x_meta.offset,
+                                                      x_shape,
+                                                      x_stride,
+                                                      x_axis)) {
+    auto x_trans_dims = x_axis.size();
+    if (x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
+        x_axis[x_trans_dims - 2] == x_trans_dims - 1) {
+      transpose_x = !transpose_x;
+      x_meta.dims = x_shape;
+      x_meta.strides = x_stride;
+      x_meta.offset = x.offset();
+      x_.set_meta(x_meta);
+    }
+  }
+
+  if (!x_.meta().is_contiguous()) {
+    x_ = Tensor2Contiguous<Context>(dev_ctx, x);
+  }
+
+  if (!y.meta().is_contiguous() && is_only_transposed(y_meta.dims,
+                                                      y_meta.strides,
+                                                      y_meta.offset,
+                                                      y_shape,
+                                                      y_stride,
+                                                      y_axis)) {
+    auto y_trans_dims = y_axis.size();
+    if (y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
+        y_axis[y_trans_dims - 2] == y_trans_dims - 1) {
+      transpose_y = !transpose_y;
+      y_meta.dims = y_shape;
+      y_meta.strides = y_stride;
+      y_meta.offset = y.offset();
+      y_.set_meta(y_meta);
+    }
+  }
+
+  if (!y_.meta().is_contiguous()) {
+    y_ = Tensor2Contiguous<Context>(dev_ctx, y);
+  }
+
+  auto meta = out->meta();
+  meta.strides = meta.calc_strides(out->dims());
+  out->set_meta(meta);
+  phi::MatmulKernel<T, Context>(dev_ctx, x_, y_, transpose_x, transpose_y, out);
+
   if (!FLAGS_use_stride_compute_kernel) {
     PADDLE_THROW(
         common::errors::Fatal("FLAGS_use_stride_compute_kernel is closed. "
