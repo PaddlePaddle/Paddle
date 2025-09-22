@@ -148,6 +148,9 @@ __all__ = [
     'memory_allocated',
     'memory_reserved',
     'is_available',
+    'is_current_stream_capturing',
+    'get_device_name',
+    'get_device_capability',
 ]
 
 _cudnn_version = None
@@ -676,8 +679,8 @@ def get_device_capability(
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> # import paddle
-            >>> # name = paddle.device.get_device_name()
-            >>> # print(name)
+            >>> # cap = paddle.device.get_device_capability()
+            >>> # print(cap)
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
