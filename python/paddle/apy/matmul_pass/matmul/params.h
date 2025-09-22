@@ -17,6 +17,19 @@
 
 namespace ap {
 
+template <typename T, int Dim>
+struct Alignment {
+  static constexpr int kValue =
+      ((Dim % 8) == 0) ? 8
+                       : (((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1));
+};
+
+template <int Dim>
+struct Alignment<float, Dim> {
+  static constexpr int kValue =
+      ((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1);
+};
+
 struct GemmEpilogueParams {
 	int batch_count;
   int m;
@@ -45,7 +58,6 @@ struct GemmEpilogueParams {
   const void *bias;
   void *output;
 
-//   stream_t stream;
   void* stream_ptr;
 
   std::vector<int64_t> input0_shape;
@@ -182,4 +194,4 @@ struct GemmBroadcastEpilogueParams : GemmEpilogueParams {
         broadcast_out(broadcast_out) {}
 };
 
-}; // namespace ap
+} // namespace ap

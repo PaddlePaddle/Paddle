@@ -14,36 +14,31 @@
 
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <vector>
-
 #ifdef __HIPCC__
 #include "ck_matmul.h"
 #endif
 
 #ifdef __NVCC__
 #include "cutlass_matmul.cuh"
+#include "math_function.h"
 #endif
 
 
-namespace ap {
+// namespace ap {
 
-template <typename T, int Dim>
-struct Alignment {
-  static constexpr int kValue =
-      ((Dim % 8) == 0) ? 8
-                       : (((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1));
-};
-
-template <int Dim>
-struct Alignment<float, Dim> {
-  static constexpr int kValue =
-      ((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1);
-};
+// template <typename ElementT,
+//         typename ElementComputeT,
+//         template <typename T>
+//         class VariadicFunctor,
+//         int AlignA,
+//         int AlignB,
+//         int ConfigId>
+// void MatmulAddVariadic(
+//     const GemmEpilogueParams &params, 
+//     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
 
 
+// }
 
 
-
-}  // namespace ap
+// }  // namespace ap

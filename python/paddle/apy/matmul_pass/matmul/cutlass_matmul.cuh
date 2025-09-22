@@ -33,9 +33,12 @@
 #include "cutlass_patch/gemm/device/gemm_universal_with_variadic.h"
 #include "cutlass_patch/batched_matrix_coord.h"
 
-#include "default_config_id.h"
-#include "matmul.h"
+#include "cutlass_patch/all_tuning_configs.h"
 #include "params.h"
+
+using ap_bfloat16 = nv_bfloat16;
+using ap_half = half;
+using apStream_t = cudaStream_t;
 
 #define CHECK_CUTLASS(status)                                             \
   {                                                                       \
@@ -175,7 +178,7 @@ template <typename ElementT,
           int ConfigId = DefaultConfig::kConfigId,
           int SwizzleFactor = DefaultConfig::kSwizzleFactor,
           bool Batched = DefaultConfig::kBatched>
-void CutlassMatmulAddVariadic(
+void MatmulAddVariadic(
     const GemmEpilogueParams &params,
     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
   using ElementAccumulator =
@@ -270,8 +273,10 @@ void CutlassMatmulAddVariadic(
 
   GemmFunc device_gemm;
 
+  cudaStream_t* stream_ptr = reinterpret_cast<cudaStream_t*>(params.stream_ptr);
+
   CHECK_CUTLASS(device_gemm.can_implement(arguments));
-  CHECK_CUTLASS(device_gemm.initialize(arguments, workspace, params.stream));
+  CHECK_CUTLASS(device_gemm.initialize(arguments, workspace, *stream_ptr));
 
   //
   // Run the GEMM

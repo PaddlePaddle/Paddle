@@ -253,7 +253,8 @@ class MatmulVariadicTemplate:
     ):
         code_template = """
 // auto generated codes
-#include "backend.h"
+#include "matmul.h"
+#include <vector>
 
 namespace ap {
 
@@ -272,6 +273,7 @@ struct VariadicEpilogueFunctor {
   }
 };
 
+template <int TuningConfigId>
 static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
   using ElementT = ${output_dtype};
   using ElementComputeT = float;
@@ -284,7 +286,7 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
 
   MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
-                           AlignA, AlignB>(params, epilogue_args);
+                           AlignA, AlignB, TuningConfigId>(params, epilogue_args);
 }
 
 } // namespace ap
@@ -298,12 +300,11 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
   std::vector<int64_t> ${input1}_shape;
   ${AP_PARAMS_INPUT1_SHAPE_INIT}
 
-  apStream_t* ap_stream_ptr = reinterpret_cast<apStream_t*>(stream_ptr);
   ap::GemmEpilogueParams params(
-      *ap_stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
+      stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
 
 #if AP_ENABLE_AUTOTUNE
-  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, *ap_stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
+  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
 #else
   ap::RunMatmulWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 #endif
@@ -360,8 +361,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         dir_name = ap.dirname(__file__)
         source_dir = f"{dir_name}/matmul"
 
-        compile_cmd = 
-        (
+        compile_cmd = (
             self.make_dcu_compile_cmd(dir_name, source_dir)
             if device_type == "dcu"
             else self.make_gpu_compile_cmd(dir_name, source_dir)
