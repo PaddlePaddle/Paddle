@@ -286,7 +286,7 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
         return core.default_xpu_generator(place.get_device_id()).get_state()
     elif isinstance(place, paddle.CustomPlace):
         return core.default_custom_device_generator(
-            place.get_device_type(), place.get_device_id()
+            paddle.CustomPlace(place.get_device_type(), place.get_device_id())
         ).get_state()
 
 

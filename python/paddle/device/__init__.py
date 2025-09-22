@@ -1142,6 +1142,13 @@ def _device_to_paddle(
             return "cpu"
         device_type = current_place.split(":")[0]
         return f"{device_type}:{dev}"
+    elif isinstance(dev, str):
+        cleaned_device = dev.strip()
+        return (
+            cleaned_device.replace("cuda:", "gpu:")
+            if "cuda:" in cleaned_device
+            else cleaned_device
+        )
     else:
         return dev
 
