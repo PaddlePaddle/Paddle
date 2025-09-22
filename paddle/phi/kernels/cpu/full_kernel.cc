@@ -124,6 +124,11 @@ template PADDLE_API void FullKernel<int64_t, CPUContext>(const CPUContext&,
                                                          const Scalar&,
                                                          DataType dtype UNUSED,
                                                          DenseTensor*);
+template PADDLE_API void FullKernel<float, CPUContext>(const CPUContext&,
+                                                       const IntArray&,
+                                                       const Scalar&,
+                                                       DataType dtype UNUSED,
+                                                       DenseTensor*);
 #endif
 }  // namespace phi
 

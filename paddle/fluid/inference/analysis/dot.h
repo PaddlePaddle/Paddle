@@ -21,11 +21,11 @@
 
 #include <glog/logging.h>
 
+#include <regex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -54,14 +54,24 @@ class Dot {
   struct Node {
     std::string name;
     std::vector<Attr> attrs;
+    std::string comments;
 
-    Node(const std::string& name, const std::vector<Attr>& attrs)
+    Node(const std::string& name,
+         const std::vector<Attr>& attrs,
+         std::string comments)
         : name(name),
           attrs(attrs),
+          comments(comments),
           id_("node_" + std::to_string(dot_node_counter++)) {}
 
-    Node(const std::string& name, const std::vector<Attr>& attrs, size_t id)
-        : name(name), attrs(attrs), id_("node_" + std::to_string(id)) {}
+    Node(const std::string& name,
+         const std::vector<Attr>& attrs,
+         size_t id,
+         std::string comments)
+        : name(name),
+          attrs(attrs),
+          comments(comments),
+          id_("node_" + std::to_string(id)) {}
 
     std::string id() const { return id_; }
 
@@ -71,6 +81,10 @@ class Dot {
           !name.empty(),
           true,
           common::errors::InvalidArgument("Sorry,but name is empty"));
+      if (comments != "") {
+        ss << "#" << std::regex_replace(comments, std::regex("\n"), "\n\t#")
+           << "\n\t";
+      }
       ss << id_;
       if (attrs.empty()) {
         ss << "[label=" << '"' << name << '"' << "]";
@@ -94,11 +108,13 @@ class Dot {
     std::string source;
     std::string target;
     std::vector<Attr> attrs;
+    std::string label;
 
     Edge(const std::string& source,
          const std::string& target,
-         const std::vector<Attr>& attrs)
-        : source(source), target(target), attrs(attrs) {}
+         const std::vector<Attr>& attrs,
+         const std::string label = "")
+        : source(source), target(target), attrs(attrs), label(label) {}
 
     std::string repr() const {
       std::stringstream ss;
@@ -111,9 +127,13 @@ class Dot {
           true,
           common::errors::InvalidArgument("Sorry,but target is empty"));
       ss << source << "->" << target;
+      if (attrs.empty() && label != "") {
+        ss << "[label=" << '"' << label << '"' << "]";
+        return ss.str();
+      }
       for (size_t i = 0; i < attrs.size(); i++) {
         if (i == 0) {
-          ss << "[";
+          ss << "[label=" << '"' << label << '"' << " ";
         }
         ss << attrs[i].repr();
         ss << ((i < attrs.size() - 1) ? " " : "]");
@@ -129,22 +149,25 @@ class Dot {
   void AddNode(const std::string& id,
                const std::vector<Attr>& attrs,
                std::string label = "",
-               bool use_local_id = false) {
+               bool use_local_id = false,
+               std::string comments = "") {
     PADDLE_ENFORCE_EQ(
         !nodes_.count(id),
         true,
         common::errors::InvalidArgument("Sorry,but duplicate Node"));
     if (label.empty()) label = id;
     if (use_local_id) {
-      nodes_.emplace(id, Node{label, attrs, local_node_counter_++});
+      nodes_.emplace(id, Node{label, attrs, local_node_counter_++, comments});
     } else {
-      nodes_.emplace(id, Node{label, attrs});
+      nodes_.emplace(id, Node{label, attrs, comments});
     }
   }
+  bool ContainsNode(const std::string& id) const { return nodes_.count(id); }
 
   void AddEdge(const std::string& source,
                const std::string& target,
-               const std::vector<Attr>& attrs) {
+               const std::vector<Attr>& attrs,
+               const std::string& label = "") {
     PADDLE_ENFORCE_EQ(
         !source.empty(),
         true,
@@ -155,13 +178,13 @@ class Dot {
         common::errors::InvalidArgument("Sorry,but target is empty"));
     auto sid = nodes_.at(source).id();
     auto tid = nodes_.at(target).id();
-    edges_.emplace_back(sid, tid, attrs);
+    edges_.emplace_back(sid, tid, attrs, label);
   }
 
   // Compile to DOT language codes.
   std::string Build() const {
     std::stringstream ss;
-    const std::string indent = "   ";
+    const std::string indent = "\t";
     ss << "digraph G {" << '\n';
 
     // Add graph attrs
@@ -187,6 +210,23 @@ class Dot {
 
   size_t local_node_counter_{0};
 };
+// Some attributes settings for reference
+const std::vector<Dot::Attr> grey_box_attrs({
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("color", "#999999"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+    Dot::Attr("width", "1.3"),                  //
+    Dot::Attr("height", "0.84"),                //
+    Dot::Attr("fontname", "Arial"),             //
+});
+const std::vector<Dot::Attr> teal_box_attrs({
+    Dot::Attr("shape", "box"),                  //
+    Dot::Attr("style", "rounded,filled,bold"),  //
+    Dot::Attr("fontname", "Arial"),             //
+    Dot::Attr("color", "#148b97"),              //
+    Dot::Attr("fontcolor", "#ffffff"),          //
+});
 
 }  // namespace analysis
 }  // namespace inference

@@ -58,6 +58,9 @@ from ..framework import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import Any
+
+    from numpy.typing import NDArray
 
     from paddle._typing import (
         DTypeLike,
@@ -1039,6 +1042,7 @@ def to_tensor(
     Args:
         data(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
             Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+            Alias: ``ndarray``.
         dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
             'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
             'complex64' , 'complex128'. Default: None, infers dtype from ``data``
@@ -1088,6 +1092,123 @@ def to_tensor(
     """
     return tensor(
         data, dtype=dtype, device=place, requires_grad=not stop_gradient
+    )
+
+
+def from_numpy(ndarray: NDArray[Any]) -> paddle.Tensor:
+    """
+    Creates a ``paddle.Tensor`` from a ``numpy.ndarray``.
+
+    The returned Tensor and the input ``ndarray`` share the same underlying memory.
+    Changes to the Tensor will be reflected in the ``ndarray`` and vice versa.
+
+    Args:
+        ndarray(numpy.ndarray): The numpy ndarray to be converted to a Tensor.
+
+    Returns:
+        Tensor: A Tensor that shares the same memory with the input ``ndarray``.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> np_data = np.array([1, 2, 3]).astype('int64')
+            >>> tensor = paddle.from_numpy(np_data)
+            >>> print(tensor)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+                   [1, 2, 3])
+    """
+    if not isinstance(ndarray, np.ndarray):
+        raise TypeError(
+            f"The input type of from_numpy() must be numpy.ndarray, but received {type(ndarray)}. "
+            "To convert other types to tensor, please use paddle.tensor() instead."
+        )
+    return tensor(ndarray)
+
+
+def asarray(
+    obj: TensorLike | NestedNumericSequence,
+    *,
+    dtype: DTypeLike | None = None,
+    device: PlaceLike | None = None,
+    copy: bool | None = None,
+    requires_grad: bool = False,
+):
+    r"""
+    Constructs a ``paddle.Tensor`` from ``obj`` ,
+    which can be scalar, tuple, list, numpy\.ndarray, paddle\.Tensor.
+
+    If the ``obj`` is already a tensor, copy will be performed and return a new tensor.
+
+    .. note::
+    The parameter ``copy`` will not affect this api's behavior. Copy will always be performed if ``obj`` is a tensor.
+
+    .. code-block:: text
+
+        We use the dtype conversion rules following this:
+                Keep dtype
+        np.number ───────────► paddle.Tensor
+                                (0-D Tensor)
+                    default_dtype
+        Python Number ───────────────► paddle.Tensor
+                                        (0-D Tensor)
+                    Keep dtype
+        np.ndarray ───────────► paddle.Tensor
+
+    Args:
+        obj(scalar|tuple|list|ndarray|Tensor): Initial data for the tensor.
+            Can be a scalar, list, tuple, numpy\.ndarray, paddle\.Tensor.
+        dtype(str|np.dtype, optional): The desired data type of returned tensor. Can be 'bool' , 'float16' ,
+            'float32' , 'float64' , 'int8' , 'int16' , 'int32' , 'int64' , 'uint8',
+            'complex64' , 'complex128'. Default: None, infers dtype from ``data``
+            except for python float number which gets dtype from ``get_default_type`` .
+        device(CPUPlace|CUDAPinnedPlace|CUDAPlace|str, optional): The place to allocate Tensor. Can be
+            CPUPlace, CUDAPinnedPlace, CUDAPlace. Default: None, means global place. If ``place`` is
+            string, It can be ``cpu``, ``gpu:x`` and ``gpu_pinned``, where ``x`` is the index of the GPUs.
+        copy(bool, optional): This param is ignored and has no effect.
+        requires_grad(bool, optional): Whether to block the gradient propagation of autograd. Default: False.
+
+    Returns:
+        Tensor: A Tensor constructed from ``data`` .
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> type(paddle.asarray(1))
+            <class 'paddle.Tensor'>
+
+            >>> paddle.asarray(1)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
+
+            >>> x = paddle.asarray(1, requires_grad=True)
+            >>> print(x)
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=False,
+            1)
+
+            >>> paddle.asarray(x)  # A new tensor will be created with default stop_gradient=True
+            Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True,
+            1)
+
+            >>> paddle.asarray([[0.1, 0.2], [0.3, 0.4]], device=paddle.CPUPlace(), requires_grad=True)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[0.10000000, 0.20000000],
+             [0.30000001, 0.40000001]])
+
+            >>> type(paddle.asarray([[1+1j, 2], [3+2j, 4]], dtype='complex64'))
+            <class 'paddle.Tensor'>
+
+            >>> paddle.asarray([[1+1j, 2], [3+2j, 4]], dtype='complex64')
+            Tensor(shape=[2, 2], dtype=complex64, place=Place(cpu), stop_gradient=True,
+            [[(1+1j), (2+0j)],
+             [(3+2j), (4+0j)]])
+    """
+    return tensor(
+        data=obj, dtype=dtype, device=device, requires_grad=requires_grad
     )
 
 

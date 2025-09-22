@@ -51,17 +51,19 @@ PADDLE_API extern AllocationPtr Alloc(const phi::Place& place,
 PADDLE_API extern bool InSameStream(
     const std::shared_ptr<Allocation>& allocation, const phi::Stream& stream);
 
-extern void* GetBasePtr(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API extern void* GetBasePtr(
+    const std::shared_ptr<Allocation>& allocation);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-extern uint64_t Release(const phi::GPUPlace& place, gpuStream_t stream);
+PADDLE_API extern uint64_t Release(const phi::GPUPlace& place,
+                                   gpuStream_t stream);
 
 PADDLE_API bool RecordStream(std::shared_ptr<Allocation> allocation,
                              gpuStream_t stream);
 
 void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
 
-gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
+PADDLE_API gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation);
 #endif
 
 #ifdef PADDLE_WITH_XPU

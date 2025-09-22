@@ -68,6 +68,8 @@ inline int get_max_headdim() {
   return 0;
 }
 
+inline int flashmaskv2_get_max_headdim() { return 128; }
+
 inline int round_up_headdim(int head_size) {
 #ifndef FLASHATTENTION_DISABLE_HDIM64
   if (head_size <= 64) {
@@ -92,6 +94,20 @@ inline int round_up_headdim(int head_size) {
 #ifndef FLASHATTENTION_DISABLE_HDIM256
   if (head_size <= 256) {
     return 256;
+  }
+#endif
+  return 256;
+}
+
+inline int flashmaskv2_round_up_headdim(int head_size) {
+#ifndef FLASHATTENTION_DISABLE_HDIM64
+  if (head_size <= 64) {
+    return 64;
+  }
+#endif
+#ifndef FLASHATTENTION_DISABLE_HDIM128
+  if (head_size <= 128) {
+    return 128;
   }
 #endif
   return 256;

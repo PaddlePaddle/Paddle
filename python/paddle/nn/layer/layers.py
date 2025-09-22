@@ -2451,6 +2451,7 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        non_blocking: bool | None = None,
     ) -> Self:
         '''
         Cast the parameters and buffers of Layer by the give device, dtype and blocking.
@@ -2464,6 +2465,9 @@ class Layer:
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
+
+            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
 
         Returns:
             self
@@ -2512,6 +2516,7 @@ class Layer:
             device=device,
             dtype=dtype,
             blocking=blocking,
+            non_blocking=non_blocking,
             include_sublayers=True,
             floating_only=False,
         )
@@ -2618,6 +2623,7 @@ class Layer:
         device: PlaceLike | None = None,
         dtype: DTypeLike | None = None,
         blocking: bool | None = None,
+        non_blocking: bool | None = None,
         include_sublayers: bool = True,
         floating_only: bool = False,
     ):
@@ -2634,6 +2640,9 @@ class Layer:
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
 
+            non_blocking(bool|None, optional): If True and the source is in pinned memory, the copy will be
+              asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the non_blocking is set False. Default: None.
+
             include_sublayers(bool, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
 
             floating_only(bool, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.
@@ -2643,7 +2652,12 @@ class Layer:
 
         '''
 
-        if device is None and dtype is None and blocking is None:
+        if (
+            device is None
+            and dtype is None
+            and blocking is None
+            and non_blocking is None
+        ):
             return self
 
         if device is not None:
@@ -2671,6 +2685,14 @@ class Layer:
             assert isinstance(blocking, bool), (
                 "blocking value error, must be the True, False or None"
             )
+
+        if non_blocking is None:
+            non_blocking = False
+        else:
+            assert isinstance(non_blocking, bool), (
+                "non_blocking value error, must be the True, False or None"
+            )
+        blocking = False if not blocking or non_blocking else True
 
         def transform(t, device, dtype, blocking):
             if floating_only and (not paddle.is_floating_point(t)):

@@ -50,6 +50,9 @@ if(WITH_DISTRIBUTE)
   paddle_test(expand_as_spmd_rule_test SRCS expand_as_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
 
+  paddle_test(matmul_co_shard_spmd_rule_test SRCS
+              matmul_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
   paddle_test(custom_op_spmd_rule_test SRCS custom_op_spmd_rule_test.cc DEPS
               spmd_rule_test_util phi)
 
@@ -63,6 +66,10 @@ if(WITH_DISTRIBUTE)
 
   paddle_test(softmax_co_shard_spmd_rule_test SRCS
               softmax_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
+
+  paddle_test(
+    index_select_co_shard_spmd_rule_test SRCS
+    index_select_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)
 
   paddle_test(reshape_co_shard_spmd_rule_test SRCS
               reshape_co_shard_spmd_rule_test.cc DEPS spmd_rule_test_util phi)

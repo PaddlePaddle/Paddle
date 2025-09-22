@@ -146,7 +146,11 @@ class TestFleetBase(unittest.TestCase):
     def test_exception(self):
         from paddle.distributed import fleet
 
-        self.assertRaises(Exception, fleet.init_worker)  # noqa: B017
+        self.assertRaisesRegex(
+            ValueError,
+            "Fleet can not find suitable runtime handler",
+            fleet.init_worker,
+        )
 
 
 class TestFleetDygraph(unittest.TestCase):

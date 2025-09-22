@@ -13,7 +13,14 @@
 # limitations under the License.
 
 
-from . import functional, init, initializer, quant, utils  # noqa: F401
+from . import (  # noqa: F401
+    attention,
+    functional,
+    init,
+    initializer,
+    quant,
+    utils,
+)
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
 
@@ -181,6 +188,8 @@ from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
 from .parameter import Parameter
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
 
+SiLU = Silu
+
 __all__ = [
     'BatchNorm',
     'CELU',
@@ -268,6 +277,7 @@ __all__ = [
     'GLU',
     'SELU',
     'Silu',
+    'SiLU',
     'Conv2DTranspose',
     'CTCLoss',
     'RNNTLoss',

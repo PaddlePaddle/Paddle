@@ -127,6 +127,58 @@ def layer_norm_wrapper(
     )
 
 
+def layer_norm_wrapper_compatibility_1(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        x, normalized_shape, weight=scale, bias=bias, eps=epsilon
+    )
+
+
+def layer_norm_wrapper_compatibility_2(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        input=x,
+        normalized_shape=normalized_shape,
+        weight=scale,
+        bias=bias,
+        eps=epsilon,
+    )
+
+
+def layer_norm_wrapper_compatibility_3(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        weight=scale,
+        eps=epsilon,
+        input=x,
+        normalized_shape=normalized_shape,
+        bias=bias,
+    )
+
+
+def layer_norm_wrapper_compatibility_4(
+    x, scale=None, bias=None, epsilon=1e-05, begin_norm_axis=1
+):
+    input_shape = list(x.shape)
+    normalized_shape = input_shape[begin_norm_axis:]
+    return paddle.nn.functional.layer_norm(
+        weight=scale,
+        eps=epsilon,
+        x=x,
+        normalized_shape=normalized_shape,
+        bias=bias,
+    )
+
+
 @unittest.skipIf(
     paddle.is_compiled_with_rocm(),
     "ROCm doesn't support fp64 LayerNormOpByOp currently",
@@ -583,6 +635,50 @@ class TestLayerNormOpByOpTestFP32_case4(TestLayerNormOpByOpTest):
         self.check_prim = False
         self.check_prim_pir = False
         self.check_pir = True
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_1(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_1
+        self.public_python_api = layer_norm_wrapper_compatibility_1
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_2(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_2
+        self.public_python_api = layer_norm_wrapper_compatibility_2
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_3(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_3
+        self.public_python_api = layer_norm_wrapper_compatibility_3
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
+
+
+class TestLayerNormOpByOpTestFP32_compatibility_4(TestLayerNormOpByOpTest):
+    def setUp(self):
+        self.python_api = layer_norm_wrapper_compatibility_4
+        self.public_python_api = layer_norm_wrapper_compatibility_4
+        self.op_type = "layer_norm"
+        self.prim_op_type = "comp"
+        self.python_out_sig = ["Y"]
+        self.initConfig()
+        self.initTestCase()
 
 
 class TestDygraphLayerNormAPIError(unittest.TestCase):
