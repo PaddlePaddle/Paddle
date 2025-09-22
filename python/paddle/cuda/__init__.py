@@ -501,16 +501,14 @@ def is_initialized() -> bool:
 
     # Check for custom devices - get all available custom device types
     custom_device_initialized = False
-    try:
-        custom_device_types = paddle_device.get_all_custom_device_type()
-        if custom_device_types:
-            # Check if any custom device type is compiled/initialized
-            for device_type in custom_device_types:
-                if core.is_compiled_with_custom_device(device_type):
-                    custom_device_initialized = True
-                    break
-    except Exception:
-        # If there's an error getting custom device types, assume not initialized
+    custom_device_types = paddle_device.get_all_custom_device_type()
+    if custom_device_types:
+        # Check if any custom device type is compiled/initialized
+        for device_type in custom_device_types:
+            if core.is_compiled_with_custom_device(device_type):
+                custom_device_initialized = True
+                break
+    else:
         custom_device_initialized = False
 
     # Return True if any device type is initialized
