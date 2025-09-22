@@ -628,10 +628,7 @@ def get_device_module(device: _CustomPlaceLike = None):
         elif device in custom_device_types:
             return paddle.device.custom_device
         elif device == "cpu":
-            raise RuntimeError(
-                "Device 'cpu' does not have a dedicated module in Paddle (no `paddle.cpu`). "
-                "You can use generic Paddle APIs that work on CPU by default."
-            )
+            return paddle.device
         else:
             raise RuntimeError(f"Unsupported device type: {device}")
 
@@ -645,17 +642,12 @@ def get_device_module(device: _CustomPlaceLike = None):
         core.CUDAPlace: paddle.cuda,
         core.CustomPlace: paddle.device.custom_device,
         core.XPUPlace: paddle.device.xpu,
+        core.CPUPlace: paddle.device,
     }
 
     for place_type, module in place_to_module.items():
         if isinstance(place, place_type):
             return module
-
-    if isinstance(place, core.CPUPlace):
-        raise RuntimeError(
-            "Device 'cpu' does not have a dedicated module in Paddle (e.g., no `paddle.cpu`). "
-            "You can use generic Paddle APIs that work on CPU by default."
-        )
 
     raise RuntimeError(f"Unsupported device type: {type(place).__name__}")
 

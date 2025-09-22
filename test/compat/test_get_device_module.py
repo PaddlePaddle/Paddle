@@ -41,8 +41,7 @@ class TestGetDeviceModule(unittest.TestCase):
         for dev in custom_devices:
             self.assertIs(get_device_module(dev), paddle.device.custom_device)
 
-        with self.assertRaises(RuntimeError):
-            get_device_module("cpu")
+        self.assertIs(get_device_module('cpu'), paddle.device)
 
         with self.assertRaises(RuntimeError):
             get_device_module("unknown_device")
@@ -50,8 +49,6 @@ class TestGetDeviceModule(unittest.TestCase):
     def test_place_devices(self):
         if paddle.cuda.is_available():
             self.assertIs(get_device_module(paddle.CUDAPlace(0)), paddle.cuda)
-        with self.assertRaises(RuntimeError):
-            get_device_module(paddle.CPUPlace())
 
     def test_none_device(self):
         current_device_module = get_device_module(None)
@@ -75,8 +72,7 @@ class TestGetDeviceModule(unittest.TestCase):
         ]:
             self.assertIs(current_device_module, paddle.device.custom_device)
         elif current_device_type == "cpu":
-            with self.assertRaises(RuntimeError):
-                get_device_module(None)
+            self.assertIs(current_device_module, paddle.device)
 
 
 if __name__ == "__main__":
