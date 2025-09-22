@@ -253,6 +253,7 @@ HOSTDEVICE inline complex<T> operator/(const complex<T>& x,
   auto scl =
       (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
   if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<T, float>) {
       real_ = std::fmaf(b, rat, a) * scl;
       imag_ = std::fmaf(-a, rat, b) * scl;
@@ -263,7 +264,12 @@ HOSTDEVICE inline complex<T> operator/(const complex<T>& x,
       real_ = (a + b * rat) * scl;
       imag_ = (b - a * rat) * scl;
     }
+#else
+    real_ = (a + b * rat) * scl;
+    imag_ = (b - a * rat) * scl;
+#endif
   } else {
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<T, float>) {
       real_ = std::fmaf(a, rat, b) * scl;
       imag_ = std::fmaf(b, rat, -a) * scl;
@@ -274,8 +280,11 @@ HOSTDEVICE inline complex<T> operator/(const complex<T>& x,
       real_ = (a * rat + b) * scl;
       imag_ = (b * rat - a) * scl;
     }
+#else
+    real_ = (a * rat + b) * scl;
+    imag_ = (b * rat - a) * scl;
+#endif
   }
-
   return complex<T>(real_, imag_);
 }
 
@@ -363,6 +372,7 @@ HOSTDEVICE inline complex<T>& operator/=(complex<T>& x,  // NOLINT
   auto scl =
       (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
   if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<T, float>) {
       real_ = std::fmaf(b, rat, a) * scl;
       imag_ = std::fmaf(-a, rat, b) * scl;
@@ -373,7 +383,12 @@ HOSTDEVICE inline complex<T>& operator/=(complex<T>& x,  // NOLINT
       real_ = (a + b * rat) * scl;
       imag_ = (b - a * rat) * scl;
     }
+#else
+    real_ = (a + b * rat) * scl;
+    imag_ = (b - a * rat) * scl;
+#endif
   } else {
+#if __cplusplus >= 201703L
     if constexpr (std::is_same_v<T, float>) {
       real_ = std::fmaf(a, rat, b) * scl;
       imag_ = std::fmaf(b, rat, -a) * scl;
@@ -384,6 +399,10 @@ HOSTDEVICE inline complex<T>& operator/=(complex<T>& x,  // NOLINT
       real_ = (a * rat + b) * scl;
       imag_ = (b * rat - a) * scl;
     }
+#else
+    real_ = (a * rat + b) * scl;
+    imag_ = (b * rat - a) * scl;
+#endif
   }
   x = complex<T>(real_, imag_);
   return x;

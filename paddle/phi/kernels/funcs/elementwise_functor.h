@@ -147,6 +147,7 @@ struct DivideFunctor<ComplexType<T>> {
     auto scl =
         (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
     if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(b, rat, a) * scl;
         imag_ = std::fmaf(-a, rat, b) * scl;
@@ -157,7 +158,12 @@ struct DivideFunctor<ComplexType<T>> {
         real_ = (a + b * rat) * scl;
         imag_ = (b - a * rat) * scl;
       }
+#else
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+#endif
     } else {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(a, rat, b) * scl;
         imag_ = std::fmaf(b, rat, -a) * scl;
@@ -168,6 +174,10 @@ struct DivideFunctor<ComplexType<T>> {
         real_ = (a * rat + b) * scl;
         imag_ = (b * rat - a) * scl;
       }
+#else
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+#endif
     }
 
     return ComplexType<T>(real_, imag_);
@@ -200,6 +210,7 @@ struct InverseDivideFunctor<ComplexType<T>> {
     auto scl =
         (abs_c >= abs_d) ? (T(1.0) / (c + d * rat)) : (T(1.0) / (d + c * rat));
     if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(b, rat, a) * scl;
         imag_ = std::fmaf(-a, rat, b) * scl;
@@ -210,7 +221,12 @@ struct InverseDivideFunctor<ComplexType<T>> {
         real_ = (a + b * rat) * scl;
         imag_ = (b - a * rat) * scl;
       }
+#else
+      real_ = (a + b * rat) * scl;
+      imag_ = (b - a * rat) * scl;
+#endif
     } else {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(a, rat, b) * scl;
         imag_ = std::fmaf(b, rat, -a) * scl;
@@ -221,6 +237,10 @@ struct InverseDivideFunctor<ComplexType<T>> {
         real_ = (a * rat + b) * scl;
         imag_ = (b * rat - a) * scl;
       }
+#else
+      real_ = (a * rat + b) * scl;
+      imag_ = (b * rat - a) * scl;
+#endif
     }
 
     return ComplexType<T>(real_, imag_);
@@ -802,6 +822,7 @@ struct RemainderFunctor<ComplexType<T>> {
     auto scl = (abs_c >= abs_d) ? (T(1.0) / (c__ + d__ * rat))
                                 : (T(1.0) / (d__ + c__ * rat));
     if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(b__, rat, a__) * scl;
         imag_ = std::fmaf(-a__, rat, b__) * scl;
@@ -812,7 +833,12 @@ struct RemainderFunctor<ComplexType<T>> {
         real_ = (a__ + b__ * rat) * scl;
         imag_ = (b__ - a__ * rat) * scl;
       }
+#else
+      real_ = (a__ + b__ * rat) * scl;
+      imag_ = (b__ - a__ * rat) * scl;
+#endif
     } else {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(a__, rat, b__) * scl;
         imag_ = std::fmaf(b__, rat, -a__) * scl;
@@ -823,6 +849,10 @@ struct RemainderFunctor<ComplexType<T>> {
         real_ = (a__ * rat + b__) * scl;
         imag_ = (b__ * rat - a__) * scl;
       }
+#else
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+#endif
     }
     auto q = ComplexType<T>(real_, imag_);
 
@@ -1005,6 +1035,7 @@ struct InverseRemainderFunctor<
     auto scl = (abs_c >= abs_d) ? (T(1.0) / (c__ + d__ * rat))
                                 : (T(1.0) / (d__ + c__ * rat));
     if (abs_c >= abs_d) {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(b__, rat, a__) * scl;
         imag_ = std::fmaf(-a__, rat, b__) * scl;
@@ -1015,7 +1046,12 @@ struct InverseRemainderFunctor<
         real_ = (a__ + b__ * rat) * scl;
         imag_ = (b__ - a__ * rat) * scl;
       }
+#else
+      real_ = (a__ + b__ * rat) * scl;
+      imag_ = (b__ - a__ * rat) * scl;
+#endif
     } else {
+#if __cplusplus >= 201703L
       if constexpr (std::is_same_v<T, float>) {
         real_ = std::fmaf(a__, rat, b__) * scl;
         imag_ = std::fmaf(b__, rat, -a__) * scl;
@@ -1026,6 +1062,10 @@ struct InverseRemainderFunctor<
         real_ = (a__ * rat + b__) * scl;
         imag_ = (b__ * rat - a__) * scl;
       }
+#else
+      real_ = (a__ * rat + b__) * scl;
+      imag_ = (b__ * rat - a__) * scl;
+#endif
     }
     auto q = ComplexType<T>(real_, imag_);
 
