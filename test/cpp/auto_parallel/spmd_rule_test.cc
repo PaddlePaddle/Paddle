@@ -24,8 +24,8 @@ TEST(MatmulSPMDRule, Ctor) {
   std::vector<int64_t> x_shape = {64, 32};
   std::vector<int64_t> y_shape = {32, 48};
 
-  std::vector<int64_t> mesh_shape = {2, 3};
-  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<int64_t> mesh_shape = {2, 4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
@@ -140,6 +140,7 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[1, -1, 0, -1] partial[]: done
   x_dist_attr.set_dims_mapping({1, -1, -1, 0});
   y_dist_attr.set_dims_mapping({-1, -1});
+  y_shape = {64, 48};
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
@@ -157,6 +158,7 @@ TEST(MatmulSPMDRule, Ctor) {
   // abcmn[-1, -1, -1, 1] partial[0]: done
   x_dist_attr.set_dims_mapping({-1, -1, -1, -1});
   y_dist_attr.set_dims_mapping({1, 0});
+  y_shape = {48, 32};
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
@@ -175,16 +177,17 @@ TEST(MatmulSPMDRule, Ctor) {
   // 0, -1],kn[-1, 0] = abcmn[-1, -1, 1, -1] partial[0]: done
   x_dist_attr.set_dims_mapping({-1, -1, 0, 1});
   y_dist_attr.set_dims_mapping({1, 0});
+  y_shape = {48, 64};
   x = phi::distributed::DistMetaTensor(common::make_ddim(x_shape), x_dist_attr);
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
   inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx);
 
-  check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, 0, 1});
+  check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, 0, -1});
   check_dim_mapping(inferred_dist_attrs.first[1],
-                    {-1, 0});  // conflict and should be changed to [-1, 0]
-  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, 1, -1});
+                    {1, 0});  // conflict and should be changed to [1, 0]
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, -1, 1});
   check_partial_dims(inferred_dist_attrs.second[0], {0});
 
   clean_partial_status(&inferred_dist_attrs.second[0]);
@@ -200,8 +203,12 @@ TEST(MatmulSPMDRule, Ctor) {
   y = phi::distributed::DistMetaTensor(common::make_ddim(y_shape), y_dist_attr);
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
-  EXPECT_ANY_THROW(inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx));
-  // Error
+  inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx);
+  check_dim_mapping(inferred_dist_attrs.first[0], {-1, -1, -1, 0});
+  check_dim_mapping(inferred_dist_attrs.first[1],
+                    {1, -1});  // conflict and should be changed to [1, -1]
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, 0, 1});
+  EXPECT_EQ(is_partial(inferred_dist_attrs.second[0]), false);
   VLOG(4) << "test10 done." << std::endl << std::endl << std::endl;
 
   // abcmk[-1, -1, 1, 0], kn[0, 1] --> abcmk[-1, -1, 1, 0],kn[0, 1] =
@@ -213,7 +220,7 @@ TEST(MatmulSPMDRule, Ctor) {
   ctx = phi::distributed::InferSpmdContext(
       {x, y}, {/*trans_x=*/true, /*trans_x=*/true});
   inferred_dist_attrs = matmul_spmd_rule.InferForward(ctx);
-  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, 1, -1});
+  check_dim_mapping(inferred_dist_attrs.second[0], {-1, -1, -1, 1});
   EXPECT_EQ(is_partial(inferred_dist_attrs.second[0]), true);
   check_partial_dims(inferred_dist_attrs.second[0], {0});
 
@@ -504,8 +511,8 @@ TEST(MatmulSPMDRuleInferBackward, Ctor) {
   std::vector<int64_t> y_shape = {512, 1, 32, 48};
   std::vector<int64_t> out_shape = {512, 1024, 64, 48};
 
-  std::vector<int64_t> mesh_shape = {2, 3};
-  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<int64_t> mesh_shape = {2, 4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 

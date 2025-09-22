@@ -3865,12 +3865,22 @@ template <typename T>
 struct CudaTanGradFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
-  // dx = dout / cos(x)^2
+  // dx = dout *(1 + tan(x)^2)
   __device__ __forceinline__ T operator()(const T arg_dout,
                                           const T arg_x) const {
     MPType dout = static_cast<MPType>(arg_dout);
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(dout / (cos(x) * cos(x)));
+    if constexpr (std::is_same<MPType, double>::value) {
+      double td = ::tan(x);
+      double tsq = __dmul_rn(td, td);
+      double y = __dadd_rn(tsq, 1.0);
+      return static_cast<T>(dout * y);
+    } else {
+      float tf = ::tanf(x);
+      float tsq = __fmul_rn(tf, tf);
+      float y = __fadd_rn(tsq, 1.0f);
+      return static_cast<T>(dout * y);
+    }
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -3879,10 +3889,11 @@ struct CudaTanGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct CudaTanGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  // dx = dout / cos(x)^2
+  // dx = dout *(1 + tan(x)^2)
   __device__ __forceinline__ ComplexType<T> operator()(
       const ComplexType<T> dout, const ComplexType<T> x) const {
-    return static_cast<ComplexType<T>>(dout / conj(cos(x) * cos(x)));
+    ComplexType<T> one = static_cast<ComplexType<T>>(1.0f);
+    return static_cast<ComplexType<T>>(dout * conj(tan(x) * tan(x) + one));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

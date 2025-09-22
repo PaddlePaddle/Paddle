@@ -129,7 +129,13 @@
   while (false)
 
 #define DISPATCH_HIDDEN_SIZE(hidden, kHidden, ...) \
-  if (hidden == 7168) {                            \
+  if (hidden == 1536) {                            \
+    constexpr size_t kHidden = 1536;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 4096) {                     \
+    constexpr size_t kHidden = 4096;               \
+    __VA_ARGS__                                    \
+  } else if (hidden == 7168) {                     \
     constexpr size_t kHidden = 7168;               \
     __VA_ARGS__                                    \
   } else if (hidden == 8192) {                     \
