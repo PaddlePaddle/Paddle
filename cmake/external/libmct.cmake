@@ -78,14 +78,9 @@ endif()
 
 file(
   WRITE ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
-  "PROJECT(LIBMCT)\n"
-  cmake_minimum_required
-  (VERSION 3.5)
-  \n"
-  "install
-  (DIRECTORY ./include ./lib \n"
-  " DESTINATION ${LIBMCT_DST_DIR})
-  \n")
+  "PROJECT(LIBMCT)\n" "cmake_minimum_required(VERSION 3.5)\n"
+  "install(DIRECTORY ./include ./lib \n"
+  "        DESTINATION ${LIBMCT_DST_DIR})\n")
 
 ExternalProject_Add(
   ${LIBMCT_PROJECT}
@@ -96,16 +91,10 @@ ExternalProject_Add(
   SOURCE_DIR ${LIBMCT_INSTALL_DIR}
   UPDATE_COMMAND "
   "
-  COMMAND
-  ${CMAKE_COMMAND}
-  -E
-  copy
-  ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
-  ${LIBMCT_INSTALL_DIR}
-  CMAKE_ARGS
-  -DCMAKE_INSTALL_PREFIX=${LIBMCT_INSTALL_ROOT}
-  CMAKE_CACHE_ARGS
-  -DCMAKE_INSTALL_PREFIX:PATH=${LIBMCT_INSTALL_ROOT})
+  COMMAND ${CMAKE_COMMAND} -E copy ${LIBMCT_DOWNLOAD_DIR}/CMakeLists.txt
+          ${LIBMCT_INSTALL_DIR}
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBMCT_INSTALL_ROOT}
+  CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${LIBMCT_INSTALL_ROOT})
 
 add_library(libmct INTERFACE)
 

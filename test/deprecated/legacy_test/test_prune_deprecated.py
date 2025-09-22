@@ -459,8 +459,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             exe.run(startup_program)
             x_np = np.random.random(size=(10, 2)).astype('float32')
             label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-            self.assertRaises(  # noqa: B017
-                Exception,
+            self.assertRaisesRegex(
+                ValueError,
+                "The input tensor X's dimensions of MulOp should be larger than x_num_col_dims",
                 exe.run,
                 program,
                 feed={y.name: x_np, 'label': label_np},

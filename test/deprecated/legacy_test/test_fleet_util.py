@@ -105,7 +105,12 @@ class TestFleetUtil(unittest.TestCase):
     def test_get_file_shard(self):
         from paddle.distributed import fleet
 
-        self.assertRaises(Exception, fleet.util.get_file_shard, "files")  # noqa: B017
+        self.assertRaisesRegex(
+            TypeError,
+            "files should be a list of file need to be read",
+            fleet.util.get_file_shard,
+            "files",
+        )
 
         role = role_maker.UserDefinedRoleMaker(
             is_collective=False,

@@ -38,7 +38,8 @@ if(WITH_LOONGARCH)
   set(CBLAS_TAG v0.3.18)
 endif()
 
-# CMake 4 forward-compat: Only for Windows builds that use CMAKE_ARGS
+# For CMake >= 4.0.0, set policy compatibility for OpenBLAS's CMake.
+# Only for Windows builds that use CMAKE_ARGS
 if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   message(
     WARNING

@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from .sdpa import SDPBackend, sdpa_kernel
 
-import paddle
-
-
-class TestEmptyCache(unittest.TestCase):
-    def test_empty_cache(self):
-        x = paddle.randn((2, 10, 12)).astype('float32')
-        del x
-        self.assertIsNone(paddle.device.xpu.empty_cache())
-        self.assertIsNone(paddle.device.empty_cache())
-
-
-if __name__ == '__main__':
-    unittest.main()
+__all__ = ["SDPBackend", "sdpa_kernel"]

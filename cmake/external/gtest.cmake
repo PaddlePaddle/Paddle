@@ -31,7 +31,8 @@ set(GTEST_TAG release-1.8.1)
 set(GTEST_SOURCE_DIR ${THIRD_PARTY_PATH}/gtest/src/extern_gtest)
 include_directories(${GTEST_INCLUDE_DIR})
 
-# CMake 4 forward-compat: gtest uses CMAKE_ARGS on both Windows and UNIX
+# For CMake >= 4.0.0, set policy compatibility for gtest's CMake.
+set(GTEST_POLICY_ARGS "")
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
   message(
     WARNING
