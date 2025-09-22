@@ -76,18 +76,18 @@ __global__ void set_zero(T *x, int64_t num) {
 template <typename T>
 __global__ void channel_first(const T *input,
                               T *rinput,
-                              const int N,
-                              const int channel,
-                              const int H,
-                              const int W,
+                              const int64_t N,
+                              const int64_t channel,
+                              const int64_t H,
+                              const int64_t W,
                               const int pad_size) {
   int64_t global_idx = static_cast<int64_t>(blockIdx.x);
   int64_t stride = static_cast<int64_t>(gridDim.x);
 
   int p_H = H + 2 * pad_size;
   int p_W = W + 2 * pad_size;
-  int p_dimcw = channel * p_W;
-  int p_dimchw = channel * p_H * p_W;
+  int64_t p_dimcw = channel * p_W;
+  int64_t p_dimchw = channel * p_H * p_W;
 
   while (global_idx < int64_t(N) * H * W) {
     int64_t idx = global_idx;
@@ -96,7 +96,7 @@ __global__ void channel_first(const T *input,
     int64_t h = idx / W;
     int64_t w = idx % W;
 
-    for (int c = threadIdx.x; c < channel; c += blockDim.x) {
+    for (int64_t c = threadIdx.x; c < channel; c += blockDim.x) {
       rinput[n * p_dimchw + (h + pad_size) * p_dimcw +
              (w + pad_size) * channel + c] =
           input[n * (channel * H * W) + c * (H * W) + h * W + w];

@@ -20,13 +20,13 @@ namespace phi {
 
 template <typename T>
 __global__ void correlation_forward(T *output,
-                                    const int output_channel,
-                                    const int output_height,
-                                    const int output_width,
+                                    const int64_t output_channel,
+                                    const int64_t output_height,
+                                    const int64_t output_width,
                                     const T *rinput1,
-                                    const int input_channel,
-                                    const int input_height,
-                                    const int input_width,
+                                    const int64_t input_channel,
+                                    const int64_t input_height,
+                                    const int64_t input_width,
                                     const T *rinput2,
                                     const int pad_size,
                                     const int kernel_size,
@@ -35,8 +35,8 @@ __global__ void correlation_forward(T *output,
                                     const int stride2,
                                     const int OH,
                                     const int OW) {
-  int p_input_width = input_width + 2 * pad_size;
-  int p_input_height = input_height + 2 * pad_size;
+  int64_t p_input_width = input_width + 2 * pad_size;
+  int64_t p_input_height = input_height + 2 * pad_size;
 
   int kernel_rad = (kernel_size - 1) / 2;
   int displacement_rad = max_displacement / stride2;
@@ -45,36 +45,36 @@ __global__ void correlation_forward(T *output,
   int64_t global_block_id = blockIdx.x;
   int64_t hw = (int64_t)OH * OW;
 
-  int n = global_block_id / hw;
-  int hw_index = global_block_id % hw;
+  int64_t n = global_block_id / hw;
+  int64_t hw_index = global_block_id % hw;
 
-  int h1 = (hw_index / OW) * stride1 + max_displacement;
-  int w1 = (hw_index % OW) * stride1 + max_displacement;
+  int64_t h1 = (hw_index / OW) * stride1 + max_displacement;
+  int64_t w1 = (hw_index % OW) * stride1 + max_displacement;
 
-  int c = threadIdx.x;
+  int64_t c = threadIdx.x;
 
-  int p_dimchw = p_input_height * p_input_width * input_channel;
-  int p_dimcw = p_input_width * input_channel;
-  int p_dimc = input_channel;
+  int64_t p_dimchw = p_input_height * p_input_width * input_channel;
+  int64_t p_dimcw = p_input_width * input_channel;
+  int64_t p_dimc = input_channel;
 
-  int t_dimchw = output_channel * output_height * output_width;
-  int t_dimhw = output_height * output_width;
-  int t_dimw = output_width;
+  int64_t t_dimchw = output_channel * output_height * output_width;
+  int64_t t_dimhw = output_height * output_width;
+  int64_t t_dimw = output_width;
 
-  int nelems = kernel_size * kernel_size * p_dimc;
+  int64_t nelems = kernel_size * kernel_size * p_dimc;
 
-  for (int tj = -displacement_rad; tj <= displacement_rad; ++tj) {
-    for (int ti = -displacement_rad; ti <= displacement_rad; ++ti) {
-      int w2 = w1 + ti * stride2;
-      int h2 = h1 + tj * stride2;
+  for (int64_t tj = -displacement_rad; tj <= displacement_rad; ++tj) {
+    for (int64_t ti = -displacement_rad; ti <= displacement_rad; ++ti) {
+      int64_t w2 = w1 + ti * stride2;
+      int64_t h2 = h1 + tj * stride2;
 
       T acc0 = 0;
       for (int j = -kernel_rad; j <= kernel_rad; ++j) {
         for (int i = -kernel_rad; i <= kernel_rad; ++i) {
           for (int ch = c; ch < p_dimc; ch += blockDim.x) {
-            int index1 =
+            int64_t index1 =
                 n * p_dimchw + (h1 + j) * p_dimcw + (w1 + i) * p_dimc + ch;
-            int index2 =
+            int64_t index2 =
                 n * p_dimchw + (h2 + j) * p_dimcw + (w2 + i) * p_dimc + ch;
             acc0 += static_cast<T>(rinput1[index1] * rinput2[index2]);
           }
@@ -90,11 +90,11 @@ __global__ void correlation_forward(T *output,
       }
 
       if (threadIdx.x == 0) {
-        int tc = (tj + displacement_rad) * displacement_size +
-                 (ti + displacement_rad);
-        const int t_index = n * t_dimchw + tc * t_dimhw +
-                            (h1 - max_displacement) / stride1 * t_dimw +
-                            (w1 - max_displacement) / stride1;
+        int64_t tc = (tj + displacement_rad) * displacement_size +
+                     (ti + displacement_rad);
+        const int64_t t_index = n * t_dimchw + tc * t_dimhw +
+                                (h1 - max_displacement) / stride1 * t_dimw +
+                                (w1 - max_displacement) / stride1;
         output[t_index] = static_cast<T>(acc0 / nelems);
       }
     }
