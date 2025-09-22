@@ -22,6 +22,8 @@ from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
+    is_available as _device_is_available,
+    is_current_stream_capturing as _is_current_stream_capturing,
     manual_seed_all as device_manual_seed_all,
     stream_guard as _PaddleStreamGuard,
 )
@@ -34,13 +36,18 @@ if TYPE_CHECKING:
 
 def is_available() -> bool:
     """
-    Check whether CUDA is available in the current environment
+    Check whether **any supported device** is available in the current environment.
 
-    If Paddle is built with CUDA support and there is at least one CUDA device
-    available, this function returns True. Otherwise, it returns False.
+    This function checks whether Paddle is built with support for at least one
+    type of accelerator (e.g., CUDA, XPU, CustomDevice) and whether there is
+    at least one device of that type available.
+
+    If any supported device is available, this function returns True. Otherwise,
+    it returns False.
 
     Returns:
-        bool: True if CUDA is available, False otherwise.
+        bool: True if there is at least one available device (GPU/XPU/CustomDevice),
+        False otherwise.
 
     Examples:
         .. code-block:: python
@@ -48,11 +55,11 @@ def is_available() -> bool:
             >>> import paddle
 
             >>> if paddle.cuda.is_available():
-            ...     print("CUDA is available")
+            ...     print("At least one device is available")
             ... else:
-            ...     print("CUDA is not available")
+            ...     print("No supported devices available")
     """
-    return paddle_device.cuda.device_count() >= 1
+    return _device_is_available()
 
 
 def synchronize(device: DeviceLike = None) -> None:
@@ -123,33 +130,22 @@ def current_stream(device: DeviceLike = None) -> Stream:
 
 def is_current_stream_capturing() -> bool:
     """
-    Check whether the current CUDA stream is in capturing state.
+    Check whether the current stream is in CUDA graph capturing state.
+
     Returns:
-        bool: True if current CUDA stream is capturing, False otherwise.
+        bool: True if the current stream is capturing, False otherwise.
 
     Examples:
         .. code-block:: python
 
             >>> import paddle
-
-            >>> # Check initial state (not capturing)
-            >>> print(paddle.cuda.is_current_stream_capturing())  # False
-
-            >>> # Check CUDA availability first
-            >>> if paddle.device.device_count()>0:
-            ...     # Check initial state (not capturing)
-            ...     print(paddle.cuda.is_current_stream_capturing())  # False
-            ...
-            ...     # Start capturing
+            >>> if paddle.device.is_available():
             ...     graph = paddle.device.cuda.graphs.CUDAGraph()
             ...     graph.capture_begin()
             ...     print(paddle.cuda.is_current_stream_capturing())  # True
-            ...
-            ...     # End capturing
             ...     graph.capture_end()
-            ...     print(paddle.cuda.is_current_stream_capturing())  # False
     """
-    return core.is_cuda_graph_capturing()
+    return _is_current_stream_capturing()
 
 
 def get_device_properties(device: DeviceLike = None):
@@ -180,8 +176,7 @@ def get_device_properties(device: DeviceLike = None):
             >>> print(props)
 
     """
-    dev = _device_to_paddle(device)
-    return paddle_device.cuda.get_device_properties(dev)
+    return paddle_device.get_device_properties(device)
 
 
 def get_device_name(device: DeviceLike = None) -> str:
@@ -214,8 +209,7 @@ def get_device_name(device: DeviceLike = None) -> str:
             >>> name0 = paddle.cuda.get_device_name("cuda:0")
             >>> print(name0)
     """
-    dev = _device_to_paddle(device)
-    return paddle_device.cuda.get_device_name(dev)
+    return paddle_device.get_device_name(device)
 
 
 def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
@@ -248,8 +242,7 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
             >>> capability0 = paddle.cuda.get_device_capability("cuda:0")
             >>> print(capability0)
     """
-    dev = _device_to_paddle(device)
-    return paddle_device.cuda.get_device_capability(dev)
+    return paddle_device.get_device_capability(device)
 
 
 def manual_seed_all(seed: int) -> None:

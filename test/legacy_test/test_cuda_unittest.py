@@ -59,8 +59,8 @@ class TestCudaCompat(unittest.TestCase):
     # is_available test
     # ---------------------
     def test_is_available(self):
-        if paddle.is_compiled_with_cuda():
-            self.assertIsInstance(is_available(), bool)
+        self.assertIsInstance(is_available(), bool)
+        self.assertIsInstance(paddle.device.is_available(), bool)
 
     # ---------------------
     # synchronize test
@@ -103,6 +103,13 @@ class TestCudaCompat(unittest.TestCase):
             self.assertIsInstance(name, str)
 
             cap = get_device_capability(0)
+            self.assertIsInstance(cap, tuple)
+            self.assertEqual(len(cap), 2)
+
+            name = paddle.device.get_device_name(0)
+            self.assertIsInstance(name, str)
+
+            cap = paddle.device.get_device_capability(0)
             self.assertIsInstance(cap, tuple)
             self.assertEqual(len(cap), 2)
 
@@ -281,6 +288,19 @@ class TestCudaCompat(unittest.TestCase):
 class TestCurrentStreamCapturing(unittest.TestCase):
     def test_cuda_fun(self):
         self.assertFalse(paddle.cuda.is_current_stream_capturing())
+        self.assertFalse(paddle.device.is_current_stream_capturing())
+
+        if paddle.cuda.is_available():
+            graph = paddle.device.cuda.graphs.CUDAGraph()
+            graph.capture_begin()
+            self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
+            graph.capture_end()
+
+        if paddle.device.is_available():
+            graph = paddle.cuda.cuda.graphs.CUDAGraph()
+            graph.capture_begin()
+            self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
+            graph.capture_end()
 
 
 class TestExternalStream(unittest.TestCase):
