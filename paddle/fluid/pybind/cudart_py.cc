@@ -35,83 +35,355 @@ namespace pybind {
 void BindCudaRt(py::module* m) {
   auto cudart = m->def_submodule("_cudart", "libcudart.so bindings");
 
-  // By splitting the names of these objects into two literals we prevent the
-  // HIP rewrite rules from changing these names when building with HIP.
+  struct PaddleCudaError {
+    cudaError_t value;
+    PaddleCudaError() : value(cudaSuccess) {}
+    explicit PaddleCudaError(cudaError_t v) : value(v) {}
+    explicit PaddleCudaError(int v) : value(static_cast<cudaError_t>(v)) {}
+    operator cudaError_t() const { return value; }
+    operator int() const { return static_cast<int>(value); }
+    bool operator==(const PaddleCudaError& other) const {
+      return value == other.value;
+    }
+    bool operator!=(const PaddleCudaError& other) const {
+      return value != other.value;
+    }
+    bool operator==(cudaError_t other) const { return value == other; }
+    bool operator!=(cudaError_t other) const { return value != other; }
+    bool operator==(int other) const {
+      return static_cast<int>(value) == other;
+    }
+    bool operator!=(int other) const {
+      return static_cast<int>(value) != other;
+    }
+    int to_int() const { return static_cast<int>(value); }
+    cudaError_t get_value() const { return value; }
+  };
+
+  py::class_<PaddleCudaError>(cudart, "cudaError")
+      .def(py::init<int>(), "Create from integer value")
+      .def(py::init<>(), "Default constructor")
+      .def("__int__", &PaddleCudaError::to_int)
+      .def("get_value",
+           &PaddleCudaError::get_value,
+           "Get the underlying cudaError_t value")
+      .def("__eq__",
+           [](const PaddleCudaError& a, const PaddleCudaError& b) {
+             return a == b;
+           })
+      .def("__eq__", [](const PaddleCudaError& a, int b) { return a == b; })
+      .def("__ne__",
+           [](const PaddleCudaError& a, const PaddleCudaError& b) {
+             return a != b;
+           })
+      .def("__ne__", [](const PaddleCudaError& a, int b) { return a != b; })
+      .def("__repr__", [](const PaddleCudaError& error) -> std::string {
+        switch (error.value) {
+          case cudaSuccess:
+            return "cudaError.success";
+          default:
+            return "cudaError(" +
+                   std::to_string(static_cast<int>(error.value)) + ")";
+        }
+      });
+
+  cudart.attr("cudaError").attr("success") = PaddleCudaError(cudaSuccess);
+
+  cudart.def(
+      "cudaGetErrorString",
+      [](const PaddleCudaError& error) -> std::string {
+        return std::string(cudaGetErrorString(error.value));
+      },
+      "Get error string for cuda error");
+
+  cudart.def(
+      "cudaGetErrorString",
+      [](int error_code) -> std::string {
+        return std::string(
+            cudaGetErrorString(static_cast<cudaError_t>(error_code)));
+      },
+      "Get error string for cuda error code");
+
+  cudart.def("cudaGetErrorString", cudaGetErrorString);
+
+  cudart.def("cudaProfilerStart",
+#ifdef USE_ROCM
+             []() -> PaddleCudaError { return PaddleCudaError(hipSuccess); }
+#else
+      []() -> PaddleCudaError {
+        py::gil_scoped_release no_gil;
+        return PaddleCudaError(cudaProfilerStart());
+      }
+#endif
+  );
+
+  cudart.def("cudaProfilerStop",
+#ifdef USE_ROCM
+             []() -> PaddleCudaError { return PaddleCudaError(hipSuccess); }
+#else
+      []() -> PaddleCudaError {
+        py::gil_scoped_release no_gil;
+        return PaddleCudaError(cudaProfilerStop());
+      }
+#endif
+  );
+
+  cudart.def(
+      "cudaHostRegister",
+      [](uintptr_t ptr, size_t size, unsigned int flags) -> PaddleCudaError {
+        py::gil_scoped_release no_gil;
+        cudaError_t result =
+            cudaHostRegister(reinterpret_cast<void*>(ptr), size, flags);
+        return PaddleCudaError(result);
+      });
+
+  cudart.def("cudaHostUnregister", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaHostUnregister(reinterpret_cast<void*>(ptr));
+    return PaddleCudaError(result);
+  });
+
+  cudart.def("cudaStreamCreate", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaStreamCreate(reinterpret_cast<cudaStream_t*>(ptr));
+    return PaddleCudaError(result);
+  });
+
+  cudart.def("cudaStreamDestroy", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaStreamDestroy(reinterpret_cast<cudaStream_t>(ptr));
+    return PaddleCudaError(result);
+  });
 
 #if !defined(USE_ROCM) && defined(CUDA_VERSION) && CUDA_VERSION < 12000
-  // cudaOutputMode_t is used in cudaProfilerInitialize only. The latter is gone
-  // in CUDA 12.
-  py::enum_<cudaOutputMode_t>(
-      cudart,
-      "cuda"
-      "OutputMode_")  // Appended '_' to prevent duplicate registration across
-                      // DL frameworks.
-      .value("KeyValuePair", cudaKeyValuePair)
-      .value("CSV", cudaCSV);
+  // cudaProfilerInitialize is no longer needed after CUDA 12
+  cudart.def("cudaProfilerInitialize",
+             [](const char* configFile,
+                const char* outputFile,
+                cudaOutputMode_t outputMode) -> PaddleCudaError {
+               py::gil_scoped_release no_gil;
+               cudaError_t result =
+                   cudaProfilerInitialize(configFile, outputFile, outputMode);
+               return PaddleCudaError(result);
+             });
 #endif
 
-  py::enum_<cudaError_t>(cudart,
-                         "cuda"
-                         "Error_")  // Appended '_' to prevent duplicate
-                                    // registration across DL frameworks.
-      .value("success", cudaSuccess);
+  cudart.def("cudaMemGetInfo", [](int device) -> std::pair<size_t, size_t> {
+    const auto& place = phi::GPUPlace(device);
+    platform::CUDADeviceGuard cuda_guard(place);
+    size_t device_free = 0;
+    size_t device_total = 0;
+    py::gil_scoped_release no_gil;
+    cudaMemGetInfo(&device_free, &device_total);
+    return {device_free, device_total};
+  });
 
   cudart.def(
-      "cuda"
-      "GetErrorString",
-      cudaGetErrorString);
+      "cudaMemcpy",
+      [](py::int_ dst, py::int_ src, size_t count, int kind)
+          -> PaddleCudaError {
+        void* dst_ptr = reinterpret_cast<void*>(static_cast<uintptr_t>(dst));
+        const void* src_ptr =
+            reinterpret_cast<const void*>(static_cast<uintptr_t>(src));
+        cudaError_t result = cudaMemcpy(
+            dst_ptr, src_ptr, count, static_cast<cudaMemcpyKind>(kind));
+        return PaddleCudaError(result);
+      },
+      "Copy memory");
 
   cudart.def(
-      "cuda"
-      "ProfilerStart",
+      "cudaMemcpyAsync",
+      [](py::int_ dst, py::int_ src, size_t count, int kind, py::int_ stream)
+          -> PaddleCudaError {
+        void* dst_ptr = reinterpret_cast<void*>(static_cast<uintptr_t>(dst));
+        const void* src_ptr =
+            reinterpret_cast<const void*>(static_cast<uintptr_t>(src));
+        cudaStream_t cuda_stream =
+            reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(stream));
+        cudaError_t result = cudaMemcpyAsync(dst_ptr,
+                                             src_ptr,
+                                             count,
+                                             static_cast<cudaMemcpyKind>(kind),
+                                             cuda_stream);
+        return PaddleCudaError(result);
+      },
+      "Copy memory asynchronously");
+
+  cudart.def(
+      "cudaStreamSynchronize",
+      [](py::int_ stream) -> PaddleCudaError {
+        cudaStream_t cuda_stream =
+            reinterpret_cast<cudaStream_t>(static_cast<uintptr_t>(stream));
+        cudaError_t result = cudaStreamSynchronize(cuda_stream);
+        return PaddleCudaError(result);
+      },
+      "Synchronize stream");
+
+  cudart.def(
+      "cudaDeviceSynchronize",
+      []() -> PaddleCudaError {
+        cudaError_t result = cudaDeviceSynchronize();
+        return PaddleCudaError(result);
+      },
+      "Synchronize device");
+
+  cudart.def(
+      "cudaGetLastError",
+      []() -> PaddleCudaError {
+        cudaError_t result = cudaGetLastError();
+        return PaddleCudaError(result);
+      },
+      "Get last CUDA error");
+
+  cudart.def(
+      "cudaPeekAtLastError",
+      []() -> PaddleCudaError {
+        cudaError_t result = cudaPeekAtLastError();
+        return PaddleCudaError(result);
+      },
+      "Peek at last CUDA error without clearing it");
+
+  cudart.attr("cudaMemcpyHostToHost") = static_cast<int>(cudaMemcpyHostToHost);
+  cudart.attr("cudaMemcpyHostToDevice") =
+      static_cast<int>(cudaMemcpyHostToDevice);
+  cudart.attr("cudaMemcpyDeviceToHost") =
+      static_cast<int>(cudaMemcpyDeviceToHost);
+  cudart.attr("cudaMemcpyDeviceToDevice") =
+      static_cast<int>(cudaMemcpyDeviceToDevice);
+  cudart.attr("cudaMemcpyDefault") = static_cast<int>(cudaMemcpyDefault);
+
+  cudart.attr("cudaHostRegisterDefault") =
+      static_cast<unsigned int>(cudaHostRegisterDefault);
+  cudart.attr("cudaHostRegisterPortable") =
+      static_cast<unsigned int>(cudaHostRegisterPortable);
+  cudart.attr("cudaHostRegisterMapped") =
+      static_cast<unsigned int>(cudaHostRegisterMapped);
+  cudart.attr("cudaHostRegisterIoMemory") =
+      static_cast<unsigned int>(cudaHostRegisterIoMemory);
+
+#if !defined(USE_ROCM) && defined(CUDA_VERSION) && CUDA_VERSION < 12000
+  struct PaddleCudaOutputMode {
+    cudaOutputMode_t value;
+    PaddleCudaOutputMode() : value(cudaKeyValuePair) {}
+    explicit PaddleCudaOutputMode(cudaOutputMode_t v) : value(v) {}
+    explicit PaddleCudaOutputMode(int v)
+        : value(static_cast<cudaOutputMode_t>(v)) {}
+    operator cudaOutputMode_t() const { return value; }
+    operator int() const { return static_cast<int>(value); }
+    bool operator==(const PaddleCudaOutputMode& other) const {
+      return value == other.value;
+    }
+    bool operator!=(const PaddleCudaOutputMode& other) const {
+      return value != other.value;
+    }
+    bool operator==(cudaOutputMode_t other) const { return value == other; }
+    bool operator!=(cudaOutputMode_t other) const { return value != other; }
+    bool operator==(int other) const {
+      return static_cast<int>(value) == other;
+    }
+    bool operator!=(int other) const {
+      return static_cast<int>(value) != other;
+    }
+    int to_int() const { return static_cast<int>(value); }
+  };
+
+  py::class_<PaddleCudaOutputMode>(cudart, "cudaOutputMode")
+      .def(py::init<int>(), "Create from integer value")
+      .def("__int__", &PaddleCudaOutputMode::to_int)
+      .def("__eq__",
+           [](const PaddleCudaOutputMode& a, const PaddleCudaOutputMode& b) {
+             return a == b;
+           })
+      .def("__eq__",
+           [](const PaddleCudaOutputMode& a, int b) { return a == b; })
+      .def("__ne__",
+           [](const PaddleCudaOutputMode& a, const PaddleCudaOutputMode& b) {
+             return a != b;
+           })
+      .def("__ne__",
+           [](const PaddleCudaOutputMode& a, int b) { return a != b; })
+      .def("__repr__", [](const PaddleCudaOutputMode& mode) -> std::string {
+        switch (mode.value) {
+          case cudaKeyValuePair:
+            return "cudaOutputMode.KeyValuePair";
+          case cudaCSV:
+            return "cudaOutputMode.CSV";
+          default:
+            return "cudaOutputMode(" +
+                   std::to_string(static_cast<int>(mode.value)) + ")";
+        }
+      });
+
+  cudart.attr("cudaOutputMode").attr("KeyValuePair") =
+      PaddleCudaOutputMode(cudaKeyValuePair);
+  cudart.attr("cudaOutputMode").attr("CSV") = PaddleCudaOutputMode(cudaCSV);
+#endif
+
+  cudart.def(
+      "cudaGetErrorString",
+      [](const PaddleCudaError& error) -> std::string {
+        return std::string(cudaGetErrorString(error.value));
+      },
+      "Get error string for cuda error");
+
+  cudart.def(
+      "cudaGetErrorString",
+      [](int error_code) -> std::string {
+        return std::string(
+            cudaGetErrorString(static_cast<cudaError_t>(error_code)));
+      },
+      "Get error string for cuda error code");
+
+  cudart.def("cudaGetErrorString", cudaGetErrorString);
+
+  cudart.def("cudaProfilerStart",
 #ifdef USE_ROCM
-      hipReturnSuccess
+             []() -> PaddleCudaError { return PaddleCudaError(hipSuccess); }
 #else
-      cudaProfilerStart
+      []() -> PaddleCudaError {
+        py::gil_scoped_release no_gil;
+        return PaddleCudaError(cudaProfilerStart());
+      }
+#endif
+  );
+
+  cudart.def("cudaProfilerStop",
+#ifdef USE_ROCM
+             []() -> PaddleCudaError { return PaddleCudaError(hipSuccess); }
+#else
+      []() -> PaddleCudaError {
+        py::gil_scoped_release no_gil;
+        return PaddleCudaError(cudaProfilerStop());
+      }
 #endif
   );
 
   cudart.def(
-      "cuda"
-      "ProfilerStop",
-#ifdef USE_ROCM
-      hipReturnSuccess
-#else
-      cudaProfilerStop
-#endif
-  );
-
-  cudart.def(
-      "cuda"
-      "HostRegister",
-      [](uintptr_t ptr, size_t size, unsigned int flags) -> cudaError_t {
+      "cudaHostRegister",
+      [](uintptr_t ptr, size_t size, unsigned int flags) -> PaddleCudaError {
         py::gil_scoped_release no_gil;
-        return cudaHostRegister(reinterpret_cast<void*>(ptr), size, flags);
+        cudaError_t result =
+            cudaHostRegister(reinterpret_cast<void*>(ptr), size, flags);
+        return PaddleCudaError(result);
       });
 
-  cudart.def(
-      "cuda"
-      "HostUnregister",
-      [](uintptr_t ptr) -> cudaError_t {
-        py::gil_scoped_release no_gil;
-        return cudaHostUnregister(reinterpret_cast<void*>(ptr));
-      });
+  cudart.def("cudaHostUnregister", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaHostUnregister(reinterpret_cast<void*>(ptr));
+    return PaddleCudaError(result);
+  });
 
-  cudart.def(
-      "cuda"
-      "StreamCreate",
-      [](uintptr_t ptr) -> cudaError_t {
-        py::gil_scoped_release no_gil;
-        return cudaStreamCreate(reinterpret_cast<cudaStream_t*>(ptr));
-      });
+  cudart.def("cudaStreamCreate", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaStreamCreate(reinterpret_cast<cudaStream_t*>(ptr));
+    return PaddleCudaError(result);
+  });
 
-  cudart.def(
-      "cuda"
-      "StreamDestroy",
-      [](uintptr_t ptr) -> cudaError_t {
-        py::gil_scoped_release no_gil;
-        return (cudaStreamDestroy((cudaStream_t)ptr));
-      });
+  cudart.def("cudaStreamDestroy", [](uintptr_t ptr) -> PaddleCudaError {
+    py::gil_scoped_release no_gil;
+    cudaError_t result = cudaStreamDestroy(reinterpret_cast<cudaStream_t>(ptr));
+    return PaddleCudaError(result);
+  });
 
 #if !defined(USE_ROCM) && defined(CUDA_VERSION) && CUDA_VERSION < 12000
   // cudaProfilerInitialize is no longer needed after CUDA 12:

@@ -14,6 +14,7 @@
 import unittest
 
 import numpy as np
+from op_test import get_places
 from utils import dygraph_guard
 
 import paddle
@@ -167,11 +168,7 @@ class TestRandomGrad(unittest.TestCase):
             test_random_grad()
 
     def test_random_from_to_grad(self):
-        places = [paddle.CPUPlace()]
-        if paddle.is_compiled_with_cuda():
-            places.append(paddle.CUDAPlace(0))
-
-        self.run_(places)
+        self.run_(get_places())
 
 
 if __name__ == '__main__':

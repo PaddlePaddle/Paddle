@@ -2429,6 +2429,7 @@ def get_setup_parameters():
         'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
+        'paddle.nn.attention',
         'paddle.nn.functional',
         'paddle.nn.layer',
         'paddle.nn.quant',

@@ -22,7 +22,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Event, Stream
+from .streams import Event, Stream, create_event, create_stream  # noqa: F401
 
 if TYPE_CHECKING:
     from paddle import CUDAPlace, CustomPlace
@@ -93,6 +93,9 @@ def current_stream(device: _CudaPlaceLike | None = None) -> core.CUDAStream:
             device_id = device
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            place = paddle.device._convert_to_place(device)
+            device_id = place.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
@@ -129,8 +132,19 @@ def synchronize(device: _CudaPlaceLike | None = None) -> None:
             device_id = device
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('gpu:'):
+                device_id = int(device[4:])
+            elif device == 'gpu':
+                device_id = 0
+            else:
+                raise ValueError(
+                    f"The current string {device} is not expected. Because paddle.device.cuda."
+                    "synchronize only support string which is like 'gpu:x' or 'gpu'. "
+                    "Please input appropriate string again!"
+                )
         else:
-            raise ValueError("device type must be int or paddle.CUDAPlace")
+            raise ValueError("device type must be int, str or paddle.CUDAPlace")
     else:
         place = paddle.framework._current_expected_place()
         if paddle.is_compiled_with_cuda() and isinstance(
@@ -627,10 +641,12 @@ def get_device_properties(
         elif isinstance(device, str):
             if device.startswith('gpu:'):
                 device_id = int(device[4:])
+            elif device == 'gpu':
+                device_id = 0
             else:
                 raise ValueError(
                     f"The current string {device} is not expected. Because paddle.device."
-                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
+                    "cuda.get_device_properties only support string which is like 'gpu:x' or 'gpu'. "
                     "Please input appropriate string again!"
                 )
         else:

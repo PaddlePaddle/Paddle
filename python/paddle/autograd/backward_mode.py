@@ -35,6 +35,7 @@ def backward(
     tensors: Tensor | Sequence[Tensor],
     grad_tensors: Tensor | Sequence[Tensor | None] | None = None,
     retain_graph: bool = False,
+    *,
     dump_backward_graph_path: str | None = None,
 ) -> None:
     """
