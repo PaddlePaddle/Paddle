@@ -659,12 +659,16 @@ def set_device(device: DeviceLike) -> None:
     if isinstance(device, int):
         # Convert int device index to string format (e.g., 0 -> 'gpu:0')
         device_place = framework._current_expected_place_()
-        if isinstance(device, core.CUDAPlace):
+        if isinstance(device_place, core.CUDAPlace):
             device_str = f'gpu:{device}'
-        elif isinstance(device, core.CustomPlace):
+        elif isinstance(device_place, core.CustomPlace):
             device_str = f'{device_place.get_device_type()}:{device}'
-        elif isinstance(device, core.XPUPlace):
+        elif isinstance(device_place, core.XPUPlace):
             device_str = f'xpu:{device}'
+        else:
+            raise ValueError(
+                f"Unsupported device: {device_place.get_device_type()}. Expected CUDA, XPU or Custom Device."
+            )
     elif isinstance(device, str):
         # Device is already in string format
         device_str = device
