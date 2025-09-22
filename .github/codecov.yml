@@ -10,4 +10,4 @@ coverage:
         threshold: 1% # Allow the coverage to drop by 1%, and posting a success status.
     patch:
       default:
-        target: 90% # lines adjusted  Coverage < 80%  CI will fail
+        target: 90% # lines adjusted  Coverage < 90%  CI will fail

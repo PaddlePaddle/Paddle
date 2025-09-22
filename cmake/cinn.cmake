@@ -298,7 +298,7 @@ if(PUBLISH_LIBS)
       TARGET cinnapi
       POST_BUILD
       COMMENT "copy generated proto header '${relname}' to dist"
-      COMMAND cmake -E copy ${proto_header} ${target_name} DEPENDS cinnapi)
+      COMMAND cmake -E copy ${proto_header} ${target_name})
   endforeach()
 
   add_custom_command(
@@ -307,7 +307,7 @@ if(PUBLISH_LIBS)
     COMMAND cmake -E copy ${CMAKE_BINARY_DIR}/libcinnapi.so
             ${CMAKE_BINARY_DIR}/dist/cinn/lib/libcinnapi.so
     COMMAND cmake -E copy_directory ${CINN_THIRD_PARTY_PATH}/install
-            ${CMAKE_BINARY_DIR}/dist/third_party DEPENDS cinnapi)
+            ${CMAKE_BINARY_DIR}/dist/third_party)
   add_custom_command(
     TARGET cinncore_static
     POST_BUILD
@@ -320,8 +320,7 @@ if(PUBLISH_LIBS)
       cmake -E copy
       ${CMAKE_BINARY_DIR}/paddle/cinn/ir/schedule/libschedule_desc_proto.a
       ${CMAKE_BINARY_DIR}/dist/cinn/lib/libschedule_desc_proto.a
-    COMMENT "distribute libcinncore_static.a and related header files." DEPENDS
-            cinncore_static)
+    COMMENT "distribute libcinncore_static.a and related header files.")
 endif()
 # --------distribute cinncore lib and include end--------
 

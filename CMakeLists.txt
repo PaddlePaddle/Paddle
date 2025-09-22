@@ -18,8 +18,10 @@ if(APPLE AND WITH_ARM)
   cmake_policy(VERSION 3.19.2)
 else()
   cmake_minimum_required(VERSION 3.18)
-  cmake_policy(VERSION 3.10)
+  cmake_policy(VERSION 3.12)
 endif()
+# use legacy _LIB_DEPENDS cache entries
+cmake_policy(SET CMP0073 OLD)
 # use modern CMake target handling, disable deprecated LOCATION property
 # use $<TARGET_FILE> generator expression instead of get_property LOCATION
 # https://cmake.org/cmake/help/v4.0/policy/CMP0026.html#cmp0026
