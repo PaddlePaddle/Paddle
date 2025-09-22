@@ -283,7 +283,7 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
     elif isinstance(place, paddle.CUDAPlace):
         return core.default_cuda_generator(place.get_device_id()).get_state()
     elif isinstance(place, paddle.XPUPlace):
-        return core.default_xpu_generator(place._get_device_id()).get_state()
+        return core.default_xpu_generator(place.get_device_id()).get_state()
     elif isinstance(place, paddle.CustomPlace):
         return core.default_custom_device_generator(
             place.get_device_type(), place.get_device_id()
@@ -325,7 +325,7 @@ def set_rng_state(
     if isinstance(place, paddle.CUDAPlace):
         core.default_cuda_generator(place.get_device_id()).set_state(new_state)
     elif isinstance(place, paddle.XPUPlace):
-        core.default_xpu_generator(place._get_device_id()).set_state(new_state)
+        core.default_xpu_generator(place.get_device_id()).set_state(new_state)
     elif isinstance(place, paddle.CustomPlace):
         core.default_custom_device_generator(
             paddle.CustomPlace(place.get_device_type(), place.get_device_id())
