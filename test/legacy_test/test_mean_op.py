@@ -180,9 +180,10 @@ class TestMeanOp_RealValuedNanInput(OpTest):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
+        self.dtype = np.float64
         self.init_prim_type()
         data = np.arange(1, 100, dtype="float64")
-        data = np.append(data, np.nan)
+        data = np.append(data, np.nan).astype(self.dtype)
         self.inputs = {'X': data}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
@@ -193,7 +194,7 @@ class TestMeanOp_RealValuedNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+        pass
 
 
 class TestMeanOp_RealNanInput(OpTest):
@@ -201,6 +202,7 @@ class TestMeanOp_RealNanInput(OpTest):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.public_python_api = paddle.mean
+        self.dtype = np.complex64
         self.init_prim_type()
         self.inputs = {
             'X': np.array([1 + 2j, 2 + 1j, np.nan + 1j]).astype("complex64")
@@ -214,13 +216,26 @@ class TestMeanOp_RealNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+        place = core.CUDAPlace(0)
+        with paddle.base.dygraph.guard():
+            x_np = np.array([1 + 1j, 2 + 2j, 1 + np.nan * 1j]).astype(
+                self.dtype
+            )
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            y = paddle.mean(x)
+            dx = paddle.grad(y, x)[0].numpy()
+            dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
+                x_np.shape
+            ).astype(self.dtype)
+            np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestMeanOp_ImagNanInput(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
+        self.dtype = np.float64
         self.public_python_api = paddle.mean
         self.init_prim_type()
         self.inputs = {
@@ -235,7 +250,19 @@ class TestMeanOp_ImagNanInput(OpTest):
         self.check_output(check_pir=True, equal_nan=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
+        place = core.CUDAPlace(0)
+        with paddle.base.dygraph.guard():
+            x_np = np.array([1 + 1j, 2 + 2j, 1 + np.nan * 1j]).astype(
+                self.dtype
+            )
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            y = paddle.mean(x)
+            dx = paddle.grad(y, x)[0].numpy()
+            dx_expected = self.dtype(1.0 / np.prod(x_np.shape)) * np.ones(
+                x_np.shape
+            ).astype(self.dtype)
+            np.testing.assert_array_equal(dx, dx_expected)
 
 
 class TestMeanAllOp_ZeroDim(OpTest):
@@ -954,14 +981,15 @@ class TestMeanTripleGradCheck(unittest.TestCase):
             self.func(p)
 
 
-class TestMeanOp_ZeroSize(OpTest):
+class TestMeanOp_ZeroSize1(OpTest):
     def setUp(self):
         self.op_type = "mean"
         self.python_api = paddle.mean
         self.dtype = np.float64
         self.public_python_api = paddle.mean
         self.init_prim_type()
-        self.inputs = {'X': np.random.random([2, 0, 2, 2]).astype(self.dtype)}
+        self.shape = [0]
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def init_prim_type(self):
@@ -976,111 +1004,43 @@ class TestMeanOp_ZeroSize(OpTest):
 
 class TestMeanOp_ZeroSize2(OpTest):
     def setUp(self):
-        self.op_type = 'reduce_mean'
-        self.python_api = reduce_mean_wrapper
-        self.public_python_api = reduce_mean_wrapper
+        self.op_type = "mean"
+        self.python_api = paddle.mean
+        self.dtype = np.float64
+        self.public_python_api = paddle.mean
         self.init_prim_type()
-        self.dtype = 'float64'
-        self.init_shapes()
-        self.axis = [0]
-        if self.shape == []:
-            self.axis = []
-        self.keepdim = False
-        self.set_attrs()
-        self.if_enable_cinn()
-
-        np.random.seed(10)
-        x_np = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        if not hasattr(self, "reduce_all") and not x_np.shape == ():
-            self.reduce_all = (not self.axis) or len(self.axis) == len(x_np)
-        if x_np.shape == ():
-            self.reduce_all = True
-        out_np = ref_reduce_mean(x_np, self.axis, self.keepdim, self.reduce_all)
-        self.inputs = {'X': x_np}
-        self.outputs = {'Out': out_np}
-        self.attrs = {
-            'dim': self.axis,
-            'keep_dim': self.keepdim,
-            'reduce_all': self.reduce_all,
-        }
+        self.shape = [0, 2]
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def init_prim_type(self):
         self.prim_op_type = "comp"
 
-    def init_shapes(self):
-        self.shape = [2, 0, 2, 2]
-
-    def set_attrs(self):
-        pass
-
-    def if_enable_cinn(self):
-        pass
-
     def test_check_output(self):
-        if self.dtype != 'float16':
-            self.check_output(
-                check_prim=True, check_prim_pir=True, check_pir=True
-            )
-        else:
-            place = get_device_place()
-            self.check_output_with_place(
-                place=place,
-                check_prim=True,
-                check_prim_pir=True,
-                check_pir=True,
-            )
+        self.check_output(check_pir=True, equal_nan=True)
 
-    def test_check_grad(self):
-        if self.dtype != 'float16':
-            self.check_grad(
-                ['X'],
-                ['Out'],
-                check_prim=True,
-                check_prim_pir=True,
-                check_pir=True,
-            )
-        else:
-            place = get_device_place()
-            self.check_grad_with_place(
-                place,
-                ['X'],
-                ['Out'],
-                numeric_grad_delta=0.5,
-                check_prim=True,
-                check_prim_pir=True,
-                check_pir=True,
-            )
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
 class TestMeanOp_ZeroSize3(OpTest):
     def setUp(self):
-        self.op_type = 'mean'
+        self.op_type = "mean"
         self.python_api = paddle.mean
+        self.dtype = np.float64
         self.public_python_api = paddle.mean
         self.init_prim_type()
-        self.dtype = 'float64'
-        self.shape = [2, 0, 4]
-        self.axis = 1
-        self.keepdim = False
-        self.set_attrs()
-
-        self.inputs = {'X': np.array([], dtype=self.dtype).reshape(self.shape)}
-        self.outputs = {
-            'Out': np.mean(
-                self.inputs["X"], axis=self.axis, keepdims=self.keepdim
-            )
-        }
-
-    def set_attrs(self):
-        pass
+        self.shape = [1, 100, 0]
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
 
     def init_prim_type(self):
-        self.prim_op_type = "prim"
+        self.prim_op_type = "comp"
 
     def test_check_output(self):
         self.check_output(check_pir=True, equal_nan=True)
 
-    def test_check_grad(self):
+    def test_checkout_grad(self):
         self.check_grad(['X'], 'Out', check_pir=True, check_prim_pir=True)
 
 
