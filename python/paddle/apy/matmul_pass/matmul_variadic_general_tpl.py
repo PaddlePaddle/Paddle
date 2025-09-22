@@ -79,7 +79,7 @@ class MatmulVariadicTemplate:
         )
         return compile_cmd
 
-    def make_dcu_compile_cmd(self, source_dir, cutlass_dir):
+    def make_dcu_compile_cmd(self, dir_name, source_dir):
         ck_dir = f"{dir_name}/matmul/composable_kernel"
         compile_cmd = "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx906"
         compile_cmd = compile_cmd + " -I " + ck_dir + "/include"
@@ -89,7 +89,7 @@ class MatmulVariadicTemplate:
             + f" --shared {self.library_name}.cpp -o lib{self.library_name}.so"
         )
         return compile_cmd
-
+    
     def compile(
         self,
         input0_karg,
@@ -283,7 +283,7 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
   constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
 
-  CKMatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+  MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
                            AlignA, AlignB>(params, epilogue_args);
 }
 
