@@ -281,9 +281,9 @@ void MatmulAddVariadic(
   //
   // Run the GEMM
   //
-  CHECK_CUTLASS(device_gemm(params.stream));
+  CHECK_CUTLASS(device_gemm(*stream_ptr));
 #if AP_ENABLE_DEBUG
-  CHECK_CUDA(cudaStreamSynchronize(params.stream));
+  CHECK_CUDA(cudaStreamSynchronize(*stream_ptr));
 #endif
 }
 

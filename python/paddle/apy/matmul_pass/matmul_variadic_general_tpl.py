@@ -367,6 +367,8 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             else self.make_gpu_compile_cmd(dir_name, source_dir)
         )
 
+        file_ext = "cpp" if device_type == "dcu" else "cu"
+
         return CodeModule(  # noqa: F821
             FuncDeclare(  # noqa: F821
                 ap.DataType.void,
@@ -376,7 +378,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             Project(  # noqa: F821
                 nested_files=Project.Directory(  # noqa: F821
                     [
-                        f"{self.library_name}.cpp",
+                        f"{self.library_name}.{file_ext}",
                         Project.FileContent(code),  # noqa: F821
                     ],
                     ["make.sh", Project.FileContent(compile_cmd)],  # noqa: F821
