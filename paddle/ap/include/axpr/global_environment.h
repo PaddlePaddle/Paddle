@@ -41,7 +41,7 @@ class GlobalEnvironment : public Environment<ValueT> {
       static std::string tmp_var_prefix("__");
       if (var.substr(0, tmp_var_prefix.size()) != tmp_var_prefix) {
         ADT_CHECK(SerializableValue::IsSerializable(val)) << [&] {
-          std::ostringstream ss;
+          std::ostringstream ss;  //
           ss << "Only serializable values are supported insert into global "
                 "environment. "
              << "Builtin serializable types are: ";
