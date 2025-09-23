@@ -677,7 +677,6 @@ template <>
 cinn_type_t cinn_type_of<float8e4m3*>() {
   return cinn_float8e4m3_t(1);
 }
-//
 template <>
 cinn_type_t cinn_type_of<float16*>() {
   return cinn_float16_t(1);
