@@ -530,16 +530,19 @@ def mem_get_info(device: DeviceLike = None) -> tuple[int, int]:
     if isinstance(device, str):
         device: core.Place = paddle_device._convert_to_place(device)
 
-    if not isinstance(device, core.CUDAPlace) or (
-        isinstance(device, core.Place) and not device.is_gpu_place()
-    ):
-        raise ValueError(f"Expected a cuda device, but got: {device}")
+    if isinstance(device, int):
+        device_id = device
+    else:
+        if not isinstance(device, core.CUDAPlace) or (
+            isinstance(device, core.Place) and not device.is_gpu_place()
+        ):
+            raise ValueError(f"Expected a cuda device, but got: {device}")
 
-    device_id = (
-        device.get_device_id()
-        if isinstance(device, core.CUDAPlace)
-        else device.gpu_device_id()
-    )
+        device_id = (
+            device.get_device_id()
+            if isinstance(device, core.CUDAPlace)
+            else device.gpu_device_id()
+        )
     return cudart().cudaMemGetInfo(device_id)
 
 
