@@ -20,12 +20,6 @@ from paddle import base
 from paddle.base import Program, core, program_guard
 
 
-def get_device_place(device_id=0):
-    if core.is_compiled_with_cuda():
-        return base.CUDAPlace(device_id)
-    return base.CPUPlace()
-
-
 class TestMemcpy_FillConstant(unittest.TestCase):
     def get_prog(self):
         paddle.enable_static()
@@ -77,7 +71,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': pinned_var},
             attrs={'dst_place_type': 2},
         )
-        place = get_device_place()
+        place = base.CUDAPlace(0)
         exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
@@ -93,7 +87,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': gpu_var},
             attrs={'dst_place_type': 1},
         )
-        place = get_device_place()
+        place = base.CUDAPlace(0)
         exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
@@ -149,7 +143,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                 outputs={'Out': gpu_var},
                 attrs={'dst_place_type': 1},
             )
-            place = get_device_place()
+            place = base.CUDAPlace(0)
             exe = base.Executor(place)
             gpu_, pinned_ = exe.run(
                 main_program,
@@ -212,7 +206,7 @@ class TestMemcpyOPError(unittest.TestCase):
                 outputs={'Out': pinned_var},
                 attrs={'dst_place_type': 2},
             )
-            place = get_device_place()
+            place = base.CUDAPlace(0)
             exe = base.Executor(place)
             selected_row_var_, pinned_ = exe.run(
                 main_program,
