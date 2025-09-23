@@ -77,6 +77,9 @@ function gen_full_report() {
     c_coverage_lines=$(grep Total coverage-full.info |awk '{print $3}'|awk -F '|' '{print $1}')
     c_coverage_func=$(grep Total coverage-full.info |awk '{print $3}'|awk -F '|' '{print $2}')
     echo "Done full report for c++ coverage: ${c_coverage_percent} ${c_coverage_lines} ${c_coverage_func}"
+    echo "c_coverage_percent:${c_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
+    echo "c_coverage_lines:${c_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
+    echo "c_coverage_func:${c_coverage_func}" >>${PADDLE_ROOT}/night_coverage.txt
 }
 
 function gen_full_report_xpu() {
@@ -178,6 +181,9 @@ function gen_python_full_report() {
     python_coverage_lines=$(grep Total python-coverage-full.info |awk '{print $3}'|awk -F '|' '{print $1}')
     python_coverage_func=$(grep Total python-coverage-full.info |awk '{print $3}'|awk -F '|' '{print $2}')
     echo "Done full report for c++ coverage: ${python_coverage_percent} ${python_coverage_lines} ${python_coverage_func}"
+    echo "python_coverage_percent:${python_coverage_percent}" >>${PADDLE_ROOT}/night_coverage.txt
+    echo "python_coverage_lines:${python_coverage_lines}" >>${PADDLE_ROOT}/night_coverage.txt
+    echo "python_coverage_func:${python_coverage_func}" >>${PADDLE_ROOT}/night_coverage.txt
 }
 
 gen_python_full_report || true  # python-coverage-full.info
