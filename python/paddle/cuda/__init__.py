@@ -321,21 +321,7 @@ def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
             >>> paddle.cuda.get_rng_state()
     """
 
-    device = _device_to_paddle(device)
-    if device is None:
-        place = paddle.framework._current_expected_place_()
-    else:
-        place = paddle_device._convert_to_place(device)
-    if isinstance(place, paddle.CPUPlace):
-        return core.default_cpu_generator().get_state()
-    elif isinstance(place, paddle.CUDAPlace):
-        return core.default_cuda_generator(place.get_device_id()).get_state()
-    elif isinstance(place, paddle.XPUPlace):
-        return core.default_xpu_generator(place.get_device_id()).get_state()
-    elif isinstance(place, paddle.CustomPlace):
-        return core.default_custom_device_generator(
-            paddle.CustomPlace(place.get_device_type(), place.get_device_id())
-        ).get_state()
+    return paddle_device.get_rng_state(device)
 
 
 def set_rng_state(
@@ -365,22 +351,7 @@ def set_rng_state(
             >>> # Restore RNG state
             >>> paddle.cuda.set_rng_state(state)
     """
-    device = _device_to_paddle(device)
-    if device is None:
-        place = paddle.framework._current_expected_place_()
-    else:
-        place = paddle_device._convert_to_place(device)
-
-    if isinstance(place, paddle.CUDAPlace):
-        core.default_cuda_generator(place.get_device_id()).set_state(new_state)
-    elif isinstance(place, paddle.XPUPlace):
-        core.default_xpu_generator(place.get_device_id()).set_state(new_state)
-    elif isinstance(place, paddle.CustomPlace):
-        core.default_custom_device_generator(
-            paddle.CustomPlace(place.get_device_type(), place.get_device_id())
-        ).set_state(new_state)
-    elif isinstance(place, core.CPUPlace):
-        core.default_cpu_generator().set_state(new_state)
+    paddle_device.set_rng_state(new_state, device)
 
 
 def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
@@ -592,4 +563,6 @@ __all__ = [
     "Stream",
     "get_stream_from_external",
     "manual_seed_all",
+    "get_rng_state",
+    "set_rng_state",
 ]

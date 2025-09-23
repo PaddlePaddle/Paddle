@@ -72,12 +72,14 @@ if core.is_compiled_with_cuda():
         device_count,
         empty_cache,
         get_device_properties as _get_device_properties,
+        get_rng_state,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
+        set_rng_state,
     )
 elif core.is_compiled_with_xpu():
     from .xpu import (
@@ -85,12 +87,14 @@ elif core.is_compiled_with_xpu():
         create_stream as _create_stream_base,
         device_count,
         empty_cache,
+        get_rng_state,
         max_memory_allocated,
         max_memory_reserved,
         memory_allocated,
         memory_reserved,
         reset_max_memory_allocated,
         reset_max_memory_reserved,
+        set_rng_state,
     )
 else:
     if hasattr(core, 'get_all_custom_device_type'):
@@ -104,15 +108,18 @@ else:
             device_count,
             empty_cache,
             get_device_properties as _get_device_properties,
+            get_rng_state,
             max_memory_allocated,
             max_memory_reserved,
             memory_allocated,
             memory_reserved,
             reset_max_memory_allocated,
             reset_max_memory_reserved,
+            set_rng_state,
         )
     else:
         current_device_is_cpu = 1
+
 
 __all__ = [
     'get_cudnn_version',
@@ -151,6 +158,8 @@ __all__ = [
     'is_current_stream_capturing',
     'get_device_name',
     'get_device_capability',
+    'get_rng_state',
+    'set_rng_state',
 ]
 
 _cudnn_version = None
@@ -331,6 +340,15 @@ def get_cudnn_version() -> int | None:
             return cudnn_version
     else:
         return _cudnn_version
+
+
+def device_to_place(device: Place | int | str | None = None) -> Place:
+    """
+    Convert input device(Place | int | str | None) into corresponding Place object.
+    """
+    device = _device_to_paddle(device)
+    device = _convert_to_place(device)
+    return device
 
 
 def _convert_to_place(device: PlaceLike) -> Place:
@@ -633,6 +651,78 @@ def get_device_properties(
     return _get_device_properties(device)
 
 
+def get_device_module(device: _CustomPlaceLike = None):
+    """
+    Returns the Paddle module associated with a given device.
+
+    Args:
+        device (_CustomPlaceLike, optional): The device to query.
+            Can be one of the following:
+                - paddle.Place object (e.g., paddle.CUDAPlace(0))
+                - str (e.g., "gpu:0", "xpu", "npu")
+                - int (device index, e.g., 0 -> "gpu:0")
+                - None (use current expected place)
+
+    Returns:
+        module: The corresponding Paddle device module (e.g., paddle.cuda, paddle.device.xpu)
+
+    Raises:
+        RuntimeError: If the device type is CPU (Paddle does not expose `paddle.cpu`)
+                      or if no matching device module is found.
+
+    Example:
+        .. code-block:: python
+        >>> paddle.get_device_module("gpu:0")
+        <module 'paddle.cuda' ...>
+
+        >>> # paddle.get_device_module(paddle.XPUPlace(0))
+        >>> # <module 'paddle.device.xpu' ...>
+    """
+    device = _device_to_paddle(device)
+    if isinstance(device, str):
+        device = device.lower().split(':')[0]
+        custom_device_types = {
+            "metax_gpu",
+            "biren_gpu",
+            "custom_cpu",
+            "gcu",
+            "iluvatar_gpu",
+            "intel_gpu",
+            "intel_hpu",
+            "mlu",
+            "mps",
+            "npu",
+            "sdaa",
+        }
+        if device in ("cuda", "gpu"):
+            return paddle.cuda
+        elif device == "xpu":
+            return paddle.device.xpu
+        elif device in custom_device_types:
+            return paddle.device.custom_device
+        elif device == "cpu":
+            return paddle.device
+        else:
+            raise RuntimeError(f"Unsupported device type: {device}")
+
+    place = (
+        paddle.framework._current_expected_place_()
+        if device is None
+        else _convert_to_place(device)
+    )
+
+    place_to_module = {
+        core.CUDAPlace: paddle.cuda,
+        core.CustomPlace: paddle.device.custom_device,
+        core.XPUPlace: paddle.device.xpu,
+        core.CPUPlace: paddle.device,
+    }
+
+    for place_type, module in place_to_module.items():
+        if isinstance(place, place_type):
+            return module
+
+
 def get_device_name(
     device: _CustomPlaceLike | None = None,
 ) -> str:
@@ -686,78 +776,6 @@ def get_device_capability(
     """
     prop = get_device_properties(device)
     return prop.major, prop.minor
-
-
-def get_device_module(device: _CustomPlaceLike = None):
-    """
-    Returns the Paddle module associated with a given device.
-
-    Args:
-        device (_CustomPlaceLike, optional): The device to query.
-            Can be one of the following:
-                - paddle.Place object (e.g., paddle.CUDAPlace(0))
-                - str (e.g., "gpu:0", "xpu", "npu")
-                - int (device index, e.g., 0 -> "gpu:0")
-                - None (use current expected place)
-
-    Returns:
-        module: The corresponding Paddle device module (e.g., paddle.cuda, paddle.device.xpu)
-
-    Raises:
-        RuntimeError: If the device type is CPU (Paddle does not expose `paddle.cpu`)
-                      or if no matching device module is found.
-
-    Example:
-        .. code-block:: python
-        >>> get_device_module("gpu:0")
-        <module 'paddle.cuda' ...>
-
-        >>> # get_device_module(paddle.XPUPlace(0))
-        >>> # <module 'paddle.device.xpu' ...>
-    """
-    device = _device_to_paddle(device)
-    if isinstance(device, str):
-        device = device.lower().split(':')[0]
-        custom_device_types = {
-            "metax_gpu",
-            "biren_gpu",
-            "custom_cpu",
-            "gcu",
-            "iluvatar_gpu",
-            "intel_gpu",
-            "intel_hpu",
-            "mlu",
-            "mps",
-            "npu",
-            "sdaa",
-        }
-        if device in ("cuda", "gpu"):
-            return paddle.cuda
-        elif device == "xpu":
-            return paddle.device.xpu
-        elif device in custom_device_types:
-            return paddle.device.custom_device
-        elif device == "cpu":
-            return paddle.device
-        else:
-            raise RuntimeError(f"Unsupported device type: {device}")
-
-    place = (
-        paddle.framework._current_expected_place_()
-        if device is None
-        else _convert_to_place(device)
-    )
-
-    place_to_module = {
-        core.CUDAPlace: paddle.cuda,
-        core.CustomPlace: paddle.device.custom_device,
-        core.XPUPlace: paddle.device.xpu,
-        core.CPUPlace: paddle.device,
-    }
-
-    for place_type, module in place_to_module.items():
-        if isinstance(place, place_type):
-            return module
 
 
 def extract_device_id(device: _CustomPlaceLike, op_name: str) -> int:
@@ -1257,6 +1275,8 @@ def _device_to_paddle(
             if "cuda:" in cleaned_device
             else cleaned_device
         )
+    elif dev is None:
+        return get_device()
     else:
         return dev
 

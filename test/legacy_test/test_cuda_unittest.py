@@ -17,7 +17,7 @@ import types
 import unittest
 
 import numpy as np
-from op_test import get_device
+from op_test import get_device, is_custom_device
 
 import paddle
 from paddle.cuda import (
@@ -41,7 +41,7 @@ class TestCudaCompat(unittest.TestCase):
     # _device_to_paddle test
     # ---------------------
     def test_device_to_paddle_none(self):
-        self.assertIsNone(_device_to_paddle(None))
+        self.assertEqual(_device_to_paddle(), paddle.device.get_device())
 
     # ---------------------
     # is_available test
@@ -275,11 +275,21 @@ class TestCudaCompat(unittest.TestCase):
             check_error(2)
 
 
+def can_use_cuda_graph():
+    return (
+        paddle.is_compiled_with_cuda() or is_custom_device()
+    ) and not paddle.is_compiled_with_rocm()
+
+
 class TestCurrentStreamCapturing(unittest.TestCase):
     def test_cuda_fun(self):
         self.assertFalse(paddle.cuda.is_current_stream_capturing())
         self.assertFalse(paddle.device.is_current_stream_capturing())
 
+        if not can_use_cuda_graph():
+            return
+        if float(paddle.version.cuda()) < 11.0:
+            return
         if paddle.cuda.is_available() and paddle.is_compiled_with_cuda():
             graph = paddle.device.cuda.graphs.CUDAGraph()
             graph.capture_begin()
