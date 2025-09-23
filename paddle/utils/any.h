@@ -126,19 +126,34 @@ inline const ValueType *any_cast(const any *operand) {
 }
 
 template <typename ValueType>
-ValueType any_cast(const any &operand) {
-  using nonref = typename std::remove_reference<ValueType>::type;
+// NOLINTNEXTLINE(runtime/references)
+ValueType any_cast(any &operand) {
+  typedef typename std::remove_reference<ValueType>::type nonref;
 
+  // If 'nonref' is still reference type, it means the user has not
+  // specialized 'remove_reference'.
+
+  // Please use BOOST_BROKEN_COMPILER_TYPE_TRAITS_SPECIALIZATION macro
+  // to generate specialization of remove_reference for your class
+  // See type traits library documentation for details
   static_assert(!std::is_reference<nonref>::value,
                 "!std::is_reference<nonref>::value");
 
-  if constexpr (std::is_pointer_v<nonref>) {
-    return unsafe_any_cast<nonref>(&operand);
-  } else {
-    nonref *result = unsafe_any_cast<nonref>(&operand);
-    if (!result) throw bad_any_cast();
-    return *result;
-  }
+  nonref *result = any_cast<nonref>(&operand);
+  if (!result) throw bad_any_cast();
+  return *result;
+}
+
+template <typename ValueType>
+inline ValueType any_cast(const any &operand) {
+  typedef typename std::remove_reference<ValueType>::type nonref;
+
+  // The comment in the above version of 'any_cast' explains when this
+  // assert is fired and what to do.
+  static_assert(!std::is_reference<nonref>::value,
+                "!std::is_reference<nonref>::value");
+
+  return any_cast<const nonref &>(const_cast<any &>(operand));
 }
 
 // Note: The "unsafe" versions of any_cast are not part of the
