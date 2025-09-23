@@ -185,14 +185,18 @@ void GradTensorHolder::add(size_t slot_id,
           paddle::imperative::TensorAdd<paddle::Tensor>(t, &buffer_tensor);
         }
       } else {
-        // TODO(jiabin): Support Other TensorBase later
-        // TODO(zhanlve): Replace SelectedRowsAddTensor with
-        // add_dygraph_function once it's supported
-        paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
-                                  "tmp_accumulator");
-        paddle::imperative::SelectedRowsAddTensor(
-            buffer_tensor, t, &new_buffer);
-        buffer_tensor.set_impl(new_buffer.impl());
+        if (buffer_tensor.is_dist_tensor()) {
+          buffer_tensor = add_ad_func(t, buffer_tensor);
+        } else {
+          // TODO(jiabin): Support Other TensorBase later
+          // TODO(zhanlve): Replace SelectedRowsAddTensor with
+          // add_dygraph_function once it's supported
+          paddle::Tensor new_buffer(std::make_shared<phi::DenseTensor>(),
+                                    "tmp_accumulator");
+          paddle::imperative::SelectedRowsAddTensor(
+              buffer_tensor, t, &new_buffer);
+          buffer_tensor.set_impl(new_buffer.impl());
+        }
       }
     } else if (t.is_sparse_coo_tensor()) {
       auto t_sparse = std::dynamic_pointer_cast<phi::SparseCooTensor>(t.impl());

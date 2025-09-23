@@ -323,11 +323,23 @@ struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
     mesh = m;
   }
 
-  void convert(paddle::Tensor* x);
+  void convert(const paddle::Tensor* x);
+
   void operator()(paddle::Tensor* x);
+  void operator()(const paddle::Tensor* x);
+
+  void operator()(paddle::Tensor& x);
+  void operator()(const paddle::Tensor& x);
+
   void operator()(paddle::optional<paddle::Tensor>* x);
+  void operator()(const paddle::optional<paddle::Tensor>* x);
+
   void operator()(std::vector<paddle::Tensor>* x);
+  void operator()(const std::vector<paddle::Tensor>* x);
+  void operator()(const std::vector<paddle::Tensor> x);
+
   void operator()(paddle::optional<std::vector<paddle::Tensor>>* x);
+  void operator()(const paddle::optional<std::vector<paddle::Tensor>>* x);
 
   // skip other type args, these args don't used in kernel selection
   template <typename T>
@@ -352,7 +364,7 @@ void ConvertAllInputsToDistTensor(const phi::distributed::ProcessMesh* mesh,
   DistTensorConverter(mesh).apply(&args...);
 }
 
-void ConvertToDistTensor(paddle::Tensor* x,
+void ConvertToDistTensor(const paddle::Tensor* x,
                          const phi::distributed::ProcessMesh* mesh);
 
 void inline CUDAErrorCheck(const std::string& check_tag) {
