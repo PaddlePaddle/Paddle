@@ -128,6 +128,7 @@ jobs:
           git config --global user.name "PaddleCI"
           git config --global user.email "paddle_ci@example.com"
           git fetch origin pull/75348/head
+          git checkout -b test FETCH_HEAD
           echo "Extracting Paddle"
           git remote -v
           set +e
@@ -333,7 +334,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
           source ~/.bashrc
-          echo "commit:${COMMIT_ID}" >>${PADDLE_ROOT}/night_coverage.txt
+          commit_info=$(git log --format=fuller |head -1|awk '{print $2}')
+          echo "commit:${commit_info}" >>${PADDLE_ROOT}/night_coverage.txt
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
           source ${ci_scripts}/utils.sh; export WITH_ALL_COVERAGE=ON &&  check_coverage
