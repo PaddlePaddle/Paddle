@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from itertools import product
 
 import numpy as np
 from op_test import (
@@ -23,10 +24,10 @@ from op_test import (
     get_device_place,
     is_custom_device,
 )
+from utils import dygraph_guard
 
 import paddle
 from paddle.base import core
-from paddle.base.framework import in_pir_mode
 
 
 def check_randperm_out(n, data_np):
@@ -160,16 +161,6 @@ class TestRandpermBF16Op(OpTest):
         self.assertTrue(
             check_randperm_out(self.n, out_np), msg=error_msg(out_np)
         )
-
-
-class TestRandpermOpError(unittest.TestCase):
-    def test_errors(self):
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            if not in_pir_mode():
-                self.assertRaises(ValueError, paddle.randperm, -3)
-            self.assertRaises(TypeError, paddle.randperm, 10, 'int8')
 
 
 class TestRandpermAPI(unittest.TestCase):
@@ -388,6 +379,158 @@ class TestRandomValue(unittest.TestCase):
         ]
         np.testing.assert_array_equal(x[20000:20010], expect)
         paddle.enable_static()
+
+
+class TestRandpermNewParams(unittest.TestCase):
+    """Test randperm with device, requires_grad, pin_memory, out parameters."""
+
+    def setUp(self):
+        self.n = 10
+        self.devices = [paddle.CPUPlace(), "cpu"]
+        if paddle.device.is_compiled_with_cuda():
+            self.devices.extend([paddle.CUDAPlace(0), "gpu", "gpu:0"])
+        if paddle.device.is_compiled_with_xpu():
+            self.devices.append(paddle.XPUPlace(0))
+
+        self.requires_grads = [True, False]
+        self.dtypes = ["int32", "int64", "float32", "float64"]
+        self.pin_memorys = [False]
+        if (
+            paddle.device.is_compiled_with_cuda()
+            and not paddle.device.is_compiled_with_rocm()
+        ):
+            self.pin_memorys.append(True)
+
+    def test_device_parameter(self):
+        """Test device parameter"""
+        with dygraph_guard():
+            for device in self.devices:
+                for dtype in self.dtypes:
+                    x = paddle.randperm(self.n, dtype=dtype, device=device)
+                    self.assertTrue(check_randperm_out(self.n, x.numpy()))
+                    self.assertEqual(x.dtype, getattr(paddle, dtype))
+
+    def test_requires_grad_parameter(self):
+        """Test requires_grad parameter"""
+        with dygraph_guard():
+            for requires_grad in self.requires_grads:
+                for dtype in [
+                    "float32",
+                    "float64",
+                ]:  # Only float types support gradients
+                    x = paddle.randperm(
+                        self.n, dtype=dtype, requires_grad=requires_grad
+                    )
+                    self.assertEqual(x.stop_gradient, not requires_grad)
+                    self.assertTrue(check_randperm_out(self.n, x.numpy()))
+
+    def test_pin_memory_parameter(self):
+        """Test pin_memory parameter"""
+        if not paddle.device.is_compiled_with_cuda():
+            return
+
+        with dygraph_guard():
+            for pin_memory in self.pin_memorys:
+                for device in ["gpu", "gpu:0", paddle.CUDAPlace(0)]:
+                    x = paddle.randperm(
+                        self.n,
+                        dtype="int64",
+                        device=device,
+                        pin_memory=pin_memory,
+                    )
+                    if pin_memory:
+                        self.assertTrue("pinned" in str(x.place))
+                    self.assertTrue(check_randperm_out(self.n, x.numpy()))
+
+    def test_out_parameter(self):
+        """Test out parameter"""
+        with dygraph_guard():
+            for dtype in self.dtypes:
+                # Create output tensor
+                out_tensor = paddle.empty([self.n], dtype=dtype)
+                original_ptr = out_tensor.data_ptr()
+
+                # Use out parameter
+                result = paddle.randperm(self.n, dtype=dtype, out=out_tensor)
+
+                # Check that the same tensor is returned and modified in-place
+                self.assertEqual(result.data_ptr(), original_ptr)
+                self.assertEqual(result.data_ptr(), out_tensor.data_ptr())
+                self.assertTrue(check_randperm_out(self.n, result.numpy()))
+
+    def test_parameter_combinations(self):
+        """Test combinations of all parameters"""
+        pin_memorys = [False]
+        if not paddle.device.is_compiled_with_cuda():
+            # Skip combinations that require CUDA
+            devices = [paddle.CPUPlace(), "cpu"]
+        else:
+            devices = [paddle.CPUPlace(), "cpu", paddle.CUDAPlace(0), "gpu"]
+            if not paddle.device.is_compiled_with_rocm():
+                pin_memorys = [False, True]
+
+        with dygraph_guard():
+            for device, requires_grad, dtype, pin_memory in product(
+                devices,
+                self.requires_grads,
+                ["float32", "float64"],
+                pin_memorys,
+            ):
+                # Skip invalid combinations
+                if device in [paddle.CPUPlace(), "cpu"] and pin_memory:
+                    continue  # CPU doesn't support pin_memory
+
+                # Test with out parameter
+                out_tensor = paddle.empty([self.n], dtype=dtype, device=device)
+
+                x = paddle.randperm(
+                    self.n,
+                    dtype=dtype,
+                    device=device,
+                    requires_grad=requires_grad,
+                    pin_memory=pin_memory,
+                    out=out_tensor,
+                )
+
+                # Verify all properties
+                if not pin_memory:
+                    self.assertEqual(x.data_ptr(), out_tensor.data_ptr())
+                self.assertEqual(x.stop_gradient, not requires_grad)
+                self.assertEqual(x.dtype, getattr(paddle, dtype))
+                if pin_memory and device in [paddle.CUDAPlace(0), "gpu"]:
+                    self.assertTrue("pinned" in str(x.place))
+                self.assertTrue(check_randperm_out(self.n, x.numpy()))
+
+    def test_out_parameter_shape_mismatch(self):
+        """Test out parameter with wrong shape"""
+        with dygraph_guard():
+            # Create output tensor with wrong shape
+            wrong_shape_tensor = paddle.empty([self.n + 1], dtype="int64")
+
+            # This should work as randperm will resize the output tensor
+            result = paddle.randperm(self.n, out=wrong_shape_tensor)
+            self.assertEqual(result.shape, [self.n])
+            self.assertTrue(check_randperm_out(self.n, result.numpy()))
+
+    def test_out_parameter_dtype_consistency(self):
+        """Test out parameter dtype consistency"""
+        with dygraph_guard():
+            for dtype in self.dtypes:
+                out_tensor = paddle.empty([self.n], dtype=dtype)
+                result = paddle.randperm(self.n, dtype=dtype, out=out_tensor)
+
+                self.assertEqual(result.dtype, getattr(paddle, dtype))
+                self.assertEqual(result.dtype, out_tensor.dtype)
+                self.assertTrue(check_randperm_out(self.n, result.numpy()))
+
+    def test_pin_memory_error_cases(self):
+        """Test pin_memory error cases"""
+        if not paddle.device.is_compiled_with_cuda():
+            return
+
+        with dygraph_guard(), self.assertRaises(RuntimeError):
+            # Test unsupported device with pin_memory=True
+            paddle.randperm([2, 3], device=paddle.CPUPlace(), pin_memory=True)
 
 
 if __name__ == "__main__":

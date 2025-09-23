@@ -22,6 +22,7 @@ class TestEmptyCache(unittest.TestCase):
         x = paddle.randn((2, 10, 12)).astype('float32')
         del x
         self.assertIsNone(paddle.device.xpu.empty_cache())
+        self.assertIsNone(paddle.device.empty_cache())
 
 
 if __name__ == '__main__':

@@ -21,8 +21,8 @@ namespace auto_parallel {
 TEST(FusedLinearParamGradAddSPMDRule, Ctor) {
   // build input data class
 
-  std::vector<int64_t> mesh_shape = {2, 3};
-  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<int64_t> mesh_shape = {2, 4};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5, 6, 7};
   std::vector<std::string> dim_names = {"x", "y"};
   ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
 
