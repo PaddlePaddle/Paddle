@@ -22,6 +22,7 @@ from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
     _device_to_paddle as _device_to_paddle,
+    manual_seed_all as device_manual_seed_all,
     stream_guard as _PaddleStreamGuard,
 )
 
@@ -118,6 +119,37 @@ def current_stream(device: DeviceLike = None) -> Stream:
     """
     dev = _device_to_paddle(device)
     return paddle_device.current_stream(dev)
+
+
+def is_current_stream_capturing() -> bool:
+    """
+    Check whether the current CUDA stream is in capturing state.
+    Returns:
+        bool: True if current CUDA stream is capturing, False otherwise.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # Check initial state (not capturing)
+            >>> print(paddle.cuda.is_current_stream_capturing())  # False
+
+            >>> # Check CUDA availability first
+            >>> if paddle.device.device_count()>0:
+            ...     # Check initial state (not capturing)
+            ...     print(paddle.cuda.is_current_stream_capturing())  # False
+            ...
+            ...     # Start capturing
+            ...     graph = paddle.device.cuda.graphs.CUDAGraph()
+            ...     graph.capture_begin()
+            ...     print(paddle.cuda.is_current_stream_capturing())  # True
+            ...
+            ...     # End capturing
+            ...     graph.capture_end()
+            ...     print(paddle.cuda.is_current_stream_capturing())  # False
+    """
+    return core.is_cuda_graph_capturing()
 
 
 def get_device_properties(device: DeviceLike = None):
@@ -218,6 +250,27 @@ def get_device_capability(device: DeviceLike = None) -> tuple[int, int]:
     """
     dev = _device_to_paddle(device)
     return paddle_device.cuda.get_device_capability(dev)
+
+
+def manual_seed_all(seed: int) -> None:
+    """
+
+    Sets the seed for global default generator, which manages the random number generation.
+
+    Args:
+        seed(int): The random seed to set.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.cuda.manual_seed_all(102)
+
+    """
+    device_manual_seed_all(seed)
 
 
 def is_initialized() -> bool:
@@ -339,7 +392,7 @@ def cudart():
 class CudaError(RuntimeError):
     def __init__(self, code: int) -> None:
         msg = base.libpaddle._cudart.cudaGetErrorString(
-            base.libpaddle._cudart.cudaError_(code)
+            base.libpaddle._cudart.cudaError(code)
         )
         super().__init__(f"{msg} ({code})")
 
@@ -349,7 +402,7 @@ def check_error(res: int) -> None:
 
     This function validates whether the given result code from a CUDA
     runtime call indicates success. If the result code is not
-    :data:`base.libpaddle._cudart.cudaError_.success`, it raises a
+    :data:`base.libpaddle._cudart.cudaError.success`, it raises a
     :class:`CudaError`.
 
     Args:
@@ -364,7 +417,7 @@ def check_error(res: int) -> None:
             >>> # check_error(1) # check for cuda error code 1(invalid argument), will raise Error
             >>> # check_error(2) # check for cuda error code 2(out of memory), will raise Error
     """
-    if res != base.libpaddle._cudart.cudaError_.success:
+    if res != base.libpaddle._cudart.cudaError.success:
         raise CudaError(res)
 
 
@@ -465,4 +518,5 @@ __all__ = [
     "stream",
     "Stream",
     "get_stream_from_external",
+    "manual_seed_all",
 ]

@@ -958,6 +958,7 @@ swapaxes = transpose
 manual_seed = seed
 sub = subtract
 sub_ = subtract_
+get_default_device = get_device
 
 __all__ = [
     'block_diag',

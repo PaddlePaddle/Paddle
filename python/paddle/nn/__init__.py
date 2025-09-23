@@ -13,7 +13,14 @@
 # limitations under the License.
 
 
-from . import functional, init, initializer, quant, utils  # noqa: F401
+from . import (  # noqa: F401
+    attention,
+    functional,
+    init,
+    initializer,
+    quant,
+    utils,
+)
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
 
