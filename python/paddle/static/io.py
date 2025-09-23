@@ -1070,91 +1070,49 @@ def load_inference_model(
             # Note: The API works with both .json (PIR format) and .pdmodel (legacy format)
             # files, automatically detecting and using the appropriate loading method.
     """
-    # Format detection and automatic fallback for .pdmodel compatibility
+    # Simple format detection and automatic fallback for .pdmodel compatibility
     if in_pir_mode() and path_prefix is not None:
         json_path = path_prefix + ".json"
         pdmodel_path = path_prefix + ".pdmodel"
         
-        # Check for environment variable to disable fallback
+        # Check environment variable to disable fallback
         disable_fallback = os.environ.get('PADDLE_DISABLE_PDMODEL_FALLBACK', '').lower() in ('1', 'true', 'yes')
 
-        # Check for valid JSON file first
-        if os.path.exists(json_path):
-            try:
-                if os.path.getsize(json_path) > 0:
-                    _logger.debug(f"Loading PIR format model from {json_path}")
-                    return load_inference_model_pir(path_prefix, executor, **kwargs)
-                else:
-                    _logger.warning(f"JSON file {json_path} exists but is empty, checking for pdmodel fallback")
-            except OSError:
-                _logger.warning(f"Cannot access JSON file {json_path}, checking for pdmodel fallback")
+        # Simple flag-based logic: prefer JSON, fallback to pdmodel if needed
+        use_pir = os.path.exists(json_path) and os.path.getsize(json_path) > 0
+        use_legacy = os.path.exists(pdmodel_path)
         
-        # Check for pdmodel file if JSON is not valid
-        if os.path.exists(pdmodel_path):
+        if use_pir:
+            # Try PIR loading, catch JSON errors and fallback if needed
+            try:
+                _logger.debug("Attempting PIR format loading from {}".format(json_path))
+                return load_inference_model_pir(path_prefix, executor, **kwargs)
+            except Exception as e:
+                # JSON parse error or other PIR loading failure
+                if use_legacy and not disable_fallback:
+                    _logger.warning("PIR loading failed ({}), falling back to legacy mode".format(str(e)))
+                    use_pir = False  # Force fallback
+                else:
+                    # Re-raise if no fallback available or fallback disabled
+                    raise
+        
+        if use_legacy and not use_pir:
+            # Use legacy mode
             if disable_fallback:
-                # Fallback is disabled, raise error
-                _logger.error(f"Found legacy .pdmodel file at {pdmodel_path}, but fallback is disabled by PADDLE_DISABLE_PDMODEL_FALLBACK")
-                raise ValueError(f"Legacy .pdmodel format detected at '{pdmodel_path}', but automatic fallback is disabled. "
-                               f"Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 to enable fallback or convert model to PIR format.")
+                raise ValueError("Legacy .pdmodel format detected, but automatic fallback is disabled. "
+                               "Set PADDLE_DISABLE_PDMODEL_FALLBACK=0 to enable fallback.")
             
-            # Only legacy format (.pdmodel) exists, fallback to legacy mode
-            _logger.warning(f"PIR mode detected legacy .pdmodel file at {pdmodel_path}. "
-                          f"Automatically falling back to legacy mode for compatibility. "
-                          f"Consider converting to PIR format (.json) for better performance.")
+            _logger.warning("Loading legacy .pdmodel format in PIR mode via fallback")
             from paddle.pir_utils import OldIrGuard
             with OldIrGuard():
-                # Switch to legacy mode and skip the PIR format detection by jumping to legacy logic
-                _logger.debug("Switching to legacy mode using OldIrGuard")
-                # Directly call the legacy loading logic to avoid recursion into PIR detection
                 return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-        else:
-            # No model files found, raise appropriate error
-            _logger.error(f"No model files found at path prefix '{path_prefix}'. "
-                        f"Checked for {json_path} (PIR format) and {pdmodel_path} (legacy format)")
-            raise ValueError(f"No model files found at path prefix '{path_prefix}'. "
-                           f"Expected either '{json_path}' (PIR format) or '{pdmodel_path}' (legacy format).")
-
-    # PIR mode without file path (memory loading) 
-    elif in_pir_mode():
-        # This branch should only be reached for memory loading (path_prefix is None)
-        # or when the first condition somehow didn't match
-        if path_prefix is not None:
-            # If we reach here with a file path, something unexpected happened
-            # Apply the same format detection logic as a safety measure
-            json_path = path_prefix + ".json"
-            pdmodel_path = path_prefix + ".pdmodel"
-            
-            # Check for valid JSON file first
-            if os.path.exists(json_path):
-                try:
-                    if os.path.getsize(json_path) > 0:
-                        _logger.debug(f"Loading PIR format model from {json_path} (backup path)")
-                        return load_inference_model_pir(path_prefix, executor, **kwargs)
-                    else:
-                        _logger.warning(f"JSON file {json_path} exists but is empty (backup path)")
-                except OSError:
-                    _logger.warning(f"Cannot access JSON file {json_path} (backup path)")
-            
-            # Check for pdmodel file if JSON is not valid
-            if os.path.exists(pdmodel_path):
-                _logger.warning(f"PIR mode detected legacy .pdmodel file at {pdmodel_path} (backup path). "
-                              f"Falling back to legacy mode.")
-                from paddle.pir_utils import OldIrGuard
-                with OldIrGuard():
-                    return _load_inference_model_legacy_impl(path_prefix, executor, **kwargs)
-            else:
-                raise ValueError(f"No model files found at path prefix '{path_prefix}'. "
-                               f"Expected either '{json_path}' (PIR format) or '{pdmodel_path}' (legacy format).")
         
-        # Memory loading case (path_prefix is None)
-        if path_prefix is not None:
-            # This should not happen, but add extra safety check
-            _logger.warning(f"Unexpected code path reached with path_prefix='{path_prefix}'. "
-                          f"Applying final safety check.")
-            json_path = path_prefix + ".json"
-            if not os.path.exists(json_path):
-                raise ValueError(f"PIR format model file '{json_path}' does not exist. "
-                               f"Expected file not found in final safety check.")
+        # No valid model files found
+        raise ValueError("No model files found at path prefix '{}'. "
+                       "Expected either '{}' (PIR format) or '{}' (legacy format).".format(path_prefix, json_path, pdmodel_path))
+
+    # PIR mode for memory loading or other cases
+    elif in_pir_mode():
         return load_inference_model_pir(path_prefix, executor, **kwargs)
     
     # Legacy mode - use the extracted legacy implementation

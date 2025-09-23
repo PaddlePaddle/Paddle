@@ -297,6 +297,30 @@ class TestPdmodelCompatibility(unittest.TestCase):
             else:
                 os.environ['PADDLE_DISABLE_PDMODEL_FALLBACK'] = original_env
 
+    def test_corrupted_json_fallback(self):
+        """Test fallback when JSON file is corrupted or invalid."""
+        # Create model in legacy .pdmodel format
+        model_path = self._create_simple_model(save_format='pdmodel')
+        
+        # Create a corrupted JSON file (non-empty but invalid JSON)
+        json_path = model_path + ".json"
+        with open(json_path, 'w') as f:
+            f.write("{ invalid json content")
+        
+        # Should automatically fallback to pdmodel despite JSON file existence
+        program, feed_names, fetch_targets = load_inference_model(
+            path_prefix=model_path,
+            executor=self.exe
+        )
+        
+        # Verify successful loading via fallback
+        self.assertIsNotNone(program, "Should load successfully via pdmodel fallback")
+        self.assertEqual(len(feed_names), 1, "Should have one feed variable")
+        self.assertEqual(len(fetch_targets), 1, "Should have one fetch variable")
+        
+        # Clean up the corrupted JSON file
+        os.remove(json_path)
+
 
 
 
