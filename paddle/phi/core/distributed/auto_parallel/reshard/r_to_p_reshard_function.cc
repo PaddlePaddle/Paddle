@@ -66,8 +66,8 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     } else {
       // reset the physical tensor to zero
       IntArray shape(in.local_dims().Get(), in.local_dims().size());
-      RESHARD_FUNCTOR(
-          dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
+      phi::Full<paddle::platform::CUDADeviceContext>(
+          dev_ctx->stream(), in.dtype(), shape, 0, GetMutableTensor(out));
     }
   } else {
     // assign the input value to output

@@ -76,6 +76,11 @@ void BKCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
                              /*cur_rank*/ rank_,
                              size_,
                              phi::AllocationType::XPU);
+
+  if (compute_event_ && dev_ctx_->stream() != stream) {
+    dev_ctx_->StreamWaitEvent(compute_event_.get(), stream);
+  }
+
 #if defined(PADDLE_WITH_FLAGCX)
   FLAGCX_CHECK(
       phi::dynload::flagcxBroadcast(in_tensor.data(),
