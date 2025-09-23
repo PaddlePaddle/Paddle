@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(__NVCC__)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -296,8 +296,13 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
     dim1 = 1;
   }
   if (fastest_moving_stride == sizeof(scalar_t)) {
+#if defined(__HIPCC__)
+    if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
+        iter.num_reduce_dims() == 1) {
+#else
     if (reduction_on_fastest_striding_dimension && dim0 > 128 &&
         iter.num_reduce_dims() == 1 && VT0 >= INPUT_VEC_SIZE) {
+#endif
       config.vectorize_input = true;
       dim0 /= INPUT_VEC_SIZE;
     } else if (!reduction_on_fastest_striding_dimension) {
@@ -326,6 +331,12 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
       std::min<int>(block_height * 16, max_values_per_thread);
   bool split_across_warps = config.values_per_thread() >= warp_split_threshold;
   const int num_mp = phi::backends::gpu::GetGPUMultiProcessors(device_id);
+#if defined(__HIPCC__)
+  bool force_splitting_output =
+      iter.ndim() == 2 && reduction_on_fastest_striding_dimension &&
+      config.values_per_thread() < 1024 && num_mp < 100;
+  split_across_warps = !force_splitting_output && split_across_warps;
+#endif
   if (split_across_warps) {
     config.input_mult[1] = config.split_input(block_height);
   } else {
@@ -334,6 +345,12 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
 
   int max_threads_per_mp =
       phi::backends::gpu::GetGPUMaxThreadsPerMultiProcessor(device_id);
+
+#if defined(__HIPCC__)
+  if (iter.ndim() == 1 || iter.ndim() == 3) max_threads_per_mp = 512;
+  if (iter.ndim() == 2) max_threads_per_mp = 256;
+#endif
+
   const int blocks_per_sm = max_threads_per_mp / config.num_threads;
   const int target_grid_size = num_mp * blocks_per_sm;
   int grid = config.grid().x;
@@ -347,6 +364,25 @@ ReduceStrideConfig setReduceConfig(const DenseTensorIterator& iter) {
         DivUp(config.values_per_thread(), max_values_per_thread);
     config.ctas_per_output = std::max(
         std::min<int>(ctas_per_output1, ctas_per_output2), ctas_per_output3);
+
+#ifdef defined(__HIPCC__)
+    if (config.ctas_per_output > num_mp) {
+      if (num_mp < 128) {
+        config.ctas_per_output =
+            num_mp * (config.ctas_per_output > 512 ? 4 : 2);
+      } else {
+        config.ctas_per_output = num_mp;
+      }
+    } else if (config.ctas_per_output > DivUp(num_mp, 2)) {
+      config.ctas_per_output = DivUp(num_mp, 2);
+    } else if (config.ctas_per_output < 16) {
+      config.ctas_per_output = 1;
+    }
+    if (iter.ndim() == 3 && !reduction_on_fastest_striding_dimension) {
+      config.ctas_per_output = 4;
+    }
+#endif
+
     if (config.ctas_per_output > 1) {
       config.input_mult[2] = config.split_input(config.ctas_per_output);
     }
