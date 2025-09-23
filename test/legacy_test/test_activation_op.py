@@ -2893,6 +2893,10 @@ class TestRelu_NanInput(TestActivation):
         x[-1] = float('nan')
         self.x_np = x
 
+    def test_check_output(self):
+        # Override to prevent calling base class method that expects inputs/outputs
+        pass
+
     def test_static(self):
         with (
             static_guard(),
@@ -2902,8 +2906,7 @@ class TestRelu_NanInput(TestActivation):
             out = paddle.nn.functional.relu(x)
             exe = paddle.static.Executor()
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
-            nan_count = paddle.isnan(res[0]).cast('int32').sum()
-            nan_count = np.array(nan_count)
+            nan_count = np.isnan(res[0]).astype('int32').sum()
             self.assertTrue(nan_count.item() > 0)
 
     def test_dygraph(self):
