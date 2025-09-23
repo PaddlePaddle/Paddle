@@ -14,7 +14,7 @@
 
 #pragma once
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(__NVCC__)
 
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -25,11 +25,6 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
-
-#if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
-#include "paddle/phi/kernels/funcs/dims_simplifier.h"
-
-#endif
 
 namespace phi {
 
