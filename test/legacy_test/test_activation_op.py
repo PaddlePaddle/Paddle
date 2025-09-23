@@ -3634,44 +3634,6 @@ class TestHardswishAPI(unittest.TestCase):
             F.hardswish(x_fp16)
 
 
-class TestSoftRelu(TestActivation):
-    def setUp(self):
-        self.op_type = "soft_relu"
-        self.init_dtype()
-
-        np.random.seed(4096)
-        x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
-        threshold = 2.0
-        # The same reason with TestAbs
-        x[np.abs(x - threshold) < 0.005] = threshold + 0.02
-        x[np.abs(x + threshold) < 0.005] = -threshold - 0.02
-        t = np.copy(x)
-        t[t < -threshold] = -threshold
-        t[t > threshold] = threshold
-        out = np.log(np.exp(t) + 1)
-
-        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
-        self.outputs = {'Out': out}
-        self.convert_input_output()
-        self.attrs = {'threshold': threshold}
-
-    def test_check_output(self):
-        self.check_output(
-            check_dygraph=False, check_pir_onednn=self.check_pir_onednn
-        )
-
-    def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
-        self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.02,
-            check_dygraph=False,
-            check_pir_onednn=self.check_pir_onednn,
-        )
-
-
 def elu(x, alpha):
     out_ref = np.where(x > 0, x, alpha * (np.exp(x) - 1))
     return out_ref.astype(x.dtype)
@@ -6016,7 +5978,6 @@ create_test_act_fp16_class(
 )
 create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
-create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_fp16_class(TestCELU, check_pir=True)
 create_test_act_fp16_class(TestReciprocal, check_pir=True)
@@ -6190,7 +6151,6 @@ create_test_act_bf16_class(
 )
 create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
-create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU, check_pir=True, check_prim_pir=True)
 create_test_act_bf16_class(TestCELU, check_pir=True)
 create_test_act_bf16_class(TestReciprocal, check_pir=True)
