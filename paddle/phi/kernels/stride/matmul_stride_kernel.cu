@@ -47,6 +47,10 @@ phi::DenseTensor Tensor2Contiguous(const Context &dev_ctx,
   return dense_out;
 }
 
+/**
+ * Check if tensor is only transposed and return the original
+ * contiguous shape/stride and transpose axis mapping.
+ */
 inline bool is_only_transposed_tensor(const DDim &shape,
                                       const DDim &stride,
                                       const uint64_t &offset,
