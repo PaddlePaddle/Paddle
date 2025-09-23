@@ -88,7 +88,7 @@ struct StringMethodClass {
                "the argument 2 of 'str.replace' should be a str"};
     return This{}.Replace(self, pattern, replacement);
   }
-
+  //
   std::string Replace(std::string self,
                       const std::string& pattern,
                       const std::string& replacement) {
