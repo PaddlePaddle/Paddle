@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union
 
+import paddle
 from paddle import base, core, device as paddle_device
 from paddle.device import (
     PaddleStream as Stream,
@@ -27,9 +28,7 @@ from paddle.device import (
 )
 
 if TYPE_CHECKING:
-    from paddle import CUDAPlace, CustomPlace
-
-    DeviceLike = Union["CUDAPlace", "CustomPlace", int, str, None]
+    DeviceLike = Union[paddle.core.Place, int, str, None]
 
 
 def is_available() -> bool:
@@ -308,6 +307,87 @@ class StreamContext(_PaddleStreamGuard):
 
     def __init__(self, stream: paddle_device.Stream):
         super().__init__(stream)
+
+
+def get_rng_state(device: DeviceLike | None = None) -> core.GeneratorState:
+    """
+    Return the random number generator state of the specified device as a ByteTensor.
+
+    Args:
+        device (DeviceLike, optional): The device to retrieve the RNG state from.
+            If not specified, uses the current default device (as returned by paddle.framework._current_expected_place_()).
+            Can be a device object, integer device ID, or device string.
+
+    Returns:
+        core.GeneratorState: The current RNG state of the specified device, represented as a ByteTensor.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> paddle.cuda.get_rng_state()
+    """
+
+    device = _device_to_paddle(device)
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    else:
+        place = paddle_device._convert_to_place(device)
+    if isinstance(place, paddle.CPUPlace):
+        return core.default_cpu_generator().get_state()
+    elif isinstance(place, paddle.CUDAPlace):
+        return core.default_cuda_generator(place.get_device_id()).get_state()
+    elif isinstance(place, paddle.XPUPlace):
+        return core.default_xpu_generator(place.get_device_id()).get_state()
+    elif isinstance(place, paddle.CustomPlace):
+        return core.default_custom_device_generator(
+            paddle.CustomPlace(place.get_device_type(), place.get_device_id())
+        ).get_state()
+
+
+def set_rng_state(
+    new_state: core.GeneratorState, device: DeviceLike | None = None
+) -> None:
+    """
+    Set the random number generator state of the specified device.
+
+    Args:
+        new_state (core.GeneratorState): The desired RNG state to set.
+            This should be a state object previously obtained from ``get_rng_state()``.
+        device (DeviceLike, optional): The device to set the RNG state for.
+            If not specified, uses the current default device (as returned by ``paddle.framework._current_expected_place_()``).
+            Can be a device object, integer device ID, or device string.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> # Save RNG state
+            >>> state = paddle.cuda.get_rng_state()
+            >>> # Do some random operations
+            >>> x = paddle.randn([2, 3])
+            >>> # Restore RNG state
+            >>> paddle.cuda.set_rng_state(state)
+    """
+    device = _device_to_paddle(device)
+    if device is None:
+        place = paddle.framework._current_expected_place_()
+    else:
+        place = paddle_device._convert_to_place(device)
+
+    if isinstance(place, paddle.CUDAPlace):
+        core.default_cuda_generator(place.get_device_id()).set_state(new_state)
+    elif isinstance(place, paddle.XPUPlace):
+        core.default_xpu_generator(place.get_device_id()).set_state(new_state)
+    elif isinstance(place, paddle.CustomPlace):
+        core.default_custom_device_generator(
+            paddle.CustomPlace(place.get_device_type(), place.get_device_id())
+        ).set_state(new_state)
+    elif isinstance(place, core.CPUPlace):
+        core.default_cpu_generator().set_state(new_state)
 
 
 def stream(stream_obj: paddle_device.Stream | None) -> StreamContext:
