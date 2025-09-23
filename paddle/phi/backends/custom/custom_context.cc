@@ -284,7 +284,7 @@ struct CustomContext::Impl {
       }
     });
 
-    if (blas_tf32_tensor_core_handle_ && allow_tf32_blas_) {
+    if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
     } else {
@@ -396,8 +396,6 @@ struct CustomContext::Impl {
     BLAS_TENSOR_OP_MATH = 1,
     BLAS_TF32_TENSOR_OP_MATH = 2
   };
-
-  bool allow_tf32_blas_ = true;
 
   std::once_flag flag_sparse_;
   std::once_flag flag_blas_;
