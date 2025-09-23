@@ -34,7 +34,6 @@ if TYPE_CHECKING:
 def bind_vartype():
     global dtype
     global uint8
-    global uint16
     global uint32
     global uint64
     global int8
@@ -66,7 +65,6 @@ def bind_vartype():
     dtype.__module__ = "paddle"
 
     uint8 = VarDesc.VarType.UINT8
-    uint16 = VarDesc.VarType.UINT16
     uint32 = VarDesc.VarType.UINT32
     uint64 = VarDesc.VarType.UINT64
     int8 = VarDesc.VarType.INT8
@@ -98,7 +96,6 @@ def bind_vartype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
-    paddle.uint16 = uint16
     paddle.uint32 = uint32
     paddle.uint64 = uint64
     paddle.int8 = int8
@@ -131,7 +128,6 @@ def bind_vartype():
 def bind_datatype():
     global dtype
     global uint8
-    global uint16
     global uint32
     global uint64
     global int8
@@ -163,7 +159,6 @@ def bind_datatype():
     dtype.__module__ = "paddle"
 
     uint8 = DataType.UINT8
-    uint16 = DataType.UINT16
     uint32 = DataType.UINT32
     uint64 = DataType.UINT64
 
@@ -196,7 +191,6 @@ def bind_datatype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
-    paddle.uint16 = uint16
     paddle.uint32 = uint32
     paddle.uint64 = uint64
     paddle.int8 = int8
