@@ -55,7 +55,6 @@ struct ProjectCompileHelper {
       const Directory<File>& directory, const std::string& relative_dir_path) {
     std::string dir_path = this->workspace_dir + "/" + relative_dir_path;
     std::string cmd = std::string() + "mkdir -p " + dir_path;
-    std::string cmd = std::string() + "mkdir -p " + dir_path;
     int ret = std::system(cmd.c_str());
     ADT_CHECK(ret != -1 && WIFEXITED(ret) && WEXITSTATUS(ret) == 0)
         << adt::errors::RuntimeError{std::string() +
