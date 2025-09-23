@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import os
 
+import paddle
 from paddle import nn
 from paddle.distributed import ShardedWeight, fleet
 from paddle.distributed.fleet.layers.mpu import (
@@ -21,43 +23,67 @@ from paddle.distributed.fleet.layers.mpu import (
     RowParallelLinear,
     VocabParallelEmbedding,
 )
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
+    DygraphShardingOptimizer,
+    DygraphShardingOptimizerV2,
+)
 from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
 )
 
 
-class SimpleMLPForSharding(nn.Layer):
-    def __init__(self, hidden_size=32):
+class SimpleMLP(
+    nn.Layer
+):  # embedding_weight_size=24*100=2400,it can't be divided by 256,which is using to check the padding logic
+    def __init__(self, hidden_size=100, has_bias=False):
         super().__init__()
-        self.linear1 = nn.Linear(hidden_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.embedding = VocabParallelEmbedding(24, hidden_size)
+        self.linear1 = ColumnParallelLinear(
+            hidden_size, hidden_size, gather_output=False, has_bias=has_bias
+        )
+        self.linear2 = RowParallelLinear(
+            hidden_size, hidden_size, input_is_parallel=True, has_bias=has_bias
+        )
+        self.llm_head = self.embedding  # test the shared weight
 
     def forward(self, x):
-        return self.linear2(self.linear1(x))
+        x = self.embedding(x)
+        x = self.linear1(x)
+        x = self.linear2(x)
+        x = paddle.matmul(x, self.llm_head.weight, transpose_y=True)
+        return x
 
 
 class TestParallelLayersLogic:
     def __init__(self):
+        self.optimizer_var_suffix = [".moment1_0", ".moment2_0", ".w_0"]
         self.test_type = os.getenv("test_type")
         self.layer_type = os.getenv("layer_type")
-        self.tp_degree = int(os.getenv("tp"))
-        self.dp_degree = int(os.getenv("dp"))
+        self.tp_degree = int(os.getenv("tp", "1"))
+        self.dp_degree = int(os.getenv("dp", "1"))
+        self.sharding_degree = int(os.getenv("sharding_degree", "1"))
         self.world_size = int(os.getenv("world_size"))
         self.has_bias = os.getenv("has_bias", "True").lower() == "true"
-
+        self.master_weight = (
+            os.getenv("master_weight", "False").lower() == "true"
+        )
+        self.batch_size = 2
         self.hidden_size = 32
-        self.vocab_size = 1024
+        self.vocab_size = 24
+        self.seq_len = 2
+        self.hcg = None
 
     def run_test(self):
         strategy = fleet.DistributedStrategy()
         strategy.hybrid_configs = {
             "dp_degree": self.dp_degree,
             "mp_degree": self.tp_degree,
+            "sharding_degree": self.sharding_degree,
             "pp_degree": 1,
         }
         fleet.init(is_collective=True, strategy=strategy)
-
+        self.hcg = fleet.get_hybrid_communicate_group()
         if self.test_type == "layer":
             self.run_layer_test()
         elif self.test_type == "optimizer":
@@ -66,8 +92,7 @@ class TestParallelLayersLogic:
             raise ValueError(f"Unknown test_type: {self.test_type}")
 
     def run_layer_test(self):
-        hcg = fleet.get_hybrid_communicate_group()
-        tp_group = hcg.get_model_parallel_group()
+        tp_group = self.hcg.get_model_parallel_group()
         layer = self._get_layer()
         sharded_dict = layer.sharded_state_dict()
         self._verify_parallel_layer(
@@ -187,8 +212,161 @@ class TestParallelLayersLogic:
                 assert bias_shard.global_offset == (0,)
 
     def run_optimizer_test(self):
-        # TODO(@zty-king): Add test for DygraphShardingOptimizerV2 and DygraphShardingOptimizer
-        pass
+        model = SimpleMLP(has_bias=self.has_bias)
+        model = paddle.amp.decorate(
+            models=model, optimizers=None, level="O2", dtype="float16"
+        )
+        if self.master_weight:  # test the master_weight
+            opt = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=model.parameters(),
+                multi_precision=True,
+            )
+        else:
+            opt = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=model.parameters(),
+                multi_precision=False,
+            )
+        if self.layer_type == "AdamW":
+            model = fleet.distributed_model(model)
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            y = model(x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+
+            model_sharded_state_dict = model.sharded_state_dict()
+            opt_sharded_state_dict = opt.sharded_state_dict(
+                model_sharded_state_dict
+            )
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].local_shape
+                        ) == tuple(value.local_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_shape
+                        ) == tuple(value.global_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_offset
+                        ) == tuple(value.global_offset)
+        elif self.layer_type == "DygraphShardingOptimizer":
+            opt = DygraphShardingOptimizer(opt, self.hcg)
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            rank = paddle.distributed.get_rank()
+            sharidng_x = (
+                x[0 : self.batch_size // 2]
+                if rank == 0
+                else x[self.batch_size // 2 :]
+            )
+            y = model(sharidng_x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+
+            model_sharded_state_dict = model.sharded_state_dict()
+            opt_sharded_state_dict = opt.sharded_state_dict(
+                model_sharded_state_dict
+            )
+
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].local_shape
+                        ) == tuple(value.local_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_shape
+                        ) == tuple(value.global_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_offset
+                        ) == tuple(value.global_offset)
+        elif self.layer_type == "DygraphShardingOptimizerV2":
+            opt = DygraphShardingOptimizerV2(opt, self.hcg)
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            rank = paddle.distributed.get_rank()
+            sharidng_x = (
+                x[0 : self.batch_size // 2]
+                if rank == 0
+                else x[self.batch_size // 2 :]
+            )
+            y = model(sharidng_x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+
+            model_sharded_state_dict = model.sharded_state_dict()
+            opt_sharded_state_dict = opt.sharded_state_dict(
+                model_sharded_state_dict
+            )
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
+                        if opt_sharded_state_dict[
+                            opt__var_name
+                        ].flattened_range.stop - opt_sharded_state_dict[
+                            opt__var_name
+                        ].flattened_range.start != math.prod(
+                            value.local_shape
+                        ):  # check the optimizer_var which isFragment
+                            opt_var_globle_flattened_range = []
+                            paddle.distributed.all_gather_object(
+                                opt_var_globle_flattened_range,
+                                opt_sharded_state_dict[
+                                    opt__var_name
+                                ].flattened_range,
+                            )
+
+                            first_fragment = opt_var_globle_flattened_range[0]
+                            second_fragment = opt_var_globle_flattened_range[1]
+                            assert (
+                                first_fragment.stop == second_fragment.start
+                            )  # the first_flattened_range_stop == the second_flattened_range_start
+                            opt_var_globle_size_flattened = (
+                                second_fragment.stop - first_fragment.start
+                            )
+                            model_var_globle_size_flattened = math.prod(
+                                value.local_shape
+                            )
+                            assert (
+                                opt_var_globle_size_flattened
+                                == model_var_globle_size_flattened
+                            )
+
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].local_shape
+                        ) == tuple(value.local_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_shape
+                        ) == tuple(value.global_shape)
+                        assert tuple(
+                            opt_sharded_state_dict[opt__var_name].global_offset
+                        ) == tuple(value.global_offset)
+        else:
+            raise ValueError(f"Unknown layer_type: {self.layer_type}")
 
 
 if __name__ == '__main__':
