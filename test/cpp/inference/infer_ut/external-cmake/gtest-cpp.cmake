@@ -8,6 +8,15 @@ set(GTEST_INCLUDE_DIR
     "${GTEST_INSTALL_DIR}/include"
     CACHE PATH "gtest include directory." FORCE)
 set(GTEST_TAG release-1.8.1)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "gtest-cpp: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GTEST_POLICY_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
+
 include_directories(${GTEST_INCLUDE_DIR})
 if(WIN32)
   # if use CMAKE_INSTALL_LIBDIR, the path of lib actually is \
@@ -35,7 +44,7 @@ ExternalProject_Add(
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_INSTALL_DIR}
              -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-             -DCMAKE_BUILD_TYPE:STRING=Release
+             -DCMAKE_BUILD_TYPE:STRING=Release ${GTEST_POLICY_ARGS}
   BUILD_BYPRODUCTS ${GTEST_LIBRARIES}
   BUILD_BYPRODUCTS ${GTEST_MAIN_LIBRARIES})
 

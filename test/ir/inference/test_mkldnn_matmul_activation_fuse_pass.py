@@ -18,9 +18,11 @@ from functools import partial
 import hypothesis.strategies as st
 import numpy as np
 from auto_scan_test import PassAutoScanTest
+from op_test import OpTestTool
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
+@OpTestTool.skip_if_not_cpu()
 class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         transpose_X = draw(st.booleans())
@@ -77,7 +79,7 @@ class TestMatmulActivationOnednnFusePass(PassAutoScanTest):
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
                 'alpha': alpha,
-                'use_mkldnn': True,
+                'use_onednn': True,
             },
         )
 
