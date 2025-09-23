@@ -17,6 +17,7 @@ from .block_multihead_attention import (
     block_multihead_attention,
     block_multihead_attention_xpu,  # noqa: F401
 )
+from .fp8 import fused_transpose_split_quant
 from .fused_bias_act import fused_bias_act
 from .fused_dot_product_attention import (
     cudnn_flash_attention,  # noqa: F401
@@ -62,4 +63,5 @@ __all__ = [
     "blha_get_max_len",
     "block_multihead_attention",
     "swiglu",
+    "fused_transpose_split_quant",
 ]
