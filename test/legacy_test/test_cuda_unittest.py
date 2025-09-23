@@ -81,8 +81,8 @@ class TestCudaCompat(unittest.TestCase):
             props = get_device_properties(0)
             self.assertTrue(hasattr(props, 'name'))
             self.assertTrue(hasattr(props, 'total_memory'))
-        with self.assertRaises(ValueError):
-            get_device_properties("cpu:2")
+            with self.assertRaises(ValueError):
+                get_device_properties("cpu:2")
 
     # ---------------------
     # get_device_name / get_device_capability test
