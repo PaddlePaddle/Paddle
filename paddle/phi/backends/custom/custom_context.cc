@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/phi/backends/custom/custom_context.h"
 
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/stream.h"
