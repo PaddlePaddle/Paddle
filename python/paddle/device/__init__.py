@@ -119,6 +119,10 @@ else:
         )
     else:
         current_device_is_cpu = 1
+        from .cpu_device import (
+            get_rng_state,
+            set_rng_state,
+        )
 
 
 __all__ = [
