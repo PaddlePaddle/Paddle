@@ -148,12 +148,12 @@ class MishOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of Mish operator");
     AddOutput("Out", "Output of Mish operator");
-    AddAttr<double>(
+    AddAttr<float>(
         "threshold",
         "Constant threshold of softplus in Mish operator. Approximate value "
         "of softplus will be used if absolute value of input is greater than "
         ":attr:`threshold`")
-        .SetDefault(20.);
+        .SetDefault(20.f);
     AddComment(R"DOC(
 Mish Activation Operator.
 

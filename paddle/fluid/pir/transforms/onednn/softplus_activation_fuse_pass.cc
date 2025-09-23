@@ -120,8 +120,8 @@ class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
         {"beta", pat.Attr("beta")}, {"threshold", pat.Attr("threshold")}};
 
     if (act_type_ == paddle::dialect::HardswishOp::name()) {
-      fused_attrs.emplace("fuse_alpha", res.DoubleAttr(1.0f / 6.0));
-      fused_attrs.emplace("fuse_beta", res.DoubleAttr(1.0f / 2.0));
+      fused_attrs.emplace("fuse_alpha", res.DoubleAttr(1.0 / 6.0));
+      fused_attrs.emplace("fuse_beta", res.DoubleAttr(1.0 / 2.0));
     } else if (act_type_ == paddle::dialect::HardsigmoidOp::name()) {
       fused_attrs.emplace("fuse_alpha", pat.Attr("fuse_alpha"));
       fused_attrs.emplace("fuse_beta", pat.Attr("fuse_beta"));
@@ -136,8 +136,8 @@ class SoftplusActivationFusePattern : public paddle::drr::DrrPatternBase {
 
     fused_attrs.insert(std::make_pair("fuse_activation",
                                       res.StrAttr(activation_type[act_type_])));
-    fused_attrs.insert(std::make_pair("fuse_alpha", res.DoubleAttr(0.0f)));
-    fused_attrs.insert(std::make_pair("fuse_beta", res.DoubleAttr(0.0f)));
+    fused_attrs.insert(std::make_pair("fuse_alpha", res.DoubleAttr(0.0)));
+    fused_attrs.insert(std::make_pair("fuse_beta", res.DoubleAttr(0.0)));
 
     const auto &fused_softplus = res.Op(fused_softplus_name_, fused_attrs);
 
