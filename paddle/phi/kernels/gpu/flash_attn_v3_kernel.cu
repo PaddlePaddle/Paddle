@@ -1271,7 +1271,7 @@ void FlashMaskV2BaseKernel(
                       common::errors::InvalidArgument(
                           "batch_size must be equal to batch_size_k"));
   }
-  int const max_headdim = std::min(get_max_headdim(), 128);
+  int const max_headdim = std::min(flashmaskv2_get_max_headdim(), 128);
   PADDLE_ENFORCE_LE(
       head_size,
       max_headdim,
@@ -1441,8 +1441,8 @@ void FlashMaskV2BaseKernel(
   }
 
   auto round_multiple = [](int x, int m) { return (x + m - 1) / m * m; };
-  int const head_size_rounded = round_up_headdim(head_size);
-  int const head_size_v_rounded = round_up_headdim(head_size_v);
+  int const head_size_rounded = flashmaskv2_round_up_headdim(head_size);
+  int const head_size_v_rounded = flashmaskv2_round_up_headdim(head_size_v);
   int const seqlen_q_rounded = round_multiple(seqlen_q, 128);
   int const seqlen_k_rounded = round_multiple(seqlen_k, 128);
 
@@ -1965,7 +1965,8 @@ void FlashMaskV2BaseKernel(
     // TODO(umiswing): refine this block constraint (kBlockN % 32), since some
     // of kBlockN is not divisible by 32 flashmask_maxmin_shape[2] =
     // (flashmask_maxmin_shape[2] + 31) / 32 * 8;
-    flashmask_maxmin_shape[2] = ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
+    flashmask_maxmin_shape[2] =
+        ((flashmask_maxmin_shape[2] + 31) / 32 + 3) / 4 * 4;
     flashmask_maxmin_shape[3] = 8;
 
     flashmask_maxmin.set_type(phi::DataType::INT32);
