@@ -334,7 +334,8 @@ jobs:
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           set -x
           source ~/.bashrc
-          commit_info=$(git log --format=fuller |head -1|awk '{print $2}')
+          commit_info=$(git log --format=fuller |head -1|awk "{print $2}")
+          touch ${PADDLE_ROOT}/night_coverage.txt
           echo "commit:${commit_info}" >>${PADDLE_ROOT}/night_coverage.txt
           unset GREP_OPTIONS
           source ${{ github.workspace }}/../../../proxy
