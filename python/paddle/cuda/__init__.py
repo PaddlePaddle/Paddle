@@ -645,9 +645,7 @@ def set_device(device: DeviceLike) -> None:
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> # Set current device to GPU:0
-            >>> paddle.cuda.set_device(0)
-            >>> # Set current device to GPU:1
-            >>> paddle.cuda.set_device('gpu:1')
+            >>> paddle.cuda.set_device('gpu:0')
             >>> # Set current device to a specific CUDAPlace
             >>> place = paddle.CUDAPlace(0)
             >>> paddle.cuda.set_device(place)
