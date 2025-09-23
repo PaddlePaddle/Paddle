@@ -133,6 +133,25 @@ class TestCudaCompat(unittest.TestCase):
                 current = paddle.cuda.current_stream()
                 self.assertEqual(current.stream_base, s1.stream_base)
 
+    def test_manual_seed_all(self):
+        seed = 42
+        paddle.cuda.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy().all(), y.numpy().all())
+
+        seed = 21
+        paddle.device.manual_seed_all(seed)
+
+        x = paddle.randn([3, 3])
+        y = paddle.randn([3, 3])
+        self.assertEqual(x.numpy().all(), y.numpy().all())
+
+    def test_get_default_device(self):
+        default_device = paddle.get_default_device()
+        self.assertIsInstance(default_device, str)
+
     @unittest.skipIf(
         (
             not paddle.device.is_compiled_with_cuda()
@@ -257,6 +276,11 @@ class TestCudaCompat(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "out of memory"):
             check_error(2)
+
+
+class TestCurrentStreamCapturing(unittest.TestCase):
+    def test_cuda_fun(self):
+        self.assertFalse(paddle.cuda.is_current_stream_capturing())
 
 
 class TestExternalStream(unittest.TestCase):
