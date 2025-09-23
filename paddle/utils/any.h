@@ -36,7 +36,7 @@ class any {
   any() : content(0) {}
 
   template <typename ValueType>
-  explicit any(const ValueType &value)
+  any(const ValueType &value)  // NOLINT(runtime/explicit)
       : content(new holder<ValueType>(value)) {}
 
   any(const any &other) : content(other.content ? other.content->clone() : 0) {}
