@@ -21,6 +21,16 @@ set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 set(XXHASH_TAG v0.6.5)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/xxhash)
 
+# For CMake >= 4.0.0, set policy compatibility for xxhash's CMake.
+# Only for Windows builds that use CMAKE_ARGS
+if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "xxhash: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(XXHASH_POLICY_ARGS -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
+
 include_directories(${XXHASH_INCLUDE_DIR})
 
 if(APPLE)
@@ -75,7 +85,8 @@ if(WIN32)
       -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
       -DCMAKE_C_FLAGS=${XXHASH_CMAKE_C_FLAGS}
       -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-      -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE} ${OPTIONAL_CACHE_ARGS}
+      -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE} ${XXHASH_POLICY_ARGS}
+      ${OPTIONAL_CACHE_ARGS}
     TEST_COMMAND ""
     BUILD_BYPRODUCTS ${XXHASH_LIBRARIES})
 else()

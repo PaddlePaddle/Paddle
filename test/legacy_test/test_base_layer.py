@@ -15,7 +15,7 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import get_device_place, is_custom_device
+from op_test import get_device, get_device_place, is_custom_device
 
 import paddle
 from paddle import base
@@ -376,7 +376,7 @@ class TestLayerTo(unittest.TestCase):
         for p in self.linear.parameters():
             self.assertTrue(isinstance(p, paddle.base.framework.EagerParamBase))
 
-        if paddle.base.is_compiled_with_cuda() or is_custom_device():
+        if paddle.base.is_compiled_with_cuda():
             self.linear.to(device=get_device_place())
             self.assertTrue(self.linear.weight.place.is_gpu_place())
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
@@ -389,7 +389,7 @@ class TestLayerTo(unittest.TestCase):
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0
             )
 
-            self.linear.to(device='gpu:0')
+            self.linear.to(device=get_device(True))
             self.assertTrue(self.linear.weight.place.is_gpu_place())
             self.assertEqual(self.linear.weight.place.gpu_device_id(), 0)
             self.assertTrue(self.linear.buf_name.place.is_gpu_place())
@@ -399,6 +399,34 @@ class TestLayerTo(unittest.TestCase):
             )
             self.assertEqual(
                 self.linear.weight._grad_ivar().place.gpu_device_id(), 0
+            )
+            for p in self.linear.parameters():
+                self.assertTrue(
+                    isinstance(p, paddle.base.framework.EagerParamBase)
+                )
+        elif is_custom_device():
+            self.linear.to(device=get_device_place())
+            self.assertTrue(self.linear.weight.place.is_custom_place())
+            self.assertEqual(self.linear.weight.place.custom_device_id(), 0)
+            self.assertTrue(self.linear.buf_name.place.is_custom_place())
+            self.assertEqual(self.linear.buf_name.place.custom_device_id(), 0)
+            self.assertTrue(
+                self.linear.weight._grad_ivar().place.is_custom_place()
+            )
+            self.assertEqual(
+                self.linear.weight._grad_ivar().place.custom_device_id(), 0
+            )
+
+            self.linear.to(device=get_device(True))
+            self.assertTrue(self.linear.weight.place.is_custom_place())
+            self.assertEqual(self.linear.weight.place.custom_device_id(), 0)
+            self.assertTrue(self.linear.buf_name.place.is_custom_place())
+            self.assertEqual(self.linear.buf_name.place.custom_device_id(), 0)
+            self.assertTrue(
+                self.linear.weight._grad_ivar().place.is_custom_place()
+            )
+            self.assertEqual(
+                self.linear.weight._grad_ivar().place.custom_device_id(), 0
             )
             for p in self.linear.parameters():
                 self.assertTrue(

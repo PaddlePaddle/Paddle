@@ -20,7 +20,7 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/phi/api/include/sparse_api.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
-
+#define SEPARATOR "=========================="
 #pragma GCC diagnostic ignored "-Wunused-variable"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_string(tensor_operants_mode);
@@ -44,8 +44,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                          bool use_global_stats,
                          bool trainable_statistics) {
   FLAGS_tensor_operants_mode = "eager";
-  VLOG(3) << "Running AD API: "
-          << "sync_batch_norm_";
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_AD_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func begin");
   }
@@ -128,8 +129,6 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   egr::AutogradMeta* bias_autograd_meta =
       egr::EagerUtils::nullable_autograd_meta(bias);
 
-  VLOG(5) << "Running C++ API: "
-          << "sync_batch_norm_";
   // Before log info
 
   if (VLOG_IS_ON(3)) {
@@ -159,7 +158,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     input_str += input_bias_str;
     VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
-
+  VLOG(3) << "\n"
+          << SEPARATOR << "Running_C++_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   // Forward API Call
   auto api_result =
       paddle::experimental::sync_batch_norm_(x,
@@ -173,6 +174,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                                              data_layout,
                                              use_global_stats,
                                              trainable_statistics);
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finishi_C++_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("sync_batch_norm_", api_result);
@@ -298,7 +302,6 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     grad_node->SetTensorWrapper_reserve_space(reserve_space);
   }
 
-  VLOG(4) << "Finish AD API: sync_batch_norm_";
   // LOG IF DEBUG
 
   if (VLOG_IS_ON(4)) {
@@ -359,6 +362,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("sync_batch_norm__ad_func finish");
   }
+  VLOG(3) << "\n"
+          << SEPARATOR << "Finish_AD_API: "
+          << "sync_batch_norm_" << SEPARATOR;
   // Returns
   return std::tuple<paddle::Tensor,
                     paddle::Tensor&,

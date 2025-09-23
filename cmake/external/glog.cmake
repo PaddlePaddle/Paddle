@@ -38,6 +38,16 @@ endif()
 
 include_directories(${GLOG_INCLUDE_DIR})
 
+# For CMake >= 4.0.0, set policy compatibility for glog's CMake.
+set(GLOG_POLICY_ARGS "")
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "4.0.0")
+  message(
+    WARNING
+      "glog: forcing CMake policy compatibility for CMake >= 4.0 (CMAKE_POLICY_VERSION_MINIMUM=3.5)"
+  )
+  set(GLOG_POLICY_ARGS "-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
+endif()
+
 ExternalProject_Add(
   extern_glog
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
@@ -53,6 +63,7 @@ ExternalProject_Add(
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
              -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
              -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+             ${GLOG_POLICY_ARGS}
              -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
              -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
