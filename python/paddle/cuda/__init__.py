@@ -613,7 +613,6 @@ def memory_reserved(device: DeviceLike = None) -> int:
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-            >>> import paddle
             >>> # Get memory reserved for current device
             >>> mem_reserved = paddle.cuda.memory_reserved()
             >>> print(f"Memory reserved: {mem_reserved} bytes")
@@ -642,8 +641,10 @@ def set_device(device: DeviceLike) -> None:
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:GPU)
+            >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
             >>> import paddle
+            >>> # Set current device to GPU:0
+            >>> paddle.cuda.set_device(0)
             >>> # Set current device to GPU:0
             >>> paddle.cuda.set_device('gpu:0')
             >>> # Set current device to a specific CUDAPlace
