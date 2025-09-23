@@ -81,6 +81,8 @@ class TestCudaCompat(unittest.TestCase):
             props = get_device_properties(0)
             self.assertTrue(hasattr(props, 'name'))
             self.assertTrue(hasattr(props, 'total_memory'))
+        with self.assertRaises(ValueError):
+            get_device_properties("cpu:2")
 
     # ---------------------
     # get_device_name / get_device_capability test
@@ -278,13 +280,13 @@ class TestCurrentStreamCapturing(unittest.TestCase):
         self.assertFalse(paddle.cuda.is_current_stream_capturing())
         self.assertFalse(paddle.device.is_current_stream_capturing())
 
-        if paddle.cuda.is_available():
+        if paddle.cuda.is_available() and paddle.is_compiled_with_cuda():
             graph = paddle.device.cuda.graphs.CUDAGraph()
             graph.capture_begin()
             self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
             graph.capture_end()
 
-        if paddle.device.is_available():
+        if paddle.device.is_available() and paddle.is_compiled_with_cuda():
             graph = paddle.device.cuda.graphs.CUDAGraph()
             graph.capture_begin()
             self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
@@ -294,7 +296,7 @@ class TestCurrentStreamCapturing(unittest.TestCase):
 class TestExternalStream(unittest.TestCase):
     def test_get_stream_from_external(self):
         # Only run test if CUDA is available
-        if not paddle.cuda.is_available():
+        if not (paddle.cuda.is_available() and paddle.is_compiled_with_cuda()):
             return
 
         # Test case 1: Device specified by integer ID
