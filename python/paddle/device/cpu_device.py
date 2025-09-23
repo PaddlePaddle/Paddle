@@ -37,6 +37,27 @@ if TYPE_CHECKING:
     ]
 
 
+def device_count() -> int:
+    '''
+    Return the number of GPUs available.
+
+    Returns:
+        int: the number of GPUs available.
+
+    Note:
+        This function returns 0 when compiled without CUDA support.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> paddle.device.device_count()
+
+    '''
+    return 0
+
+
 def get_rng_state(
     device: _CPUPlaceLike | None = None,
 ) -> core.GeneratorState:

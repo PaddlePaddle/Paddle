@@ -120,6 +120,7 @@ else:
     else:
         current_device_is_cpu = 1
         from .cpu_device import (
+            device_count,
             get_rng_state,
             set_rng_state,
         )
@@ -288,8 +289,6 @@ def is_available() -> bool:
             ... else:
             ...     print("No supported devices available")
     """
-    if current_device_is_cpu:
-        return False
     return device_count() >= 1
 
 
