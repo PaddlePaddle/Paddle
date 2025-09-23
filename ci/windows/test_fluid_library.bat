@@ -11,11 +11,7 @@ echo    ========================================
 cd %BUILD_DIR%
 echo %vcvars64_dir%
 call "%vcvars64_dir%"
-
-:: Switch the console codepage to UTF-8 to prevent garbled text
-chcp 65001 >nul 2>&1
 tree /F %cd%\paddle_inference_install_dir\paddle
-
 %cache_dir%\tools\busybox64.exe du -h -d 0 %cd%\paddle_inference_install_dir > lib_size.txt
 type lib_size.txt
 set /p libsize=< lib_size.txt
