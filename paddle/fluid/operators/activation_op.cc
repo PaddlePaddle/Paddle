@@ -148,12 +148,12 @@ class MishOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input of Mish operator");
     AddOutput("Out", "Output of Mish operator");
-    AddAttr<float>(
+    AddAttr<double>(
         "threshold",
         "Constant threshold of softplus in Mish operator. Approximate value "
         "of softplus will be used if absolute value of input is greater than "
         ":attr:`threshold`")
-        .SetDefault(20.f);
+        .SetDefault(20.);
     AddComment(R"DOC(
 Mish Activation Operator.
 
@@ -337,7 +337,7 @@ REGISTER_OP_VERSION(softplus).AddCheckpoint(
          " softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\ \\text{For numerical"
          " stability, the implementation reverts to the linear function when: beta * x > threshold.})ROC",
     paddle::framework::compatible::OpVersionDesc()
-        .NewAttr("beta", "The beta value of the new formula", 1.0f)
-        .NewAttr("threshold", "The threshold value of the new formula", 20.0f));
+        .NewAttr("beta", "The beta value of the new formula", 1.0)
+        .NewAttr("threshold", "The threshold value of the new formula", 20.0));
 
 /* ========================================================================== */
