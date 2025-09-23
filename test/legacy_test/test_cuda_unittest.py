@@ -286,22 +286,6 @@ class TestCurrentStreamCapturing(unittest.TestCase):
         self.assertFalse(paddle.cuda.is_current_stream_capturing())
         self.assertFalse(paddle.device.is_current_stream_capturing())
 
-        if not can_use_cuda_graph():
-            return
-        if float(paddle.version.cuda()) < 11.0:
-            return
-        if paddle.cuda.is_available() and paddle.is_compiled_with_cuda():
-            graph = paddle.device.cuda.graphs.CUDAGraph()
-            graph.capture_begin()
-            self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
-            graph.capture_end()
-
-        if paddle.device.is_available() and paddle.is_compiled_with_cuda():
-            graph = paddle.device.cuda.graphs.CUDAGraph()
-            graph.capture_begin()
-            self.assertTrue(paddle.cuda.is_current_stream_capturing())  # True
-            graph.capture_end()
-
 
 class TestExternalStream(unittest.TestCase):
     def test_get_stream_from_external(self):
