@@ -416,7 +416,7 @@ class Optimizer:
 
         '''
         state_dict = {}
-        if len(self._accumulators) == 0 and len(self._accumulators_holder) > 0:
+        if len(self._accumulators_holder) > 0:
             for name, var in self._accumulators_holder.items():
                 state_dict[name] = var
         else:
