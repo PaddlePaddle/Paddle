@@ -36,9 +36,6 @@ limitations under the License. */
 #endif
 #include "paddle/utils/optional.h"
 
-#include "paddle/phi/kernels/funcs/fast_cpu_contiguous.h"
-
-COMMON_DECLARE_bool(use_stride_compute_kernel);
 COMMON_DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace experimental {
@@ -101,45 +98,6 @@ Tensor::copy_to<phi::dtype::float16>(const Place &target_place) const;
 void Tensor::copy_(const Tensor &src,
                    const phi::Place &target_place,
                    bool blocking) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#if defined(_OPENMP)
-
-        auto dst_tensor = static_cast<phi::DenseTensor*>(impl_.get());
-        auto src_tensor = std::static_pointer_cast<phi::DenseTensor>(src.impl_);
-
-
-  if (FLAGS_use_stride_compute_kernel &&
-  src.place().GetType() == AllocationType::CPU &&
-      target_place.GetType() == AllocationType::GPU &&
-      !src_tensor->meta().is_contiguous() &&
-      blocking) {
-        SetKernelOutput(this);
-
-  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
-  if (initialized()) {
-    kernel_key_set.backend_set = kernel_key_set.backend_set |
-                                 BackendSet(phi::TransToPhiBackend(place()));
-  } else {
-    // Deep Copy AutoGrad info from src to self.
-    *autograd_meta_ = *(src.autograd_meta_);
-  }
-  kernel_key_set.backend_set = kernel_key_set.backend_set |
-                               BackendSet(phi::TransToPhiBackend(target_place));
-  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
-  auto place = phi::TransToPhiPlace(kernel_key.backend());
-  auto &pool = paddle::experimental::DeviceContextPool::Instance();
-    auto *dev_ctx = pool.GetMutable(
-      place.GetType() == target_place.GetType() ? target_place : place);
-
-      phi::FastCPUCopy<phi::CPUContext>(
-        reinterpret_cast<const phi::CPUContext&>(*dev_ctx),
-        *src_tensor, target_place, dst_tensor);
-
-    return;
-  }
-#endif
-#endif
-
   if (!src.has_allocation()) {
     VLOG(8) << "Src is empty, skip copy";
     return;

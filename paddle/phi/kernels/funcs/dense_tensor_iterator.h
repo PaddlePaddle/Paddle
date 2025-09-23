@@ -282,9 +282,9 @@ inline void get_data_ptrs(char** ptrs,
   const auto ntensors = base.size();
   const auto ndim = counter.size();
   std::copy(base.begin(), base.end(), ptrs);
-  for (int dim = 0; dim < ndim; dim++) {
+  for (size_t dim = 0; dim < ndim; dim++) {
     int64_t value = counter[dim];
-    for (int arg = 0; arg < ntensors; arg++) {
+    for (size_t arg = 0; arg < ntensors; arg++) {
       ptrs[arg] += value * strides[dim * ntensors + arg];
     }
   }
