@@ -158,6 +158,9 @@ message VarType {
     COMPLEX128 = 24;
     FP8_E4M3FN = 32;
     FP8_E5M2 = 33;
+    UINT16 = 37;
+    UINT32 = 38;
+    UINT64 = 39;
     // Other types that may need additional descriptions
     DENSE_TENSOR = 7;
     SELECTED_ROWS = 8;

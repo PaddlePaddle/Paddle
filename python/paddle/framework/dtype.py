@@ -66,6 +66,9 @@ def bind_vartype():
     dtype.__module__ = "paddle"
 
     uint8 = VarDesc.VarType.UINT8
+    uint16 = VarDesc.VarType.UINT16
+    uint32 = VarDesc.VarType.UINT32
+    uint64 = VarDesc.VarType.UINT64
     int8 = VarDesc.VarType.INT8
     int16 = VarDesc.VarType.INT16
     short = int16
@@ -95,6 +98,9 @@ def bind_vartype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
+    paddle.uint16 = uint16
+    paddle.uint32 = uint32
+    paddle.uint64 = uint64
     paddle.int8 = int8
     paddle.int16 = int16
     paddle.short = short
@@ -190,6 +196,9 @@ def bind_datatype():
 
     paddle.dtype = dtype
     paddle.uint8 = uint8
+    paddle.uint16 = uint16
+    paddle.uint32 = uint32
+    paddle.uint64 = uint64
     paddle.int8 = int8
     paddle.short = short
     paddle.int16 = int16
@@ -197,7 +206,6 @@ def bind_datatype():
     paddle.int32 = int32
     paddle.long = long
     paddle.int64 = int64
-    paddle.long = int64
 
     paddle.float = float
     paddle.float32 = float32
