@@ -646,10 +646,8 @@ def set_device(device: DeviceLike) -> None:
             >>> import paddle
             >>> # Set current device to GPU:0
             >>> paddle.cuda.set_device(0)
-            >>>
             >>> # Set current device to GPU:1
             >>> paddle.cuda.set_device('gpu:1')
-            >>>
             >>> # Set current device to a specific CUDAPlace
             >>> place = paddle.CUDAPlace(0)
             >>> paddle.cuda.set_device(place)
@@ -667,7 +665,7 @@ def set_device(device: DeviceLike) -> None:
             device_str = f'xpu:{device}'
         else:
             raise ValueError(
-                f"Unsupported device: {device_place.get_device_type()}. Expected CUDA, XPU or Custom Device."
+                "Paddle-CPU is not supported. Please use PaddlePaddle with CUDA, XPU or Custom Device"
             )
     elif isinstance(device, str):
         # Device is already in string format
