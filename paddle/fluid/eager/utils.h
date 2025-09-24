@@ -327,19 +327,11 @@ struct DistTensorConverter : ArgsIterator<DistTensorConverter> {
 
   void operator()(paddle::Tensor* x);
   void operator()(const paddle::Tensor* x);
-
-  void operator()(paddle::Tensor& x);
   void operator()(const paddle::Tensor& x);
-
-  void operator()(paddle::optional<paddle::Tensor>* x);
   void operator()(const paddle::optional<paddle::Tensor>* x);
-
   void operator()(std::vector<paddle::Tensor>* x);
-  void operator()(const std::vector<paddle::Tensor>* x);
   void operator()(const std::vector<paddle::Tensor> x);
-
   void operator()(paddle::optional<std::vector<paddle::Tensor>>* x);
-  void operator()(const paddle::optional<std::vector<paddle::Tensor>>* x);
 
   // skip other type args, these args don't used in kernel selection
   template <typename T>
