@@ -23,6 +23,8 @@ limitations under the License. */
 
 #if defined(_OPENMP)
 #include <omp.h>
+#else
+#include "paddle/phi/kernels/contiguous_kernel.h"
 #endif
 
 COMMON_DECLARE_bool(use_stride_compute_kernel);
