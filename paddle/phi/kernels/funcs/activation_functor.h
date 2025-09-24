@@ -892,9 +892,10 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct SoftplusGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
+  typename SoftplusGradFunctor<ComplexType<T>>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
   template <typename Device,
@@ -916,9 +917,10 @@ struct SoftplusGradFunctor<ComplexType<T>>
 
 template <typename T>
 struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
-  float beta;
-  float threshold;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+  using AttrPair = std::vector<std::pair<const char*, double*>>;
+  double beta;
+  double threshold;
+  typename SoftplusDoubleGradFunctor<T>::AttrPair GetAttrs() {
     return {{"beta", &beta}, {"threshold", &threshold}};
   }
   template <typename Device>
