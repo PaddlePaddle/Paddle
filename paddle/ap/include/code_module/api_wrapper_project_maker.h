@@ -184,7 +184,7 @@ struct ApiWrapperProjectMaker {
         [&](axpr::CppDataType<adt::Undefined>) -> RetT {
       return "void"; });
   }
-
+  //
   adt::Result<std::string> GenCode4PointerType(
       const axpr::PointerType& pointer_type) {
     using RetT = adt::Result<std::string>;
