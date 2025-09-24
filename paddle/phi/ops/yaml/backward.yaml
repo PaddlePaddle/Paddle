@@ -2046,6 +2046,7 @@
     param : [x, x]
   kernel :
     func : log_double_grad
+  composite : log_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : log_grad
@@ -2058,6 +2059,7 @@
     spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : log_grad
+  composite : log_grad(x, out_grad, x_grad)
   backward : log_double_grad
   inplace : (out_grad -> x_grad)
 
