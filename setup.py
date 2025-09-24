@@ -1505,6 +1505,12 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
+
+    package_data['paddle.libs'] += [
+        os.path.basename(env_dict.get("GLOG_LIBRARIES"))
+    ]
+    shutil.copy(env_dict.get("GLOG_LIBRARIES"), libs_path)
+
     package_data['paddle.libs'] += [
         os.path.basename(env_dict.get("LAPACK_LIB")),
         os.path.basename(env_dict.get("BLAS_LIB")),

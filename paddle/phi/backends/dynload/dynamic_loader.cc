@@ -28,7 +28,7 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage flags
 // (maybe not use gflags).
-#include "glog/logging.h"
+#include <glog/logging.h>
 
 #include "paddle/common/flags.h"
 
@@ -254,7 +254,8 @@ static inline void* GetDsoHandleFromSpecificPath(const std::string& spec_path,
   if (!spec_path.empty() || !dso_name.empty()) {
     // search xxx.so from custom path
     VLOG(6) << "Try to find library: " << dso_name
-            << " from specific path: " << spec_path;
+            << " from specific path: " << spec_path << "Flags "
+            << FLAGS_logtostderr << "GLOG_v " << FLAGS_v;
     std::string dso_path = join(spec_path, dso_name);
 #if defined(_WIN32) || defined(_WIN64)
     HMODULE handle = LoadLibraryA(dso_path.c_str());

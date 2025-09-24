@@ -27,7 +27,7 @@ limitations under the License. */
 #else
 #include <unistd.h>
 #endif
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "paddle/phi/common/thread_data_registry.h"
 
 namespace phi {

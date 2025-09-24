@@ -45,8 +45,11 @@ GradNodePyLayer::operator()(
     egr::CUDAErrorCheck("GradNodePyLayer begin");
   }
   pybind11::gil_scoped_acquire gil;
-  VLOG(3) << "Running Eager Backward Node: " << name();
-
+  VLOG(3) << "Running Eager Backward Node: " << name() << "(" << this << ")";
+  if (VLOG_IS_ON(3)) egr::LogIndent::Instance().IncreaseIndentLevel();
+  VLOG(4) << name() << "(" << this << "): PyLayer Call stack :\n"
+          << paddle::pybind::GetPythonStack();
+  VLOG(6) << name() << ": Input size is " << grads.size();
   paddle::small_vector<std::vector<paddle::Tensor>, kSlotSmallVectorSize>
       hooked_grads = GradNodePyLayer::ApplyGradientHooks(grads);
 
@@ -256,6 +259,8 @@ GradNodePyLayer::operator()(
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("GradNodePyLayer finish");
   }
+  if (VLOG_IS_ON(3)) egr::LogIndent::Instance().DecreaseIndentLevel();
+  VLOG(3) << "Finish Eager Backward Node: " << name() << "(" << this << ")";
 
   return grad_out;
 }

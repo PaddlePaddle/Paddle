@@ -179,4 +179,61 @@ class EagerBackwardStateGuard {
   ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
 };
 
+/**
+ * @class LogIndent
+ * @brief Singleton class for managing log indentation levels globally
+ *
+ * This class implements the singleton pattern to provide a centralized way
+ * to manage indentation levels for formatted log output. It ensures only
+ * one instance exists throughout the application lifecycle.
+ */
+class LogIndent {
+ public:
+  /**
+   * @brief Get the singleton instance of LogIndent
+   * @return Reference to the singleton instance
+   *
+   * Uses static local variable for thread-safe singleton initialization
+   * (C++11 guarantee). The instance is created on first call and destroyed
+   * automatically at program termination.
+   */
+  static LogIndent& Instance() {
+    static LogIndent instance;
+    return instance;
+  }
+  /**
+   * @brief Increase the current indentation level by 1
+   *
+   * Call this method when entering a nested scope to increase
+   * log indentation for better visual hierarchy.
+   */
+  void IncreaseIndentLevel() { level_++; }
+  /**
+   * @brief Decrease the current indentation level by 1
+   *
+   * Reduces the indentation level, but never goes below 0.
+   * Call this when leaving a nested scope.
+   */
+  void DecreaseIndentLevel() {
+    if (level_ > 0) {
+      level_--;
+    }
+  }
+  /**
+   * @brief Get the current indentation level
+   * @return Current indentation level (0-based)
+   *
+   * Use this value to format log messages with appropriate
+   * indentation spacing.
+   */
+  int GetIndentLevel() const { return level_; }
+  LogIndent(const LogIndent&) = delete;
+  LogIndent& operator=(const LogIndent&) = delete;
+
+ private:
+  LogIndent() : level_(0) {}
+  ~LogIndent() = default;
+  int level_ = 0;
+};
+
 }  // namespace egr

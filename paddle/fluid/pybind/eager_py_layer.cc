@@ -10,11 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 // disable numpy compile error
 #include <Python.h>
-
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
 #include <set>
+#include <sstream>
 #include <string>
 #include <vector>
-
+#include "glog/logging.h"
+#include "glog/raw_logging.h"
 #pragma GCC diagnostic ignored "-Wattributes"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #ifdef PADDLE_WITH_CUDA
@@ -193,8 +200,13 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* args,
                                PyObject* kwargs) {
   EAGER_TRY
+  std::string classname =
+      std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
+  VLOG(3) << classname << ":Running PyLayer Apply ";
+  if (VLOG_IS_ON(3)) egr::LogIndent::Instance().IncreaseIndentLevel();
   SetPythonStack();
-  VLOG(6) << "Begin run PyLayer apply...";
+  VLOG(4) << classname << ":"
+          << "Construct PyLayerContext";
   PyObject* backward_function =
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
@@ -208,7 +220,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
         common::errors::External(pybind11::detail::error_string().c_str()));
     return nullptr;
   }
-  VLOG(6) << "PyLayer construct PyLayerContext finish...";
+
   if (FLAGS_check_cuda_error) [[unlikely]] {
     egr::CUDAErrorCheck("pylayer_method_apply " +
                         std::string(Py_TYPE(ctx)->tp_name) + " begin");
@@ -232,7 +244,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   forward_args = PyTuple_New(args_size + 1);  // NOLINT
   Py_INCREF(ctx);
   PyTuple_SET_ITEM(forward_args, 0, reinterpret_cast<PyObject*>(ctx));
-
+  VLOG(6) << classname << ":Prepare Pylayer forward args ";
+  VLOG(6) << classname << ":Input size is " << inputs_size;
   std::vector<std::vector<egr::AutogradMeta*>> inputs_autograd_meta;
   inputs_autograd_meta.reserve(inputs_size);
   std::vector<std::vector<paddle::Tensor*>> inputs_tensor;
@@ -376,6 +389,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   }
 
   VLOG(6)
+      << classname << ":"
       << "PyLayer forward args is ready, begin call user's forward function...";
   // call forward
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
@@ -412,8 +426,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
   for (auto it : not_inplace_tensors) {
     not_inplace_tensorbases.insert(it->impl().get());
   }
-
   auto outputs_size = PyTuple_GET_SIZE(outputs_tuple);
+  VLOG(6) << classname << ":Output size is " << outputs_size;
   std::vector<std::vector<paddle::Tensor*>> outputs_tensor;
   outputs_tensor.reserve(outputs_size);
   std::vector<std::vector<egr::AutogradMeta*>> outputs_autograd_meta;
@@ -504,7 +518,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
     PADDLE_THROW(common::errors::InvalidArgument(
         "At least one output of `PyLayer.forward` is a `Tensor`."));
   }
-  VLOG(6) << "PyLayer forward function finish...";
+  VLOG(6) << classname << ":"
+          << "PyLayer forward function finish...";
 
 #ifdef PADDLE_WITH_CUDA
   bool has_grad = false;
@@ -533,7 +548,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
                             "can't use inplace strategy.",
                             inplace_tensor->name()));
       inplace_tensor->bump_inplace_version();
-      VLOG(3) << "Tensor(" << inplace_tensor->name()
+      VLOG(3) << classname << ":"
+              << "Tensor(" << inplace_tensor->name()
               << ") uses Inplace Strategy.";
     }
 
@@ -541,9 +557,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
         std::make_shared<egr::GradNodePyLayer>(reinterpret_cast<PyObject*>(ctx),
                                                outputs_autograd_meta.size(),
                                                inputs_autograd_meta.size());
-    VLOG(3) << "Create grad node " << grad_node->name() << " addr "
+    VLOG(3) << classname << ":"
+            << "Create grad node " << grad_node->name() << " addr "
             << grad_node;
-    VLOG(6) << "PyLayer Call stack :\n" << GetPythonStack();
     // For dump call stack
     if (FLAGS_check_nan_inf || FLAGS_call_stack_level == 3) {
       grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
@@ -582,7 +598,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
         grad_node->SetGradInMeta(*outputs_tensor[i][0], i);
       }
     }
-    VLOG(6) << "PyLayer construct backward node finish...";
+    VLOG(6) << classname << ":"
+            << "PyLayer construct backward node finish...";
   }
 
   if (outputs_size == 1) {
@@ -618,6 +635,8 @@ PyObject* pylayer_method_apply(PyObject* cls,
                         std::string(Py_TYPE(ctx)->tp_name) + " finish");
   }
 
+  egr::LogIndent::Instance().DecreaseIndentLevel();
+  if (VLOG_IS_ON(3)) VLOG(3) << classname << ":Finish PyLayer Apply";
   return outputs;
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }

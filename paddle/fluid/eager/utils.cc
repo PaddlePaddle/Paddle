@@ -13,10 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/utils.h"
+#include <unistd.h>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
+#include <iostream>
 #include <ostream>
+#include <sstream>
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
@@ -701,12 +704,16 @@ void EagerUtils::FillZeroForEmptyGradInput(
 }
 static std::string indent_after_newlines(const std::string& input,
                                          const std::string& indent = "\t",
-                                         int count = 1) {
+                                         int count = 1,
+                                         bool prepend = false) {
   std::string result;
 
   std::string indentation;
   for (int i = 0; i < count; i++) {
     indentation += indent;
+  }
+  if (prepend) {
+    result += indentation;
   }
 
   bool need_indent = false;
@@ -1249,5 +1256,59 @@ void SaveDebugInfo(std::string dir_path,
     VLOG(4) << "Save backward graph to file : " << backward_graph_file_path;
     SaveStringToFile(backward_graph_file_path, serialized_backward_graph);
   }
+}
+void CustomLogSink::send(google::LogSeverity severity,
+                         const char* full_filename,
+                         const char* base_filename,
+                         int line,
+                         const struct tm* tm_time,
+                         const char* message,
+                         size_t message_len) {
+  char severity_char = 'I';
+  bool use_stdout = false;
+  switch (severity) {
+    case google::GLOG_INFO:
+      severity_char = 'I';
+      break;
+    case google::GLOG_WARNING:
+      severity_char = 'W';
+      use_stdout = true;
+      break;
+    case google::GLOG_ERROR:
+      severity_char = 'E';
+      break;
+    case google::GLOG_FATAL:
+      severity_char = 'F';
+      break;
+    default:
+      severity_char = '?';
+  }
+  std::string timestamp = FormatTime(tm_time);
+  std::ostringstream oss;
+  oss << severity_char << std::setfill('0') << std::setw(4) << std::setw(2)
+      << tm_time->tm_mon + 1 << std::setw(2) << tm_time->tm_mday << ' '
+      << timestamp << " " << std::setfill(' ') << base_filename << ":" << line
+      << "] " << std::string(message, message_len);
+  int indent_level = egr::LogIndent::Instance().GetIndentLevel();
+  std::string mesg = oss.str();
+  if (indent_level > 0) {
+    mesg = indent_after_newlines(mesg, "\t", indent_level, true);
+  }
+  if (use_stdout) {
+    std::cout << mesg << std::endl;
+  } else {
+    std::cerr << mesg << std::endl;
+  }
+  if (severity == google::GLOG_FATAL) {
+    std::flush(std::cout);
+    std::flush(std::cerr);
+  }
+}
+std::string CustomLogSink::FormatTime(const struct tm* tm_time) {
+  std::ostringstream oss;
+  oss << std::setfill('0') << std::setw(2) << tm_time->tm_hour << ":"
+      << std::setw(2) << tm_time->tm_min << ":" << std::setw(2)
+      << tm_time->tm_sec;
+  return oss.str();
 }
 }  // namespace egr

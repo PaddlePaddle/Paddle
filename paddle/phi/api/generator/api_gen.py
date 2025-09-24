@@ -542,8 +542,8 @@ def source_include(header_file_path):
 
 #include <memory>
 
-#include "glog/logging.h"
 #include "paddle/common/flags.h"
+#include "glog/logging.h"
 
 {header_file_path}
 #include "paddle/phi/api/lib/api_custom_impl.h"

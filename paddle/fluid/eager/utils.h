@@ -376,4 +376,23 @@ void SaveStringToFile(const std::string& file_path,
                       const std::string& serialized_graph,
                       const std::string& mode = "trunc");
 
+class CustomLogSink : public google::LogSink {
+ public:
+  CustomLogSink() = default;
+  void send(google::LogSeverity severity,
+            const char* full_filename,
+            const char* base_filename,
+            int line,
+            const struct tm* tm_time,
+            const char* message,
+            size_t message_len) override;
+
+  virtual ~CustomLogSink() = default;
+
+ private:
+  std::string FormatTime(const struct tm* tm_time);
+  CustomLogSink(const CustomLogSink&) = delete;
+  CustomLogSink& operator=(const CustomLogSink&) = delete;
+};
+
 }  // namespace egr

@@ -15,24 +15,31 @@
 include(ExternalProject)
 
 add_definitions(-DGLOG_NO_ABBREVIATED_SEVERITIES)
-
+add_definitions(-DGLOG_CUSTOM_PREFIX_SUPPORT)
 set(GLOG_PREFIX_DIR ${THIRD_PARTY_PATH}/glog)
 set(GLOG_INSTALL_DIR ${THIRD_PARTY_PATH}/install/glog)
 set(GLOG_INCLUDE_DIR
     "${GLOG_INSTALL_DIR}/include"
     CACHE PATH "glog include directory." FORCE)
-set(GLOG_TAG v0.7.1)
+set(GLOG_TAG v0.5.0)
 set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/glog)
+
 if(WIN32)
-  set(GLOG_LIBRARIES
-      "${GLOG_INSTALL_DIR}/lib/glog.lib"
-      CACHE FILEPATH "glog library." FORCE)
+  set(GLOG_LIB_NAME "glog.dll")
+elseif(APPLE)
+  set(GLOG_LIB_NAME "libglog.dylib")
+else() #Linux
+  set(GLOG_LIB_NAME "libglog.so.0")
+endif()
+
+set(GLOG_LIBRARIES
+    "${GLOG_INSTALL_DIR}/lib/${GLOG_LIB_NAME}"
+    CACHE FILEPATH "glog library." FORCE)
+
+if(WIN32)
   set(GLOG_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4267 /wd4530")
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
 else()
-  set(GLOG_LIBRARIES
-      "${GLOG_INSTALL_DIR}/lib/libglog.a"
-      CACHE FILEPATH "glog library." FORCE)
   set(GLOG_CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 endif()
 
@@ -56,6 +63,9 @@ ExternalProject_Add(
              -DCMAKE_INSTALL_PREFIX=${GLOG_INSTALL_DIR}
              -DCMAKE_INSTALL_LIBDIR=${GLOG_INSTALL_DIR}/lib
              -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+             -DBUILD_SHARED_LIBS=ON
+             -DWITH_CUSTOM_PREFIX=ON
+             -DWITH_UNWIND=OFF
              -DWITH_GFLAGS=OFF
              -DBUILD_TESTING=OFF
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
@@ -67,7 +77,8 @@ ExternalProject_Add(
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${GLOG_LIBRARIES})
 
-add_library(glog STATIC IMPORTED GLOBAL)
+add_library(glog SHARED IMPORTED GLOBAL)
 set_property(TARGET glog PROPERTY IMPORTED_LOCATION ${GLOG_LIBRARIES})
+
 add_dependencies(glog extern_glog gflags)
 link_libraries(glog)
