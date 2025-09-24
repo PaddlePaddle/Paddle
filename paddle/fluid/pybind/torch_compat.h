@@ -126,8 +126,9 @@ inline py::object OperationInvoker::to_py_object(const torch::IValue& value) {
     return py_tuple;
   } else {
     PADDLE_THROW(common::errors::Unimplemented(
-        "Conversion of torch::IValue to Python object for this type is not "
-        "implemented yet."));
+        "Conversion of torch::IValue to Python object for type %s is not "
+        "implemented yet.",
+        value.type_string()));
   }
 }
 
